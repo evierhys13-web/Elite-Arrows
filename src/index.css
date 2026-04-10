@@ -19,13 +19,13 @@
 
 [data-theme="light"] {
   --bg-primary: #e3f2fd;
-  --bg-secondary: #bbdefb;
-  --bg-card: #90caf9;
-  --bg-hover: #64b5f6;
-  --text-primary: #0d47a1;
-  --text-secondary: #1565c0;
-  --text-muted: #1976d2;
-  --border: #42a5f5;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-hover: #bbdefb;
+  --text-primary: #1565c0;
+  --text-secondary: #1976d2;
+  --text-muted: #42a5f5;
+  --border: #90caf9;
 }
 
 * {

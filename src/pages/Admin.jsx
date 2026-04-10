@@ -496,6 +496,45 @@ export default function Admin() {
         </div>
       )}
 
+      {activeTab === 'players' && (
+        <div className="card">
+          <h3 className="card-title">All Players</h3>
+          {allUsers.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)' }}>No players found</p>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Email</th>
+                  <th>Division</th>
+                  <th>3-Dart Avg</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {allUsers.map(player => (
+                  <tr key={player.id}>
+                    <td>{player.username}</td>
+                    <td>{player.email}</td>
+                    <td>{player.division || 'Gold'}</td>
+                    <td>{player.threeDartAverage?.toFixed(2) || 0}</td>
+                    <td>
+                      <button 
+                        className="btn btn-sm"
+                        onClick={() => navigate(`/profile/${player.id}`)}
+                      >
+                        View
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
       {activeTab === 'subscriptions' && (
         <div>
           <div className="card" style={{ marginBottom: '20px' }}>

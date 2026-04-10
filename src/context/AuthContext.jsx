@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { db, auth, usersCollection, doc, setDoc, getDoc, getDocs, query, where, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from '../firebase'
+import { db, auth, usersCollection, doc, setDoc, getDoc, getDocs, query, where, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged } from '../firebase'
 
 const AuthContext = createContext(null)
 
@@ -26,7 +26,7 @@ export function AuthProvider({ children }) {
           if (userDoc.exists()) {
             setUser({ id: userDoc.id, ...userDoc.data() })
           } else {
-            await signOut(auth)
+            await firebaseSignOut(auth)
             setUser(null)
           }
         } catch (e) {
@@ -98,7 +98,7 @@ export function AuthProvider({ children }) {
       console.log('User doc exists:', userDoc.exists())
       
       if (!userDoc.exists()) {
-        await signOut(auth)
+        await firebaseSignOut(auth)
         throw new Error('User data not found')
       }
 
@@ -121,13 +121,13 @@ export function AuthProvider({ children }) {
     }
   }
 
-  const signOut = async () => {
+  const handleSignOut = async () => {
     if (user) {
       try {
         await setDoc(doc(db, 'users', user.id), { isOnline: false, lastSeen: new Date().toISOString() }, { merge: true })
       } catch (e) {}
     }
-    await signOut(auth)
+    await firebaseSignOut(auth)
     setUser(null)
   }
 
@@ -282,7 +282,7 @@ export function AuthProvider({ children }) {
       loading, 
       signUp, 
       signIn, 
-      signOut, 
+      signOut: handleSignOut, 
       updateUser,
       addUserManually,
       addFriend,
