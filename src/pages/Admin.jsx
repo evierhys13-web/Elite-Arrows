@@ -631,15 +631,10 @@ export default function Admin() {
                   {u.id !== user.id && (
                     <button 
                       className="btn btn-danger btn-sm"
-                      onClick={() => {
+                      onClick={async () => {
                         if (confirm(`Remove admin privileges from ${u.username}?`)) {
-                          const users = getAllUsers()
-                          const index = users.findIndex(us => us.id === u.id)
-                          if (index !== -1) {
-                            users[index].isAdmin = false
-                            localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
-                            alert(`${u.username} is no longer an admin`)
-                          }
+                          await setDoc(doc(db, 'users', u.id), { isAdmin: false }, { merge: true })
+                          alert(`${u.username} is no longer an admin`)
                         }
                       }}
                     >
@@ -648,14 +643,9 @@ export default function Admin() {
                   )}
                   <button 
                     className="btn btn-secondary btn-sm"
-                    onClick={() => {
-                      const users = getAllUsers()
-                      const index = users.findIndex(us => us.id === u.id)
-                      if (index !== -1) {
-                        users[index].isTournamentAdmin = !u.isTournamentAdmin
-                        localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
-                        alert(`${u.username} ${u.isTournamentAdmin ? 'removed from' : 'added as'} tournament admin`)
-                      }
+                    onClick={async () => {
+                      await setDoc(doc(db, 'users', u.id), { isTournamentAdmin: !u.isTournamentAdmin }, { merge: true })
+                      alert(`${u.username} ${u.isTournamentAdmin ? 'removed from' : 'added as'} tournament admin`)
                     }}
                   >
                     {u.isTournamentAdmin ? 'Remove Tournament Admin' : 'Add Tournament Admin'}
@@ -685,15 +675,10 @@ export default function Admin() {
                   </div>
                   <button 
                     className="btn btn-danger"
-                    onClick={() => {
+                    onClick={async () => {
                       if (confirm(`Remove tournament admin privileges from ${u.username}?`)) {
-                        const users = getAllUsers()
-                        const index = users.findIndex(us => us.id === u.id)
-                        if (index !== -1) {
-                          users[index].isTournamentAdmin = false
-                          localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
-                          alert(`${u.username} is no longer a tournament admin`)
-                        }
+                        await setDoc(doc(db, 'users', u.id), { isTournamentAdmin: false }, { merge: true })
+                        alert(`${u.username} is no longer a tournament admin`)
                       }
                     }}
                   >
@@ -708,16 +693,11 @@ export default function Admin() {
               <select 
                 id="addTournamentAdmin"
                 style={{ width: '100%', padding: '12px', marginBottom: '12px' }}
-                onChange={(e) => {
+                onChange={async (e) => {
                   if (!e.target.value) return
-                  const users = getAllUsers()
-                  const index = users.findIndex(u => u.id === e.target.value)
-                  if (index !== -1) {
-                    users[index].isTournamentAdmin = true
-                    localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
-                    alert(`${users[index].username} is now a tournament admin`)
-                    e.target.value = ''
-                  }
+                  await setDoc(doc(db, 'users', e.target.value), { isTournamentAdmin: true }, { merge: true })
+                  alert(`User is now a tournament admin`)
+                  e.target.value = ''
                 }}
               >
                 <option value="">Select user to make Tournament Admin</option>
@@ -726,6 +706,34 @@ export default function Admin() {
                 ))}
               </select>
             </div>
+          </div>
+
+          <div className="card" style={{ marginBottom: '20px' }}>
+            <h3 className="card-title">Grant Admin Access</h3>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
+              Give a user full admin privileges
+            </p>
+            <select 
+              id="grantAdmin"
+              style={{ width: '100%', padding: '12px', marginBottom: '12px' }}
+              onChange={async (e) => {
+                if (!e.target.value) return
+                if (!confirm(`Make this user a full admin?`)) {
+                  e.target.value = ''
+                  return
+                }
+                await setDoc(doc(db, 'users', e.target.value), {
+                  isAdmin: true
+                }, { merge: true })
+                alert(`User is now a full admin`)
+                e.target.value = ''
+              }}
+            >
+              <option value="">Select user to make Admin</option>
+              {allUsers.filter(u => !u.isAdmin).map(u => (
+                <option key={u.id} value={u.id}>{u.username} ({u.email})</option>
+              ))}
+            </select>
           </div>
 
           <div className="card" style={{ marginBottom: '20px' }}>
