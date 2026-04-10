@@ -60,7 +60,6 @@ export default function Chat() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
-  }, [messages, activeChat])
 
   const handleSend = async (e) => {
     e.preventDefault()
@@ -127,10 +126,6 @@ export default function Chat() {
         type: 'media'
       }
       await setDoc(doc(db, 'chatMessages', Date.now().toString()), msg)
-    }
-    reader.readAsDataURL(file)
-  }
-      setMessages(prev => [...prev, msg])
     }
     reader.readAsDataURL(file)
   }
