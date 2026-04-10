@@ -25,6 +25,13 @@ export default function Chat() {
   const friends = allUsers.filter(u => friendIds.includes(u.id))
   const divisions = ['Elite', 'Premier', 'Champion', 'Diamond', 'Gold']
 
+  const chatList = [
+    { id: 'main', name: 'Main Chat', type: 'general' },
+    { id: 'announcements', name: 'Announcements', type: 'general' },
+    ...divisions.map(d => ({ id: `division_${d}`, name: `${d} Division`, type: 'division' })),
+    ...friends.map(f => ({ id: `friend_${f.id}`, name: f.username, type: 'friend' }))
+  ]
+
   const getChatKey = (chatId) => {
     if (chatId.startsWith('friend_')) {
       return 'friend_' + chatId.replace('friend_', '')
