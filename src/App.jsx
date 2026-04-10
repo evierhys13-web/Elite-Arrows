@@ -176,11 +176,11 @@ function AppRoutes() {
         </SubscribedRoute>
       } />
       <Route path="/chat" element={
-        <SubscribedRoute>
+        <ProtectedRoute>
           <AppLayout>
             <Chat />
           </AppLayout>
-        </SubscribedRoute>
+        </ProtectedRoute>
       } />
       <Route path="/profile" element={
         <ProtectedRoute>
