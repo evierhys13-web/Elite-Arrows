@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useNavigate } from 'react-router-dom'
 
 export default function Admin() {
   const { user, getAllUsers, updateUser } = useAuth()
+  const navigate = useNavigate()
   const [pendingResults, setPendingResults] = useState([])
   const [activeTab, setActiveTab] = useState('results')
   const [showTournamentForm, setShowTournamentForm] = useState(false)

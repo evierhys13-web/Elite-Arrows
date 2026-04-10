@@ -335,7 +335,7 @@ export default function Rewards() {
                       Correctly predict winner + exact score to win!
                     </p>
                     <div style={{ display: 'flex', gap: '10px' }}>
-                      <button className="btn btn-primary" onClick={() => handlePlaceBet(game.id)}>
+                      <button className="btn btn-primary" onClick={() => handlePlaceBet(match.id)}>
                         Place Bet
                       </button>
                       <button className="btn btn-secondary" onClick={() => setShowBetForm(null)}>
