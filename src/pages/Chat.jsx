@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { db, chatMessagesCollection, doc, setDoc, getDocs, query, where, orderBy, onSnapshot } from '../firebase'
+import { db, chatMessagesCollection, doc, setDoc, query, where, onSnapshot } from '../firebase'
 
 export default function Chat() {
   const { user, getAllUsers } = useAuth()
@@ -65,12 +65,12 @@ export default function Chat() {
     
     const q = query(
       chatMessagesCollection,
-      where('chatKey', '==', chatKey),
-      orderBy('timestamp', 'asc')
+      where('chatKey', '==', chatKey)
     )
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      msgs.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
       setMessages(msgs)
     })
     
@@ -169,7 +169,6 @@ export default function Chat() {
 
   return (
     <div className="page" style={{ height: 'calc(100vh - 100px)', display: 'flex', padding: 0 }}>
-      {console.log('RENDER: user=', user?.username, 'allUsers=', allUsers.length, 'friends=', friendIds.length, 'chatList=', chatList.length) || null}
       <div className="card" style={{ 
         width: '280px', 
         minWidth: '280px',
