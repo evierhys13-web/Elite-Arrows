@@ -1,5 +1,0 @@
-[build]
-build = "npm run build"
-
-[start]
-start = "npm run start"
