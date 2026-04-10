@@ -6,6 +6,16 @@ import { db, chatMessagesCollection, doc, setDoc, getDocs, query, where, orderBy
 export default function Chat() {
   const { user, getAllUsers } = useAuth()
   const location = useLocation()
+  
+  console.log('Chat mounted', { userId: user?.id, username: user?.username })
+  
+  if (!user) {
+    return (
+      <div className="page" style={{ padding: '40px', textAlign: 'center' }}>
+        <h2 style={{ color: 'white' }}>Please log in</h2>
+      </div>
+    )
+  }
   const [activeChat, setActiveChat] = useState('main')
   const [refreshKey, setRefreshKey] = useState(0)
   const [messages, setMessages] = useState([])
