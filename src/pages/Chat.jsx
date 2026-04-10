@@ -178,7 +178,12 @@ export default function Chat() {
         </div>
         
         <div style={{ flex: 1, overflowY: 'auto', padding: '10px' }}>
-          {chatList.map(chat => (
+          {chatList.length === 0 ? (
+            <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+              No chats available
+            </div>
+          ) : (
+            chatList.map(chat => (
             <button
               key={chat.id}
               onClick={() => { setActiveChat(chat.id); setShowChatList(false) }}
@@ -229,7 +234,8 @@ export default function Chat() {
                 )}
               </div>
             </button>
-          ))}
+          ))
+          )}
         </div>
       </div>
 
