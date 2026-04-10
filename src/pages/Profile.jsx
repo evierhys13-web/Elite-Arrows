@@ -235,33 +235,59 @@ export default function Profile() {
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
-            {(user.friends || []).includes(viewedUser.id) ? (
-              <button 
-                className="btn btn-secondary"
-                onClick={() => {
-                  removeFriend(viewedUser.id)
-                }}
-              >
-                Remove Friend
-              </button>
-            ) : (
-              <button 
-                className="btn btn-primary"
-                onClick={() => {
-                  addFriend(viewedUser.id)
-                }}
-              >
-                Add Friend
-              </button>
+          <div style={{ display: 'flex', gap: '10px', marginTop: '15px', flexWrap: 'wrap' }}>
+            {isViewingOther && (
+              <>
+                {(user.friends || []).includes(viewedUser.id) ? (
+                  <>
+                    <button 
+                      className="btn btn-secondary"
+                      onClick={() => removeFriend(viewedUser.id)}
+                    >
+                      Remove Friend
+                    </button>
+                    {user.isSubscribed && (
+                      <button 
+                        className="btn btn-secondary"
+                        onClick={() => navigate('/chat', { state: { openChat: `friend_${viewedUser.id}` } })}
+                      >
+                        Chat
+                      </button>
+                    )}
+                  </>
+                ) : (user.sentFriendRequests || []).includes(viewedUser.id) ? (
+                  <button 
+                    className="btn btn-secondary"
+                    onClick={() => cancelFriendRequest(viewedUser.id)}
+                  >
+                    Cancel Request
+                  </button>
+                ) : (user.receivedFriendRequests || []).includes(viewedUser.id) ? (
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button 
+                      className="btn btn-primary"
+                      onClick={() => acceptFriendRequest(viewedUser.id)}
+                    >
+                      Accept
+                    </button>
+                    <button 
+                      className="btn btn-secondary"
+                      onClick={() => declineFriendRequest(viewedUser.id)}
+                    >
+                      Decline
+                    </button>
+                  </div>
+                ) : (
+                  <button 
+                    className="btn btn-primary"
+                    onClick={() => addFriend(viewedUser.id)}
+                  >
+                    Add Friend
+                  </button>
+                )}
+              </>
             )}
-            {user.isSubscribed && (
-              <button 
-                className="btn btn-secondary"
-                onClick={() => navigate('/chat', { state: { openChat: `friend_${viewedUser.id}` } })}
-              >
-                💬 Chat
-              </button>
+          </div>
             )}
           </div>
         </div>

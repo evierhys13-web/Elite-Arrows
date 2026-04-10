@@ -171,14 +171,81 @@ export function AuthProvider({ children }) {
 
   const addFriend = async (friendId) => {
     if (!user) return
-    const newFriends = [...(user.friends || []), friendId]
-    await updateUser({ friends: newFriends })
+    const currentRequests = user.sentFriendRequests || []
+    if (currentRequests.includes(friendId)) {
+      alert('Friend request already sent!')
+      return
+    }
+    await updateUser({ 
+      sentFriendRequests: [...currentRequests, friendId]
+    })
+    const friend = allUsers.find(u => u.id === friendId)
+    if (friend) {
+      const friendRequests = friend.receivedFriendRequests || []
+      await setDoc(doc(db, 'users', friendId), { 
+        receivedFriendRequests: [...friendRequests, user.id] 
+      }, { merge: true })
+    }
+    alert('Friend request sent!')
+  }
+
+  const acceptFriendRequest = async (userId) => {
+    if (!user) return
+    const currentFriends = user.friends || []
+    const currentRequests = user.receivedFriendRequests || []
+    const newFriends = [...currentFriends, userId]
+    const newRequests = currentRequests.filter(id => id !== userId)
+    await updateUser({ 
+      friends: newFriends,
+      receivedFriendRequests: newRequests
+    })
+    const requester = allUsers.find(u => u.id === userId)
+    if (requester) {
+      const requesterFriends = requester.friends || []
+      const requesterSent = requester.sentFriendRequests || []
+      await setDoc(doc(db, 'users', userId), { 
+        friends: [...requesterFriends, user.id],
+        sentFriendRequests: requesterSent.filter(id => id !== user.id)
+      }, { merge: true })
+    }
+    alert('Friend added!')
+  }
+
+  const declineFriendRequest = async (userId) => {
+    if (!user) return
+    const currentRequests = user.receivedFriendRequests || []
+    await updateUser({ 
+      receivedFriendRequests: currentRequests.filter(id => id !== userId)
+    })
+    alert('Friend request declined')
+  }
+
+  const cancelFriendRequest = async (userId) => {
+    if (!user) return
+    const currentSent = user.sentFriendRequests || []
+    await updateUser({ 
+      sentFriendRequests: currentSent.filter(id => id !== userId)
+    })
+    const friend = allUsers.find(u => u.id === userId)
+    if (friend) {
+      const friendRequests = friend.receivedFriendRequests || []
+      await setDoc(doc(db, 'users', userId), { 
+        receivedFriendRequests: friendRequests.filter(id => id !== user.id)
+      }, { merge: true })
+    }
   }
 
   const removeFriend = async (friendId) => {
     if (!user) return
     const newFriends = (user.friends || []).filter(id => id !== friendId)
     await updateUser({ friends: newFriends })
+    const friend = allUsers.find(u => u.id === friendId)
+    if (friend) {
+      const friendFriends = friend.friends || []
+      await setDoc(doc(db, 'users', friendId), { 
+        friends: friendFriends.filter(id => id !== user.id)
+      }, { merge: true })
+    }
   }
 
   const subscribe = () => {
@@ -219,6 +286,9 @@ export function AuthProvider({ children }) {
       updateUser,
       addUserManually,
       addFriend,
+      acceptFriendRequest,
+      declineFriendRequest,
+      cancelFriendRequest,
       removeFriend,
       subscribe,
       requestAdminRole,

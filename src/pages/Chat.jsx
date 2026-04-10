@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { db, chatMessagesCollection, doc, setDoc, getDocs, query, where, orderBy, onSnapshot } from '../firebase'
 
 export default function Chat() {
   const { user, getAllUsers } = useAuth()
@@ -24,157 +25,44 @@ export default function Chat() {
   const friends = allUsers.filter(u => friendIds.includes(u.id))
   const divisions = ['Elite', 'Premier', 'Champion', 'Diamond', 'Gold']
 
+  const getChatKey = (chatId) => {
+    if (chatId.startsWith('friend_')) {
+      return 'friend_' + chatId.replace('friend_', '')
+    }
+    return chatId
+  }
+
   useEffect(() => {
     if (location.state?.openChat) {
       setActiveChat(location.state.openChat)
       setShowChatList(false)
+      window.history.replaceState({}, document.title)
     }
   }, [location.state])
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setRefreshKey(k => k + 1)
-    }, 2000)
-    return () => clearInterval(interval)
-  }, [])
-
-  const isPrivateChat = activeChat.startsWith('friend_')
-  const currentFriendId = isPrivateChat ? activeChat.replace('friend_', '') : null
-  const currentFriend = currentFriendId ? allUsers.find(u => u.id === currentFriendId) : null
-
-  const canCall = isPrivateChat && !activeCall && currentFriend
-
-  useEffect(() => {
-    const callRequests = JSON.parse(localStorage.getItem('eliteArrowsCallRequests') || '[]')
-    const incoming = callRequests.find(c => c.toUserId === user.id && c.status === 'ringing')
-    if (incoming) {
-      setIncomingCall(incoming)
-    }
-  }, [user.id])
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (incomingCall) {
-        const callRequests = JSON.parse(localStorage.getItem('eliteArrowsCallRequests') || '[]')
-        const stillRinging = callRequests.find(c => c.id === incomingCall.id && c.status === 'ringing')
-        if (!stillRinging) {
-          setIncomingCall(null)
-        }
-      }
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [incomingCall])
-
-  const handleStartCall = (callType) => {
-    if (!currentFriend || !currentFriendId) return
+    let chatKey = getChatKey(activeChat)
     
-    const callRequests = JSON.parse(localStorage.getItem('eliteArrowsCallRequests') || '[]')
-    const newCall = {
-      id: Date.now(),
-      fromUserId: user.id,
-      fromUsername: user.username,
-      toUserId: currentFriendId,
-      toUsername: currentFriend.username,
-      type: callType,
-      status: 'ringing',
-      startTime: new Date().toISOString()
-    }
-    callRequests.push(newCall)
-    localStorage.setItem('eliteArrowsCallRequests', JSON.stringify(callRequests))
-    setActiveCall({ ...newCall, isOutgoing: true })
+    const q = query(
+      chatMessagesCollection,
+      where('chatKey', '==', chatKey),
+      orderBy('timestamp', 'asc')
+    )
     
-    setTimeout(() => {
-      if (activeCall?.isOutgoing) {
-        handleEndCall()
-      }
-    }, 30000)
-  }
-
-  const handleAcceptCall = () => {
-    if (!incomingCall) return
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      setMessages(msgs)
+    })
     
-    const callRequests = JSON.parse(localStorage.getItem('eliteArrowsCallRequests') || '[]')
-    const idx = callRequests.findIndex(c => c.id === incomingCall.id)
-    if (idx !== -1) {
-      callRequests[idx].status = 'accepted'
-      localStorage.setItem('eliteArrowsCallRequests', JSON.stringify(callRequests))
-    }
-    setActiveCall({ ...incomingCall, isOutgoing: false })
-    setIncomingCall(null)
-  }
-
-  const handleDeclineCall = () => {
-    if (!incomingCall) return
-    
-    const callRequests = JSON.parse(localStorage.getItem('eliteArrowsCallRequests') || '[]')
-    const idx = callRequests.findIndex(c => c.id === incomingCall.id)
-    if (idx !== -1) {
-      callRequests[idx].status = 'declined'
-      localStorage.setItem('eliteArrowsCallRequests', JSON.stringify(callRequests))
-    }
-    setIncomingCall(null)
-  }
-
-  const handleEndCall = () => {
-    if (activeCall) {
-      const callRequests = JSON.parse(localStorage.getItem('eliteArrowsCallRequests') || '[]')
-      const idx = callRequests.findIndex(c => c.id === activeCall.id)
-      if (idx !== -1) {
-        callRequests[idx].status = 'ended'
-        localStorage.setItem('eliteArrowsCallRequests', JSON.stringify(callRequests))
-      }
-    }
-    setActiveCall(null)
-  }
-
-  const chatList = [
-    ...(user.isAdmin ? [{ id: 'announcements', name: '📢 Announcements', type: 'admin' }] : []),
-    { id: 'main', name: '💬 Main Chat', type: 'main' },
-    ...divisions.map(div => ({ id: `division_${div}`, name: `🏆 ${div} Division`, type: 'division' })),
-    ...friends.map(friend => ({ 
-      id: `friend_${friend.id}`, 
-      name: friend.username, 
-      type: 'friend',
-      isOnline: friend.isOnline,
-      showOnlineStatus: friend.showOnlineStatus
-    }))
-  ]
-
-  const isUserInDND = (targetUserId) => {
-    const targetUser = allUsers.find(u => u.id === targetUserId)
-    return targetUser?.doNotDisturb && targetUser.dndEndTime && new Date(targetUser.dndEndTime) > new Date()
-  }
-
-  useEffect(() => {
-    const stored = localStorage.getItem('eliteArrowsChat') || '{}'
-    const chatData = JSON.parse(stored)
-    
-    let chatKey = activeChat
-    if (activeChat.startsWith('friend_')) {
-      chatKey = 'friend_' + activeChat.replace('friend_', '')
-    }
-    
-    setMessages(chatData[chatKey] || [])
+    return () => unsubscribe()
   }, [activeChat])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
-
-  useEffect(() => {
-    const stored = localStorage.getItem('eliteArrowsChat') || '{}'
-    const chatData = JSON.parse(stored)
-    
-    let chatKey = activeChat
-    if (activeChat.startsWith('friend_')) {
-      chatKey = 'friend_' + activeChat.replace('friend_', '')
-    }
-    
-    chatData[chatKey] = messages
-    localStorage.setItem('eliteArrowsChat', JSON.stringify(chatData))
   }, [messages, activeChat])
 
-  const handleSend = (e) => {
+  const handleSend = async (e) => {
     e.preventDefault()
     if (!newMessage.trim()) return
 
@@ -191,12 +79,11 @@ export default function Chat() {
     }
 
     const msg = {
-      id: Date.now(),
+      chatKey: getChatKey(activeChat),
       sender: user.username,
       senderId: user.id,
       text: newMessage,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      date: new Date().toISOString(),
+      timestamp: new Date().toISOString(),
       replyTo: replyTo ? { ...replyTo } : null,
       editHistory: editingMessage ? { originalText: editingMessage.text, editedAt: new Date().toISOString() } : null,
       media: null,
@@ -204,10 +91,10 @@ export default function Chat() {
     }
 
     if (editingMessage) {
-      setMessages(prev => prev.map(m => m.id === editingMessage.id ? { ...m, text: newMessage, edited: true, editHistory: msg.editHistory } : m))
+      await setDoc(doc(db, 'chatMessages', editingMessage.id.toString()), { ...editingMessage, text: newMessage, edited: true, editHistory: msg.editHistory }, { merge: true })
       setEditingMessage(null)
     } else {
-      setMessages(prev => [...prev, msg])
+      await setDoc(doc(db, 'chatMessages', Date.now().toString()), msg)
     }
 
     setNewMessage('')
@@ -223,23 +110,26 @@ export default function Chat() {
     setShowMediaOptions(false)
   }
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const file = e.target.files[0]
     if (!file) return
 
     const reader = new FileReader()
-    reader.onload = () => {
+    reader.onload = async () => {
       const msg = {
-        id: Date.now(),
+        chatKey: getChatKey(activeChat),
         sender: user.username,
         senderId: user.id,
         text: '',
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        date: new Date().toISOString(),
+        timestamp: new Date().toISOString(),
         media: reader.result,
         mediaType: file.type.startsWith('video') ? 'video' : 'photo',
         type: 'media'
       }
+      await setDoc(doc(db, 'chatMessages', Date.now().toString()), msg)
+    }
+    reader.readAsDataURL(file)
+  }
       setMessages(prev => [...prev, msg])
     }
     reader.readAsDataURL(file)

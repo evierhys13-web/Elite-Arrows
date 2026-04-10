@@ -21,6 +21,7 @@ export const tournamentsCollection = collection(db, 'tournaments')
 export const tournamentSignupsCollection = collection(db, 'tournamentSignups')
 export const betsCollection = collection(db, 'bets')
 export const notificationsCollection = collection(db, 'notifications')
+export const chatMessagesCollection = collection(db, 'chatMessages')
 
 export { 
   doc, setDoc, getDoc, getDocs, query, where, orderBy, onSnapshot, deleteDoc,
