@@ -1,0 +1,420 @@
+import { useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
+
+export default function Profile() {
+  const { user, updateUser, requestAdminRole, getAllUsers, addFriend, removeFriend } = useAuth()
+  const navigate = useNavigate()
+  const { id } = useParams()
+  
+  const isViewingOther = id && id !== user.id
+  const viewedUser = isViewingOther ? getAllUsers().find(u => u.id === id) : null
+  const displayUser = isViewingOther ? viewedUser : user
+  
+  const [formData, setFormData] = useState({
+    username: user.username || '',
+    nickname: user.nickname || '',
+    bio: user.bio || '',
+    darts: user.dart || '',
+    country: user.country || '',
+    dartCounterUsername: user.dartCounterUsername || '',
+    dartCounterLink: user.dartCounterLink || '',
+    threeDartAverage: user.threeDartAverage || 0
+  })
+  const [profilePicture, setProfilePicture] = useState(user.profilePicture || '')
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState('')
+
+  const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+  const approvedResults = results.filter(r => r.status === 'approved')
+  
+  const getHeadToHead = (otherUserId) => {
+    const matches = approvedResults.filter(r => 
+      (r.player1Id === user.id && r.player2Id === otherUserId) || 
+      (r.player2Id === user.id && r.player1Id === otherUserId)
+    )
+    
+    let wins = 0, losses = 0, draws = 0
+    let player180s = 0
+    let opponent180s = 0
+    
+    matches.forEach(m => {
+      const isPlayer1 = m.player1Id === user.id
+      if (isPlayer1) {
+        player180s += m.player1Stats?.['180s'] || 0
+        opponent180s += m.player2Stats?.['180s'] || 0
+        if (m.score1 > m.score2) wins++
+        else if (m.score1 < m.score2) losses++
+        else draws++
+      } else {
+        player180s += m.player2Stats?.['180s'] || 0
+        opponent180s += m.player1Stats?.['180s'] || 0
+        if (m.score2 > m.score1) wins++
+        else if (m.score2 < m.score1) losses++
+        else draws++
+      }
+    })
+    
+    return { wins, losses, draws, total: matches.length, player180s, opponent180s }
+  }
+
+  const allUsers = getAllUsers()
+  const displayUserFriends = displayUser?.friends 
+    ? allUsers.filter(u => displayUser.friends.includes(u.id))
+    : []
+
+  const headToHead = isViewingOther ? getHeadToHead(id) : null
+
+  const handleChange = (e) => {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'threeDartAverage' ? parseFloat(value) || 0 : value
+    }))
+  }
+
+  const handlePictureChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setProfilePicture(reader.result)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleSave = () => {
+    setSaving(true)
+    updateUser({
+      username: formData.username,
+      nickname: formData.nickname,
+      bio: formData.bio,
+      darts: formData.darts,
+      country: formData.country,
+      dartCounterUsername: formData.dartCounterUsername,
+      dartCounterLink: formData.dartCounterLink,
+      threeDartAverage: formData.threeDartAverage,
+      profilePicture
+    })
+    setTimeout(() => {
+      setSaving(false)
+      setMessage('Profile updated successfully!')
+      setTimeout(() => setMessage(''), 3000)
+    }, 500)
+  }
+
+  const handleRequestAdmin = () => {
+    requestAdminRole()
+    setMessage('Admin request submitted!')
+    setTimeout(() => setMessage(''), 3000)
+  }
+
+  if (isViewingOther && viewedUser) {
+    return (
+      <div className="page">
+        <div className="page-header">
+          <h1 className="page-title">{viewedUser.username}'s Profile</h1>
+        </div>
+
+        <div className="card" style={{ marginBottom: '20px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+            <div style={{
+              width: '100px',
+              height: '100px',
+              borderRadius: '50%',
+              background: 'var(--accent-primary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '3rem',
+              margin: '0 auto 15px',
+              overflow: 'hidden'
+            }}>
+              {viewedUser.profilePicture ? (
+                <img src={viewedUser.profilePicture} alt={viewedUser.username} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                viewedUser.username.charAt(0).toUpperCase()
+              )}
+            </div>
+            <h2 style={{ color: 'var(--accent-cyan)' }}>{viewedUser.username}</h2>
+            {viewedUser.nickname && <p style={{ color: 'var(--text-muted)' }}>"{viewedUser.nickname}"</p>}
+            {viewedUser.isAdmin && <span className="admin-badge">Admin</span>}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px', marginBottom: '20px' }}>
+            <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>{viewedUser.division || 'Gold'}</div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Division</div>
+            </div>
+            <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>{viewedUser.threeDartAverage?.toFixed(2) || 0}</div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>3-Dart Avg</div>
+            </div>
+            {viewedUser.country && (
+              <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
+                <div style={{ fontSize: '1.2rem' }}>{viewedUser.country}</div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Country</div>
+              </div>
+            )}
+            <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ fontSize: '1rem' }}>{viewedUser.createdAt ? new Date(viewedUser.createdAt).toLocaleDateString() : 'N/A'}</div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Member Since</div>
+            </div>
+          </div>
+
+          {viewedUser.dart && (
+            <div style={{ marginBottom: '15px' }}>
+              <h4 style={{ marginBottom: '8px' }}>Darts</h4>
+              <p style={{ color: 'var(--text-muted)' }}>{viewedUser.dart}</p>
+            </div>
+          )}
+
+          {viewedUser.dartCounterLink && (
+            <div style={{ marginBottom: '15px' }}>
+              <a 
+                href={viewedUser.dartCounterLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-primary btn-block"
+                style={{ display: 'inline-block', textDecoration: 'none' }}
+              >
+                📊 View DartCounter Profile
+              </a>
+            </div>
+          )}
+
+          {viewedUser.bio && (
+            <div style={{ marginBottom: '15px' }}>
+              <h4 style={{ marginBottom: '8px' }}>About</h4>
+              <p style={{ color: 'var(--text-muted)' }}>{viewedUser.bio}</p>
+            </div>
+          )}
+
+          {headToHead && headToHead.total > 0 && (
+            <div style={{ marginBottom: '15px' }}>
+              <h4 style={{ marginBottom: '8px' }}>Head to Head (vs You)</h4>
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                <div style={{ padding: '10px', background: 'var(--success)', borderRadius: '8px', textAlign: 'center', flex: 1 }}>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{headToHead.wins}</div>
+                  <div style={{ fontSize: '0.75rem' }}>Wins</div>
+                </div>
+                <div style={{ padding: '10px', background: 'var(--warning)', borderRadius: '8px', textAlign: 'center', flex: 1 }}>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{headToHead.draws}</div>
+                  <div style={{ fontSize: '0.75rem' }}>Draws</div>
+                </div>
+                <div style={{ padding: '10px', background: 'var(--error)', borderRadius: '8px', textAlign: 'center', flex: 1 }}>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{headToHead.losses}</div>
+                  <div style={{ fontSize: '0.75rem' }}>Losses</div>
+                </div>
+              </div>
+              <p style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: '8px', fontSize: '0.85rem' }}>
+                Total games: {headToHead.total} | Their 180s vs you: {headToHead.opponent180s}
+              </p>
+            </div>
+          )}
+
+          {displayUserFriends.length > 0 && (
+            <div style={{ marginBottom: '15px' }}>
+              <h4 style={{ marginBottom: '8px' }}>Friends ({displayUserFriends.length})</h4>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {displayUserFriends.slice(0, 10).map(friend => (
+                  <span key={friend.id} style={{ 
+                    padding: '4px 10px', 
+                    background: 'var(--bg-secondary)', 
+                    borderRadius: '15px',
+                    fontSize: '0.85rem'
+                  }}>
+                    {friend.username}
+                  </span>
+                ))}
+                {displayUserFriends.length > 10 && (
+                  <span style={{ padding: '4px 10px', color: 'var(--text-muted)' }}>+{displayUserFriends.length - 10} more</span>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+            {(user.friends || []).includes(viewedUser.id) ? (
+              <button 
+                className="btn btn-secondary"
+                onClick={() => {
+                  removeFriend(viewedUser.id)
+                }}
+              >
+                Remove Friend
+              </button>
+            ) : (
+              <button 
+                className="btn btn-primary"
+                onClick={() => {
+                  addFriend(viewedUser.id)
+                }}
+              >
+                Add Friend
+              </button>
+            )}
+            {user.isSubscribed && (
+              <button 
+                className="btn btn-secondary"
+                onClick={() => navigate('/chat', { state: { openChat: `friend_${viewedUser.id}` } })}
+              >
+                💬 Chat
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <h1 className="page-title">Profile</h1>
+      </div>
+
+      <div className="card">
+        <div className="profile-header">
+          <label className="profile-avatar-large">
+            {profilePicture ? (
+              <img src={profilePicture} alt={user.username} />
+            ) : (
+              <span className="home-avatar-placeholder" style={{ fontSize: '3rem' }}>
+                {user.username.charAt(0).toUpperCase()}
+              </span>
+            )}
+            <input type="file" accept="image/*" onChange={handlePictureChange} />
+          </label>
+        </div>
+
+        <div className="profile-form">
+          <div className="form-group">
+            <label htmlFor="username">Username</label>
+            <input
+              type="text"
+              id="username"
+              name="username"
+              value={formData.username}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="nickname">Nickname</label>
+            <input
+              type="text"
+              id="nickname"
+              name="nickname"
+              value={formData.nickname}
+              onChange={handleChange}
+              placeholder="Your darts nickname"
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="bio">Bio</label>
+            <textarea
+              id="bio"
+              name="bio"
+              value={formData.bio}
+              onChange={handleChange}
+              rows={3}
+              placeholder="Tell us about yourself..."
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="darts">Darts</label>
+            <input
+              type="text"
+              id="darts"
+              name="darts"
+              value={formData.darts}
+              onChange={handleChange}
+              placeholder="e.g., Winmau Blade 5, Target Darts..."
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="country">Country</label>
+            <input
+              type="text"
+              id="country"
+              name="country"
+              value={formData.country}
+              onChange={handleChange}
+              placeholder="e.g., England, Scotland, Wales..."
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="dartCounterUsername">DartCounter Username</label>
+            <input
+              type="text"
+              id="dartCounterUsername"
+              name="dartCounterUsername"
+              value={formData.dartCounterUsername}
+              onChange={handleChange}
+              placeholder="Your DartCounter username"
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="dartCounterLink">DartCounter Link</label>
+            <input
+              type="url"
+              id="dartCounterLink"
+              name="dartCounterLink"
+              value={formData.dartCounterLink}
+              onChange={handleChange}
+              placeholder="https://dartcounter.net/player/..."
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="threeDartAverage">3-Dart Average</label>
+            <input
+              type="number"
+              id="threeDartAverage"
+              name="threeDartAverage"
+              value={formData.threeDartAverage}
+              onChange={handleChange}
+              step="0.1"
+              min="0"
+            />
+          </div>
+
+          <button 
+            className="btn btn-primary btn-block" 
+            onClick={handleSave}
+            disabled={saving}
+          >
+            {saving ? 'Saving...' : 'Save Changes'}
+          </button>
+
+          {message && <p className="form-error" style={{ color: 'var(--success)' }}>{message}</p>}
+
+          <div className="profile-actions">
+            {!user.isAdmin && !user.adminRequestPending && (
+              <button 
+                className="btn btn-secondary btn-block"
+                onClick={handleRequestAdmin}
+              >
+                Apply for Admin Role
+              </button>
+            )}
+            
+            <button 
+              className="btn btn-secondary btn-block"
+              onClick={() => navigate('/settings')}
+            >
+              Go to Settings
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
