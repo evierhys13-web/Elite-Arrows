@@ -42,6 +42,8 @@ export function AuthProvider({ children }) {
     const unsubscribeUsers = onSnapshot(usersCollection, (snapshot) => {
       const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
       setAllUsers(users)
+    }, (error) => {
+      console.log('Users snapshot error (may need Firestore rules):', error)
     })
 
     return () => {
@@ -56,7 +58,9 @@ export function AuthProvider({ children }) {
     const division = getDivisionFromAverage(userData.threeDartAverage || 0)
 
     try {
+      console.log('Attempting Firebase sign up...')
       const { user: firebaseUser } = await createUserWithEmailAndPassword(auth, userData.email, userData.password)
+      console.log('Firebase auth successful, user ID:', firebaseUser.uid)
       
       const newUser = {
         ...userData,
@@ -86,8 +90,12 @@ export function AuthProvider({ children }) {
 
   const signIn = async (email, password, rememberMe = false) => {
     try {
+      console.log('Attempting Firebase sign in...')
       const { user: firebaseUser } = await signInWithEmailAndPassword(auth, email, password)
+      console.log('Firebase auth successful, user ID:', firebaseUser.uid)
+      
       const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
+      console.log('User doc exists:', userDoc.exists())
       
       if (!userDoc.exists()) {
         await signOut(auth)

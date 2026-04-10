@@ -16,8 +16,16 @@ export default function Auth() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const { signUp, signIn, isAuthenticated } = useAuth()
+  const { signUp, signIn, isAuthenticated, loading: authLoading } = useAuth()
   const navigate = useNavigate()
+
+  if (authLoading) {
+    return (
+      <div className="auth-page">
+        <div style={{ textAlign: 'center', color: 'white' }}>Loading...</div>
+      </div>
+    )
+  }
 
   if (isAuthenticated) {
     navigate('/home')
@@ -48,22 +56,25 @@ export default function Auth() {
           throw new Error('Please enter a valid 3-dart average')
         }
 
-        signUp({
+        await signUp({
           username: formData.username,
           email: formData.email,
           password: formData.password,
           threeDartAverage: avg
         }, formData.rememberMe)
+        alert('Sign up successful!')
       } else {
         if (!formData.email || !formData.password) {
           throw new Error('Email and password are required')
         }
 
-        signIn(formData.email, formData.password, formData.rememberMe)
+        await signIn(formData.email, formData.password, formData.rememberMe)
+        alert('Sign in successful!')
       }
 
-      navigate('/home')
+      window.location.href = '/home'
     } catch (err) {
+      alert('Error: ' + err.message)
       setError(err.message)
     } finally {
       setLoading(false)
