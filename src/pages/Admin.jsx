@@ -193,6 +193,12 @@ export default function Admin() {
           </button>
         )}
         <button
+          className={`division-tab ${activeTab === 'players' ? 'active' : ''}`}
+          onClick={() => setActiveTab('players')}
+        >
+          Players
+        </button>
+        <button
           className={`division-tab ${activeTab === 'support' ? 'active' : ''}`}
           onClick={() => setActiveTab('support')}
         >
