@@ -23,6 +23,8 @@ export default function Chat() {
   const currentUser = allUsers.find(u => u.id === user?.id)
   const divisions = ['Elite', 'Premier', 'Champion', 'Diamond', 'Gold']
 
+  console.log('Chat: user:', user?.id, 'subscribed:', user?.isSubscribed)
+
   let friendIds = []
   if (user?.friends) {
     friendIds = user.friends
@@ -39,7 +41,7 @@ export default function Chat() {
     ...friends.map(f => ({ id: `friend_${f.id}`, name: f.username, type: 'friend' }))
   ]
 
-  console.log('Chat: user:', user?.id, 'friends:', friendIds.length, 'chatList:', chatList.length)
+  console.log('Chat: friends:', friendIds.length, 'chatList:', chatList.length)
 
   const getChatKey = (chatId) => {
     if (chatId.startsWith('friend_')) {
@@ -164,6 +166,7 @@ export default function Chat() {
 
   return (
     <div className="page" style={{ height: 'calc(100vh - 100px)', display: 'flex', padding: 0 }}>
+      DEBUG: user={user?.username}, chatList.length={chatList.length}
       <div className="card" style={{ 
         width: '280px', 
         minWidth: '280px',
