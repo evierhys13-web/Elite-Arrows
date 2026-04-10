@@ -429,6 +429,11 @@ export default function Profile() {
                 Apply for Admin Role
               </button>
             )}
+            {user.adminRequestPending && (
+              <p style={{ color: 'var(--warning)', textAlign: 'center', marginBottom: '10px' }}>
+                Admin request pending approval
+              </p>
+            )}
             
             <button 
               className="btn btn-secondary btn-block"

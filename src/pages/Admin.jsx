@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
+import { db, doc, setDoc } from '../firebase'
 
 export default function Admin() {
   const { user, getAllUsers, updateUser } = useAuth()
@@ -785,14 +786,12 @@ export default function Admin() {
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button 
                       className="btn btn-primary"
-                      onClick={() => {
-                        const users = getAllUsers();
-                        const index = users.findIndex(user => user.id === u.id);
-                        if (index !== -1) {
-                          users[index].isAdmin = true;
-                          users[index].adminRequestPending = false;
-                          localStorage.setItem('eliteArrowsUsers', JSON.stringify(users));
-                        }
+                      onClick={async () => {
+                        await setDoc(doc(db, 'users', u.id), {
+                          isAdmin: true,
+                          adminRequestPending: false
+                        }, { merge: true });
+                        alert(`${u.username} is now an admin`);
                       }}
                     >
                       Approve
