@@ -62,19 +62,30 @@ export default function Chat() {
 
   useEffect(() => {
     let chatKey = getChatKey(activeChat)
+    setMessages([])
     
-    const q = query(
-      chatMessagesCollection,
-      where('chatKey', '==', chatKey)
-    )
-    
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-      msgs.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
-      setMessages(msgs)
-    })
-    
-    return () => unsubscribe()
+    try {
+      const q = query(
+        chatMessagesCollection,
+        where('chatKey', '==', chatKey)
+      )
+      
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        try {
+          const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+          msgs.sort((a, b) => new Date(a.timestamp || 0) - new Date(b.timestamp || 0))
+          setMessages(msgs)
+        } catch (err) {
+          console.error('Error processing messages:', err)
+        }
+      }, (error) => {
+        console.error('Firestore error:', error)
+      })
+      
+      return () => unsubscribe()
+    } catch (err) {
+      console.error('Query error:', err)
+    }
   }, [activeChat])
 
   useEffect(() => {
