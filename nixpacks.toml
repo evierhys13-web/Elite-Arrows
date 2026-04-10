@@ -1,3 +1,5 @@
 [build]
 build = "npm run build"
-start = "npx serve -s dist -l $PORT"
+
+[start]
+start = "npm run start"
