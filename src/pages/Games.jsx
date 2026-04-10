@@ -17,6 +17,7 @@ export default function Games() {
   const { user, getAllUsers } = useAuth()
   const navigate = useNavigate()
   const [selectedPlayer, setSelectedPlayer] = useState('')
+  const [selectedPlayerData, setSelectedPlayerData] = useState(null)
   const [gameType, setGameType] = useState('')
   const [sent, setSent] = useState(false)
   const [onlinePlayers, setOnlinePlayers] = useState([])
@@ -55,6 +56,11 @@ export default function Games() {
     }
 
     const selectedUser = allUsers.find(u => u.id === selectedPlayer)
+    
+    if (gameType === 'League' && selectedUser.division !== user.division) {
+      alert(`You can only play League games against players in the same division. ${selectedUser.username} is in ${selectedUser.division} division and you are in ${user.division} division.`)
+      return
+    }
     
     const requestId = Date.now().toString()
     await setDoc(doc(db, 'gameRequests', requestId), {
