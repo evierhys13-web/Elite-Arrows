@@ -184,7 +184,7 @@ export default function Sidebar() {
     { path: '/rewards', label: 'Rewards', icon: GiftIcon },
     { path: '/games', label: 'Games', icon: GamepadIcon },
     ...(user?.isSubscribed && !user?.isTournamentAdmin ? [{ path: '/submit-result', label: 'Submit Result', icon: PlusCircleIcon }] : []),
-    ...(user?.isSubscribed && !user?.isTournamentAdmin ? [{ path: '/chat', label: 'Open Chat', icon: MessageIcon }] : []),
+    { path: '/chat', label: 'Chat', icon: MessageIcon },
     { path: '/profile', label: 'Profile', icon: UserIcon },
     ...(!user?.isTournamentAdmin ? [{ path: '/settings', label: 'Settings', icon: SettingsIcon }] : []),
     { path: '/contact', label: 'Contact', icon: MailIcon },

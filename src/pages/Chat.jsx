@@ -37,11 +37,12 @@ export default function Chat() {
   const chatList = [
     { id: 'main', name: 'Main Chat', type: 'general' },
     { id: 'announcements', name: 'Announcements', type: 'general' },
+    ...(user?.isAdmin ? [{ id: 'admin', name: 'Admin Chat', type: 'admin' }] : []),
     ...divisions.map(d => ({ id: `division_${d}`, name: `${d} Division`, type: 'division' })),
     ...friends.map(f => ({ id: `friend_${f.id}`, name: f.username, type: 'friend' }))
   ]
 
-  console.log('Chat: friends:', friendIds.length, 'chatList:', chatList.length)
+  console.log('Chat: friends:', friendIds.length, 'chatList:', chatList.length, 'subscribed:', user?.isSubscribed)
 
   const getChatKey = (chatId) => {
     if (chatId.startsWith('friend_')) {
@@ -166,7 +167,6 @@ export default function Chat() {
 
   return (
     <div className="page" style={{ height: 'calc(100vh - 100px)', display: 'flex', padding: 0 }}>
-      DEBUG: user={user?.username}, chatList.length={chatList.length}
       <div className="card" style={{ 
         width: '280px', 
         minWidth: '280px',
