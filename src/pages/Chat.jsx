@@ -20,17 +20,26 @@ export default function Chat() {
   const fileInputRef = useRef(null)
 
   const allUsers = getAllUsers()
-  const currentUser = allUsers.find(u => u.id === user.id)
-  const friendIds = currentUser?.friends || user.friends || []
-  const friends = allUsers.filter(u => friendIds.includes(u.id))
+  const currentUser = allUsers.find(u => u.id === user?.id)
   const divisions = ['Elite', 'Premier', 'Champion', 'Diamond', 'Gold']
 
+  let friendIds = []
+  if (user?.friends) {
+    friendIds = user.friends
+  } else if (currentUser?.friends) {
+    friendIds = currentUser.friends
+  }
+  
+  const friends = allUsers.filter(u => friendIds.includes(u.id))
+  
   const chatList = [
     { id: 'main', name: 'Main Chat', type: 'general' },
     { id: 'announcements', name: 'Announcements', type: 'general' },
     ...divisions.map(d => ({ id: `division_${d}`, name: `${d} Division`, type: 'division' })),
     ...friends.map(f => ({ id: `friend_${f.id}`, name: f.username, type: 'friend' }))
   ]
+
+  console.log('Chat: user:', user?.id, 'friends:', friendIds.length, 'chatList:', chatList.length)
 
   const getChatKey = (chatId) => {
     if (chatId.startsWith('friend_')) {
