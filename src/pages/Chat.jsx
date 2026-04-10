@@ -4,7 +4,10 @@ import { useAuth } from '../context/AuthContext'
 import { db, chatMessagesCollection, doc, setDoc, getDocs, query, where, orderBy, onSnapshot } from '../firebase'
 
 export default function Chat() {
+  console.log('>>> Chat component starting')
+  
   const { user, getAllUsers } = useAuth()
+  console.log('>>> After useAuth, user:', user)
   const location = useLocation()
   
   console.log('Chat mounted', { userId: user?.id, username: user?.username })
