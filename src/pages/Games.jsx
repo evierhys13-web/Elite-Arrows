@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useNavigate } from 'react-router-dom'
+import { db, doc, setDoc, collection, query, where, onSnapshot, deleteDoc } from '../firebase'
 
 const GamepadIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -13,14 +15,40 @@ const GamepadIcon = () => (
 
 export default function Games() {
   const { user, getAllUsers } = useAuth()
+  const navigate = useNavigate()
   const [selectedPlayer, setSelectedPlayer] = useState('')
   const [gameType, setGameType] = useState('')
   const [sent, setSent] = useState(false)
+  const [onlinePlayers, setOnlinePlayers] = useState([])
+  const [gameRequests, setGameRequests] = useState([])
+  const [showChallengeModal, setShowChallengeModal] = useState(false)
 
   const allUsers = getAllUsers()
-  const otherUsers = allUsers.filter(u => u.id !== user?.id)
 
-  const handleSendRequest = () => {
+  useEffect(() => {
+    const q = query(collection(db, 'users'), where('isOnline', '==', true))
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const online = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      setOnlinePlayers(online.filter(u => u.id !== user?.id))
+    })
+    return () => unsubscribe()
+  }, [user?.id])
+
+  useEffect(() => {
+    if (!user) return
+    const requestsRef = collection(db, 'gameRequests')
+    const q = query(
+      requestsRef,
+      where('toUserId', '==', user.id)
+    )
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      setGameRequests(requests.filter(r => r.status === 'pending'))
+    })
+    return () => unsubscribe()
+  }, [user?.id])
+
+  const handleSendRequest = async () => {
     if (!selectedPlayer || !gameType) {
       alert('Please select a player and game type')
       return
@@ -28,9 +56,8 @@ export default function Games() {
 
     const selectedUser = allUsers.find(u => u.id === selectedPlayer)
     
-    const gameRequests = JSON.parse(localStorage.getItem('eliteArrowsGameRequests') || '[]')
-    gameRequests.push({
-      id: Date.now(),
+    const requestId = Date.now().toString()
+    await setDoc(doc(db, 'gameRequests', requestId), {
       fromUserId: user.id,
       fromUsername: user.username,
       toUserId: selectedPlayer,
@@ -39,41 +66,53 @@ export default function Games() {
       status: 'pending',
       createdAt: new Date().toISOString()
     })
-    localStorage.setItem('eliteArrowsGameRequests', JSON.stringify(gameRequests))
 
-    const targetUser = allUsers.find(u => u.id === selectedPlayer)
-    const isInDND = targetUser?.doNotDisturb && targetUser.dndEndTime && new Date(targetUser.dndEndTime) > new Date()
-    
-    if (!isInDND) {
-      const notifications = JSON.parse(localStorage.getItem('eliteArrowsNotifications') || '[]')
-      notifications.unshift({
-        id: Date.now(),
-        type: 'game_request',
+    await setDoc(doc(db, 'users', selectedUser.id), {
+      hasGameChallenge: true,
+      gameChallengeFrom: {
+        id: requestId,
         fromUserId: user.id,
         fromUsername: user.username,
-        message: `${user.username} wants to play a ${gameType} game with you`,
-        toUserId: selectedPlayer,
-        isRead: false,
-        createdAt: new Date().toISOString()
-      })
-      localStorage.setItem('eliteArrowsNotifications', JSON.stringify(notifications))
-    }
+        gameType: gameType
+      }
+    }, { merge: true })
 
     setSent(true)
-    setTimeout(() => {
-      setSent(false)
-      setSelectedPlayer('')
-      setGameType('')
-    }, 3000)
+    setSelectedPlayer('')
+    setGameType('')
+    setTimeout(() => setSent(false), 3000)
   }
 
-  const gameRequests = JSON.parse(localStorage.getItem('eliteArrowsGameRequests') || '[]')
-  const myPendingRequests = gameRequests.filter(
-    r => r.fromUserId === user?.id && r.status === 'pending'
-  )
-  const incomingRequests = gameRequests.filter(
-    r => r.toUserId === user?.id && r.status === 'pending'
-  )
+  const handleAccept = async (req) => {
+    await setDoc(doc(db, 'gameRequests', req.id), { status: 'accepted' }, { merge: true })
+    await setDoc(doc(db, 'users', user.id), { hasGameChallenge: false, gameChallengeFrom: null }, { merge: true })
+    
+    const friendId = req.fromUserId
+    const currentUser = allUsers.find(u => u.id === user.id)
+    const requesterUser = allUsers.find(u => u.id === friendId)
+    
+    const newFriends1 = [...(currentUser.friends || []), friendId]
+    const newFriends2 = [...(requesterUser.friends || []), user.id]
+    
+    await setDoc(doc(db, 'users', user.id), { friends: newFriends1 }, { merge: true })
+    await setDoc(doc(db, 'users', friendId), { friends: newFriends2 }, { merge: true })
+    
+    navigate('/chat', { state: { openChat: `friend_${friendId}` } })
+  }
+
+  const handleDecline = async (req) => {
+    await deleteDoc(doc(db, 'gameRequests', req.id))
+    await setDoc(doc(db, 'users', user.id), { hasGameChallenge: false, gameChallengeFrom: null }, { merge: true })
+  }
+
+  useEffect(() => {
+    if (!user?.hasGameChallenge || !user?.gameChallengeFrom) return
+    
+    const challenge = user.gameChallengeFrom
+    setShowChallengeModal(true)
+    
+    alert(`${challenge.fromUsername} wants to play a ${challenge.gameType} game with you!`)
+  }, [user])
 
   return (
     <div className="page">
@@ -81,7 +120,53 @@ export default function Games() {
         <h1 className="page-title">Games</h1>
       </div>
 
+      {showChallengeModal && gameRequests.length > 0 && (
+        <div className="modal-overlay" onClick={() => setShowChallengeModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <h3>Game Challenge!</h3>
+            {gameRequests.map(req => (
+              <div key={req.id} style={{ marginBottom: '15px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                <p><strong>{req.fromUsername}</strong> wants to play a <strong>{req.gameType}</strong> game with you</p>
+                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                  <button className="btn btn-primary" onClick={() => handleAccept(req)}>Accept</button>
+                  <button className="btn" onClick={() => handleDecline(req)}>Decline</button>
+                </div>
+              </div>
+            ))}
+            <button className="btn btn-secondary" onClick={() => setShowChallengeModal(false)}>Close</button>
+          </div>
+        </div>
+      )}
+
       <div className="card">
+        <h3 className="card-title">Online Players</h3>
+        {onlinePlayers.length === 0 ? (
+          <p style={{ color: 'var(--text-muted)' }}>No players online right now</p>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '10px' }}>
+            {onlinePlayers.map(player => (
+              <div 
+                key={player.id}
+                className="player-card"
+                style={{ cursor: 'pointer', textAlign: 'center' }}
+                onClick={() => {
+                  setSelectedPlayer(player.id)
+                  setShowChallengeModal(true)
+                }}
+              >
+                <div className="player-avatar" style={{ margin: '0 auto 8px' }}>
+                  {player.username.charAt(0).toUpperCase()}
+                </div>
+                <h3 style={{ fontSize: '0.9rem' }}>{player.username}</h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>{player.division}</p>
+                <span className="status-badge online">Online</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="card" style={{ marginTop: '20px' }}>
         <h3 className="card-title">Challenge a Player</h3>
         <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>
           Select a player and choose a game type to send a challenge request.
@@ -94,9 +179,9 @@ export default function Games() {
             onChange={(e) => setSelectedPlayer(e.target.value)}
           >
             <option value="">Choose a player...</option>
-            {otherUsers.map(u => (
+            {allUsers.filter(u => u.id !== user?.id).map(u => (
               <option key={u.id} value={u.id}>
-                {u.username} ({u.division})
+                {u.username} ({u.division}) {u.isOnline ? '✓' : ''}
               </option>
             ))}
           </select>
@@ -117,71 +202,11 @@ export default function Games() {
         <button 
           onClick={handleSendRequest} 
           className="btn btn-primary btn-block"
+          disabled={!selectedPlayer || !gameType}
         >
           {sent ? 'Request Sent!' : 'Send Challenge'}
         </button>
       </div>
-
-      {myPendingRequests.length > 0 && (
-        <div className="card" style={{ marginTop: '20px' }}>
-          <h3 className="card-title">Your Pending Challenges</h3>
-          {myPendingRequests.map(req => (
-            <div key={req.id} className="player-card">
-              <div className="player-avatar">
-                {req.toUsername.charAt(0).toUpperCase()}
-              </div>
-              <div className="player-info">
-                <h3>{req.toUsername}</h3>
-                <p>{req.gameType} Game</p>
-              </div>
-              <span className="status-badge pending">Pending</span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {incomingRequests.length > 0 && (
-        <div className="card" style={{ marginTop: '20px' }}>
-          <h3 className="card-title">Incoming Challenges</h3>
-          {incomingRequests.map(req => (
-            <div key={req.id} className="player-card">
-              <div className="player-avatar">
-                {req.fromUsername.charAt(0).toUpperCase()}
-              </div>
-              <div className="player-info">
-                <h3>{req.fromUsername}</h3>
-                <p>{req.gameType} Game</p>
-              </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button 
-                  className="btn btn-sm btn-primary"
-                  onClick={() => {
-                    const requests = gameRequests.map(r => 
-                      r.id === req.id ? { ...r, status: 'accepted' } : r
-                    )
-                    localStorage.setItem('eliteArrowsGameRequests', JSON.stringify(requests))
-                    window.location.reload()
-                  }}
-                >
-                  Accept
-                </button>
-                <button 
-                  className="btn btn-sm"
-                  onClick={() => {
-                    const requests = gameRequests.map(r => 
-                      r.id === req.id ? { ...r, status: 'rejected' } : r
-                    )
-                    localStorage.setItem('eliteArrowsGameRequests', JSON.stringify(requests))
-                    window.location.reload()
-                  }}
-                >
-                  Decline
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   )
 }

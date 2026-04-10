@@ -24,6 +24,6 @@ export const notificationsCollection = collection(db, 'notifications')
 export const chatMessagesCollection = collection(db, 'chatMessages')
 
 export { 
-  doc, setDoc, getDoc, getDocs, query, where, orderBy, onSnapshot, deleteDoc,
+  doc, setDoc, getDoc, getDocs, query, where, orderBy, onSnapshot, deleteDoc, collection,
   signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged 
 }
