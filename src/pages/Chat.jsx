@@ -167,6 +167,7 @@ export default function Chat() {
 
   return (
     <div className="page" style={{ height: 'calc(100vh - 100px)', display: 'flex', padding: 0 }}>
+      {console.log('RENDER: user=', user?.username, 'allUsers=', allUsers.length, 'friends=', friendIds.length, 'chatList=', chatList.length) || null}
       <div className="card" style={{ 
         width: '280px', 
         minWidth: '280px',
