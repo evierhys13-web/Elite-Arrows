@@ -176,7 +176,7 @@ export default function Settings() {
             <h3 className="card-title">Account Details</h3>
             <div className="form-group">
               <label>DartCounter Username</label>
-              <input type="text" value={user?.dartCounterUsername || ''} onChange={(e) => updateUser({ dartCounterUsername: e.target.value })} placeholder="Enter your DartCounter username" />
+              <input type="text" value={user?.dartCounterUsername || ''} onChange={(e) => updateUser({ dartCounterUsername: e.target.value, dartCounterLink: `https://dartcounter.net/player/${e.target.value}` })} placeholder="Enter your DartCounter username" />
             </div>
             <div className="form-group">
               <label>Date of Birth</label>

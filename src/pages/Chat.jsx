@@ -4,13 +4,8 @@ import { useAuth } from '../context/AuthContext'
 import { db, chatMessagesCollection, doc, setDoc, getDocs, query, where, orderBy, onSnapshot } from '../firebase'
 
 export default function Chat() {
-  console.log('>>> Chat component starting')
-  
   const { user, getAllUsers } = useAuth()
-  console.log('>>> After useAuth, user:', user)
   const location = useLocation()
-  
-  console.log('Chat mounted', { userId: user?.id, username: user?.username })
   
   if (!user) {
     return (
@@ -20,23 +15,18 @@ export default function Chat() {
     )
   }
   const [activeChat, setActiveChat] = useState('main')
-  const [refreshKey, setRefreshKey] = useState(0)
   const [messages, setMessages] = useState([])
   const [newMessage, setNewMessage] = useState('')
   const [replyTo, setReplyTo] = useState(null)
   const [editingMessage, setEditingMessage] = useState(null)
   const [showMediaOptions, setShowMediaOptions] = useState(false)
   const [showChatList, setShowChatList] = useState(true)
-  const [incomingCall, setIncomingCall] = useState(null)
-  const [activeCall, setActiveCall] = useState(null)
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
 
   const allUsers = getAllUsers()
   const currentUser = allUsers.find(u => u.id === user?.id)
   const divisions = ['Elite', 'Premier', 'Champion', 'Diamond', 'Gold']
-
-  console.log('Chat: user:', user?.id, 'subscribed:', user?.isSubscribed)
 
   let friendIds = []
   if (user?.friends) {
@@ -52,10 +42,8 @@ export default function Chat() {
     { id: 'announcements', name: 'Announcements', type: 'general' },
     ...(user?.isAdmin ? [{ id: 'admin', name: 'Admin Chat', type: 'admin' }] : []),
     ...divisions.map(d => ({ id: `division_${d}`, name: `${d} Division`, type: 'division' })),
-    ...friends.map(f => ({ id: `friend_${f.id}`, name: f.username, type: 'friend' }))
+    ...friends.map(f => ({ id: `friend_${f.id}`, name: f.username, type: 'friend', isOnline: f.isOnline }))
   ]
-
-  console.log('Chat: friends:', friendIds.length, 'chatList:', chatList.length, 'subscribed:', user?.isSubscribed)
 
   const getChatKey = (chatId) => {
     if (chatId.startsWith('friend_')) {
@@ -104,7 +92,8 @@ export default function Chat() {
 
     if (activeChat.startsWith('friend_')) {
       const friendId = activeChat.replace('friend_', '')
-      if (isUserInDND(friendId)) {
+      const friend = allUsers.find(u => u.id === friendId)
+      if (friend?.doNotDisturb && friend.dndEndTime && new Date(friend.dndEndTime) > new Date()) {
         alert('This player has Do Not Disturb enabled. Your message will be sent but they won\'t receive a notification.')
       }
     }
@@ -278,26 +267,6 @@ export default function Chat() {
             ←
           </button>
           <h2 style={{ fontSize: '1.1rem', fontWeight: '600', flex: 1 }}>{getChatTitle()}</h2>
-          {canCall && (
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button 
-                className="btn btn-secondary"
-                onClick={() => handleStartCall('voice')}
-                title="Voice Call"
-                style={{ padding: '8px' }}
-              >
-                📞
-              </button>
-              <button 
-                className="btn btn-secondary"
-                onClick={() => handleStartCall('video')}
-                title="Video Call"
-                style={{ padding: '8px' }}
-              >
-                📹
-              </button>
-            </div>
-          )}
         </div>
 
         <div style={{ 
@@ -341,7 +310,9 @@ export default function Chat() {
               )}
               
               <div style={{ fontSize: '0.95rem' }}>{msg.text}</div>
-              <div className="chat-message-time" style={{ fontSize: '0.7rem', textAlign: 'right', marginTop: '2px' }}>{msg.time}</div>
+              <div className="chat-message-time" style={{ fontSize: '0.7rem', textAlign: 'right', marginTop: '2px' }}>
+                {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+              </div>
               
               <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
                 <button style={{ fontSize: '0.65rem', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }} onClick={() => handleReply(msg)}>Reply</button>
@@ -422,96 +393,6 @@ export default function Chat() {
           </button>
         </form>
       </div>
-
-      {incomingCall && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.8)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: 'var(--bg-secondary)',
-            padding: '30px',
-            borderRadius: '16px',
-            textAlign: 'center',
-            minWidth: '300px'
-          }}>
-            <div style={{ fontSize: '3rem', marginBottom: '15px' }}>
-              {incomingCall.type === 'video' ? '📹' : '📞'}
-            </div>
-            <h3 style={{ marginBottom: '10px' }}>{incomingCall.fromUsername}</h3>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>
-              {incomingCall.type === 'video' ? 'Video' : 'Voice'} Call
-            </p>
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-              <button className="btn btn-primary" onClick={handleAcceptCall}>
-                Accept
-              </button>
-              <button className="btn btn-danger" onClick={handleDeclineCall}>
-                Decline
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeCall && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: '#1a1a2e',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-            <div style={{ 
-              width: '100px', 
-              height: '100px', 
-              borderRadius: '50%', 
-              background: 'var(--accent-primary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '2.5rem',
-              margin: '0 auto 20px'
-            }}>
-              {activeCall.toUsername?.charAt(0).toUpperCase() || '?'}
-            </div>
-            <h2 style={{ color: 'white', marginBottom: '10px' }}>
-              {activeCall.isOutgoing ? `Calling ${activeCall.toUsername}...` : activeCall.fromUsername}
-            </h2>
-            <p style={{ color: 'rgba(255,255,255,0.6)' }}>
-              {activeCall.type === 'video' ? 'Video Call' : 'Voice Call'}
-              {activeCall.isOutgoing && ' - Ringing...'}
-            </p>
-          </div>
-          
-          <button 
-            className="btn btn-danger"
-            onClick={handleEndCall}
-            style={{ 
-              padding: '15px 40px', 
-              fontSize: '1.1rem',
-              borderRadius: '30px'
-            }}
-          >
-            📞 End Call
-          </button>
-        </div>
-      )}
     </div>
   )
 }

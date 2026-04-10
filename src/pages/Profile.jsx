@@ -93,7 +93,7 @@ export default function Profile() {
       darts: formData.darts,
       country: formData.country,
       dartCounterUsername: formData.dartCounterUsername,
-      dartCounterLink: formData.dartCounterLink,
+      dartCounterLink: formData.dartCounterLink || (formData.dartCounterUsername ? `https://dartcounter.net/player/${formData.dartCounterUsername}` : ''),
       threeDartAverage: formData.threeDartAverage,
       profilePicture
     })
@@ -170,10 +170,10 @@ export default function Profile() {
             </div>
           )}
 
-          {viewedUser.dartCounterLink && (
+          {(viewedUser.dartCounterLink || viewedUser.dartCounterUsername) && (
             <div style={{ marginBottom: '15px' }}>
               <a 
-                href={viewedUser.dartCounterLink}
+                href={viewedUser.dartCounterLink || `https://dartcounter.net/player/${viewedUser.dartCounterUsername}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn btn-primary btn-block"
@@ -181,6 +181,29 @@ export default function Profile() {
               >
                 📊 View DartCounter Profile
               </a>
+            </div>
+          )}
+
+          {viewedUser.socialLinks && (
+            <div style={{ marginBottom: '15px', display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
+              {viewedUser.socialLinks.whatsapp && (
+                <a href={`https://wa.me/${viewedUser.socialLinks.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" style={{ color: '#25D366', fontSize: '1.5rem' }}>💬</a>
+              )}
+              {viewedUser.socialLinks.messenger && (
+                <a href={`https://m.me/${viewedUser.socialLinks.messenger}`} target="_blank" rel="noopener noreferrer" style={{ color: '#0084FF', fontSize: '1.5rem' }}>💬</a>
+              )}
+              {viewedUser.socialLinks.facebook && (
+                <a href={viewedUser.socialLinks.facebook} target="_blank" rel="noopener noreferrer" style={{ color: '#1877F2', fontSize: '1.5rem' }}>📘</a>
+              )}
+              {viewedUser.socialLinks.instagram && (
+                <a href={`https://instagram.com/${viewedUser.socialLinks.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" style={{ color: '#E4405F', fontSize: '1.5rem' }}>📷</a>
+              )}
+              {viewedUser.socialLinks.tiktok && (
+                <a href={`https://tiktok.com/@${viewedUser.socialLinks.tiktok.replace('@', '')}`} target="_blank" rel="noopener noreferrer" style={{ color: '#fff', fontSize: '1.5rem' }}>🎵</a>
+              )}
+              {viewedUser.socialLinks.twitter && (
+                <a href={`https://twitter.com/${viewedUser.socialLinks.twitter.replace('@', '')}`} target="_blank" rel="noopener noreferrer" style={{ color: '#1DA1F2', fontSize: '1.5rem' }}>🐦</a>
+              )}
             </div>
           )}
 
