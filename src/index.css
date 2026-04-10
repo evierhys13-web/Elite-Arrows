@@ -171,6 +171,11 @@ body {
   color: var(--text-primary);
   cursor: pointer;
   padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--bg-secondary);
 }
 
 .mobile-sidebar-overlay {

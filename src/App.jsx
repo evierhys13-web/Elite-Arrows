@@ -20,6 +20,7 @@ import Tournaments from './pages/Tournaments'
 import Games from './pages/Games'
 import Leaderboards from './pages/Leaderboards'
 import Rewards from './pages/Rewards'
+import SeedData from './pages/SeedData'
 import Sidebar from './components/Sidebar'
 import BackgroundDecor from './components/BackgroundDecor'
 
