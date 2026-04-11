@@ -11,6 +11,7 @@ export default function Auth() {
     password: '',
     confirmPassword: '',
     dartCounterUsername: '',
+    threeDartAverage: '',
     rememberMe: false
   })
   const [error, setError] = useState('')
@@ -48,15 +49,16 @@ export default function Auth() {
 
     try {
       if (isSignUp) {
-        if (!formData.username || !formData.email || !formData.password) {
+        if (!formData.dartCounterUsername || !formData.email || !formData.password) {
           throw new Error('All fields are required')
         }
+        const avg = parseFloat(formData.threeDartAverage) || 0;
 
         await signUp({
-          username: formData.username,
+          username: formData.dartCounterUsername,
           email: formData.email,
           password: formData.password,
-          threeDartAverage: 0,
+          threeDartAverage: avg,
           dartCounterUsername: formData.dartCounterUsername,
           dartCounterLink: formData.dartCounterUsername ? `https://dartcounter.net/player/${formData.dartCounterUsername}` : ''
         }, formData.rememberMe)
@@ -109,19 +111,6 @@ export default function Auth() {
             {isSignUp && (
               <>
                 <div className="form-group">
-                  <label htmlFor="username">Username</label>
-                  <input
-                    type="text"
-                    id="username"
-                    name="username"
-                    value={formData.username}
-                    onChange={handleChange}
-                    placeholder="Enter your username"
-                    autoComplete="username"
-                  />
-                </div>
-
-                <div className="form-group">
                   <label htmlFor="dartCounterUsername">DartCounter Username</label>
                   <input
                     type="text"
@@ -130,6 +119,21 @@ export default function Auth() {
                     value={formData.dartCounterUsername || ''}
                     onChange={handleChange}
                     placeholder="Enter your DartCounter username"
+                    autoComplete="off"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="threeDartAverage">3-Dart Average</label>
+                  <input
+                    type="number"
+                    id="threeDartAverage"
+                    name="threeDartAverage"
+                    value={formData.threeDartAverage}
+                    onChange={handleChange}
+                    placeholder="Enter your 3-dart average"
+                    step="0.01"
+                    min="0"
                     autoComplete="off"
                   />
                 </div>
