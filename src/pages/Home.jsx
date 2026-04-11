@@ -7,8 +7,8 @@ export default function Home() {
   const [seasonInfo, setSeasonInfo] = useState(() => {
     const seasons = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
     const currentSeasonName = localStorage.getItem('eliteArrowsCurrentSeason')
-    const currentSeason = seasons.find(s => s.name === currentSeasonName)
-    if (currentSeason) {
+    let currentSeason = seasons.find(s => s.name === currentSeasonName)
+    if (currentSeason && currentSeason.startDate && currentSeason.endDate) {
       return currentSeason
     }
     return { name: 'Season 1', startDate: '2026-05-01', endDate: '2026-06-01' }

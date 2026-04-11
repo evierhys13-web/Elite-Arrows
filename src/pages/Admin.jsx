@@ -38,13 +38,23 @@ export default function Admin() {
       setPendingResults(pending);
     }
 
-    if (user?.isAdmin && !localStorage.getItem('eliteArrowsCurrentSeason')) {
-      const seasons = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
+    if (user?.isAdmin) {
+      let seasons = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
       if (seasons.length === 0) {
-        const defaultSeason = { id: Date.now(), name: 'Season 1', createdAt: new Date().toISOString(), status: 'active', isArchived: false, startDate: '2026-05-01', endDate: '2026-06-01' }
-        seasons.push(defaultSeason)
+        seasons.push({ id: Date.now(), name: 'Season 1', createdAt: new Date().toISOString(), status: 'active', isArchived: false, startDate: '2026-05-01', endDate: '2026-06-01' })
         localStorage.setItem('eliteArrowsSeasons', JSON.stringify(seasons))
         localStorage.setItem('eliteArrowsCurrentSeason', 'Season 1')
+      } else {
+        seasons = seasons.map(s => {
+          if (!s.startDate || !s.endDate || isNaN(new Date(s.startDate).getTime()) || isNaN(new Date(s.endDate).getTime())) {
+            return { ...s, startDate: '2026-05-01', endDate: '2026-06-01' }
+          }
+          return s
+        })
+        localStorage.setItem('eliteArrowsSeasons', JSON.stringify(seasons))
+        if (!localStorage.getItem('eliteArrowsCurrentSeason')) {
+          localStorage.setItem('eliteArrowsCurrentSeason', seasons[0].name)
+        }
       }
     }
   }, [user.isAdmin, user.isTournamentAdmin]);
