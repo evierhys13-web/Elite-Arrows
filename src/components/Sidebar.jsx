@@ -183,7 +183,7 @@ export default function Sidebar() {
     { path: '/leaderboards', label: 'Leaderboards', icon: TrophyIcon },
     { path: '/rewards', label: 'Rewards', icon: GiftIcon },
     { path: '/games', label: 'Games', icon: GamepadIcon },
-    ...(user?.isSubscribed && !user?.isTournamentAdmin ? [{ path: '/submit-result', label: 'Submit Result', icon: PlusCircleIcon }] : []),
+    ...(user?.isSubscribed || user?.isAdmin || user?.isTournamentAdmin ? [{ path: '/submit-result', label: 'Submit Result', icon: PlusCircleIcon }] : []),
     { path: '/chat', label: 'Chat', icon: MessageIcon },
     { path: '/profile', label: 'Profile', icon: UserIcon },
     ...(!user?.isTournamentAdmin ? [{ path: '/settings', label: 'Settings', icon: SettingsIcon }] : []),
@@ -192,7 +192,7 @@ export default function Sidebar() {
     ...(user?.isAdmin ? [{ path: '/subscription', label: 'Subscription', icon: CreditCardIcon }] : []),
   ]
 
-  const showAdmin = (user?.isAdmin || user?.isTournamentAdmin) && user?.isSubscribed
+  const showAdmin = user?.isAdmin || user?.isTournamentAdmin
 
   return (
     <>

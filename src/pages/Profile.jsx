@@ -311,7 +311,7 @@ export default function Profile() {
                     >
                       Remove Friend
                     </button>
-                    {user.isSubscribed && (
+                    {(user.isSubscribed || user.isAdmin || user.isTournamentAdmin) && (
                       <button 
                         className="btn btn-secondary"
                         onClick={() => navigate('/chat', { state: { openChat: `friend_${viewedUser.id}` } })}

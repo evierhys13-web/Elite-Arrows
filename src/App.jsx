@@ -51,7 +51,7 @@ function SubscribedRoute({ children }) {
     return <Navigate to="/auth" replace />
   }
   
-  if (!user?.isSubscribed) {
+  if (!user?.isSubscribed && !user?.isAdmin && !user?.isTournamentAdmin) {
     return (
       <div style={{ 
         padding: '40px', 
