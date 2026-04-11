@@ -17,6 +17,8 @@ export default function Admin() {
     formatR1: '3', formatR2: '3', formatQF: '3', formatSF: '5', formatF: '7'
   })
   const [colors, setColors] = useState(() => JSON.parse(localStorage.getItem('eliteArrowsColors') || '{"primary": "#4da8da", "background": "#0a1628", "button": "#4da8da"}'))
+  const [subscriptionPot, setSubscriptionPot] = useState(() => parseFloat(localStorage.getItem('eliteArrowsSubscriptionPot') || '0'))
+  const [tournamentPot, setTournamentPot] = useState(() => parseFloat(localStorage.getItem('eliteArrowsTournamentPot') || '0'))
   const [showSubmitGame, setShowSubmitGame] = useState(false)
   const [gameForm, setGameForm] = useState({
     player1: '',
@@ -64,6 +66,10 @@ export default function Admin() {
       users[index].isSubscribed = true
       users[index].paymentPending = false
       localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+      const newPot = subscriptionPot + 5
+      setSubscriptionPot(newPot)
+      localStorage.setItem('eliteArrowsSubscriptionPot', newPot.toString())
+      addToMoneyHistory('subscription', 5, `Payment from ${users[index].username}`)
     }
   }
 
@@ -103,6 +109,17 @@ export default function Admin() {
     document.documentElement.style.setProperty('--button-color', colors.button)
     setShowColorsForm(false)
     alert('Colors saved!')
+  }
+
+  const addToMoneyHistory = (type, amount, description) => {
+    const history = JSON.parse(localStorage.getItem('eliteArrowsMoneyHistory') || '[]')
+    history.push({
+      date: new Date().toISOString(),
+      type,
+      amount,
+      description
+    })
+    localStorage.setItem('eliteArrowsMoneyHistory', JSON.stringify(history))
   }
 
   const submitAdminGame = () => {
@@ -193,6 +210,14 @@ export default function Admin() {
             onClick={() => setActiveTab('payments')}
           >
             Payments ({pendingPayments.length})
+          </button>
+        )}
+        {isFullAdmin && (
+          <button
+            className={`division-tab ${activeTab === 'moneypot' ? 'active' : ''}`}
+            onClick={() => setActiveTab('moneypot')}
+          >
+            Money Pot
           </button>
         )}
         <button
@@ -1247,6 +1272,141 @@ export default function Admin() {
                   </span>
                 </div>
               ))}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'moneypot' && isFullAdmin && (
+        <div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+            <div className="card">
+              <h3 className="card-title">Subscription Pot</h3>
+              <div style={{ 
+                padding: '30px', 
+                background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-cyan))',
+                borderRadius: '12px',
+                textAlign: 'center',
+                marginBottom: '20px'
+              }}>
+                <p style={{ fontSize: '0.9rem', marginBottom: '5px', opacity: 0.9 }}>Total Collected</p>
+                <p style={{ fontSize: '3rem', fontWeight: 'bold', margin: 0 }}>£{subscriptionPot.toFixed(2)}</p>
+              </div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                From £5/month subscriptions ({subscribers.length} active subscribers)
+              </p>
+              <div style={{ marginTop: '15px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                <h4 style={{ marginBottom: '10px' }}>Adjust Pot</h4>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <input 
+                    type="number" 
+                    id="subPotAdjust"
+                    placeholder="Amount"
+                    style={{ flex: 1, padding: '8px' }}
+                  />
+                  <button 
+                    className="btn btn-primary"
+                    onClick={() => {
+                      const amount = parseFloat(document.getElementById('subPotAdjust').value) || 0
+                      if (amount !== 0) {
+                        const newPot = subscriptionPot + amount
+                        setSubscriptionPot(newPot)
+                        localStorage.setItem('eliteArrowsSubscriptionPot', newPot.toString())
+                        addToMoneyHistory('subscription', amount, 'Manual adjustment')
+                        alert(`Subscription pot ${amount >= 0 ? 'increased' : 'decreased'} by £${Math.abs(amount).toFixed(2)}`)
+                        document.getElementById('subPotAdjust').value = ''
+                      }
+                    }}
+                  >
+                    Update
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="card">
+              <h3 className="card-title">Tournament Pot</h3>
+              <div style={{ 
+                padding: '30px', 
+                background: 'linear-gradient(135deg, var(--accent-cyan), var(--success))',
+                borderRadius: '12px',
+                textAlign: 'center',
+                marginBottom: '20px'
+              }}>
+                <p style={{ fontSize: '0.9rem', marginBottom: '5px', opacity: 0.9 }}>Total From Entry Fees</p>
+                <p style={{ fontSize: '3rem', fontWeight: 'bold', margin: 0 }}>£{tournamentPot.toFixed(2)}</p>
+              </div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                From tournament cash entries
+              </p>
+              <div style={{ marginTop: '15px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                <h4 style={{ marginBottom: '10px' }}>Adjust Pot</h4>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <input 
+                    type="number" 
+                    id="tourPotAdjust"
+                    placeholder="Amount"
+                    style={{ flex: 1, padding: '8px' }}
+                  />
+                  <button 
+                    className="btn btn-primary"
+                    onClick={() => {
+                      const amount = parseFloat(document.getElementById('tourPotAdjust').value) || 0
+                      if (amount !== 0) {
+                        const newPot = tournamentPot + amount
+                        setTournamentPot(newPot)
+                        localStorage.setItem('eliteArrowsTournamentPot', newPot.toString())
+                        addToMoneyHistory('tournament', amount, 'Manual adjustment')
+                        alert(`Tournament pot ${amount >= 0 ? 'increased' : 'decreased'} by £${Math.abs(amount).toFixed(2)}`)
+                        document.getElementById('tourPotAdjust').value = ''
+                      }
+                    }}
+                  >
+                    Update
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="card" style={{ marginTop: '20px' }}>
+            <h3 className="card-title">Money Pot History</h3>
+            {(() => {
+              const history = JSON.parse(localStorage.getItem('eliteArrowsMoneyHistory') || '[]')
+              if (history.length === 0) {
+                return <p style={{ color: 'var(--text-muted)' }}>No transactions yet</p>
+              }
+              return (
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Type</th>
+                      <th>Amount</th>
+                      <th>Description</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {history.slice(-20).reverse().map((item, index) => (
+                      <tr key={index}>
+                        <td>{new Date(item.date).toLocaleDateString()}</td>
+                        <td>
+                          <span style={{ 
+                            color: item.type === 'subscription' ? 'var(--accent-cyan)' : 'var(--success)',
+                            fontWeight: 'bold'
+                          }}>
+                            {item.type === 'subscription' ? 'Subscription' : 'Tournament'}
+                          </span>
+                        </td>
+                        <td style={{ color: item.amount >= 0 ? 'var(--success)' : 'var(--error)' }}>
+                          {item.amount >= 0 ? '+' : ''}£{item.amount.toFixed(2)}
+                        </td>
+                        <td>{item.description}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )
+            })()}
           </div>
         </div>
       )}
