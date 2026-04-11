@@ -5,7 +5,7 @@ export default function Table() {
   const [activeDivision, setActiveDivision] = useState('Overall')
   const { user, getAllUsers } = useAuth()
 
-  const divisions = ['Overall', 'Elite', 'Diamond', 'Gold', 'Silver', 'Bronze']
+  const divisions = ['Overall', 'Elite', 'Premier', 'Champion', 'Diamond', 'Gold']
 
   const allUsers = getAllUsers()
   const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
