@@ -11,6 +11,7 @@ export default function Auth() {
     password: '',
     confirmPassword: '',
     threeDartAverage: '',
+    dartCounterUsername: '',
     rememberMe: false
   })
   const [error, setError] = useState('')
@@ -60,7 +61,9 @@ export default function Auth() {
           username: formData.username,
           email: formData.email,
           password: formData.password,
-          threeDartAverage: avg
+          threeDartAverage: avg,
+          dartCounterUsername: formData.dartCounterUsername,
+          dartCounterLink: formData.dartCounterUsername ? `https://dartcounter.net/player/${formData.dartCounterUsername}` : ''
         }, formData.rememberMe)
         alert('Sign up successful!')
       } else {
@@ -134,6 +137,19 @@ export default function Auth() {
                     placeholder="Enter your 3-dart average"
                     step="0.01"
                     min="0"
+                    autoComplete="off"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="dartCounterUsername">DartCounter Username</label>
+                  <input
+                    type="text"
+                    id="dartCounterUsername"
+                    name="dartCounterUsername"
+                    value={formData.dartCounterUsername || ''}
+                    onChange={handleChange}
+                    placeholder="Enter your DartCounter username"
                     autoComplete="off"
                   />
                 </div>
