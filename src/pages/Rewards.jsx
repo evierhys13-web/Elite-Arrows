@@ -23,6 +23,11 @@ export default function Rewards() {
     setBets(storedBets.filter(b => b.userId === user.id))
   }, [user.id])
 
+  const fixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+  const acceptedFixtures = fixtures.filter(f => 
+    (f.player1Id === user.id || f.player2Id === user.id) && f.status === 'accepted'
+  )
+
   const getPlayerGameCount = (playerId, division) => {
     return approvedResults.filter(r => 
       r.season === currentSeason && 
@@ -414,6 +419,36 @@ export default function Rewards() {
               </span>
             </div>
           ))
+        )}
+
+        {acceptedFixtures.length > 0 && (
+          <div style={{ marginTop: '30px', paddingTop: '20px', borderTop: '2px solid var(--border)' }}>
+            <h4 style={{ color: 'var(--success)', marginBottom: '15px' }}>Your Fixtures</h4>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '10px' }}>
+              These matches have been agreed with the other player
+            </p>
+            {acceptedFixtures.map(fixture => (
+              <div key={fixture.id} style={{ 
+                padding: '15px', 
+                background: 'rgba(34, 197, 94, 0.1)', 
+                border: '1px solid var(--success)',
+                borderRadius: '8px',
+                marginBottom: '10px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <strong>{fixture.player1Name}</strong> vs <strong>{fixture.player2Name}</strong>
+                    <span style={{ marginLeft: '10px', fontSize: '0.85rem', color: 'var(--accent-cyan)' }}>
+                      {fixture.division} | {fixture.gameType}
+                    </span>
+                  </div>
+                  <span style={{ color: 'var(--success)', fontSize: '0.85rem' }}>
+                    Fixture Set ✓
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>
