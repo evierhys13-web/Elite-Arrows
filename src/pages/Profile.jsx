@@ -314,7 +314,10 @@ export default function Profile() {
                 ) : (
                   <button 
                     className="btn btn-primary"
-                    onClick={() => addFriend(viewedUser.id)}
+                    onClick={() => {
+                      console.log('Add Friend button clicked', viewedUser.id)
+                      addFriend(viewedUser.id)
+                    }}
                   >
                     Add Friend
                   </button>
