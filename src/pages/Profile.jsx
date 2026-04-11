@@ -165,7 +165,7 @@ export default function Profile() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px', marginBottom: '20px' }}>
             <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
-              <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>{viewedUser.division || 'Gold'}</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>{viewedUser.division || 'Unassigned'}</div>
               <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Division</div>
             </div>
             <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>

@@ -555,7 +555,7 @@ export default function Admin() {
                   <tr key={player.id}>
                     <td>{player.username}</td>
                     <td>{player.email}</td>
-                    <td>{player.division || 'Gold'}</td>
+                    <td>{player.division || 'Unassigned'}</td>
                     <td>{player.threeDartAverage?.toFixed(2) || 0}</td>
                     <td>
                       <button 

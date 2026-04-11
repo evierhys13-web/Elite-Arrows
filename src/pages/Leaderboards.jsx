@@ -28,7 +28,7 @@ export default function Leaderboards() {
       id: player.id,
       username: player.username,
       nickname: player.nickname,
-      division: player.division || 'Gold',
+      division: player.division || 'Unassigned',
       profilePicture: player.profilePicture,
       played: 0,
       wins: 0,
