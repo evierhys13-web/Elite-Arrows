@@ -20,9 +20,21 @@ export default function Chat() {
   const [replyTo, setReplyTo] = useState(null)
   const [editingMessage, setEditingMessage] = useState(null)
   const [showMediaOptions, setShowMediaOptions] = useState(false)
-  const [showChatList, setShowChatList] = useState(true)
+  const [showChatList, setShowChatList] = useState(false)
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768)
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 768)
+      if (window.innerWidth >= 768) {
+        setShowChatList(false)
+      }
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   const allUsers = getAllUsers()
   const currentUser = allUsers.find(u => u.id === user?.id)
@@ -179,81 +191,110 @@ export default function Chat() {
   }
 
   return (
-    <div className="page" style={{ height: 'calc(100vh - 100px)', display: 'flex', padding: 0 }}>
-      <div className="card" style={{ 
-        width: '280px', 
-        minWidth: '280px',
-        borderRadius: '12px 0 0 12px',
-        display: 'flex',
-        flexDirection: 'column',
-        marginRight: '1px',
-        overflow: 'hidden'
-      }}>
-        <div style={{ padding: '15px', borderBottom: '1px solid var(--border)' }}>
-          <h2 style={{ fontSize: '1.1rem', fontWeight: '600' }}>Chats</h2>
-        </div>
-        
-        <div style={{ flex: 1, overflowY: 'auto', padding: '10px' }}>
-          {chatList.length === 0 ? (
-            <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>
-              No chats available
-            </div>
-          ) : (
-            chatList.map(chat => (
-            <button
-              key={chat.id}
-              onClick={() => { setActiveChat(chat.id); setShowChatList(false) }}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '12px',
-                background: activeChat === chat.id ? 'var(--bg-hover)' : 'transparent',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                textAlign: 'left',
-                color: 'var(--text-primary)',
-                marginBottom: '4px'
-              }}
-            >
-              <div style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
-                background: 'var(--accent-primary)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '1.2rem',
-                flexShrink: 0
-              }}>
-                {chat.name.charAt(0)}
+    <div className="page" style={{ height: 'calc(100vh - 100px)', display: 'flex', padding: 0, position: 'relative' }}>
+      {showChatList && isDesktop && (
+        <div 
+          onClick={() => setShowChatList(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 10
+          }}
+        />
+      )}
+      {showChatList && (
+        <div className="card" style={{ 
+          width: '280px', 
+          minWidth: '280px',
+          borderRadius: '12px 0 0 12px',
+          display: 'flex',
+          flexDirection: 'column',
+          marginRight: '1px',
+          overflow: 'hidden',
+          position: isDesktop ? 'absolute' : 'relative',
+          left: isDesktop ? '0' : undefined,
+          top: isDesktop ? '0' : undefined,
+          height: isDesktop ? '100%' : undefined,
+          zIndex: 20
+        }}>
+          <div style={{ padding: '15px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: '600' }}>Chats</h2>
+            {isDesktop && (
+              <button 
+                onClick={() => setShowChatList(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.2rem' }}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          
+          <div style={{ flex: 1, overflowY: 'auto', padding: '10px' }}>
+            {chatList.length === 0 ? (
+              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                No chats available
               </div>
-              <div style={{ overflow: 'hidden' }}>
-                <div style={{ fontWeight: '500', fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {chat.name}
+            ) : (
+              chatList.map(chat => (
+              <button
+                key={chat.id}
+                onClick={() => { setActiveChat(chat.id); setShowChatList(false) }}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '12px',
+                  background: activeChat === chat.id ? 'var(--bg-hover)' : 'transparent',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  color: 'var(--text-primary)',
+                  marginBottom: '4px'
+                }}
+              >
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  background: 'var(--accent-primary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.2rem',
+                  flexShrink: 0
+                }}>
+                  {chat.name.charAt(0)}
                 </div>
-                {chat.type === 'friend' && chat.showOnlineStatus !== false && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
-                    <div style={{ 
-                      width: '8px', 
-                      height: '8px', 
-                      borderRadius: '50%',
-                      background: chat.isOnline ? 'var(--success)' : 'var(--text-muted)'
-                    }} />
-                    <span style={{ fontSize: '0.75rem', color: chat.isOnline ? 'var(--success)' : 'var(--text-muted)' }}>
-                      {chat.isOnline ? 'Online' : 'Offline'}
-                    </span>
+                <div style={{ overflow: 'hidden' }}>
+                  <div style={{ fontWeight: '500', fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {chat.name}
                   </div>
-                )}
-              </div>
-            </button>
-          ))
-          )}
+                  {chat.type === 'friend' && chat.showOnlineStatus !== false && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                      <div style={{ 
+                        width: '8px', 
+                        height: '8px', 
+                        borderRadius: '50%',
+                        background: chat.isOnline ? 'var(--success)' : 'var(--text-muted)'
+                      }} />
+                      <span style={{ fontSize: '0.75rem', color: chat.isOnline ? 'var(--success)' : 'var(--text-muted)' }}>
+                        {chat.isOnline ? 'Online' : 'Offline'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </button>
+            ))
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="card" style={{ 
         flex: 1, 
@@ -271,10 +312,10 @@ export default function Chat() {
         }}>
           <button 
             className="btn btn-secondary" 
-            style={{ padding: '8px 12px', display: 'none' }}
+            style={{ padding: '8px 12px' }}
             onClick={() => setShowChatList(true)}
           >
-            ←
+            ☰
           </button>
           <h2 style={{ fontSize: '1.1rem', fontWeight: '600', flex: 1 }}>{getChatTitle()}</h2>
         </div>
