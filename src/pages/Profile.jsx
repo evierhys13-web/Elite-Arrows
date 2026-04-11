@@ -24,6 +24,26 @@ export default function Profile() {
   const [profilePicture, setProfilePicture] = useState(user.profilePicture || '')
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
+  const [tags, setTags] = useState(user.tags || [])
+  const [newTag, setNewTag] = useState('')
+
+  const handleAddTag = () => {
+    if (newTag.trim() && !tags.includes(newTag.trim()) && tags.length < 10) {
+      setTags([...tags, newTag.trim()])
+      setNewTag('')
+    }
+  }
+
+  const handleRemoveTag = (tagToRemove) => {
+    setTags(tags.filter(tag => tag !== tagToRemove))
+  }
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleAddTag()
+    }
+  }
 
   const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
   const approvedResults = results.filter(r => r.status === 'approved')
@@ -90,12 +110,13 @@ export default function Profile() {
       username: formData.username,
       nickname: formData.nickname,
       bio: formData.bio,
-      darts: formData.darts,
+      darts: formData.dart,
       country: formData.country,
       dartCounterUsername: formData.dartCounterUsername,
       dartCounterLink: formData.dartCounterLink || (formData.dartCounterUsername ? `https://dartcounter.net/player/${formData.dartCounterUsername}` : ''),
       threeDartAverage: formData.threeDartAverage,
-      profilePicture
+      profilePicture,
+      tags
     })
     setTimeout(() => {
       setSaving(false)
@@ -211,6 +232,27 @@ export default function Profile() {
             <div style={{ marginBottom: '15px' }}>
               <h4 style={{ marginBottom: '8px' }}>About</h4>
               <p style={{ color: 'var(--text-muted)' }}>{viewedUser.bio}</p>
+            </div>
+          )}
+
+          {viewedUser.tags && viewedUser.tags.length > 0 && (
+            <div style={{ marginBottom: '15px' }}>
+              <h4 style={{ marginBottom: '8px' }}>Tags</h4>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {viewedUser.tags.map((tag, index) => (
+                  <span 
+                    key={index} 
+                    style={{ 
+                      padding: '4px 12px',
+                      background: 'var(--accent-primary)',
+                      borderRadius: '15px',
+                      fontSize: '0.85rem'
+                    }}
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
 
@@ -408,6 +450,62 @@ export default function Profile() {
               onChange={handleChange}
               placeholder="e.g., England, Scotland, Wales..."
             />
+          </div>
+
+          <div className="form-group">
+            <label>Tags (up to 10)</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+              {tags.map((tag, index) => (
+                <span 
+                  key={index} 
+                  style={{ 
+                    padding: '4px 10px',
+                    background: 'var(--accent-primary)',
+                    borderRadius: '15px',
+                    fontSize: '0.85rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  {tag}
+                  <button 
+                    type="button"
+                    onClick={() => handleRemoveTag(tag)}
+                    style={{ 
+                      background: 'none', 
+                      border: 'none', 
+                      color: 'var(--text-primary)', 
+                      cursor: 'pointer',
+                      padding: '0',
+                      fontSize: '1rem',
+                      lineHeight: '1'
+                    }}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input
+                type="text"
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Add a tag..."
+                style={{ flex: 1 }}
+                disabled={tags.length >= 10}
+              />
+              <button 
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleAddTag}
+                disabled={tags.length >= 10 || !newTag.trim()}
+              >
+                Add
+              </button>
+            </div>
           </div>
 
           <div className="form-group">
