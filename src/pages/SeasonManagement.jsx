@@ -122,16 +122,6 @@ export default function SeasonManagement() {
         <p style={{ color: 'var(--text-muted)', marginTop: '10px', fontSize: '0.85rem' }}>
           All new results will be recorded under this season.
         </p>
-        <button className="btn btn-primary" style={{ marginTop: '15px' }} onClick={() => {
-          if (!confirm('Reset everything? This will clear all results and seasons.')) return
-          localStorage.setItem('eliteArrowsResults', JSON.stringify([]))
-          localStorage.setItem('eliteArrowsCurrentSeason', '')
-          localStorage.setItem('eliteArrowsSeasons', JSON.stringify([]))
-          alert('Reset complete!')
-          window.location.reload()
-        }}>
-          Reset
-        </button>
       </div>
 
       <div className="card" style={{ marginBottom: '20px' }}>
