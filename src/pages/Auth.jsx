@@ -149,6 +149,21 @@ export default function Auth() {
               </>
             )}
 
+            {!isSignUp && (
+              <div className="form-group">
+                <label htmlFor="dartCounterUsername">DartCounter Username</label>
+                <input
+                  type="text"
+                  id="dartCounterUsername"
+                  name="dartCounterUsername"
+                  value={formData.dartCounterUsername || ''}
+                  onChange={handleChange}
+                  placeholder="Enter your DartCounter username"
+                  autoComplete="off"
+                />
+              </div>
+            )}
+
             <div className="form-group">
               <label htmlFor="password">Password</label>
               <input
