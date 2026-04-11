@@ -98,7 +98,7 @@ export default function Leaderboards() {
     leaderboard = leaderboard.filter(p => p.division === selectedDivision)
   }
 
-  const divisions = ['all', 'Elite', 'Premier', 'Champion', 'Diamond', 'Gold']
+  const divisions = ['all', 'Elite', 'Diamond', 'Gold', 'Silver', 'Bronze']
 
   return (
     <div className="page">
