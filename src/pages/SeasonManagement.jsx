@@ -122,6 +122,14 @@ export default function SeasonManagement() {
         <p style={{ color: 'var(--text-muted)', marginTop: '10px', fontSize: '0.85rem' }}>
           All new results will be recorded under this season.
         </p>
+        <button className="btn btn-primary" style={{ marginTop: '15px' }} onClick={() => {
+          localStorage.setItem('eliteArrowsCurrentSeason', 'Season 1')
+          localStorage.setItem('eliteArrowsSeasons', JSON.stringify([{ id: Date.now(), name: 'Season 1', createdAt: new Date().toISOString(), status: 'active', isArchived: false }]))
+          alert('Reset to Season 1!')
+          window.location.reload()
+        }}>
+          Reset to Season 1
+        </button>
       </div>
 
       <div className="card" style={{ marginBottom: '20px' }}>
@@ -240,11 +248,11 @@ export default function SeasonManagement() {
             style={{ flex: 1, minWidth: '150px' }}
           >
             <option value="">Select Division</option>
-            <option value="Elite">Elite (55+)</option>
-            <option value="Premier">Premier (50-54.99)</option>
-            <option value="Champion">Champion (45-49.99)</option>
-            <option value="Diamond">Diamond (40-44.99)</option>
-            <option value="Gold">Gold (Below 40)</option>
+            <option value="Elite">Elite</option>
+            <option value="Diamond">Diamond</option>
+            <option value="Gold">Gold</option>
+            <option value="Silver">Silver</option>
+            <option value="Bronze">Bronze</option>
           </select>
           <button className="btn btn-primary" onClick={movePlayerDivision}>
             Move Player

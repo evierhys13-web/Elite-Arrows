@@ -353,7 +353,7 @@ export default function Tournaments() {
           <div className="form-group" style={{ marginTop: '15px' }}>
             <label>Divisions</label>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '10px' }}>
-              {['Elite', 'Premier', 'Champion', 'Diamond', 'Gold'].map(div => (
+              {['Elite', 'Diamond', 'Gold', 'Silver', 'Bronze'].map(div => (
                 <label key={div}>
                   <input type="checkbox" checked={formData.divisions.includes(div)}
                     onChange={(e) => setFormData({...formData, divisions: e.target.checked ? [...formData.divisions, div] : formData.divisions.filter(d => d !== div)})} />

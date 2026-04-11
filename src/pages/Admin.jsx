@@ -378,17 +378,17 @@ export default function Admin() {
           </div>
 
           <div className="form-group">
-            <label>Division (optional - uses player 1's division if left blank)</label>
+            <label>Division</label>
             <select 
               value={gameForm.division}
               onChange={(e) => setGameForm({...gameForm, division: e.target.value})}
             >
-              <option value="">Auto (Player 1's division)</option>
+              <option value="">Select Division</option>
               <option value="Elite">Elite</option>
-              <option value="Premier">Premier</option>
-              <option value="Champion">Champion</option>
               <option value="Diamond">Diamond</option>
               <option value="Gold">Gold</option>
+              <option value="Silver">Silver</option>
+              <option value="Bronze">Bronze</option>
             </select>
           </div>
 
@@ -936,7 +936,7 @@ export default function Admin() {
                 <div className="form-group" style={{ marginTop: '15px' }}>
                   <label>Divisions</label>
                   <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '10px' }}>
-                    {['Elite', 'Premier', 'Champion', 'Diamond', 'Gold'].map(div => (
+                    {['Elite', 'Diamond', 'Gold', 'Silver', 'Bronze'].map(div => (
                       <label key={div}>
                         <input type="checkbox" checked={tournamentForm.divisions.includes(div)}
                           onChange={(e) => setTournamentForm({...tournamentForm, divisions: e.target.checked ? [...tournamentForm.divisions, div] : tournamentForm.divisions.filter(d => d !== div)})} />
@@ -1166,8 +1166,8 @@ export default function Admin() {
                 style={{ flex: 1, minWidth: '150px' }}
                 onChange={(e) => {
                   if (!e.target.value) return
-                  const division = prompt('Enter new division (Elite, Premier, Champion, Diamond, Gold):')
-                  if (division && ['Elite', 'Premier', 'Champion', 'Diamond', 'Gold'].includes(division)) {
+                  const division = prompt('Enter new division (Elite, Diamond, Gold, Silver, Bronze):')
+                  if (division && ['Elite', 'Diamond', 'Gold', 'Silver', 'Bronze'].includes(division)) {
                     const users = getAllUsers()
                     const index = users.findIndex(u => u.id === e.target.value)
                     if (index !== -1) {
