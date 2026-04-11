@@ -17,7 +17,7 @@ export default function Auth() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const { signUp, signIn, isAuthenticated, loading: authLoading } = useAuth()
+  const { signUp, signIn, isAuthenticated, loading: authLoading, getAllUsers } = useAuth()
   const navigate = useNavigate()
 
   if (authLoading) {
@@ -64,11 +64,20 @@ export default function Auth() {
         }, formData.rememberMe)
         alert('Sign up successful!')
       } else {
-        if (!formData.email || !formData.password) {
-          throw new Error('Email and password are required')
+        if (!formData.dartCounterUsername || !formData.password) {
+          throw new Error('DartCounter username and password are required')
         }
 
-        await signIn(formData.email, formData.password, formData.rememberMe)
+        const allUsers = getAllUsers()
+        const user = allUsers.find(u => u.dartCounterUsername?.toLowerCase() === formData.dartCounterUsername.toLowerCase())
+        if (!user) {
+          throw new Error('User not found with that DartCounter username')
+        }
+        if (!user.email) {
+          throw new Error('No email associated with this account')
+        }
+
+        await signIn(user.email, formData.password, formData.rememberMe)
         alert('Sign in successful!')
       }
 
@@ -141,19 +150,6 @@ export default function Auth() {
             )}
 
             <div className="form-group">
-              <label htmlFor="email">Email</label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="Enter your email"
-                autoComplete="email"
-              />
-            </div>
-
-            <div className="form-group">
               <label htmlFor="password">Password</label>
               <input
                 type="password"
@@ -165,6 +161,23 @@ export default function Auth() {
                 autoComplete={isSignUp ? 'new-password' : 'current-password'}
               />
             </div>
+
+            {isSignUp && (
+              <>
+                <div className="form-group">
+                  <label htmlFor="email">Email</label>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    placeholder="Enter your email"
+                    autoComplete="email"
+                  />
+                </div>
+              </>
+            )}
 
             {isSignUp && (
               <div className="form-group">
