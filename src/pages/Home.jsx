@@ -4,7 +4,15 @@ import { useAuth } from '../context/AuthContext'
 
 export default function Home() {
   const { user, getAllUsers } = useAuth()
-  const [seasonInfo, setSeasonInfo] = useState(() => JSON.parse(localStorage.getItem('eliteArrowsSeason') || '{"startDate": "2026-06-01", "endDate": "2026-07-01", "name": "Season 1"}'))
+  const [seasonInfo, setSeasonInfo] = useState(() => {
+    const seasons = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
+    const currentSeasonName = localStorage.getItem('eliteArrowsCurrentSeason')
+    const currentSeason = seasons.find(s => s.name === currentSeasonName)
+    if (currentSeason) {
+      return currentSeason
+    }
+    return { name: 'Season 1', startDate: '2025-05-01', endDate: '2025-06-01' }
+  })
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
 
   useEffect(() => {
@@ -62,7 +70,7 @@ export default function Home() {
         <div style={{ textAlign: 'center' }}>
           <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>{seasonInfo.name}</h2>
           <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
-            1st June 2026 - 1st July 2026
+            {new Date(seasonInfo.startDate).toLocaleDateString()} - {new Date(seasonInfo.endDate).toLocaleDateString()}
           </p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '20px' }}>
             <div className="stat-card" style={{ padding: '15px' }}>
