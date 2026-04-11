@@ -5,13 +5,7 @@ const AuthContext = createContext(null)
 
 const ADMIN_EMAIL = 'rhyshowe2023@outlook.com'
 
-function getDivisionFromAverage(average) {
-  if (average >= 55) return 'Elite'
-  if (average >= 50) return 'Premier'
-  if (average >= 45) return 'Champion'
-  if (average >= 40) return 'Diamond'
-  return 'Gold'
-}
+export const DIVISIONS = ['Elite', 'Diamond', 'Gold', 'Silver', 'Bronze']
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
@@ -55,7 +49,6 @@ export function AuthProvider({ children }) {
   const signUp = async (userData, rememberMe = false) => {
     const emailLower = userData.email.toLowerCase()
     const isAdmin = emailLower === ADMIN_EMAIL.toLowerCase()
-    const division = getDivisionFromAverage(userData.threeDartAverage || 0)
 
     try {
       console.log('Attempting Firebase sign up...')
@@ -65,7 +58,7 @@ export function AuthProvider({ children }) {
       const newUser = {
         ...userData,
         threeDartAverage: userData.threeDartAverage || 0,
-        division: division,
+        division: null,
         isAdmin: isAdmin,
         isTournamentAdmin: false,
         isSubscribed: isAdmin,
@@ -144,12 +137,11 @@ export function AuthProvider({ children }) {
   const addUserManually = async (userData) => {
     const emailLower = userData.email.toLowerCase()
     const isAdmin = emailLower === ADMIN_EMAIL.toLowerCase()
-    const division = getDivisionFromAverage(userData.threeDartAverage || 0)
 
     const newUser = {
       ...userData,
       threeDartAverage: userData.threeDartAverage || 0,
-      division: division,
+      division: null,
       isAdmin: isAdmin,
       isTournamentAdmin: false,
       isSubscribed: isAdmin || userData.isSubscribed || false,

@@ -240,11 +240,11 @@ export default function SeasonManagement() {
             style={{ flex: 1, minWidth: '150px' }}
           >
             <option value="">Select Division</option>
-            <option value="Elite">Elite (55+)</option>
-            <option value="Premier">Premier (50-54.99)</option>
-            <option value="Champion">Champion (45-49.99)</option>
-            <option value="Diamond">Diamond (40-44.99)</option>
-            <option value="Gold">Gold (Below 40)</option>
+            <option value="Elite">Elite</option>
+            <option value="Diamond">Diamond</option>
+            <option value="Gold">Gold</option>
+            <option value="Silver">Silver</option>
+            <option value="Bronze">Bronze</option>
           </select>
           <button className="btn btn-primary" onClick={movePlayerDivision}>
             Move Player
