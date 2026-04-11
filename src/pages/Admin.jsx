@@ -37,6 +37,16 @@ export default function Admin() {
     } else {
       setPendingResults(pending);
     }
+
+    if (user?.isAdmin && !localStorage.getItem('eliteArrowsCurrentSeason')) {
+      const seasons = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
+      if (seasons.length === 0) {
+        const defaultSeason = { id: Date.now(), name: 'Season 1', createdAt: new Date().toISOString(), status: 'active', isArchived: false, startDate: '2025-05-01', endDate: '2025-06-01' }
+        seasons.push(defaultSeason)
+        localStorage.setItem('eliteArrowsSeasons', JSON.stringify(seasons))
+        localStorage.setItem('eliteArrowsCurrentSeason', 'Season 1')
+      }
+    }
   }, [user.isAdmin, user.isTournamentAdmin]);
 
   const approveResult = (resultId) => {
@@ -1062,6 +1072,19 @@ export default function Admin() {
             <div style={{ padding: '15px', background: 'var(--accent-cyan)', color: '#000', borderRadius: '8px', textAlign: 'center', fontWeight: 'bold' }}>
               {localStorage.getItem('eliteArrowsCurrentSeason') || new Date().getFullYear().toString()}
             </div>
+            {(() => {
+              const seasons = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
+              const activeSeasonName = localStorage.getItem('eliteArrowsCurrentSeason')
+              const currentSeason = seasons.find(s => s.name === activeSeasonName)
+              if (currentSeason?.startDate && currentSeason?.endDate) {
+                return (
+                  <p style={{ color: '#000', marginTop: '10px', fontSize: '0.9rem' }}>
+                    {new Date(currentSeason.startDate).toLocaleDateString()} - {new Date(currentSeason.endDate).toLocaleDateString()}
+                  </p>
+                )
+              }
+              return null
+            })()}
           </div>
 
           <div className="card" style={{ marginBottom: '20px' }}>
@@ -1070,12 +1093,16 @@ export default function Admin() {
               <button className="btn btn-primary" onClick={() => {
                 const name = prompt('Enter season name:')
                 if (name) {
-                  const seasons = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
-                  const newSeason = { id: Date.now(), name, createdAt: new Date().toISOString(), status: 'active', isArchived: false }
-                  seasons.push(newSeason)
-                  localStorage.setItem('eliteArrowsSeasons', JSON.stringify(seasons))
-                  localStorage.setItem('eliteArrowsCurrentSeason', name)
-                  alert(`Season "${name}" created!`)
+                  const startDate = prompt('Enter start date (YYYY-MM-DD):', '2025-05-01')
+                  const endDate = prompt('Enter end date (YYYY-MM-DD):', '2025-06-01')
+                  if (startDate && endDate) {
+                    const seasons = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
+                    const newSeason = { id: Date.now(), name, createdAt: new Date().toISOString(), status: 'active', isArchived: false, startDate, endDate }
+                    seasons.push(newSeason)
+                    localStorage.setItem('eliteArrowsSeasons', JSON.stringify(seasons))
+                    localStorage.setItem('eliteArrowsCurrentSeason', name)
+                    alert(`Season "${name}" created! (${startDate} - ${endDate})`)
+                  }
                 }
               }}>Create New Season</button>
             </div>
@@ -1098,7 +1125,7 @@ export default function Admin() {
                         <div key={s.id} className="player-card">
                           <div className="player-info">
                             <h3>{s.name}</h3>
-                            <p style={{ fontSize: '0.8rem' }}>Created: {new Date(s.createdAt).toLocaleDateString()}</p>
+                            <p style={{ fontSize: '0.8rem' }}>{new Date(s.startDate).toLocaleDateString()} - {new Date(s.endDate).toLocaleDateString()}</p>
                           </div>
                           <div style={{ display: 'flex', gap: '8px' }}>
                             {s.name !== activeSeason && (
