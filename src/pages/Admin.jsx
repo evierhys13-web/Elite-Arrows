@@ -41,7 +41,7 @@ export default function Admin() {
     if (user?.isAdmin && !localStorage.getItem('eliteArrowsCurrentSeason')) {
       const seasons = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
       if (seasons.length === 0) {
-        const defaultSeason = { id: Date.now(), name: 'Season 1', createdAt: new Date().toISOString(), status: 'active', isArchived: false, startDate: '2025-05-01', endDate: '2025-06-01' }
+        const defaultSeason = { id: Date.now(), name: 'Season 1', createdAt: new Date().toISOString(), status: 'active', isArchived: false, startDate: '2026-05-01', endDate: '2026-06-01' }
         seasons.push(defaultSeason)
         localStorage.setItem('eliteArrowsSeasons', JSON.stringify(seasons))
         localStorage.setItem('eliteArrowsCurrentSeason', 'Season 1')

@@ -11,7 +11,7 @@ export default function Home() {
     if (currentSeason) {
       return currentSeason
     }
-    return { name: 'Season 1', startDate: '2025-05-01', endDate: '2025-06-01' }
+    return { name: 'Season 1', startDate: '2026-05-01', endDate: '2026-06-01' }
   })
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
 
