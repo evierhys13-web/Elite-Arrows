@@ -123,12 +123,14 @@ export default function SeasonManagement() {
           All new results will be recorded under this season.
         </p>
         <button className="btn btn-primary" style={{ marginTop: '15px' }} onClick={() => {
-          localStorage.setItem('eliteArrowsCurrentSeason', 'Season 1')
-          localStorage.setItem('eliteArrowsSeasons', JSON.stringify([{ id: Date.now(), name: 'Season 1', createdAt: new Date().toISOString(), status: 'active', isArchived: false }]))
-          alert('Reset to Season 1!')
+          if (!confirm('Reset everything? This will clear all results and seasons.')) return
+          localStorage.setItem('eliteArrowsResults', JSON.stringify([]))
+          localStorage.setItem('eliteArrowsCurrentSeason', '')
+          localStorage.setItem('eliteArrowsSeasons', JSON.stringify([]))
+          alert('Reset complete!')
           window.location.reload()
         }}>
-          Reset to Season 1
+          Reset
         </button>
       </div>
 
