@@ -1158,26 +1158,6 @@ export default function Admin() {
             }}>Reset Current Season Table</button>
           </div>
 
-          <div className="card" style={{ marginBottom: '20px', border: '2px solid var(--warning)' }}>
-            <h3 className="card-title" style={{ color: 'var(--warning)' }}>⚠️ Reset All Divisions</h3>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
-              This will remove division assignments from ALL players. Use with caution!
-            </p>
-            <button className="btn btn-danger" onClick={async () => {
-              if (!confirm('Are you sure you want to remove ALL division assignments? This cannot be undone!')) return
-              if (!confirm('Final confirmation: Clear all player divisions?')) return
-              
-              const users = getAllUsers()
-              for (const u of users) {
-                await setDoc(doc(db, 'users', u.id), { division: null }, { merge: true })
-              }
-              alert(`Divisions cleared for ${users.length} players!`)
-              window.location.reload()
-            }}>
-              Clear All Divisions
-            </button>
-          </div>
-
           <div className="card">
             <h3 className="card-title">Move Player Between Divisions</h3>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
