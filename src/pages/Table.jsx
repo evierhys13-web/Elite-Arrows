@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { db, doc, setDoc } from '../firebase'
 
 export default function Table() {
   const [activeDivision, setActiveDivision] = useState('Overall')
@@ -106,22 +105,6 @@ export default function Table() {
           </button>
         ))}
       </div>
-
-      {user?.isAdmin && (
-        <div style={{ marginBottom: '15px', marginTop: '15px' }}>
-          <button className="btn btn-danger" onClick={async () => {
-            if (!confirm('Remove division from ALL users? Admins will need to reassign divisions.')) return
-            const allU = getAllUsers()
-            for (const u of allU) {
-              await setDoc(doc(db, 'users', u.id), { division: null }, { merge: true })
-            }
-            alert(`Divisions cleared for ${allU.length} users!`)
-            window.location.reload()
-          }}>
-            Clear All Divisions
-          </button>
-        </div>
-      )}
 
       <div className="card">
         {playersInDivision.length === 0 ? (
