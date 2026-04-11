@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { doc, setDoc } from '../firebase'
 
 export default function SeasonManagement() {
   const { user, getAllUsers } = useAuth()
@@ -122,6 +123,24 @@ export default function SeasonManagement() {
         <p style={{ color: 'var(--text-muted)', marginTop: '10px', fontSize: '0.85rem' }}>
           All new results will be recorded under this season.
         </p>
+      </div>
+
+      <div className="card" style={{ marginBottom: '20px', border: '2px solid var(--warning)' }}>
+        <h3 className="card-title" style={{ color: 'var(--warning)' }}>⚠️ Clear All Divisions</h3>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
+          Remove division from all users. Admins will need to reassign divisions.
+        </p>
+        <button className="btn btn-danger" onClick={async () => {
+          if (!confirm('Remove division from ALL users?')) return
+          const allUsers = getAllUsers()
+          for (const u of allUsers) {
+            await setDoc(doc(db, 'users', u.id), { division: null }, { merge: true })
+          }
+          alert(`Divisions cleared for ${allUsers.length} users!`)
+          window.location.reload()
+        }}>
+          Clear All Divisions
+        </button>
       </div>
 
       <div className="card" style={{ marginBottom: '20px' }}>
