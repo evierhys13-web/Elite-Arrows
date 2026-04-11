@@ -10,7 +10,6 @@ export default function Auth() {
     email: '',
     password: '',
     confirmPassword: '',
-    threeDartAverage: '',
     dartCounterUsername: '',
     rememberMe: false
   })
@@ -49,19 +48,15 @@ export default function Auth() {
 
     try {
       if (isSignUp) {
-        if (!formData.username || !formData.email || !formData.password || !formData.threeDartAverage) {
+        if (!formData.username || !formData.email || !formData.password) {
           throw new Error('All fields are required')
-        }
-        const avg = parseFloat(formData.threeDartAverage);
-        if (isNaN(avg) || avg < 0) {
-          throw new Error('Please enter a valid 3-dart average')
         }
 
         await signUp({
           username: formData.username,
           email: formData.email,
           password: formData.password,
-          threeDartAverage: avg,
+          threeDartAverage: 0,
           dartCounterUsername: formData.dartCounterUsername,
           dartCounterLink: formData.dartCounterUsername ? `https://dartcounter.net/player/${formData.dartCounterUsername}` : ''
         }, formData.rememberMe)
@@ -123,21 +118,6 @@ export default function Auth() {
                     onChange={handleChange}
                     placeholder="Enter your username"
                     autoComplete="username"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="threeDartAverage">3-Dart Average</label>
-                  <input
-                    type="number"
-                    id="threeDartAverage"
-                    name="threeDartAverage"
-                    value={formData.threeDartAverage}
-                    onChange={handleChange}
-                    placeholder="Enter your 3-dart average"
-                    step="0.01"
-                    min="0"
-                    autoComplete="off"
                   />
                 </div>
 
