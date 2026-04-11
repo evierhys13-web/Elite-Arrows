@@ -196,6 +196,7 @@ export function AuthProvider({ children }) {
       }
       const existingNotifications = JSON.parse(localStorage.getItem('eliteArrowsNotifications') || '[]')
       localStorage.setItem('eliteArrowsNotifications', JSON.stringify([...existingNotifications, notification]))
+      alert('Friend request sent!')
     }
   }
 
