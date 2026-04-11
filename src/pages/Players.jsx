@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export default function Players() {
-  const { user, getAllUsers, addFriend, removeFriend } = useAuth()
+  const { user, getAllUsers, addFriend, removeFriend, cancelFriendRequest, acceptFriendRequest, declineFriendRequest } = useAuth()
   const [showFriendsOnly, setShowFriendsOnly] = useState(false)
   const navigate = useNavigate()
 
@@ -11,14 +11,6 @@ export default function Players() {
   const players = showFriendsOnly 
     ? allUsers.filter(u => (user.friends || []).includes(u.id))
     : allUsers.filter(u => u.id !== user.id)
-
-  const handleFriendToggle = (playerId) => {
-    if ((user.friends || []).includes(playerId)) {
-      removeFriend(playerId)
-    } else {
-      addFriend(playerId)
-    }
-  }
 
   return (
     <div className="page">
@@ -132,13 +124,48 @@ export default function Players() {
                     💬 Chat
                   </button>
                 )}
-                <button 
-                  className={`btn ${(user.friends || []).includes(player.id) ? 'btn-secondary' : 'btn-primary'}`}
-                  style={{ padding: '8px 16px' }}
-                  onClick={() => handleFriendToggle(player.id)}
-                >
-                  {(user.friends || []).includes(player.id) ? 'Remove' : 'Add Friend'}
-                </button>
+                {(user.friends || []).includes(player.id) ? (
+                  <button 
+                    className="btn btn-secondary"
+                    style={{ padding: '8px 16px' }}
+                    onClick={() => removeFriend(player.id)}
+                  >
+                    Remove
+                  </button>
+                ) : (user.sentFriendRequests || []).includes(player.id) ? (
+                  <button 
+                    className="btn btn-secondary"
+                    style={{ padding: '8px 16px' }}
+                    onClick={() => cancelFriendRequest(player.id)}
+                  >
+                    Cancel Request
+                  </button>
+                ) : (user.receivedFriendRequests || []).includes(player.id) ? (
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    <button 
+                      className="btn btn-primary"
+                      style={{ padding: '8px 12px', fontSize: '0.8rem' }}
+                      onClick={() => acceptFriendRequest(player.id)}
+                    >
+                      Accept
+                    </button>
+                    <button 
+                      className="btn btn-secondary"
+                      style={{ padding: '8px 12px', fontSize: '0.8rem' }}
+                      onClick={() => declineFriendRequest(player.id)}
+                    >
+                      Decline
+                    </button>
+                  </div>
+                ) : (
+                  <button 
+                    className="btn btn-primary"
+                    style={{ padding: '8px 16px' }}
+                    onClick={() => addFriend(player.id)}
+                  >
+                    Add Friend
+                  </button>
+                )}
               </div>
             </div>
           ))
