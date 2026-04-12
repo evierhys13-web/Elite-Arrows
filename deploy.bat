@@ -1,5 +1,5 @@
 @echo off
 set PATH=C:\Program Files\Git\cmd;%PATH%
 git add -A
-git commit -m "Remove onSnapshot users"
+git commit -m "Improve auth loading"
 git push

@@ -14,9 +14,10 @@ export function AuthProvider({ children }) {
   const [notifications, setNotifications] = useState([])
 
   useEffect(() => {
+    setLoading(true)
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        try {
+      try {
+        if (firebaseUser) {
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
           if (userDoc.exists()) {
             setUser({ id: userDoc.id, ...userDoc.data() })
@@ -24,11 +25,10 @@ export function AuthProvider({ children }) {
             await firebaseSignOut(auth)
             setUser(null)
           }
-        } catch (e) {
-          console.error('Error fetching user:', e)
+        } else {
           setUser(null)
         }
-      } else {
+      } catch (e) {
         setUser(null)
       }
       setLoading(false)
@@ -38,10 +38,13 @@ export function AuthProvider({ children }) {
       const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
       setAllUsers(users)
     }).catch(() => {
-      setAllUsers([])
+      setAllUsers(JSON.parse(localStorage.getItem('eliteArrowsUsers') || '[]'))
     })
 
+    const timer = setTimeout(() => setLoading(false), 5000)
+    
     return () => {
+      clearTimeout(timer)
       unsubscribeAuth()
     }
   }, [])
