@@ -176,7 +176,7 @@ export default function Subscription() {
               {paymentMethod === 'paypal' && (
                 <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
                   <h4 style={{ marginBottom: '15px' }}>PayPal Payment</h4>
-                  <p>Send payment to: <strong>@RhysHowe834</strong></p>
+                  <p>Send payment to: <strong>dhlineberry@yahoo.com</strong></p>
                   <p style={{ marginTop: '10px' }}><strong>Reference:</strong> {user.username}</p>
                 </div>
               )}

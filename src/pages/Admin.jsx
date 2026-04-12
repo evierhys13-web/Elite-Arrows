@@ -20,6 +20,7 @@ export default function Admin() {
   })
   const [colors, setColors] = useState(() => JSON.parse(localStorage.getItem('eliteArrowsColors') || '{"primary": "#4da8da", "background": "#0a1628", "button": "#4da8da"}'))
   const [subscriptionPot, setSubscriptionPot] = useState(() => parseFloat(localStorage.getItem('eliteArrowsSubscriptionPot') || '0'))
+  const [subscriptionPot10, setSubscriptionPot10] = useState(() => parseFloat(localStorage.getItem('eliteArrowsSubscriptionPot10') || '0'))
   const [tournamentPot, setTournamentPot] = useState(() => parseFloat(localStorage.getItem('eliteArrowsTournamentPot') || '0'))
   const [showSubmitGame, setShowSubmitGame] = useState(false)
   const [gameForm, setGameForm] = useState({
@@ -104,16 +105,24 @@ export default function Admin() {
     const index = users.findIndex(u => u.id === userId)
     if (index !== -1) {
       const userDivision = users[index].division
-      const amount = (userDivision === 'Elite' || userDivision === 'Diamond') ? 10 : 5
+      const isHighTier = userDivision === 'Elite' || userDivision === 'Diamond'
+      const amount = isHighTier ? 10 : 5
       
       users[index].isSubscribed = true
       users[index].paymentPending = false
       users[index].subscriptionDate = new Date().toISOString()
       users[index].subscriptionSource = 'payment'
       localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
-      const newPot = subscriptionPot + amount
-      setSubscriptionPot(newPot)
-      localStorage.setItem('eliteArrowsSubscriptionPot', newPot.toString())
+      
+      if (isHighTier) {
+        const newPot10 = subscriptionPot10 + amount
+        setSubscriptionPot10(newPot10)
+        localStorage.setItem('eliteArrowsSubscriptionPot10', newPot10.toString())
+      } else {
+        const newPot = subscriptionPot + amount
+        setSubscriptionPot(newPot)
+        localStorage.setItem('eliteArrowsSubscriptionPot', newPot.toString())
+      }
       addToMoneyHistory('subscription', amount, `Payment from ${users[index].username}`)
     }
   }
@@ -516,16 +525,24 @@ export default function Admin() {
                     const users = getAllUsers()
                     const index = users.findIndex(us => us.id === u.id)
                     if (index !== -1) {
+                      const isHighTier = u.division === 'Elite' || u.division === 'Diamond'
                       users[index].isSubscribed = true
                       users[index].freeAdminSubscription = true
                       users[index].subscriptionDate = new Date().toISOString()
                       users[index].subscriptionSource = 'admin_granted'
                       localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
                       
-                      const newPot = subscriptionPot + 5
-                      setSubscriptionPot(newPot)
-                      localStorage.setItem('eliteArrowsSubscriptionPot', newPot.toString())
-                      addToMoneyHistory('subscription', 5, `Free subscription granted to ${u.username}`)
+                      const amount = 5
+                      if (isHighTier) {
+                        const newPot10 = subscriptionPot10 + amount
+                        setSubscriptionPot10(newPot10)
+                        localStorage.setItem('eliteArrowsSubscriptionPot10', newPot10.toString())
+                      } else {
+                        const newPot = subscriptionPot + amount
+                        setSubscriptionPot(newPot)
+                        localStorage.setItem('eliteArrowsSubscriptionPot', newPot.toString())
+                      }
+                      addToMoneyHistory('subscription', amount, `Free subscription granted to ${u.username}`)
                       
                       alert(`${u.username} now has free subscription (admin granted)`)
                     }
@@ -640,16 +657,24 @@ export default function Admin() {
                 const users = getAllUsers()
                 const index = users.findIndex(u => u.id === e.target.value)
                 if (index !== -1) {
+                  const isHighTier = users[index].division === 'Elite' || users[index].division === 'Diamond'
                   users[index].isSubscribed = true
                   users[index].freeAdminSubscription = true
                   users[index].subscriptionDate = new Date().toISOString()
                   users[index].subscriptionSource = 'admin_granted'
                   localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
                   
-                  const newPot = subscriptionPot + 5
-                  setSubscriptionPot(newPot)
-                  localStorage.setItem('eliteArrowsSubscriptionPot', newPot.toString())
-                  addToMoneyHistory('subscription', 5, `Free subscription granted to ${users[index].username}`)
+                  const amount = 5
+                  if (isHighTier) {
+                    const newPot10 = subscriptionPot10 + amount
+                    setSubscriptionPot10(newPot10)
+                    localStorage.setItem('eliteArrowsSubscriptionPot10', newPot10.toString())
+                  } else {
+                    const newPot = subscriptionPot + amount
+                    setSubscriptionPot(newPot)
+                    localStorage.setItem('eliteArrowsSubscriptionPot', newPot.toString())
+                  }
+                  addToMoneyHistory('subscription', amount, `Free subscription granted to ${users[index].username}`)
                   
                   alert('Free subscription granted!')
                   e.target.value = ''
@@ -1313,7 +1338,7 @@ export default function Admin() {
         <div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
             <div className="card">
-              <h3 className="card-title">Subscription Pot</h3>
+              <h3 className="card-title">Standard Subscription Pot (£5)</h3>
               <div style={{ 
                 padding: '30px', 
                 background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-cyan))',
@@ -1321,11 +1346,11 @@ export default function Admin() {
                 textAlign: 'center',
                 marginBottom: '20px'
               }}>
-                <p style={{ fontSize: '0.9rem', marginBottom: '5px', opacity: 0.9 }}>Total Collected</p>
+                <p style={{ fontSize: '0.9rem', marginBottom: '5px', opacity: 0.9 }}>Gold/Silver/Bronze</p>
                 <p style={{ fontSize: '3rem', fontWeight: 'bold', margin: 0 }}>£{subscriptionPot.toFixed(2)}</p>
               </div>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                From £5/month subscriptions ({subscribers.length} active subscribers)
+                From £5/month subscriptions
               </p>
               <div style={{ marginTop: '15px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
                 <h4 style={{ marginBottom: '10px' }}>Adjust Pot</h4>
@@ -1347,6 +1372,51 @@ export default function Admin() {
                         addToMoneyHistory('subscription', amount, 'Manual adjustment')
                         alert(`Subscription pot ${amount >= 0 ? 'increased' : 'decreased'} by £${Math.abs(amount).toFixed(2)}`)
                         document.getElementById('subPotAdjust').value = ''
+                      }
+                    }}
+                  >
+                    Update
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="card">
+              <h3 className="card-title">Premium Subscription Pot (£10)</h3>
+              <div style={{ 
+                padding: '30px', 
+                background: 'linear-gradient(135deg, #ffd700, #ff8c00)',
+                borderRadius: '12px',
+                textAlign: 'center',
+                marginBottom: '20px',
+                color: '#000'
+              }}>
+                <p style={{ fontSize: '0.9rem', marginBottom: '5px', opacity: 0.9 }}>Elite/Diamond</p>
+                <p style={{ fontSize: '3rem', fontWeight: 'bold', margin: 0 }}>£{subscriptionPot10.toFixed(2)}</p>
+              </div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                From £10/month subscriptions
+              </p>
+              <div style={{ marginTop: '15px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                <h4 style={{ marginBottom: '10px' }}>Adjust Pot</h4>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <input 
+                    type="number" 
+                    id="subPot10Adjust"
+                    placeholder="Amount"
+                    style={{ flex: 1, padding: '8px' }}
+                  />
+                  <button 
+                    className="btn btn-primary"
+                    onClick={() => {
+                      const amount = parseFloat(document.getElementById('subPot10Adjust').value) || 0
+                      if (amount !== 0) {
+                        const newPot10 = subscriptionPot10 + amount
+                        setSubscriptionPot10(newPot10)
+                        localStorage.setItem('eliteArrowsSubscriptionPot10', newPot10.toString())
+                        addToMoneyHistory('subscription', amount, 'Manual adjustment (£10 tier)')
+                        alert(`Premium subscription pot ${amount >= 0 ? 'increased' : 'decreased'} by £${Math.abs(amount).toFixed(2)}`)
+                        document.getElementById('subPot10Adjust').value = ''
                       }
                     }}
                   >
