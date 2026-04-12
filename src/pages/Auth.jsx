@@ -194,6 +194,21 @@ export default function Auth() {
 
             {isSignUp && (
               <div className="form-group">
+                <label htmlFor="email">Email</label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="Enter your email"
+                  autoComplete="email"
+                />
+              </div>
+            )}
+
+            {isSignUp && (
+              <div className="form-group">
                 <label htmlFor="confirmPassword">Confirm Password</label>
                 <input
                   type="password"
@@ -207,23 +222,7 @@ export default function Auth() {
               </div>
             )}
 
-            {isSignUp && (
-              <div className="form-group">
-                <label htmlFor="email">Email</label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="Enter your email"
-                  autoComplete="email"
-                />
-              </div>
-            )}
-            )}
-
-            <div className="checkbox-group">
+          <div className="checkbox-group">
               <input
                 type="checkbox"
                 id="rememberMe"

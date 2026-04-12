@@ -1,5 +1,5 @@
 @echo off
 set PATH=C:\Program Files\Git\cmd;%PATH%
 git add -A
-git commit -m "Fix signup order"
+git commit -m "Signup order fix"
 git push
