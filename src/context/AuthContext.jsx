@@ -75,10 +75,11 @@ export function AuthProvider({ children }) {
       const newUser = {
         ...userData,
         threeDartAverage: userData.threeDartAverage || 0,
-        division: null,
+        division: isAdmin ? 'Admin' : null,
         isAdmin: isAdmin,
         isTournamentAdmin: false,
         isSubscribed: isAdmin || userData.isSubscribed || false,
+        freeAdminSubscription: isAdmin || false,
         adminRequestPending: false,
         friends: [],
         isOnline: true,
@@ -121,6 +122,8 @@ export function AuthProvider({ children }) {
       if (isAdminEmail) {
         userData.isAdmin = true
         userData.isSubscribed = true
+        userData.freeAdminSubscription = true
+        userData.division = 'Admin'
         await setDoc(doc(db, 'users', firebaseUser.uid), userData, { merge: true })
       }
 
