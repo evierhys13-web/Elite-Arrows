@@ -13,7 +13,7 @@ export function AuthProvider({ children }) {
   const [allUsers, setAllUsers] = useState([])
   const [notifications, setNotifications] = useState([])
   
-  const SENSITIVE_FIELDS = ['password', 'passwordHash', 'passwordString', 'passwordKey', 'firebaseId']
+  const SENSITIVE_FIELDS = ['password', 'passwordString', 'passwordHash', 'passwordKey', 'passwordStringValue', 'password', 'firebaseId']
   
 const cleanUserData = (users) => {
     return users.map(u => {
@@ -45,22 +45,16 @@ const cleanUserData = (users) => {
         let users = snapshot.docs.map(doc => {
           const userData = doc.data()
           return { id: doc.id, ...userData }
-        })
+})
         
-        const hasSensitiveFields = users.some(u => SENSITIVE_FIELDS.some(field => u[field] && u[field].length > 0))
+        // ALWAYS run cleanup - remove EVERY sensitive field from EVERY user on every load
+        console.log('Running Firestore cleanup to remove password fields...')
+        await removeSensitiveFieldsFromFirestore(users)
         
-        if (hasSensitiveFields) {
-          console.log('Found sensitive fields in Firestore, cleaning...')
-          const cleanedUsers = cleanUserData(users)
-          await removeSensitiveFieldsFromFirestore(users)
+        const cleanedUsers = cleanUserData(users)
+        if (users.length > 0) {
           setAllUsers(cleanedUsers)
           localStorage.setItem('eliteArrowsUsers', JSON.stringify(cleanedUsers))
-        } else {
-          const cleanedUsers = cleanUserData(users)
-          if (users.length > 0) {
-            setAllUsers(cleanedUsers)
-            localStorage.setItem('eliteArrowsUsers', JSON.stringify(cleanedUsers))
-          }
         }
       } catch (e) {
         const localUsers = JSON.parse(localStorage.getItem('eliteArrowsUsers') || '[]')

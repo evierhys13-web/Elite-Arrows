@@ -1,8 +1,8 @@
 import { initializeApp } from 'firebase/app'
-import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, onSnapshot, deleteDoc, addDoc, updateDoc, deleteField } from 'firebase/firestore'
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence } from 'firebase/auth'
+import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, onSnapshot, deleteDoc, addDoc, updateDoc, deleteField as deleteFieldFirestore } from 'firebase/firestore'
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, sendPasswordResetEmail } from 'firebase/auth'
 
-export const FieldValue = deleteField
+export const FieldValue = deleteFieldFirestore
 
 const firebaseConfig = {
   apiKey: "AIzaSyBLuRvmE1UgKvYFw7K0utT11ljjrf52vlA",
@@ -28,5 +28,6 @@ export const chatMessagesCollection = collection(db, 'chatMessages')
 export { 
   doc, setDoc, getDoc, getDocs, query, where, orderBy, onSnapshot, deleteDoc, collection, addDoc,
   signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged,
-  setPersistence, browserSessionPersistence, browserLocalPersistence
+  setPersistence, browserSessionPersistence, browserLocalPersistence,
+  sendPasswordResetEmail
 }

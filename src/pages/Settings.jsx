@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
+import { auth, sendPasswordResetEmail } from '../firebase'
 
 export default function Settings() {
   const { signOut, user, updateUser, getAllUsers, notifications: contextNotifications } = useAuth()
@@ -86,14 +87,20 @@ export default function Settings() {
     alert('Email updated!')
   }
 
-  const handleUpdatePassword = () => {
-    if (!newPassword || newPassword.length < 6) return alert('Password must be at least 6 characters')
-    if (newPassword !== confirmPassword) return alert('Passwords do not match')
-    updateUser({ password: newPassword })
-    setShowPasswordForm(false)
-    setNewPassword('')
-    setConfirmPassword('')
-    alert('Password updated!')
+  const handleForgotPassword = async () => {
+    if (!user?.email) {
+      alert('You must be logged in')
+      return
+    }
+    if (!confirm('Send password reset email to your email address?')) return
+    
+    try {
+      await sendPasswordResetEmail(auth, user.email)
+      alert('Password reset email sent! Check your inbox.')
+      setShowPasswordForm(false)
+    } catch (error) {
+      alert('Error: ' + error.message)
+    }
   }
 
   const handleSaveSocials = () => {
@@ -204,24 +211,12 @@ export default function Settings() {
 
           <div className="card" style={{ marginBottom: '20px' }}>
             <h3 className="card-title">Change Password</h3>
-            {!showPasswordForm ? (
-              <button className="btn btn-secondary btn-block" onClick={() => setShowPasswordForm(true)}>Change Password</button>
-            ) : (
-              <>
-                <div className="form-group">
-                  <label>New Password</label>
-                  <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Enter new password" />
-                </div>
-                <div className="form-group">
-                  <label>Confirm Password</label>
-                  <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirm new password" />
-                </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button className="btn btn-primary" onClick={handleUpdatePassword}>Save</button>
-                  <button className="btn btn-secondary" onClick={() => setShowPasswordForm(false)}>Cancel</button>
-                </div>
-              </>
-            )}
+            <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
+              Send a password reset link to your email address.
+            </p>
+            <button className="btn btn-primary btn-block" onClick={handleForgotPassword}>
+              Send Reset Email
+            </button>
           </div>
 
           <div className="card" style={{ marginBottom: '20px' }}>
