@@ -1,5 +1,5 @@
 @echo off
 set PATH=C:\Program Files\Git\cmd;%PATH%
 git add -A
-git commit -m "Update reference to Elite Arrows Subscription"
+git commit -m "Add PayPal links"
 git push
