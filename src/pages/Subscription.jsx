@@ -115,7 +115,7 @@ export default function Subscription() {
               </ul>
             </div>
 
-<div className="subscription-card" style={{ flex: '1 1 200px', minWidth: '180px' }}>
+            <div className="subscription-card" style={{ flex: '1 1 200px', minWidth: '180px' }}>
               <h2 style={{ fontSize: '1.1rem' }}>Standard Pass</h2>
               <div className="subscription-price" style={{ fontSize: '1.5rem' }}>
                 £5<span style={{ fontSize: '0.8rem' }}>/month</span>
@@ -167,8 +167,8 @@ export default function Subscription() {
                   Pay £10
                 </button>
               )}
-            </div>
 </div>
+          </div>
           </div>
 
           {showPayment && paymentMethod === 'paypal10' && (
