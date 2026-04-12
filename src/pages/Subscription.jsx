@@ -189,14 +189,25 @@ export default function Subscription() {
 
       {showPayment && paymentMethod === 'paypal10' && (
         <div className="card" style={{ marginTop: '20px', border: '1px solid #ffd700' }}>
-          <h3 className="card-title" style={{ color: '#ffd700' }}>Premium Payment - PayPal Only</h3>
+          <h3 className="card-title" style={{ color: '#ffd700' }}>Premium Payment</h3>
           <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
-            For Elite/Diamond members, payment via PayPal only.
+            For Elite/Diamond members.
           </p>
-          <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
-            <p><strong>PayPal Email:</strong> <a href="https://paypal.me/DanielHineBerry" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-cyan)' }}>paypal.me/DanielHineBerry</a></p>
+          
+          <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', marginBottom: '15px' }}>
+            <p style={{ fontWeight: 'bold', marginBottom: '10px' }}>Option 1: PayPal</p>
+            <p><strong>PayPal Email:</strong> <a href="https://paypal.me/RhysHowe834" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-cyan)' }}>paypal.me/RhysHowe834</a></p>
             <p><strong>Reference:</strong> Elite Arrows Subscription</p>
           </div>
+          
+          <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', marginBottom: '15px' }}>
+            <p style={{ fontWeight: 'bold', marginBottom: '10px' }}>Option 2: Bank Transfer</p>
+            <p><strong>Account Name:</strong> Rhys Howe</p>
+            <p><strong>Sort Code:</strong> 60-09-09</p>
+            <p><strong>Account Number:</strong> 80249442</p>
+            <p><strong>Reference:</strong> Your Username</p>
+          </div>
+          
           <div style={{ marginTop: '15px' }}>
             <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
               Upload Proof of Payment (screenshot/photo)
@@ -231,10 +242,21 @@ export default function Subscription() {
           <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
             For Gold/Silver/Bronze members.
           </p>
-          <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
-            <p><strong>PayPal Email:</strong> <a href="https://paypal.me/DanielHineBerry" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-cyan)' }}>paypal.me/DanielHineBerry</a></p>
+          
+          <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', marginBottom: '15px' }}>
+            <p style={{ fontWeight: 'bold', marginBottom: '10px' }}>Option 1: PayPal</p>
+            <p><strong>PayPal Email:</strong> <a href="https://paypal.me/RhysHowe834" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-cyan)' }}>paypal.me/RhysHowe834</a></p>
             <p><strong>Reference:</strong> Elite Arrows Subscription</p>
           </div>
+          
+          <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', marginBottom: '15px' }}>
+            <p style={{ fontWeight: 'bold', marginBottom: '10px' }}>Option 2: Bank Transfer</p>
+            <p><strong>Account Name:</strong> Rhys Howe</p>
+            <p><strong>Sort Code:</strong> 60-09-09</p>
+            <p><strong>Account Number:</strong> 80249442</p>
+            <p><strong>Reference:</strong> Your Username</p>
+          </div>
+          
           <div style={{ marginTop: '15px' }}>
             <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
               Upload Proof of Payment (screenshot/photo)
