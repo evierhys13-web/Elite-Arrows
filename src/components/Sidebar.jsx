@@ -203,16 +203,11 @@ export default function Sidebar() {
     { path: '/results', label: 'Results', icon: TrophyIcon },
     { path: '/match-log', label: 'Match Log', icon: HistoryIcon },
     { path: '/tournaments', label: 'Tournaments', icon: TrophyIcon2 },
+    { path: '/cups', label: 'Cups', icon: TrophyIcon },
     { path: '/rewards', label: 'Rewards', icon: GiftIcon },
     { path: '/fixtures', label: 'Fixtures', icon: CalendarIcon },
     { path: '/submit-result', label: 'Submit Result', icon: PlusCircleIcon },
     { path: '/chat', label: 'Chat', icon: MessageIcon },
-  ]
-
-  const adminItems = [
-    { path: '/admin', label: 'Admin', icon: ShieldIcon, isAdminOnly: true },
-    { path: '/season-management', label: 'Season Management', icon: CalendarIcon, isAdminOnly: true },
-    { path: '/seed-data', label: 'Seed Data', icon: GamepadIcon, isAdminOnly: true },
   ]
 
   let navItems = [...freeTierItems]
@@ -224,8 +219,7 @@ export default function Sidebar() {
   if (isAdmin) {
     navItems = [
       ...navItems,
-      { path: '/certs', label: 'Certs', icon: TrophyIcon },
-      { path: '/cups', label: 'Cups', icon: TrophyIcon },
+      { path: '/admin', label: 'Admin', icon: ShieldIcon },
       { path: '/games', label: 'Games', icon: GamepadIcon },
       { path: '/season-management', label: 'Season Management', icon: CalendarIcon },
       { path: '/seed-data', label: 'Seed Data', icon: GamepadIcon },

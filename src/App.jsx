@@ -307,19 +307,12 @@ function AppRoutes() {
           </AppLayout>
         </SubscribedRoute>
       } />
-      <Route path="/certs" element={
-        <AdminRoute>
-          <AppLayout>
-            <Results />
-          </AppLayout>
-        </AdminRoute>
-      } />
       <Route path="/cups" element={
-        <AdminRoute>
+        <SubscribedRoute>
           <AppLayout>
             <Cups />
           </AppLayout>
-        </AdminRoute>
+        </SubscribedRoute>
       } />
       <Route path="/games" element={
         <AdminRoute>

@@ -4,11 +4,18 @@ import { useAuth } from '../context/AuthContext'
 export default function CupTournaments() {
   const { user, getAllUsers } = useAuth()
   const [showCreate, setShowCreate] = useState(false)
-  const [formData, setFormData] = useState({ name: '', entryFee: 5, maxPlayers: 8 })
+  const [formData, setFormData] = useState({ name: '', entryFee: 5, maxPlayers: 8, date: '', time: '' })
   const [selectedPlayers, setSelectedPlayers] = useState([])
   const [matches, setMatches] = useState([])
   const [winner, setWinner] = useState(null)
   
+  const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
+  const isEmailAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
+  const isDbAdmin = user?.isAdmin === true
+  const isTournamentAdmin = user?.isTournamentAdmin === true
+  const isAdmin = isEmailAdmin || isDbAdmin || isTournamentAdmin
+  const isSubscribed = user?.isSubscribed === true
+
   const allUsers = getAllUsers()
   const subscribedUsers = allUsers.filter(u => u.isSubscribed)
   const cups = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
@@ -23,7 +30,7 @@ export default function CupTournaments() {
 
   const createBracket = () => {
     if (selectedPlayers.length < 2) return alert('Need at least 2 players')
-    if (selectedPlayers.length > 8) return alert('Max 8 players for now')
+    if (selectedPlayers.length > formData.maxPlayers) return alert(`Max ${formData.maxPlayers} players`)
     
     const shuffled = [...selectedPlayers].sort(() => Math.random() - 0.5)
     const newMatches = []
@@ -74,6 +81,8 @@ export default function CupTournaments() {
 
   const saveCup = () => {
     if (!formData.name) return alert('Enter cup name')
+    if (!formData.date) return alert('Enter date')
+    if (!formData.time) return alert('Enter time')
     const newCup = {
       id: Date.now(),
       ...formData,
@@ -89,7 +98,7 @@ export default function CupTournaments() {
     setMatches([])
   }
 
-  if (!user.isAdmin && !user.isTournamentAdmin) {
+  if (!isSubscribed && !isAdmin) {
     return (
       <div className="page">
         <div className="page-header">
@@ -97,7 +106,7 @@ export default function CupTournaments() {
         </div>
         <div className="card">
           <p style={{ color: 'var(--text-muted)', textAlign: 'center' }}>
-            Only admins can create cup tournaments.
+            Subscribe to access Cup Tournaments.
           </p>
         </div>
       </div>
@@ -108,9 +117,11 @@ export default function CupTournaments() {
     <div className="page">
       <div className="page-header">
         <h1 className="page-title">Cup Tournaments</h1>
-        <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
-          + Create Cup
-        </button>
+        {isAdmin && (
+          <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
+            + Create Cup
+          </button>
+        )}
       </div>
 
       {showCreate && (
@@ -123,6 +134,22 @@ export default function CupTournaments() {
               value={formData.name} 
               onChange={(e) => setFormData({...formData, name: e.target.value})}
               placeholder="e.g., Winter Cup 2024"
+            />
+          </div>
+          <div className="form-group">
+            <label>Date</label>
+            <input 
+              type="date" 
+              value={formData.date} 
+              onChange={(e) => setFormData({...formData, date: e.target.value})}
+            />
+          </div>
+          <div className="form-group">
+            <label>Time</label>
+            <input 
+              type="time" 
+              value={formData.time} 
+              onChange={(e) => setFormData({...formData, time: e.target.value})}
             />
           </div>
           <div className="form-group">
@@ -141,6 +168,8 @@ export default function CupTournaments() {
             >
               <option value={4}>4</option>
               <option value={8}>8</option>
+              <option value={16}>16</option>
+              <option value={32}>32</option>
             </select>
           </div>
           
