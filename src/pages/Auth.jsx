@@ -128,35 +128,18 @@ export default function Auth() {
 
           <form className="auth-form" onSubmit={handleSubmit}>
             {isSignUp && (
-              <>
-                <div className="form-group">
-                  <label htmlFor="dartCounterUsername">DartCounter Username</label>
-                  <input
-                    type="text"
-                    id="dartCounterUsername"
-                    name="dartCounterUsername"
-                    value={formData.dartCounterUsername || ''}
-                    onChange={handleChange}
-                    placeholder="Enter your DartCounter username"
-                    autoComplete="off"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="threeDartAverage">3-Dart Average</label>
-                  <input
-                    type="number"
-                    id="threeDartAverage"
-                    name="threeDartAverage"
-                    value={formData.threeDartAverage}
-                    onChange={handleChange}
-                    placeholder="Enter your 3-dart average"
-                    step="0.01"
-                    min="0"
-                    autoComplete="off"
-                  />
-                </div>
-              </>
+              <div className="form-group">
+                <label htmlFor="email">Email</label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="Enter your email"
+                  autoComplete="email"
+                />
+              </div>
             )}
 
             {!isSignUp && (
@@ -193,30 +176,47 @@ export default function Auth() {
             </div>
 
             {isSignUp && (
+              <div className="form-group">
+                <label htmlFor="confirmPassword">Confirm Password</label>
+                <input
+                  type="password"
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  placeholder="Confirm your password"
+                  autoComplete="new-password"
+                />
+              </div>
+            )}
+
+            {isSignUp && (
               <>
                 <div className="form-group">
-                  <label htmlFor="confirmPassword">Confirm Password</label>
+                  <label htmlFor="dartCounterUsername">DartCounter Username (optional)</label>
                   <input
-                    type="password"
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
+                    type="text"
+                    id="dartCounterUsername"
+                    name="dartCounterUsername"
+                    value={formData.dartCounterUsername || ''}
                     onChange={handleChange}
-                    placeholder="Confirm your password"
-                    autoComplete="new-password"
+                    placeholder="Enter your DartCounter username"
+                    autoComplete="off"
                   />
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="email">Email</label>
+                  <label htmlFor="threeDartAverage">3-Dart Average (optional)</label>
                   <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    value={formData.email}
+                    type="number"
+                    id="threeDartAverage"
+                    name="threeDartAverage"
+                    value={formData.threeDartAverage}
                     onChange={handleChange}
-                    placeholder="Enter your email"
-                    autoComplete="email"
+                    placeholder="Enter your 3-dart average"
+                    step="0.01"
+                    min="0"
+                    autoComplete="off"
                   />
                 </div>
               </>
