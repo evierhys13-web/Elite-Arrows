@@ -98,8 +98,8 @@ export default function Subscription() {
           </div>
         </div>
       ) : (
-        <>
-          <div className="subscription-card" style={{ marginBottom: '15px' }}>
+        <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+          <div className="subscription-card" style={{ flex: '1 1 200px', minWidth: '200px' }}>
             <h2 style={{ color: '#888' }}>Free Tier</h2>
             <div className="subscription-price">Free<span>/month</span></div>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Unassigned</p>
@@ -109,8 +109,8 @@ export default function Subscription() {
             </ul>
           </div>
 
-          <div className="subscription-card" style={{ marginBottom: '15px' }}>
-            <h2>Standard Pass - £5</h2>
+          <div className="subscription-card" style={{ flex: '1 1 200px', minWidth: '200px' }}>
+            <h2>Standard Pass</h2>
             <div className="subscription-price">£5<span>/month</span></div>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Gold/Silver/Bronze</p>
             <ul className="subscription-features">
@@ -119,12 +119,12 @@ export default function Subscription() {
               <li>Full access</li>
             </ul>
             <button className="btn btn-primary btn-block" onClick={() => { setPaymentMethod('paypal5'); setShowPayment(true) }}>
-              Pay £5
+              Pay £5 Entry
             </button>
           </div>
 
-          <div className="subscription-card" style={{ border: '2px solid #ffd700', marginBottom: '15px' }}>
-            <h2 style={{ color: '#ffd700' }}>Premium Pass - £10</h2>
+          <div className="subscription-card" style={{ flex: '1 1 200px', minWidth: '200px', border: '2px solid #ffd700' }}>
+            <h2 style={{ color: '#ffd700' }}>Elite Pass</h2>
             <div className="subscription-price">£10<span>/month</span></div>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Elite/Diamond</p>
             <ul className="subscription-features">
@@ -133,10 +133,10 @@ export default function Subscription() {
               <li>VIP features</li>
             </ul>
             <button className="btn btn-primary btn-block" style={{ background: 'linear-gradient(135deg, #ffd700, #ff8c00)', border: 'none' }} onClick={() => { setPaymentMethod('paypal10'); setShowPayment(true) }}>
-              Pay £10
+              Pay £10 Entry
             </button>
           </div>
-        </>
+        </div>
       )}
 
       {showPayment && paymentMethod === 'paypal10' && (
