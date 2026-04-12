@@ -54,9 +54,11 @@ function SubscribedRoute({ children }) {
   }
   
   const isFreeTier = !user?.division || user?.division === 'Unassigned'
-  const isAdmin = user?.email?.toLowerCase() === 'rhyshowe2023@outlook.com'
+  const isEmailAdmin = user?.email?.toLowerCase() === 'rhyshowe2023@outlook.com'
+  const isDbAdmin = user?.isAdmin === true
+  const isAdmin = isEmailAdmin || isDbAdmin
   
-  if (!user?.isSubscribed && !isAdmin && !isFreeTier) {
+  if (!isAdmin && !user?.isSubscribed && !isFreeTier) {
     return (
       <div style={{ 
         padding: '40px', 
