@@ -1,5 +1,5 @@
 @echo off
 set PATH=C:\Program Files\Git\cmd;%PATH%
 git add -A
-git commit -m "Admin can see both subs"
+git commit -m "Fix subscription persistence and admin access"
 git push

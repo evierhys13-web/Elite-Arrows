@@ -155,6 +155,13 @@ export function AuthProvider({ children }) {
     try {
       await setDoc(doc(db, 'users', user.id), updates, { merge: true })
       setUser({ ...user, ...updates })
+      
+      const localUsers = JSON.parse(localStorage.getItem('eliteArrowsUsers') || '[]')
+      const index = localUsers.findIndex(u => u.id === user.id)
+      if (index !== -1) {
+        localUsers[index] = { ...localUsers[index], ...updates }
+        localStorage.setItem('eliteArrowsUsers', JSON.stringify(localUsers))
+      }
     } catch (error) {
       console.error('Error updating user:', error)
     }
@@ -310,7 +317,13 @@ export function AuthProvider({ children }) {
     updateUser({ adminRequestPending: true })
   }
 
-  const getAllUsers = () => allUsers
+  const getAllUsers = () => {
+    const localUsers = JSON.parse(localStorage.getItem('eliteArrowsUsers') || '[]')
+    if (localUsers.length > allUsers.length) {
+      return localUsers
+    }
+    return allUsers
+  }
 
   const getFriends = () => {
     return allUsers.filter(u => (user?.friends || []).includes(u.id))

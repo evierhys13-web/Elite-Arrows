@@ -70,7 +70,7 @@ export default function Subscription() {
         <h1 className="page-title">Subscription</h1>
       </div>
 
-      {user?.isSubscribed ? (
+      {(user?.isSubscribed && !isAdmin) ? (
         <div className="subscription-card">
           <h2>Elite Arrows Pass</h2>
           <div className="subscription-price">
@@ -81,7 +81,7 @@ export default function Subscription() {
             {user?.freeAdminSubscription && <p style={{ color: 'var(--accent-cyan)', fontSize: '0.85rem', marginTop: '5px' }}>(Free - Admin Granted)</p>}
           </div>
         </div>
-      ) : user?.paymentPending ? (
+      ) : (user?.paymentPending) ? (
         <div className="subscription-card">
           <h2>Elite Arrows Pass</h2>
           <div className="subscription-price">
