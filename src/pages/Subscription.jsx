@@ -100,8 +100,14 @@ export default function Subscription() {
             <div className="subscription-price">Free<span>/month</span></div>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Unassigned</p>
             <ul className="subscription-features">
-              <li>View players</li>
-              <li>View tables</li>
+              <li>Home</li>
+              <li>Table</li>
+              <li>Players</li>
+              <li>Leaderboards</li>
+              <li>Profile</li>
+              <li>Settings</li>
+              <li>Contact</li>
+              <li>Support</li>
             </ul>
           </div>
 
