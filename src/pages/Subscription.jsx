@@ -52,6 +52,15 @@ export default function Subscription() {
 
   const allUsers = getAllUsers()
   const pendingPayments = allUsers.filter(u => u.paymentPending && !u.isSubscribed)
+  
+  const getSubscriptionPrice = () => {
+    if (user?.division === 'Elite' || user?.division === 'Diamond') {
+      return 10
+    }
+    return 5
+  }
+  
+  const price = getSubscriptionPrice()
 
   return (
     <div className="page">
@@ -63,7 +72,7 @@ export default function Subscription() {
         <div className="subscription-card">
           <h2>Elite Arrows Pass</h2>
           <div className="subscription-price">
-            £5<span>/month</span>
+            £{price}<span>/month</span>
           </div>
           <div style={{ marginTop: '20px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
             <p style={{ color: 'var(--success)', fontWeight: '600' }}>Active Subscriber</p>
@@ -73,7 +82,7 @@ export default function Subscription() {
         <div className="subscription-card">
           <h2>Elite Arrows Pass</h2>
           <div className="subscription-price">
-            £5<span>/month</span>
+            £{price}<span>/month</span>
           </div>
           <div style={{ marginTop: '20px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
             <p style={{ color: 'var(--warning)', fontWeight: '600' }}>Payment Pending Approval</p>
@@ -87,13 +96,18 @@ export default function Subscription() {
           <div className="subscription-card">
             <h2>Elite Arrows Pass</h2>
             <div className="subscription-price">
-              £5<span>/month</span>
+              £{price}<span>/month</span>
             </div>
             
             <ul className="subscription-features">
               <li>Access to match submissions</li>
               <li>Exclusive tournament access</li>
               <li>Priority support</li>
+              <li style={{ color: 'var(--accent-cyan)', marginTop: '10px' }}>
+                {user?.division === 'Elite' || user?.division === 'Diamond' 
+                  ? 'Elite/Diamond Tier: £10/month' 
+                  : 'Standard Tier: £5/month'}
+              </li>
             </ul>
 
             <button className="btn btn-primary btn-block" onClick={() => setShowPayment(true)}>
@@ -107,6 +121,11 @@ export default function Subscription() {
             </p>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '10px' }}>
               Free users can only view: Table, Results, Match Log, Players, and Home
+            </p>
+            <p style={{ color: 'var(--accent-cyan)', fontSize: '0.9rem', marginTop: '15px', fontWeight: '600' }}>
+              {user?.division === 'Elite' || user?.division === 'Diamond' 
+                ? 'Your division (Elite/Diamond): £10/month' 
+                : 'Your division (Gold/Silver/Bronze): £5/month'}
             </p>
           </div>
         </>

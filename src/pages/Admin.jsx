@@ -103,13 +103,18 @@ export default function Admin() {
     const users = getAllUsers()
     const index = users.findIndex(u => u.id === userId)
     if (index !== -1) {
+      const userDivision = users[index].division
+      const amount = (userDivision === 'Elite' || userDivision === 'Diamond') ? 10 : 5
+      
       users[index].isSubscribed = true
       users[index].paymentPending = false
+      users[index].subscriptionDate = new Date().toISOString()
+      users[index].subscriptionSource = 'payment'
       localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
-      const newPot = subscriptionPot + 5
+      const newPot = subscriptionPot + amount
       setSubscriptionPot(newPot)
       localStorage.setItem('eliteArrowsSubscriptionPot', newPot.toString())
-      addToMoneyHistory('subscription', 5, `Payment from ${users[index].username}`)
+      addToMoneyHistory('subscription', amount, `Payment from ${users[index].username}`)
     }
   }
 
