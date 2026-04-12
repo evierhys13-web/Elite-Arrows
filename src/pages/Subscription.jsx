@@ -179,7 +179,7 @@ export default function Subscription() {
                 {hasActiveSubscription ? 'Already Subscribed' : 'This Season'}
               </button>
             ) : (
-              <button className="btn btn-primary btn-block" style={{ background: 'linear-gradient(135deg, #ffd700, #ff8c00)', border: 'none' }} onClick={() => { setPaymentMethod('paypal5'); setShowPayment(true) }}>
+              <button className="btn btn-primary btn-block" style={{ background: 'linear-gradient(135deg, #ffd700, #ff8c00)', border: 'none' }} onClick={() => { setPaymentMethod('paypal10'); setShowPayment(true) }}>
                 Entry Fee
               </button>
             )}
