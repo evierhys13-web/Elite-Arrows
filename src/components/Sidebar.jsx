@@ -182,8 +182,10 @@ export default function Sidebar() {
     navigate('/auth')
   }
 
+  const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
+  const isAdminEmail = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
   const isFreeTier = !user?.division || user?.division === 'Unassigned'
-  const isSubscribedUser = user?.isSubscribed && !user?.isAdmin && !user?.isTournamentAdmin
+  const isSubscribedUser = (user?.isSubscribed || isAdminEmail) && !user?.isTournamentAdmin
   
   const navItems = [
     { path: '/home', label: 'Home', icon: HomeIcon },

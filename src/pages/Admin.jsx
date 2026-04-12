@@ -272,7 +272,8 @@ export default function Admin() {
   const freeUsers = getAllUsers().filter(u => !u.isSubscribed && !u.paymentPending)
   const tournamentAdmins = getAllUsers().filter(u => u.isTournamentAdmin)
 
-  const isEmailAdmin = user?.email?.toLowerCase() === 'rhyshowe2023@outlook.com'
+  const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
+  const isEmailAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
   const isDbAdmin = user?.isAdmin === true
   const canAccess = isEmailAdmin || isDbAdmin || user?.isTournamentAdmin
   
@@ -727,10 +728,14 @@ export default function Admin() {
               <option value="Bronze">Bronze</option>
             </select>
             
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-              <input type="checkbox" id="grantSubCheck" />
-              <span>Grant Subscription</span>
-            </label>
+            <div className="form-group">
+              <label>Subscription Type</label>
+              <select id="grantSubType">
+                <option value="">Select Pass</option>
+                <option value="Elite Pass">Elite Pass (£5)</option>
+                <option value="Standard Pass">Standard Pass (£5)</option>
+              </select>
+            </div>
             
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
               <input type="checkbox" id="freeSubCheck" />
@@ -742,19 +747,20 @@ export default function Admin() {
               onClick={() => {
                 const userId = document.getElementById('assignDivisionUser').value
                 const division = document.getElementById('assignDivision').value
-                const grantSub = document.getElementById('grantSubCheck').checked
+                const subType = document.getElementById('grantSubType').value
                 const freeSub = document.getElementById('freeSubCheck').checked
                 
                 if (!userId) return alert('Select a user')
-                if (!division && !grantSub) return alert('Select a division or grant subscription')
+                if (!division && !subType) return alert('Select a division or subscription type')
                 
                 const users = getAllUsers()
                 const index = users.findIndex(u => u.id === userId)
                 if (index === -1) return
                 
                 if (division) users[index].division = division
-                if (grantSub) {
+                if (subType) {
                   users[index].isSubscribed = true
+                  users[index].subscriptionType = subType
                   users[index].subscriptionDate = new Date().toISOString()
                   users[index].subscriptionSource = freeSub ? 'admin_granted' : 'paid'
                 }
@@ -769,12 +775,12 @@ export default function Admin() {
                 }
                 
                 const amount = 5
-                if (grantSub && !freeSub) {
+                if (subType && !freeSub) {
                   const newPot = subscriptionPot + amount
                   setSubscriptionPot(newPot)
                   localStorage.setItem('eliteArrowsSubscriptionPot', newPot.toString())
                 }
-                addToMoneyHistory('subscription', amount, `Updated ${users[index].username} - Division: ${division || 'Unassigned'}`)
+                addToMoneyHistory('subscription', amount, `Updated ${users[index].username} - ${subType || ''} Division: ${division || 'Unassigned'}`)
                 
                 alert(`${users[index].username} updated!`)
                 setActiveTab('subscriptions')

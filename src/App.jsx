@@ -54,7 +54,8 @@ function SubscribedRoute({ children }) {
   }
   
   const isFreeTier = !user?.division || user?.division === 'Unassigned'
-  const isEmailAdmin = user?.email?.toLowerCase() === 'rhyshowe2023@outlook.com'
+  const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
+  const isEmailAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
   const isDbAdmin = user?.isAdmin === true
   const isAdmin = isEmailAdmin || isDbAdmin
   
