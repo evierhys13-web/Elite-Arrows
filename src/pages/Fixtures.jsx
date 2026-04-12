@@ -16,13 +16,6 @@ export default function Fixtures() {
   const allUsers = getAllUsers()
   const availablePlayers = allUsers.filter(u => u.id !== user.id)
   
-  const getFilteredOpponents = (gameType) => {
-    if (gameType === 'League') {
-      return availablePlayers.filter(p => p.division === user.division)
-    }
-    return availablePlayers
-  }
-
   useEffect(() => {
     const pendingFixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
       .filter(f => f.player2Id === user.id && f.status === 'pending')
