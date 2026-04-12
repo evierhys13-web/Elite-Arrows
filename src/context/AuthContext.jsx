@@ -28,8 +28,6 @@ export function AuthProvider({ children }) {
       }
     }
     
-    loadAllUsers()
-
     const timeout = setTimeout(() => {
       setLoading(false)
     }, 3000)
