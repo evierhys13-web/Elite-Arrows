@@ -190,26 +190,35 @@ export default function Sidebar() {
   
   const freeTierItems = [
     { path: '/home', label: 'Home', icon: HomeIcon },
-    { path: '/table', label: 'Table', icon: TableIcon },
+    { path: '/table', label: 'League Table', icon: TableIcon },
     { path: '/players', label: 'Players', icon: UsersIcon },
     { path: '/leaderboards', label: 'Leaderboards', icon: TrophyIcon },
     { path: '/profile', label: 'Profile', icon: UserIcon },
-    { path: '/settings', label: 'Settings', icon: SettingsIcon },
-    { path: '/contact', label: 'Contact', icon: MailIcon },
-    { path: '/support', label: 'Support', icon: HelpIcon },
   ]
 
   const subscriberItems = [
+    { path: '/fixtures', label: 'Fixtures', icon: CalendarIcon },
     { path: '/results', label: 'Results', icon: TrophyIcon },
     { path: '/match-log', label: 'Match Log', icon: HistoryIcon },
-    { path: '/tournaments', label: 'Tournaments', icon: TrophyIcon2 },
-    { path: '/cups', label: 'Cups', icon: TrophyIcon },
-    { path: '/rewards', label: 'Rewards', icon: GiftIcon },
-    { path: '/fixtures', label: 'Fixtures', icon: CalendarIcon },
     { path: '/submit-result', label: 'Submit Result', icon: PlusCircleIcon },
+    { path: '/cups', label: 'Cups', icon: TrophyIcon },
+    { path: '/tournaments', label: 'Tournaments', icon: TrophyIcon2 },
+    { path: '/rewards', label: 'Rewards', icon: GiftIcon },
     { path: '/chat', label: 'Chat', icon: MessageIcon },
   ]
 
+  const adminItems = [
+    { path: '/admin', label: 'Admin Panel', icon: ShieldIcon },
+    { path: '/games', label: 'Games', icon: GamepadIcon },
+  ]
+
+  const bottomItems = [
+    { path: '/settings', label: 'Settings', icon: SettingsIcon },
+    { path: '/contact', label: 'Contact', icon: MailIcon },
+    { path: '/support', label: 'Support', icon: HelpIcon },
+    { path: '/subscription', label: 'Subscription', icon: CreditCardIcon },
+  ]
+  
   let navItems = [...freeTierItems]
   
   if (isSubscribed || isAdmin) {
@@ -217,17 +226,10 @@ export default function Sidebar() {
   }
   
   if (isAdmin) {
-    navItems = [
-      ...navItems,
-      { path: '/admin', label: 'Admin', icon: ShieldIcon },
-      { path: '/games', label: 'Games', icon: GamepadIcon },
-    ]
+    navItems = [...navItems, ...adminItems]
   }
-
-  navItems = [
-    ...navItems,
-    { path: '/subscription', label: 'Subscription', icon: CreditCardIcon },
-  ]
+  
+  navItems = [...navItems, ...bottomItems]
 
   const showAdmin = isAdmin
 

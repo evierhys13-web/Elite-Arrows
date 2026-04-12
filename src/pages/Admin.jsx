@@ -292,7 +292,7 @@ export default function Admin() {
     );
   }
 
-  const isFullAdmin = user.isAdmin
+  const isFullAdmin = user.isAdmin || ADMIN_EMAILS.includes(user?.email?.toLowerCase())
 
   return (
     <div className="page">
@@ -860,6 +860,14 @@ export default function Admin() {
                     className="btn btn-secondary btn-sm"
                     onClick={async () => {
                       await setDoc(doc(db, 'users', u.id), { isTournamentAdmin: !u.isTournamentAdmin }, { merge: true })
+                      
+                      const users = getAllUsers()
+                      const index = users.findIndex(us => us.id === u.id)
+                      if (index !== -1) {
+                        users[index].isTournamentAdmin = !u.isTournamentAdmin
+                        localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+                      }
+                      
                       alert(`${u.username} ${u.isTournamentAdmin ? 'removed from' : 'added as'} tournament admin`)
                     }}
                   >
@@ -909,6 +917,14 @@ export default function Admin() {
                     onClick={async () => {
                       if (confirm(`Remove tournament admin privileges from ${u.username}?`)) {
                         await setDoc(doc(db, 'users', u.id), { isTournamentAdmin: false }, { merge: true })
+                        
+                        const users = getAllUsers()
+                        const index = users.findIndex(us => us.id === u.id)
+                        if (index !== -1) {
+                          users[index].isTournamentAdmin = false
+                          localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+                        }
+                        
                         alert(`${u.username} is no longer a tournament admin`)
                         window.location.reload()
                       }
@@ -940,6 +956,14 @@ export default function Admin() {
                 onChange={async (e) => {
                   if (!e.target.value) return
                   await setDoc(doc(db, 'users', e.target.value), { isTournamentAdmin: true }, { merge: true })
+                  
+                  const users = getAllUsers()
+                  const index = users.findIndex(u => u.id === e.target.value)
+                  if (index !== -1) {
+                    users[index].isTournamentAdmin = true
+                    localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+                  }
+                  
                   alert(`User is now a tournament admin`)
                   e.target.value = ''
                 }}
@@ -969,6 +993,14 @@ export default function Admin() {
                 await setDoc(doc(db, 'users', e.target.value), {
                   isAdmin: true
                 }, { merge: true })
+                
+                const users = getAllUsers()
+                const index = users.findIndex(u => u.id === e.target.value)
+                if (index !== -1) {
+                  users[index].isAdmin = true
+                  localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+                }
+                
                 alert(`User is now a full admin`)
                 e.target.value = ''
               }}
