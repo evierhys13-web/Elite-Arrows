@@ -96,60 +96,64 @@ export default function Subscription() {
         </div>
       ) : (
         <>
-          <div className="subscription-card">
-            <h2>Standard Pass</h2>
-            <div className="subscription-price">
-              £5<span>/month</span>
+          {(isHighTier || isAdmin) && (
+            <div className="subscription-card" style={{ border: '2px solid #ffd700', marginBottom: '20px' }}>
+              <h2 style={{ color: '#ffd700' }}>Premium Pass</h2>
+              <div className="subscription-price">
+                £10<span>/month</span>
+              </div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '15px' }}>Elite/Diamond {isAdmin && '(Admin Access)'}</p>
+              
+              <ul className="subscription-features">
+                <li>Access to match submissions</li>
+                <li>Exclusive tournament access</li>
+                <li>Priority support</li>
+                <li>Exclusive Premium Features</li>
+              </ul>
+
+              {user?.isSubscribed ? (
+                <button className="btn btn-secondary btn-block" disabled>
+                  Active
+                </button>
+              ) : (
+                <button className="btn btn-primary btn-block" style={{ background: 'linear-gradient(135deg, #ffd700, #ff8c00)', border: 'none' }} onClick={() => {
+                  setPaymentMethod('paypal')
+                  setShowPayment(true)
+                }}>
+                  Pay £10 Subscription
+                </button>
+              )}
             </div>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '15px' }}>Gold/Silver/Bronze</p>
-            
-            <ul className="subscription-features">
-              <li>Access to match submissions</li>
-              <li>Exclusive tournament access</li>
-              <li>Priority support</li>
-            </ul>
+          )}
 
-            {user?.isSubscribed ? (
-              <button className="btn btn-secondary btn-block" disabled>
-                Active
-              </button>
-            ) : (
-              <button className="btn btn-primary btn-block" onClick={() => {
-                setPaymentMethod('bank')
-                setShowPayment(true)
-              }}>
-                Pay £5 Subscription
-              </button>
-            )}
-          </div>
+          {(!isHighTier || isAdmin) && (
+            <div className="subscription-card">
+              <h2>Standard Pass</h2>
+              <div className="subscription-price">
+                £5<span>/month</span>
+              </div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '15px' }}>Gold/Silver/Bronze</p>
+              
+              <ul className="subscription-features">
+                <li>Access to match submissions</li>
+                <li>Exclusive tournament access</li>
+                <li>Priority support</li>
+              </ul>
 
-          <div className="subscription-card" style={{ border: '2px solid #ffd700', marginTop: '20px' }}>
-            <h2 style={{ color: '#ffd700' }}>Premium Pass</h2>
-            <div className="subscription-price">
-              £10<span>/month</span>
+              {user?.isSubscribed ? (
+                <button className="btn btn-secondary btn-block" disabled>
+                  Active
+                </button>
+              ) : (
+                <button className="btn btn-primary btn-block" onClick={() => {
+                  setPaymentMethod('bank')
+                  setShowPayment(true)
+                }}>
+                  Pay £5 Subscription
+                </button>
+              )}
             </div>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '15px' }}>Elite/Diamond {isAdmin && '(Admin Access)'}</p>
-            
-            <ul className="subscription-features">
-              <li>Access to match submissions</li>
-              <li>Exclusive tournament access</li>
-              <li>Priority support</li>
-              <li>Exclusive Premium Features</li>
-            </ul>
-
-            {user?.isSubscribed ? (
-              <button className="btn btn-secondary btn-block" disabled>
-                Active
-              </button>
-            ) : (
-              <button className="btn btn-primary btn-block" style={{ background: 'linear-gradient(135deg, #ffd700, #ff8c00)', border: 'none' }} onClick={() => {
-                setPaymentMethod('paypal')
-                setShowPayment(true)
-              }}>
-                Pay £10 Subscription
-              </button>
-            )}
-          </div>
+          )}
 
           {showPayment && paymentMethod === 'paypal' && (
             <div className="card" style={{ marginTop: '20px', border: '1px solid #ffd700' }}>
