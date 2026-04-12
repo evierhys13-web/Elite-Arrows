@@ -14,6 +14,15 @@ export function AuthProvider({ children }) {
   const [notifications, setNotifications] = useState([])
   
   const SENSITIVE_FIELDS = ['password', 'passwordHash', 'passwordString', 'passwordKey', 'firebaseId']
+  
+  const cleanUserData = (users) => {
+    return users.map(u => {
+      const cleaned = { ...u }
+      SENSITIVE_FIELDS.forEach(field => delete cleaned[field])
+      cleaned.division = 'Unassigned'
+      return cleaned
+    })
+  }
 
   useEffect(() => {
     const loadAllUsers = async () => {
@@ -21,24 +30,20 @@ export function AuthProvider({ children }) {
         const snapshot = await getDocs(collection(db, 'users'))
         let users = snapshot.docs.map(doc => {
           const userData = doc.data()
-          SENSITIVE_FIELDS.forEach(field => delete userData[field])
           return { id: doc.id, ...userData }
         })
         
-        const resetDivisions = users.map(u => ({ ...u, division: 'Unassigned' }))
+        const cleanedUsers = cleanUserData(users)
         
-        if (users.length > 0) {
-          setAllUsers(resetDivisions)
-          localStorage.setItem('eliteArrowsUsers', JSON.stringify(resetDivisions))
+        if (cleanedUsers.length > 0) {
+          setAllUsers(cleanedUsers)
+          localStorage.setItem('eliteArrowsUsers', JSON.stringify(cleanedUsers))
         }
       } catch (e) {
         const localUsers = JSON.parse(localStorage.getItem('eliteArrowsUsers') || '[]')
-        const resetDivisions = localUsers.map(u => {
-          SENSITIVE_FIELDS.forEach(field => delete u[field])
-          return { ...u, division: 'Unassigned' }
-        })
-        setAllUsers(resetDivisions)
-        localStorage.setItem('eliteArrowsUsers', JSON.stringify(resetDivisions))
+        const cleanedUsers = cleanUserData(localUsers)
+        setAllUsers(cleanedUsers)
+        localStorage.setItem('eliteArrowsUsers', JSON.stringify(cleanedUsers))
       }
     }
     
@@ -54,7 +59,10 @@ export function AuthProvider({ children }) {
         try {
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
           if (userDoc.exists()) {
-            setUser({ id: userDoc.id, ...userDoc.data() })
+            let userData = userDoc.data()
+            SENSITIVE_FIELDS.forEach(field => delete userData[field])
+            userData.division = 'Unassigned'
+            setUser({ id: userDoc.id, ...userData })
           } else {
             await firebaseSignOut(auth)
             setUser(null)
