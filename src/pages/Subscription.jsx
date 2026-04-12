@@ -122,7 +122,7 @@ export default function Subscription() {
           <div className="subscription-card" style={{ flex: '1 1 200px', minWidth: '200px', border: '2px solid #ffd700' }}>
             <h2 style={{ color: '#ffd700' }}>Elite Pass</h2>
             <div className="subscription-price">£5<span>/month</span></div>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>All Members</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Elite/Diamond</p>
             <ul className="subscription-features">
               <li>Full access</li>
               <li>Tournaments</li>
