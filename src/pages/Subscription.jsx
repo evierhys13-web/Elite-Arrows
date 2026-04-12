@@ -161,7 +161,7 @@ export default function Subscription() {
                 For Elite/Diamond members, payment via PayPal only.
               </p>
               <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
-                <p><strong>PayPal Email:</strong> <a href="https://paypal.me/dhlineberry" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-cyan)' }}>paypal.me/dhlineberry</a></p>
+                <p><strong>PayPal Email:</strong> <a href="https://paypal.me/DanielHineBerry" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-cyan)' }}>paypal.me/DanielHineBerry</a></p>
                 <p><strong>Reference:</strong> Elite Arrows Subscription</p>
               </div>
               <div style={{ marginTop: '15px' }}>
@@ -277,7 +277,7 @@ export default function Subscription() {
               {paymentMethod === 'paypal10' && (
                 <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
                   <h4 style={{ marginBottom: '15px' }}>PayPal Payment (£10 Tier)</h4>
-                  <p>Send payment to: <strong><a href="https://paypal.me/dhlineberry" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-cyan)' }}>paypal.me/dhlineberry</a></strong></p>
+                  <p>Send payment to: <strong><a href="https://paypal.me/DanielHineBerry" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-cyan)' }}>paypal.me/DanielHineBerry</a></strong></p>
                   <p style={{ marginTop: '10px' }}><strong>Reference:</strong> Elite Arrows Subscription</p>
                 </div>
               )}
