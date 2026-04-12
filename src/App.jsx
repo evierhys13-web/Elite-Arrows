@@ -58,8 +58,9 @@ function SubscribedRoute({ children }) {
   const isEmailAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
   const isDbAdmin = user?.isAdmin === true
   const isAdmin = isEmailAdmin || isDbAdmin
+  const isSubscribed = user?.isSubscribed === true
   
-  if (!isAdmin && !user?.isSubscribed && !isFreeTier) {
+  if (!isAdmin && !isSubscribed && isFreeTier) {
     return (
       <div style={{ 
         padding: '40px', 
@@ -87,6 +88,59 @@ function SubscribedRoute({ children }) {
           >
             Get Full Access - Subscribe Now
           </button>
+          <button 
+            className="btn btn-secondary btn-block"
+            onClick={() => navigate('/home')}
+          >
+            Go Home
+          </button>
+        </div>
+      </div>
+    )
+  }
+  
+  return children
+}
+
+function AdminRoute({ children }) {
+  const { user, isAuthenticated, loading } = useAuth()
+  const navigate = useNavigate()
+  
+  if (loading) {
+    return <div className="loading">Loading...</div>
+  }
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />
+  }
+  
+  const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
+  const isEmailAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
+  const isDbAdmin = user?.isAdmin === true
+  const isTournamentAdmin = user?.isTournamentAdmin === true
+  const isAdmin = isEmailAdmin || isDbAdmin || isTournamentAdmin
+  
+  if (!isAdmin) {
+    return (
+      <div style={{ 
+        padding: '40px', 
+        textAlign: 'center',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '50vh'
+      }}>
+        <div style={{ 
+          background: 'var(--bg-secondary)', 
+          padding: '30px', 
+          borderRadius: '12px',
+          maxWidth: '400px'
+        }}>
+          <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '15px' }}>Admin Access Required</h2>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>
+            You need admin permissions to access this feature.
+          </p>
           <button 
             className="btn btn-secondary btn-block"
             onClick={() => navigate('/home')}
@@ -138,18 +192,11 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
       <Route path="/results" element={
-        <ProtectedRoute>
+        <SubscribedRoute>
           <AppLayout>
             <Results />
           </AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/match-log" element={
-        <ProtectedRoute>
-          <AppLayout>
-            <MatchLog />
-          </AppLayout>
-        </ProtectedRoute>
+        </SubscribedRoute>
       } />
       <Route path="/players" element={
         <ProtectedRoute>
@@ -184,11 +231,11 @@ function AppRoutes() {
         </SubscribedRoute>
       } />
       <Route path="/chat" element={
-        <ProtectedRoute>
+        <SubscribedRoute>
           <AppLayout>
             <Chat />
           </AppLayout>
-        </ProtectedRoute>
+        </SubscribedRoute>
       } />
       <Route path="/profile" element={
         <ProtectedRoute>
@@ -226,16 +273,9 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
       <Route path="/tournaments" element={
-        <ProtectedRoute>
-          <AppLayout>
-            <Tournaments />
-          </AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/games" element={
         <SubscribedRoute>
           <AppLayout>
-            <Games />
+            <Tournaments />
           </AppLayout>
         </SubscribedRoute>
       } />
@@ -247,25 +287,67 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
       <Route path="/rewards" element={
-        <ProtectedRoute>
+        <SubscribedRoute>
           <AppLayout>
             <Rewards />
           </AppLayout>
-        </ProtectedRoute>
+        </SubscribedRoute>
       } />
       <Route path="/fixtures" element={
-        <ProtectedRoute>
+        <SubscribedRoute>
           <AppLayout>
             <Fixtures />
           </AppLayout>
-        </ProtectedRoute>
+        </SubscribedRoute>
+      } />
+      <Route path="/results" element={
+        <SubscribedRoute>
+          <AppLayout>
+            <Results />
+          </AppLayout>
+        </SubscribedRoute>
+      } />
+      <Route path="/certs" element={
+        <AdminRoute>
+          <AppLayout>
+            <Results />
+          </AppLayout>
+        </AdminRoute>
+      } />
+      <Route path="/cups" element={
+        <AdminRoute>
+          <AppLayout>
+            <Cups />
+          </AppLayout>
+        </AdminRoute>
+      } />
+      <Route path="/games" element={
+        <AdminRoute>
+          <AppLayout>
+            <Games />
+          </AppLayout>
+        </AdminRoute>
+      } />
+      <Route path="/season-management" element={
+        <AdminRoute>
+          <AppLayout>
+            <SeedData />
+          </AppLayout>
+        </AdminRoute>
+      } />
+      <Route path="/seed-data" element={
+        <AdminRoute>
+          <AppLayout>
+            <SeedData />
+          </AppLayout>
+        </AdminRoute>
       } />
       <Route path="/admin" element={
-        <SubscribedRoute>
+        <AdminRoute>
           <AppLayout>
             <Admin />
           </AppLayout>
-        </SubscribedRoute>
+        </AdminRoute>
       } />
       <Route path="/" element={<Navigate to="/home" replace />} />
       <Route path="*" element={<Navigate to="/home" replace />} />

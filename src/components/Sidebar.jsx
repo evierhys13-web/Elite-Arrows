@@ -184,29 +184,60 @@ export default function Sidebar() {
 
   const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
   const isAdminEmail = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
+  const isAdmin = user?.isAdmin || user?.isTournamentAdmin || isAdminEmail
   const isFreeTier = !user?.division || user?.division === 'Unassigned'
-  const isSubscribedUser = (user?.isSubscribed || isAdminEmail) && !user?.isTournamentAdmin
+  const isSubscribed = user?.isSubscribed === true
   
-  const navItems = [
+  const freeTierItems = [
     { path: '/home', label: 'Home', icon: HomeIcon },
     { path: '/table', label: 'Table', icon: TableIcon },
-    ...(isSubscribedUser ? { path: '/results', label: 'Results', icon: TrophyIcon } : []),
-    ...(isSubscribedUser ? { path: '/match-log', label: 'Match Log', icon: HistoryIcon } : []),
     { path: '/players', label: 'Players', icon: UsersIcon },
-    ...(isSubscribedUser ? { path: '/tournaments', label: 'Tournaments', icon: TrophyIcon2 } : []),
     { path: '/leaderboards', label: 'Leaderboards', icon: TrophyIcon },
-    ...(isSubscribedUser ? { path: '/rewards', label: 'Rewards', icon: GiftIcon } : []),
-    ...(isSubscribedUser ? { path: '/fixtures', label: 'Fixtures', icon: CalendarIcon } : []),
-    ...(isSubscribedUser ? { path: '/submit-result', label: 'Submit Result', icon: PlusCircleIcon } : []),
-    ...(isSubscribedUser ? { path: '/chat', label: 'Chat', icon: MessageIcon } : []),
     { path: '/profile', label: 'Profile', icon: UserIcon },
     { path: '/settings', label: 'Settings', icon: SettingsIcon },
     { path: '/contact', label: 'Contact', icon: MailIcon },
     { path: '/support', label: 'Support', icon: HelpIcon },
-    { path: '/subscription', label: 'Subscription', icon: CreditCardIcon },
-  ].filter(Boolean)
+  ]
 
-  const showAdmin = user?.isAdmin || user?.isTournamentAdmin
+  const subscriberItems = [
+    { path: '/results', label: 'Results', icon: TrophyIcon },
+    { path: '/match-log', label: 'Match Log', icon: HistoryIcon },
+    { path: '/tournaments', label: 'Tournaments', icon: TrophyIcon2 },
+    { path: '/rewards', label: 'Rewards', icon: GiftIcon },
+    { path: '/fixtures', label: 'Fixtures', icon: CalendarIcon },
+    { path: '/submit-result', label: 'Submit Result', icon: PlusCircleIcon },
+    { path: '/chat', label: 'Chat', icon: MessageIcon },
+  ]
+
+  const adminItems = [
+    { path: '/admin', label: 'Admin', icon: ShieldIcon, isAdminOnly: true },
+    { path: '/season-management', label: 'Season Management', icon: CalendarIcon, isAdminOnly: true },
+    { path: '/seed-data', label: 'Seed Data', icon: GamepadIcon, isAdminOnly: true },
+  ]
+
+  let navItems = [...freeTierItems]
+  
+  if (isSubscribed || isAdmin) {
+    navItems = [...navItems, ...subscriberItems]
+  }
+  
+  if (isAdmin) {
+    navItems = [
+      ...navItems,
+      { path: '/certs', label: 'Certs', icon: TrophyIcon },
+      { path: '/cups', label: 'Cups', icon: TrophyIcon },
+      { path: '/games', label: 'Games', icon: GamepadIcon },
+      { path: '/season-management', label: 'Season Management', icon: CalendarIcon },
+      { path: '/seed-data', label: 'Seed Data', icon: GamepadIcon },
+    ]
+  }
+
+  navItems = [
+    ...navItems,
+    { path: '/subscription', label: 'Subscription', icon: CreditCardIcon },
+  ]
+
+  const showAdmin = isAdmin
 
   return (
     <>
@@ -265,17 +296,6 @@ export default function Sidebar() {
               <span>{item.label}</span>
             </NavLink>
           ))}
-
-          {showAdmin && (
-            <NavLink
-              to="/admin"
-              className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-              onClick={() => setIsOpen(false)}
-            >
-              <ShieldIcon />
-              <span>Admin</span>
-            </NavLink>
-          )}
 
           <button className="nav-item nav-item-signout" onClick={handleSignOut}>
             <LogOutIcon />
