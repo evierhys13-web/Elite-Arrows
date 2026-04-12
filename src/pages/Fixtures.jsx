@@ -14,6 +14,13 @@ export default function Fixtures() {
     fixtureTime: ''
   })
 
+  const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
+  const isEmailAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
+  const isDbAdmin = user?.isAdmin === true
+  const isTournamentAdmin = user?.isTournamentAdmin === true
+  const isAdmin = isEmailAdmin || isDbAdmin || isTournamentAdmin
+  const isSubscribed = user?.isSubscribed === true
+
   const allUsers = getAllUsers()
   const availablePlayers = allUsers.filter(u => u.id !== user.id)
   
@@ -25,11 +32,21 @@ export default function Fixtures() {
     }
   }, [])
 
-const fixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+  const fixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+  
+  const regularFixtures = fixtures.filter(f => !f.cupId)
+  const cupFixtures = fixtures.filter(f => f.cupId)
 
-  const pendingFixtures = fixtures.filter(f => f.player2Id === user.id && f.status === 'pending')
-  const sentFixtures = fixtures.filter(f => f.createdBy === user.id)
-  const upcomingFixtures = fixtures.filter(f => 
+  const myCupFixtures = cupFixtures.filter(f => 
+    f.player1 === user.id || f.player2 === user.id
+  )
+
+  const pendingCupFixtures = myCupFixtures.filter(f => f.status === 'pending' && f.scheduledBy !== user.id)
+  const upcomingCupFixtures = myCupFixtures.filter(f => f.status === 'accepted' || f.date)
+
+  const pendingFixtures = regularFixtures.filter(f => f.player2Id === user.id && f.status === 'pending')
+  const sentFixtures = regularFixtures.filter(f => f.createdBy === user.id)
+  const upcomingFixtures = regularFixtures.filter(f => 
     (f.player1Id === user.id || f.player2Id === user.id) && f.status === 'accepted'
   )
 
@@ -38,7 +55,7 @@ const fixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
     if (gameType === 'League') {
       opponents = opponents.filter(p => p.division === user.division)
     }
-    const existingOpponentIds = fixtures
+    const existingOpponentIds = regularFixtures
       .filter(f => (f.player1Id === user.id || f.player2Id === user.id) && f.status !== 'completed')
       .map(f => f.player1Id === user.id ? f.player2Id : f.player1Id)
     opponents = opponents.filter(p => !existingOpponentIds.includes(p.id))
@@ -60,8 +77,8 @@ const fixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
   const handleDeclineFixture = (fixtureId) => {
     if (!confirm('Decline this fixture?')) return
     
-    const fixture = fixtures.find(f => f.id === fixtureId)
-    const updatedFixtures = fixtures.filter(f => f.id !== fixtureId)
+    const fixture = regularFixtures.find(f => f.id === fixtureId)
+    const updatedFixtures = regularFixtures.filter(f => f.id !== fixtureId)
     localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
 
     const notifications = JSON.parse(localStorage.getItem('eliteArrowsNotifications') || '[]')
@@ -81,9 +98,48 @@ const fixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
 
   const handleCancelFixture = (fixtureId) => {
     if (!confirm('Cancel this fixture?')) return
-    const updatedFixtures = fixtures.filter(f => f.id !== fixtureId)
+    const updatedFixtures = regularFixtures.filter(f => f.id !== fixtureId)
     localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
     window.location.reload()
+  }
+
+  const handleScheduleCupMatch = (fixtureId, date, time) => {
+    const allFixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+    const index = allFixtures.findIndex(f => f.id === fixtureId)
+    if (index !== -1) {
+      allFixtures[index].date = date
+      allFixtures[index].time = time
+      allFixtures[index].scheduledBy = user.id
+      allFixtures[index].status = 'accepted'
+      localStorage.setItem('eliteArrowsFixtures', JSON.stringify(allFixtures))
+      alert('Match scheduled!')
+      window.location.reload()
+    }
+  }
+
+  const handleAcceptFixture = async (fixtureId) => {
+    const allFixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+    const index = allFixtures.findIndex(f => f.id === fixtureId)
+    if (index !== -1) {
+      allFixtures[index].status = 'accepted'
+      localStorage.setItem('eliteArrowsFixtures', JSON.stringify(allFixtures))
+      window.location.reload()
+    }
+  }
+
+  if (!isSubscribed && !isAdmin) {
+    return (
+      <div className="page">
+        <div className="page-header">
+          <h1 className="page-title">Fixtures</h1>
+        </div>
+        <div className="card">
+          <p style={{ color: 'var(--text-muted)', textAlign: 'center' }}>
+            Subscribe to access Fixtures.
+          </p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -94,6 +150,143 @@ const fixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
           + Create Fixture
         </button>
       </div>
+
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
+        <button
+          className={`btn ${activeTab === 'my' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setActiveTab('my')}
+        >
+          My Fixtures
+        </button>
+        <button
+          className={`btn ${activeTab === 'upcoming' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setActiveTab('upcoming')}
+        >
+          Upcoming ({upcomingFixtures.length})
+        </button>
+        <button
+          className={`btn ${activeTab === 'pending' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setActiveTab('pending')}
+        >
+          Pending ({pendingFixtures.length})
+        </button>
+        <button
+          className={`btn ${activeTab === 'sent' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setActiveTab('sent')}
+        >
+          Sent ({sentFixtures.length})
+        </button>
+        <button
+          className={`btn ${activeTab === 'cups' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setActiveTab('cups')}
+        >
+          Cup Fixtures ({myCupFixtures.length})
+        </button>
+      </div>
+
+      {activeTab === 'cups' && (
+        <div className="card">
+          <h3 className="card-title">Cup Tournament Fixtures</h3>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '15px', fontSize: '0.9rem' }}>
+            Schedule your cup matches here
+          </p>
+          {myCupFixtures.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '40px 20px' }}>
+              No cup fixtures. Create a cup in the Cups section.
+            </p>
+          ) : (
+            myCupFixtures.map(fixture => {
+              const canSchedule = fixture.scheduledBy !== user.id && !fixture.date
+              return (
+                <div key={fixture.id} style={{ 
+                  padding: '20px', 
+                  background: 'var(--bg-secondary)', 
+                  borderRadius: '12px',
+                  marginBottom: '15px',
+                  borderLeft: `3px solid ${fixture.date ? 'var(--success)' : 'var(--warning)'}`
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
+                    <div>
+                      <div style={{ fontSize: '1.1rem', marginBottom: '5px' }}>
+                        <strong>{allUsers.find(u => u.id === fixture.player1)?.username || 'TBD'}</strong>
+                        <span style={{ margin: '0 10px', color: 'var(--text-muted)' }}>vs</span>
+                        <strong>{allUsers.find(u => u.id === fixture.player2)?.username || 'TBD'}</strong>
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--accent-cyan)' }}>
+                        {fixture.cupName} | Round {fixture.round}
+                      </div>
+                    </div>
+                    <span style={{ 
+                      padding: '5px 12px', 
+                      background: fixture.date ? 'var(--success)' : 'var(--warning)', 
+                      color: '#000', 
+                      borderRadius: '20px',
+                      fontSize: '0.8rem',
+                      fontWeight: 'bold'
+                    }}>
+                      {fixture.date ? 'SCHEDULED' : 'PENDING'}
+                    </span>
+                  </div>
+                  
+                  {fixture.date ? (
+                    <div style={{ 
+                      display: 'flex', 
+                      gap: '20px',
+                      padding: '15px',
+                      background: 'var(--bg-primary)',
+                      borderRadius: '8px'
+                    }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '3px' }}>DATE</div>
+                        <div style={{ fontWeight: '600' }}>📅 {fixture.date}</div>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '3px' }}>TIME</div>
+                        <div style={{ fontWeight: '600' }}>⏰ {fixture.time}</div>
+                      </div>
+                    </div>
+                  ) : canSchedule ? (
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ fontSize: '0.85rem', marginBottom: '5px', display: 'block' }}>Date</label>
+                        <input
+                          type="date"
+                          id={`cupDate_${fixture.id}`}
+                          min={new Date().toISOString().split('T')[0]}
+                          style={{ width: '100%', padding: '10px' }}
+                        />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ fontSize: '0.85rem', marginBottom: '5px', display: 'block' }}>Time</label>
+                        <input
+                          type="time"
+                          id={`cupTime_${fixture.id}`}
+                          style={{ width: '100%', padding: '10px' }}
+                        />
+                      </div>
+                      <button 
+                        className="btn btn-primary"
+                        onClick={() => {
+                          const date = document.getElementById(`cupDate_${fixture.id}`).value
+                          const time = document.getElementById(`cupTime_${fixture.id}`).value
+                          if (!date || !time) return alert('Select date and time')
+                          handleScheduleCupMatch(fixture.id, date, time)
+                        }}
+                      >
+                        Schedule
+                      </button>
+                    </div>
+                  ) : (
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                      Waiting for other player to schedule...
+                    </p>
+                  )}
+                </div>
+              )
+            })
+          )}
+        </div>
+      )}
 
       {showCreateModal && (
         <div style={{
@@ -243,42 +436,15 @@ const fixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
-        <button
-          className={`btn ${activeTab === 'my' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setActiveTab('my')}
-        >
-          My Fixtures
-        </button>
-        <button
-          className={`btn ${activeTab === 'upcoming' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setActiveTab('upcoming')}
-        >
-          Upcoming ({upcomingFixtures.length})
-        </button>
-        <button
-          className={`btn ${activeTab === 'pending' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setActiveTab('pending')}
-        >
-          Pending ({pendingFixtures.length})
-        </button>
-        <button
-          className={`btn ${activeTab === 'sent' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setActiveTab('sent')}
-        >
-          Sent ({sentFixtures.length})
-        </button>
-      </div>
-
       {activeTab === 'my' && (
         <div className="card">
           <h3 className="card-title">My Fixtures</h3>
-          {fixtures.length === 0 ? (
+          {regularFixtures.length === 0 ? (
             <div className="empty-state">
               <p>No fixtures yet</p>
             </div>
           ) : (
-            fixtures
+            regularFixtures
               .filter(f => f.player1Id === user.id || f.player2Id === user.id)
               .sort((a, b) => new Date(a.fixtureDate) - new Date(b.fixtureDate))
               .map(fixture => (

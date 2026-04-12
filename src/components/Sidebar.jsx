@@ -221,8 +221,6 @@ export default function Sidebar() {
       ...navItems,
       { path: '/admin', label: 'Admin', icon: ShieldIcon },
       { path: '/games', label: 'Games', icon: GamepadIcon },
-      { path: '/season-management', label: 'Season Management', icon: CalendarIcon },
-      { path: '/seed-data', label: 'Seed Data', icon: GamepadIcon },
     ]
   }
 

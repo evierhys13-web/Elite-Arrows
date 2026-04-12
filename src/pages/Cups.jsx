@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 export default function CupTournaments() {
   const { user, getAllUsers } = useAuth()
   const [showCreate, setShowCreate] = useState(false)
-  const [formData, setFormData] = useState({ name: '', entryFee: 5, maxPlayers: 8, date: '', time: '' })
+  const [formData, setFormData] = useState({ name: '', entryFee: 5, maxPlayers: 8 })
   const [selectedPlayers, setSelectedPlayers] = useState([])
   const [matches, setMatches] = useState([])
   const [winner, setWinner] = useState(null)
@@ -19,6 +19,7 @@ export default function CupTournaments() {
   const allUsers = getAllUsers()
   const subscribedUsers = allUsers.filter(u => u.isSubscribed)
   const cups = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
+  const fixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
 
   const handlePlayerSelect = (playerId) => {
     if (selectedPlayers.includes(playerId)) {
@@ -81,8 +82,26 @@ export default function CupTournaments() {
 
   const saveCup = () => {
     if (!formData.name) return alert('Enter cup name')
-    if (!formData.date) return alert('Enter date')
-    if (!formData.time) return alert('Enter time')
+    
+    const cupMatches = matches.filter(m => m.player1 && m.player2)
+    const newFixtures = cupMatches.map(m => ({
+      id: Date.now() + m.id,
+      cupId: Date.now(),
+      cupName: formData.name,
+      player1: m.player1,
+      player2: m.player2,
+      matchId: m.id,
+      round: m.round,
+      date: '',
+      time: '',
+      scheduledBy: null,
+      status: 'pending',
+      createdAt: new Date().toISOString()
+    }))
+    
+    const existingFixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+    localStorage.setItem('eliteArrowsFixtures', JSON.stringify([...existingFixtures, ...newFixtures]))
+    
     const newCup = {
       id: Date.now(),
       ...formData,
@@ -92,7 +111,7 @@ export default function CupTournaments() {
       status: 'active'
     }
     localStorage.setItem('eliteArrowsCups', JSON.stringify([...cups, newCup]))
-    alert('Cup tournament created!')
+    alert('Cup tournament created! Fixtures have been generated for each match.')
     setShowCreate(false)
     setSelectedPlayers([])
     setMatches([])
@@ -134,22 +153,6 @@ export default function CupTournaments() {
               value={formData.name} 
               onChange={(e) => setFormData({...formData, name: e.target.value})}
               placeholder="e.g., Winter Cup 2024"
-            />
-          </div>
-          <div className="form-group">
-            <label>Date</label>
-            <input 
-              type="date" 
-              value={formData.date} 
-              onChange={(e) => setFormData({...formData, date: e.target.value})}
-            />
-          </div>
-          <div className="form-group">
-            <label>Time</label>
-            <input 
-              type="time" 
-              value={formData.time} 
-              onChange={(e) => setFormData({...formData, time: e.target.value})}
             />
           </div>
           <div className="form-group">
@@ -246,7 +249,7 @@ export default function CupTournaments() {
               )}
 
               <button className="btn btn-primary btn-block" style={{ marginTop: '20px' }} onClick={saveCup}>
-                Save Cup
+                Save Cup (Creates Fixtures)
               </button>
             </>
           )}
