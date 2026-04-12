@@ -100,8 +100,8 @@ export default function Subscription() {
         </div>
       ) : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '20px' }}>
-            <div className="subscription-card" style={{ border: '2px solid #888' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', width: '100%' }}>
+            <div className="subscription-card" style={{ border: '2px solid #888', flex: '1 1 200px', minWidth: '180px' }}>
               <h2 style={{ color: '#888', fontSize: '1.1rem' }}>Free Tier</h2>
               <div className="subscription-price" style={{ fontSize: '1.5rem' }}>
                 Free<span style={{ fontSize: '0.8rem' }}>/month</span>
@@ -115,7 +115,7 @@ export default function Subscription() {
               </ul>
             </div>
 
-            <div className="subscription-card">
+<div className="subscription-card" style={{ flex: '1 1 200px', minWidth: '180px' }}>
               <h2 style={{ fontSize: '1.1rem' }}>Standard Pass</h2>
               <div className="subscription-price" style={{ fontSize: '1.5rem' }}>
                 £5<span style={{ fontSize: '0.8rem' }}>/month</span>
@@ -142,7 +142,7 @@ export default function Subscription() {
               )}
             </div>
 
-            <div className="subscription-card" style={{ border: '2px solid #ffd700' }}>
+            <div className="subscription-card" style={{ border: '2px solid #ffd700', flex: '1 1 200px', minWidth: '180px' }}>
               <h2 style={{ color: '#ffd700', fontSize: '1.1rem' }}>Premium Pass</h2>
               <div className="subscription-price" style={{ fontSize: '1.5rem' }}>
                 £10<span style={{ fontSize: '0.8rem' }}>/month</span>
