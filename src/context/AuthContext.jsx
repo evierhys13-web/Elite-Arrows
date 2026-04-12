@@ -3,7 +3,7 @@ import { db, auth, usersCollection, doc, setDoc, getDoc, getDocs, query, collect
 
 const AuthContext = createContext(null)
 
-const ADMIN_EMAIL = 'rhyshowe2023@outlook.com'
+const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
 
 export const DIVISIONS = ['Elite', 'Diamond', 'Gold', 'Silver', 'Bronze']
 
@@ -64,7 +64,7 @@ export function AuthProvider({ children }) {
 
   const signUp = async (userData, rememberMe = false) => {
     const emailLower = userData.email.toLowerCase()
-    const isAdmin = emailLower === ADMIN_EMAIL.toLowerCase()
+    const isAdmin = ADMIN_EMAILS.includes(emailLower)
 
     try {
       const { user: firebaseUser } = await createUserWithEmailAndPassword(auth, userData.email, userData.password)
@@ -114,7 +114,7 @@ export function AuthProvider({ children }) {
       }
 
       const userData = userDoc.data()
-      const isAdminEmail = email.toLowerCase() === ADMIN_EMAIL.toLowerCase()
+      const isAdminEmail = ADMIN_EMAILS.includes(email.toLowerCase())
       
       if (isAdminEmail) {
         userData.isAdmin = true
@@ -163,7 +163,7 @@ export function AuthProvider({ children }) {
 
   const addUserManually = async (userData) => {
     const emailLower = userData.email.toLowerCase()
-    const isAdmin = emailLower === ADMIN_EMAIL.toLowerCase()
+    const isAdmin = ADMIN_EMAILS.includes(emailLower)
 
     const newUser = {
       ...userData,
