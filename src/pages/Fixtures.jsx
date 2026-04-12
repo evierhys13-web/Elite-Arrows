@@ -291,9 +291,6 @@ export default function Fixtures() {
               <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
                 No upcoming fixtures
               </p>
-              <Link to="/submit-result" className="btn btn-primary">
-                Create a Fixture
-              </Link>
             </div>
           ) : (
             upcomingFixtures.map(fixture => (
