@@ -374,19 +374,11 @@ export default function Admin() {
           </>
         )}
         <button
-          className={`division-tab ${activeTab === 'tournaments' ? 'active' : ''}`}
-          onClick={() => setActiveTab('tournaments')}
+          className={`division-tab ${activeTab === 'games' ? 'active' : ''}`}
+          onClick={() => setActiveTab('games')}
         >
-          Tournaments
+          Games
         </button>
-        {isFullAdmin && (
-          <button
-            className={`division-tab ${activeTab === 'games' ? 'active' : ''}`}
-            onClick={() => setActiveTab('games')}
-          >
-            Games
-          </button>
-        )}
         {isFullAdmin && (
           <button
             className={`division-tab ${activeTab === 'appearance' ? 'active' : ''}`}
@@ -1062,35 +1054,6 @@ export default function Admin() {
                   </div>
                 </div>
               ))
-            )}
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'tournaments' && (
-        <div>
-          <div className="card" style={{ marginBottom: '20px' }}>
-            <button className="btn btn-primary btn-block" onClick={() => setShowTournamentForm(true)} style={{ marginBottom: '20px' }}>
-              Create New Tournament
-            </button>
-
-            {showTournamentForm && (
-              <div style={{ padding: '20px', background: 'var(--bg-secondary)', borderRadius: '8px', marginBottom: '20px' }}>
-                <h4 style={{ marginBottom: '15px' }}>Create Tournament</h4>
-                <div className="form-group">
-                  <label>Tournament Name</label>
-                  <input 
-                    type="text" 
-                    value={tournamentForm.name}
-                    onChange={(e) => setTournamentForm({...tournamentForm, name: e.target.value})}
-                    placeholder="Enter tournament name"
-                  />
-                </div>
-                <div className="form-group">
-                  <button className="btn btn-primary" onClick={saveTournamentForm}>Create Tournament</button>
-                  <button className="btn btn-secondary" onClick={() => setShowTournamentForm(false)} style={{ marginLeft: '10px' }}>Cancel</button>
-                </div>
-              </div>
             )}
           </div>
         </div>
