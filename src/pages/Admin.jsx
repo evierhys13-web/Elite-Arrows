@@ -488,6 +488,8 @@ export default function Admin() {
                 <div className="player-info">
                   <h3>{u.username}</h3>
                   <p>{u.email}</p>
+                  {u.freeAdminSubscription && <p style={{ color: 'var(--accent-cyan)', fontSize: '0.75rem' }}>Free (Admin)</p>}
+                  {u.subscriptionDate && <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Since: {new Date(u.subscriptionDate).toLocaleDateString()}</p>}
                 </div>
                 <span style={{ color: 'var(--success)' }}>Active</span>
               </div>
@@ -511,6 +513,8 @@ export default function Admin() {
                     if (index !== -1) {
                       users[index].isSubscribed = true
                       users[index].freeAdminSubscription = true
+                      users[index].subscriptionDate = new Date().toISOString()
+                      users[index].subscriptionSource = 'admin_granted'
                       localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
                       alert(`${u.username} now has free subscription (admin granted)`)
                     }
@@ -627,6 +631,8 @@ export default function Admin() {
                 if (index !== -1) {
                   users[index].isSubscribed = true
                   users[index].freeAdminSubscription = true
+                  users[index].subscriptionDate = new Date().toISOString()
+                  users[index].subscriptionSource = 'admin_granted'
                   localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
                   alert('Free subscription granted!')
                   e.target.value = ''

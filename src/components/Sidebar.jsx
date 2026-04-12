@@ -191,7 +191,7 @@ export default function Sidebar() {
     { path: '/tournaments', label: 'Tournaments', icon: TrophyIcon2 },
     { path: '/leaderboards', label: 'Leaderboards', icon: TrophyIcon },
     { path: '/rewards', label: 'Rewards', icon: GiftIcon },
-    { path: '/fixtures', label: 'Fixtures', icon: CalendarIcon },
+    ...(user?.isSubscribed ? [{ path: '/fixtures', label: 'Fixtures', icon: CalendarIcon }] : []),
     ...(user?.isSubscribed && !user?.isTournamentAdmin ? [{ path: '/submit-result', label: 'Submit Result', icon: PlusCircleIcon }] : []),
     { path: '/chat', label: 'Chat', icon: MessageIcon },
     { path: '/profile', label: 'Profile', icon: UserIcon },
