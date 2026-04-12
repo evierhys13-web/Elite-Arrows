@@ -100,67 +100,32 @@ export default function Subscription() {
         </div>
       ) : (
         <>
-          {(isFreeTier || !user?.division) && (
-        <div className="subscription-card" style={{ border: '2px solid #888', marginBottom: '20px' }}>
-          <h2 style={{ color: '#888' }}>Free Tier</h2>
-          <div className="subscription-price">
-            Free<span>/month</span>
-          </div>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '15px' }}>Unassigned</p>
-          
-          <ul className="subscription-features">
-            <li>View players</li>
-            <li>View tables</li>
-            <li>Basic features</li>
-          </ul>
-          
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '15px', padding: '10px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
-            Upgrade to Gold/Silver/Bronze (£5) or Elite/Diamond (£10) when assigned to a division by admin.
-          </p>
-        </div>
-      )}
-
-      {(isHighTier || isAdmin) && (
-            <div className="subscription-card" style={{ border: '2px solid #ffd700', marginBottom: '20px' }}>
-              <h2 style={{ color: '#ffd700' }}>Premium Pass</h2>
-              <div className="subscription-price">
-                £10<span>/month</span>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '20px' }}>
+            <div className="subscription-card" style={{ border: '2px solid #888' }}>
+              <h2 style={{ color: '#888', fontSize: '1.1rem' }}>Free Tier</h2>
+              <div className="subscription-price" style={{ fontSize: '1.5rem' }}>
+                Free<span style={{ fontSize: '0.8rem' }}>/month</span>
               </div>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '15px' }}>Elite/Diamond</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: '10px' }}>Unassigned</p>
               
-              <ul className="subscription-features">
-                <li>Access to match submissions</li>
-                <li>Exclusive tournament access</li>
-                <li>Priority support</li>
+              <ul className="subscription-features" style={{ fontSize: '0.8rem', paddingLeft: '15px' }}>
+                <li>View players</li>
+                <li>View tables</li>
+                <li>Basic features</li>
               </ul>
-
-              {(user?.isSubscribed && !isAdmin) ? (
-                <button className="btn btn-secondary btn-block" disabled>
-                  Active
-                </button>
-              ) : (
-                <button className="btn btn-primary btn-block" style={{ background: 'linear-gradient(135deg, #ffd700, #ff8c00)', border: 'none' }} onClick={() => {
-                  setPaymentMethod('paypal10')
-                  setShowPayment(true)
-                }}>
-                  {user?.isSubscribed && isAdmin ? 'Upgrade to £10' : 'Pay £10 Subscription'}
-                </button>
-              )}
             </div>
-          )}
 
-          {(!isHighTier || isAdmin) && (
             <div className="subscription-card">
-              <h2>Standard Pass</h2>
-              <div className="subscription-price">
-                £5<span>/month</span>
+              <h2 style={{ fontSize: '1.1rem' }}>Standard Pass</h2>
+              <div className="subscription-price" style={{ fontSize: '1.5rem' }}>
+                £5<span style={{ fontSize: '0.8rem' }}>/month</span>
               </div>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '15px' }}>Gold/Silver/Bronze</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: '10px' }}>Gold/Silver/Bronze</p>
               
-              <ul className="subscription-features">
-                <li>Access to match submissions</li>
-                <li>Exclusive tournament access</li>
-                <li>Priority support</li>
+              <ul className="subscription-features" style={{ fontSize: '0.8rem', paddingLeft: '15px' }}>
+                <li>Match submissions</li>
+                <li>Tournaments</li>
+                <li>Full access</li>
               </ul>
 
               {(user?.isSubscribed && !isAdmin) ? (
@@ -172,11 +137,39 @@ export default function Subscription() {
                   setPaymentMethod('paypal5')
                   setShowPayment(true)
                 }}>
-                  Pay £5 Subscription
+                  Pay £5
                 </button>
               )}
             </div>
-          )}
+
+            <div className="subscription-card" style={{ border: '2px solid #ffd700' }}>
+              <h2 style={{ color: '#ffd700', fontSize: '1.1rem' }}>Premium Pass</h2>
+              <div className="subscription-price" style={{ fontSize: '1.5rem' }}>
+                £10<span style={{ fontSize: '0.8rem' }}>/month</span>
+              </div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: '10px' }}>Elite/Diamond</p>
+              
+              <ul className="subscription-features" style={{ fontSize: '0.8rem', paddingLeft: '15px' }}>
+                <li>All Standard</li>
+                <li>Priority support</li>
+                <li>VIP features</li>
+              </ul>
+
+              {(user?.isSubscribed && !isAdmin) ? (
+                <button className="btn btn-secondary btn-block" disabled>
+                  Active
+                </button>
+              ) : (
+                <button className="btn btn-primary btn-block" style={{ background: 'linear-gradient(135deg, #ffd700, #ff8c00)', border: 'none' }} onClick={() => {
+                  setPaymentMethod('paypal10')
+                  setShowPayment(true)
+                }}>
+                  Pay £10
+                </button>
+              )}
+            </div>
+</div>
+          </div>
 
           {showPayment && paymentMethod === 'paypal10' && (
             <div className="card" style={{ marginTop: '20px', border: '1px solid #ffd700' }}>
