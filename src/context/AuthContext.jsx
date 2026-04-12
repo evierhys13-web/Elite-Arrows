@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { db, auth, usersCollection, doc, setDoc, getDoc, getDocs, query, collection, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, addDoc } from '../firebase'
+import { db, auth, usersCollection, doc, setDoc, getDoc, getDocs, query, collection, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, addDoc, FieldValue } from '../firebase'
 
 const AuthContext = createContext(null)
 
@@ -15,13 +15,27 @@ export function AuthProvider({ children }) {
   
   const SENSITIVE_FIELDS = ['password', 'passwordHash', 'passwordString', 'passwordKey', 'firebaseId']
   
-  const cleanUserData = (users) => {
+const cleanUserData = (users) => {
     return users.map(u => {
       const cleaned = { ...u }
       SENSITIVE_FIELDS.forEach(field => delete cleaned[field])
       cleaned.division = 'Unassigned'
       return cleaned
     })
+  }
+  
+  const removeSensitiveFieldsFromFirestore = async (users) => {
+    for (const user of users) {
+      if (user.id) {
+        const updates = {}
+        SENSITIVE_FIELDS.forEach(field => updates[field] = FieldValue.delete())
+        try {
+          await updateDoc(doc(db, 'users', user.id), updates)
+        } catch (e) {
+          console.log('Error removing fields for', user.id, e)
+        }
+      }
+    }
   }
 
   useEffect(() => {
@@ -33,11 +47,20 @@ export function AuthProvider({ children }) {
           return { id: doc.id, ...userData }
         })
         
-        const cleanedUsers = cleanUserData(users)
+        const hasSensitiveFields = users.some(u => SENSITIVE_FIELDS.some(field => u[field] && u[field].length > 0))
         
-        if (cleanedUsers.length > 0) {
+        if (hasSensitiveFields) {
+          console.log('Found sensitive fields in Firestore, cleaning...')
+          const cleanedUsers = cleanUserData(users)
+          await removeSensitiveFieldsFromFirestore(users)
           setAllUsers(cleanedUsers)
           localStorage.setItem('eliteArrowsUsers', JSON.stringify(cleanedUsers))
+        } else {
+          const cleanedUsers = cleanUserData(users)
+          if (users.length > 0) {
+            setAllUsers(cleanedUsers)
+            localStorage.setItem('eliteArrowsUsers', JSON.stringify(cleanedUsers))
+          }
         }
       } catch (e) {
         const localUsers = JSON.parse(localStorage.getItem('eliteArrowsUsers') || '[]')

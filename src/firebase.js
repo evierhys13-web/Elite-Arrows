@@ -1,6 +1,8 @@
 import { initializeApp } from 'firebase/app'
-import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, onSnapshot, deleteDoc, addDoc } from 'firebase/firestore'
+import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, onSnapshot, deleteDoc, addDoc, updateDoc, deleteField } from 'firebase/firestore'
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence } from 'firebase/auth'
+
+export const FieldValue = deleteField
 
 const firebaseConfig = {
   apiKey: "AIzaSyBLuRvmE1UgKvYFw7K0utT11ljjrf52vlA",
