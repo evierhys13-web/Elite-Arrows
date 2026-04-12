@@ -12,12 +12,18 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(false)
   const [allUsers, setAllUsers] = useState([])
   const [notifications, setNotifications] = useState([])
+  
+  const SENSITIVE_FIELDS = ['password', 'passwordHash', 'passwordString', 'passwordKey', 'firebaseId']
 
   useEffect(() => {
     const loadAllUsers = async () => {
       try {
         const snapshot = await getDocs(collection(db, 'users'))
-        let users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        let users = snapshot.docs.map(doc => {
+          const userData = doc.data()
+          SENSITIVE_FIELDS.forEach(field => delete userData[field])
+          return { id: doc.id, ...userData }
+        })
         
         const resetDivisions = users.map(u => ({ ...u, division: 'Unassigned' }))
         
@@ -27,7 +33,10 @@ export function AuthProvider({ children }) {
         }
       } catch (e) {
         const localUsers = JSON.parse(localStorage.getItem('eliteArrowsUsers') || '[]')
-        const resetDivisions = localUsers.map(u => ({ ...u, division: 'Unassigned' }))
+        const resetDivisions = localUsers.map(u => {
+          SENSITIVE_FIELDS.forEach(field => delete u[field])
+          return { ...u, division: 'Unassigned' }
+        })
         setAllUsers(resetDivisions)
         localStorage.setItem('eliteArrowsUsers', JSON.stringify(resetDivisions))
       }
