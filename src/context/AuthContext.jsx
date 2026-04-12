@@ -52,19 +52,21 @@ export function AuthProvider({ children }) {
     
     let unsubscribe = null
     try {
-      unsubscribe = onSnapshot(
-        query(notificationsCollection, where('toUserId', '==', user.id), orderBy('createdAt', 'desc')),
+      const q = query(notificationsCollection, where('toUserId', '==', user.id))
+      unsubscribe = onSnapshot(q, 
         (snapshot) => {
-          const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-          setNotifications(notifs)
+          try {
+            const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+            setNotifications(notifs.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)))
+          } catch (e) {
+            setNotifications([])
+          }
         },
         (error) => {
-          console.log('Notifications error (may need Firestore rules):', error.message)
           setNotifications([])
         }
       )
     } catch (e) {
-      console.log('Notifications setup error:', e.message)
       setNotifications([])
     }
     return () => { if (unsubscribe) unsubscribe() }
