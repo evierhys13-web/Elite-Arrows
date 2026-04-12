@@ -163,7 +163,7 @@ export default function Subscription() {
               </p>
               <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
                 <p><strong>PayPal Email:</strong> dhlineberry@yahoo.com</p>
-                <p><strong>Reference:</strong> {user.username}</p>
+                <p><strong>Reference:</strong> Elite Arrows Subscription</p>
               </div>
               <div style={{ marginTop: '15px' }}>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
@@ -233,15 +233,15 @@ export default function Subscription() {
                   <p><strong>Account Name:</strong> Rhys Howe</p>
                   <p><strong>Sort Code:</strong> 60-09-09</p>
                   <p><strong>Account Number:</strong> 80249442</p>
-                  <p style={{ marginTop: '10px' }}><strong>Reference:</strong> {user.username}</p>
-                </div>
+<p style={{ marginTop: '10px' }}><strong>Reference:</strong> Elite Arrows Subscription</p>
+              </div>
               )}
 
               {paymentMethod === 'paypal' && (
                 <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
                   <h4 style={{ marginBottom: '15px' }}>PayPal Payment</h4>
                   <p>Send payment to: <strong>dhlineberry@yahoo.com</strong></p>
-                  <p style={{ marginTop: '10px' }}><strong>Reference:</strong> {user.username}</p>
+                  <p style={{ marginTop: '10px' }}><strong>Reference:</strong> Elite Arrows Subscription</p>
                 </div>
               )}
 
