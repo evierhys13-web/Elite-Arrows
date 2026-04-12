@@ -191,6 +191,13 @@ function AppRoutes() {
           </AppLayout>
         </ProtectedRoute>
       } />
+      <Route path="/match-log" element={
+        <SubscribedRoute>
+          <AppLayout>
+            <MatchLog />
+          </AppLayout>
+        </SubscribedRoute>
+      } />
       <Route path="/results" element={
         <SubscribedRoute>
           <AppLayout>
