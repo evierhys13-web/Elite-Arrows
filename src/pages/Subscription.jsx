@@ -102,13 +102,12 @@ export default function Subscription() {
               <div className="subscription-price">
                 £10<span>/month</span>
               </div>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '15px' }}>Elite/Diamond {isAdmin && '(Admin Access)'}</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '15px' }}>Elite/Diamond</p>
               
               <ul className="subscription-features">
                 <li>Access to match submissions</li>
                 <li>Exclusive tournament access</li>
                 <li>Priority support</li>
-                <li>Exclusive Premium Features</li>
               </ul>
 
               {(user?.isSubscribed && !isAdmin) ? (
@@ -117,7 +116,7 @@ export default function Subscription() {
                 </button>
               ) : (
                 <button className="btn btn-primary btn-block" style={{ background: 'linear-gradient(135deg, #ffd700, #ff8c00)', border: 'none' }} onClick={() => {
-                  setPaymentMethod('paypal')
+                  setPaymentMethod('paypal10')
                   setShowPayment(true)
                 }}>
                   {user?.isSubscribed && isAdmin ? 'Upgrade to £10' : 'Pay £10 Subscription'}
@@ -146,7 +145,7 @@ export default function Subscription() {
                 </button>
               ) : (
                 <button className="btn btn-primary btn-block" onClick={() => {
-                  setPaymentMethod('bank')
+                  setPaymentMethod('paypal5')
                   setShowPayment(true)
                 }}>
                   Pay £5 Subscription
@@ -155,7 +154,7 @@ export default function Subscription() {
             </div>
           )}
 
-          {showPayment && paymentMethod === 'paypal' && (
+          {showPayment && paymentMethod === 'paypal10' && (
             <div className="card" style={{ marginTop: '20px', border: '1px solid #ffd700' }}>
               <h3 className="card-title" style={{ color: '#ffd700' }}>Premium Payment - PayPal Only</h3>
               <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
@@ -187,6 +186,38 @@ export default function Subscription() {
             </div>
           )}
 
+          {showPayment && paymentMethod === 'paypal5' && (
+            <div className="card" style={{ marginTop: '20px' }}>
+              <h3 className="card-title">Standard Payment - PayPal</h3>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
+                For Gold/Silver/Bronze members, payment via PayPal.
+              </p>
+              <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                <p><strong>PayPal Email:</strong> <a href="https://paypal.me/Rhyshowe834" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-cyan)' }}>paypal.me/Rhyshowe834</a></p>
+                <p><strong>Reference:</strong> Elite Arrows Subscription</p>
+              </div>
+              <div style={{ marginTop: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                  Upload Proof of Payment (screenshot/photo)
+                </label>
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  onChange={handleProofUpload}
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <button 
+                className="btn btn-primary btn-block" 
+                style={{ marginTop: '15px' }}
+                onClick={handleSubmitPayment}
+                disabled={submitting || !proofImage}
+              >
+                {submitting ? 'Submitting...' : 'Submit Payment'}
+              </button>
+            </div>
+          )}
+
           <div className="card" style={{ marginTop: '20px', textAlign: 'center' }}>
             <p style={{ color: 'var(--text-muted)' }}>
               Current Status: <strong style={{ color: 'var(--warning)' }}>Free Tier</strong>
@@ -209,9 +240,15 @@ export default function Subscription() {
                 </button>
                 <button 
                   className="btn btn-secondary btn-block"
-                  onClick={() => handleMethodSelect('paypal')}
+                  onClick={() => handleMethodSelect('paypal5')}
                 >
-                  PayPal
+                  PayPal (£5)
+                </button>
+                <button 
+                  className="btn btn-secondary btn-block"
+                  onClick={() => handleMethodSelect('paypal10')}
+                >
+                  PayPal (£10)
                 </button>
               </div>
             </>
@@ -233,14 +270,22 @@ export default function Subscription() {
                   <p><strong>Account Name:</strong> Rhys Howe</p>
                   <p><strong>Sort Code:</strong> 60-09-09</p>
                   <p><strong>Account Number:</strong> 80249442</p>
-<p style={{ marginTop: '10px' }}><strong>Reference:</strong> Elite Arrows Subscription</p>
-              </div>
+                  <p style={{ marginTop: '10px' }}><strong>Reference:</strong> Elite Arrows Subscription</p>
+                </div>
               )}
 
-              {paymentMethod === 'paypal' && (
+              {paymentMethod === 'paypal10' && (
                 <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
-                  <h4 style={{ marginBottom: '15px' }}>PayPal Payment</h4>
+                  <h4 style={{ marginBottom: '15px' }}>PayPal Payment (£10 Tier)</h4>
                   <p>Send payment to: <strong><a href="https://paypal.me/dhlineberry" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-cyan)' }}>paypal.me/dhlineberry</a></strong></p>
+                  <p style={{ marginTop: '10px' }}><strong>Reference:</strong> Elite Arrows Subscription</p>
+                </div>
+              )}
+
+              {paymentMethod === 'paypal5' && (
+                <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                  <h4 style={{ marginBottom: '15px' }}>PayPal Payment (£5 Tier)</h4>
+                  <p>Send payment to: <strong><a href="https://paypal.me/Rhyshowe834" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-cyan)' }}>paypal.me/Rhyshowe834</a></strong></p>
                   <p style={{ marginTop: '10px' }}><strong>Reference:</strong> Elite Arrows Subscription</p>
                 </div>
               )}
