@@ -49,13 +49,18 @@ export default function Auth() {
 
     try {
       if (isSignUp) {
-        if (!formData.dartCounterUsername || !formData.email || !formData.password) {
-          throw new Error('All fields are required')
+        if (!formData.email || !formData.password) {
+          throw new Error('Email and password are required')
+        }
+        if (formData.password !== formData.confirmPassword) {
+          throw new Error('Passwords do not match')
         }
         const avg = parseFloat(formData.threeDartAverage) || 0;
 
+        const username = formData.dartCounterUsername || formData.email.split('@')[0]
+        
         await signUp({
-          username: formData.dartCounterUsername,
+          username: username,
           email: formData.email,
           password: formData.password,
           threeDartAverage: avg,

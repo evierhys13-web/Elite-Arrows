@@ -19,7 +19,7 @@ export default function Profile() {
     country: user.country || '',
     dartCounterUsername: user.dartCounterUsername || '',
     dartCounterLink: user.dartCounterLink || '',
-    threeDartAverage: user.threeDartAverage || 0
+    threeDartAverage: user.threeDartAverage || ''
   })
   const [profilePicture, setProfilePicture] = useState(user.profilePicture || '')
   const [saving, setSaving] = useState(false)
@@ -114,7 +114,7 @@ export default function Profile() {
       country: formData.country,
       dartCounterUsername: formData.dartCounterUsername,
       dartCounterLink: formData.dartCounterLink || (formData.dartCounterUsername ? `https://dartcounter.net/player/${formData.dartCounterUsername}` : ''),
-      threeDartAverage: formData.threeDartAverage,
+      threeDartAverage: parseFloat(formData.threeDartAverage) || 0,
       profilePicture,
       tags
     })
