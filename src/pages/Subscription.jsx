@@ -57,15 +57,11 @@ export default function Subscription() {
     if (!user?.division || user?.division === 'Unassigned') {
       return 0
     }
-    if (user?.division === 'Elite' || user?.division === 'Diamond') {
-      return 10
-    }
     return 5
   }
   
   const price = getSubscriptionPrice()
   const isFreeTier = !user?.division || user?.division === 'Unassigned'
-  const isHighTier = user?.division === 'Elite' || user?.division === 'Diamond'
   const isAdmin = user?.email?.toLowerCase() === 'rhyshowe2023@outlook.com'
 
   return (
@@ -125,15 +121,15 @@ export default function Subscription() {
 
           <div className="subscription-card" style={{ flex: '1 1 200px', minWidth: '200px', border: '2px solid #ffd700' }}>
             <h2 style={{ color: '#ffd700' }}>Elite Pass</h2>
-            <div className="subscription-price">£10<span>/month</span></div>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Elite/Diamond</p>
+            <div className="subscription-price">£5<span>/month</span></div>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>All Members</p>
             <ul className="subscription-features">
-              <li>All Standard</li>
-              <li>Priority support</li>
-              <li>VIP features</li>
+              <li>Full access</li>
+              <li>Tournaments</li>
+              <li>Match submissions</li>
             </ul>
-            <button className="btn btn-primary btn-block" style={{ background: 'linear-gradient(135deg, #ffd700, #ff8c00)', border: 'none' }} onClick={() => { setPaymentMethod('paypal10'); setShowPayment(true) }}>
-              Pay £10 Entry
+            <button className="btn btn-primary btn-block" style={{ background: 'linear-gradient(135deg, #ffd700, #ff8c00)', border: 'none' }} onClick={() => { setPaymentMethod('paypal5'); setShowPayment(true) }}>
+              Pay £5 Entry
             </button>
           </div>
         </div>
