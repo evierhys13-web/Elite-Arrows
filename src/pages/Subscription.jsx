@@ -61,6 +61,7 @@ export default function Subscription() {
   }
   
   const price = getSubscriptionPrice()
+  const isHighTier = user?.division === 'Elite' || user?.division === 'Diamond'
 
   return (
     <div className="page">
@@ -76,6 +77,7 @@ export default function Subscription() {
           </div>
           <div style={{ marginTop: '20px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
             <p style={{ color: 'var(--success)', fontWeight: '600' }}>Active Subscriber</p>
+            {user?.freeAdminSubscription && <p style={{ color: 'var(--accent-cyan)', fontSize: '0.85rem', marginTop: '5px' }}>(Free - Admin Granted)</p>}
           </div>
         </div>
       ) : user?.paymentPending ? (
@@ -93,39 +95,85 @@ export default function Subscription() {
         </div>
       ) : (
         <>
-          <div className="subscription-card">
-            <h2>Elite Arrows Pass</h2>
-            <div className="subscription-price">
-              £{price}<span>/month</span>
-            </div>
-            
-            <ul className="subscription-features">
-              <li>Access to match submissions</li>
-              <li>Exclusive tournament access</li>
-              <li>Priority support</li>
-              <li style={{ color: 'var(--accent-cyan)', marginTop: '10px' }}>
-                {user?.division === 'Elite' || user?.division === 'Diamond' 
-                  ? 'Elite/Diamond Tier: £10/month' 
-                  : 'Standard Tier: £5/month'}
-              </li>
-            </ul>
+          {!isHighTier && (
+            <div className="subscription-card">
+              <h2>Standard Pass</h2>
+              <div className="subscription-price">
+                £5<span>/month</span>
+              </div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '15px' }}>Gold/Silver/Bronze</p>
+              
+              <ul className="subscription-features">
+                <li>Access to match submissions</li>
+                <li>Exclusive tournament access</li>
+                <li>Priority support</li>
+              </ul>
 
-            <button className="btn btn-primary btn-block" onClick={() => setShowPayment(true)}>
-              Pay Subscription
-            </button>
-          </div>
+              <button className="btn btn-primary btn-block" onClick={() => setShowPayment(true)}>
+                Pay £5 Subscription
+              </button>
+            </div>
+          )}
+
+          {isHighTier && (
+            <div className="subscription-card" style={{ border: '2px solid #ffd700' }}>
+              <h2 style={{ color: '#ffd700' }}>Premium Pass</h2>
+              <div className="subscription-price">
+                £10<span>/month</span>
+              </div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '15px' }}>Elite/Diamond</p>
+              
+              <ul className="subscription-features">
+                <li>Access to match submissions</li>
+                <li>Exclusive tournament access</li>
+                <li>Priority support</li>
+                <li>Exclusive Premium Features</li>
+              </ul>
+
+              <button className="btn btn-primary btn-block" style={{ background: 'linear-gradient(135deg, #ffd700, #ff8c00)', border: 'none' }} onClick={() => {
+                setPaymentMethod('paypal')
+                setShowPayment(true)
+              }}>
+                Pay £10 Subscription
+              </button>
+            </div>
+          )}
+
+          {isHighTier && (
+            <div className="card" style={{ marginTop: '20px', border: '1px solid #ffd700' }}>
+              <h3 className="card-title" style={{ color: '#ffd700' }}>Premium Payment - PayPal Only</h3>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
+                For Elite/Diamond members, payment via PayPal only.
+              </p>
+              <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                <p><strong>PayPal Email:</strong> dhilineberry@yahoo.com</p>
+                <p><strong>Reference:</strong> {user.username}</p>
+              </div>
+              <div style={{ marginTop: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                  Upload Proof of Payment (screenshot/photo)
+                </label>
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  onChange={handleProofUpload}
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <button 
+                className="btn btn-primary btn-block" 
+                style={{ marginTop: '15px', background: 'linear-gradient(135deg, #ffd700, #ff8c00)', border: 'none' }}
+                onClick={handleSubmitPayment}
+                disabled={submitting || !proofImage}
+              >
+                {submitting ? 'Submitting...' : 'Submit Payment'}
+              </button>
+            </div>
+          )}
 
           <div className="card" style={{ marginTop: '20px', textAlign: 'center' }}>
             <p style={{ color: 'var(--text-muted)' }}>
               Current Status: <strong style={{ color: 'var(--warning)' }}>Free Tier</strong>
-            </p>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '10px' }}>
-              Free users can only view: Table, Results, Match Log, Players, and Home
-            </p>
-            <p style={{ color: 'var(--accent-cyan)', fontSize: '0.9rem', marginTop: '15px', fontWeight: '600' }}>
-              {user?.division === 'Elite' || user?.division === 'Diamond' 
-                ? 'Your division (Elite/Diamond): £10/month' 
-                : 'Your division (Gold/Silver/Bronze): £5/month'}
             </p>
           </div>
         </>
