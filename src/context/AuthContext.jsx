@@ -13,7 +13,7 @@ export function AuthProvider({ children }) {
   const [allUsers, setAllUsers] = useState([])
   const [notifications, setNotifications] = useState([])
   
-  const SENSITIVE_FIELDS = ['password', 'passwordString', 'passwordHash', 'passwordKey', 'passwordStringValue', 'password', 'firebaseId']
+  const SENSITIVE_FIELDS = ['password', 'passwordString', 'passwordHash', 'passwordKey', 'passwordStringValue', 'password', 'firebaseId', 'pwd', 'pass', 'passwd']
   
 const cleanUserData = (users) => {
     return users.map(u => {
