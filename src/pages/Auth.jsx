@@ -52,6 +52,12 @@ export default function Auth() {
         if (!formData.email || !formData.password) {
           throw new Error('Email and password are required')
         }
+        if (!formData.dartCounterUsername) {
+          throw new Error('DartCounter username is required')
+        }
+        if (!formData.threeDartAverage) {
+          throw new Error('3-Dart average is required')
+        }
         if (formData.password !== formData.confirmPassword) {
           throw new Error('Passwords do not match')
         }
@@ -69,30 +75,11 @@ export default function Auth() {
         }, formData.rememberMe)
         alert('Sign up successful!')
       } else {
-        if ((!formData.dartCounterUsername && !formData.email) || !formData.password) {
-          throw new Error('DartCounter username (or email) and password are required')
+        if (!formData.email || !formData.password) {
+          throw new Error('Email and password are required')
         }
 
-        const allUsers = getAllUsers()
-        
-        let user = null
-        
-        if (formData.email && formData.email.includes('@')) {
-          user = allUsers.find(u => u.email?.toLowerCase() === formData.email.toLowerCase())
-        }
-        
-        if (!user && formData.dartCounterUsername) {
-          user = allUsers.find(u => u.dartCounterUsername?.toLowerCase() === formData.dartCounterUsername.toLowerCase())
-        }
-        
-        if (!user) {
-          throw new Error('User not found. Use your DartCounter username or email address.')
-        }
-        if (!user.email) {
-          throw new Error('No email associated with this account')
-        }
-
-        await signIn(user.email, formData.password, formData.rememberMe)
+        await signIn(formData.email, formData.password, formData.rememberMe)
         alert('Sign in successful!')
       }
 
@@ -198,7 +185,7 @@ export default function Auth() {
             {isSignUp && (
               <>
                 <div className="form-group">
-                  <label htmlFor="dartCounterUsername">DartCounter Username (optional)</label>
+                  <label htmlFor="dartCounterUsername">DartCounter Username</label>
                   <input
                     type="text"
                     id="dartCounterUsername"
@@ -211,7 +198,7 @@ export default function Auth() {
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="threeDartAverage">3-Dart Average (optional)</label>
+                  <label htmlFor="threeDartAverage">3-Dart Average</label>
                   <input
                     type="number"
                     id="threeDartAverage"
