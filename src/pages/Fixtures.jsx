@@ -51,6 +51,18 @@ const fixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
     return opponents
   }
 
+  const getPlayedOpponents = () => {
+    const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+    const leagueResults = results.filter(r => 
+      r.status === 'approved' && 
+      r.gameType === 'League' &&
+      (r.player1Id === user.id || r.player2Id === user.id)
+    )
+    return leagueResults.map(r => r.player1Id === user.id ? r.player2Id : r.player1Id)
+  }
+  
+  const playedOpponentIds = getPlayedOpponents()
+
   const handleDeclineFixture = (fixtureId) => {
     if (!confirm('Decline this fixture?')) return
     
@@ -145,7 +157,7 @@ const fixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
                 <option value="">Select opponent</option>
                 {getFilteredOpponents(createForm.gameType).map(p => (
                   <option key={p.id} value={p.id}>
-                    {p.username} ({p.division})
+                    {p.username} ({p.division}) {playedOpponentIds.includes(p.id) ? '- Played' : '- To Play'}
                   </option>
                 ))}
               </select>
