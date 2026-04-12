@@ -149,7 +149,7 @@ export default function Games() {
         {onlinePlayers.length === 0 ? (
           <p style={{ color: 'var(--text-muted)' }}>No players online right now</p>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '10px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
             {onlinePlayers.map(player => (
               <div 
                 key={player.id}

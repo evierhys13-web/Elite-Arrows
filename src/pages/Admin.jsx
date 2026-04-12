@@ -1391,7 +1391,7 @@ export default function Admin() {
 
       {activeTab === 'moneypot' && isFullAdmin && (
         <div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
             <div className="card">
               <h3 className="card-title">Standard Subscription Pot (£5)</h3>
               <div style={{ 
