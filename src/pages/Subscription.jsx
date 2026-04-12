@@ -195,17 +195,8 @@ export default function Subscription() {
           </p>
           
           <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', marginBottom: '15px' }}>
-            <p style={{ fontWeight: 'bold', marginBottom: '10px' }}>Option 1: PayPal</p>
-            <p><strong>PayPal Email:</strong> <a href="https://paypal.me/RhysHowe834" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-cyan)' }}>paypal.me/RhysHowe834</a></p>
+            <p><strong>PayPal Email:</strong> <a href="https://paypal.me/dhineberry" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-cyan)' }}>paypal.me/dhineberry</a></p>
             <p><strong>Reference:</strong> Elite Arrows Subscription</p>
-          </div>
-          
-          <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', marginBottom: '15px' }}>
-            <p style={{ fontWeight: 'bold', marginBottom: '10px' }}>Option 2: Bank Transfer</p>
-            <p><strong>Account Name:</strong> Rhys Howe</p>
-            <p><strong>Sort Code:</strong> 60-09-09</p>
-            <p><strong>Account Number:</strong> 80249442</p>
-            <p><strong>Reference:</strong> Your Username</p>
           </div>
           
           <div style={{ marginTop: '15px' }}>
