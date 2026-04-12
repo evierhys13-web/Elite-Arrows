@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { db, auth, usersCollection, doc, setDoc, getDoc, getDocs, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence } from '../firebase'
+import { db, auth, usersCollection, doc, setDoc, getDoc, getDocs, query, collection, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence } from '../firebase'
 
 const AuthContext = createContext(null)
 
@@ -14,8 +14,21 @@ export function AuthProvider({ children }) {
   const [notifications, setNotifications] = useState([])
 
   useEffect(() => {
-    const localUsers = JSON.parse(localStorage.getItem('eliteArrowsUsers') || '[]')
-    setAllUsers(localUsers)
+    const loadAllUsers = async () => {
+      try {
+        const snapshot = await getDocs(collection(db, 'users'))
+        const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        if (users.length > 0) {
+          setAllUsers(users)
+          localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+        }
+      } catch (e) {
+        const localUsers = JSON.parse(localStorage.getItem('eliteArrowsUsers') || '[]')
+        setAllUsers(localUsers)
+      }
+    }
+    
+    loadAllUsers()
 
     const timeout = setTimeout(() => {
       setLoading(false)
@@ -74,6 +87,11 @@ export function AuthProvider({ children }) {
 
       await setDoc(doc(db, 'users', firebaseUser.uid), newUser)
       setUser({ id: firebaseUser.uid, ...newUser })
+      
+      const updatedUsers = [...allUsers, { id: firebaseUser.uid, ...newUser }]
+      setAllUsers(updatedUsers)
+      localStorage.setItem('eliteArrowsUsers', JSON.stringify(updatedUsers))
+      
       return newUser
     } catch (error) {
       throw new Error(error.message)
