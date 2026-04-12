@@ -744,7 +744,7 @@ export default function Admin() {
             
             <button 
               className="btn btn-primary"
-              onClick={() => {
+              onClick={async () => {
                 const userId = document.getElementById('assignDivisionUser').value
                 const division = document.getElementById('assignDivision').value
                 const subType = document.getElementById('grantSubType').value
@@ -833,7 +833,7 @@ export default function Admin() {
               </div>
             ))}
           </div>
-        </div>
+        </>
       )}
 
       {activeTab === 'admins' && isFullAdmin && (
