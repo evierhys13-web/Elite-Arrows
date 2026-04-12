@@ -272,7 +272,11 @@ export default function Admin() {
   const freeUsers = getAllUsers().filter(u => !u.isSubscribed && !u.paymentPending)
   const tournamentAdmins = getAllUsers().filter(u => u.isTournamentAdmin)
 
-  if (!user.isAdmin && !user.isTournamentAdmin) {
+  const isEmailAdmin = user?.email?.toLowerCase() === 'rhyshowe2023@outlook.com'
+  const isDbAdmin = user?.isAdmin === true
+  const canAccess = isEmailAdmin || isDbAdmin || user?.isTournamentAdmin
+  
+  if (!canAccess) {
     return (
       <div className="page">
         <div className="page-header">
