@@ -115,7 +115,7 @@ export default function Subscription() {
               <li>Full access</li>
             </ul>
             <button className="btn btn-primary btn-block" onClick={() => { setPaymentMethod('paypal5'); setShowPayment(true) }}>
-              Pay £5 Entry
+              Entry Fee
             </button>
           </div>
 
@@ -129,7 +129,7 @@ export default function Subscription() {
               <li>Match submissions</li>
             </ul>
             <button className="btn btn-primary btn-block" style={{ background: 'linear-gradient(135deg, #ffd700, #ff8c00)', border: 'none' }} onClick={() => { setPaymentMethod('paypal5'); setShowPayment(true) }}>
-              Pay £5 Entry
+              Entry Fee
             </button>
           </div>
         </div>
