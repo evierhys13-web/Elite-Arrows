@@ -93,14 +93,14 @@ export default function Fixtures() {
       createdAt: new Date().toISOString()
     })
     localStorage.setItem('eliteArrowsNotifications', JSON.stringify(notifications))
-    window.location.reload()
+    alert('Fixture declined')
   }
 
   const handleCancelFixture = (fixtureId) => {
     if (!confirm('Cancel this fixture?')) return
     const updatedFixtures = regularFixtures.filter(f => f.id !== fixtureId)
     localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
-    window.location.reload()
+    alert('Fixture cancelled')
   }
 
   const handleScheduleCupMatch = (fixtureId, date, time) => {
@@ -113,7 +113,6 @@ export default function Fixtures() {
       allFixtures[index].status = 'accepted'
       localStorage.setItem('eliteArrowsFixtures', JSON.stringify(allFixtures))
       alert('Match scheduled!')
-      window.location.reload()
     }
   }
 
@@ -123,7 +122,7 @@ export default function Fixtures() {
     if (index !== -1) {
       allFixtures[index].status = 'accepted'
       localStorage.setItem('eliteArrowsFixtures', JSON.stringify(allFixtures))
-      window.location.reload()
+      alert('Fixture accepted!')
     }
   }
 
@@ -426,7 +425,7 @@ export default function Fixtures() {
                   
                   setShowCreateModal(false)
                   setCreateForm({ opponent: '', gameType: 'Friendly', fixtureDate: '', fixtureTime: '' })
-                  window.location.reload()
+                  alert('Fixture challenge sent!')
                 }}
               >
                 Send Challenge

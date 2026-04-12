@@ -848,8 +848,15 @@ export default function Admin() {
                       onClick={async () => {
                         if (confirm(`Remove admin privileges from ${u.username}?`)) {
                           await setDoc(doc(db, 'users', u.id), { isAdmin: false }, { merge: true })
+                          
+                          const users = getAllUsers()
+                          const index = users.findIndex(us => us.id === u.id)
+                          if (index !== -1) {
+                            users[index].isAdmin = false
+                            localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+                          }
+                          
                           alert(`${u.username} is no longer an admin`)
-                          window.location.reload()
                         }
                       }}
                     >
@@ -926,7 +933,6 @@ export default function Admin() {
                         }
                         
                         alert(`${u.username} is no longer a tournament admin`)
-                        window.location.reload()
                       }
                     }}
                   >
