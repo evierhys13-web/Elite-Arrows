@@ -138,7 +138,7 @@ export default function Table() {
                     }}>
                       <td>{index + 1}</td>
                       <td>
-                        {player.username}
+                        {player.dartCounterUsername || player.username}
                         {player.id === user.id && (
                           <span className="admin-badge" style={{ marginLeft: '8px' }}>You</span>
                         )}
