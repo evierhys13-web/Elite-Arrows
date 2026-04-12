@@ -54,6 +54,9 @@ export default function Subscription() {
   const pendingPayments = allUsers.filter(u => u.paymentPending && !u.isSubscribed)
   
   const getSubscriptionPrice = () => {
+    if (!user?.division || user?.division === 'Unassigned') {
+      return 0
+    }
     if (user?.division === 'Elite' || user?.division === 'Diamond') {
       return 10
     }
@@ -61,6 +64,7 @@ export default function Subscription() {
   }
   
   const price = getSubscriptionPrice()
+  const isFreeTier = !user?.division || user?.division === 'Unassigned'
   const isHighTier = user?.division === 'Elite' || user?.division === 'Diamond'
   const isAdmin = user?.email?.toLowerCase() === 'rhyshowe2023@outlook.com'
 
@@ -96,7 +100,27 @@ export default function Subscription() {
         </div>
       ) : (
         <>
-          {(isHighTier || isAdmin) && (
+          {(isFreeTier || !user?.division) && (
+        <div className="subscription-card" style={{ border: '2px solid #888', marginBottom: '20px' }}>
+          <h2 style={{ color: '#888' }}>Free Tier</h2>
+          <div className="subscription-price">
+            Free<span>/month</span>
+          </div>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '15px' }}>Unassigned</p>
+          
+          <ul className="subscription-features">
+            <li>View players</li>
+            <li>View tables</li>
+            <li>Basic features</li>
+          </ul>
+          
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '15px', padding: '10px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+            Upgrade to Gold/Silver/Bronze (£5) or Elite/Diamond (£10) when assigned to a division by admin.
+          </p>
+        </div>
+      )}
+
+      {(isHighTier || isAdmin) && (
             <div className="subscription-card" style={{ border: '2px solid #ffd700', marginBottom: '20px' }}>
               <h2 style={{ color: '#ffd700' }}>Premium Pass</h2>
               <div className="subscription-price">

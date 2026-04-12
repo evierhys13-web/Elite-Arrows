@@ -17,16 +17,23 @@ export function AuthProvider({ children }) {
     const loadAllUsers = async () => {
       try {
         const snapshot = await getDocs(collection(db, 'users'))
-        const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        let users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        
+        users = users.map(u => ({ ...u, division: null }))
+        
         if (users.length > 0) {
           setAllUsers(users)
           localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
         }
       } catch (e) {
         const localUsers = JSON.parse(localStorage.getItem('eliteArrowsUsers') || '[]')
-        setAllUsers(localUsers)
+        const cleared = localUsers.map(u => ({ ...u, division: null }))
+        setAllUsers(cleared)
+        localStorage.setItem('eliteArrowsUsers', JSON.stringify(cleared))
       }
     }
+    
+    loadAllUsers()
     
     const timeout = setTimeout(() => {
       setLoading(false)
