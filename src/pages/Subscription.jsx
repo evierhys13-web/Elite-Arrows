@@ -82,7 +82,6 @@ export default function Subscription() {
           </div>
           <div style={{ marginTop: '20px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
             <p style={{ color: 'var(--success)', fontWeight: '600' }}>Active Subscriber</p>
-            {user?.freeAdminSubscription && <p style={{ color: 'var(--accent-cyan)', fontSize: '0.85rem', marginTop: '5px' }}>(Free - Admin Granted)</p>}
           </div>
         </div>
       ) : (user?.paymentPending) ? (
