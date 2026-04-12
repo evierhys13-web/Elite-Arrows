@@ -1479,7 +1479,7 @@ export default function Admin() {
             </div>
 
             <div className="card">
-              <h3 className="card-title">Premium Subscription Pot (£10)</h3>
+              <h3 className="card-title">Premium Subscription Pot (£5)</h3>
               <div style={{ 
                 padding: '30px', 
                 background: 'linear-gradient(135deg, #ffd700, #ff8c00)',
@@ -1492,7 +1492,7 @@ export default function Admin() {
                 <p style={{ fontSize: '3rem', fontWeight: 'bold', margin: 0 }}>£{subscriptionPot10.toFixed(2)}</p>
               </div>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                From £10/month subscriptions
+                From £5/month subscriptions
               </p>
               <div style={{ marginTop: '15px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
                 <h4 style={{ marginBottom: '10px' }}>Adjust Pot</h4>
@@ -1511,7 +1511,7 @@ export default function Admin() {
                         const newPot10 = subscriptionPot10 + amount
                         setSubscriptionPot10(newPot10)
                         localStorage.setItem('eliteArrowsSubscriptionPot10', newPot10.toString())
-                        addToMoneyHistory('subscription', amount, 'Manual adjustment (£10 tier)')
+                        addToMoneyHistory('subscription', amount, 'Manual adjustment (£5 tier)')
                         alert(`Premium subscription pot ${amount >= 0 ? 'increased' : 'decreased'} by £${Math.abs(amount).toFixed(2)}`)
                         document.getElementById('subPot10Adjust').value = ''
                       }
@@ -1569,7 +1569,20 @@ export default function Admin() {
           </div>
 
           <div className="card" style={{ marginTop: '20px' }}>
-            <h3 className="card-title">Money Pot History</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+              <h3 className="card-title" style={{ margin: 0 }}>Money Pot History</h3>
+              <button 
+                className="btn btn-danger"
+                onClick={() => {
+                  if (confirm('Are you sure you want to reset all money history? This cannot be undone.')) {
+                    localStorage.setItem('eliteArrowsMoneyHistory', JSON.stringify([]))
+                    alert('Money history has been reset')
+                  }
+                }}
+              >
+                Reset History
+              </button>
+            </div>
             {(() => {
               const history = JSON.parse(localStorage.getItem('eliteArrowsMoneyHistory') || '[]')
               if (history.length === 0) {
