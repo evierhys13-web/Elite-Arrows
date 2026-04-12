@@ -307,6 +307,14 @@ export default function Admin() {
         </button>
         {isFullAdmin && (
           <button
+            className={`division-tab ${activeTab === 'games' ? 'active' : ''}`}
+            onClick={() => setActiveTab('games')}
+          >
+            Games
+          </button>
+        )}
+        {isFullAdmin && (
+          <button
             className={`division-tab ${activeTab === 'appearance' ? 'active' : ''}`}
             onClick={() => setActiveTab('appearance')}
           >
@@ -929,156 +937,69 @@ export default function Admin() {
                   />
                 </div>
                 <div className="form-group">
-                  <label>Max Participants</label>
-                  <select value={tournamentForm.maxParticipants} onChange={(e) => setTournamentForm({...tournamentForm, maxParticipants: parseInt(e.target.value)})}>
-                    <option value="8">8 Players</option>
-                    <option value="16">16 Players</option>
-                    <option value="32">32 Players</option>
-                    <option value="64">64 Players</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Tournament Format</label>
-                  <div style={{ display: 'flex', gap: '20px', marginTop: '10px' }}>
-                    <label><input type="radio" checked={!tournamentForm.isCashBased} onChange={() => setTournamentForm({...tournamentForm, isCashBased: false, entryFee: 0})} /> Free / Reward</label>
-                    <label><input type="radio" checked={tournamentForm.isCashBased} onChange={() => setTournamentForm({...tournamentForm, isCashBased: true})} /> Cash Entry</label>
-                  </div>
-                </div>
-                {tournamentForm.isCashBased && (
-                  <div className="form-group">
-                    <label>Entry Fee (£)</label>
-                    <input type="number" value={tournamentForm.entryFee} onChange={(e) => setTournamentForm({...tournamentForm, entryFee: parseFloat(e.target.value) || 0})} min="0" step="0.01" />
-                  </div>
-                )}
-                {!tournamentForm.isCashBased && (
-                  <div className="form-group">
-                    <label>Prize / Reward Info</label>
-                    <input type="text" value={tournamentForm.prizeInfo} onChange={(e) => setTournamentForm({...tournamentForm, prizeInfo: e.target.value})} placeholder="e.g., Weekly leaderboard prizes" />
-                  </div>
-                )}
-                <div className="form-group">
-                  <label>Entry Deadline</label>
-                  <input type="datetime-local" value={tournamentForm.entryDeadline} onChange={(e) => setTournamentForm({...tournamentForm, entryDeadline: e.target.value})} />
-                </div>
-                <div className="form-group">
-                  <label>Days Between Rounds</label>
-                  <select value={tournamentForm.daysBetweenRounds} onChange={(e) => setTournamentForm({...tournamentForm, daysBetweenRounds: parseInt(e.target.value)})}>
-                    <option value="1">1 Day</option>
-                    <option value="2">2 Days</option>
-                    <option value="3">3 Days</option>
-                    <option value="4">4 Days</option>
-                    <option value="5">5 Days</option>
-                    <option value="6">6 Days</option>
-                    <option value="7">1 Week</option>
-                  </select>
-                </div>
-                <div style={{ borderTop: '1px solid var(--border)', paddingTop: '15px', marginTop: '15px' }}>
-                  <h4 style={{ marginBottom: '15px' }}>Best Of Settings (First to X legs)</h4>
-                  <div className="form-group">
-                    <label>Round 1 / Round of 32/16</label>
-                    <select value={tournamentForm.formatR1} onChange={(e) => setTournamentForm({...tournamentForm, formatR1: e.target.value})}>
-                      {[1,2,3,4,5,6,7,8,9,10,11,12,13].map(n => <option key={n} value={n}>First to {n}</option>)}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label>Round 2 / Round of 16/8</label>
-                    <select value={tournamentForm.formatR2} onChange={(e) => setTournamentForm({...tournamentForm, formatR2: e.target.value})}>
-                      {[1,2,3,4,5,6,7,8,9,10,11,12,13].map(n => <option key={n} value={n}>First to {n}</option>)}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label>Quarter Finals</label>
-                    <select value={tournamentForm.formatQF} onChange={(e) => setTournamentForm({...tournamentForm, formatQF: e.target.value})}>
-                      {[1,2,3,4,5,6,7,8,9,10,11,12,13].map(n => <option key={n} value={n}>First to {n}</option>)}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label>Semi Finals</label>
-                    <select value={tournamentForm.formatSF} onChange={(e) => setTournamentForm({...tournamentForm, formatSF: e.target.value})}>
-                      {[1,2,3,4,5,6,7,8,9,10,11,12,13].map(n => <option key={n} value={n}>First to {n}</option>)}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label>Final</label>
-                    <select value={tournamentForm.formatF} onChange={(e) => setTournamentForm({...tournamentForm, formatF: e.target.value})}>
-                      {[1,2,3,4,5,6,7,8,9,10,11,12,13].map(n => <option key={n} value={n}>First to {n}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div className="form-group" style={{ marginTop: '15px' }}>
-                  <label>Divisions</label>
-                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '10px' }}>
-                    {['Elite', 'Diamond', 'Gold', 'Silver', 'Bronze'].map(div => (
-                      <label key={div}>
-                        <input type="checkbox" checked={tournamentForm.divisions.includes(div)}
-                          onChange={(e) => setTournamentForm({...tournamentForm, divisions: e.target.checked ? [...tournamentForm.divisions, div] : tournamentForm.divisions.filter(d => d !== div)})} />
-                        {' '}{div}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
-                  <button className="btn btn-primary" onClick={createTournament}>Create</button>
-                  <button className="btn btn-secondary" onClick={() => setShowTournamentForm(false)}>Cancel</button>
+                  <button className="btn btn-primary" onClick={saveTournamentForm}>Create Tournament</button>
+                  <button className="btn btn-secondary" onClick={() => setShowTournamentForm(false)} style={{ marginLeft: '10px' }}>Cancel</button>
                 </div>
               </div>
             )}
           </div>
+        </div>
+      )}
 
-          <div className="card">
-            <h3 className="card-title">All Tournaments</h3>
-            {(() => {
-              const tournaments = JSON.parse(localStorage.getItem('eliteArrowsTournaments') || '[]')
-              const tournamentSignups = JSON.parse(localStorage.getItem('eliteArrowsTournamentSignups') || '[]')
-              
-              if (tournaments.length === 0) {
-                return <p style={{ color: 'var(--text-muted)', textAlign: 'center' }}>No tournaments yet</p>
-              }
-              
-              return tournaments.map(t => {
-                const signups = tournamentSignups.filter(s => s.tournamentId === t.id && s.status === 'approved')
-                const isClosed = t.entryDeadline && new Date(t.entryDeadline) < new Date()
+      {activeTab === 'games' && (
+        <div className="card">
+          <h3 className="card-title">Manage Games</h3>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>View and manage all games played in the league.</p>
+          
+          {(() => {
+            const games = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+            const allUsers = JSON.parse(localStorage.getItem('eliteArrowsUsers') || '[]')
+            
+            return (
+              <div>
+                <div style={{ marginBottom: '20px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                  <strong>Total Games:</strong> {games.length}
+                </div>
                 
-                return (
-                  <div key={t.id} style={{ padding: '15px', borderBottom: '1px solid var(--border)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                      <div>
-                        <h4>{t.name}</h4>
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{t.type} • {t.divisions?.join(', ') || 'All divisions'}</p>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <span style={{ color: t.status === 'open' ? 'var(--success)' : 'var(--accent-cyan)' }}>
-                          {t.status === 'open' ? (isClosed ? 'Closing' : 'Open') : 'In Progress'}
-                        </span>
-                        <button onClick={() => {
-                          if (confirm('Delete this tournament?')) {
-                            localStorage.setItem('eliteArrowsTournaments', JSON.stringify(tournaments.filter(tour => tour.id !== t.id)))
-                            localStorage.setItem('eliteArrowsTournamentSignups', JSON.stringify(tournamentSignups.filter(s => s.tournamentId !== t.id)))
-                            alert('Tournament deleted')
-                          }
-                        }} style={{ display: 'block', background: 'none', border: 'none', color: 'var(--error)', fontSize: '0.8rem', cursor: 'pointer', marginTop: '5px' }}>
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '0.85rem', padding: '4px 8px', background: 'var(--bg-secondary)', borderRadius: '4px' }}>
-                        {t.isCashBased ? `£${t.entryFee} Entry` : 'Free Entry'}
-                      </span>
-                      <span style={{ fontSize: '0.85rem', padding: '4px 8px', background: 'var(--bg-secondary)', borderRadius: '4px' }}>
-                        {signups.length} / {t.maxParticipants} Players
-                      </span>
-                      {t.entryDeadline && (
-                        <span style={{ fontSize: '0.85rem', padding: '4px 8px', background: isClosed ? 'var(--error)' : 'var(--warning)', color: isClosed ? '#fff' : '#000', borderRadius: '4px' }}>
-                          {isClosed ? 'Closed: ' : 'Ends: '}{new Date(t.entryDeadline).toLocaleDateString()}
-                        </span>
-                      )}
-                    </div>
+                {games.length === 0 ? (
+                  <div className="empty-state">
+                    <p>No games recorded yet.</p>
                   </div>
-                )
-              })
-            })()}
-          </div>
+                ) : (
+                  <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                          <th style={{ padding: '10px', textAlign: 'left' }}>Date</th>
+                          <th style={{ padding: '10px', textAlign: 'left' }}>Player 1</th>
+                          <th style={{ padding: '10px', textAlign: 'left' }}>Player 2</th>
+                          <th style={{ padding: '10px', textAlign: 'left' }}>Score</th>
+                          <th style={{ padding: '10px', textAlign: 'left' }}>Type</th>
+                          <th style={{ padding: '10px', textAlign: 'left' }}>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {games.slice(0, 50).map((game, index) => {
+                          const p1 = allUsers.find(u => u.id === game.player1Id)
+                          const p2 = allUsers.find(u => u.id === game.player2Id)
+                          return (
+                            <tr key={index} style={{ borderBottom: '1px solid var(--border)' }}>
+                              <td style={{ padding: '10px' }}>{new Date(game.date).toLocaleDateString()}</td>
+                              <td style={{ padding: '10px' }}>{p1?.username || 'Unknown'}</td>
+                              <td style={{ padding: '10px' }}>{p2?.username || 'Unknown'}</td>
+                              <td style={{ padding: '10px' }}>{game.score1} - {game.score2}</td>
+                              <td style={{ padding: '10px' }}>{game.gameType}</td>
+                              <td style={{ padding: '10px' }}>{game.status}</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
         </div>
       )}
 
