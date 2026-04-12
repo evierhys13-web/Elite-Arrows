@@ -113,11 +113,11 @@ const fixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
           }} onClick={e => e.stopPropagation()}>
             <h3 style={{ marginBottom: '20px', color: 'var(--accent-cyan)', textAlign: 'center' }}>
               {createForm.opponent 
-                ? `You vs ${allUsers.find(u => u.id === createForm.opponent)?.username || 'Select Opponent'}` 
-                : 'Create New Fixture'}
+                ? `${user.username} vs ${allUsers.find(u => u.id === createForm.opponent)?.username}` 
+                : `${user.username} vs Select Opponent`}
             </h3>
             
-<div className="form-group">
+            <div className="form-group">
               <label>Game Type</label>
               <select 
                 value={createForm.gameType} 
