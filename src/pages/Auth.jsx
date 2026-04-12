@@ -221,7 +221,6 @@ export default function Auth() {
                 </div>
               </>
             )}
-            )}
 
           <div className="checkbox-group">
               <input
