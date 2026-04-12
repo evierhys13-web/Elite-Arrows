@@ -1,5 +1,5 @@
 @echo off
 set PATH=C:\Program Files\Git\cmd;%PATH%
 git add -A
-git commit -m "Show fixtures for all users"
+git commit -m "Restore subscriber only"
 git push
