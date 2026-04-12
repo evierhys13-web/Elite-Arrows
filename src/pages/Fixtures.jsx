@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { Link } from 'react-router-dom'
+import { db, doc, setDoc, collection, addDoc } from '../firebase'
 
 export default function Fixtures() {
   const { user, getAllUsers } = useAuth()
@@ -187,7 +188,7 @@ const fixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
               <button 
                 className="btn btn-primary" 
                 style={{ flex: 1 }}
-                onClick={() => {
+                onClick={async () => {
                   if (!createForm.opponent || !createForm.fixtureDate || !createForm.fixtureTime) {
                     alert('Please fill in all fields')
                     return
@@ -218,18 +219,18 @@ const fixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
                   }
                   fixtures.push(newFixture)
                   localStorage.setItem('eliteArrowsFixtures', JSON.stringify(fixtures))
-                  const notifications = JSON.parse(localStorage.getItem('eliteArrowsNotifications') || '[]')
-                  notifications.push({
-                    id: `fixture_${Date.now()}`,
+                  
+                  await addDoc(collection(db, 'notifications'), {
                     type: 'fixture_challenge',
                     fromUserId: user.id,
                     fromUsername: user.username,
                     toUserId: opponentUser.id,
-                    message: `${user.username} has sent you a fixture challenge: ${createForm.fixtureDate} at ${createForm.fixtureTime}`,
+                    toUsername: opponentUser.username,
+                    message: `${user.username} has sent you a fixture challenge: ${createForm.gameType} on ${createForm.fixtureDate} at ${createForm.fixtureTime}`,
                     isRead: false,
                     createdAt: new Date().toISOString()
                   })
-                  localStorage.setItem('eliteArrowsNotifications', JSON.stringify(notifications))
+                  
                   setShowCreateModal(false)
                   setCreateForm({ opponent: '', gameType: 'Friendly', fixtureDate: '', fixtureTime: '' })
                   window.location.reload()

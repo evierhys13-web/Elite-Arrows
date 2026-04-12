@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { db, auth, usersCollection, doc, setDoc, getDoc, getDocs, query, where, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence } from '../firebase'
+import { db, auth, usersCollection, notificationsCollection, doc, setDoc, getDoc, getDocs, query, where, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence } from '../firebase'
 
 const AuthContext = createContext(null)
 
@@ -11,6 +11,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [allUsers, setAllUsers] = useState([])
+  const [notifications, setNotifications] = useState([])
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -45,6 +46,20 @@ export function AuthProvider({ children }) {
       unsubscribeUsers()
     }
   }, [])
+
+  useEffect(() => {
+    if (!user?.id) return
+    
+    const unsubscribe = onSnapshot(
+      query(notificationsCollection, where('toUserId', '==', user.id), orderBy('createdAt', 'desc')),
+      (snapshot) => {
+        const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        setNotifications(notifs)
+      },
+      (error) => console.log('Notifications error:', error)
+    )
+    return () => unsubscribe()
+  }, [user?.id])
 
   const signUp = async (userData, rememberMe = false) => {
     const emailLower = userData.email.toLowerCase()
@@ -310,6 +325,7 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider value={{ 
       user, 
       loading, 
+      notifications,
       signUp, 
       signIn, 
       signOut: handleSignOut, 

@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app'
-import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, onSnapshot, deleteDoc } from 'firebase/firestore'
+import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, onSnapshot, deleteDoc, addDoc } from 'firebase/firestore'
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence } from 'firebase/auth'
 
 const firebaseConfig = {
@@ -24,7 +24,7 @@ export const notificationsCollection = collection(db, 'notifications')
 export const chatMessagesCollection = collection(db, 'chatMessages')
 
 export { 
-  doc, setDoc, getDoc, getDocs, query, where, orderBy, onSnapshot, deleteDoc, collection,
+  doc, setDoc, getDoc, getDocs, query, where, orderBy, onSnapshot, deleteDoc, collection, addDoc,
   signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged,
   setPersistence, browserSessionPersistence, browserLocalPersistence
 }

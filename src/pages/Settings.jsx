@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 
 export default function Settings() {
-  const { signOut, user, updateUser, getAllUsers } = useAuth()
+  const { signOut, user, updateUser, getAllUsers, notifications: contextNotifications } = useAuth()
   const { theme, toggleTheme, language, setLanguage, chatSettings, setChatSettings } = useTheme()
   const navigate = useNavigate()
   
@@ -25,10 +25,8 @@ export default function Settings() {
   const [notifications, setNotifications] = useState([])
 
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem('eliteArrowsNotifications') || '[]')
-    const userNotifications = stored.filter(n => n.toUserId === user.id || n.fromUserId === user.id || !n.toUserId)
-    setNotifications(userNotifications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)))
-  }, [user.id])
+    setNotifications(contextNotifications)
+  }, [contextNotifications])
 
   const markAsRead = (id) => {
     const updated = notifications.map(n => n.id === id ? { ...n, isRead: true } : n)
