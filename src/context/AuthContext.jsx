@@ -50,15 +50,24 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (!user?.id) return
     
-    const unsubscribe = onSnapshot(
-      query(notificationsCollection, where('toUserId', '==', user.id), orderBy('createdAt', 'desc')),
-      (snapshot) => {
-        const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-        setNotifications(notifs)
-      },
-      (error) => console.log('Notifications error:', error)
-    )
-    return () => unsubscribe()
+    let unsubscribe = null
+    try {
+      unsubscribe = onSnapshot(
+        query(notificationsCollection, where('toUserId', '==', user.id), orderBy('createdAt', 'desc')),
+        (snapshot) => {
+          const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+          setNotifications(notifs)
+        },
+        (error) => {
+          console.log('Notifications error (may need Firestore rules):', error.message)
+          setNotifications([])
+        }
+      )
+    } catch (e) {
+      console.log('Notifications setup error:', e.message)
+      setNotifications([])
+    }
+    return () => { if (unsubscribe) unsubscribe() }
   }, [user?.id])
 
   const signUp = async (userData, rememberMe = false) => {
