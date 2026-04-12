@@ -62,6 +62,7 @@ export default function Subscription() {
   
   const price = getSubscriptionPrice()
   const isHighTier = user?.division === 'Elite' || user?.division === 'Diamond'
+  const isAdmin = user?.email?.toLowerCase() === 'rhyshowe2023@outlook.com'
 
   return (
     <div className="page">
@@ -95,58 +96,69 @@ export default function Subscription() {
         </div>
       ) : (
         <>
-          {!isHighTier && (
-            <div className="subscription-card">
-              <h2>Standard Pass</h2>
-              <div className="subscription-price">
-                £5<span>/month</span>
-              </div>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '15px' }}>Gold/Silver/Bronze</p>
-              
-              <ul className="subscription-features">
-                <li>Access to match submissions</li>
-                <li>Exclusive tournament access</li>
-                <li>Priority support</li>
-              </ul>
+          <div className="subscription-card">
+            <h2>Standard Pass</h2>
+            <div className="subscription-price">
+              £5<span>/month</span>
+            </div>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '15px' }}>Gold/Silver/Bronze</p>
+            
+            <ul className="subscription-features">
+              <li>Access to match submissions</li>
+              <li>Exclusive tournament access</li>
+              <li>Priority support</li>
+            </ul>
 
-              <button className="btn btn-primary btn-block" onClick={() => setShowPayment(true)}>
+            {user?.isSubscribed ? (
+              <button className="btn btn-secondary btn-block" disabled>
+                Active
+              </button>
+            ) : (
+              <button className="btn btn-primary btn-block" onClick={() => {
+                setPaymentMethod('bank')
+                setShowPayment(true)
+              }}>
                 Pay £5 Subscription
               </button>
+            )}
+          </div>
+
+          <div className="subscription-card" style={{ border: '2px solid #ffd700', marginTop: '20px' }}>
+            <h2 style={{ color: '#ffd700' }}>Premium Pass</h2>
+            <div className="subscription-price">
+              £10<span>/month</span>
             </div>
-          )}
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '15px' }}>Elite/Diamond {isAdmin && '(Admin Access)'}</p>
+            
+            <ul className="subscription-features">
+              <li>Access to match submissions</li>
+              <li>Exclusive tournament access</li>
+              <li>Priority support</li>
+              <li>Exclusive Premium Features</li>
+            </ul>
 
-          {isHighTier && (
-            <div className="subscription-card" style={{ border: '2px solid #ffd700' }}>
-              <h2 style={{ color: '#ffd700' }}>Premium Pass</h2>
-              <div className="subscription-price">
-                £10<span>/month</span>
-              </div>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '15px' }}>Elite/Diamond</p>
-              
-              <ul className="subscription-features">
-                <li>Access to match submissions</li>
-                <li>Exclusive tournament access</li>
-                <li>Priority support</li>
-                <li>Exclusive Premium Features</li>
-              </ul>
-
+            {user?.isSubscribed ? (
+              <button className="btn btn-secondary btn-block" disabled>
+                Active
+              </button>
+            ) : (
               <button className="btn btn-primary btn-block" style={{ background: 'linear-gradient(135deg, #ffd700, #ff8c00)', border: 'none' }} onClick={() => {
                 setPaymentMethod('paypal')
                 setShowPayment(true)
               }}>
                 Pay £10 Subscription
               </button>
-            </div>
-          )}
+            )}
+          </div>
 
-          {isHighTier && (
+          {showPayment && paymentMethod === 'paypal' && (
             <div className="card" style={{ marginTop: '20px', border: '1px solid #ffd700' }}>
               <h3 className="card-title" style={{ color: '#ffd700' }}>Premium Payment - PayPal Only</h3>
               <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
                 For Elite/Diamond members, payment via PayPal only.
               </p>
               <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
-                <p><strong>PayPal Email:</strong> dhilineberry@yahoo.com</p>
+                <p><strong>PayPal Email:</strong> dhlineberry@yahoo.com</p>
                 <p><strong>Reference:</strong> {user.username}</p>
               </div>
               <div style={{ marginTop: '15px' }}>
