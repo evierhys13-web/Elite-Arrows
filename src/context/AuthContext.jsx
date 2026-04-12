@@ -34,16 +34,15 @@ export function AuthProvider({ children }) {
       setLoading(false)
     })
 
-    const unsubscribeUsers = onSnapshot(usersCollection, (snapshot) => {
+    getDocs(usersCollection).then(snapshot => {
       const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
       setAllUsers(users)
-    }, (error) => {
-      console.log('Users snapshot error (may need Firestore rules):', error)
+    }).catch(() => {
+      setAllUsers([])
     })
 
     return () => {
       unsubscribeAuth()
-      unsubscribeUsers()
     }
   }, [])
 
