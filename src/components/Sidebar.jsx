@@ -182,24 +182,27 @@ export default function Sidebar() {
     navigate('/auth')
   }
 
+  const isFreeTier = !user?.division || user?.division === 'Unassigned'
+  const isSubscribedUser = user?.isSubscribed && !user?.isAdmin && !user?.isTournamentAdmin
+  
   const navItems = [
     { path: '/home', label: 'Home', icon: HomeIcon },
     { path: '/table', label: 'Table', icon: TableIcon },
-    { path: '/results', label: 'Results', icon: TrophyIcon },
-    { path: '/match-log', label: 'Match Log', icon: HistoryIcon },
+    ...(isSubscribedUser ? { path: '/results', label: 'Results', icon: TrophyIcon } : []),
+    ...(isSubscribedUser ? { path: '/match-log', label: 'Match Log', icon: HistoryIcon } : []),
     { path: '/players', label: 'Players', icon: UsersIcon },
-    { path: '/tournaments', label: 'Tournaments', icon: TrophyIcon2 },
+    ...(isSubscribedUser ? { path: '/tournaments', label: 'Tournaments', icon: TrophyIcon2 } : []),
     { path: '/leaderboards', label: 'Leaderboards', icon: TrophyIcon },
-    { path: '/rewards', label: 'Rewards', icon: GiftIcon },
-    { path: '/fixtures', label: 'Fixtures', icon: CalendarIcon },
-    ...(user?.isSubscribed && !user?.isTournamentAdmin ? [{ path: '/submit-result', label: 'Submit Result', icon: PlusCircleIcon }] : []),
-    { path: '/chat', label: 'Chat', icon: MessageIcon },
+    ...(isSubscribedUser ? { path: '/rewards', label: 'Rewards', icon: GiftIcon } : []),
+    ...(isSubscribedUser ? { path: '/fixtures', label: 'Fixtures', icon: CalendarIcon } : []),
+    ...(isSubscribedUser ? { path: '/submit-result', label: 'Submit Result', icon: PlusCircleIcon } : []),
+    ...(isSubscribedUser ? { path: '/chat', label: 'Chat', icon: MessageIcon } : []),
     { path: '/profile', label: 'Profile', icon: UserIcon },
-    ...(!user?.isTournamentAdmin ? [{ path: '/settings', label: 'Settings', icon: SettingsIcon }] : []),
+    { path: '/settings', label: 'Settings', icon: SettingsIcon },
     { path: '/contact', label: 'Contact', icon: MailIcon },
     { path: '/support', label: 'Support', icon: HelpIcon },
-    ...(user?.isAdmin ? [{ path: '/subscription', label: 'Subscription', icon: CreditCardIcon }] : []),
-  ]
+    { path: '/subscription', label: 'Subscription', icon: CreditCardIcon },
+  ].filter(Boolean)
 
   const showAdmin = user?.isAdmin || user?.isTournamentAdmin
 

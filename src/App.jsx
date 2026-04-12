@@ -52,7 +52,9 @@ function SubscribedRoute({ children }) {
     return <Navigate to="/auth" replace />
   }
   
-  if (!user?.isSubscribed && !user?.isAdmin) {
+  const isFreeTier = !user?.division || user?.division === 'Unassigned'
+  
+  if (!user?.isSubscribed && !user?.isAdmin && !isFreeTier) {
     return (
       <div style={{ 
         padding: '40px', 
