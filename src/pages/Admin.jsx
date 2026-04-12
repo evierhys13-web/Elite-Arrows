@@ -516,6 +516,12 @@ export default function Admin() {
                       users[index].subscriptionDate = new Date().toISOString()
                       users[index].subscriptionSource = 'admin_granted'
                       localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+                      
+                      const newPot = subscriptionPot + 5
+                      setSubscriptionPot(newPot)
+                      localStorage.setItem('eliteArrowsSubscriptionPot', newPot.toString())
+                      addToMoneyHistory('subscription', 5, `Free subscription granted to ${u.username}`)
+                      
                       alert(`${u.username} now has free subscription (admin granted)`)
                     }
                   }}
@@ -634,6 +640,12 @@ export default function Admin() {
                   users[index].subscriptionDate = new Date().toISOString()
                   users[index].subscriptionSource = 'admin_granted'
                   localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+                  
+                  const newPot = subscriptionPot + 5
+                  setSubscriptionPot(newPot)
+                  localStorage.setItem('eliteArrowsSubscriptionPot', newPot.toString())
+                  addToMoneyHistory('subscription', 5, `Free subscription granted to ${users[index].username}`)
+                  
                   alert('Free subscription granted!')
                   e.target.value = ''
                 }
