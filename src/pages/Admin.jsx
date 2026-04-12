@@ -580,11 +580,10 @@ export default function Admin() {
                 </div>
                 <button 
                   className="btn btn-primary"
-                  onClick={() => {
+                  onClick={async () => {
                     const users = getAllUsers()
                     const index = users.findIndex(us => us.id === u.id)
                     if (index !== -1) {
-                      const isHighTier = u.division === 'Elite' || u.division === 'Diamond'
                       users[index].isSubscribed = true
                       users[index].freeAdminSubscription = true
                       users[index].subscriptionDate = new Date().toISOString()
@@ -592,16 +591,14 @@ export default function Admin() {
                       localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
                       
                       const amount = 5
-                      if (isHighTier) {
-                        const newPot10 = subscriptionPot10 + amount
-                        setSubscriptionPot10(newPot10)
-                        localStorage.setItem('eliteArrowsSubscriptionPot10', newPot10.toString())
-                      } else {
-                        const newPot = subscriptionPot + amount
-                        setSubscriptionPot(newPot)
-                        localStorage.setItem('eliteArrowsSubscriptionPot', newPot.toString())
-                      }
+                      const newPot = subscriptionPot + amount
+                      setSubscriptionPot(newPot)
+                      localStorage.setItem('eliteArrowsSubscriptionPot', newPot.toString())
                       addToMoneyHistory('subscription', amount, `Free subscription granted to ${u.username}`)
+                      
+                      try {
+                        await setDoc(doc(db, 'users', u.id), users[index], { merge: true })
+                      } catch (e) {}
                       
                       alert(`${u.username} now has free subscription (admin granted)`)
                     }
@@ -701,50 +698,90 @@ export default function Admin() {
         </div>
       )}
 
-      {activeTab === 'subscriptions' && (
-        <div>
+{activeTab === 'subscriptions' && (
+        <>
           <div className="card" style={{ marginBottom: '20px' }}>
-            <h3 className="card-title">Grant Free Admin Subscription</h3>
+            <h3 className="card-title">Assign Division & Subscription</h3>
             <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
-              Give a user free subscription (admin granted)
+              Assign a player to a division and/or grant subscription
             </p>
             <select 
-              id="grantFreeSub"
+              id="assignDivisionUser"
               style={{ width: '100%', padding: '12px', marginBottom: '12px' }}
-              onChange={(e) => {
-                if (!e.target.value) return
-                const users = getAllUsers()
-                const index = users.findIndex(u => u.id === e.target.value)
-                if (index !== -1) {
-                  const isHighTier = users[index].division === 'Elite' || users[index].division === 'Diamond'
-                  users[index].isSubscribed = true
-                  users[index].freeAdminSubscription = true
-                  users[index].subscriptionDate = new Date().toISOString()
-                  users[index].subscriptionSource = 'admin_granted'
-                  localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
-                  
-                  const amount = 5
-                  if (isHighTier) {
-                    const newPot10 = subscriptionPot10 + amount
-                    setSubscriptionPot10(newPot10)
-                    localStorage.setItem('eliteArrowsSubscriptionPot10', newPot10.toString())
-                  } else {
-                    const newPot = subscriptionPot + amount
-                    setSubscriptionPot(newPot)
-                    localStorage.setItem('eliteArrowsSubscriptionPot', newPot.toString())
-                  }
-                  addToMoneyHistory('subscription', amount, `Free subscription granted to ${users[index].username}`)
-                  
-                  alert('Free subscription granted!')
-                  e.target.value = ''
-                }
-              }}
             >
-              <option value="">Select user to grant free subscription</option>
-              {getAllUsers().filter(u => !u.isSubscribed).map(u => (
-                <option key={u.id} value={u.id}>{u.username} ({u.email})</option>
+              <option value="">Select user</option>
+              {getAllUsers().map(u => (
+                <option key={u.id} value={u.id}>{u.username} - {u.division || 'Unassigned'}</option>
               ))}
             </select>
+            
+            <select 
+              id="assignDivision"
+              style={{ width: '100%', padding: '12px', marginBottom: '12px' }}
+            >
+              <option value="">Select Division</option>
+              <option value="Elite">Elite</option>
+              <option value="Diamond">Diamond</option>
+              <option value="Gold">Gold</option>
+              <option value="Silver">Silver</option>
+              <option value="Bronze">Bronze</option>
+            </select>
+            
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <input type="checkbox" id="grantSubCheck" />
+              <span>Grant Subscription</span>
+            </label>
+            
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <input type="checkbox" id="freeSubCheck" />
+              <span>Free (Admin Granted)</span>
+            </label>
+            
+            <button 
+              className="btn btn-primary"
+              onClick={() => {
+                const userId = document.getElementById('assignDivisionUser').value
+                const division = document.getElementById('assignDivision').value
+                const grantSub = document.getElementById('grantSubCheck').checked
+                const freeSub = document.getElementById('freeSubCheck').checked
+                
+                if (!userId) return alert('Select a user')
+                if (!division && !grantSub) return alert('Select a division or grant subscription')
+                
+                const users = getAllUsers()
+                const index = users.findIndex(u => u.id === userId)
+                if (index === -1) return
+                
+                if (division) users[index].division = division
+                if (grantSub) {
+                  users[index].isSubscribed = true
+                  users[index].subscriptionDate = new Date().toISOString()
+                  users[index].subscriptionSource = freeSub ? 'admin_granted' : 'paid'
+                }
+                if (freeSub) users[index].freeAdminSubscription = true
+                
+                localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+                
+                try {
+                  await setDoc(doc(db, 'users', userId), users[index], { merge: true })
+                } catch (e) {
+                  console.log('Error updating Firestore:', e)
+                }
+                
+                const amount = 5
+                if (grantSub && !freeSub) {
+                  const newPot = subscriptionPot + amount
+                  setSubscriptionPot(newPot)
+                  localStorage.setItem('eliteArrowsSubscriptionPot', newPot.toString())
+                }
+                addToMoneyHistory('subscription', amount, `Updated ${users[index].username} - Division: ${division || 'Unassigned'}`)
+                
+                alert(`${users[index].username} updated!`)
+                setActiveTab('subscriptions')
+              }}
+            >
+              Update User
+            </button>
           </div>
 
           <div className="card" style={{ marginBottom: '20px' }}>
