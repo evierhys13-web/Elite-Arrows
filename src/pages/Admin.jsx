@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import { db, doc, setDoc } from '../firebase'
+import { db, doc, setDoc, deleteDoc } from '../firebase'
 
 export default function Admin() {
   const { user, getAllUsers, updateUser } = useAuth()
   const navigate = useNavigate()
   const [pendingResults, setPendingResults] = useState([])
   const [activeTab, setActiveTab] = useState('results')
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [usersList, setUsersList] = useState(null)
   const [showTournamentForm, setShowTournamentForm] = useState(false)
   const [showColorsForm, setShowColorsForm] = useState(false)
   const [tournamentForm, setTournamentForm] = useState({ 
@@ -28,6 +30,24 @@ export default function Admin() {
     gameType: 'Friendly',
     division: ''
   })
+
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [refreshKey])
+
+  const clearCacheAndReload = () => {
+    if ('caches' in window) {
+      caches.keys().then(names => {
+        names.forEach(name => caches.delete(name))
+      })
+    }
+    localStorage.removeItem('eliteArrowsUsers')
+    window.location.reload(true)
+  }
+
+  const refreshUsers = () => {
+    setRefreshKey(k => k + 1)
+  }
 
   useEffect(() => {
     const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]');
@@ -148,8 +168,8 @@ export default function Admin() {
       return
     }
 
-    const player1User = allUsers.find(u => u.id === gameForm.player1)
-    const player2User = allUsers.find(u => u.id === gameForm.player2)
+    const player1User = getAllUsers().find(u => u.id === gameForm.player1)
+    const player2User = getAllUsers().find(u => u.id === gameForm.player2)
 
     const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
     results.push({
@@ -177,12 +197,11 @@ export default function Admin() {
     setGameForm({ player1: '', player2: '', score1: '', score2: '', gameType: 'Friendly', division: '' })
   }
 
-  const allUsers = getAllUsers()
-  const pendingAdmins = allUsers.filter(u => u.adminRequestPending && !u.isAdmin && !u.isTournamentAdmin)
-  const pendingPayments = allUsers.filter(u => u.paymentPending && !u.isSubscribed)
-  const subscribers = allUsers.filter(u => u.isSubscribed)
-  const freeUsers = allUsers.filter(u => !u.isSubscribed && !u.paymentPending)
-  const tournamentAdmins = allUsers.filter(u => u.isTournamentAdmin)
+  const pendingAdmins = getAllUsers().filter(u => u.adminRequestPending && !u.isAdmin && !u.isTournamentAdmin)
+  const pendingPayments = getAllUsers().filter(u => u.paymentPending && !u.isSubscribed)
+  const subscribers = getAllUsers().filter(u => u.isSubscribed)
+  const freeUsers = getAllUsers().filter(u => !u.isSubscribed && !u.paymentPending)
+  const tournamentAdmins = getAllUsers().filter(u => u.isTournamentAdmin)
 
   if (!user.isAdmin && !user.isTournamentAdmin) {
     return (
@@ -352,12 +371,12 @@ export default function Admin() {
               <select 
                 value={gameForm.player1}
                 onChange={(e) => {
-                  const selected = allUsers.find(u => u.id === e.target.value)
+                  const selected = getAllUsers().find(u => u.id === e.target.value)
                   setGameForm({...gameForm, player1: e.target.value, division: selected?.division || ''})
                 }}
               >
                 <option value="">Select player</option>
-                {allUsers.map(u => (
+                {getAllUsers().map(u => (
                   <option key={u.id} value={u.id}>{u.username} ({u.division})</option>
                 ))}
               </select>
@@ -369,7 +388,7 @@ export default function Admin() {
                 onChange={(e) => setGameForm({...gameForm, player2: e.target.value})}
               >
                 <option value="">Select player</option>
-                {allUsers.filter(u => u.id !== gameForm.player1).map(u => (
+                {getAllUsers().filter(u => u.id !== gameForm.player1).map(u => (
                   <option key={u.id} value={u.id}>{u.username} ({u.division})</option>
                 ))}
               </select>
@@ -547,7 +566,7 @@ export default function Admin() {
       {activeTab === 'players' && (
         <div className="card">
           <h3 className="card-title">All Players</h3>
-          {allUsers.length === 0 ? (
+          {getAllUsers().length === 0 ? (
             <p style={{ color: 'var(--text-muted)' }}>No players found</p>
           ) : (
             <table className="data-table">
@@ -561,7 +580,7 @@ export default function Admin() {
                 </tr>
               </thead>
               <tbody>
-                {allUsers.map(player => (
+                {getAllUsers().map(player => (
                   <tr key={player.id}>
                     <td>{player.username}</td>
                     <td>{player.email}</td>
@@ -607,7 +626,7 @@ export default function Admin() {
               }}
             >
               <option value="">Select user to grant free subscription</option>
-              {allUsers.filter(u => !u.isSubscribed).map(u => (
+              {getAllUsers().filter(u => !u.isSubscribed).map(u => (
                 <option key={u.id} value={u.id}>{u.username} ({u.email})</option>
               ))}
             </select>
@@ -635,7 +654,7 @@ export default function Admin() {
               }}
             >
               <option value="">Select user to remove subscription</option>
-              {allUsers.filter(u => u.isSubscribed).map(u => (
+              {getAllUsers().filter(u => u.isSubscribed).map(u => (
                 <option key={u.id} value={u.id}>{u.username} ({u.email})</option>
               ))}
             </select>
@@ -663,7 +682,7 @@ export default function Admin() {
         <div>
           <div className="card" style={{ marginBottom: '20px' }}>
             <h3 className="card-title">Existing Admins</h3>
-            {allUsers.filter(u => u.isAdmin).map(u => (
+            {getAllUsers().filter(u => u.isAdmin).map(u => (
               <div key={u.id} className="player-card">
                 <div className="player-avatar">
                   {u.username.charAt(0).toUpperCase()}
@@ -680,6 +699,7 @@ export default function Admin() {
                         if (confirm(`Remove admin privileges from ${u.username}?`)) {
                           await setDoc(doc(db, 'users', u.id), { isAdmin: false }, { merge: true })
                           alert(`${u.username} is no longer an admin`)
+                          window.location.reload()
                         }
                       }}
                     >
@@ -695,6 +715,22 @@ export default function Admin() {
                   >
                     {u.isTournamentAdmin ? 'Remove Tournament Admin' : 'Add Tournament Admin'}
                   </button>
+                  {u.id !== user.id && (
+                    <button 
+                      className="btn btn-danger btn-sm"
+                      style={{ marginTop: '5px' }}
+                      onClick={async () => {
+                        if (confirm(`Remove ${u.username} from the league entirely?`)) {
+                          const userIdToDelete = u.id
+                          await deleteDoc(doc(db, 'users', userIdToDelete))
+                          setUsersList(prev => prev.filter(us => us.id !== userIdToDelete))
+                          setTimeout(() => setUsersList(prev => prev.filter(us => us.id !== userIdToDelete)), 500)
+                        }
+                      }}
+                    >
+                      Remove from League
+                    </button>
+                  )}
                   {u.id === user.id && (
                     <span style={{ color: 'var(--accent-cyan)', fontSize: '0.8rem' }}>You</span>
                   )}
@@ -724,10 +760,23 @@ export default function Admin() {
                       if (confirm(`Remove tournament admin privileges from ${u.username}?`)) {
                         await setDoc(doc(db, 'users', u.id), { isTournamentAdmin: false }, { merge: true })
                         alert(`${u.username} is no longer a tournament admin`)
+                        window.location.reload()
                       }
                     }}
                   >
                     Remove
+                  </button>
+                  <button 
+                    className="btn btn-danger btn-sm"
+                    style={{ marginTop: '5px' }}
+                    onClick={async () => {
+                      if (confirm(`Remove ${u.username} from the league entirely?`)) {
+                        await deleteDoc(doc(db, 'users', u.id))
+                        clearCacheAndReload()
+                      }
+                    }}
+                  >
+                    Remove from League
                   </button>
                 </div>
               ))
@@ -746,7 +795,7 @@ export default function Admin() {
                 }}
               >
                 <option value="">Select user to make Tournament Admin</option>
-                {allUsers.filter(u => !u.isAdmin && !u.isTournamentAdmin).map(u => (
+                {getAllUsers().filter(u => !u.isAdmin && !u.isTournamentAdmin).map(u => (
                   <option key={u.id} value={u.id}>{u.username} ({u.email})</option>
                 ))}
               </select>
@@ -775,7 +824,7 @@ export default function Admin() {
               }}
             >
               <option value="">Select user to make Admin</option>
-              {allUsers.filter(u => !u.isAdmin).map(u => (
+              {getAllUsers().filter(u => !u.isAdmin).map(u => (
                 <option key={u.id} value={u.id}>{u.username} ({u.email})</option>
               ))}
             </select>
@@ -783,7 +832,7 @@ export default function Admin() {
 
           <div className="card" style={{ marginBottom: '20px' }}>
             <h3 className="card-title">All Members - Remove Users</h3>
-            {allUsers.map(u => (
+            {getAllUsers().map(u => (
               <div key={u.id} className="player-card">
                 <div className="player-avatar">
                   {u.username.charAt(0).toUpperCase()}
@@ -801,12 +850,15 @@ export default function Admin() {
                 {u.id !== user.id && (
                   <button 
                     className="btn btn-danger"
-                    onClick={() => {
+                    onClick={async () => {
                       if (confirm(`Are you sure you want to remove ${u.username} from the league?`)) {
-                        const users = getAllUsers()
-                        const filtered = users.filter(us => us.id !== u.id)
-                        localStorage.setItem('eliteArrowsUsers', JSON.stringify(filtered))
-                        alert(`${u.username} has been removed`)
+                        try {
+                          await deleteDoc(doc(db, 'users', u.id))
+                          setRefreshKey(k => k + 1)
+                        } catch (error) {
+                          console.error('Error removing user:', error)
+                          alert('Failed to remove user: ' + error.message)
+                        }
                       }
                     }}
                   >
@@ -1217,7 +1269,7 @@ export default function Admin() {
                 }}
               >
                 <option value="">Select Player</option>
-                {allUsers.map(p => (
+                {getAllUsers().map(p => (
                   <option key={p.id} value={p.id}>{p.username} ({p.division})</option>
                 ))}
               </select>
@@ -1240,7 +1292,7 @@ export default function Admin() {
                 style={{ width: '100%', padding: '12px', marginBottom: '12px' }}
               >
                 <option value="">Select a player</option>
-                {allUsers.map(p => (
+                {getAllUsers().map(p => (
                   <option key={p.id} value={p.id}>{p.username} - {p.eliteTokens || 0} tokens</option>
                 ))}
               </select>
@@ -1293,7 +1345,7 @@ export default function Admin() {
 
           <div className="card">
             <h3 className="card-title">All Players - Token Balance</h3>
-            {allUsers
+            {getAllUsers()
               .sort((a, b) => (b.eliteTokens || 0) - (a.eliteTokens || 0))
               .map(p => (
                 <div key={p.id} className="player-card">

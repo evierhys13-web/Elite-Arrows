@@ -24,8 +24,6 @@ export default function SubmitResult() {
 
   const allUsers = getAllUsers()
   const availablePlayers = allUsers.filter(u => u.id !== user.id)
-  const fixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
-  const myFixtures = fixtures.filter(f => f.player1Id === user.id || f.player2Id === user.id)
 
   const opponentUser = availablePlayers.find(p => p.id === formData.opponent)
   const currentSeason = new Date().getFullYear().toString()
@@ -104,7 +102,7 @@ export default function SubmitResult() {
       id: Date.now(),
       player1: user.username,
       player1Id: user.id,
-      player2: formData.opponent,
+      player2: opponentUser?.username || formData.opponent,
       player2Id: opponentUser?.id,
       score1: parseInt(formData.yourScore),
       score2: parseInt(formData.opponentScore),
@@ -170,142 +168,10 @@ export default function SubmitResult() {
     return { played: false }
   }
 
-  const handleCreateFixture = () => {
-    if (!formData.opponent || !opponentUser) {
-      alert('Please select an opponent first')
-      return
-    }
-
-    const existingFixture = fixtures.find(f => 
-      (f.player1Id === user.id && f.player2Id === opponentUser.id) ||
-      (f.player1Id === opponentUser.id && f.player2Id === user.id)
-    )
-
-    if (existingFixture) {
-      alert('A fixture already exists with this player')
-      return
-    }
-
-    const newFixture = {
-      id: Date.now(),
-      player1Id: user.id,
-      player1Name: user.username,
-      player2Id: opponentUser.id,
-      player2Name: opponentUser.username,
-      division: user.division,
-      gameType: formData.gameType,
-      createdBy: user.id,
-      createdAt: new Date().toISOString(),
-      status: 'pending'
-    }
-
-    fixtures.push(newFixture)
-    localStorage.setItem('eliteArrowsFixtures', JSON.stringify(fixtures))
-    alert(`Fixture created! ${opponentUser.username} has been notified.`)
-  }
-
-  const handleCancelFixture = (fixtureId) => {
-    if (!confirm('Cancel this fixture?')) return
-    const updatedFixtures = fixtures.filter(f => f.id !== fixtureId)
-    localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
-  }
-
-  const handleAcceptFixture = (fixtureId) => {
-    const updatedFixtures = fixtures.map(f => 
-      f.id === fixtureId ? { ...f, status: 'accepted' } : f
-    )
-    localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
-    alert('Fixture accepted!')
-  }
-
-  const handleDeclineFixture = (fixtureId) => {
-    if (!confirm('Decline this fixture?')) return
-    const updatedFixtures = fixtures.filter(f => f.id !== fixtureId)
-    localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
-    alert('Fixture declined.')
-  }
-
-  const pendingFixtures = fixtures.filter(f => f.player2Id === user.id && f.status === 'pending')
-  const myCreatedFixtures = fixtures.filter(f => f.createdBy === user.id)
-  const acceptedFixtures = fixtures.filter(f => 
-    (f.player1Id === user.id || f.player2Id === user.id) && f.status === 'accepted'
-  )
-
   return (
     <div className="page">
       <div className="page-header">
         <h1 className="page-title">Submit Result</h1>
-      </div>
-
-      {pendingFixtures.length > 0 && (
-        <div className="card" style={{ marginBottom: '20px', border: '2px solid var(--warning)' }}>
-          <h3 className="card-title" style={{ color: 'var(--warning)' }}>Pending Fixture Requests</h3>
-          {pendingFixtures.map(fixture => (
-            <div key={fixture.id} style={{ 
-              padding: '12px', 
-              background: 'var(--bg-secondary)', 
-              borderRadius: '8px',
-              marginBottom: '10px'
-            }}>
-              <p style={{ margin: '0 0 10px 0' }}>
-                <strong>{fixture.player1Name}</strong> wants to play you in a <strong>{fixture.gameType}</strong> match
-              </p>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button className="btn btn-primary btn-sm" onClick={() => handleAcceptFixture(fixture.id)}>
-                  Accept
-                </button>
-                <button className="btn btn-secondary btn-sm" onClick={() => handleDeclineFixture(fixture.id)}>
-                  Decline
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="card" style={{ marginBottom: '20px' }}>
-        <h3 className="card-title">Your Fixtures</h3>
-        {myCreatedFixtures.length === 0 && acceptedFixtures.length === 0 ? (
-          <p style={{ color: 'var(--text-muted)' }}>No fixtures created yet.</p>
-        ) : (
-          <>
-            {myCreatedFixtures.map(fixture => (
-              <div key={fixture.id} style={{ 
-                padding: '12px', 
-                background: 'var(--bg-secondary)', 
-                borderRadius: '8px',
-                marginBottom: '10px'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <p style={{ margin: 0 }}>
-                      You vs <strong>{fixture.player2Name}</strong> ({fixture.gameType})
-                    </p>
-                    <p style={{ margin: '5px 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                      Status: {fixture.status === 'pending' ? 'Waiting for response...' : 'Accepted'}
-                    </p>
-                  </div>
-                  <button className="btn btn-danger btn-sm" onClick={() => handleCancelFixture(fixture.id)}>
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ))}
-            {acceptedFixtures.map(fixture => (
-              <div key={fixture.id} style={{ 
-                padding: '12px', 
-                background: 'rgba(34, 197, 94, 0.1)', 
-                border: '1px solid var(--success)',
-                borderRadius: '8px',
-                marginBottom: '10px'
-              }}>
-                <p style={{ margin: 0, color: 'var(--success)' }}>
-                  Accepted: <strong>{fixture.player1Name}</strong> vs <strong>{fixture.player2Name}</strong> ({fixture.gameType})
-                </p>
-              </div>
-            ))}
-          </>
-        )}
       </div>
 
       <div className="card">
@@ -363,7 +229,7 @@ export default function SubmitResult() {
                 {availablePlayers.map(p => {
                   const status = getOpponentStatus(p.id, p.username)
                   return (
-                    <option key={p.id} value={p.username}>
+                    <option key={p.id} value={p.id}>
                       {p.username} ({p.division}){formData.gameType === 'League' && status?.played ? ' - Played' : ''}
                     </option>
                   )
@@ -571,18 +437,6 @@ export default function SubmitResult() {
               onChange={handleImageUpload}
               style={{ display: 'none' }}
             />
-          </div>
-
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-            <button 
-              type="button"
-              className="btn btn-secondary btn-block"
-              onClick={handleCreateFixture}
-              disabled={!formData.opponent || !opponentUser}
-              style={{ flex: 1 }}
-            >
-              Create Fixture with Opponent
-            </button>
           </div>
 
           <button 

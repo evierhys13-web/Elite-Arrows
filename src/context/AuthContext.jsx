@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { db, auth, usersCollection, doc, setDoc, getDoc, getDocs, query, where, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged } from '../firebase'
+import { db, auth, usersCollection, doc, setDoc, getDoc, getDocs, query, where, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence } from '../firebase'
 
 const AuthContext = createContext(null)
 
@@ -84,6 +84,8 @@ export function AuthProvider({ children }) {
   const signIn = async (email, password, rememberMe = false) => {
     try {
       console.log('Attempting Firebase sign in...')
+      
+      await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence)
       const { user: firebaseUser } = await signInWithEmailAndPassword(auth, email, password)
       console.log('Firebase auth successful, user ID:', firebaseUser.uid)
       

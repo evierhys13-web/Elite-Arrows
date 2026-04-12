@@ -138,6 +138,15 @@ const TrophyIcon2 = () => (
   </svg>
 )
 
+const CalendarIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+    <line x1="16" y1="2" x2="16" y2="6" />
+    <line x1="8" y1="2" x2="8" y2="6" />
+    <line x1="3" y1="10" x2="21" y2="10" />
+  </svg>
+)
+
 const GamepadIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <rect x="2" y="6" width="20" height="12" rx="2" />
@@ -181,6 +190,7 @@ export default function Sidebar() {
     { path: '/players', label: 'Players', icon: UsersIcon },
     { path: '/tournaments', label: 'Tournaments', icon: TrophyIcon2 },
     { path: '/leaderboards', label: 'Leaderboards', icon: TrophyIcon },
+    { path: '/fixtures', label: 'Fixtures', icon: CalendarIcon },
     { path: '/rewards', label: 'Rewards', icon: GiftIcon },
     { path: '/games', label: 'Games', icon: GamepadIcon },
     ...(user?.isSubscribed && !user?.isTournamentAdmin ? [{ path: '/submit-result', label: 'Submit Result', icon: PlusCircleIcon }] : []),

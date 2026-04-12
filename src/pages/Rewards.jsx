@@ -423,13 +423,15 @@ export default function Rewards() {
 
         {acceptedFixtures.length > 0 && (
           <div style={{ marginTop: '30px', paddingTop: '20px', borderTop: '2px solid var(--border)' }}>
-            <h4 style={{ color: 'var(--success)', marginBottom: '15px' }}>Your Fixtures</h4>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '10px' }}>
-              These matches have been agreed with the other player
-            </p>
-            {acceptedFixtures.map(fixture => (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+              <h4 style={{ color: 'var(--success)', margin: 0 }}>Upcoming Fixtures ({acceptedFixtures.length})</h4>
+              <a href="/fixtures" className="btn btn-secondary btn-sm">
+                View All →
+              </a>
+            </div>
+            {acceptedFixtures.slice(0, 2).map(fixture => (
               <div key={fixture.id} style={{ 
-                padding: '15px', 
+                padding: '12px', 
                 background: 'rgba(34, 197, 94, 0.1)', 
                 border: '1px solid var(--success)',
                 borderRadius: '8px',
@@ -438,12 +440,9 @@ export default function Rewards() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <strong>{fixture.player1Name}</strong> vs <strong>{fixture.player2Name}</strong>
-                    <span style={{ marginLeft: '10px', fontSize: '0.85rem', color: 'var(--accent-cyan)' }}>
-                      {fixture.division} | {fixture.gameType}
-                    </span>
                   </div>
                   <span style={{ color: 'var(--success)', fontSize: '0.85rem' }}>
-                    Fixture Set ✓
+                    {fixture.fixtureDate}
                   </span>
                 </div>
               </div>

@@ -64,14 +64,24 @@ export default function Auth() {
         }, formData.rememberMe)
         alert('Sign up successful!')
       } else {
-        if (!formData.dartCounterUsername || !formData.password) {
-          throw new Error('DartCounter username and password are required')
+        if ((!formData.dartCounterUsername && !formData.email) || !formData.password) {
+          throw new Error('DartCounter username (or email) and password are required')
         }
 
         const allUsers = getAllUsers()
-        const user = allUsers.find(u => u.dartCounterUsername?.toLowerCase() === formData.dartCounterUsername.toLowerCase())
+        
+        let user = null
+        
+        if (formData.email && formData.email.includes('@')) {
+          user = allUsers.find(u => u.email?.toLowerCase() === formData.email.toLowerCase())
+        }
+        
+        if (!user && formData.dartCounterUsername) {
+          user = allUsers.find(u => u.dartCounterUsername?.toLowerCase() === formData.dartCounterUsername.toLowerCase())
+        }
+        
         if (!user) {
-          throw new Error('User not found with that DartCounter username')
+          throw new Error('User not found. Use your DartCounter username or email address.')
         }
         if (!user.email) {
           throw new Error('No email associated with this account')
@@ -150,18 +160,23 @@ export default function Auth() {
             )}
 
             {!isSignUp && (
-              <div className="form-group">
-                <label htmlFor="dartCounterUsername">DartCounter Username</label>
-                <input
-                  type="text"
-                  id="dartCounterUsername"
-                  name="dartCounterUsername"
-                  value={formData.dartCounterUsername || ''}
-                  onChange={handleChange}
-                  placeholder="Enter your DartCounter username"
-                  autoComplete="off"
-                />
-              </div>
+              <>
+                <div className="form-group">
+                  <label htmlFor="email">Email Address (or DartCounter Username)</label>
+                  <input
+                    type="text"
+                    id="email"
+                    name="email"
+                    value={formData.email || ''}
+                    onChange={handleChange}
+                    placeholder="Enter your email or DartCounter username"
+                    autoComplete="off"
+                  />
+                </div>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '-10px', marginBottom: '15px' }}>
+                  You can sign in with either your email address or your DartCounter username
+                </p>
+              </>
             )}
 
             <div className="form-group">

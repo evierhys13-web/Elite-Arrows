@@ -20,6 +20,7 @@ import Tournaments from './pages/Tournaments'
 import Games from './pages/Games'
 import Leaderboards from './pages/Leaderboards'
 import Rewards from './pages/Rewards'
+import Fixtures from './pages/Fixtures'
 import SeedData from './pages/SeedData'
 import Sidebar from './components/Sidebar'
 import BackgroundDecor from './components/BackgroundDecor'
@@ -242,6 +243,13 @@ function AppRoutes() {
         <ProtectedRoute>
           <AppLayout>
             <Rewards />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/fixtures" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <Fixtures />
           </AppLayout>
         </ProtectedRoute>
       } />
