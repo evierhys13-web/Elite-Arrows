@@ -31,7 +31,7 @@ export default function Fixtures() {
     }
   }, [])
 
-  const fixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+const fixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
 
   const pendingFixtures = fixtures.filter(f => f.player2Id === user.id && f.status === 'pending')
   const sentFixtures = fixtures.filter(f => f.createdBy === user.id)
@@ -39,26 +39,16 @@ export default function Fixtures() {
     (f.player1Id === user.id || f.player2Id === user.id) && f.status === 'accepted'
   )
 
-  const handleAcceptFixture = (fixtureId) => {
-    const updatedFixtures = fixtures.map(f => 
-      f.id === fixtureId ? { ...f, status: 'accepted' } : f
-    )
-    localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
-
-    const fixture = fixtures.find(f => f.id === fixtureId)
-    const notifications = JSON.parse(localStorage.getItem('eliteArrowsNotifications') || '[]')
-    notifications.push({
-      id: `fixture_accept_${Date.now()}`,
-      type: 'fixture_accepted',
-      fromUserId: user.id,
-      fromUsername: user.username,
-      toUserId: fixture.createdBy,
-      message: `${user.username} accepted your fixture challenge for ${fixture.fixtureDate} at ${fixture.fixtureTime}`,
-      isRead: false,
-      createdAt: new Date().toISOString()
-    })
-    localStorage.setItem('eliteArrowsNotifications', JSON.stringify(notifications))
-    window.location.reload()
+  const getFilteredOpponents = (gameType) => {
+    let opponents = availablePlayers
+    if (gameType === 'League') {
+      opponents = opponents.filter(p => p.division === user.division)
+    }
+    const existingOpponentIds = fixtures
+      .filter(f => (f.player1Id === user.id || f.player2Id === user.id) && f.status !== 'completed')
+      .map(f => f.player1Id === user.id ? f.player2Id : f.player1Id)
+    opponents = opponents.filter(p => !existingOpponentIds.includes(p.id))
+    return opponents
   }
 
   const handleDeclineFixture = (fixtureId) => {
@@ -154,21 +144,6 @@ export default function Fixtures() {
               >
                 <option value="">Select opponent</option>
                 {getFilteredOpponents(createForm.gameType).map(p => (
-                  <option key={p.id} value={p.id}>
-                    {p.username} ({p.division})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Select Opponent</label>
-              <select 
-                value={createForm.opponent} 
-                onChange={e => setCreateForm({...createForm, opponent: e.target.value})}
-              >
-                <option value="">Select opponent</option>
-                {availablePlayers.map(p => (
                   <option key={p.id} value={p.id}>
                     {p.username} ({p.division})
                   </option>
