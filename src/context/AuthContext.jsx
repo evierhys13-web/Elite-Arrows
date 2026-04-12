@@ -9,15 +9,20 @@ export const DIVISIONS = ['Elite', 'Diamond', 'Gold', 'Silver', 'Bronze']
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [allUsers, setAllUsers] = useState([])
   const [notifications, setNotifications] = useState([])
 
   useEffect(() => {
     const localUsers = JSON.parse(localStorage.getItem('eliteArrowsUsers') || '[]')
     setAllUsers(localUsers)
+
+    const timeout = setTimeout(() => {
+      setLoading(false)
+    }, 3000)
     
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+      clearTimeout(timeout)
       if (firebaseUser) {
         try {
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
@@ -36,7 +41,10 @@ export function AuthProvider({ children }) {
       setLoading(false)
     })
 
-    return () => unsubscribeAuth()
+    return () => {
+      clearTimeout(timeout)
+      unsubscribeAuth()
+    }
   }, [])
 
   const signUp = async (userData, rememberMe = false) => {
