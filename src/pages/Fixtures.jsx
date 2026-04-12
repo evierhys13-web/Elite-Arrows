@@ -15,6 +15,13 @@ export default function Fixtures() {
 
   const allUsers = getAllUsers()
   const availablePlayers = allUsers.filter(u => u.id !== user.id)
+  
+  const getFilteredOpponents = (gameType) => {
+    if (gameType === 'League') {
+      return availablePlayers.filter(p => p.division === user.division)
+    }
+    return availablePlayers
+  }
 
   useEffect(() => {
     const pendingFixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
@@ -116,14 +123,37 @@ export default function Fixtures() {
           }} onClick={e => e.stopPropagation()}>
             <h3 style={{ marginBottom: '20px', color: 'var(--accent-cyan)' }}>Create New Fixture</h3>
             
-            <div className="form-group">
+<div className="form-group">
               <label>Game Type</label>
               <select 
                 value={createForm.gameType} 
-                onChange={e => setCreateForm({...createForm, gameType: e.target.value})}
+                onChange={(e) => {
+                  const newType = e.target.value
+                  setCreateForm({...createForm, gameType: newType, opponent: ''})
+                }}
               >
                 <option value="Friendly">Friendly</option>
                 <option value="League">League</option>
+              </select>
+              {createForm.gameType === 'League' && (
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '5px' }}>
+                  Only players in your division ({user.division}) are shown
+                </p>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label>Select Opponent</label>
+              <select 
+                value={createForm.opponent} 
+                onChange={e => setCreateForm({...createForm, opponent: e.target.value})}
+              >
+                <option value="">Select opponent</option>
+                {getFilteredOpponents(createForm.gameType).map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.username} ({p.division})
+                  </option>
+                ))}
               </select>
             </div>
 
