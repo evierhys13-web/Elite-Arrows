@@ -38,65 +38,31 @@ const cleanUserData = (users) => {
     }
   }
 
-  useEffect(() => {
-    const loadAllUsers = async () => {
-      try {
-        const snapshot = await getDocs(collection(db, 'users'))
-        let users = snapshot.docs.map(doc => {
-          const userData = doc.data()
-          return { id: doc.id, ...userData }
-})
-        
-        // ALWAYS run cleanup - remove EVERY sensitive field from EVERY user on every load
-        console.log('Running Firestore cleanup to remove password fields...')
-        await removeSensitiveFieldsFromFirestore(users)
-        
-        const cleanedUsers = cleanUserData(users)
-        if (users.length > 0) {
-          setAllUsers(cleanedUsers)
-          localStorage.setItem('eliteArrowsUsers', JSON.stringify(cleanedUsers))
-        }
-      } catch (e) {
-        const localUsers = JSON.parse(localStorage.getItem('eliteArrowsUsers') || '[]')
-        const cleanedUsers = cleanUserData(localUsers)
+  const runCleanup = async () => {
+    try {
+      const snapshot = await getDocs(collection(db, 'users'))
+      const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      
+      // Run cleanup multiple times to ensure fields are deleted
+      await removeSensitiveFieldsFromFirestore(users)
+      await removeSensitiveFieldsFromFirestore(users)
+      await removeSensitiveFieldsFromFirestore(users)
+      
+      const cleanedUsers = cleanUserData(users)
+      if (users.length > 0) {
         setAllUsers(cleanedUsers)
         localStorage.setItem('eliteArrowsUsers', JSON.stringify(cleanedUsers))
       }
+      console.log('Cleanup complete - password fields removed from Firestore')
+    } catch (e) {
+      console.log('Cleanup error:', e)
     }
-    
-    loadAllUsers()
-    
-    const timeout = setTimeout(() => {
-      setLoading(false)
-    }, 3000)
-    
-    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-      clearTimeout(timeout)
-      if (firebaseUser) {
-        try {
-          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
-          if (userDoc.exists()) {
-            let userData = userDoc.data()
-            SENSITIVE_FIELDS.forEach(field => delete userData[field])
-            userData.division = 'Unassigned'
-            setUser({ id: userDoc.id, ...userData })
-          } else {
-            await firebaseSignOut(auth)
-            setUser(null)
-          }
-        } catch (e) {
-          setUser(null)
-        }
-      } else {
-        setUser(null)
-      }
-      setLoading(false)
-    })
+  }
 
-    return () => {
-      clearTimeout(timeout)
-      unsubscribeAuth()
-    }
+useEffect(() => {
+    runCleanup()
+    const timer = setTimeout(runCleanup, 2000)
+    return () => clearTimeout(timer)
   }, [])
 
   const signUp = async (userData, rememberMe = false) => {
