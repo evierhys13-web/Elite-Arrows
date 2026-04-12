@@ -245,6 +245,12 @@ const fixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
 
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
         <button
+          className={`btn ${activeTab === 'my' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setActiveTab('my')}
+        >
+          My Fixtures
+        </button>
+        <button
           className={`btn ${activeTab === 'upcoming' ? 'btn-primary' : 'btn-secondary'}`}
           onClick={() => setActiveTab('upcoming')}
         >
@@ -263,6 +269,40 @@ const fixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
           Sent ({sentFixtures.length})
         </button>
       </div>
+
+      {activeTab === 'my' && (
+        <div className="card">
+          <h3 className="card-title">My Fixtures</h3>
+          {fixtures.length === 0 ? (
+            <div className="empty-state">
+              <p>No fixtures yet</p>
+            </div>
+          ) : (
+            fixtures
+              .filter(f => f.player1Id === user.id || f.player2Id === user.id)
+              .sort((a, b) => new Date(a.fixtureDate) - new Date(b.fixtureDate))
+              .map(fixture => (
+                <div key={fixture.id} style={{ 
+                  padding: '15px', 
+                  background: 'var(--bg-secondary)', 
+                  borderRadius: '8px',
+                  marginBottom: '10px',
+                  borderLeft: `3px solid ${fixture.status === 'accepted' ? 'var(--success)' : 'var(--warning)'}`
+                }}>
+                  <div style={{ fontWeight: '600', marginBottom: '5px' }}>
+                    {fixture.player1Id === user.id ? 'You' : fixture.player1Name} vs {fixture.player2Id === user.id ? 'You' : fixture.player2Name}
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    {fixture.gameType} • {fixture.fixtureDate} at {fixture.fixtureTime}
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)', marginTop: '5px' }}>
+                    Status: {fixture.status}
+                  </div>
+                </div>
+              ))
+          )}
+        </div>
+      )}
 
       {activeTab === 'upcoming' && (
         <div className="card">
