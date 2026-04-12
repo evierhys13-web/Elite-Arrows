@@ -89,8 +89,10 @@ export function AuthProvider({ children }) {
     try {
       const { user: firebaseUser } = await createUserWithEmailAndPassword(auth, userData.email, userData.password)
       
+      const { password, ...userDataWithoutPassword } = userData
+      
       const newUser = {
-        ...userData,
+        ...userDataWithoutPassword,
         threeDartAverage: userData.threeDartAverage || 0,
         division: isAdmin ? 'Admin' : null,
         isAdmin: isAdmin,
@@ -109,11 +111,17 @@ export function AuthProvider({ children }) {
       }
 
       await setDoc(doc(db, 'users', firebaseUser.uid), newUser)
-      setUser({ id: firebaseUser.uid, ...newUser })
       
-      const updatedUsers = [...allUsers, { id: firebaseUser.uid, ...newUser }]
-      setAllUsers(updatedUsers)
-      localStorage.setItem('eliteArrowsUsers', JSON.stringify(updatedUsers))
+      const cleanedUser = { ...newUser }
+      setUser({ id: firebaseUser.uid, ...cleanedUser })
+      
+      const updatedUsers = [...allUsers, { id: firebaseUser.uid, ...cleanedUser }]
+      const cleanedUpdated = updatedUsers.map(u => {
+        const { password, ...rest } = u
+        return rest
+      })
+      setAllUsers(cleanedUpdated)
+      localStorage.setItem('eliteArrowsUsers', JSON.stringify(cleanedUpdated))
       
       return newUser
     } catch (error) {
