@@ -205,11 +205,11 @@ export default function Sidebar() {
     { path: '/tournaments', label: 'Tournaments', icon: TrophyIcon2 },
     { path: '/rewards', label: 'Rewards', icon: GiftIcon },
     { path: '/chat', label: 'Chat', icon: MessageIcon },
+    { path: '/games', label: 'Games', icon: GamepadIcon },
   ]
 
   const adminItems = [
     { path: '/admin', label: 'Admin Panel', icon: ShieldIcon },
-    { path: '/games', label: 'Games', icon: GamepadIcon },
   ]
 
   const bottomItems = [

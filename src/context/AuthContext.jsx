@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { db, auth, usersCollection, doc, setDoc, getDoc, getDocs, query, collection, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence } from '../firebase'
+import { db, auth, usersCollection, doc, setDoc, getDoc, getDocs, query, collection, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, addDoc } from '../firebase'
 
 const AuthContext = createContext(null)
 
@@ -195,18 +195,32 @@ export function AuthProvider({ children }) {
     
     await updateUser({ sentFriendRequests: [...currentRequests, friendId] })
     
+    const allUsersData = getAllUsers()
+    const friendUser = allUsersData.find(u => u.id === friendId)
+    
     const notification = {
       id: `friend_request_${Date.now()}`,
       type: 'friend_request',
       fromUserId: user.id,
       fromUsername: user.username,
       toUserId: friendId,
+      toUsername: friendUser?.username || 'Unknown',
       message: `${user.username} sent you a friend request`,
       isRead: false,
       createdAt: new Date().toISOString()
     }
+    
     const existingNotifications = JSON.parse(localStorage.getItem('eliteArrowsNotifications') || '[]')
     localStorage.setItem('eliteArrowsNotifications', JSON.stringify([...existingNotifications, notification]))
+    
+    try {
+      await addDoc(collection(db, 'notifications'), {
+        ...notification
+      })
+    } catch (e) {
+      console.log('Error saving to Firebase:', e)
+    }
+    
     alert('Friend request sent!')
   }
 
@@ -218,18 +232,30 @@ export function AuthProvider({ children }) {
     const newRequests = currentRequests.filter(id => id !== userId)
     await updateUser({ friends: newFriends, receivedFriendRequests: newRequests })
     
+    const allUsersData = getAllUsers()
+    const requestUser = allUsersData.find(u => u.id === userId)
+    
     const notification = {
       id: `friend_accepted_${Date.now()}`,
       type: 'friend_accepted',
       fromUserId: user.id,
       fromUsername: user.username,
       toUserId: userId,
+      toUsername: requestUser?.username || 'Unknown',
       message: `${user.username} accepted your friend request`,
       isRead: false,
       createdAt: new Date().toISOString()
     }
     const existingNotifications = JSON.parse(localStorage.getItem('eliteArrowsNotifications') || '[]')
     localStorage.setItem('eliteArrowsNotifications', JSON.stringify([...existingNotifications, notification]))
+    
+    try {
+      await addDoc(collection(db, 'notifications'), {
+        ...notification
+      })
+    } catch (e) {
+      console.log('Error saving to Firebase:', e)
+    }
   }
 
   const declineFriendRequest = async (userId) => {

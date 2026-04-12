@@ -9,6 +9,18 @@ export default function Subscription() {
   const [proofImage, setProofImage] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
+  const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
+  const isAdminEmail = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
+  const isDbAdmin = user?.isAdmin === true
+  const isAdmin = isAdminEmail || isDbAdmin
+
+  const currentSeason = new Date().getFullYear().toString()
+  const hasActiveSubscription = user?.isSubscribed && !isAdmin
+  const subscriptionEndDate = user?.subscriptionDate ? new Date(user.subscriptionDate) : null
+  const daysUntilEnd = subscriptionEndDate ? Math.ceil((subscriptionEndDate - new Date()) / (1000 * 60 * 60 * 24)) : 0
+  const hasSubscriptionThisSeason = user?.subscriptionDate && 
+    new Date(user.subscriptionDate).getFullYear() === parseInt(currentSeason)
+
   const handleMethodSelect = (method) => {
     setPaymentMethod(method)
     setStep(2)
@@ -26,6 +38,16 @@ export default function Subscription() {
   }
 
   const handleSubmitPayment = () => {
+    if (hasActiveSubscription) {
+      alert(`You already have an active subscription. It will end on ${subscriptionEndDate?.toLocaleDateString()}. You can renew after it expires.`)
+      return
+    }
+
+    if (hasSubscriptionThisSeason) {
+      alert(`You already have a subscription this season (${currentSeason}). You can renew for the next season.`)
+      return
+    }
+
     setSubmitting(true)
     const users = getAllUsers()
     const userIndex = users.findIndex(u => u.id === user.id)
@@ -34,12 +56,14 @@ export default function Subscription() {
       users[userIndex].paymentMethod = paymentMethod
       users[userIndex].paymentProof = proofImage
       users[userIndex].paymentDate = new Date().toISOString()
+      users[userIndex].subscriptionSeason = currentSeason
       localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
       updateUser({
         paymentPending: true,
         paymentMethod: paymentMethod,
         paymentProof: proofImage,
-        paymentDate: new Date().toISOString()
+        paymentDate: new Date().toISOString(),
+        subscriptionSeason: currentSeason
       })
     }
     setSubmitting(false)
@@ -62,7 +86,6 @@ export default function Subscription() {
   
   const price = getSubscriptionPrice()
   const isFreeTier = !user?.division || user?.division === 'Unassigned'
-  const isAdmin = user?.email?.toLowerCase() === 'rhyshowe2023@outlook.com'
 
   return (
     <div className="page">
@@ -78,6 +101,11 @@ export default function Subscription() {
           </div>
           <div style={{ marginTop: '20px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
             <p style={{ color: 'var(--success)', fontWeight: '600' }}>Active Subscriber</p>
+            {subscriptionEndDate && (
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '8px' }}>
+                Expires: {subscriptionEndDate.toLocaleDateString()}
+              </p>
+            )}
           </div>
         </div>
       ) : (user?.paymentPending) ? (
@@ -120,9 +148,18 @@ export default function Subscription() {
               <li>Tournaments</li>
               <li>Full access</li>
             </ul>
-            <button className="btn btn-primary btn-block" onClick={() => { setPaymentMethod('paypal5'); setShowPayment(true) }}>
-              Entry Fee
-            </button>
+            <div style={{ background: 'var(--warning)', color: '#000', padding: '8px', borderRadius: '6px', fontSize: '0.75rem', marginBottom: '10px', fontWeight: 'bold' }}>
+              ⚠️ Do NOT buy until assigned a division!
+            </div>
+            {hasActiveSubscription || hasSubscriptionThisSeason ? (
+              <button className="btn btn-secondary btn-block" disabled>
+                {hasActiveSubscription ? 'Already Subscribed' : 'This Season'}
+              </button>
+            ) : (
+              <button className="btn btn-primary btn-block" onClick={() => { setPaymentMethod('paypal5'); setShowPayment(true) }}>
+                Entry Fee
+              </button>
+            )}
           </div>
 
           <div className="subscription-card" style={{ flex: '1 1 200px', minWidth: '200px', border: '2px solid #ffd700' }}>
@@ -134,9 +171,18 @@ export default function Subscription() {
               <li>Tournaments</li>
               <li>Match submissions</li>
             </ul>
-            <button className="btn btn-primary btn-block" style={{ background: 'linear-gradient(135deg, #ffd700, #ff8c00)', border: 'none' }} onClick={() => { setPaymentMethod('paypal5'); setShowPayment(true) }}>
-              Entry Fee
-            </button>
+            <div style={{ background: 'var(--warning)', color: '#000', padding: '8px', borderRadius: '6px', fontSize: '0.75rem', marginBottom: '10px', fontWeight: 'bold' }}>
+              ⚠️ Do NOT buy until assigned a division!
+            </div>
+            {hasActiveSubscription || hasSubscriptionThisSeason ? (
+              <button className="btn btn-secondary btn-block" disabled style={{ background: 'linear-gradient(135deg, #888, #666)', border: 'none' }}>
+                {hasActiveSubscription ? 'Already Subscribed' : 'This Season'}
+              </button>
+            ) : (
+              <button className="btn btn-primary btn-block" style={{ background: 'linear-gradient(135deg, #ffd700, #ff8c00)', border: 'none' }} onClick={() => { setPaymentMethod('paypal5'); setShowPayment(true) }}>
+                Entry Fee
+              </button>
+            )}
           </div>
         </div>
       )}

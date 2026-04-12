@@ -315,11 +315,11 @@ function AppRoutes() {
         </SubscribedRoute>
       } />
       <Route path="/games" element={
-        <AdminRoute>
+        <SubscribedRoute>
           <AppLayout>
             <Games />
           </AppLayout>
-        </AdminRoute>
+        </SubscribedRoute>
       } />
       <Route path="/season-management" element={
         <AdminRoute>
