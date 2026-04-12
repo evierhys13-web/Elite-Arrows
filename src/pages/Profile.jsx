@@ -172,6 +172,26 @@ export default function Profile() {
               <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>{viewedUser.threeDartAverage?.toFixed(2) || 0}</div>
               <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>3-Dart Avg</div>
             </div>
+            {viewedUser.stats && (
+              <>
+                <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>{viewedUser.stats.played || 0}</div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Played</div>
+                </div>
+                <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--success)' }}>{viewedUser.stats.wins || 0}</div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Wins</div>
+                </div>
+                <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>{viewedUser.stats['180s'] || 0}</div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>180s</div>
+                </div>
+                <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>{viewedUser.stats.highestCheckout || 0}</div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Hi Checkout</div>
+                </div>
+              </>
+            )}
             {viewedUser.country && (
               <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
                 <div style={{ fontSize: '1.2rem' }}>{viewedUser.country}</div>
