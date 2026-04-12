@@ -50,26 +50,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (!user?.id) return
     
-    let unsubscribe = null
-    try {
-      const q = query(notificationsCollection, where('toUserId', '==', user.id))
-      unsubscribe = onSnapshot(q, 
-        (snapshot) => {
-          try {
-            const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-            setNotifications(notifs.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)))
-          } catch (e) {
-            setNotifications([])
-          }
-        },
-        (error) => {
-          setNotifications([])
-        }
-      )
-    } catch (e) {
-      setNotifications([])
-    }
-    return () => { if (unsubscribe) unsubscribe() }
+    setNotifications([])
   }, [user?.id])
 
   const signUp = async (userData, rememberMe = false) => {
