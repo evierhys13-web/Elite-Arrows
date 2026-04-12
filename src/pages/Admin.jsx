@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import { db, doc, setDoc, deleteDoc } from '../firebase'
+import { db, doc, setDoc, getDoc, deleteDoc } from '../firebase'
 
 export default function Admin() {
   const { user, getAllUsers, updateUser } = useAuth()
@@ -80,12 +80,67 @@ export default function Admin() {
     }
   }, [user.isAdmin, user.isTournamentAdmin]);
 
-  const approveResult = (resultId) => {
+  const approveResult = async (resultId) => {
     const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]');
     const index = results.findIndex(r => r.id === resultId);
     if (index !== -1) {
       results[index].status = 'approved';
       localStorage.setItem('eliteArrowsResults', JSON.stringify(results));
+      
+      const result = results[index]
+      
+      try {
+        if (result.player1Id) {
+          const p1Doc = await getDoc(doc(db, 'users', result.player1Id))
+          if (p1Doc.exists()) {
+            const p1Data = p1Doc.data()
+            const p1Stats = p1Data.stats || { played: 0, wins: 0, losses: 0, legsWon: 0, legsLost: 0, '180s': 0, '170s': 0, highestCheckout: 0, doubleSuccess: 0 }
+            p1Stats.played = (p1Stats.played || 0) + 1
+            p1Stats.legsWon = (p1Stats.legsWon || 0) + result.score1
+            p1Stats.legsLost = (p1Stats.legsLost || 0) + result.score2
+            p1Stats['180s'] = (p1Stats['180s'] || 0) + (result.player1Stats?.['180s'] || 0)
+            if ((result.player1Stats?.highestCheckout || 0) >= 170) {
+              p1Stats['170s'] = (p1Stats['170s'] || 0) + 1
+            }
+            if ((result.player1Stats?.highestCheckout || 0) > (p1Stats.highestCheckout || 0)) {
+              p1Stats.highestCheckout = result.player1Stats.highestCheckout
+            }
+            if (result.score1 > result.score2) {
+              p1Stats.wins = (p1Stats.wins || 0) + 1
+            } else if (result.score1 < result.score2) {
+              p1Stats.losses = (p1Stats.losses || 0) + 1
+            }
+            await setDoc(doc(db, 'users', result.player1Id), { stats: p1Stats }, { merge: true })
+          }
+        }
+        
+        if (result.player2Id) {
+          const p2Doc = await getDoc(doc(db, 'users', result.player2Id))
+          if (p2Doc.exists()) {
+            const p2Data = p2Doc.data()
+            const p2Stats = p2Data.stats || { played: 0, wins: 0, losses: 0, legsWon: 0, legsLost: 0, '180s': 0, '170s': 0, highestCheckout: 0, doubleSuccess: 0 }
+            p2Stats.played = (p2Stats.played || 0) + 1
+            p2Stats.legsWon = (p2Stats.legsWon || 0) + result.score2
+            p2Stats.legsLost = (p2Stats.legsLost || 0) + result.score1
+            p2Stats['180s'] = (p2Stats['180s'] || 0) + (result.player2Stats?.['180s'] || 0)
+            if ((result.player2Stats?.highestCheckout || 0) >= 170) {
+              p2Stats['170s'] = (p2Stats['170s'] || 0) + 1
+            }
+            if ((result.player2Stats?.highestCheckout || 0) > (p2Stats.highestCheckout || 0)) {
+              p2Stats.highestCheckout = result.player2Stats.highestCheckout
+            }
+            if (result.score2 > result.score1) {
+              p2Stats.wins = (p2Stats.wins || 0) + 1
+            } else if (result.score2 < result.score1) {
+              p2Stats.losses = (p2Stats.losses || 0) + 1
+            }
+            await setDoc(doc(db, 'users', result.player2Id), { stats: p2Stats }, { merge: true })
+          }
+        }
+      } catch (e) {
+        console.log('Error updating player stats:', e)
+      }
+      
       setPendingResults(prev => prev.filter(r => r.id !== resultId));
     }
   };
