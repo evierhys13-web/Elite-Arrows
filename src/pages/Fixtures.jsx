@@ -92,8 +92,8 @@ export default function Fixtures() {
 
   return (
     <div className="page">
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-        <h1 className="page-title">Fixtures</h1>
+      <div className="page-header" style={{ textAlign: 'center', paddingBottom: '20px' }}>
+        <h1 className="page-title" style={{ marginBottom: '15px' }}>Fixtures</h1>
         <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
           + Create Fixture
         </button>
@@ -121,7 +121,11 @@ export default function Fixtures() {
             width: '100%',
             border: '1px solid var(--border)'
           }} onClick={e => e.stopPropagation()}>
-            <h3 style={{ marginBottom: '20px', color: 'var(--accent-cyan)' }}>Create New Fixture</h3>
+            <h3 style={{ marginBottom: '20px', color: 'var(--accent-cyan)', textAlign: 'center' }}>
+              {createForm.opponent 
+                ? `You vs ${allUsers.find(u => u.id === createForm.opponent)?.username || 'Select Opponent'}` 
+                : 'Create New Fixture'}
+            </h3>
             
 <div className="form-group">
               <label>Game Type</label>
