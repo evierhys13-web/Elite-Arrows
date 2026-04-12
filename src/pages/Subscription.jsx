@@ -111,7 +111,7 @@ export default function Subscription() {
                 <li>Exclusive Premium Features</li>
               </ul>
 
-              {user?.isSubscribed ? (
+              {(user?.isSubscribed && !isAdmin) ? (
                 <button className="btn btn-secondary btn-block" disabled>
                   Active
                 </button>
@@ -120,7 +120,7 @@ export default function Subscription() {
                   setPaymentMethod('paypal')
                   setShowPayment(true)
                 }}>
-                  Pay £10 Subscription
+                  {user?.isSubscribed && isAdmin ? 'Upgrade to £10' : 'Pay £10 Subscription'}
                 </button>
               )}
             </div>
@@ -140,7 +140,7 @@ export default function Subscription() {
                 <li>Priority support</li>
               </ul>
 
-              {user?.isSubscribed ? (
+              {(user?.isSubscribed && !isAdmin) ? (
                 <button className="btn btn-secondary btn-block" disabled>
                   Active
                 </button>
