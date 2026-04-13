@@ -126,21 +126,29 @@ export default function Profile() {
   const handleSave = async () => {
     setSaving(true)
     const avgValue = parseFloat(formData.threeDartAverage) || 0
-    console.log('Saving with average:', avgValue)
+    
+    // Build updates object, only include non-empty values
+    const updates = {}
+    
+    if (formData.username?.trim()) updates.username = formData.username.trim()
+    if (formData.nickname?.trim()) updates.nickname = formData.nickname.trim()
+    if (formData.bio?.trim()) updates.bio = formData.bio.trim()
+    if (formData.dart?.trim()) updates.dart = formData.dart.trim()
+    if (formData.country?.trim()) updates.country = formData.country.trim()
+    if (formData.dartCounterUsername?.trim()) {
+      updates.dartCounterUsername = formData.dartCounterUsername.trim()
+      updates.dartCounterLink = `https://dartcounter.app/profile/${formData.dartCounterUsername.trim()}`
+    }
+    if (formData.threeDartAverage) {
+      updates.threeDartAverage = avgValue
+    }
+    if (profilePicture) updates.profilePicture = profilePicture
+    if (tags?.length > 0) updates.tags = tags
+    
+    console.log('Saving updates:', updates)
     
     try {
-      await updateUser({
-        username: formData.username,
-        nickname: formData.nickname,
-        bio: formData.bio,
-        darts: formData.dart,
-        country: formData.country,
-        dartCounterUsername: formData.dartCounterUsername,
-        dartCounterLink: formData.dartCounterLink || (formData.dartCounterUsername ? `https://dartcounter.app/profile/${formData.dartCounterUsername}` : ''),
-        threeDartAverage: avgValue,
-        profilePicture,
-        tags
-      }, true)
+      await updateUser(updates, true)
     } catch (e) {
       console.error('Save error:', e)
       alert('Error saving: ' + e.message)
