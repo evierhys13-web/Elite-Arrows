@@ -276,30 +276,41 @@ useEffect(() => {
       // Filter out undefined values
       const cleanUpdates = {}
       Object.keys(updates).forEach(key => {
-        if (updates[key] !== undefined) {
+        if (updates[key] !== undefined && updates[key] !== null && updates[key] !== '') {
           cleanUpdates[key] = updates[key]
         }
       })
       
+      if (Object.keys(cleanUpdates).length === 0) {
+        console.log('No updates to save')
+        return
+      }
+      
+      console.log('Saving to Firestore:', cleanUpdates)
+      
       const userRef = doc(db, 'users', user.id)
       await setDoc(userRef, cleanUpdates, { merge: true })
       
-      const updatedUser = { ...user, ...updates }
-      setUser(updatedUser)
-      localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(updatedUser))
+      console.log('Firestore update complete')
       
-      setAllUsers(prevUsers => {
-        const updated = prevUsers.map(u => u.id === user.id ? { ...u, ...updates } : u)
-        localStorage.setItem('eliteArrowsUsers', JSON.stringify(updated))
-        return updated
-      })
+      // Wait a bit and force reload from Firestore
+      await new Promise(resolve => setTimeout(resolve, 200))
       
-      setTimeout(async () => {
-        const freshDoc = await getDoc(userRef)
-        if (freshDoc.exists()) {
-          setUser({ id: freshDoc.id, ...freshDoc.data() })
-        }
-      }, 500)
+      const freshDoc = await getDoc(userRef)
+      if (freshDoc.exists()) {
+        const freshData = freshDoc.data()
+        SENSITIVE_FIELDS.forEach(field => delete freshData[field])
+        const updatedUser = { id: freshDoc.id, ...freshData }
+        
+        setUser(updatedUser)
+        localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(updatedUser))
+        
+        setAllUsers(prevUsers => {
+          const updated = prevUsers.map(u => u.id === user.id ? updatedUser : u)
+          localStorage.setItem('eliteArrowsUsers', JSON.stringify(updated))
+          return updated
+        })
+      }
       
       if (showAlert) alert('Profile updated!')
     } catch (error) {
