@@ -76,6 +76,30 @@ useEffect(() => {
     return () => clearTimeout(timer)
   }, [])
 
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
+          if (userDoc.exists()) {
+            let userData = userDoc.data()
+            SENSITIVE_FIELDS.forEach(field => delete userData[field])
+            userData.division = 'Unassigned'
+            setUser({ id: userDoc.id, ...userData })
+          } else {
+            await firebaseSignOut(auth)
+            setUser(null)
+          }
+        } catch (e) {
+          setUser(null)
+        }
+      } else {
+        setUser(null)
+      }
+    })
+    return () => unsubscribeAuth()
+  }, [])
+
   const signUp = async (userData, rememberMe = false) => {
     const emailLower = userData.email.toLowerCase()
     const isAdmin = ADMIN_EMAILS.includes(emailLower)
