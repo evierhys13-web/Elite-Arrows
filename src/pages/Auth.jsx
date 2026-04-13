@@ -71,7 +71,7 @@ export default function Auth() {
           password: formData.password,
           threeDartAverage: avg,
           dartCounterUsername: formData.dartCounterUsername,
-          dartCounterLink: formData.dartCounterUsername ? `https://dartcounter.net/player/${formData.dartCounterUsername}` : ''
+          dartCounterLink: formData.dartCounterUsername ? `https://dartcounter.app/profile/${formData.dartCounterUsername}` : ''
         }, formData.rememberMe)
       } else {
         if (!formData.email || !formData.password) {

@@ -180,11 +180,17 @@ export default function Settings() {
 
       {activeTab === 'account' && (
         <div>
+          {!user?.dartCounterUsername && (
+            <div className="card" style={{ marginBottom: '20px', border: '2px solid var(--accent-primary)', background: 'rgba(139, 69, 19, 0.1)' }}>
+              <h3 style={{ color: 'var(--accent-primary)', marginBottom: '10px' }}>Welcome! Please add your DartCounter details</h3>
+              <p style={{ color: 'var(--text-muted)' }}>You need to add your DartCounter username before using the app.</p>
+            </div>
+          )}
           <div className="card" style={{ marginBottom: '20px' }}>
             <h3 className="card-title">Account Details</h3>
             <div className="form-group">
               <label>DartCounter Username</label>
-              <input type="text" value={user?.dartCounterUsername || ''} onChange={(e) => updateUser({ dartCounterUsername: e.target.value, dartCounterLink: `https://dartcounter.net/player/${e.target.value}` })} placeholder="Enter your DartCounter username" />
+              <input type="text" value={user?.dartCounterUsername || ''} onChange={(e) => updateUser({ dartCounterUsername: e.target.value, dartCounterLink: `https://dartcounter.app/profile/${e.target.value}` })} placeholder="Enter your DartCounter username" />
             </div>
             <div className="form-group">
               <label>Date of Birth</label>

@@ -136,7 +136,7 @@ export default function Profile() {
         darts: formData.dart,
         country: formData.country,
         dartCounterUsername: formData.dartCounterUsername,
-        dartCounterLink: formData.dartCounterLink || (formData.dartCounterUsername ? `https://dartcounter.net/player/${formData.dartCounterUsername}` : ''),
+        dartCounterLink: formData.dartCounterLink || (formData.dartCounterUsername ? `https://dartcounter.app/profile/${formData.dartCounterUsername}` : ''),
         threeDartAverage: avgValue,
         profilePicture,
         tags
@@ -239,7 +239,7 @@ export default function Profile() {
           {(viewedUser.dartCounterLink || viewedUser.dartCounterUsername) && (
             <div style={{ marginBottom: '15px' }}>
               <a 
-                href={viewedUser.dartCounterLink || `https://dartcounter.net/player/${viewedUser.dartCounterUsername}`}
+                href={viewedUser.dartCounterLink || `https://dartcounter.app/profile/${viewedUser.dartCounterUsername}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn btn-primary btn-block"

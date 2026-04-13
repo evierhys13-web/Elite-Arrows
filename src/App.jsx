@@ -28,6 +28,7 @@ import BackgroundDecor from './components/BackgroundDecor'
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading, user } = useAuth()
+  const navigate = useNavigate()
   
   if (loading) {
     return <div className="loading">Loading...</div>
@@ -35,6 +36,13 @@ function ProtectedRoute({ children }) {
   
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />
+  }
+  
+  // Check if user needs to add DartCounter username (only once)
+  const hasSeenDartCounterPrompt = localStorage.getItem('eliteArrowsDartCounterPrompted')
+  if (!user?.dartCounterUsername && !hasSeenDartCounterPrompt) {
+    localStorage.setItem('eliteArrowsDartCounterPrompted', 'true')
+    return <Navigate to="/settings" replace />
   }
   
   return children
