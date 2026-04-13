@@ -175,10 +175,15 @@ export default function Admin() {
       const isHighTier = userDivision === 'Elite' || userDivision === 'Diamond'
       const amount = isHighTier ? 10 : 5
       
+      const seasonStart = new Date('2026-05-01')
+      const seasonEnd = new Date('2026-06-01')
+      const now = new Date()
+      
       const updates = {
         isSubscribed: true,
         paymentPending: false,
-        subscriptionDate: new Date().toISOString(),
+        subscriptionDate: now.toISOString(),
+        subscriptionExpiry: now < seasonStart ? seasonEnd.toISOString() : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         subscriptionSource: 'payment'
       }
       
@@ -607,10 +612,15 @@ export default function Admin() {
                 <button 
                   className="btn btn-primary"
                   onClick={async () => {
+                    const seasonStart = new Date('2026-05-01')
+                    const seasonEnd = new Date('2026-06-01')
+                    const now = new Date()
+                    
                     const cleanUpdates = {
                       isSubscribed: true,
                       freeAdminSubscription: true,
-                      subscriptionDate: new Date().toISOString(),
+                      subscriptionDate: now.toISOString(),
+                      subscriptionExpiry: now < seasonStart ? seasonEnd.toISOString() : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(),
                       subscriptionSource: 'admin_granted'
                     }
                     
@@ -788,9 +798,14 @@ export default function Admin() {
                 const userUpdates = {}
                 if (division) userUpdates.division = division
                 if (subType) {
+                  const seasonStart = new Date('2026-05-01')
+                  const seasonEnd = new Date('2026-06-01')
+                  const now = new Date()
+                  
                   userUpdates.isSubscribed = true
                   userUpdates.subscriptionType = subType
-                  userUpdates.subscriptionDate = new Date().toISOString()
+                  userUpdates.subscriptionDate = now.toISOString()
+                  userUpdates.subscriptionExpiry = now < seasonStart ? seasonEnd.toISOString() : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
                   userUpdates.subscriptionSource = freeSub ? 'admin_granted' : 'paid'
                 }
                 if (freeSub) userUpdates.freeAdminSubscription = true

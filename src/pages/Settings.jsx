@@ -343,14 +343,16 @@ export default function Settings() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
               <span>Date paid</span>
-              <span>{user?.paymentDate ? new Date(user.paymentDate).toLocaleDateString() : 'N/A'}</span>
+              <span>{user?.subscriptionDate ? new Date(user.subscriptionDate).toLocaleDateString() : 'N/A'}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-              <span>Next billing date</span>
+              <span>Expiry date</span>
               <span>
-                {user?.paymentDate 
-                  ? new Date(new Date(user.paymentDate).setMonth(new Date(user.paymentDate).getMonth() + 1)).toLocaleDateString()
-                  : 'N/A'}
+                {user?.subscriptionExpiry 
+                  ? new Date(user.subscriptionExpiry).toLocaleDateString()
+                  : user?.subscriptionDate 
+                    ? new Date(new Date(user.subscriptionDate).getTime() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()
+                    : 'N/A'}
               </span>
             </div>
             {user?.freeAdminSubscription && (
