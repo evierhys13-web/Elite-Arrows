@@ -18,37 +18,41 @@ export default function Results() {
   const pendingResults = allResults.filter(r => r.status === 'pending')
   
   const handleApprove = async (resultId) => {
-    const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
-    const index = results.findIndex(r => r.id === resultId)
-    if (index !== -1) {
+    try {
+      const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+      const index = results.findIndex(r => r.id === resultId)
+      if (index === -1) {
+        alert('Result not found')
+        return
+      }
       results[index].status = 'approved'
       localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
       
-      try {
-        await updateDoc(doc(db, 'results', resultId), { status: 'approved' })
-      } catch (e) {
-        console.log('Firestore error:', e)
-      }
-      
+      await updateDoc(doc(db, 'results', resultId), { status: 'approved' })
       alert('Result approved!')
+    } catch (e) {
+      console.error(e)
+      alert('Error: ' + e.message)
     }
   }
   
   const handleReject = async (resultId) => {
     if (!confirm('Are you sure you want to reject this result?')) return
-    const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
-    const index = results.findIndex(r => r.id === resultId)
-    if (index !== -1) {
+    try {
+      const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+      const index = results.findIndex(r => r.id === resultId)
+      if (index === -1) {
+        alert('Result not found')
+        return
+      }
       results[index].status = 'rejected'
       localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
       
-      try {
-        await updateDoc(doc(db, 'results', resultId), { status: 'rejected' })
-      } catch (e) {
-        console.log('Firestore error:', e)
-      }
-      
+      await updateDoc(doc(db, 'results', resultId), { status: 'rejected' })
       alert('Result rejected.')
+    } catch (e) {
+      console.error(e)
+      alert('Error: ' + e.message)
     }
   }
 

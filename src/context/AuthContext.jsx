@@ -267,22 +267,36 @@ useEffect(() => {
     setUser(null)
   }
 
-  const updateUser = async (updates) => {
+  const updateUser = async (updates, showAlert = true) => {
     if (!user?.id) {
-      console.log('No user ID')
+      if (showAlert) alert('Error: Not logged in')
       return
     }
     try {
-      console.log('Updating Firestore with:', updates, 'for user:', user.id)
-      await setDoc(doc(db, 'users', user.id), updates, { merge: true })
-      console.log('Firestore save done')
+      const userRef = doc(db, 'users', user.id)
+      await setDoc(userRef, updates, { merge: true })
       
-      setUser(prev => ({ ...prev, ...updates }))
-      console.log('State updated')
-      setAllUsers(prevUsers => prevUsers.map(u => u.id === user.id ? { ...u, ...updates } : u))
-      console.log('All users updated')
+      const updatedUser = { ...user, ...updates }
+      setUser(updatedUser)
+      localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(updatedUser))
+      
+      setAllUsers(prevUsers => {
+        const updated = prevUsers.map(u => u.id === user.id ? { ...u, ...updates } : u)
+        localStorage.setItem('eliteArrowsUsers', JSON.stringify(updated))
+        return updated
+      })
+      
+      setTimeout(() => {
+        const freshDoc = getDoc(userRef)
+        if (freshDoc.exists()) {
+          setUser({ id: freshDoc.id, ...freshDoc.data() })
+        }
+      }, 500)
+      
+      if (showAlert) alert('Profile updated!')
     } catch (error) {
       console.error('Error updating user:', error)
+      if (showAlert) alert('Error saving: ' + error.message)
     }
   }
 

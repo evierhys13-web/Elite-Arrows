@@ -121,25 +121,27 @@ export default function Profile() {
     }
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setSaving(true)
-    updateUser({
-      username: formData.username,
-      nickname: formData.nickname,
-      bio: formData.bio,
-      darts: formData.dart,
-      country: formData.country,
-      dartCounterUsername: formData.dartCounterUsername,
-      dartCounterLink: formData.dartCounterLink || (formData.dartCounterUsername ? `https://dartcounter.net/player/${formData.dartCounterUsername}` : ''),
-      threeDartAverage: parseFloat(formData.threeDartAverage) || 0,
-      profilePicture,
-      tags
-    })
-    setTimeout(() => {
-      setSaving(false)
-      setMessage('Profile updated successfully!')
-      setTimeout(() => setMessage(''), 3000)
-    }, 500)
+    try {
+      await updateUser({
+        username: formData.username,
+        nickname: formData.nickname,
+        bio: formData.bio,
+        darts: formData.dart,
+        country: formData.country,
+        dartCounterUsername: formData.dartCounterUsername,
+        dartCounterLink: formData.dartCounterLink || (formData.dartCounterUsername ? `https://dartcounter.net/player/${formData.dartCounterUsername}` : ''),
+        threeDartAverage: parseFloat(formData.threeDartAverage) || 0,
+        profilePicture,
+        tags
+      }, false)
+    } catch (e) {
+      alert('Error saving: ' + e.message)
+    }
+    setSaving(false)
+    setMessage('Profile updated successfully!')
+    setTimeout(() => setMessage(''), 3000)
   }
 
   const handleRequestAdmin = () => {
