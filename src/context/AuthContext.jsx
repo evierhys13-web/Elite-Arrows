@@ -9,7 +9,7 @@ export const DIVISIONS = ['Elite', 'Diamond', 'Gold', 'Silver', 'Bronze']
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [allUsers, setAllUsers] = useState([])
   const [notifications, setNotifications] = useState([])
   
@@ -97,11 +97,30 @@ useEffect(() => {
           if (userDoc.exists()) {
             let userData = userDoc.data()
             SENSITIVE_FIELDS.forEach(field => delete userData[field])
-            userData.division = 'Unassigned'
+            userData.division = userData.division || 'Unassigned'
             setUser({ id: userDoc.id, ...userData })
           } else {
-            await firebaseSignOut(auth)
-            setUser(null)
+            const newUserData = {
+              username: firebaseUser.email?.split('@')[0] || 'User',
+              email: firebaseUser.email,
+              threeDartAverage: 0,
+              division: 'Unassigned',
+              isAdmin: false,
+              isTournamentAdmin: false,
+              isSubscribed: false,
+              freeAdminSubscription: false,
+              adminRequestPending: false,
+              friends: [],
+              isOnline: true,
+              showOnlineStatus: true,
+              doNotDisturb: false,
+              dndEndTime: null,
+              eliteTokens: 0,
+              lastSeen: new Date().toISOString(),
+              createdAt: new Date().toISOString()
+            }
+            await setDoc(doc(db, 'users', firebaseUser.uid), newUserData)
+            setUser({ id: firebaseUser.uid, ...newUserData })
           }
         } catch (e) {
           setUser(null)
@@ -109,6 +128,7 @@ useEffect(() => {
       } else {
         setUser(null)
       }
+      setLoading(false)
     })
     return () => unsubscribeAuth()
   }, [])
@@ -163,53 +183,8 @@ useEffect(() => {
   const signIn = async (email, password, rememberMe = false) => {
     try {
       await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence)
-      const { user: firebaseUser } = await signInWithEmailAndPassword(auth, email, password)
-      
-      let userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
-      
-      // If user document doesn't exist (was deleted), create a new one
-      if (!userDoc.exists()) {
-        const newUserData = {
-          username: email.split('@')[0],
-          email: email,
-          threeDartAverage: 0,
-          division: 'Unassigned',
-          isAdmin: false,
-          isTournamentAdmin: false,
-          isSubscribed: false,
-          freeAdminSubscription: false,
-          adminRequestPending: false,
-          friends: [],
-          isOnline: true,
-          showOnlineStatus: true,
-          doNotDisturb: false,
-          dndEndTime: null,
-          eliteTokens: 0,
-          lastSeen: new Date().toISOString(),
-          createdAt: new Date().toISOString()
-        }
-        await setDoc(doc(db, 'users', firebaseUser.uid), newUserData)
-        userDoc = { exists: () => true, data: () => newUserData, id: firebaseUser.uid }
-      }
-      
-      const userData = userDoc.data()
-      SENSITIVE_FIELDS.forEach(field => delete userData[field])
-      const isAdminEmail = ADMIN_EMAILS.includes(email.toLowerCase())
-      
-      if (isAdminEmail) {
-        userData.isAdmin = true
-        userData.isSubscribed = true
-        userData.freeAdminSubscription = true
-        userData.division = 'Admin'
-        await setDoc(doc(db, 'users', firebaseUser.uid), userData, { merge: true })
-      }
-
-      userData.isOnline = true
-      SENSITIVE_FIELDS.forEach(field => delete userData[field])
-      await setDoc(doc(db, 'users', firebaseUser.uid), { isOnline: true, lastSeen: new Date().toISOString() }, { merge: true })
-      
-      setUser({ id: firebaseUser.uid, ...userData })
-      return userData
+      await signInWithEmailAndPassword(auth, email, password)
+      return
     } catch (error) {
       throw new Error(error.message)
     }
