@@ -713,6 +713,7 @@ export default function Admin() {
               style={{ width: '100%', padding: '12px', marginBottom: '12px' }}
             >
               <option value="">Select Division</option>
+              <option value="Unassigned">Unassigned</option>
               <option value="Elite">Elite</option>
               <option value="Diamond">Diamond</option>
               <option value="Gold">Gold</option>
@@ -743,7 +744,7 @@ export default function Admin() {
                 const freeSub = document.getElementById('freeSubCheck').checked
                 
                 if (!userId) return alert('Select a user')
-                if (!division && !subType) return alert('Select a division or subscription type')
+                if (!division && !subType) return alert('Select a division and/or subscription type')
                 
                 const users = getAllUsers()
                 const index = users.findIndex(u => u.id === userId)
