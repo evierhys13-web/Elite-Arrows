@@ -128,13 +128,32 @@ useEffect(() => {
       await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence)
       const { user: firebaseUser } = await signInWithEmailAndPassword(auth, email, password)
       
-      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
+      let userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
       
+      // If user document doesn't exist (was deleted), create a new one
       if (!userDoc.exists()) {
-        await firebaseSignOut(auth)
-        throw new Error('User data not found')
+        const newUserData = {
+          username: email.split('@')[0],
+          email: email,
+          division: 'Unassigned',
+          isAdmin: false,
+          isTournamentAdmin: false,
+          isSubscribed: false,
+          freeAdminSubscription: false,
+          adminRequestPending: false,
+          friends: [],
+          isOnline: true,
+          showOnlineStatus: true,
+          doNotDisturb: false,
+          dndEndTime: null,
+          eliteTokens: 0,
+          lastSeen: new Date().toISOString(),
+          createdAt: new Date().toISOString()
+        }
+        await setDoc(doc(db, 'users', firebaseUser.uid), newUserData)
+        userDoc = { exists: () => true, data: () => newUserData, id: firebaseUser.uid }
       }
-
+      
       const userData = userDoc.data()
       const isAdminEmail = ADMIN_EMAILS.includes(email.toLowerCase())
       
