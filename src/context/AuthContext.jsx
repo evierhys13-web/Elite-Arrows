@@ -107,11 +107,11 @@ useEffect(() => {
     try {
       const { user: firebaseUser } = await createUserWithEmailAndPassword(auth, userData.email, userData.password)
       
-      const { password, ...userDataWithoutPassword } = userData
+      const { password, threeDartAverage, ...userDataWithoutPassword } = userData
       
       const newUser = {
         ...userDataWithoutPassword,
-        threeDartAverage: userData.threeDartAverage || 0,
+        threeDartAverage: threeDartAverage || 0,
         division: isAdmin ? 'Admin' : null,
         isAdmin: isAdmin,
         isTournamentAdmin: false,
@@ -159,6 +159,7 @@ useEffect(() => {
         const newUserData = {
           username: email.split('@')[0],
           email: email,
+          threeDartAverage: 0,
           division: 'Unassigned',
           isAdmin: false,
           isTournamentAdmin: false,

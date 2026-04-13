@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
@@ -12,20 +12,42 @@ export default function Profile() {
   const displayUser = isViewingOther ? viewedUser : user
   
   const [formData, setFormData] = useState({
-    username: user.username || '',
-    nickname: user.nickname || '',
-    bio: user.bio || '',
-    darts: user.dart || '',
-    country: user.country || '',
-    dartCounterUsername: user.dartCounterUsername || '',
-    dartCounterLink: user.dartCounterLink || '',
-    threeDartAverage: user.threeDartAverage || ''
+    username: '',
+    nickname: '',
+    bio: '',
+    darts: '',
+    country: '',
+    dartCounterUsername: '',
+    dartCounterLink: '',
+    threeDartAverage: ''
   })
-  const [profilePicture, setProfilePicture] = useState(user.profilePicture || '')
+  
+  useEffect(() => {
+    if (displayUser) {
+      setFormData({
+        username: displayUser.username || '',
+        nickname: displayUser.nickname || '',
+        bio: displayUser.bio || '',
+        darts: displayUser.dart || '',
+        country: displayUser.country || '',
+        dartCounterUsername: displayUser.dartCounterUsername || '',
+        dartCounterLink: displayUser.dartCounterLink || '',
+        threeDartAverage: displayUser.threeDartAverage ?? ''
+      })
+    }
+  }, [displayUser?.id])
+  const [profilePicture, setProfilePicture] = useState('')
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
-  const [tags, setTags] = useState(user.tags || [])
+  const [tags, setTags] = useState([])
   const [newTag, setNewTag] = useState('')
+  
+  useEffect(() => {
+    if (displayUser) {
+      setProfilePicture(displayUser.profilePicture || '')
+      setTags(displayUser.tags || [])
+    }
+  }, [displayUser?.id])
 
   const handleAddTag = () => {
     if (newTag.trim() && !tags.includes(newTag.trim()) && tags.length < 10) {
