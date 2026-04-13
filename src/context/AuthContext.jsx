@@ -8,20 +8,25 @@ const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
 export const DIVISIONS = ['Elite', 'Diamond', 'Gold', 'Silver', 'Bronze']
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [allUsers, setAllUsers] = useState([])
+  const [user, setUser] = useState(() => {
+    const stored = localStorage.getItem('eliteArrowsCurrentUser')
+    return stored ? JSON.parse(stored) : null
+  })
+  const [loading, setLoading] = useState(false)
+  const [allUsers, setAllUsers] = useState(() => {
+    const stored = localStorage.getItem('eliteArrowsUsers')
+    return stored ? JSON.parse(stored) : []
+  })
   const [notifications, setNotifications] = useState([])
-  const [userVersion, setUserVersion] = useState(0)
-  const [results, setResults] = useState([])
+  const [results, setResults] = useState(() => {
+    const stored = localStorage.getItem('eliteArrowsResults')
+    return stored ? JSON.parse(stored) : []
+  })
   
   const SENSITIVE_FIELDS = ['password', 'passwordString', 'passwordHash', 'passwordKey', 'passwordStringValue', 'password', 'firebaseId', 'pwd', 'pass', 'passwd']
   
   useEffect(() => {
-    console.log('AuthContext: Initializing listeners...')
-    
     const unsubscribeUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
-      console.log('onSnapshot users fired, size:', snapshot.size)
       const users = snapshot.docs.map(doc => {
         const data = doc.data()
         SENSITIVE_FIELDS.forEach(field => delete data[field])
@@ -29,9 +34,6 @@ export function AuthProvider({ children }) {
       })
       setAllUsers(users)
       localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
-      console.log('Users updated in state and localStorage')
-    }, (error) => {
-      console.error('Users snapshot error:', error)
     })
     
     const unsubscribeResults = onSnapshot(collection(db, 'results'), (snapshot) => {
@@ -50,8 +52,6 @@ export function AuthProvider({ children }) {
   
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log('onAuthStateChanged triggered, firebaseUser:', firebaseUser ? 'exists' : 'null')
-      
       if (firebaseUser) {
         try {
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
@@ -61,9 +61,7 @@ export function AuthProvider({ children }) {
             const fullUser = { id: userDoc.id, ...userData }
             setUser(fullUser)
             localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(fullUser))
-            console.log('User loaded from Firestore:', fullUser)
           } else {
-            console.log('No user doc exists, creating new one')
             const newUserData = {
               username: firebaseUser.email?.split('@')[0] || 'User',
               email: firebaseUser.email,
@@ -89,12 +87,9 @@ export function AuthProvider({ children }) {
             localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(fullUser))
           }
         } catch (e) {
-          setUser(null)
-          localStorage.removeItem('eliteArrowsCurrentUser')
+          const stored = localStorage.getItem('eliteArrowsCurrentUser')
+          if (stored) setUser(JSON.parse(stored))
         }
-      } else {
-        setUser(null)
-        localStorage.removeItem('eliteArrowsCurrentUser')
       }
       setLoading(false)
     })
@@ -278,54 +273,36 @@ useEffect(() => {
   }
 
   const updateUser = async (updates, showAlert = true) => {
-    if (!user?.id) {
-      if (showAlert) alert('Error: Not logged in')
-      return
-    }
-    try {
-      // Filter out undefined values
-      const cleanUpdates = {}
-      Object.keys(updates).forEach(key => {
-        if (updates[key] !== undefined && updates[key] !== null && updates[key] !== '') {
-          cleanUpdates[key] = updates[key]
-        }
-      })
-      
-      if (Object.keys(cleanUpdates).length === 0) {
-        console.log('No updates to save')
-        return
+    if (!user?.id) return
+    
+    const cleanUpdates = {}
+    Object.keys(updates).forEach(key => {
+      if (updates[key] !== undefined && updates[key] !== null && updates[key] !== '') {
+        cleanUpdates[key] = updates[key]
       }
-      
-      console.log('Saving to Firestore:', cleanUpdates)
-      
+    })
+    
+    if (Object.keys(cleanUpdates).length === 0) return
+    
+    try {
       const userRef = doc(db, 'users', user.id)
       await setDoc(userRef, cleanUpdates, { merge: true })
       
-      console.log('Firestore update complete')
+      // Update local state immediately with the data we just saved
+      const updatedUser = { ...user, ...cleanUpdates }
+      setUser(updatedUser)
+      localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(updatedUser))
       
-      // Wait a bit and force reload from Firestore
-      await new Promise(resolve => setTimeout(resolve, 200))
-      
-      const freshDoc = await getDoc(userRef)
-      if (freshDoc.exists()) {
-        const freshData = freshDoc.data()
-        SENSITIVE_FIELDS.forEach(field => delete freshData[field])
-        const updatedUser = { id: freshDoc.id, ...freshData }
-        
-        setUser(updatedUser)
-        localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(updatedUser))
-        
-        setAllUsers(prevUsers => {
-          const updated = prevUsers.map(u => u.id === user.id ? updatedUser : u)
-          localStorage.setItem('eliteArrowsUsers', JSON.stringify(updated))
-          return updated
-        })
-      }
+      // Update allUsers
+      setAllUsers(prev => {
+        const updated = prev.map(u => u.id === user.id ? { ...u, ...cleanUpdates } : u)
+        localStorage.setItem('eliteArrowsUsers', JSON.stringify(updated))
+        return updated
+      })
       
       if (showAlert) alert('Profile updated!')
     } catch (error) {
-      console.error('Error updating user:', error)
-      if (showAlert) alert('Error saving: ' + error.message)
+      if (showAlert) alert('Error: ' + error.message)
     }
   }
 
