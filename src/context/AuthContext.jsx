@@ -35,7 +35,7 @@ export function AuthProvider({ children }) {
       if (docSnap.exists()) {
         const userData = docSnap.data()
         SENSITIVE_FIELDS.forEach(field => delete userData[field])
-        setUser(userData)
+        setUser({ id: docSnap.id, ...userData })
       }
     })
     return () => unsubscribe()
