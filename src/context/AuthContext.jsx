@@ -24,12 +24,18 @@ export function AuthProvider({ children }) {
       })
       setAllUsers(users)
       localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
-      
-      if (user) {
-        const updatedCurrentUser = users.find(u => u.id === user.id)
-        if (updatedCurrentUser) {
-          setUser(updatedCurrentUser)
-        }
+    })
+    return () => unsubscribe()
+  }, [])
+  
+  useEffect(() => {
+    if (!user) return
+    
+    const unsubscribe = onSnapshot(doc(db, 'users', user.id), (docSnap) => {
+      if (docSnap.exists()) {
+        const userData = docSnap.data()
+        SENSITIVE_FIELDS.forEach(field => delete userData[field])
+        setUser(userData)
       }
     })
     return () => unsubscribe()
