@@ -32,12 +32,14 @@ export default function Profile() {
         country: displayUser.country || '',
         dartCounterUsername: displayUser.dartCounterUsername || '',
         dartCounterLink: displayUser.dartCounterLink || '',
-        threeDartAverage: displayUser.threeDartAverage ?? ''
+        threeDartAverage: displayUser.threeDartAverage !== undefined && displayUser.threeDartAverage !== null 
+          ? String(displayUser.threeDartAverage) 
+          : ''
       })
       setProfilePicture(displayUser.profilePicture || '')
       setTags(displayUser.tags || [])
     }
-  }, [displayUser?.id, displayUser?.threeDartAverage])
+  }, [displayUser?.id])
   const [profilePicture, setProfilePicture] = useState('')
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
