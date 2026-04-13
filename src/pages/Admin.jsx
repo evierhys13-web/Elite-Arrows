@@ -607,27 +607,29 @@ export default function Admin() {
                 <button 
                   className="btn btn-primary"
                   onClick={async () => {
+                    const cleanUpdates = {
+                      isSubscribed: true,
+                      freeAdminSubscription: true,
+                      subscriptionDate: new Date().toISOString(),
+                      subscriptionSource: 'admin_granted'
+                    }
+                    
                     const users = getAllUsers()
                     const index = users.findIndex(us => us.id === u.id)
-                    if (index !== -1) {
-                      users[index].isSubscribed = true
-                      users[index].freeAdminSubscription = true
-                      users[index].subscriptionDate = new Date().toISOString()
-                      users[index].subscriptionSource = 'admin_granted'
-                      localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
-                      
-                      const amount = 5
-                      const newPot = subscriptionPot + amount
-                      setSubscriptionPot(newPot)
-                      localStorage.setItem('eliteArrowsSubscriptionPot', newPot.toString())
-                      addToMoneyHistory('subscription', amount, `Free subscription granted to ${u.username}`)
-                      
-                      try {
-                        await setDoc(doc(db, 'users', u.id), users[index], { merge: true })
-                      } catch (e) {}
-                      
-                      alert(`${u.username} now has free subscription (admin granted)`)
-                    }
+                    if (index === -1) return
+                    
+                    users[index] = { ...users[index], ...cleanUpdates }
+                    localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+                    
+                    const amount = 5
+                    const newPot = subscriptionPot + amount
+                    setSubscriptionPot(newPot)
+                    localStorage.setItem('eliteArrowsSubscriptionPot', newPot.toString())
+                    addToMoneyHistory('subscription', amount, `Free subscription granted to ${u.username}`)
+                    
+                    await setDoc(doc(db, 'users', u.id), cleanUpdates, { merge: true })
+                    
+                    alert(`${u.username} now has free subscription (admin granted)`)
                   }}
                 >
                   Grant Free Sub
@@ -783,22 +785,30 @@ export default function Admin() {
                 const index = users.findIndex(u => u.id === userId)
                 if (index === -1) return
                 
-                if (division) users[index].division = division
+                const userUpdates = {}
+                if (division) userUpdates.division = division
                 if (subType) {
-                  users[index].isSubscribed = true
-                  users[index].subscriptionType = subType
-                  users[index].subscriptionDate = new Date().toISOString()
-                  users[index].subscriptionSource = freeSub ? 'admin_granted' : 'paid'
+                  userUpdates.isSubscribed = true
+                  userUpdates.subscriptionType = subType
+                  userUpdates.subscriptionDate = new Date().toISOString()
+                  userUpdates.subscriptionSource = freeSub ? 'admin_granted' : 'paid'
                 }
-                if (freeSub) users[index].freeAdminSubscription = true
+                if (freeSub) userUpdates.freeAdminSubscription = true
                 
+                // Filter out undefined
+                const cleanUpdates = {}
+                Object.keys(userUpdates).forEach(key => {
+                  if (userUpdates[key] !== undefined) {
+                    cleanUpdates[key] = userUpdates[key]
+                  }
+                })
+                
+                // Update local state
+                users[index] = { ...users[index], ...cleanUpdates }
                 localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
                 
-                try {
-                  await setDoc(doc(db, 'users', userId), users[index], { merge: true })
-                } catch (e) {
-                  console.log('Error updating Firestore:', e)
-                }
+                // Update Firestore
+                await setDoc(doc(db, 'users', userId), cleanUpdates, { merge: true })
                 
                 const amount = 5
                 if (subType && !freeSub) {
