@@ -15,7 +15,6 @@ export default function Profile() {
     username: '',
     nickname: '',
     bio: '',
-    dart: '',
     country: '',
     dartCounterUsername: '',
     dartCounterLink: '',
@@ -28,7 +27,6 @@ export default function Profile() {
         username: displayUser.username || '',
         nickname: displayUser.nickname || '',
         bio: displayUser.bio || '',
-        dart: displayUser.dart || displayUser.darts || '',  // Support both dart and darts
         country: displayUser.country || '',
         dartCounterUsername: displayUser.dartCounterUsername || '',
         dartCounterLink: displayUser.dartCounterLink || '',
@@ -39,7 +37,7 @@ export default function Profile() {
       setProfilePicture(displayUser.profilePicture || '')
       setTags(displayUser.tags || [])
     }
-  }, [displayUser?.id])
+  }, [displayUser?.id, displayUser?.bio, displayUser?.nickname, displayUser?.threeDartAverage])
   const [profilePicture, setProfilePicture] = useState('')
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
@@ -127,12 +125,10 @@ export default function Profile() {
     setSaving(true)
     const avgValue = parseFloat(formData.threeDartAverage) || 0
     
-    // Build updates object - save ALL fields that have values
     const updates = {
       username: formData.username?.trim() || '',
       nickname: formData.nickname?.trim() || '',
       bio: formData.bio?.trim() || '',
-      dart: formData.dart?.trim() || '',  // Save as 'dart' not 'darts'
       country: formData.country?.trim() || '',
       dartCounterUsername: formData.dartCounterUsername?.trim() || '',
       threeDartAverage: formData.threeDartAverage ? avgValue : 0,
@@ -140,12 +136,10 @@ export default function Profile() {
       tags: tags || []
     }
     
-    // Generate dartCounterLink if username exists
     if (updates.dartCounterUsername) {
       updates.dartCounterLink = `https://dartcounter.app/profile/${updates.dartCounterUsername}`
     }
     
-    // Remove empty strings to avoid overwriting with empty
     Object.keys(updates).forEach(key => {
       if (updates[key] === '') delete updates[key]
     })
@@ -153,14 +147,14 @@ export default function Profile() {
     console.log('Saving updates:', updates)
     
     try {
-      await updateUser(updates, true)
+      await updateUser(updates, false)
+      alert('Profile updated!')
+      navigate(0) // Force page reload
     } catch (e) {
       console.error('Save error:', e)
       alert('Error saving: ' + e.message)
     }
     setSaving(false)
-    setMessage('Profile updated successfully!')
-    setTimeout(() => setMessage(''), 3000)
   }
 
   const handleRequestAdmin = () => {
@@ -484,18 +478,7 @@ export default function Profile() {
               rows={3}
               placeholder="Tell us about yourself..."
             />
-          </div>
 
-          <div className="form-group">
-            <label htmlFor="darts">Darts</label>
-            <input
-              type="text"
-              id="darts"
-              name="darts"
-              value={formData.darts}
-              onChange={handleChange}
-              placeholder="e.g., Winmau Blade 5, Target Darts..."
-            />
           </div>
 
           <div className="form-group">
