@@ -286,8 +286,8 @@ useEffect(() => {
         return updated
       })
       
-      setTimeout(() => {
-        const freshDoc = getDoc(userRef)
+      setTimeout(async () => {
+        const freshDoc = await getDoc(userRef)
         if (freshDoc.exists()) {
           setUser({ id: freshDoc.id, ...freshDoc.data() })
         }

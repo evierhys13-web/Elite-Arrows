@@ -123,6 +123,9 @@ export default function Profile() {
 
   const handleSave = async () => {
     setSaving(true)
+    const avgValue = parseFloat(formData.threeDartAverage) || 0
+    console.log('Saving with average:', avgValue)
+    
     try {
       await updateUser({
         username: formData.username,
@@ -132,11 +135,12 @@ export default function Profile() {
         country: formData.country,
         dartCounterUsername: formData.dartCounterUsername,
         dartCounterLink: formData.dartCounterLink || (formData.dartCounterUsername ? `https://dartcounter.net/player/${formData.dartCounterUsername}` : ''),
-        threeDartAverage: parseFloat(formData.threeDartAverage) || 0,
+        threeDartAverage: avgValue,
         profilePicture,
         tags
-      }, false)
+      }, true)
     } catch (e) {
+      console.error('Save error:', e)
       alert('Error saving: ' + e.message)
     }
     setSaving(false)
