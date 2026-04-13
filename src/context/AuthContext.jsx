@@ -30,8 +30,10 @@ export function AuthProvider({ children }) {
     
     const unsubscribeResults = onSnapshot(collection(db, 'results'), (snapshot) => {
       const resultsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-      setResults(resultsData)
-      localStorage.setItem('eliteArrowsResults', JSON.stringify(resultsData))
+      if (resultsData.length > 0) {
+        setResults(resultsData)
+        localStorage.setItem('eliteArrowsResults', JSON.stringify(resultsData))
+      }
     })
     
     return () => {
@@ -268,30 +270,10 @@ useEffect(() => {
   const updateUser = async (updates) => {
     if (!user?.id) return
     try {
-      const userRef = doc(db, 'users', user.id)
-      await setDoc(userRef, updates, { merge: true })
+      await setDoc(doc(db, 'users', user.id), updates, { merge: true })
       
-      setTimeout(async () => {
-        const freshDoc = await getDoc(userRef)
-        if (freshDoc.exists()) {
-          const freshData = freshDoc.data()
-          SENSITIVE_FIELDS.forEach(field => delete freshData[field])
-          const updatedUser = { ...user, ...freshData, _v: Date.now() }
-          
-          setUser(null)
-          setTimeout(() => setUser(updatedUser), 0)
-          setUserVersion(v => v + 1)
-          localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(updatedUser))
-          
-          setAllUsers(prevUsers => {
-            const updatedUsers = prevUsers.map(u => 
-              u.id === user.id ? { ...u, ...freshData } : u
-            )
-            localStorage.setItem('eliteArrowsUsers', JSON.stringify(updatedUsers))
-            return updatedUsers
-          })
-        }
-      }, 100)
+      setUser(prev => ({ ...prev, ...updates }))
+      setAllUsers(prevUsers => prevUsers.map(u => u.id === user.id ? { ...u, ...updates } : u))
     } catch (error) {
       console.error('Error updating user:', error)
     }
@@ -432,7 +414,8 @@ useEffect(() => {
 
   const getResults = () => {
     if (results.length > 0) return results
-    return JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+    const local = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+    return local
   }
 
   const addTokens = async (amount) => {
