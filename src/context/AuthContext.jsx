@@ -8,13 +8,11 @@ const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
 export const DIVISIONS = ['Elite', 'Diamond', 'Gold', 'Silver', 'Bronze']
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    const stored = localStorage.getItem('eliteArrowsCurrentUser')
-    return stored ? JSON.parse(stored) : null
-  })
+  const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [allUsers, setAllUsers] = useState([])
   const [notifications, setNotifications] = useState([])
+  const [userVersion, setUserVersion] = useState(0)
   
   const SENSITIVE_FIELDS = ['password', 'passwordString', 'passwordHash', 'passwordKey', 'passwordStringValue', 'password', 'firebaseId', 'pwd', 'pass', 'passwd']
   
@@ -267,9 +265,11 @@ useEffect(() => {
         if (freshDoc.exists()) {
           const freshData = freshDoc.data()
           SENSITIVE_FIELDS.forEach(field => delete freshData[field])
-          const updatedUser = { ...user, ...freshData, _timestamp: Date.now() }
+          const updatedUser = { ...user, ...freshData, _v: Date.now() }
           
-          setUser(updatedUser)
+          setUser(null)
+          setTimeout(() => setUser(updatedUser), 0)
+          setUserVersion(v => v + 1)
           localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(updatedUser))
           
           setAllUsers(prevUsers => {
