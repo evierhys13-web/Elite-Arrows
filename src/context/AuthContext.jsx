@@ -8,7 +8,10 @@ const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
 export const DIVISIONS = ['Elite', 'Diamond', 'Gold', 'Silver', 'Bronze']
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState(() => {
+    const stored = localStorage.getItem('eliteArrowsCurrentUser')
+    return stored ? JSON.parse(stored) : null
+  })
   const [loading, setLoading] = useState(true)
   const [allUsers, setAllUsers] = useState([])
   const [notifications, setNotifications] = useState([])
@@ -29,17 +32,53 @@ export function AuthProvider({ children }) {
   }, [])
   
   useEffect(() => {
-    if (!user?.id) return
-    
-    const unsubscribe = onSnapshot(doc(db, 'users', user.id), (docSnap) => {
-      if (docSnap.exists()) {
-        const userData = docSnap.data()
-        SENSITIVE_FIELDS.forEach(field => delete userData[field])
-        setUser(prev => ({ ...prev, ...userData, id: docSnap.id }))
+    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
+          if (userDoc.exists()) {
+            let userData = userDoc.data()
+            SENSITIVE_FIELDS.forEach(field => delete userData[field])
+            const fullUser = { id: userDoc.id, ...userData }
+            setUser(fullUser)
+            localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(fullUser))
+          } else {
+            const newUserData = {
+              username: firebaseUser.email?.split('@')[0] || 'User',
+              email: firebaseUser.email,
+              threeDartAverage: 0,
+              division: null,
+              isAdmin: false,
+              isTournamentAdmin: false,
+              isSubscribed: false,
+              freeAdminSubscription: false,
+              adminRequestPending: false,
+              friends: [],
+              isOnline: true,
+              showOnlineStatus: true,
+              doNotDisturb: false,
+              dndEndTime: null,
+              eliteTokens: 0,
+              lastSeen: new Date().toISOString(),
+              createdAt: new Date().toISOString()
+            }
+            await setDoc(doc(db, 'users', firebaseUser.uid), newUserData)
+            const fullUser = { id: firebaseUser.uid, ...newUserData }
+            setUser(fullUser)
+            localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(fullUser))
+          }
+        } catch (e) {
+          setUser(null)
+          localStorage.removeItem('eliteArrowsCurrentUser')
+        }
+      } else {
+        setUser(null)
+        localStorage.removeItem('eliteArrowsCurrentUser')
       }
+      setLoading(false)
     })
-    return () => unsubscribe()
-  }, [user?.id])
+    return () => unsubscribeAuth()
+  }, [])
   
 const cleanUserData = (users) => {
     return users.map(u => {
@@ -109,7 +148,9 @@ useEffect(() => {
           if (userDoc.exists()) {
             let userData = userDoc.data()
             SENSITIVE_FIELDS.forEach(field => delete userData[field])
-            setUser({ id: userDoc.id, ...userData })
+            const fullUser = { id: userDoc.id, ...userData }
+            setUser(fullUser)
+            localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(fullUser))
           } else {
             const newUserData = {
               username: firebaseUser.email?.split('@')[0] || 'User',
@@ -131,7 +172,9 @@ useEffect(() => {
               createdAt: new Date().toISOString()
             }
             await setDoc(doc(db, 'users', firebaseUser.uid), newUserData)
-            setUser({ id: firebaseUser.uid, ...newUserData })
+            const fullUser = { id: firebaseUser.uid, ...newUserData }
+            setUser(fullUser)
+            localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(fullUser))
           }
         } catch (e) {
           setUser(null)
@@ -175,9 +218,11 @@ useEffect(() => {
       await setDoc(doc(db, 'users', firebaseUser.uid), newUser)
       
       const cleanedUser = { ...newUser }
-      setUser({ id: firebaseUser.uid, ...cleanedUser })
+      const fullUser = { id: firebaseUser.uid, ...cleanedUser }
+      setUser(fullUser)
+      localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(fullUser))
       
-      const updatedUsers = [...allUsers, { id: firebaseUser.uid, ...cleanedUser }]
+      const updatedUsers = [...allUsers, fullUser]
       const cleanedUpdated = updatedUsers.map(u => {
         const { password, ...rest } = u
         return rest
@@ -229,7 +274,9 @@ useEffect(() => {
         const freshData = freshDoc.data()
         SENSITIVE_FIELDS.forEach(field => delete freshData[field])
         console.log('Fresh data from Firestore:', freshData)
-        setUser(prev => ({ ...prev, ...freshData, id: freshDoc.id }))
+        const updatedUser = { ...user, ...freshData }
+        setUser(updatedUser)
+        localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(updatedUser))
         
         setAllUsers(prevUsers => {
           const updatedUsers = prevUsers.map(u => 
