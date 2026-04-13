@@ -73,17 +73,15 @@ export default function Auth() {
           dartCounterUsername: formData.dartCounterUsername,
           dartCounterLink: formData.dartCounterUsername ? `https://dartcounter.net/player/${formData.dartCounterUsername}` : ''
         }, formData.rememberMe)
-        alert('Sign up successful!')
       } else {
         if (!formData.email || !formData.password) {
           throw new Error('Email and password are required')
         }
 
         await signIn(formData.email, formData.password, formData.rememberMe)
-        alert('Sign in successful!')
       }
 
-      window.location.href = '/home'
+      navigate('/home')
     } catch (err) {
       alert('Error: ' + err.message)
       setError(err.message)

@@ -20,7 +20,7 @@ export function AuthProvider({ children }) {
       const users = snapshot.docs.map(doc => {
         const data = doc.data()
         SENSITIVE_FIELDS.forEach(field => delete data[field])
-        return { id: doc.id, ...data, division: data.division || 'Unassigned' }
+        return { id: doc.id, ...data }
       })
       setAllUsers(users)
       localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
@@ -32,7 +32,6 @@ const cleanUserData = (users) => {
     return users.map(u => {
       const cleaned = { ...u }
       SENSITIVE_FIELDS.forEach(field => delete cleaned[field])
-      cleaned.division = 'Unassigned'
       return cleaned
     })
   }
@@ -97,7 +96,6 @@ useEffect(() => {
           if (userDoc.exists()) {
             let userData = userDoc.data()
             SENSITIVE_FIELDS.forEach(field => delete userData[field])
-            userData.division = userData.division || 'Unassigned'
             setUser({ id: userDoc.id, ...userData })
           } else {
             const newUserData = {
