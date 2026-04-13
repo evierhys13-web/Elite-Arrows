@@ -34,20 +34,15 @@ export default function Profile() {
         dartCounterLink: displayUser.dartCounterLink || '',
         threeDartAverage: displayUser.threeDartAverage ?? ''
       })
+      setProfilePicture(displayUser.profilePicture || '')
+      setTags(displayUser.tags || [])
     }
-  }, [displayUser?.id])
+  }, [displayUser?.id, displayUser?.threeDartAverage])
   const [profilePicture, setProfilePicture] = useState('')
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [tags, setTags] = useState([])
   const [newTag, setNewTag] = useState('')
-  
-  useEffect(() => {
-    if (displayUser) {
-      setProfilePicture(displayUser.profilePicture || '')
-      setTags(displayUser.tags || [])
-    }
-  }, [displayUser?.id])
 
   const handleAddTag = () => {
     if (newTag.trim() && !tags.includes(newTag.trim()) && tags.length < 10) {
