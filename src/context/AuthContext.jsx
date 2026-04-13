@@ -25,6 +25,17 @@ const cleanUserData = (users) => {
   }
   
   const removeSensitiveFieldsFromFirestore = async (users) => {
+    // Also handle specific user deletions by email
+    const userToDelete = users.find(u => u.email?.toLowerCase() === 'brentedwards87@gmail.com')
+    if (userToDelete && userToDelete.id) {
+      try {
+        await deleteDoc(doc(db, 'users', userToDelete.id))
+        console.log('Deleted user document for brentedwards87@gmail.com')
+      } catch (e) {
+        console.log('Error deleting user:', e)
+      }
+    }
+    
     for (const user of users) {
       if (user.id) {
         const updates = {}
