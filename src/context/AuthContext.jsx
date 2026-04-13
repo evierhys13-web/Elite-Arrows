@@ -262,22 +262,25 @@ useEffect(() => {
       const userRef = doc(db, 'users', user.id)
       await setDoc(userRef, updates, { merge: true })
       
-      const freshDoc = await getDoc(userRef)
-      if (freshDoc.exists()) {
-        const freshData = freshDoc.data()
-        SENSITIVE_FIELDS.forEach(field => delete freshData[field])
-        const updatedUser = { ...user, ...freshData }
-        setUser(updatedUser)
-        localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(updatedUser))
-        
-        setAllUsers(prevUsers => {
-          const updatedUsers = prevUsers.map(u => 
-            u.id === user.id ? { ...u, ...freshData } : u
-          )
-          localStorage.setItem('eliteArrowsUsers', JSON.stringify(updatedUsers))
-          return updatedUsers
-        })
-      }
+      setTimeout(async () => {
+        const freshDoc = await getDoc(userRef)
+        if (freshDoc.exists()) {
+          const freshData = freshDoc.data()
+          SENSITIVE_FIELDS.forEach(field => delete freshData[field])
+          const updatedUser = { ...user, ...freshData, _timestamp: Date.now() }
+          
+          setUser(updatedUser)
+          localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(updatedUser))
+          
+          setAllUsers(prevUsers => {
+            const updatedUsers = prevUsers.map(u => 
+              u.id === user.id ? { ...u, ...freshData } : u
+            )
+            localStorage.setItem('eliteArrowsUsers', JSON.stringify(updatedUsers))
+            return updatedUsers
+          })
+        }
+      }, 100)
     } catch (error) {
       console.error('Error updating user:', error)
     }
@@ -407,9 +410,9 @@ useEffect(() => {
   }
 
   const getAllUsers = () => {
+    if (allUsers.length > 0) return allUsers
     const localUsers = JSON.parse(localStorage.getItem('eliteArrowsUsers') || '[]')
-    if (localUsers.length > 0) return localUsers
-    return allUsers
+    return localUsers
   }
 
   const getFriends = () => {
