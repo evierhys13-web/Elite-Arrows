@@ -15,6 +15,19 @@ export function AuthProvider({ children }) {
   
   const SENSITIVE_FIELDS = ['password', 'passwordString', 'passwordHash', 'passwordKey', 'passwordStringValue', 'password', 'firebaseId', 'pwd', 'pass', 'passwd']
   
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
+      const users = snapshot.docs.map(doc => {
+        const data = doc.data()
+        SENSITIVE_FIELDS.forEach(field => delete data[field])
+        return { id: doc.id, ...data, division: data.division || 'Unassigned' }
+      })
+      setAllUsers(users)
+      localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+    })
+    return () => unsubscribe()
+  }, [])
+  
 const cleanUserData = (users) => {
     return users.map(u => {
       const cleaned = { ...u }
@@ -218,12 +231,13 @@ useEffect(() => {
       await setDoc(doc(db, 'users', user.id), updates, { merge: true })
       setUser({ ...user, ...updates })
       
-      const localUsers = JSON.parse(localStorage.getItem('eliteArrowsUsers') || '[]')
-      const index = localUsers.findIndex(u => u.id === user.id)
-      if (index !== -1) {
-        localUsers[index] = { ...localUsers[index], ...updates }
-        localStorage.setItem('eliteArrowsUsers', JSON.stringify(localUsers))
-      }
+      setAllUsers(prevUsers => {
+        const updatedUsers = prevUsers.map(u => 
+          u.id === user.id ? { ...u, ...updates } : u
+        )
+        localStorage.setItem('eliteArrowsUsers', JSON.stringify(updatedUsers))
+        return updatedUsers
+      })
     } catch (error) {
       console.error('Error updating user:', error)
     }
