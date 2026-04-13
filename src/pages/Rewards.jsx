@@ -43,35 +43,40 @@ export default function Rewards() {
     divisionsToCheck.forEach(division => {
       const playersInDiv = allUsers.filter(u => u.division === division && u.id !== user.id)
       
-      playersInDiv.forEach(player => {
-        const userGamesPlayed = getPlayerGameCount(user.id, division)
-        const opponentGamesPlayed = getPlayerGameCount(player.id, division)
-        
-        if (userGamesPlayed >= 8 || opponentGamesPlayed >= 8) return
-
-        const alreadyPlayed = approvedResults.find(r => 
-          r.season === currentSeason && 
-          r.division === division &&
-          ((r.player1Id === user.id && r.player2Id === player.id) ||
-           (r.player1Id === player.id && r.player2Id === user.id))
-        )
-
-        if (!alreadyPlayed) {
-          const alreadyBet = bets.find(b => b.gameId === `fixture_${user.id}_${player.id}` || b.gameId === `fixture_${player.id}_${user.id}`)
+      playersInDiv.forEach(player1 => {
+        playersInDiv.forEach(player2 => {
+          if (player1.id >= player2.id) return
           
-          matches.push({
-            id: `fixture_${user.id}_${player.id}`,
-            player1: user.username,
-            player1Id: user.id,
-            player2: player.username,
-            player2Id: player.id,
-            division,
-            status: 'fixture',
-            userGamesPlayed,
-            maxGames: 8,
-            alreadyBet: !!alreadyBet
-          })
-        }
+          const player1GamesPlayed = getPlayerGameCount(player1.id, division)
+          const player2GamesPlayed = getPlayerGameCount(player2.id, division)
+          
+          if (player1GamesPlayed >= 8 || player2GamesPlayed >= 8) return
+
+          const alreadyPlayed = approvedResults.find(r => 
+            r.season === currentSeason && 
+            r.division === division &&
+            ((r.player1Id === player1.id && r.player2Id === player2.id) ||
+             (r.player1Id === player2.id && r.player2Id === player1.id))
+          )
+
+          if (!alreadyPlayed) {
+            const alreadyBet = bets.find(b => b.gameId === `fixture_${player1.id}_${player2.id}`)
+            
+            matches.push({
+              id: `fixture_${player1.id}_${player2.id}`,
+              player1: player1.username,
+              player1Id: player1.id,
+              player2: player2.username,
+              player2Id: player2.id,
+              division,
+              status: 'fixture',
+              player1GamesPlayed,
+              player2GamesPlayed,
+              maxGames: 8,
+              alreadyBet: !!alreadyBet
+            })
+          }
+        })
       })
     })
 
@@ -474,7 +479,7 @@ function MatchCard({ match, bets, showBetForm, setShowBetForm, betAmount, setBet
         </span>
       </div>
       <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '10px' }}>
-        Your games: {match.userGamesPlayed}/8 | {match.maxGames - match.userGamesPlayed} remaining
+        {match.player1}: {match.player1GamesPlayed}/8 | {match.player2}: {match.player2GamesPlayed}/8
       </div>
       
       {userBetOnGame ? (
