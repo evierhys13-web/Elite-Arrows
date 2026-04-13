@@ -268,12 +268,19 @@ useEffect(() => {
   }
 
   const updateUser = async (updates) => {
-    if (!user?.id) return
+    if (!user?.id) {
+      console.log('No user ID')
+      return
+    }
     try {
+      console.log('Updating Firestore with:', updates, 'for user:', user.id)
       await setDoc(doc(db, 'users', user.id), updates, { merge: true })
+      console.log('Firestore save done')
       
       setUser(prev => ({ ...prev, ...updates }))
+      console.log('State updated')
       setAllUsers(prevUsers => prevUsers.map(u => u.id === user.id ? { ...u, ...updates } : u))
+      console.log('All users updated')
     } catch (error) {
       console.error('Error updating user:', error)
     }
