@@ -38,13 +38,6 @@ function ProtectedRoute({ children }) {
     return <Navigate to="/auth" replace />
   }
   
-  // Check if user needs to add DartCounter username (only once)
-  const hasSeenDartCounterPrompt = localStorage.getItem('eliteArrowsDartCounterPrompted')
-  if (!user?.dartCounterUsername && !hasSeenDartCounterPrompt) {
-    localStorage.setItem('eliteArrowsDartCounterPrompted', 'true')
-    return <Navigate to="/settings" replace />
-  }
-  
   return children
 }
 
