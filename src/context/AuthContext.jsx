@@ -214,7 +214,9 @@ useEffect(() => {
   const updateUser = async (updates) => {
     if (!user) return
     try {
+      console.log('Updating user with:', updates)
       await setDoc(doc(db, 'users', user.id), updates, { merge: true })
+      console.log('Firestore update successful')
       setUser({ ...user, ...updates })
       
       setAllUsers(prevUsers => {
