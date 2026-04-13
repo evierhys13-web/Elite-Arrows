@@ -15,7 +15,7 @@ export default function Profile() {
     username: '',
     nickname: '',
     bio: '',
-    darts: '',
+    dart: '',
     country: '',
     dartCounterUsername: '',
     dartCounterLink: '',
@@ -28,7 +28,7 @@ export default function Profile() {
         username: displayUser.username || '',
         nickname: displayUser.nickname || '',
         bio: displayUser.bio || '',
-        darts: displayUser.dart || '',
+        dart: displayUser.dart || displayUser.darts || '',  // Support both dart and darts
         country: displayUser.country || '',
         dartCounterUsername: displayUser.dartCounterUsername || '',
         dartCounterLink: displayUser.dartCounterLink || '',
@@ -127,23 +127,28 @@ export default function Profile() {
     setSaving(true)
     const avgValue = parseFloat(formData.threeDartAverage) || 0
     
-    // Build updates object, only include non-empty values
-    const updates = {}
+    // Build updates object - save ALL fields that have values
+    const updates = {
+      username: formData.username?.trim() || '',
+      nickname: formData.nickname?.trim() || '',
+      bio: formData.bio?.trim() || '',
+      dart: formData.dart?.trim() || '',  // Save as 'dart' not 'darts'
+      country: formData.country?.trim() || '',
+      dartCounterUsername: formData.dartCounterUsername?.trim() || '',
+      threeDartAverage: formData.threeDartAverage ? avgValue : 0,
+      profilePicture: profilePicture || '',
+      tags: tags || []
+    }
     
-    if (formData.username?.trim()) updates.username = formData.username.trim()
-    if (formData.nickname?.trim()) updates.nickname = formData.nickname.trim()
-    if (formData.bio?.trim()) updates.bio = formData.bio.trim()
-    if (formData.dart?.trim()) updates.dart = formData.dart.trim()
-    if (formData.country?.trim()) updates.country = formData.country.trim()
-    if (formData.dartCounterUsername?.trim()) {
-      updates.dartCounterUsername = formData.dartCounterUsername.trim()
-      updates.dartCounterLink = `https://dartcounter.app/profile/${formData.dartCounterUsername.trim()}`
+    // Generate dartCounterLink if username exists
+    if (updates.dartCounterUsername) {
+      updates.dartCounterLink = `https://dartcounter.app/profile/${updates.dartCounterUsername}`
     }
-    if (formData.threeDartAverage) {
-      updates.threeDartAverage = avgValue
-    }
-    if (profilePicture) updates.profilePicture = profilePicture
-    if (tags?.length > 0) updates.tags = tags
+    
+    // Remove empty strings to avoid overwriting with empty
+    Object.keys(updates).forEach(key => {
+      if (updates[key] === '') delete updates[key]
+    })
     
     console.log('Saving updates:', updates)
     
