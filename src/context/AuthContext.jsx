@@ -29,13 +29,13 @@ export function AuthProvider({ children }) {
   }, [])
   
   useEffect(() => {
-    if (!user) return
+    if (!user?.id) return
     
     const unsubscribe = onSnapshot(doc(db, 'users', user.id), (docSnap) => {
       if (docSnap.exists()) {
         const userData = docSnap.data()
         SENSITIVE_FIELDS.forEach(field => delete userData[field])
-        setUser({ id: docSnap.id, ...userData })
+        setUser(prev => ({ ...prev, ...userData, id: docSnap.id }))
       }
     })
     return () => unsubscribe()
@@ -214,10 +214,10 @@ useEffect(() => {
   const updateUser = async (updates) => {
     if (!user) return
     try {
-      console.log('Updating user with:', updates)
       await setDoc(doc(db, 'users', user.id), updates, { merge: true })
-      console.log('Firestore update successful')
-      setUser({ ...user, ...updates })
+      
+      const updatedUser = { ...user, ...updates }
+      setUser(updatedUser)
       
       setAllUsers(prevUsers => {
         const updatedUsers = prevUsers.map(u => 
