@@ -162,18 +162,39 @@ export default function Admin() {
     }
   };
 
-  const approvePayment = (userId) => {
+  const approvePayment = async (userId) => {
     const users = getAllUsers()
     const index = users.findIndex(u => u.id === userId)
-    if (index !== -1) {
+    if (index === -1) {
+      alert('User not found')
+      return
+    }
+    
+    try {
       const userDivision = users[index].division
       const isHighTier = userDivision === 'Elite' || userDivision === 'Diamond'
       const amount = isHighTier ? 10 : 5
       
-      users[index].isSubscribed = true
-      users[index].paymentPending = false
-      users[index].subscriptionDate = new Date().toISOString()
-      users[index].subscriptionSource = 'payment'
+      const updates = {
+        isSubscribed: true,
+        paymentPending: false,
+        subscriptionDate: new Date().toISOString(),
+        subscriptionSource: 'payment'
+      }
+      
+      // Filter out undefined values
+      const cleanUpdates = {}
+      Object.keys(updates).forEach(key => {
+        if (updates[key] !== undefined) {
+          cleanUpdates[key] = updates[key]
+        }
+      })
+      
+      // Update Firestore
+      await setDoc(doc(db, 'users', userId), cleanUpdates, { merge: true })
+      
+      // Update local state
+      users[index] = { ...users[index], ...cleanUpdates }
       localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
       
       if (isHighTier) {
@@ -186,6 +207,11 @@ export default function Admin() {
         localStorage.setItem('eliteArrowsSubscriptionPot', newPot.toString())
       }
       addToMoneyHistory('subscription', amount, `Payment from ${users[index].username}`)
+      
+      alert('Payment approved!')
+    } catch (e) {
+      console.error(e)
+      alert('Error: ' + e.message)
     }
   }
 
