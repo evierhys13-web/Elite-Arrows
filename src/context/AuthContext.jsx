@@ -179,6 +179,7 @@ useEffect(() => {
       }
       
       const userData = userDoc.data()
+      SENSITIVE_FIELDS.forEach(field => delete userData[field])
       const isAdminEmail = ADMIN_EMAILS.includes(email.toLowerCase())
       
       if (isAdminEmail) {
@@ -190,6 +191,7 @@ useEffect(() => {
       }
 
       userData.isOnline = true
+      SENSITIVE_FIELDS.forEach(field => delete userData[field])
       await setDoc(doc(db, 'users', firebaseUser.uid), { isOnline: true, lastSeen: new Date().toISOString() }, { merge: true })
       
       setUser({ id: firebaseUser.uid, ...userData })
