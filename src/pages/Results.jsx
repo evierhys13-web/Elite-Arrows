@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { db, updateDoc, doc } from '../firebase'
 
 export default function Results() {
-  const { user } = useAuth()
+  const { user, getResults } = useAuth()
   const [activeTab, setActiveTab] = useState('approved')
   
   const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
@@ -12,27 +13,41 @@ export default function Results() {
   const isAdmin = isEmailAdmin || isDbAdmin || isTournamentAdmin
   const isSubscribed = user?.isSubscribed === true
   
-  const allResults = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+  const allResults = getResults()
   const approvedResults = allResults.filter(r => r.status === 'approved')
   const pendingResults = allResults.filter(r => r.status === 'pending')
   
-  const handleApprove = (resultId) => {
+  const handleApprove = async (resultId) => {
     const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
     const index = results.findIndex(r => r.id === resultId)
     if (index !== -1) {
       results[index].status = 'approved'
       localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
+      
+      try {
+        await updateDoc(doc(db, 'results', resultId), { status: 'approved' })
+      } catch (e) {
+        console.log('Firestore error:', e)
+      }
+      
       alert('Result approved!')
     }
   }
   
-  const handleReject = (resultId) => {
+  const handleReject = async (resultId) => {
     if (!confirm('Are you sure you want to reject this result?')) return
     const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
     const index = results.findIndex(r => r.id === resultId)
     if (index !== -1) {
       results[index].status = 'rejected'
       localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
+      
+      try {
+        await updateDoc(doc(db, 'results', resultId), { status: 'rejected' })
+      } catch (e) {
+        console.log('Firestore error:', e)
+      }
+      
       alert('Result rejected.')
     }
   }

@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { db, collection, addDoc } from '../firebase'
 
 export default function SubmitResult() {
   const { user, getAllUsers, addTokens } = useAuth()
@@ -73,7 +74,7 @@ export default function SubmitResult() {
     }
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!formData.opponent || !formData.yourScore || !formData.opponentScore) {
       return
@@ -128,6 +129,12 @@ export default function SubmitResult() {
 
     results.push(newResult)
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
+    
+    try {
+      await addDoc(collection(db, 'results'), newResult)
+    } catch (e) {
+      console.log('Error saving to Firestore:', e)
+    }
 
     const isWin = parseInt(formData.yourScore) > parseInt(formData.opponentScore)
     if (isWin) {

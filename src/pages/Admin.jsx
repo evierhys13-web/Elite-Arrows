@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import { db, doc, setDoc, getDoc, deleteDoc } from '../firebase'
+import { db, doc, setDoc, getDoc, deleteDoc, updateDoc } from '../firebase'
 
 export default function Admin() {
-  const { user, getAllUsers, updateUser } = useAuth()
+  const { user, getAllUsers, updateUser, getResults } = useAuth()
   const navigate = useNavigate()
   const [pendingResults, setPendingResults] = useState([])
   const [activeTab, setActiveTab] = useState('results')
@@ -51,7 +51,7 @@ export default function Admin() {
   }
 
   useEffect(() => {
-    const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]');
+    const results = getResults();
     const pending = results.filter(r => r.status === 'pending');
     if (user.isTournamentAdmin && !user.isAdmin) {
       setPendingResults(pending.filter(r => r.gameType === 'Tournament'));
@@ -86,6 +86,12 @@ export default function Admin() {
     if (index !== -1) {
       results[index].status = 'approved';
       localStorage.setItem('eliteArrowsResults', JSON.stringify(results));
+      
+      try {
+        await updateDoc(doc(db, 'results', resultId), { status: 'approved' })
+      } catch (e) {
+        console.log('Firestore update error:', e)
+      }
       
       const result = results[index]
       
