@@ -5,7 +5,7 @@ export default function Table() {
   const [activeDivision, setActiveDivision] = useState('Overall')
   const { user, getAllUsers } = useAuth()
 
-  const divisions = ['Overall', 'Elite', 'Diamond', 'Gold', 'Silver', 'Bronze']
+  const divisions = ['Overall', 'Elite', 'Diamond', 'Gold', 'Silver', 'Bronze', 'Unassigned']
 
   const allUsers = getAllUsers()
   const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
@@ -67,6 +67,7 @@ export default function Table() {
     ? allUsers
         .map(p => ({
           ...p,
+          displayDivision: p.division || 'Unassigned',
           stats: playerStats[p.id] || { played: 0, wins: 0, draws: 0, losses: 0, legsWon: 0, legsLost: 0, points: 0 }
         }))
         .sort((a, b) => {
@@ -79,6 +80,7 @@ export default function Table() {
         .filter(u => u.division === activeDivision)
         .map(p => ({
           ...p,
+          displayDivision: p.division || 'Unassigned',
           stats: playerStats[p.id] || { played: 0, wins: 0, draws: 0, losses: 0, legsWon: 0, legsLost: 0, points: 0 }
         }))
         .sort((a, b) => {
@@ -146,7 +148,7 @@ export default function Table() {
                           <span className="admin-badge" style={{ marginLeft: '8px', background: 'var(--accent-cyan)' }}>Admin</span>
                         )}
                       </td>
-                      {activeDivision === 'Overall' && <td>{player.division}</td>}
+                      {activeDivision === 'Overall' && <td>{player.displayDivision}</td>}
                       <td>{player.stats.played}</td>
                       <td>{player.stats.wins}</td>
                       <td>{player.stats.draws}</td>
