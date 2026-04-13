@@ -4,6 +4,9 @@ import { useAuth } from '../context/AuthContext'
 
 export default function Home() {
   const { user, getAllUsers } = useAuth()
+  const SEASON_START = new Date('2026-05-01')
+  const SEASON_END = new Date('2026-06-01')
+  
   const [seasonInfo, setSeasonInfo] = useState(() => {
     const seasons = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
     const currentSeasonName = localStorage.getItem('eliteArrowsCurrentSeason')
@@ -14,12 +17,16 @@ export default function Home() {
     return { name: 'Season 1', startDate: '2026-05-01', endDate: '2026-06-01' }
   })
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
+  const [isSeasonActive, setIsSeasonActive] = useState(false)
 
   useEffect(() => {
     const calculateTimeLeft = () => {
-      const end = new Date(seasonInfo.endDate)
       const now = new Date()
-      const diff = end - now
+      const isActive = now >= SEASON_START && now <= SEASON_END
+      setIsSeasonActive(isActive)
+      
+      const targetDate = isActive ? SEASON_END : SEASON_START
+      const diff = targetDate - now
       
       if (diff > 0) {
         setTimeLeft({
@@ -28,13 +35,17 @@ export default function Home() {
           minutes: Math.floor((diff / (1000 * 60)) % 60),
           seconds: Math.floor((diff / 1000) % 60)
         })
+      } else {
+        if (!isActive && now > SEASON_END) {
+          setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 })
+        }
       }
     }
     
     calculateTimeLeft()
     const timer = setInterval(calculateTimeLeft, 1000)
     return () => clearInterval(timer)
-  }, [seasonInfo.endDate])
+  }, [])
 
   const allUsers = getAllUsers()
   const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
@@ -68,9 +79,14 @@ export default function Home() {
 
       <div className="card" style={{ marginBottom: '20px', border: '2px solid var(--accent-cyan)' }}>
         <div style={{ textAlign: 'center' }}>
-          <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>{seasonInfo.name}</h2>
+          <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>
+            {isSeasonActive ? 'Season in Progress' : 'Season Starts In'}
+          </h2>
           <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
-            {new Date(seasonInfo.startDate).toLocaleDateString()} - {new Date(seasonInfo.endDate).toLocaleDateString()}
+            {isSeasonActive 
+              ? `${new Date(SEASON_START).toLocaleDateString()} - ${new Date(SEASON_END).toLocaleDateString()}`
+              : `Season 1: ${new Date(SEASON_START).toLocaleDateString()} - ${new Date(SEASON_END).toLocaleDateString()}`
+            }
           </p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '20px' }}>
             <div className="stat-card" style={{ padding: '15px' }}>
