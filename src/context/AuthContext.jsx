@@ -8,20 +8,11 @@ const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
 export const DIVISIONS = ['Elite', 'Diamond', 'Gold', 'Silver', 'Bronze']
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    const stored = localStorage.getItem('eliteArrowsCurrentUser')
-    return stored ? JSON.parse(stored) : null
-  })
-  const [loading, setLoading] = useState(false)
-  const [allUsers, setAllUsers] = useState(() => {
-    const stored = localStorage.getItem('eliteArrowsUsers')
-    return stored ? JSON.parse(stored) : []
-  })
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [allUsers, setAllUsers] = useState([])
   const [notifications, setNotifications] = useState([])
-  const [results, setResults] = useState(() => {
-    const stored = localStorage.getItem('eliteArrowsResults')
-    return stored ? JSON.parse(stored) : []
-  })
+  const [results, setResults] = useState([])
   
   const SENSITIVE_FIELDS = ['password', 'passwordString', 'passwordHash', 'passwordKey', 'passwordStringValue', 'password', 'firebaseId', 'pwd', 'pass', 'passwd']
   
