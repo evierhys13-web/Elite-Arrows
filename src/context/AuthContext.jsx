@@ -257,23 +257,15 @@ useEffect(() => {
   }
 
   const updateUser = async (updates) => {
-    if (!user?.id) {
-      console.error('No user ID available')
-      return
-    }
+    if (!user?.id) return
     try {
-      console.log('Saving to Firestore with user ID:', user.id)
-      console.log('Updates being saved:', updates)
-      
       const userRef = doc(db, 'users', user.id)
       await setDoc(userRef, updates, { merge: true })
-      console.log('Saved to Firestore successfully')
       
       const freshDoc = await getDoc(userRef)
       if (freshDoc.exists()) {
         const freshData = freshDoc.data()
         SENSITIVE_FIELDS.forEach(field => delete freshData[field])
-        console.log('Fresh data from Firestore:', freshData)
         const updatedUser = { ...user, ...freshData }
         setUser(updatedUser)
         localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(updatedUser))
@@ -285,10 +277,9 @@ useEffect(() => {
           localStorage.setItem('eliteArrowsUsers', JSON.stringify(updatedUsers))
           return updatedUsers
         })
-        console.log('State updated successfully')
       }
     } catch (error) {
-      console.error('Error updating user:', error.code, error.message)
+      console.error('Error updating user:', error)
     }
   }
 
