@@ -195,7 +195,7 @@ export default function Subscription() {
           </p>
           
           <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', marginBottom: '15px' }}>
-            <p><strong>PayPal Email:</strong> <a href="https://paypal.me/dhineberry" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-cyan)' }}>paypal.me/dhineberry</a></p>
+            <p><strong>PayPal Email:</strong> <a href="https://paypal.me/DanielHineBerry" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-cyan)' }}>paypal.me/DanielHineBerry</a></p>
             <p><strong>Reference:</strong> Elite Arrows Subscription</p>
           </div>
           
@@ -236,7 +236,7 @@ export default function Subscription() {
           
           <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', marginBottom: '15px' }}>
             <p style={{ fontWeight: 'bold', marginBottom: '10px' }}>Option 1: PayPal</p>
-            <p><strong>PayPal Email:</strong> <a href="https://paypal.me/RhysHowe834" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-cyan)' }}>paypal.me/RhysHowe834</a></p>
+            <p><strong>PayPal Email:</strong> <a href="https://paypal.me/DanielHineBerry" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-cyan)' }}>paypal.me/DanielHineBerry</a></p>
             <p><strong>Reference:</strong> Elite Arrows Subscription</p>
           </div>
           
