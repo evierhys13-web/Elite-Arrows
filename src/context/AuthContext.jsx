@@ -212,20 +212,24 @@ useEffect(() => {
   }
 
   const updateUser = async (updates) => {
-    if (!user) return
+    if (!user?.id) return
     try {
       await setDoc(doc(db, 'users', user.id), updates, { merge: true })
       
-      const updatedUser = { ...user, ...updates }
-      setUser(updatedUser)
-      
-      setAllUsers(prevUsers => {
-        const updatedUsers = prevUsers.map(u => 
-          u.id === user.id ? { ...u, ...updates } : u
-        )
-        localStorage.setItem('eliteArrowsUsers', JSON.stringify(updatedUsers))
-        return updatedUsers
-      })
+      const freshDoc = await getDoc(doc(db, 'users', user.id))
+      if (freshDoc.exists()) {
+        const freshData = freshDoc.data()
+        SENSITIVE_FIELDS.forEach(field => delete freshData[field])
+        setUser(prev => ({ ...prev, ...freshData, id: freshDoc.id }))
+        
+        setAllUsers(prevUsers => {
+          const updatedUsers = prevUsers.map(u => 
+            u.id === user.id ? { ...u, ...freshData } : u
+          )
+          localStorage.setItem('eliteArrowsUsers', JSON.stringify(updatedUsers))
+          return updatedUsers
+        })
+      }
     } catch (error) {
       console.error('Error updating user:', error)
     }
