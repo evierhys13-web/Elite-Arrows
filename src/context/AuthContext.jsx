@@ -18,7 +18,10 @@ export function AuthProvider({ children }) {
   const SENSITIVE_FIELDS = ['password', 'passwordString', 'passwordHash', 'passwordKey', 'passwordStringValue', 'password', 'firebaseId', 'pwd', 'pass', 'passwd']
   
   useEffect(() => {
+    console.log('AuthContext: Initializing listeners...')
+    
     const unsubscribeUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
+      console.log('onSnapshot users fired, size:', snapshot.size)
       const users = snapshot.docs.map(doc => {
         const data = doc.data()
         SENSITIVE_FIELDS.forEach(field => delete data[field])
@@ -26,6 +29,9 @@ export function AuthProvider({ children }) {
       })
       setAllUsers(users)
       localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+      console.log('Users updated in state and localStorage')
+    }, (error) => {
+      console.error('Users snapshot error:', error)
     })
     
     const unsubscribeResults = onSnapshot(collection(db, 'results'), (snapshot) => {
@@ -44,6 +50,8 @@ export function AuthProvider({ children }) {
   
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log('onAuthStateChanged triggered, firebaseUser:', firebaseUser ? 'exists' : 'null')
+      
       if (firebaseUser) {
         try {
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
@@ -53,7 +61,9 @@ export function AuthProvider({ children }) {
             const fullUser = { id: userDoc.id, ...userData }
             setUser(fullUser)
             localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(fullUser))
+            console.log('User loaded from Firestore:', fullUser)
           } else {
+            console.log('No user doc exists, creating new one')
             const newUserData = {
               username: firebaseUser.email?.split('@')[0] || 'User',
               email: firebaseUser.email,
