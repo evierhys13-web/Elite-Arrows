@@ -24,9 +24,16 @@ export function AuthProvider({ children }) {
       })
       setAllUsers(users)
       localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+      
+      if (user) {
+        const updatedCurrentUser = users.find(u => u.id === user.id)
+        if (updatedCurrentUser) {
+          setUser(updatedCurrentUser)
+        }
+      }
     })
     return () => unsubscribe()
-  }, [])
+  }, [user?.id])
   
 const cleanUserData = (users) => {
     return users.map(u => {
