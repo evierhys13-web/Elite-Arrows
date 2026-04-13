@@ -26,7 +26,7 @@ export const notificationsCollection = collection(db, 'notifications')
 export const chatMessagesCollection = collection(db, 'chatMessages')
 
 export { 
-  doc, setDoc, getDoc, getDocs, query, where, orderBy, onSnapshot, deleteDoc, collection, addDoc,
+  doc, setDoc, getDoc, getDocs, query, where, orderBy, onSnapshot, deleteDoc, collection, addDoc, updateDoc,
   signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged,
   setPersistence, browserSessionPersistence, browserLocalPersistence,
   sendPasswordResetEmail

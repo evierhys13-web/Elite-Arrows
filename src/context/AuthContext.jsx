@@ -13,11 +13,12 @@ export function AuthProvider({ children }) {
   const [allUsers, setAllUsers] = useState([])
   const [notifications, setNotifications] = useState([])
   const [userVersion, setUserVersion] = useState(0)
+  const [results, setResults] = useState([])
   
   const SENSITIVE_FIELDS = ['password', 'passwordString', 'passwordHash', 'passwordKey', 'passwordStringValue', 'password', 'firebaseId', 'pwd', 'pass', 'passwd']
   
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
+    const unsubscribeUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
       const users = snapshot.docs.map(doc => {
         const data = doc.data()
         SENSITIVE_FIELDS.forEach(field => delete data[field])
@@ -26,7 +27,17 @@ export function AuthProvider({ children }) {
       setAllUsers(users)
       localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
     })
-    return () => unsubscribe()
+    
+    const unsubscribeResults = onSnapshot(collection(db, 'results'), (snapshot) => {
+      const resultsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      setResults(resultsData)
+      localStorage.setItem('eliteArrowsResults', JSON.stringify(resultsData))
+    })
+    
+    return () => {
+      unsubscribeUsers()
+      unsubscribeResults()
+    }
   }, [])
   
   useEffect(() => {
@@ -419,6 +430,11 @@ useEffect(() => {
     return allUsers.filter(u => (user?.friends || []).includes(u.id))
   }
 
+  const getResults = () => {
+    if (results.length > 0) return results
+    return JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+  }
+
   const addTokens = async (amount) => {
     if (!user) return
     const newTokens = (user.eliteTokens || 0) + amount
@@ -460,6 +476,7 @@ useEffect(() => {
       getFriends,
       addTokens,
       useTokens,
+      getResults,
       isAuthenticated: !!user 
     }}>
       {children}
