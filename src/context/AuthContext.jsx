@@ -273,8 +273,16 @@ useEffect(() => {
       return
     }
     try {
+      // Filter out undefined values
+      const cleanUpdates = {}
+      Object.keys(updates).forEach(key => {
+        if (updates[key] !== undefined) {
+          cleanUpdates[key] = updates[key]
+        }
+      })
+      
       const userRef = doc(db, 'users', user.id)
-      await setDoc(userRef, updates, { merge: true })
+      await setDoc(userRef, cleanUpdates, { merge: true })
       
       const updatedUser = { ...user, ...updates }
       setUser(updatedUser)
