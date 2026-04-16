@@ -25,6 +25,11 @@ export default function SubmitResult() {
 
   const allUsers = getAllUsers()
   const availablePlayers = allUsers.filter(u => u.id !== user.id)
+  
+  const cupFixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]').filter(f => 
+    f.cupId && (f.player1Id === user.id || f.player2Id === user.id) && f.status !== 'approved'
+  )
+  const cups = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
 
   const opponentUser = availablePlayers.find(p => p.id === formData.opponent)
   const currentSeason = new Date().getFullYear().toString()
@@ -51,8 +56,14 @@ export default function SubmitResult() {
     if (name === 'opponent' || name === 'gameType') {
       setError('')
     }
-    if (name === 'gameType' && value === 'League') {
-      setFormData(prev => ({ ...prev, bestOf: '8', firstTo: '5' }))
+    if (name === 'gameType') {
+      if (value === 'League') {
+        setFormData(prev => ({ ...prev, bestOf: '8', firstTo: '5' }))
+      } else if (value === 'Cup') {
+        setFormData(prev => ({ ...prev, bestOf: '3', firstTo: '2' }))
+      } else {
+        setFormData(prev => ({ ...prev, bestOf: '3', firstTo: '2' }))
+      }
     }
   }
 
@@ -84,6 +95,11 @@ export default function SubmitResult() {
       setError('Proof of result (screenshot/photo) is required for League games')
       return
     }
+    
+    if (formData.gameType === 'Cup' && !cupFixture) {
+      setError('Please select a valid cup match')
+      return
+    }
 
     if (formData.gameType === 'League' && opponentUser) {
       const existingMatch = checkExistingLeagueMatch(opponentUser.id)
@@ -99,12 +115,27 @@ export default function SubmitResult() {
     }
 
     const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+    
+    let cupFixture = null
+    let cupId = null
+    let matchId = null
+    if (formData.gameType === 'Cup') {
+      cupFixture = cupFixtures.find(f => {
+        const opponentId = f.player1Id === user.id ? f.player2Id : f.player1Id
+        return opponentId === formData.opponent
+      })
+      if (cupFixture) {
+        cupId = cupFixture.cupId
+        matchId = cupFixture.matchId
+      }
+    }
+    
     const newResult = {
       id: Date.now(),
       player1: user.username,
       player1Id: user.id,
-      player2: opponentUser?.username || formData.opponent,
-      player2Id: opponentUser?.id,
+      player2: opponentUser?.username || allUsers.find(u => u.id === formData.opponent)?.username || formData.opponent,
+      player2Id: opponentUser?.id || formData.opponent,
       score1: parseInt(formData.yourScore),
       score2: parseInt(formData.opponentScore),
       division: user.division,
@@ -124,7 +155,8 @@ export default function SubmitResult() {
          highestCheckout: parseInt(formData.opponentHighestCheckout) || 0,
          doubleSuccess: parseFloat(formData.opponentDoubleSuccess) || 0
        },
-      status: 'pending'
+      status: 'pending',
+      ...(cupId && { cupId, matchId })
     }
 
     results.push(newResult)
@@ -185,14 +217,15 @@ export default function SubmitResult() {
         <form className="submit-result-form" onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Game Type</label>
-            <select 
-              name="gameType" 
-              value={formData.gameType} 
-              onChange={handleChange}
-            >
-              <option value="Friendly">Friendly</option>
-              <option value="League">League</option>
-            </select>
+              <select 
+                name="gameType" 
+                value={formData.gameType} 
+                onChange={handleChange}
+              >
+                <option value="Friendly">Friendly</option>
+                <option value="League">League</option>
+                <option value="Cup">Cup Match</option>
+              </select>
           </div>
 
           {error && (
@@ -226,22 +259,43 @@ export default function SubmitResult() {
 
             <div className="player-select">
               <label>Opponent</label>
-              <select 
-                name="opponent" 
-                value={formData.opponent} 
-                onChange={handleChange}
-                required
-              >
-                <option value="">Select opponent</option>
-                {availablePlayers.map(p => {
-                  const status = getOpponentStatus(p.id, p.username)
-                  return (
-                    <option key={p.id} value={p.id}>
-                      {p.username} ({p.division}){formData.gameType === 'League' && status?.played ? ' - Played' : ''}
-                    </option>
-                  )
-                })}
-              </select>
+              {formData.gameType === 'Cup' ? (
+                <select 
+                  name="opponent" 
+                  value={formData.opponent} 
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">Select cup match</option>
+                  {cupFixtures.map(f => {
+                    const cup = cups.find(c => c.id === f.cupId)
+                    const opponentId = f.player1Id === user.id ? f.player2Id : f.player1Id
+                    const opponent = allUsers.find(u => u.id === opponentId)
+                    return (
+                      <option key={f.id} value={opponentId}>
+                        {cup?.name || 'Cup'} - vs {opponent?.username || 'Unknown'} (Round {f.round})
+                      </option>
+                    )
+                  })}
+                </select>
+              ) : (
+                <select 
+                  name="opponent" 
+                  value={formData.opponent} 
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">Select opponent</option>
+                  {availablePlayers.map(p => {
+                    const status = getOpponentStatus(p.id, p.username)
+                    return (
+                      <option key={p.id} value={p.id}>
+                        {p.username} ({p.division}){formData.gameType === 'League' && status?.played ? ' - Played' : ''}
+                      </option>
+                    )
+                  })}
+                </select>
+              )}
             </div>
           </div>
 

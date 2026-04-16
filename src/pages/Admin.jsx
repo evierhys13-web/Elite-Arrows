@@ -75,12 +75,51 @@ export default function Admin() {
     }
     
     try {
+      const result = results[index]
       results[index].status = 'approved';
       localStorage.setItem('eliteArrowsResults', JSON.stringify(results));
       
       await updateDoc(doc(db, 'results', resultId), { status: 'approved' })
       
-      const result = results[index]
+      if (result.gameType === 'Cup') {
+        const cups = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
+        const cupIndex = cups.findIndex(c => c.id === result.cupId)
+        if (cupIndex !== -1) {
+          const cup = cups[cupIndex]
+          const matchIndex = cup.matches.findIndex(m => m.id === result.matchId)
+          if (matchIndex !== -1) {
+            const winnerId = result.score1 > result.score2 ? result.player1Id : result.player2Id
+            cup.matches[matchIndex].winner = winnerId
+            
+            if (cup.matches[matchIndex].nextMatchId) {
+              const nextMatchIndex = cup.matches.findIndex(m => m.id === cup.matches[matchIndex].nextMatchId)
+              if (nextMatchIndex !== -1) {
+                if (cup.matches[nextMatchIndex].player1 === null) {
+                  cup.matches[nextMatchIndex].player1 = winnerId
+                } else {
+                  cup.matches[nextMatchIndex].player2 = winnerId
+                }
+              }
+            }
+            
+            const allRoundsComplete = Array.from(new Set(cup.matches.map(m => m.round))).every(round => {
+              return cup.matches.filter(m => m.round === round).every(m => m.winner)
+            })
+            
+            if (allRoundsComplete) {
+              cup.status = 'completed'
+            } else {
+              const activeRound = Array.from(new Set(cup.matches.map(m => m.round))).sort((a, b) => a - b).find(round => {
+                return !cup.matches.filter(m => m.round === round).every(m => m.winner)
+              })
+              cup.currentRound = activeRound || cup.currentRound
+            }
+            
+            cups[cupIndex] = cup
+            localStorage.setItem('eliteArrowsCups', JSON.stringify(cups))
+          }
+        }
+      }
       
       if (result.player1Id) {
         const p1Doc = await getDoc(doc(db, 'users', result.player1Id))
@@ -131,7 +170,7 @@ export default function Admin() {
       }
       
       setPendingResults(prev => prev.filter(r => r.id !== resultId));
-      alert('Result approved!')
+      alert(result.gameType === 'Cup' ? 'Result approved! Cup bracket updated.' : 'Result approved!')
     } catch (e) {
       console.error('Error approving result:', e)
       alert('Error approving result: ' + e.message)

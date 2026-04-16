@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { Link } from 'react-router-dom'
 
 export default function CupTournaments() {
   const { user, getAllUsers } = useAuth()
@@ -7,7 +8,6 @@ export default function CupTournaments() {
   const [formData, setFormData] = useState({ name: '', entryFee: 5, maxPlayers: 8 })
   const [selectedPlayers, setSelectedPlayers] = useState([])
   const [matches, setMatches] = useState([])
-  const [winner, setWinner] = useState(null)
   
   const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
   const isEmailAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
@@ -18,7 +18,6 @@ export default function CupTournaments() {
 
   const allUsers = getAllUsers()
   const cups = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
-  const fixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
 
   const handlePlayerSelect = (playerId) => {
     if (selectedPlayers.includes(playerId)) {
@@ -30,7 +29,6 @@ export default function CupTournaments() {
 
   const createBracket = () => {
     if (selectedPlayers.length < 2) return alert('Need at least 2 players')
-    if (selectedPlayers.length > formData.maxPlayers) return alert(`Max ${formData.maxPlayers} players`)
     
     const shuffled = [...selectedPlayers].sort(() => Math.random() - 0.5)
     const newMatches = []
@@ -61,57 +59,11 @@ export default function CupTournaments() {
     }
     
     setMatches(newMatches)
-    setWinner(null)
-  }
-
-  const handleWinner = (matchId, winnerId) => {
-    const match = matches.find(m => m.id === matchId)
-    if (!match || !match.player1 || !match.player2) {
-      alert('Both players must be present before selecting a winner')
-      return
-    }
-    
-    const updated = matches.map(m => {
-      if (m.id === matchId) {
-        return { ...m, winner: winnerId }
-      }
-      if (m.nextMatchId === matchId && m.player1 === null) {
-        return { ...m, player1: winnerId }
-      }
-      if (m.nextMatchId === matchId && m.player2 === null) {
-        return { ...m, player2: winnerId }
-      }
-      return m
-    })
-    setMatches(updated)
-    
-    const finalMatch = updated.find(m => m.round === Math.max(...updated.map(ma => ma.round)))
-    if (finalMatch?.winner) {
-      setWinner(finalMatch.winner)
-    }
   }
 
   const saveCup = () => {
     if (!formData.name) return alert('Enter cup name')
-    
-    const cupMatches = matches.filter(m => m.player1 && m.player2)
-    const newFixtures = cupMatches.map(m => ({
-      id: Date.now() + m.id,
-      cupId: Date.now(),
-      cupName: formData.name,
-      player1: m.player1,
-      player2: m.player2,
-      matchId: m.id,
-      round: m.round,
-      date: '',
-      time: '',
-      scheduledBy: null,
-      status: 'pending',
-      createdAt: new Date().toISOString()
-    }))
-    
-    const existingFixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
-    localStorage.setItem('eliteArrowsFixtures', JSON.stringify([...existingFixtures, ...newFixtures]))
+    if (matches.length === 0) return alert('Generate a bracket first')
     
     const newCup = {
       id: Date.now(),
@@ -119,13 +71,15 @@ export default function CupTournaments() {
       players: selectedPlayers,
       matches,
       createdAt: new Date().toISOString(),
-      status: 'active'
+      status: 'active',
+      currentRound: 1
     }
     localStorage.setItem('eliteArrowsCups', JSON.stringify([...cups, newCup]))
-    alert('Cup tournament created! Fixtures have been generated for each match.')
+    alert('Cup tournament created! Players can now submit results to progress through the bracket.')
     setShowCreate(false)
     setSelectedPlayers([])
     setMatches([])
+    window.location.reload()
   }
 
   if (!isSubscribed && !isAdmin) {
@@ -210,79 +164,38 @@ export default function CupTournaments() {
 
           {matches.length > 0 && (
             <>
-              <h4 style={{ marginTop: '20px', marginBottom: '15px' }}>Bracket</h4>
-              {(() => {
-                const getActiveRound = () => {
-                  const rounds = Array.from(new Set(matches.map(m => m.round))).sort((a, b) => a - b)
-                  for (const round of rounds) {
-                    const roundMatches = matches.filter(m => m.round === round)
-                    const allHaveWinners = roundMatches.every(m => m.winner)
-                    if (!allHaveWinners) return round
-                  }
-                  return null
-                }
-                const activeRound = getActiveRound()
-                return (
+              <h4 style={{ marginTop: '20px', marginBottom: '15px' }}>Bracket Preview</h4>
               <div style={{ display: 'flex', gap: '20px', overflowX: 'auto', padding: '10px' }}>
-                {Array.from(new Set(matches.map(m => m.round))).map(round => (
+                {Array.from(new Set(matches.map(m => m.round))).sort((a, b) => b - a).map(round => (
                   <div key={round} style={{ minWidth: '200px' }}>
                     <h5 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>
                       {round === Math.max(...matches.map(m => m.round)) ? 'Final' : 
-                       round === Math.max(...matches.map(m => m.round)) - 1 ? 'Semi-Final' : `Round ${round}`}
-                      {round === activeRound && <span style={{ color: 'var(--warning)', fontSize: '0.75rem' }}> (Active)</span>}
+                       round === Math.max(...matches.map(m => m.round)) - 1 ? 'Semi-Final' : 
+                       round === Math.max(...matches.map(m => m.round)) - 2 ? 'Quarter-Final' : `Round ${round}`}
                     </h5>
                     {matches.filter(m => m.round === round).map(match => (
                       <div key={match.id} style={{ 
                         background: 'var(--bg-secondary)', 
                         padding: '10px', 
                         borderRadius: '8px',
-                        marginBottom: '10px',
-                        opacity: round !== activeRound ? 0.6 : 1
+                        marginBottom: '10px'
                       }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                          <button 
-                            className={`btn btn-sm ${match.winner === match.player1 ? 'btn-success' : 'btn-secondary'}`}
-                            onClick={() => handleWinner(match.id, match.player1)}
-                            disabled={round !== activeRound || !match.player1 || !match.player2 || match.winner}
-                          >
-                            {allUsers.find(u => u.id === match.player1)?.username || 'TBD'}
-                          </button>
-                          <span style={{ color: 'var(--text-muted)' }}>vs</span>
-                          <button 
-                            className={`btn btn-sm ${match.winner === match.player2 ? 'btn-success' : 'btn-secondary'}`}
-                            onClick={() => handleWinner(match.id, match.player2)}
-                            disabled={round !== activeRound || !match.player1 || !match.player2 || match.winner}
-                          >
-                            {allUsers.find(u => u.id === match.player2)?.username || 'TBD'}
-                          </button>
+                        <div style={{ fontSize: '0.85rem', textAlign: 'center' }}>
+                          {allUsers.find(u => u.id === match.player1)?.username || 'TBD'} vs {allUsers.find(u => u.id === match.player2)?.username || 'TBD'}
                         </div>
                       </div>
                     ))}
                   </div>
                 ))}
               </div>
-                )
-              })}
-
-              {winner && (
-                <div style={{ 
-                  textAlign: 'center', 
-                  padding: '20px', 
-                  background: 'linear-gradient(135deg, #ffd700, #ff8c00)',
-                  borderRadius: '12px',
-                  marginTop: '20px'
-                }}>
-                  <h3>🏆 Winner: {allUsers.find(u => u.id === winner)?.username}</h3>
-                </div>
-              )}
 
               <button className="btn btn-primary btn-block" style={{ marginTop: '20px' }} onClick={saveCup}>
-                Save Cup (Creates Fixtures)
+                Create Cup Tournament
               </button>
             </>
           )}
 
-          <button className="btn btn-secondary btn-block" style={{ marginTop: '10px' }} onClick={() => setShowCreate(false)}>
+          <button className="btn btn-secondary btn-block" style={{ marginTop: '10px' }} onClick={() => { setShowCreate(false); setSelectedPlayers([]); setMatches([]); }}>
             Cancel
           </button>
         </div>
@@ -302,23 +215,31 @@ export default function CupTournaments() {
           <div key={cup.id} className="card" style={{ marginTop: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 className="card-title" style={{ margin: 0 }}>{cup.name}</h3>
-              {isAdmin && (
-                <button 
-                  className="btn btn-danger btn-sm"
-                  onClick={() => {
-                    if (confirm(`Are you sure you want to delete "${cup.name}"?`)) {
-                      const updatedCups = cups.filter(c => c.id !== cup.id)
-                      localStorage.setItem('eliteArrowsCups', JSON.stringify(updatedCups))
-                      window.location.reload()
-                    }
-                  }}
-                >
-                  Delete Cup
-                </button>
-              )}
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <Link to={`/cups/${cup.id}`} className="btn btn-primary btn-sm">
+                  View Bracket
+                </Link>
+                {isAdmin && (
+                  <button 
+                    className="btn btn-danger btn-sm"
+                    onClick={() => {
+                      if (confirm(`Are you sure you want to delete "${cup.name}"?`)) {
+                        const updatedCups = cups.filter(c => c.id !== cup.id)
+                        localStorage.setItem('eliteArrowsCups', JSON.stringify(updatedCups))
+                        window.location.reload()
+                      }
+                    }}
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
             </div>
             <p style={{ color: 'var(--text-muted)', marginTop: '10px' }}>
               Entry: £{cup.entryFee} | Players: {cup.players?.length || 0} | Prize Pot: £{prizePot}
+            </p>
+            <p style={{ fontSize: '0.85rem', color: 'var(--accent-cyan)' }}>
+              Status: {cup.status === 'completed' ? 'Completed' : `Active - Round ${cup.currentRound || 1}`}
             </p>
           </div>
         )
