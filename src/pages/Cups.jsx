@@ -211,25 +211,39 @@ export default function CupTournaments() {
           {matches.length > 0 && (
             <>
               <h4 style={{ marginTop: '20px', marginBottom: '15px' }}>Bracket</h4>
+              {(() => {
+                const getActiveRound = () => {
+                  const rounds = Array.from(new Set(matches.map(m => m.round))).sort((a, b) => a - b)
+                  for (const round of rounds) {
+                    const roundMatches = matches.filter(m => m.round === round)
+                    const allHaveWinners = roundMatches.every(m => m.winner)
+                    if (!allHaveWinners) return round
+                  }
+                  return null
+                }
+                const activeRound = getActiveRound()
+                return (
               <div style={{ display: 'flex', gap: '20px', overflowX: 'auto', padding: '10px' }}>
                 {Array.from(new Set(matches.map(m => m.round))).map(round => (
                   <div key={round} style={{ minWidth: '200px' }}>
                     <h5 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>
                       {round === Math.max(...matches.map(m => m.round)) ? 'Final' : 
                        round === Math.max(...matches.map(m => m.round)) - 1 ? 'Semi-Final' : `Round ${round}`}
+                      {round === activeRound && <span style={{ color: 'var(--warning)', fontSize: '0.75rem' }}> (Active)</span>}
                     </h5>
                     {matches.filter(m => m.round === round).map(match => (
                       <div key={match.id} style={{ 
                         background: 'var(--bg-secondary)', 
                         padding: '10px', 
                         borderRadius: '8px',
-                        marginBottom: '10px'
+                        marginBottom: '10px',
+                        opacity: round !== activeRound ? 0.6 : 1
                       }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
                           <button 
                             className={`btn btn-sm ${match.winner === match.player1 ? 'btn-success' : 'btn-secondary'}`}
                             onClick={() => handleWinner(match.id, match.player1)}
-                            disabled={!match.player1 || !match.player2 || match.winner}
+                            disabled={round !== activeRound || !match.player1 || !match.player2 || match.winner}
                           >
                             {allUsers.find(u => u.id === match.player1)?.username || 'TBD'}
                           </button>
@@ -237,7 +251,7 @@ export default function CupTournaments() {
                           <button 
                             className={`btn btn-sm ${match.winner === match.player2 ? 'btn-success' : 'btn-secondary'}`}
                             onClick={() => handleWinner(match.id, match.player2)}
-                            disabled={!match.player1 || !match.player2 || match.winner}
+                            disabled={round !== activeRound || !match.player1 || !match.player2 || match.winner}
                           >
                             {allUsers.find(u => u.id === match.player2)?.username || 'TBD'}
                           </button>
@@ -247,6 +261,8 @@ export default function CupTournaments() {
                   </div>
                 ))}
               </div>
+                )
+              })}
 
               {winner && (
                 <div style={{ 
