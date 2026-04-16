@@ -82,18 +82,21 @@ export default function CupBracket() {
 
   const rounds = Array.from(new Set(cup.matches?.map(m => m.round) || [])).sort((a, b) => a - b)
 
-  const isRoundUnlocked = (round) => {
-    if (round === 1) return true
-    const prevRound = round - 1
-    const prevMatches = cup.matches?.filter(m => m.round === prevRound) || []
-    return prevMatches.every(m => m.winner !== null)
+  const isRoundComplete = (round) => {
+    const roundMatches = cup.matches?.filter(m => m.round === round) || []
+    return roundMatches.length > 0 && roundMatches.every(m => m.winner !== null)
   }
 
   const getDisplayRounds = () => {
-    const allRounds = rounds
-    const firstUnlockedIdx = allRounds.findIndex(r => isRoundUnlocked(r))
-    if (firstUnlockedIdx === -1) return [1]
-    return allRounds.slice(firstUnlockedIdx)
+    const completedRounds = rounds.filter(r => isRoundComplete(r))
+    const nextIncompleteRound = rounds.find(r => !isRoundComplete(r))
+    
+    if (!nextIncompleteRound) {
+      return rounds
+    }
+    
+    const lastCompletedIdx = rounds.indexOf(completedRounds[completedRounds.length - 1])
+    return rounds.slice(0, lastCompletedIdx + 2)
   }
 
   const displayRounds = getDisplayRounds()
