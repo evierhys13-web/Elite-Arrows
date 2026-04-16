@@ -87,19 +87,7 @@ export default function CupBracket() {
     return roundMatches.length > 0 && roundMatches.every(m => m.winner !== null)
   }
 
-  const getDisplayRounds = () => {
-    const completedRounds = rounds.filter(r => isRoundComplete(r))
-    const nextIncompleteRound = rounds.find(r => !isRoundComplete(r))
-    
-    if (!nextIncompleteRound) {
-      return rounds
-    }
-    
-    const nextIdx = rounds.indexOf(nextIncompleteRound)
-    return rounds.slice(0, nextIdx + 1)
-  }
-
-  const displayRounds = getDisplayRounds()
+  const displayRounds = rounds
 
   return (
     <div className="page">
