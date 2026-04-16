@@ -65,7 +65,7 @@ export default function CupBracket() {
     if (round === totalRounds) return 'Final'
     if (round === totalRounds - 1) return 'Semi-Final'
     if (round === totalRounds - 2) return 'Quarter-Final'
-    return `Round ${round}`
+    return `R${round}`
   }
 
   const getMatchResult = (match) => {
@@ -76,159 +76,260 @@ export default function CupBracket() {
     return null
   }
 
+  const getMatchesForRound = (round) => {
+    return cup.matches?.filter(m => m.round === round).sort((a, b) => a.id - b.id) || []
+  }
+
+  const rounds = Array.from(new Set(cup.matches?.map(m => m.round) || [])).sort((a, b) => a - b)
+
   return (
     <div className="page">
       <div className="page-header">
         <Link to="/cups" className="btn btn-secondary">← Back to Cups</Link>
       </div>
       
-      <div className="card" style={{ marginBottom: '20px' }}>
+      <div className="card" style={{ marginBottom: '20px', background: 'linear-gradient(135deg, var(--bg-secondary), var(--bg-primary))' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
           <div>
-            <h2 style={{ margin: 0 }}>{cup.name}</h2>
+            <h2 style={{ margin: 0, color: 'var(--accent-cyan)' }}>{cup.name}</h2>
             <p style={{ color: 'var(--text-muted)', margin: '5px 0 0 0' }}>
-              Entry: £{cup.entryFee} | Prize Pot: £{prizePot}
+              Entry: £{cup.entryFee} | Prize Pot: £{prizePot} | Players: {cup.players?.length || 0}
             </p>
           </div>
           <div style={{ textAlign: 'right' }}>
             <span style={{ 
-              padding: '5px 15px', 
-              borderRadius: '20px',
+              padding: '8px 20px', 
+              borderRadius: '25px',
               background: cup.status === 'completed' ? 'var(--success)' : 'var(--accent-cyan)',
               color: 'white',
-              fontWeight: 'bold'
+              fontWeight: 'bold',
+              fontSize: '1rem'
             }}>
-              {cup.status === 'completed' ? 'Completed' : `Round ${activeRound}`}
+              {cup.status === 'completed' ? '🏆 Completed' : `Round ${activeRound}`}
             </span>
           </div>
         </div>
       </div>
 
       {cupWinner ? (
-        <div className="card" style={{ 
+        <div style={{ 
           textAlign: 'center', 
-          padding: '30px',
-          background: 'linear-gradient(135deg, #ffd700, #ff8c00)',
-          borderRadius: '12px',
-          marginBottom: '20px'
+          padding: '40px',
+          background: 'linear-gradient(135deg, #ffd700, #ff8c00, #ff6b00)',
+          borderRadius: '16px',
+          marginBottom: '20px',
+          boxShadow: '0 10px 40px rgba(255, 215, 0, 0.3)'
         }}>
-          <h2 style={{ margin: 0, color: 'white' }}>🏆 Cup Winner</h2>
-          <h1 style={{ margin: '10px 0', fontSize: '2.5rem', color: 'white' }}>
+          <h2 style={{ margin: 0, color: 'white', fontSize: '1.5rem' }}>🏆 CHAMPION 🏆</h2>
+          <h1 style={{ margin: '15px 0', fontSize: '3rem', color: 'white', textShadow: '2px 2px 4px rgba(0,0,0,0.3)' }}>
             {allUsers.find(u => u.id === cupWinner)?.username || 'Unknown'}
           </h1>
         </div>
-      ) : (
-        <div className="card" style={{ textAlign: 'center', marginBottom: '20px' }}>
-          <p style={{ color: 'var(--accent-cyan)', margin: 0 }}>
-            Winner will be announced when all rounds are complete!
-          </p>
-        </div>
-      )}
+      ) : null}
 
-      <div className="card">
-        <h3 className="card-title">Tournament Bracket</h3>
-        <div style={{ overflowX: 'auto', padding: '10px 0' }}>
+      <div className="card" style={{ padding: '30px' }}>
+        <h3 className="card-title" style={{ textAlign: 'center', marginBottom: '30px' }}>Tournament Bracket</h3>
+        <div style={{ overflowX: 'auto', padding: '20px 0' }}>
           <div style={{ 
             display: 'flex', 
-            gap: '30px', 
-            minWidth: 'min-content',
-            alignItems: 'center'
+            gap: '0',
+            minWidth: 'max-content',
+            alignItems: 'center',
+            justifyContent: 'center'
           }}>
-            {Array.from(new Set(cup.matches?.map(m => m.round) || [])).sort((a, b) => b - a).map(round => (
-              <div key={round} style={{ minWidth: '180px' }}>
-                <h4 style={{ 
-                  color: round === activeRound ? 'var(--accent-cyan)' : 'var(--text-muted)',
-                  marginBottom: '15px',
-                  textAlign: 'center'
-                }}>
-                  {getRoundName(round)}
-                  {round === activeRound && <span style={{ fontSize: '0.75rem', marginLeft: '5px' }}>(Active)</span>}
-                </h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {cup.matches?.filter(m => m.round === round).map(match => {
-                    const result = getMatchResult(match)
-                    return (
-                      <div key={match.id} style={{ 
-                        background: 'var(--bg-secondary)', 
-                        padding: '12px', 
-                        borderRadius: '8px',
-                        border: match.winner ? '2px solid var(--success)' : '2px solid transparent',
-                        opacity: round !== activeRound && !match.winner ? 0.5 : 1
-                      }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
-                          <span style={{ 
-                            fontSize: '0.9rem',
-                            fontWeight: match.winner === match.player1 ? 'bold' : 'normal',
-                            color: match.winner === match.player1 ? 'var(--success)' : 'inherit'
+            {rounds.map((round, roundIndex) => {
+              const matches = getMatchesForRound(round)
+              const matchHeight = 120
+              const matchGap = 20
+              const roundGap = 60
+              
+              return (
+                <div key={round} style={{ display: 'flex', alignItems: 'center' }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    gap: matchGap,
+                    padding: '20px 0'
+                  }}>
+                    <div style={{ 
+                      textAlign: 'center', 
+                      marginBottom: '15px',
+                      padding: '8px 16px',
+                      background: round === activeRound ? 'var(--accent-cyan)' : 'var(--bg-secondary)',
+                      color: round === activeRound ? 'white' : 'var(--text)',
+                      borderRadius: '20px',
+                      fontWeight: 'bold',
+                      fontSize: '0.9rem'
+                    }}>
+                      {getRoundName(round)}
+                      {round === activeRound && <span style={{ marginLeft: '5px' }}>◀</span>}
+                    </div>
+                    
+                    {matches.map((match, matchIndex) => {
+                      const result = getMatchResult(match)
+                      const isMatchActive = round === activeRound && !match.winner
+                      
+                      return (
+                        <div key={match.id} style={{ position: 'relative' }}>
+                          <div style={{ 
+                            background: 'var(--bg-secondary)', 
+                            padding: '12px 20px', 
+                            borderRadius: '10px',
+                            border: match.winner 
+                              ? '3px solid var(--success)' 
+                              : isMatchActive 
+                                ? '3px solid var(--accent-cyan)' 
+                                : '2px solid var(--border)',
+                            minWidth: '160px',
+                            boxShadow: match.winner 
+                              ? '0 0 15px rgba(34, 197, 94, 0.3)' 
+                              : isMatchActive 
+                                ? '0 0 15px rgba(34, 197, 94, 0.2)' 
+                                : 'none'
                           }}>
-                            {allUsers.find(u => u.id === match.player1)?.username || 'TBD'}
-                          </span>
-                          {result && (
-                            <span style={{ 
-                              fontSize: '0.85rem', 
-                              color: match.winner === match.player1 ? 'var(--success)' : 'var(--error)'
+                            <div style={{ 
+                              display: 'flex', 
+                              justifyContent: 'space-between', 
+                              alignItems: 'center',
+                              padding: '8px 0',
+                              borderBottom: '1px solid var(--border)'
                             }}>
-                              {result.score1}
-                            </span>
+                              <span style={{ 
+                                fontSize: '0.9rem',
+                                fontWeight: match.winner === match.player1 ? 'bold' : 'normal',
+                                color: match.winner === match.player1 ? 'var(--success)' : 
+                                       !match.player1 ? 'var(--text-muted)' : 'inherit'
+                              }}>
+                                {allUsers.find(u => u.id === match.player1)?.username || 'TBD'}
+                              </span>
+                              {result && (
+                                <span style={{ 
+                                  fontSize: '1rem', 
+                                  fontWeight: 'bold',
+                                  color: match.winner === match.player1 ? 'var(--success)' : 'var(--error)'
+                                }}>
+                                  {result.score1}
+                                </span>
+                              )}
+                              {match.winner === match.player1 && (
+                                <span style={{ color: 'var(--success)', fontSize: '0.8rem' }}>✓</span>
+                              )}
+                            </div>
+                            <div style={{ 
+                              display: 'flex', 
+                              justifyContent: 'space-between', 
+                              alignItems: 'center',
+                              padding: '8px 0'
+                            }}>
+                              <span style={{ 
+                                fontSize: '0.9rem',
+                                fontWeight: match.winner === match.player2 ? 'bold' : 'normal',
+                                color: match.winner === match.player2 ? 'var(--success)' : 
+                                       !match.player2 ? 'var(--text-muted)' : 'inherit'
+                              }}>
+                                {allUsers.find(u => u.id === match.player2)?.username || 'TBD'}
+                              </span>
+                              {result && (
+                                <span style={{ 
+                                  fontSize: '1rem', 
+                                  fontWeight: 'bold',
+                                  color: match.winner === match.player2 ? 'var(--success)' : 'var(--error)'
+                                }}>
+                                  {result.score2}
+                                </span>
+                              )}
+                              {match.winner === match.player2 && (
+                                <span style={{ color: 'var(--success)', fontSize: '0.8rem' }}>✓</span>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {roundIndex < rounds.length - 1 && (
+                            <>
+                              <div style={{
+                                position: 'absolute',
+                                right: '-30px',
+                                top: '50%',
+                                width: '30px',
+                                height: '2px',
+                                background: 'var(--border)'
+                              }} />
+                              {(matchIndex % 2 === 0) && (
+                                <div style={{
+                                  position: 'absolute',
+                                  right: '-30px',
+                                  top: `calc(50% + ${matchHeight/2 + matchGap/2}px)`,
+                                  width: '30px',
+                                  height: `${matchHeight + matchGap}px`,
+                                  borderRight: '2px solid var(--border)',
+                                  borderTop: '2px solid var(--border)',
+                                  borderBottom: matchIndex < matches.length - 2 ? '2px solid var(--border)' : 'none',
+                                  borderRadius: '0 10px 10px 0'
+                                }} />
+                              )}
+                            </>
                           )}
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ 
-                            fontSize: '0.9rem',
-                            fontWeight: match.winner === match.player2 ? 'bold' : 'normal',
-                            color: match.winner === match.player2 ? 'var(--success)' : 'inherit'
-                          }}>
-                            {allUsers.find(u => u.id === match.player2)?.username || 'TBD'}
-                          </span>
-                          {result && (
-                            <span style={{ 
-                              fontSize: '0.85rem',
-                              color: match.winner === match.player2 ? 'var(--success)' : 'var(--error)'
-                            }}>
-                              {result.score2}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
+                      )
+                    })}
+                  </div>
+                  
+                  {roundIndex < rounds.length - 1 && (
+                    <div style={{ 
+                      width: '60px', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      color: 'var(--text-muted)',
+                      fontSize: '1.5rem'
+                    }}>
+                      ➜
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </div>
 
       <div className="card" style={{ marginTop: '20px' }}>
-        <h3 className="card-title">Upcoming Cup Fixtures</h3>
+        <h3 className="card-title">Match Schedule</h3>
         {fixtures.filter(f => f.status !== 'approved').length === 0 ? (
-          <p style={{ color: 'var(--text-muted)' }}>No pending fixtures. All matches have results!</p>
+          <p style={{ color: 'var(--success)', textAlign: 'center', padding: '20px' }}>
+            ✓ All matches completed!
+          </p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '15px' }}>
             {fixtures.filter(f => f.status !== 'approved').map(fixture => (
               <div key={fixture.id} style={{ 
-                padding: '15px', 
+                padding: '20px', 
                 background: 'var(--bg-secondary)', 
-                borderRadius: '8px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
+                borderRadius: '12px',
+                borderLeft: '4px solid var(--accent-cyan)'
               }}>
-                <div>
-                  <span style={{ fontWeight: 'bold' }}>{getRoundName(fixture.round)}</span>
-                  <p style={{ margin: '5px 0 0 0' }}>
-                    {allUsers.find(u => u.id === fixture.player1)?.username || 'TBD'} vs {allUsers.find(u => u.id === fixture.player2)?.username || 'TBD'}
-                  </p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <span style={{ 
+                    fontWeight: 'bold',
+                    color: 'var(--accent-cyan)'
+                  }}>
+                    {getRoundName(fixture.round)}
+                  </span>
+                  <span style={{ 
+                    padding: '4px 10px', 
+                    borderRadius: '15px',
+                    background: fixture.status === 'pending' ? 'var(--warning)' : 'var(--accent-cyan)',
+                    color: 'white',
+                    fontSize: '0.8rem'
+                  }}>
+                    {fixture.status === 'pending' ? 'Pending' : 'Accepted'}
+                  </span>
                 </div>
-                <span style={{ 
-                  padding: '5px 10px', 
-                  borderRadius: '5px',
-                  background: fixture.status === 'pending' ? 'var(--warning)' : 'var(--accent-cyan)',
-                  color: 'white',
-                  fontSize: '0.85rem'
-                }}>
-                  {fixture.status === 'pending' ? 'Pending' : 'Accepted'}
-                </span>
+                <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
+                  {allUsers.find(u => u.id === fixture.player1)?.username || 'TBD'} 
+                  <span style={{ color: 'var(--text-muted)', margin: '0 10px' }}>vs</span>
+                  {allUsers.find(u => u.id === fixture.player2)?.username || 'TBD'}
+                </div>
               </div>
             ))}
           </div>
