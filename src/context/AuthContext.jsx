@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { db, auth, usersCollection, doc, setDoc, getDoc, getDocs, query, collection, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, addDoc, FieldValue } from '../firebase'
+import { db, auth, usersCollection, adminDataCollection, doc, setDoc, getDoc, getDocs, query, collection, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, addDoc, FieldValue } from '../firebase'
 
 const AuthContext = createContext(null)
 
@@ -13,6 +13,7 @@ export function AuthProvider({ children }) {
   const [allUsers, setAllUsers] = useState([])
   const [notifications, setNotifications] = useState([])
   const [results, setResults] = useState([])
+  const [adminData, setAdminData] = useState({ subscriptionPot: 0, subscriptionPot10: 0, moneyHistory: [] })
   
   const SENSITIVE_FIELDS = ['password', 'passwordString', 'passwordHash', 'passwordKey', 'passwordStringValue', 'password', 'firebaseId', 'pwd', 'pass', 'passwd']
   
@@ -35,9 +36,24 @@ export function AuthProvider({ children }) {
       }
     })
     
+    const unsubscribeAdmin = onSnapshot(doc(db, 'adminData', 'main'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data()
+        setAdminData({
+          subscriptionPot: data.subscriptionPot || 0,
+          subscriptionPot10: data.subscriptionPot10 || 0,
+          moneyHistory: data.moneyHistory || []
+        })
+        localStorage.setItem('eliteArrowsSubscriptionPot', String(data.subscriptionPot || 0))
+        localStorage.setItem('eliteArrowsSubscriptionPot10', String(data.subscriptionPot10 || 0))
+        localStorage.setItem('eliteArrowsMoneyHistory', JSON.stringify(data.moneyHistory || []))
+      }
+    })
+    
     return () => {
       unsubscribeUsers()
       unsubscribeResults()
+      unsubscribeAdmin()
     }
   }, [])
   
@@ -449,6 +465,23 @@ useEffect(() => {
     await updateUser({ eliteTokens: newTokens })
     return true
   }
+  
+  const updateAdminData = async (newData) => {
+    try {
+      const currentData = adminData
+      const updated = { ...currentData, ...newData }
+      await setDoc(doc(db, 'adminData', 'main'), updated, { merge: true })
+      setAdminData(updated)
+    } catch (e) {
+      console.error('Error updating admin data:', e)
+    }
+  }
+  
+  const addToMoneyHistory = (type, amount, description) => {
+    const newEntry = { id: Date.now(), type, amount, description, date: new Date().toISOString() }
+    const updatedHistory = [...(adminData.moneyHistory || []), newEntry]
+    updateAdminData({ moneyHistory: updatedHistory })
+  }
 
   useEffect(() => {
     if (!user?.id) return
@@ -478,6 +511,9 @@ useEffect(() => {
       addTokens,
       useTokens,
       getResults,
+      adminData,
+      updateAdminData,
+      addToMoneyHistory,
       isAuthenticated: !!user 
     }}>
       {children}
