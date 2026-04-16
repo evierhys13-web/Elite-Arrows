@@ -4,25 +4,11 @@ import { useNavigate } from 'react-router-dom'
 import { db, doc, setDoc, getDoc, deleteDoc, updateDoc } from '../firebase'
 
 export default function Admin() {
-  const { user, getAllUsers, updateUser, getResults } = useAuth()
+  const { user, getAllUsers, updateUser, getResults, adminData, updateAdminData, addToMoneyHistory } = useAuth()
   const navigate = useNavigate()
-  const [pendingResults, setPendingResults] = useState([])
-  const [activeTab, setActiveTab] = useState('results')
-  const [refreshKey, setRefreshKey] = useState(0)
-  const [usersList, setUsersList] = useState(null)
-  const [showTournamentForm, setShowTournamentForm] = useState(false)
-  const [showColorsForm, setShowColorsForm] = useState(false)
-  const [tournamentForm, setTournamentForm] = useState({ 
-    name: '', type: 'knockout', divisions: [], entryFee: 0,
-    isCashBased: false, prizeInfo: '', maxParticipants: 16,
-    entryDeadline: '', daysBetweenRounds: 3,
-    formatR1: '3', formatR2: '3', formatQF: '3', formatSF: '5', formatF: '7'
-  })
-  const [colors, setColors] = useState(() => JSON.parse(localStorage.getItem('eliteArrowsColors') || '{"primary": "#4da8da", "background": "#0a1628", "button": "#4da8da"}'))
-  const [subscriptionPot, setSubscriptionPot] = useState(() => parseFloat(localStorage.getItem('eliteArrowsSubscriptionPot') || '0'))
-  const [subscriptionPot10, setSubscriptionPot10] = useState(() => parseFloat(localStorage.getItem('eliteArrowsSubscriptionPot10') || '0'))
-  const [tournamentPot, setTournamentPot] = useState(() => parseFloat(localStorage.getItem('eliteArrowsTournamentPot') || '0'))
-  const [showSubmitGame, setShowSubmitGame] = useState(false)
+  const subscriptionPot = adminData.subscriptionPot || 0
+  const subscriptionPot10 = adminData.subscriptionPot10 || 0
+  const moneyHistory = adminData.moneyHistory || []
   const [gameForm, setGameForm] = useState({
     player1: '',
     player2: '',
@@ -203,13 +189,9 @@ export default function Admin() {
       localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
       
       if (isHighTier) {
-        const newPot10 = subscriptionPot10 + amount
-        setSubscriptionPot10(newPot10)
-        localStorage.setItem('eliteArrowsSubscriptionPot10', newPot10.toString())
+        await updateAdminData({ subscriptionPot10: subscriptionPot10 + amount })
       } else {
-        const newPot = subscriptionPot + amount
-        setSubscriptionPot(newPot)
-        localStorage.setItem('eliteArrowsSubscriptionPot', newPot.toString())
+        await updateAdminData({ subscriptionPot: subscriptionPot + amount })
       }
       addToMoneyHistory('subscription', amount, `Payment from ${users[index].username}`)
       
@@ -632,9 +614,7 @@ export default function Admin() {
                     localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
                     
                     const amount = 5
-                    const newPot = subscriptionPot + amount
-                    setSubscriptionPot(newPot)
-                    localStorage.setItem('eliteArrowsSubscriptionPot', newPot.toString())
+                    await updateAdminData({ subscriptionPot: subscriptionPot + amount })
                     addToMoneyHistory('subscription', amount, `Free subscription granted to ${u.username}`)
                     
                     await setDoc(doc(db, 'users', u.id), cleanUpdates, { merge: true })
@@ -827,9 +807,7 @@ export default function Admin() {
                 
                 const amount = 5
                 if (subType && !freeSub) {
-                  const newPot = subscriptionPot + amount
-                  setSubscriptionPot(newPot)
-                  localStorage.setItem('eliteArrowsSubscriptionPot', newPot.toString())
+                  await updateAdminData({ subscriptionPot: subscriptionPot + amount })
                 }
                 addToMoneyHistory('subscription', amount, `Updated ${users[index].username} - ${subType || ''} Division: ${division || 'Unassigned'}`)
                 
@@ -1631,6 +1609,45 @@ export default function Admin() {
                 </div>
               </div>
             </div>
+          </div>
+
+          <div className="card" style={{ marginTop: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+              <h3 className="card-title" style={{ margin: 0 }}>Cup Prize Pots</h3>
+            </div>
+            {(() => {
+              const cups = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
+              if (cups.length === 0) {
+                return <p style={{ color: 'var(--text-muted)' }}>No cups created yet</p>
+              }
+              return (
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Cup Name</th>
+                      <th>Entry Fee</th>
+                      <th>Players</th>
+                      <th>Prize Pot</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cups.map(cup => {
+                      const prizePot = cup.entryFee * (cup.players?.length || 0)
+                      return (
+                        <tr key={cup.id}>
+                          <td>{cup.name}</td>
+                          <td>£{cup.entryFee}</td>
+                          <td>{cup.players?.length || 0}</td>
+                          <td style={{ color: 'var(--success)', fontWeight: 'bold' }}>£{prizePot}</td>
+                          <td>{cup.status || 'Active'}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              )
+            })()}
           </div>
 
           <div className="card" style={{ marginTop: '20px' }}>

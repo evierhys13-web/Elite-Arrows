@@ -269,14 +269,17 @@ export default function CupTournaments() {
         </div>
       )}
 
-      {cups.map(cup => (
-        <div key={cup.id} className="card" style={{ marginTop: '20px' }}>
-          <h3 className="card-title">{cup.name}</h3>
-          <p style={{ color: 'var(--text-muted)' }}>
-            Entry: £{cup.entryFee} | Players: {cup.players?.length || 0}
-          </p>
-        </div>
-      ))}
+      {cups.map(cup => {
+        const prizePot = cup.entryFee * (cup.players?.length || 0)
+        return (
+          <div key={cup.id} className="card" style={{ marginTop: '20px' }}>
+            <h3 className="card-title">{cup.name}</h3>
+            <p style={{ color: 'var(--text-muted)' }}>
+              Entry: £{cup.entryFee} | Players: {cup.players?.length || 0} | Prize Pot: £{prizePot}
+            </p>
+          </div>
+        )
+      })}
     </div>
   )
 }
