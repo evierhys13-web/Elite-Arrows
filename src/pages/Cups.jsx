@@ -17,7 +17,6 @@ export default function CupTournaments() {
   const isSubscribed = user?.isSubscribed === true
 
   const allUsers = getAllUsers()
-  const subscribedUsers = allUsers.filter(u => u.isSubscribed)
   const cups = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
   const fixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
 
@@ -179,7 +178,7 @@ export default function CupTournaments() {
           
           <h4 style={{ marginTop: '20px', marginBottom: '10px' }}>Select Players ({selectedPlayers.length}/{formData.maxPlayers})</h4>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-            {subscribedUsers.map(p => (
+            {allUsers.map(p => (
               <button
                 key={p.id}
                 className={`btn ${selectedPlayers.includes(p.id) ? 'btn-primary' : 'btn-secondary'}`}
