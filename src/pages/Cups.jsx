@@ -37,21 +37,27 @@ export default function CupTournaments() {
     const numRounds = Math.ceil(Math.log2(shuffled.length))
     
     let matchId = 1
+    let roundStartId = 1
+    
     for (let round = 1; round <= numRounds; round++) {
       const matchesInRound = Math.ceil(shuffled.length / Math.pow(2, round))
+      const nextRoundStartId = matchId + matchesInRound
+      
       for (let i = 0; i < matchesInRound; i++) {
         const p1Index = i * 2
         const p2Index = i * 2 + 1
         newMatches.push({
-          id: matchId++,
+          id: matchId,
           round,
           matchNum: i + 1,
           player1: shuffled[p1Index] || null,
           player2: shuffled[p2Index] || null,
           winner: null,
-          nextMatchId: round < numRounds ? Math.floor((matchId - 1) / 2) + 1 + (numRounds - 1) : null
+          nextMatchId: round < numRounds ? roundStartId + matchesInRound + Math.floor(i / 2) : null
         })
+        matchId++
       }
+      roundStartId = nextRoundStartId
     }
     
     setMatches(newMatches)
@@ -59,6 +65,12 @@ export default function CupTournaments() {
   }
 
   const handleWinner = (matchId, winnerId) => {
+    const match = matches.find(m => m.id === matchId)
+    if (!match || !match.player1 || !match.player2) {
+      alert('Both players must be present before selecting a winner')
+      return
+    }
+    
     const updated = matches.map(m => {
       if (m.id === matchId) {
         return { ...m, winner: winnerId }
@@ -216,16 +228,16 @@ export default function CupTournaments() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
                           <button 
                             className={`btn btn-sm ${match.winner === match.player1 ? 'btn-success' : 'btn-secondary'}`}
-                            onClick={() => match.player1 && !match.winner && handleWinner(match.id, match.player1)}
-                            disabled={!match.player1 || match.winner}
+                            onClick={() => handleWinner(match.id, match.player1)}
+                            disabled={!match.player1 || !match.player2 || match.winner}
                           >
                             {allUsers.find(u => u.id === match.player1)?.username || 'TBD'}
                           </button>
                           <span style={{ color: 'var(--text-muted)' }}>vs</span>
                           <button 
                             className={`btn btn-sm ${match.winner === match.player2 ? 'btn-success' : 'btn-secondary'}`}
-                            onClick={() => match.player2 && !match.winner && handleWinner(match.id, match.player2)}
-                            disabled={!match.player2 || match.winner}
+                            onClick={() => handleWinner(match.id, match.player2)}
+                            disabled={!match.player1 || !match.player2 || match.winner}
                           >
                             {allUsers.find(u => u.id === match.player2)?.username || 'TBD'}
                           </button>
