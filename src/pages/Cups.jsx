@@ -44,12 +44,13 @@ export default function CupTournaments() {
       for (let i = 0; i < matchesInRound; i++) {
         const p1Index = i * 2
         const p2Index = i * 2 + 1
+        
         newMatches.push({
           id: matchId,
           round,
           matchNum: i + 1,
-          player1: shuffled[p1Index] || null,
-          player2: shuffled[p2Index] || null,
+          player1: round === 1 ? (shuffled[p1Index] || null) : null,
+          player2: round === 1 ? (shuffled[p2Index] || null) : null,
           winner: null,
           nextMatchId: round < numRounds ? roundStartId + matchesInRound + Math.floor(i / 2) : null
         })

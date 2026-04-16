@@ -95,8 +95,8 @@ export default function CupBracket() {
       return rounds
     }
     
-    const lastCompletedIdx = rounds.indexOf(completedRounds[completedRounds.length - 1])
-    return rounds.slice(0, lastCompletedIdx + 2)
+    const nextIdx = rounds.indexOf(nextIncompleteRound)
+    return rounds.slice(0, nextIdx + 1)
   }
 
   const displayRounds = getDisplayRounds()
