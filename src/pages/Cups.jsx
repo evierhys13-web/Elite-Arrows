@@ -273,8 +273,24 @@ export default function CupTournaments() {
         const prizePot = cup.entryFee * (cup.players?.length || 0)
         return (
           <div key={cup.id} className="card" style={{ marginTop: '20px' }}>
-            <h3 className="card-title">{cup.name}</h3>
-            <p style={{ color: 'var(--text-muted)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 className="card-title" style={{ margin: 0 }}>{cup.name}</h3>
+              {isAdmin && (
+                <button 
+                  className="btn btn-danger btn-sm"
+                  onClick={() => {
+                    if (confirm(`Are you sure you want to delete "${cup.name}"?`)) {
+                      const updatedCups = cups.filter(c => c.id !== cup.id)
+                      localStorage.setItem('eliteArrowsCups', JSON.stringify(updatedCups))
+                      window.location.reload()
+                    }
+                  }}
+                >
+                  Delete Cup
+                </button>
+              )}
+            </div>
+            <p style={{ color: 'var(--text-muted)', marginTop: '10px' }}>
               Entry: £{cup.entryFee} | Players: {cup.players?.length || 0} | Prize Pot: £{prizePot}
             </p>
           </div>
