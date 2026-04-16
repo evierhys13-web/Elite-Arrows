@@ -82,6 +82,25 @@ export default function CupBracket() {
 
   const rounds = Array.from(new Set(cup.matches?.map(m => m.round) || [])).sort((a, b) => a - b)
 
+  const isRoundVisible = (round) => {
+    if (round === 1) return true
+    const prevRound = round - 1
+    const prevMatches = cup.matches?.filter(m => m.round === prevRound) || []
+    return prevMatches.every(m => m.winner !== null)
+  }
+
+  const getVisibleRounds = () => {
+    return rounds.filter(r => isRoundVisible(r))
+  }
+
+  const visibleRounds = getVisibleRounds()
+
+  const getLockedRounds = () => {
+    return rounds.filter(r => !isRoundVisible(r))
+  }
+
+  const lockedRounds = getLockedRounds()
+
   return (
     <div className="page">
       <div className="page-header">
@@ -137,7 +156,7 @@ export default function CupBracket() {
             alignItems: 'center',
             justifyContent: 'center'
           }}>
-            {rounds.map((round, roundIndex) => {
+            {visibleRounds.map((round, roundIndex) => {
               const matches = getMatchesForRound(round)
               const matchHeight = 120
               const matchGap = 20
@@ -165,11 +184,14 @@ export default function CupBracket() {
                       {round === activeRound && <span style={{ marginLeft: '5px' }}>◀</span>}
                     </div>
                     
-                    {matches.map((match, matchIndex) => {
+                    {matches
+                      .filter(m => round === 1 || (m.player1 && m.player2))
+                      .map((match, matchIndex) => {
                       const result = getMatchResult(match)
                       const isMatchActive = round === activeRound && !match.winner
+                      const hasPlayers = match.player1 && match.player2
                       
-                      return (
+                      return hasPlayers ? (
                         <div key={match.id} style={{ position: 'relative' }}>
                           <div style={{ 
                             background: 'var(--bg-secondary)', 
@@ -244,7 +266,7 @@ export default function CupBracket() {
                             </div>
                           </div>
                           
-                          {roundIndex < rounds.length - 1 && (
+                          {roundIndex < visibleRounds.length - 1 && (
                             <>
                               <div style={{
                                 position: 'absolute',
@@ -263,18 +285,18 @@ export default function CupBracket() {
                                   height: `${matchHeight + matchGap}px`,
                                   borderRight: '2px solid var(--border)',
                                   borderTop: '2px solid var(--border)',
-                                  borderBottom: matchIndex < matches.length - 2 ? '2px solid var(--border)' : 'none',
+                                  borderBottom: matchIndex < matches.filter(m => m.player1 && m.player2).length - 2 ? '2px solid var(--border)' : 'none',
                                   borderRadius: '0 10px 10px 0'
                                 }} />
                               )}
                             </>
                           )}
                         </div>
-                      )
+                      ) : null
                     })}
                   </div>
                   
-                  {roundIndex < rounds.length - 1 && (
+                  {roundIndex < visibleRounds.length - 1 && (
                     <div style={{ 
                       width: '60px', 
                       display: 'flex', 
@@ -291,6 +313,20 @@ export default function CupBracket() {
             })}
           </div>
         </div>
+
+        {lockedRounds.length > 0 && (
+          <div style={{ 
+            marginTop: '30px', 
+            padding: '20px', 
+            background: 'var(--bg-secondary)', 
+            borderRadius: '12px',
+            textAlign: 'center'
+          }}>
+            <p style={{ color: 'var(--text-muted)', margin: 0 }}>
+              🔒 {lockedRounds.map(r => getRoundName(r)).join(', ')} will be revealed as matches conclude
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="card" style={{ marginTop: '20px' }}>
