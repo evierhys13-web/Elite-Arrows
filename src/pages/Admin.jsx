@@ -240,17 +240,6 @@ export default function Admin() {
     alert('Colors saved!')
   }
 
-  const addToMoneyHistory = (type, amount, description) => {
-    const history = JSON.parse(localStorage.getItem('eliteArrowsMoneyHistory') || '[]')
-    history.push({
-      date: new Date().toISOString(),
-      type,
-      amount,
-      description
-    })
-    localStorage.setItem('eliteArrowsMoneyHistory', JSON.stringify(history))
-  }
-
   const submitAdminGame = () => {
     if (!gameForm.player1 || !gameForm.player2 || !gameForm.score1 || !gameForm.score2) {
       alert('Please fill in all required fields')
