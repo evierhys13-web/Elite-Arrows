@@ -19,11 +19,11 @@ import Support from './pages/Support'
 import Tournaments from './pages/Tournaments'
 import Cups from './pages/Cups'
 import CupBracket from './pages/CupBrackets'
-import CupFixtures from './pages/CupFixtures'
 import Games from './pages/Games'
 import Leaderboards from './pages/Leaderboards'
 import Rewards from './pages/Rewards'
 import Fixtures from './pages/Fixtures'
+import CupFixtures from './pages/CupFixtures'
 import SeedData from './pages/SeedData'
 import Sidebar from './components/Sidebar'
 import BackgroundDecor from './components/BackgroundDecor'
@@ -310,6 +310,13 @@ function AppRoutes() {
           </AppLayout>
         </SubscribedRoute>
       } />
+      <Route path="/cup-fixtures" element={
+        <SubscribedRoute>
+          <AppLayout>
+            <CupFixtures />
+          </AppLayout>
+        </SubscribedRoute>
+      } />
       <Route path="/results" element={
         <SubscribedRoute>
           <AppLayout>
@@ -328,13 +335,6 @@ function AppRoutes() {
         <SubscribedRoute>
           <AppLayout>
             <CupBracket />
-          </AppLayout>
-        </SubscribedRoute>
-      } />
-      <Route path="/cup-fixtures" element={
-        <SubscribedRoute>
-          <AppLayout>
-            <CupFixtures />
           </AppLayout>
         </SubscribedRoute>
       } />

@@ -269,7 +269,7 @@ export default function SubmitResult() {
                   <option value="">Select cup match</option>
                   {cupFixtures.map(f => {
                     const cup = cups.find(c => c.id === f.cupId)
-                    const opponentId = f.player1Id === user.id ? f.player2Id : f.player1Id
+                    const opponentId = f.player1 === user.id ? f.player2 : f.player1
                     const opponent = allUsers.find(u => u.id === opponentId)
                     return (
                       <option key={f.id} value={opponentId}>
