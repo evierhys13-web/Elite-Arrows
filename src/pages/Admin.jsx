@@ -20,6 +20,7 @@ export default function Admin() {
   })
   const [refreshKey, setRefreshKey] = useState(0)
   const [pendingResults, setPendingResults] = useState([])
+  const [activeTab, setActiveTab] = useState('results')
 
   useEffect(() => {
     window.scrollTo(0, 0)
