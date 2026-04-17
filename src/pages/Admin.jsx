@@ -9,6 +9,7 @@ export default function Admin() {
   const navigate = useNavigate()
   const subscriptionPot = adminData.subscriptionPot || 0
   const subscriptionPot10 = adminData.subscriptionPot10 || 0
+  const tournamentPot = adminData.tournamentPot || 0
   const moneyHistory = adminData.moneyHistory || []
   const [gameForm, setGameForm] = useState({
     player1: '',
@@ -1626,12 +1627,10 @@ export default function Admin() {
                   />
                   <button 
                     className="btn btn-primary"
-                    onClick={() => {
+                    onClick={async () => {
                       const amount = parseFloat(document.getElementById('tourPotAdjust').value) || 0
                       if (amount !== 0) {
-                        const newPot = tournamentPot + amount
-                        setTournamentPot(newPot)
-                        localStorage.setItem('eliteArrowsTournamentPot', newPot.toString())
+                        await updateAdminData({ tournamentPot: tournamentPot + amount })
                         addToMoneyHistory('tournament', amount, 'Manual adjustment')
                         alert(`Tournament pot ${amount >= 0 ? 'increased' : 'decreased'} by £${Math.abs(amount).toFixed(2)}`)
                         document.getElementById('tourPotAdjust').value = ''
