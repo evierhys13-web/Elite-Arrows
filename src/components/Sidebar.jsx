@@ -190,6 +190,7 @@ export default function Sidebar() {
   
   const freeTierItems = [
     { path: '/home', label: 'Home', icon: HomeIcon },
+    { path: '/guide', label: 'Guide', icon: HelpIcon },
     { path: '/table', label: 'League Table', icon: TableIcon },
     { path: '/players', label: 'Players', icon: UsersIcon },
     { path: '/leaderboards', label: 'Leaderboards', icon: TrophyIcon },

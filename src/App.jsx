@@ -24,6 +24,7 @@ import Leaderboards from './pages/Leaderboards'
 import Rewards from './pages/Rewards'
 import Fixtures from './pages/Fixtures'
 import CupFixtures from './pages/CupFixtures'
+import Guide from './pages/Guide'
 import SeedData from './pages/SeedData'
 import Sidebar from './components/Sidebar'
 import BackgroundDecor from './components/BackgroundDecor'
@@ -293,6 +294,13 @@ function AppRoutes() {
         <ProtectedRoute>
           <AppLayout>
             <Leaderboards />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/guide" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <Guide />
           </AppLayout>
         </ProtectedRoute>
       } />
