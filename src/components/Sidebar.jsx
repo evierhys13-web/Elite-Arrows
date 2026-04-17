@@ -303,7 +303,7 @@ export default function Sidebar() {
               key={item.path}
               to={item.path}
               className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-              onClick={() => setIsOpen(false)}
+              onClick={(e) => { e.preventDefault(); navigate(item.path); setIsOpen(false); }}
               end={item.path === '/home'}
             >
               <item.icon />
