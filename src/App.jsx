@@ -31,6 +31,7 @@ import Sidebar from './components/Sidebar'
 import InstallPrompt from './components/InstallPrompt'
 import DataRefreshToast from './components/DataRefreshToast'
 import BackgroundDecor from './components/BackgroundDecor'
+import NotificationPermissionPrompt from './components/NotificationPermissionPrompt'
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading, user } = useAuth()
@@ -173,6 +174,7 @@ function AppLayout({ children }) {
       </main>
       <InstallPrompt />
       <DataRefreshToast refreshTrigger={dataRefreshTrigger} />
+      <NotificationPermissionPrompt />
     </div>
   )
 }

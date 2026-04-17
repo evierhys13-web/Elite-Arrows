@@ -22,5 +22,7 @@
     }
   ],
   "categories": ["sports", "games", "entertainment"],
-  "lang": "en-GB"
+  "lang": "en-GB",
+  "gcm_sender_id": "848326452210",
+  "gcm_user_visible_only": true
 }

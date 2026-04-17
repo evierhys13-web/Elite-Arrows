@@ -2,7 +2,8 @@ const CACHE_NAME = 'elite-arrows-v1';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
-  '/logo.jpg'
+  '/logo.jpg',
+  '/firebase-messaging-sw.js'
 ];
 
 self.addEventListener('install', (event) => {
@@ -87,4 +88,29 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+  
+  if (event.data && event.data.type === 'SET_BADGE') {
+    setBadgeCount(event.data.count);
+  }
+  
+  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+    self.registration.showNotification(event.data.title, {
+      body: event.data.body,
+      icon: event.data.icon || '/logo.jpg',
+      badge: event.data.badge || '/logo.jpg',
+      data: event.data.data || {}
+    });
+  }
 });
+
+async function setBadgeCount(count) {
+  try {
+    if (navigator.setAppBadge) {
+      await navigator.setAppBadge(count);
+    } else if (navigator.setClientBadge) {
+      navigator.setClientBadge(count);
+    }
+  } catch (e) {
+    console.log('Badge not supported:', e);
+  }
+}

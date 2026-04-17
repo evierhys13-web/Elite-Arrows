@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import { db, auth, usersCollection, adminDataCollection, doc, setDoc, getDoc, getDocs, query, collection, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, addDoc, FieldValue } from '../firebase'
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
+import { db, auth, usersCollection, adminDataCollection, fcmTokensCollection, doc, setDoc, getDoc, getDocs, query, collection, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, addDoc, updateDoc, FieldValue, getMessagingInstance, getToken, onMessage, isSupported } from '../firebase'
 
 const AuthContext = createContext(null)
 
@@ -19,8 +19,117 @@ export function AuthProvider({ children }) {
   const [seasons, setSeasons] = useState([])
   const [dataRefreshTrigger, setDataRefreshTrigger] = useState(0)
   const [adminData, setAdminData] = useState({ subscriptionPot: 0, subscriptionPot10: 0, moneyHistory: [] })
+  const [notificationPermission, setNotificationPermission] = useState('default')
+  const [fcmToken, setFcmToken] = useState(null)
+  const [unreadCount, setUnreadCount] = useState(0)
+  const unsubscribeRef = useRef(null)
   
   const SENSITIVE_FIELDS = ['password', 'passwordString', 'passwordHash', 'passwordKey', 'passwordStringValue', 'password', 'firebaseId', 'pwd', 'pass', 'passwd']
+
+  const requestNotificationPermission = useCallback(async () => {
+    if (!('Notification' in window)) {
+      console.log('This browser does not support notifications')
+      return false
+    }
+
+    if (Notification.permission === 'granted') {
+      setNotificationPermission('granted')
+      return true
+    }
+
+    if (Notification.permission !== 'denied') {
+      const permission = await Notification.requestPermission()
+      setNotificationPermission(permission)
+      
+      if (permission === 'granted') {
+        await registerFCMToken()
+        return true
+      }
+      return false
+    }
+
+    setNotificationPermission('denied')
+    return false
+  }, [user?.id])
+
+  const registerFCMToken = useCallback(async () => {
+    if (!user?.id) return null
+    
+    try {
+      const supported = await isSupported()
+      if (!supported) {
+        console.log('Firebase messaging not supported')
+        return null
+      }
+
+      const messaging = await getMessagingInstance()
+      if (!messaging) return null
+
+      if ('serviceWorker' in navigator) {
+        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js')
+        console.log('FCM SW registered:', registration)
+      }
+
+      const token = await getToken(messaging, {
+        vapidKey: 'BEl63iSdKGlx3Gc8D5P8C8R2Ui6eJ8eG9Q8R2U6Y4B3H6J8K9L0M1N2O3P4Q5',
+        serviceWorkerRegistration: await navigator.serviceWorker.getRegistration()
+      })
+
+      if (token) {
+        setFcmToken(token)
+        localStorage.setItem('eliteArrowsFcmToken', token)
+        
+        await setDoc(doc(db, 'fcmTokens', user.id), {
+          userId: user.id,
+          username: user.username,
+          token: token,
+          updatedAt: new Date().toISOString()
+        }, { merge: true })
+
+        console.log('FCM Token registered:', token.substring(0, 20) + '...')
+        return token
+      }
+    } catch (error) {
+      console.error('Error registering FCM token:', error)
+    }
+    return null
+  }, [user?.id, user?.username])
+
+  const showLocalNotification = useCallback((title, options = {}) => {
+    if (Notification.permission === 'granted') {
+      const notification = new Notification(title, {
+        icon: '/logo.jpg',
+        badge: '/logo.jpg',
+        ...options
+      })
+      
+      notification.onclick = () => {
+        window.focus()
+        notification.close()
+        if (options.data?.url) {
+          window.location.href = options.data.url
+        }
+      }
+    }
+  }, [])
+
+  const updateBadgeCount = useCallback((count) => {
+    setUnreadCount(count)
+    localStorage.setItem('eliteArrowsUnreadCount', String(count))
+    
+    if ('caches' in window) {
+      navigator.serviceWorker.ready.then(registration => {
+        registration.active?.postMessage({
+          type: 'SET_BADGE',
+          count: count
+        })
+      })
+    }
+    
+    if (navigator.setAppBadge) {
+      navigator.setAppBadge(count).catch(() => {})
+    }
+  }, [])
 
   const triggerDataRefresh = useCallback((dataType = 'all') => {
     setDataRefreshTrigger(prev => prev + 1)
@@ -508,16 +617,73 @@ const cleanUserData = (users) => {
   useEffect(() => {
     if (!user?.id) return
     const storedNotifs = JSON.parse(localStorage.getItem('eliteArrowsNotifications') || '[]')
-    setNotifications(storedNotifs.filter(n => n.toUserId === user.id))
+    const userNotifs = storedNotifs.filter(n => n.toUserId === user.id)
+    setNotifications(userNotifs)
+    const unread = userNotifs.filter(n => !n.isRead).length
+    setUnreadCount(unread)
+    updateBadgeCount(unread)
   }, [user?.id])
+
+  useEffect(() => {
+    const setupForegroundMessages = async () => {
+      try {
+        const messaging = await getMessagingInstance()
+        if (!messaging) return
+        
+        onMessage(messaging, (payload) => {
+          console.log('Foreground message received:', payload)
+          
+          const { title, body, data } = payload
+          
+          if (Notification.permission === 'granted') {
+            new Notification(title || 'Elite Arrows', {
+              body: body || 'New notification',
+              icon: '/logo.jpg',
+              badge: '/logo.jpg',
+              data: data
+            })
+          }
+        })
+      } catch (error) {
+        console.log('FCM onMessage setup error:', error)
+      }
+    }
+    
+    if (user?.id) {
+      setupForegroundMessages()
+    }
+  }, [user?.id])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setNotificationPermission(Notification.permission)
+    }
+    
+    const storedToken = localStorage.getItem('eliteArrowsFcmToken')
+    if (storedToken) {
+      setFcmToken(storedToken)
+    }
+    
+    const storedUnread = localStorage.getItem('eliteArrowsUnreadCount')
+    if (storedUnread) {
+      setUnreadCount(parseInt(storedUnread) || 0)
+    }
+  }, [])
 
   return (
     <AuthContext.Provider value={{ 
       user, 
       loading, 
       notifications,
+      unreadCount,
+      notificationPermission,
+      fcmToken,
       dataRefreshTrigger,
       triggerDataRefresh,
+      requestNotificationPermission,
+      registerFCMToken,
+      showLocalNotification,
+      updateBadgeCount,
       signUp, 
       signIn, 
       signOut: handleSignOut, 

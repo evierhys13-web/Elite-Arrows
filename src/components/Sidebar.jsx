@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
+import NotificationBell from './NotificationBell'
 
 const HomeIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -258,7 +259,10 @@ export default function Sidebar() {
           <img src="/logo.jpg" alt="Elite Arrows" style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover' }} />
           <span style={{ marginLeft: '8px' }}>Elite Arrows</span>
         </span>
-        <div style={{ width: 40 }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <NotificationBell />
+          <div style={{ width: 40 }} />
+        </div>
       </div>
 
       <div className={`mobile-sidebar-overlay ${isOpen ? 'open' : ''}`} onClick={() => setIsOpen(false)} />
@@ -290,6 +294,7 @@ export default function Sidebar() {
             <div style={{ fontWeight: '600', fontSize: '0.95rem' }}>{user?.username}</div>
             <div style={{ color: 'var(--accent-cyan)', fontSize: '0.85rem' }}>{user?.threeDartAverage?.toFixed(2) || 0} avg</div>
           </div>
+          <NotificationBell />
         </div>
 
         <nav className="sidebar-nav">
