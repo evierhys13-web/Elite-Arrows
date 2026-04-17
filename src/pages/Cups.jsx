@@ -111,9 +111,11 @@ export default function CupTournaments() {
       cupName: formData.name,
       startScore: roundFormats[1]?.startScore || 501,
       bestOf: roundFormats[1]?.bestOf || 3,
-      firstTo: roundFormats[1]?.firstTo || 2,
+      firstTo: Math.ceil((roundFormats[1]?.bestOf || 3) / 2),
       player1: m.player1,
+      player1Id: m.player1,
       player2: m.player2,
+      player2Id: m.player2,
       matchId: m.id,
       round: 1,
       date: '',
@@ -126,6 +128,8 @@ export default function CupTournaments() {
       counterTime: '',
       createdAt: new Date().toISOString()
     }))
+    
+    console.log('Creating fixtures:', newFixtures)
     
     localStorage.setItem('eliteArrowsFixtures', JSON.stringify([...existingFixtures, ...newFixtures]))
     localStorage.setItem('eliteArrowsCups', JSON.stringify([...cups, newCup]))

@@ -16,6 +16,9 @@ export default function CupFixtures() {
   const loadFixtures = () => {
     const allFixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
     const cupFixtures = allFixtures.filter(f => f.cupId)
+    console.log('All fixtures:', allFixtures)
+    console.log('Cup fixtures:', cupFixtures)
+    console.log('Current user id:', user.id)
     setFixtures(cupFixtures)
   }
 
@@ -39,7 +42,9 @@ export default function CupFixtures() {
     return cup ? Math.max(...(cup.matches?.map(m => m.round) || [1])) : 1
   }
 
-  const userFixtures = fixtures.filter(f => f.player1 === user.id || f.player2 === user.id)
+  const userFixtures = fixtures.filter(f => f.player1 === user.id || f.player2 === user.id || f.player1Id === user.id || f.player2Id === user.id)
+  
+  console.log('User fixtures:', userFixtures)
   
   const needsScheduling = userFixtures.filter(f => 
     f.status === 'pending' && !f.proposedDate
