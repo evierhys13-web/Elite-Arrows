@@ -17,16 +17,40 @@ function CupManagement() {
     return `Round ${round}`
   }
 
-  const enterResult = (cup, match, winnerNum) => {
+  const enterResult = (cup, match) => {
+    const p1Name = getPlayerName(match.player1)
+    const p2Name = getPlayerName(match.player2)
+    const firstTo = cup.firstTo || Math.ceil((cup.bestOf || 5) / 2)
+    
+    const score1 = prompt(`Enter legs won for ${p1Name} (First to ${firstTo}):`)
+    if (score1 === null) return
+    
+    const score2 = prompt(`Enter legs won for ${p2Name} (First to ${firstTo}):`)
+    if (score2 === null) return
+    
+    const legs1 = parseInt(score1)
+    const legs2 = parseInt(score2)
+    
+    if (isNaN(legs1) || isNaN(legs2)) {
+      alert('Please enter valid numbers')
+      return
+    }
+    
+    if (legs1 < 0 || legs2 < 0) {
+      alert('Scores cannot be negative')
+      return
+    }
+    
+    const winnerId = legs1 > legs2 ? match.player1 : match.player2
+
     const cupsData = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
     const cupIndex = cupsData.findIndex(c => c.id === cup.id)
     if (cupIndex === -1) return
 
     const cupData = cupsData[cupIndex]
-    const winnerId = winnerNum === 1 ? match.player1 : match.player2
 
     const updatedMatches = cupData.matches.map(m => 
-      m.id === match.id ? { ...m, winner: winnerId } : m
+      m.id === match.id ? { ...m, winner: winnerId, score1: legs1, score2: legs2 } : m
     )
 
     if (match.nextMatchId) {
@@ -48,11 +72,8 @@ function CupManagement() {
     cupsData[cupIndex] = { ...cupData, matches: updatedMatches, status: allComplete ? 'completed' : 'active' }
     localStorage.setItem('eliteArrowsCups', JSON.stringify(cupsData))
 
-    const p1Name = getPlayerName(match.player1)
-    const p2Name = getPlayerName(match.player2)
-    const winnerName = winnerNum === 1 ? p1Name : p2Name
-
-    alert(`${winnerName} wins!`)
+    const winnerName = winnerId === match.player1 ? p1Name : p2Name
+    alert(`${winnerName} wins ${legs1}-${legs2}!`)
     window.location.reload()
   }
 
@@ -160,26 +181,22 @@ function CupManagement() {
                       </div>
                     </div>
                     {match.winner ? (
-                      <span style={{ color: 'var(--success)', fontWeight: 'bold' }}>
-                        Winner: {winnerName}
-                      </span>
-                    ) : (
-                      <div style={{ display: 'flex', gap: '5px' }}>
-                        <button 
-                          className="btn btn-primary btn-sm"
-                          onClick={() => enterResult(cup, match, 1)}
-                          disabled={!match.player1 || !match.player2}
-                        >
-                          {p1Name} wins
-                        </button>
-                        <button 
-                          className="btn btn-primary btn-sm"
-                          onClick={() => enterResult(cup, match, 2)}
-                          disabled={!match.player1 || !match.player2}
-                        >
-                          {p2Name} wins
-                        </button>
+                      <div style={{ textAlign: 'right' }}>
+                        <span style={{ color: 'var(--success)', fontWeight: 'bold' }}>
+                          Winner: {winnerName}
+                        </span>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                          Score: {match.score1}-{match.score2}
+                        </div>
                       </div>
+                    ) : (
+                      <button 
+                        className="btn btn-primary btn-sm"
+                        onClick={() => enterResult(cup, match)}
+                        disabled={!match.player1 || !match.player2}
+                      >
+                        Enter Result
+                      </button>
                     )}
                   </div>
                 )
@@ -188,7 +205,7 @@ function CupManagement() {
 
             {cup.status !== 'completed' && completedMatches.length > 0 && (
               <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px solid var(--border)' }}>
-                <h4 style={{ marginBottom: '10px' }}>Advance to Next Rounds</h4>
+                <h4 style={{ marginBottom: '10px' }}>Next Round Matches</h4>
                 {cup.matches?.filter(m => m.round > 1 && m.player1 && m.player2 && !m.winner).map(match => {
                   const p1Name = getPlayerName(match.player1)
                   const p2Name = getPlayerName(match.player2)
@@ -212,20 +229,12 @@ function CupManagement() {
                           <strong>{p2Name}</strong>
                         </div>
                       </div>
-                      <div style={{ display: 'flex', gap: '5px' }}>
-                        <button 
-                          className="btn btn-primary btn-sm"
-                          onClick={() => enterResult(cup, match, 1)}
-                        >
-                          {p1Name} wins
-                        </button>
-                        <button 
-                          className="btn btn-primary btn-sm"
-                          onClick={() => enterResult(cup, match, 2)}
-                        >
-                          {p2Name} wins
-                        </button>
-                      </div>
+                      <button 
+                        className="btn btn-primary btn-sm"
+                        onClick={() => enterResult(cup, match)}
+                      >
+                        Enter Result
+                      </button>
                     </div>
                   )
                 })}
