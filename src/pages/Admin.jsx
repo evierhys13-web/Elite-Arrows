@@ -18,6 +18,7 @@ export default function Admin() {
     gameType: 'Friendly',
     division: ''
   })
+  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
     window.scrollTo(0, 0)
