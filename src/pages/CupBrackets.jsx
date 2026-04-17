@@ -118,7 +118,9 @@ export default function CupBracket() {
         background: '#0f0f23',
         borderRadius: '16px',
         padding: '30px',
-        overflowX: 'auto'
+        overflowX: 'auto',
+        width: '100%',
+        minWidth: 'fit-content'
       }}>
         <h3 style={{ 
           color: 'white', 
@@ -143,8 +145,8 @@ export default function CupBracket() {
             return (
               <div key={roundData.round} style={{ display: 'flex', alignItems: 'center' }}>
                 <div style={{ 
-                  minWidth: '180px',
-                  padding: '0 10px'
+                  minWidth: '160px',
+                  padding: '0 8px'
                 }}>
                   <div style={{ 
                     textAlign: 'center',
@@ -163,7 +165,7 @@ export default function CupBracket() {
                   <div style={{ 
                     display: 'flex', 
                     flexDirection: 'column',
-                    gap: roundData.round === 1 ? '15px' : `${Math.pow(2, roundData.round - 1) * 15}px`
+                    gap: roundData.round === 1 ? '10px' : `${Math.pow(2, roundData.round - 1) * 10}px`
                   }}>
                     {roundData.matches.map((match, matchIndex) => {
                       const result = getMatchResult(match)
@@ -173,13 +175,13 @@ export default function CupBracket() {
                       const p1Won = match.winner === match.player1
                       const p2Won = match.winner === match.player2
                       
-                      const containerHeight = roundData.round === 1 ? 90 : Math.pow(2, roundData.round - 1) * 90
+                      const containerHeight = roundData.round === 1 ? 75 : Math.pow(2, roundData.round - 1) * 75
                       const halfHeight = containerHeight / 2
                       const matchOffset = halfHeight / 2 + matchIndex * containerHeight
                       
                       return (
                         <div key={match.id} style={{ 
-                          height: '90px',
+                          height: '75px',
                           display: 'flex',
                           flexDirection: 'column',
                           justifyContent: 'space-between'
@@ -251,13 +253,13 @@ export default function CupBracket() {
                 
                 {roundIndex < roundsData.length - 1 && (
                   <div style={{ 
-                    width: '40px', 
+                    width: '30px', 
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center'
                   }}>
                     <div style={{ 
-                      width: '40px', 
+                      width: '30px', 
                       height: '2px', 
                       background: 'linear-gradient(90deg, #333, var(--accent-cyan))' 
                     }} />
