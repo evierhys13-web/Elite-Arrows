@@ -298,19 +298,22 @@ export default function Sidebar() {
         </div>
 
         <nav className="sidebar-nav">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-              onClick={() => setIsOpen(false)}
-              end={item.path === '/home'}
-              target="_self"
-            >
-              <item.icon />
-              <span>{item.label}</span>
-            </NavLink>
-          ))}
+          {navItems.map((item) => {
+            const isActive = window.location.pathname === item.path || (item.path === '/home' && window.location.pathname === '/')
+            return (
+              <button
+                key={item.path}
+                className={`nav-item ${isActive ? 'active' : ''}`}
+                onClick={() => {
+                  navigate(item.path)
+                  setIsOpen(false)
+                }}
+              >
+                <item.icon />
+                <span>{item.label}</span>
+              </button>
+            )
+          })}
 
           <button className="nav-item nav-item-signout" onClick={handleSignOut}>
             <LogOutIcon />
