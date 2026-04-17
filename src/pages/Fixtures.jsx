@@ -13,6 +13,9 @@ export default function Fixtures() {
     fixtureDate: '',
     fixtureTime: ''
   })
+  const [selectedCupFixture, setSelectedCupFixture] = useState(null)
+  const [scheduleDate, setScheduleDate] = useState('')
+  const [scheduleTime, setScheduleTime] = useState('')
 
   const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
   const isEmailAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
@@ -41,6 +44,123 @@ export default function Fixtures() {
   const upcomingFixtures = regularFixtures.filter(f => 
     (f.player1Id === user.id || f.player2Id === user.id) && f.status === 'accepted'
   )
+
+  const cupFixturesData = fixtures.filter(f => f.cupId && (f.player1Id === user.id || f.player2Id === user.id))
+  
+  const cupNeedsScheduling = cupFixturesData.filter(f => f.status === 'pending' && !f.proposedDate)
+  
+  const cupAwaitingResponse = cupFixturesData.filter(f => {
+    if (f.status === 'pending' && f.proposedDate && f.proposedBy !== user.id) return true
+    if (f.status === 'countered' && f.counterBy !== user.id) return true
+    return false
+  })
+  
+  const cupAwaitingOpponent = cupFixturesData.filter(f => {
+    if (f.status === 'pending' && f.proposedBy === user.id) return true
+    if (f.status === 'countered' && f.counterBy === user.id) return true
+    return false
+  })
+  
+  const cupAccepted = cupFixturesData.filter(f => f.status === 'accepted')
+  
+  const getPlayerName = (id) => allUsers.find(u => u.id === id)?.username || 'Unknown'
+  
+  const getCupName = (cupId) => {
+    const cups = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
+    return cups.find(c => c.id === cupId)?.name || 'Unknown Cup'
+  }
+  
+  const getRoundName = (round, cupId) => {
+    const cups = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
+    const cup = cups.find(c => c.id === cupId)
+    const totalRounds = cup ? Math.max(...(cup.matches?.map(m => m.round) || [1])) : 1
+    if (round === totalRounds) return 'Final'
+    if (round === totalRounds - 1) return 'Semi-Final'
+    if (round === totalRounds - 2) return 'Quarter-Final'
+    return `Round ${round}`
+  }
+  
+  const proposeCupSchedule = () => {
+    if (!scheduleDate || !scheduleTime) {
+      alert('Please select a date and time')
+      return
+    }
+    const allFixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+    const index = allFixtures.findIndex(f => f.id === selectedCupFixture.id)
+    if (index !== -1) {
+      allFixtures[index].proposedDate = scheduleDate
+      allFixtures[index].proposedTime = scheduleTime
+      allFixtures[index].proposedBy = user.id
+      localStorage.setItem('eliteArrowsFixtures', JSON.stringify(allFixtures))
+      setSelectedCupFixture(null)
+      setScheduleDate('')
+      setScheduleTime('')
+      alert('Schedule proposal sent!')
+      window.location.reload()
+    }
+  }
+  
+  const acceptCupProposal = (fixture) => {
+    const allFixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+    const index = allFixtures.findIndex(f => f.id === fixture.id)
+    if (index !== -1) {
+      allFixtures[index].status = 'accepted'
+      allFixtures[index].date = fixture.proposedDate
+      allFixtures[index].time = fixture.proposedTime
+      localStorage.setItem('eliteArrowsFixtures', JSON.stringify(allFixtures))
+      alert('Fixture accepted!')
+      window.location.reload()
+    }
+  }
+  
+  const rejectCupProposal = (fixture) => {
+    if (!confirm('Reject this fixture?')) return
+    const allFixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+    const updatedFixtures = allFixtures.filter(f => f.id !== fixture.id)
+    localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
+    alert('Fixture rejected')
+    window.location.reload()
+  }
+  
+  const submitCupResult = (fixture) => {
+    const score1 = prompt('Enter your score (legs won):')
+    if (score1 === null) return
+    const score2 = prompt('Enter opponent\'s score (legs won):')
+    if (score2 === null) return
+    
+    const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+    const newResult = {
+      id: Date.now(),
+      player1: getPlayerName(fixture.player1Id),
+      player1Id: fixture.player1Id,
+      player2: getPlayerName(fixture.player2Id),
+      player2Id: fixture.player2Id,
+      score1: parseInt(score1),
+      score2: parseInt(score2),
+      division: user.division,
+      gameType: 'Cup',
+      season: new Date().getFullYear().toString(),
+      date: new Date().toISOString().split('T')[0],
+      status: 'pending',
+      cupId: fixture.cupId,
+      matchId: fixture.matchId,
+      startScore: fixture.startScore,
+      bestOf: fixture.bestOf
+    }
+    
+    results.push(newResult)
+    localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
+    
+    const allFixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+    const index = allFixtures.findIndex(f => f.id === fixture.id)
+    if (index !== -1) {
+      allFixtures[index].status = 'result_submitted'
+      localStorage.setItem('eliteArrowsFixtures', JSON.stringify(allFixtures))
+    }
+    
+    alert('Result submitted!')
+    window.location.reload()
+  }
 
   const getFilteredOpponents = (gameType) => {
     let opponents = availablePlayers
@@ -571,14 +691,185 @@ export default function Fixtures() {
       )}
 
       {activeTab === 'cup' && (
-        <div className="card">
-          <h3 className="card-title">Cup Fixtures</h3>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '15px', fontSize: '0.9rem' }}>
-            View your cup match fixtures and submit results
-          </p>
-          <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '40px 20px' }}>
-            No cup fixtures available
-          </p>
+        <div>
+          {cupNeedsScheduling.length > 0 && (
+            <div className="card" style={{ marginBottom: '20px', borderLeft: '4px solid var(--accent-cyan)' }}>
+              <h3 style={{ color: 'var(--accent-cyan)', marginBottom: '15px' }}>Schedule Your Match ({cupNeedsScheduling.length})</h3>
+              {cupNeedsScheduling.map(fixture => (
+                <div key={fixture.id} style={{ 
+                  padding: '15px', 
+                  background: 'var(--bg-secondary)', 
+                  borderRadius: '8px',
+                  marginBottom: '10px'
+                }}>
+                  <div style={{ marginBottom: '10px' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>
+                      {getCupName(fixture.cupId)} - {getRoundName(fixture.round, fixture.cupId)}
+                    </span>
+                    <div style={{ fontSize: '1rem', marginTop: '5px' }}>
+                      <strong>{getPlayerName(fixture.player1Id)}</strong>
+                      <span style={{ color: 'var(--text-muted)', margin: '0 10px' }}>vs</span>
+                      <strong>{getPlayerName(fixture.player2Id)}</strong>
+                    </div>
+                    <p style={{ margin: '5px 0 0 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                      {fixture.startScore || 501} / Best of {fixture.bestOf || 3}
+                    </p>
+                  </div>
+                  <button 
+                    className="btn btn-primary" 
+                    onClick={() => {
+                      setSelectedCupFixture(fixture)
+                      setScheduleDate('')
+                      setScheduleTime('')
+                    }}
+                  >
+                    Propose Date & Time
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {cupAwaitingResponse.length > 0 && (
+            <div className="card" style={{ marginBottom: '20px', borderLeft: '4px solid var(--warning)' }}>
+              <h3 style={{ color: 'var(--warning)', marginBottom: '15px' }}>⏳ Awaiting Your Response ({cupAwaitingResponse.length})</h3>
+              {cupAwaitingResponse.map(fixture => (
+                <div key={fixture.id} style={{ 
+                  padding: '15px', 
+                  background: 'var(--bg-secondary)', 
+                  borderRadius: '8px',
+                  marginBottom: '10px'
+                }}>
+                  <div style={{ marginBottom: '10px' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>
+                      {getCupName(fixture.cupId)} - {getRoundName(fixture.round, fixture.cupId)}
+                    </span>
+                    <div style={{ fontSize: '1rem', marginTop: '5px' }}>
+                      <strong>{getPlayerName(fixture.player1Id)}</strong>
+                      <span style={{ color: 'var(--text-muted)', margin: '0 10px' }}>vs</span>
+                      <strong>{getPlayerName(fixture.player2Id)}</strong>
+                    </div>
+                  </div>
+                  <div style={{ padding: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', marginBottom: '10px' }}>
+                    <p style={{ margin: '0', color: 'var(--accent-cyan)', fontSize: '0.85rem' }}>
+                      Proposed: {fixture.proposedDate} {fixture.proposedTime} (by {getPlayerName(fixture.proposedBy)})
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button className="btn btn-success btn-sm" onClick={() => acceptCupProposal(fixture)}>Accept</button>
+                    <button className="btn btn-danger btn-sm" onClick={() => rejectCupProposal(fixture)}>Reject</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {cupAwaitingOpponent.length > 0 && (
+            <div className="card" style={{ marginBottom: '20px' }}>
+              <h3 style={{ marginBottom: '15px' }}>Your Proposals ({cupAwaitingOpponent.length})</h3>
+              {cupAwaitingOpponent.map(fixture => (
+                <div key={fixture.id} style={{ 
+                  padding: '15px', 
+                  background: 'var(--bg-secondary)', 
+                  borderRadius: '8px',
+                  marginBottom: '10px'
+                }}>
+                  <div style={{ marginBottom: '10px' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>
+                      {getCupName(fixture.cupId)} - {getRoundName(fixture.round, fixture.cupId)}
+                    </span>
+                    <div style={{ fontSize: '1rem', marginTop: '5px' }}>
+                      <strong>{getPlayerName(fixture.player1Id)}</strong>
+                      <span style={{ color: 'var(--text-muted)', margin: '0 10px' }}>vs</span>
+                      <strong>{getPlayerName(fixture.player2Id)}</strong>
+                    </div>
+                  </div>
+                  <p style={{ margin: '0', color: 'var(--warning)', fontSize: '0.85rem' }}>
+                    Awaiting response... {fixture.proposedDate} {fixture.proposedTime}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {cupAccepted.length > 0 && (
+            <div className="card" style={{ marginBottom: '20px', borderLeft: '4px solid var(--success)' }}>
+              <h3 style={{ color: 'var(--success)', marginBottom: '15px' }}>Confirmed Fixtures</h3>
+              {cupAccepted.map(fixture => (
+                <div key={fixture.id} style={{ 
+                  padding: '15px', 
+                  background: 'var(--bg-secondary)', 
+                  borderRadius: '8px',
+                  marginBottom: '10px'
+                }}>
+                  <div>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>
+                      {getCupName(fixture.cupId)} - {getRoundName(fixture.round, fixture.cupId)}
+                    </span>
+                    <div style={{ fontSize: '1rem', marginTop: '5px' }}>
+                      <strong>{getPlayerName(fixture.player1Id)}</strong>
+                      <span style={{ color: 'var(--text-muted)', margin: '0 10px' }}>vs</span>
+                      <strong>{getPlayerName(fixture.player2Id)}</strong>
+                    </div>
+                    <p style={{ margin: '5px 0 0 0', fontSize: '0.85rem' }}>
+                      Scheduled: {fixture.date} at {fixture.time}
+                    </p>
+                    <p style={{ margin: '3px 0 0 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                      Format: {fixture.startScore || 501} / Best of {fixture.bestOf || 3}
+                    </p>
+                  </div>
+                  <button 
+                    className="btn btn-primary" 
+                    style={{ marginTop: '10px' }}
+                    onClick={() => submitCupResult(fixture)}
+                  >
+                    Submit Result
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {selectedCupFixture && (
+            <div className="card" style={{ marginBottom: '20px', border: '2px solid var(--accent-cyan)' }}>
+              <h3 style={{ marginBottom: '15px' }}>Propose Date & Time</h3>
+              <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
+                <div style={{ flex: 1 }}>
+                  <label>Date</label>
+                  <input 
+                    type="date" 
+                    value={scheduleDate}
+                    onChange={(e) => setScheduleDate(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label>Time</label>
+                  <input 
+                    type="time" 
+                    value={scheduleTime}
+                    onChange={(e) => setScheduleTime(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button className="btn btn-primary" onClick={proposeCupSchedule}>Send Proposal</button>
+                <button className="btn btn-secondary" onClick={() => {
+                  setSelectedCupFixture(null)
+                  setScheduleDate('')
+                  setScheduleTime('')
+                }}>Cancel</button>
+              </div>
+            </div>
+          )}
+
+          {cupFixturesData.length === 0 && (
+            <div className="card">
+              <p style={{ color: 'var(--text-muted)', textAlign: 'center' }}>
+                No cup fixtures yet. Create a cup to get started!
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>
