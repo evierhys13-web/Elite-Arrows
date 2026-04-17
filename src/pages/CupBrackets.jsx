@@ -4,33 +4,26 @@ import { useAuth } from '../context/AuthContext'
 
 export default function CupBracket() {
   const { cupId } = useParams()
-  const { getAllUsers } = useAuth()
+  const { getAllUsers, getCups, getFixtures, dataRefreshTrigger } = useAuth()
   const [cup, setCup] = useState(null)
   const [fixtures, setFixtures] = useState([])
+  const [refreshKey, setRefreshKey] = useState(0)
   const allUsers = getAllUsers()
 
   useEffect(() => {
-    const cups = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
+    const cups = getCups()
     const foundCup = cups.find(c => c.id === parseInt(cupId))
     if (foundCup) {
       setCup(foundCup)
     }
     
-    const allFixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+    const allFixtures = getFixtures()
     setFixtures(allFixtures.filter(f => f.cupId === parseInt(cupId)))
-    
-    const interval = setInterval(() => {
-      const updatedCups = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
-      const updatedCup = updatedCups.find(c => c.id === parseInt(cupId))
-      if (updatedCup) {
-        setCup(updatedCup)
-      }
-      const updatedFixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
-      setFixtures(updatedFixtures.filter(f => f.cupId === parseInt(cupId)))
-    }, 3000)
-    
-    return () => clearInterval(interval)
-  }, [cupId])
+  }, [cupId, refreshKey, dataRefreshTrigger])
+
+  useEffect(() => {
+    setRefreshKey(prev => prev + 1)
+  }, [dataRefreshTrigger])
 
   if (!cup) {
     return (

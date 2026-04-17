@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { db, auth, usersCollection, adminDataCollection, doc, setDoc, getDoc, getDocs, query, collection, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, addDoc, FieldValue } from '../firebase'
 
 const AuthContext = createContext(null)
@@ -13,10 +13,20 @@ export function AuthProvider({ children }) {
   const [allUsers, setAllUsers] = useState([])
   const [notifications, setNotifications] = useState([])
   const [results, setResults] = useState([])
+  const [fixtures, setFixtures] = useState([])
+  const [cups, setCups] = useState([])
+  const [supportRequests, setSupportRequests] = useState([])
+  const [seasons, setSeasons] = useState([])
+  const [dataRefreshTrigger, setDataRefreshTrigger] = useState(0)
   const [adminData, setAdminData] = useState({ subscriptionPot: 0, subscriptionPot10: 0, moneyHistory: [] })
   
   const SENSITIVE_FIELDS = ['password', 'passwordString', 'passwordHash', 'passwordKey', 'passwordStringValue', 'password', 'firebaseId', 'pwd', 'pass', 'passwd']
-  
+
+  const triggerDataRefresh = useCallback((dataType = 'all') => {
+    setDataRefreshTrigger(prev => prev + 1)
+    console.log(`Data refresh triggered: ${dataType}`)
+  }, [])
+
   useEffect(() => {
     const unsubscribeUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
       const users = snapshot.docs.map(doc => {
@@ -33,7 +43,42 @@ export function AuthProvider({ children }) {
       if (resultsData.length > 0) {
         setResults(resultsData)
         localStorage.setItem('eliteArrowsResults', JSON.stringify(resultsData))
+        triggerDataRefresh('results')
       }
+    })
+    
+    const unsubscribeFixtures = onSnapshot(collection(db, 'fixtures'), (snapshot) => {
+      const fixturesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      setFixtures(fixturesData)
+      localStorage.setItem('eliteArrowsFixtures', JSON.stringify(fixturesData))
+      triggerDataRefresh('fixtures')
+    })
+    
+    const unsubscribeCups = onSnapshot(collection(db, 'cups'), (snapshot) => {
+      const cupsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      setCups(cupsData)
+      localStorage.setItem('eliteArrowsCups', JSON.stringify(cupsData))
+      triggerDataRefresh('cups')
+    })
+    
+    const unsubscribeSupport = onSnapshot(collection(db, 'supportRequests'), (snapshot) => {
+      const supportData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      setSupportRequests(supportData)
+      localStorage.setItem('eliteArrowsSupportRequests', JSON.stringify(supportData))
+      triggerDataRefresh('supportRequests')
+    })
+    
+    const unsubscribeSeasons = onSnapshot(collection(db, 'seasons'), (snapshot) => {
+      const seasonsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      setSeasons(seasonsData)
+      localStorage.setItem('eliteArrowsSeasons', JSON.stringify(seasonsData))
+      if (seasonsData.length > 0) {
+        const activeSeason = seasonsData.find(s => s.isActive)
+        if (activeSeason) {
+          localStorage.setItem('eliteArrowsCurrentSeason', activeSeason.name)
+        }
+      }
+      triggerDataRefresh('seasons')
     })
     
     const unsubscribeAdmin = onSnapshot(doc(db, 'adminData', 'main'), (docSnap) => {
@@ -53,9 +98,13 @@ export function AuthProvider({ children }) {
     return () => {
       unsubscribeUsers()
       unsubscribeResults()
+      unsubscribeFixtures()
+      unsubscribeCups()
+      unsubscribeSupport()
+      unsubscribeSeasons()
       unsubscribeAdmin()
     }
-  }, [])
+  }, [triggerDataRefresh])
   
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -112,7 +161,6 @@ const cleanUserData = (users) => {
   }
   
   const removeSensitiveFieldsFromFirestore = async (users) => {
-    // Also handle specific user deletions by email
     const userToDelete = users.find(u => u.email?.toLowerCase() === 'brentedwards87@gmail.com')
     if (userToDelete && userToDelete.id) {
       try {
@@ -141,7 +189,6 @@ const cleanUserData = (users) => {
       const snapshot = await getDocs(collection(db, 'users'))
       const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
       
-      // Run cleanup multiple times to ensure fields are deleted
       await removeSensitiveFieldsFromFirestore(users)
       await removeSensitiveFieldsFromFirestore(users)
       await removeSensitiveFieldsFromFirestore(users)
@@ -157,57 +204,10 @@ const cleanUserData = (users) => {
     }
   }
 
-useEffect(() => {
+  useEffect(() => {
     runCleanup()
     const timer = setTimeout(runCleanup, 2000)
     return () => clearTimeout(timer)
-  }, [])
-
-  useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        try {
-          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
-          if (userDoc.exists()) {
-            let userData = userDoc.data()
-            SENSITIVE_FIELDS.forEach(field => delete userData[field])
-            const fullUser = { id: userDoc.id, ...userData }
-            setUser(fullUser)
-            localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(fullUser))
-          } else {
-            const newUserData = {
-              username: firebaseUser.email?.split('@')[0] || 'User',
-              email: firebaseUser.email,
-              threeDartAverage: 0,
-              division: 'Unassigned',
-              isAdmin: false,
-              isTournamentAdmin: false,
-              isSubscribed: false,
-              freeAdminSubscription: false,
-              adminRequestPending: false,
-              friends: [],
-              isOnline: true,
-              showOnlineStatus: true,
-              doNotDisturb: false,
-              dndEndTime: null,
-              eliteTokens: 0,
-              lastSeen: new Date().toISOString(),
-              createdAt: new Date().toISOString()
-            }
-            await setDoc(doc(db, 'users', firebaseUser.uid), newUserData)
-            const fullUser = { id: firebaseUser.uid, ...newUserData }
-            setUser(fullUser)
-            localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(fullUser))
-          }
-        } catch (e) {
-          setUser(null)
-        }
-      } else {
-        setUser(null)
-      }
-      setLoading(false)
-    })
-    return () => unsubscribeAuth()
   }, [])
 
   const signUp = async (userData, rememberMe = false) => {
@@ -295,12 +295,10 @@ useEffect(() => {
       const userRef = doc(db, 'users', user.id)
       await setDoc(userRef, cleanUpdates, { merge: true })
       
-      // Update local state immediately with the data we just saved
       const updatedUser = { ...user, ...cleanUpdates }
       setUser(updatedUser)
       localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(updatedUser))
       
-      // Update allUsers
       setAllUsers(prev => {
         const updated = prev.map(u => u.id === user.id ? { ...u, ...cleanUpdates } : u)
         localStorage.setItem('eliteArrowsUsers', JSON.stringify(updated))
@@ -452,6 +450,30 @@ useEffect(() => {
     return local
   }
 
+  const getFixtures = () => {
+    if (fixtures.length > 0) return fixtures
+    const local = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+    return local
+  }
+
+  const getCups = () => {
+    if (cups.length > 0) return cups
+    const local = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
+    return local
+  }
+
+  const getSupportRequests = () => {
+    if (supportRequests.length > 0) return supportRequests
+    const local = JSON.parse(localStorage.getItem('eliteArrowsSupportRequests') || '[]')
+    return local
+  }
+
+  const getSeasons = () => {
+    if (seasons.length > 0) return seasons
+    const local = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
+    return local
+  }
+
   const addTokens = async (amount) => {
     if (!user) return
     const newTokens = (user.eliteTokens || 0) + amount
@@ -494,6 +516,8 @@ useEffect(() => {
       user, 
       loading, 
       notifications,
+      dataRefreshTrigger,
+      triggerDataRefresh,
       signUp, 
       signIn, 
       signOut: handleSignOut, 
@@ -508,9 +532,13 @@ useEffect(() => {
       requestAdminRole,
       getAllUsers,
       getFriends,
+      getResults,
+      getFixtures,
+      getCups,
+      getSupportRequests,
+      getSeasons,
       addTokens,
       useTokens,
-      getResults,
       adminData,
       updateAdminData,
       addToMoneyHistory,

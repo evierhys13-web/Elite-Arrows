@@ -29,6 +29,7 @@ import Install from './pages/Install'
 import SeedData from './pages/SeedData'
 import Sidebar from './components/Sidebar'
 import InstallPrompt from './components/InstallPrompt'
+import DataRefreshToast from './components/DataRefreshToast'
 import BackgroundDecor from './components/BackgroundDecor'
 
 function ProtectedRoute({ children }) {
@@ -162,6 +163,8 @@ function AdminRoute({ children }) {
 }
 
 function AppLayout({ children }) {
+  const { dataRefreshTrigger } = useAuth()
+  
   return (
     <div className="app-layout">
       <Sidebar />
@@ -169,6 +172,7 @@ function AppLayout({ children }) {
         {children}
       </main>
       <InstallPrompt />
+      <DataRefreshToast refreshTrigger={dataRefreshTrigger} />
     </div>
   )
 }

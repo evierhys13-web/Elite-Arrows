@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { db, collection, addDoc } from '../firebase'
 
 export default function SubmitResult() {
-  const { user, getAllUsers, addTokens } = useAuth()
+  const { user, getAllUsers, addTokens, triggerDataRefresh } = useAuth()
   const fileInputRef = useRef(null)
   const [formData, setFormData] = useState({
     gameType: 'Friendly',
@@ -174,6 +174,7 @@ export default function SubmitResult() {
       addTokens(tokensToAdd)
     }
 
+    triggerDataRefresh('results')
     setSubmitted(true)
     setTimeout(() => {
       setSubmitted(false)

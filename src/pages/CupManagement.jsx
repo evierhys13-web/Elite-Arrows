@@ -1,10 +1,22 @@
+import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { db, doc, setDoc, deleteDoc } from '../firebase'
 
 function CupManagement() {
-  const { getAllUsers } = useAuth()
+  const { getAllUsers, getCups, getFixtures, triggerDataRefresh, dataRefreshTrigger } = useAuth()
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [cups, setCups] = useState([])
+  const [allCupFixtures, setAllCupFixtures] = useState([])
   const allUsers = getAllUsers()
-  const cups = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
-  const allCupFixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+
+  useEffect(() => {
+    setCups(getCups())
+    setAllCupFixtures(getFixtures())
+  }, [refreshKey, dataRefreshTrigger])
+
+  useEffect(() => {
+    setRefreshKey(prev => prev + 1)
+  }, [dataRefreshTrigger])
 
   const getPlayerName = (id) => {
     if (!id) return 'TBD'
@@ -18,7 +30,7 @@ function CupManagement() {
     return `Round ${round}`
   }
 
-  const enterResult = (cup, match) => {
+  const enterResult = async (cup, match) => {
     const p1Name = getPlayerName(match.player1)
     const p2Name = getPlayerName(match.player2)
     
@@ -49,11 +61,11 @@ function CupManagement() {
     
     const winnerId = legs1 > legs2 ? match.player1 : match.player2
 
-    const cupsData = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
+    const cupsData = getCups()
     const cupIndex = cupsData.findIndex(c => c.id === cup.id)
     if (cupIndex === -1) return
 
-    const cupData = cupsData[cupIndex]
+    const cupData = { ...cupsData[cupIndex] }
 
     const updatedMatches = cupData.matches.map(m => 
       m.id === match.id ? { ...m, winner: winnerId, score1: legs1, score2: legs2 } : m
@@ -75,48 +87,83 @@ function CupManagement() {
       return m.winner !== null
     })
 
-    cupsData[cupIndex] = { ...cupData, matches: updatedMatches, status: allComplete ? 'completed' : 'active' }
+    const updatedCup = { ...cupData, matches: updatedMatches, status: allComplete ? 'completed' : 'active' }
+    cupsData[cupIndex] = updatedCup
     localStorage.setItem('eliteArrowsCups', JSON.stringify(cupsData))
+    
+    try {
+      await setDoc(doc(db, 'cups', cup.id.toString()), updatedCup, { merge: true })
+    } catch (e) {
+      console.log('Error saving cup to Firebase:', e)
+    }
 
     const winnerName = winnerId === match.player1 ? p1Name : p2Name
     alert(`${winnerName} wins ${legs1}-${legs2}!`)
-    window.location.reload()
+    triggerDataRefresh('cups')
+    setRefreshKey(prev => prev + 1)
   }
 
-  const deleteCup = (cup) => {
+  const deleteCup = async (cup) => {
     if (!confirm(`Are you sure you want to delete "${cup.name}"?`)) return
     
-    const cupsData = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
+    const cupsData = getCups()
     const updatedCups = cupsData.filter(c => c.id !== cup.id)
     localStorage.setItem('eliteArrowsCups', JSON.stringify(updatedCups))
     
-    const fixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+    const fixtures = getFixtures()
     const updatedFixtures = fixtures.filter(f => f.cupId !== cup.id)
     localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
     
+    try {
+      await deleteDoc(doc(db, 'cups', cup.id.toString()))
+      for (const fixture of fixtures.filter(f => f.cupId === cup.id)) {
+        await deleteDoc(doc(db, 'fixtures', fixture.id.toString()))
+      }
+    } catch (e) {
+      console.log('Error deleting from Firebase:', e)
+    }
+    
     alert('Cup deleted!')
-    window.location.reload()
+    triggerDataRefresh('cups')
+    triggerDataRefresh('fixtures')
+    setRefreshKey(prev => prev + 1)
   }
 
-  const deleteFixture = (fixture) => {
+  const deleteFixture = async (fixture) => {
     if (!confirm('Are you sure you want to delete this fixture?')) return
     
-    const fixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+    const fixtures = getFixtures()
     const updatedFixtures = fixtures.filter(f => f.id !== fixture.id)
     localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
     
+    try {
+      await deleteDoc(doc(db, 'fixtures', fixture.id.toString()))
+    } catch (e) {
+      console.log('Error deleting from Firebase:', e)
+    }
+    
     alert('Fixture deleted!')
-    window.location.reload()
+    triggerDataRefresh('fixtures')
+    setRefreshKey(prev => prev + 1)
   }
 
-  const completeCup = (cup) => {
-    const cupsData = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
+  const completeCup = async (cup) => {
+    const cupsData = getCups()
     const cupIndex = cupsData.findIndex(c => c.id === cup.id)
     if (cupIndex !== -1) {
-      cupsData[cupIndex].status = 'completed'
+      const updatedCup = { ...cupsData[cupIndex], status: 'completed' }
+      cupsData[cupIndex] = updatedCup
       localStorage.setItem('eliteArrowsCups', JSON.stringify(cupsData))
+      
+      try {
+        await setDoc(doc(db, 'cups', cup.id.toString()), updatedCup, { merge: true })
+      } catch (e) {
+        console.log('Error saving to Firebase:', e)
+      }
+      
       alert('Cup marked as completed!')
-      window.location.reload()
+      triggerDataRefresh('cups')
+      setRefreshKey(prev => prev + 1)
     }
   }
 

@@ -1,13 +1,18 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 
 export default function Leaderboards() {
-  const { user, getAllUsers } = useAuth()
+  const { user, getAllUsers, getResults, dataRefreshTrigger } = useAuth()
   const [selectedDivision, setSelectedDivision] = useState('all')
   const [timeFilter, setTimeFilter] = useState('week')
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  useEffect(() => {
+    setRefreshKey(prev => prev + 1)
+  }, [dataRefreshTrigger])
 
   const allUsers = getAllUsers()
-  const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+  const results = getResults()
   const approvedResults = results.filter(r => r.status === 'approved')
 
   const now = new Date()

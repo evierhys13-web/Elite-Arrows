@@ -5,7 +5,7 @@ import { db, doc, setDoc, getDoc, deleteDoc, updateDoc } from '../firebase'
 import CupManagement from './CupManagement'
 
 export default function Admin() {
-  const { user, getAllUsers, updateUser, getResults, adminData, updateAdminData, addToMoneyHistory } = useAuth()
+  const { user, getAllUsers, updateUser, getResults, adminData, updateAdminData, addToMoneyHistory, getSupportRequests, getSeasons, triggerDataRefresh, dataRefreshTrigger } = useAuth()
   const navigate = useNavigate()
   const subscriptionPot = adminData.subscriptionPot || 0
   const subscriptionPot10 = adminData.subscriptionPot10 || 0
@@ -20,6 +20,10 @@ export default function Admin() {
     division: ''
   })
   const [refreshKey, setRefreshKey] = useState(0)
+
+  useEffect(() => {
+    setRefreshKey(prev => prev + 1)
+  }, [dataRefreshTrigger])
   const [pendingResults, setPendingResults] = useState([])
   const [activeTab, setActiveTab] = useState('results')
   const [showColorsForm, setShowColorsForm] = useState(false)
@@ -682,7 +686,7 @@ export default function Admin() {
           <div className="card">
             <h3 className="card-title">Support Requests</h3>
             {(() => {
-              const supportRequests = JSON.parse(localStorage.getItem('eliteArrowsSupportRequests') || '[]')
+              const supportRequests = getSupportRequests()
               const pendingRequests = supportRequests.filter(r => r.status === 'pending')
               
               if (pendingRequests.length === 0) {
@@ -704,13 +708,19 @@ export default function Admin() {
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{request.email}</p>
                   <button 
                     className="btn btn-primary btn-block" 
-                    style={{ marginTop: '8px' }}
-                    onClick={() => {
-                      const all = JSON.parse(localStorage.getItem('eliteArrowsSupportRequests') || '[]')
+                    style={{ marginTop: '8px'}}
+                    onClick={async () => {
+                      const all = getSupportRequests()
                       const idx = all.findIndex(r => r.id === request.id)
                       if (idx !== -1) {
                         all[idx].status = 'resolved'
                         localStorage.setItem('eliteArrowsSupportRequests', JSON.stringify(all))
+                        try {
+                          await setDoc(doc(db, 'supportRequests', request.id.toString()), all[idx], { merge: true })
+                        } catch (e) {
+                          console.log('Error saving to Firebase:', e)
+                        }
+                        triggerDataRefresh('supportRequests')
                         alert('Request marked as resolved')
                       }
                     }}
@@ -1308,7 +1318,7 @@ export default function Admin() {
               {localStorage.getItem('eliteArrowsCurrentSeason') || new Date().getFullYear().toString()}
             </div>
             {(() => {
-              const seasons = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
+              const seasons = getSeasons()
               const activeSeasonName = localStorage.getItem('eliteArrowsCurrentSeason')
               const currentSeason = seasons.find(s => s.name === activeSeasonName)
               if (currentSeason?.startDate && currentSeason?.endDate) {
@@ -1325,17 +1335,23 @@ export default function Admin() {
           <div className="card" style={{ marginBottom: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
               <h3 className="card-title" style={{ margin: 0 }}>Seasons</h3>
-              <button className="btn btn-primary" onClick={() => {
+              <button className="btn btn-primary" onClick={async () => {
                 const name = prompt('Enter season name:')
                 if (name) {
                   const startDate = prompt('Enter start date (YYYY-MM-DD):', '2025-05-01')
                   const endDate = prompt('Enter end date (YYYY-MM-DD):', '2025-06-01')
                   if (startDate && endDate) {
-                    const seasons = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
+                    const seasons = getSeasons()
                     const newSeason = { id: Date.now(), name, createdAt: new Date().toISOString(), status: 'active', isArchived: false, startDate, endDate }
                     seasons.push(newSeason)
                     localStorage.setItem('eliteArrowsSeasons', JSON.stringify(seasons))
                     localStorage.setItem('eliteArrowsCurrentSeason', name)
+                    try {
+                      await setDoc(doc(db, 'seasons', newSeason.id.toString()), newSeason)
+                    } catch (e) {
+                      console.log('Error saving season to Firebase:', e)
+                    }
+                    triggerDataRefresh('seasons')
                     alert(`Season "${name}" created! (${startDate} - ${endDate})`)
                   }
                 }
@@ -1343,7 +1359,7 @@ export default function Admin() {
             </div>
 
             {(() => {
-              const seasons = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
+              const seasons = getSeasons()
               const activeSeason = localStorage.getItem('eliteArrowsCurrentSeason') || new Date().getFullYear().toString()
               const activeSeasons = seasons.filter(s => !s.isArchived)
               const archivedSeasons = seasons.filter(s => s.isArchived)
@@ -1366,13 +1382,21 @@ export default function Admin() {
                             {s.name !== activeSeason && (
                               <button className="btn btn-secondary btn-sm" onClick={() => {
                                 localStorage.setItem('eliteArrowsCurrentSeason', s.name)
+                                triggerDataRefresh('seasons')
                                 alert(`Active season changed to "${s.name}"`)
                               }}>Set Active</button>
                             )}
-                            <button className="btn btn-danger btn-sm" onClick={() => {
+                            <button className="btn btn-danger btn-sm" onClick={async () => {
                               if (confirm('Archive this season?')) {
-                                const updated = seasons.map(season => season.id === s.id ? { ...season, isArchived: true, status: 'archived' } : season)
+                                const allSeasons = getSeasons()
+                                const updated = allSeasons.map(season => season.id === s.id ? { ...season, isArchived: true, status: 'archived' } : season)
                                 localStorage.setItem('eliteArrowsSeasons', JSON.stringify(updated))
+                                try {
+                                  await setDoc(doc(db, 'seasons', s.id.toString()), { isArchived: true, status: 'archived' }, { merge: true })
+                                } catch (e) {
+                                  console.log('Error saving to Firebase:', e)
+                                }
+                                triggerDataRefresh('seasons')
                                 alert('Season archived')
                               }
                             }}>Archive</button>
@@ -1389,10 +1413,17 @@ export default function Admin() {
                           <div className="player-info">
                             <h3>{s.name}</h3>
                           </div>
-                          <button className="btn btn-secondary btn-sm" onClick={() => {
-                            const updated = seasons.map(season => season.id === s.id ? { ...season, isArchived: false, status: 'active' } : { ...season, status: 'archived' })
+                          <button className="btn btn-secondary btn-sm" onClick={async () => {
+                            const allSeasons = getSeasons()
+                            const updated = allSeasons.map(season => season.id === s.id ? { ...season, isArchived: false, status: 'active' } : { ...season, status: 'archived' })
                             localStorage.setItem('eliteArrowsSeasons', JSON.stringify(updated))
                             localStorage.setItem('eliteArrowsCurrentSeason', s.name)
+                            try {
+                              await setDoc(doc(db, 'seasons', s.id.toString()), { isArchived: false, status: 'active' }, { merge: true })
+                            } catch (e) {
+                              console.log('Error saving to Firebase:', e)
+                            }
+                            triggerDataRefresh('seasons')
                             alert('Season restored')
                           }}>Restore</button>
                         </div>
@@ -1415,6 +1446,7 @@ export default function Admin() {
                 const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
                 const filtered = results.filter(r => r.season !== currentSeason)
                 localStorage.setItem('eliteArrowsResults', JSON.stringify(filtered))
+                triggerDataRefresh('results')
                 alert('Table reset!')
               }
             }}>Reset Current Season Table</button>

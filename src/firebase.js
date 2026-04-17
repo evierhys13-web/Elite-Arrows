@@ -25,6 +25,10 @@ export const betsCollection = collection(db, 'bets')
 export const notificationsCollection = collection(db, 'notifications')
 export const chatMessagesCollection = collection(db, 'chatMessages')
 export const adminDataCollection = collection(db, 'adminData')
+export const fixturesCollection = collection(db, 'fixtures')
+export const cupsCollection = collection(db, 'cups')
+export const supportRequestsCollection = collection(db, 'supportRequests')
+export const seasonsCollection = collection(db, 'seasons')
 
 export { 
   doc, setDoc, getDoc, getDocs, query, where, orderBy, onSnapshot, deleteDoc, collection, addDoc, updateDoc,

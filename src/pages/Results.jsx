@@ -1,10 +1,15 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { db, updateDoc, doc } from '../firebase'
 
 export default function Results() {
-  const { user, getResults } = useAuth()
+  const { user, getResults, triggerDataRefresh, dataRefreshTrigger } = useAuth()
   const [activeTab, setActiveTab] = useState('approved')
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  useEffect(() => {
+    setRefreshKey(prev => prev + 1)
+  }, [dataRefreshTrigger])
   
   const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
   const isEmailAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
@@ -29,6 +34,8 @@ export default function Results() {
       localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
       
       await updateDoc(doc(db, 'results', resultId), { status: 'approved' })
+      triggerDataRefresh('results')
+      setRefreshKey(prev => prev + 1)
       alert('Result approved!')
     } catch (e) {
       console.error(e)
@@ -49,6 +56,8 @@ export default function Results() {
       localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
       
       await updateDoc(doc(db, 'results', resultId), { status: 'rejected' })
+      triggerDataRefresh('results')
+      setRefreshKey(prev => prev + 1)
       alert('Result rejected.')
     } catch (e) {
       console.error(e)

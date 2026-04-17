@@ -1,23 +1,21 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { db, doc, setDoc, deleteDoc, collection, addDoc } from '../firebase'
 
 export default function CupFixtures() {
-  const { user, getAllUsers } = useAuth()
+  const { user, getAllUsers, getFixtures, getCups, triggerDataRefresh, dataRefreshTrigger } = useAuth()
   const [fixtures, setFixtures] = useState([])
   const [selectedFixture, setSelectedFixture] = useState(null)
   const [scheduleDate, setScheduleDate] = useState('')
   const [scheduleTime, setScheduleTime] = useState('')
+  const [refreshKey, setRefreshKey] = useState(0)
   const allUsers = getAllUsers()
 
   useEffect(() => {
-    loadFixtures()
-  }, [])
-
-  const loadFixtures = () => {
-    const allFixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+    const allFixtures = getFixtures()
     const cupFixtures = allFixtures.filter(f => f.cupId)
     setFixtures(cupFixtures)
-  }
+  }, [refreshKey, dataRefreshTrigger])
 
   const getPlayerName = (id) => allUsers.find(u => u.id === id)?.username || 'Unknown'
 
@@ -29,12 +27,12 @@ export default function CupFixtures() {
   }
 
   const getCupName = (cupId) => {
-    const cups = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
+    const cups = getCups()
     return cups.find(c => c.id === cupId)?.name || 'Unknown Cup'
   }
 
   const getTotalRounds = (cupId) => {
-    const cups = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
+    const cups = getCups()
     const cup = cups.find(c => c.id === cupId)
     return cup ? Math.max(...(cup.matches?.map(m => m.round) || [1])) : 1
   }
@@ -61,19 +59,27 @@ export default function CupFixtures() {
   
   const acceptedFixtures = userFixtures.filter(f => f.status === 'accepted')
 
-  const proposeSchedule = () => {
+  const proposeSchedule = async () => {
     if (!scheduleDate || !scheduleTime) {
       alert('Please select a date and time')
       return
     }
-    const allFixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+    const allFixtures = getFixtures()
     const index = allFixtures.findIndex(f => f.id === selectedFixture.id)
     if (index !== -1) {
       allFixtures[index].proposedDate = scheduleDate
       allFixtures[index].proposedTime = scheduleTime
       allFixtures[index].proposedBy = user.id
       localStorage.setItem('eliteArrowsFixtures', JSON.stringify(allFixtures))
-      loadFixtures()
+      
+      try {
+        await setDoc(doc(db, 'fixtures', allFixtures[index].id.toString()), allFixtures[index], { merge: true })
+      } catch (e) {
+        console.log('Error saving to Firebase:', e)
+      }
+      
+      triggerDataRefresh('fixtures')
+      setRefreshKey(prev => prev + 1)
       setSelectedFixture(null)
       setScheduleDate('')
       setScheduleTime('')
@@ -81,15 +87,23 @@ export default function CupFixtures() {
     }
   }
 
-  const acceptProposal = (fixture) => {
-    const allFixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+  const acceptProposal = async (fixture) => {
+    const allFixtures = getFixtures()
     const index = allFixtures.findIndex(f => f.id === fixture.id)
     if (index !== -1) {
       allFixtures[index].status = 'accepted'
       allFixtures[index].date = fixture.proposedDate
       allFixtures[index].time = fixture.proposedTime
       localStorage.setItem('eliteArrowsFixtures', JSON.stringify(allFixtures))
-      loadFixtures()
+      
+      try {
+        await setDoc(doc(db, 'fixtures', allFixtures[index].id.toString()), allFixtures[index], { merge: true })
+      } catch (e) {
+        console.log('Error saving to Firebase:', e)
+      }
+      
+      triggerDataRefresh('fixtures')
+      setRefreshKey(prev => prev + 1)
       alert('Fixture accepted!')
     }
   }
@@ -100,12 +114,12 @@ export default function CupFixtures() {
     setScheduleTime('')
   }
 
-  const sendCounter = () => {
+  const sendCounter = async () => {
     if (!scheduleDate || !scheduleTime) {
       alert('Please select a date and time for your counter proposal')
       return
     }
-    const allFixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+    const allFixtures = getFixtures()
     const index = allFixtures.findIndex(f => f.id === selectedFixture.id)
     if (index !== -1) {
       allFixtures[index].status = 'countered'
@@ -113,7 +127,15 @@ export default function CupFixtures() {
       allFixtures[index].counterTime = scheduleTime
       allFixtures[index].counterBy = user.id
       localStorage.setItem('eliteArrowsFixtures', JSON.stringify(allFixtures))
-      loadFixtures()
+      
+      try {
+        await setDoc(doc(db, 'fixtures', allFixtures[index].id.toString()), allFixtures[index], { merge: true })
+      } catch (e) {
+        console.log('Error saving to Firebase:', e)
+      }
+      
+      triggerDataRefresh('fixtures')
+      setRefreshKey(prev => prev + 1)
       setSelectedFixture(null)
       setScheduleDate('')
       setScheduleTime('')
@@ -121,25 +143,41 @@ export default function CupFixtures() {
     }
   }
 
-  const rejectProposal = (fixture) => {
+  const rejectProposal = async (fixture) => {
     if (!confirm('Are you sure you want to reject this fixture?')) return
-    const allFixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+    const allFixtures = getFixtures()
     const updatedFixtures = allFixtures.filter(f => f.id !== fixture.id)
     localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
-    loadFixtures()
+    
+    try {
+      await deleteDoc(doc(db, 'fixtures', fixture.id.toString()))
+    } catch (e) {
+      console.log('Error deleting from Firebase:', e)
+    }
+    
+    triggerDataRefresh('fixtures')
+    setRefreshKey(prev => prev + 1)
     alert('Fixture rejected.')
   }
 
-  const cancelProposal = (fixture) => {
+  const cancelProposal = async (fixture) => {
     if (!confirm('Cancel this fixture?')) return
-    const allFixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+    const allFixtures = getFixtures()
     const updatedFixtures = allFixtures.filter(f => f.id !== fixture.id)
     localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
-    loadFixtures()
+    
+    try {
+      await deleteDoc(doc(db, 'fixtures', fixture.id.toString()))
+    } catch (e) {
+      console.log('Error deleting from Firebase:', e)
+    }
+    
+    triggerDataRefresh('fixtures')
+    setRefreshKey(prev => prev + 1)
     alert('Fixture cancelled.')
   }
 
-  const submitResult = (fixture) => {
+  const submitResult = async (fixture) => {
     const score1 = prompt('Enter your score (legs won):')
     if (score1 === null) return
     const score2 = prompt('Enter opponent\'s score (legs won):')
@@ -168,14 +206,28 @@ export default function CupFixtures() {
     results.push(newResult)
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     
-    const allFixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+    try {
+      await addDoc(collection(db, 'results'), newResult)
+    } catch (e) {
+      console.log('Error saving to Firebase:', e)
+    }
+    
+    const allFixtures = getFixtures()
     const index = allFixtures.findIndex(f => f.id === fixture.id)
     if (index !== -1) {
       allFixtures[index].status = 'result_submitted'
       localStorage.setItem('eliteArrowsFixtures', JSON.stringify(allFixtures))
+      
+      try {
+        await setDoc(doc(db, 'fixtures', allFixtures[index].id.toString()), allFixtures[index], { merge: true })
+      } catch (e) {
+        console.log('Error saving to Firebase:', e)
+      }
     }
     
-    loadFixtures()
+    triggerDataRefresh('fixtures')
+    triggerDataRefresh('results')
+    setRefreshKey(prev => prev + 1)
     alert('Result submitted for approval!')
   }
 

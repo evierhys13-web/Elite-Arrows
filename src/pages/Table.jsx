@@ -1,14 +1,19 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 
 export default function Table() {
   const [activeDivision, setActiveDivision] = useState('Overall')
-  const { user, getAllUsers } = useAuth()
+  const { user, getAllUsers, getResults, dataRefreshTrigger } = useAuth()
+  const [refreshKey, setRefreshKey] = useState(0)
 
   const divisions = ['Overall', 'Elite', 'Diamond', 'Gold', 'Silver', 'Bronze', 'Unassigned']
 
+  useEffect(() => {
+    setRefreshKey(prev => prev + 1)
+  }, [dataRefreshTrigger])
+
   const allUsers = getAllUsers()
-  const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+  const results = getResults()
   const approvedResults = results.filter(r => r.status === 'approved')
 
   const playerStats = useMemo(() => {
@@ -61,7 +66,7 @@ export default function Table() {
     })
 
     return stats
-  }, [allUsers, approvedResults])
+  }, [allUsers, approvedResults, refreshKey])
 
   const playersInDivision = activeDivision === 'Overall' 
     ? allUsers
@@ -91,7 +96,7 @@ export default function Table() {
         })
 
   return (
-    <div className="page">
+    <div className="page" key={refreshKey}>
       <div className="page-header">
         <h1 className="page-title">League Table</h1>
       </div>

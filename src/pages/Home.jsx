@@ -3,21 +3,17 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export default function Home() {
-  const { user, getAllUsers } = useAuth()
+  const { user, getAllUsers, getResults, dataRefreshTrigger } = useAuth()
   const SEASON_START = new Date('2026-05-01')
   const SEASON_END = new Date('2026-06-01')
   
-  const [seasonInfo, setSeasonInfo] = useState(() => {
-    const seasons = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
-    const currentSeasonName = localStorage.getItem('eliteArrowsCurrentSeason')
-    let currentSeason = seasons.find(s => s.name === currentSeasonName)
-    if (currentSeason && currentSeason.startDate && currentSeason.endDate) {
-      return currentSeason
-    }
-    return { name: 'Season 1', startDate: '2026-05-01', endDate: '2026-06-01' }
-  })
+  const [refreshKey, setRefreshKey] = useState(0)
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
   const [isSeasonActive, setIsSeasonActive] = useState(false)
+
+  useEffect(() => {
+    setRefreshKey(prev => prev + 1)
+  }, [dataRefreshTrigger])
 
   useEffect(() => {
     const calculateTimeLeft = () => {
@@ -48,8 +44,8 @@ export default function Home() {
   }, [])
 
   const allUsers = getAllUsers()
-  const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
-  const approvedResults = results.filter(r => r.status === 'approved')
+  const allResults = getResults()
+  const approvedResults = allResults.filter(r => r.status === 'approved')
   const userResults = approvedResults.filter(r => r.player1Id === user.id || r.player2Id === user.id)
   const tournaments = JSON.parse(localStorage.getItem('eliteArrowsTournaments') || '[]')
   

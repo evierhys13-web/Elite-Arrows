@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { Link } from 'react-router-dom'
+import { db, doc, setDoc, collection, addDoc } from '../firebase'
 
 export default function CupTournaments() {
-  const { user, getAllUsers } = useAuth()
+  const { user, getAllUsers, getCups, getFixtures, triggerDataRefresh } = useAuth()
   const [showCreate, setShowCreate] = useState(false)
   const [formData, setFormData] = useState({ name: '', entryFee: 5, maxPlayers: 8 })
   const [selectedPlayers, setSelectedPlayers] = useState([])
   const [matches, setMatches] = useState([])
   const [roundFormats, setRoundFormats] = useState({})
+  const [refreshKey, setRefreshKey] = useState(0)
   
   const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
   const isEmailAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
@@ -18,7 +20,7 @@ export default function CupTournaments() {
   const isSubscribed = user?.isSubscribed === true
 
   const allUsers = getAllUsers()
-  const cups = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
+  const cups = getCups()
 
   const handlePlayerSelect = (playerId) => {
     if (selectedPlayers.includes(playerId)) {
@@ -87,7 +89,7 @@ export default function CupTournaments() {
     }))
   }
 
-  const saveCup = () => {
+  const saveCup = async () => {
     if (!formData.name) return alert('Enter cup name')
     if (matches.length === 0) return alert('Generate a bracket first')
     
@@ -103,7 +105,7 @@ export default function CupTournaments() {
     }
     
     const round1Matches = matches.filter(m => m.round === 1)
-    const existingFixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+    const existingFixtures = getFixtures()
     
     const newFixtures = round1Matches.map(m => ({
       id: Date.now() + m.id,
@@ -129,18 +131,25 @@ export default function CupTournaments() {
       createdAt: new Date().toISOString()
     }))
     
-    console.log('Creating fixtures:', newFixtures)
-    
     localStorage.setItem('eliteArrowsFixtures', JSON.stringify([...existingFixtures, ...newFixtures]))
     localStorage.setItem('eliteArrowsCups', JSON.stringify([...cups, newCup]))
     
-    const savedFixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
-    console.log('Saved fixtures in storage:', savedFixtures)
+    try {
+      await setDoc(doc(db, 'cups', newCup.id.toString()), newCup)
+      for (const fixture of newFixtures) {
+        await setDoc(doc(db, 'fixtures', fixture.id.toString()), fixture)
+      }
+      triggerDataRefresh('cups')
+      triggerDataRefresh('fixtures')
+    } catch (e) {
+      console.log('Error saving to Firebase:', e)
+    }
+    
     alert('Cup tournament created! Fixtures have been created for Round 1 matches. ' + newFixtures.length + ' fixtures made.')
     setShowCreate(false)
     setSelectedPlayers([])
     setMatches([])
-    window.location.reload()
+    setRefreshKey(prev => prev + 1)
   }
 
   if (!isSubscribed && !isAdmin) {
@@ -301,6 +310,9 @@ export default function CupTournaments() {
       {cups.map(cup => {
         const prizePot = cup.entryFee * (cup.players?.length || 0)
         return (
+          <div key={`${cup.id}-${refreshKey}`} className="card" style={{ marginTop: '20px' }}>
+        const prizePot = cup.entryFee * (cup.players?.length || 0)
+        return (
           <div key={cup.id} className="card" style={{ marginTop: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 className="card-title" style={{ margin: 0 }}>{cup.name}</h3>
@@ -311,16 +323,27 @@ export default function CupTournaments() {
                 {isAdmin && (
                   <button 
                     className="btn btn-danger btn-sm"
-                    onClick={() => {
+                    onClick={async () => {
                       if (confirm(`Are you sure you want to delete "${cup.name}"?`)) {
                         const updatedCups = cups.filter(c => c.id !== cup.id)
                         localStorage.setItem('eliteArrowsCups', JSON.stringify(updatedCups))
                         
-                        const fixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+                        const fixtures = getFixtures()
                         const updatedFixtures = fixtures.filter(f => f.cupId !== cup.id)
                         localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
                         
-                        window.location.reload()
+                        try {
+                          await setDoc(doc(db, 'cups', cup.id.toString()), { _deleted: true }, { merge: true })
+                          for (const fixture of updatedFixtures) {
+                            await setDoc(doc(db, 'fixtures', fixture.id.toString()), { _deleted: true }, { merge: true })
+                          }
+                          triggerDataRefresh('cups')
+                          triggerDataRefresh('fixtures')
+                        } catch (e) {
+                          console.log('Error deleting from Firebase:', e)
+                        }
+                        
+                        setRefreshKey(prev => prev + 1)
                       }
                     }}
                   >
