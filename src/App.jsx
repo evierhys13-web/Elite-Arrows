@@ -27,6 +27,7 @@ import CupFixtures from './pages/CupFixtures'
 import Guide from './pages/Guide'
 import SeedData from './pages/SeedData'
 import Sidebar from './components/Sidebar'
+import InstallPrompt from './components/InstallPrompt'
 import BackgroundDecor from './components/BackgroundDecor'
 
 function ProtectedRoute({ children }) {
@@ -166,6 +167,7 @@ function AppLayout({ children }) {
       <main className="main-content">
         {children}
       </main>
+      <InstallPrompt />
     </div>
   )
 }
