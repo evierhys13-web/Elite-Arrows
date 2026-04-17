@@ -133,7 +133,10 @@ export default function CupTournaments() {
     
     localStorage.setItem('eliteArrowsFixtures', JSON.stringify([...existingFixtures, ...newFixtures]))
     localStorage.setItem('eliteArrowsCups', JSON.stringify([...cups, newCup]))
-    alert('Cup tournament created! Fixtures have been created for Round 1 matches.')
+    
+    const savedFixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+    console.log('Saved fixtures in storage:', savedFixtures)
+    alert('Cup tournament created! Fixtures have been created for Round 1 matches. ' + newFixtures.length + ' fixtures made.')
     setShowCreate(false)
     setSelectedPlayers([])
     setMatches([])
