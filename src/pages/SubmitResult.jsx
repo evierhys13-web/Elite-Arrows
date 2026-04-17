@@ -27,7 +27,7 @@ export default function SubmitResult() {
   const availablePlayers = allUsers.filter(u => u.id !== user.id)
   
   const cupFixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]').filter(f => 
-    f.cupId && (f.player1Id === user.id || f.player2Id === user.id) && f.status !== 'approved'
+    f.cupId && (f.player1 === user.id || f.player2 === user.id) && f.status !== 'approved'
   )
   const cups = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
 
@@ -121,7 +121,7 @@ export default function SubmitResult() {
     let matchId = null
     if (formData.gameType === 'Cup') {
       cupFixture = cupFixtures.find(f => {
-        const opponentId = f.player1Id === user.id ? f.player2Id : f.player1Id
+        const opponentId = f.player1 === user.id ? f.player2 : f.player1
         return opponentId === formData.opponent
       })
       if (cupFixture) {

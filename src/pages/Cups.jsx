@@ -75,8 +75,32 @@ export default function CupTournaments() {
       status: 'active',
       currentRound: 1
     }
+    
+    const round1Matches = matches.filter(m => m.round === 1)
+    const existingFixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+    
+    const newFixtures = round1Matches.map(m => ({
+      id: Date.now() + m.id,
+      cupId: newCup.id,
+      cupName: formData.name,
+      player1: m.player1,
+      player2: m.player2,
+      matchId: m.id,
+      round: 1,
+      date: '',
+      time: '',
+      scheduledBy: m.player1,
+      status: 'pending',
+      proposedDate: '',
+      proposedTime: '',
+      counterDate: '',
+      counterTime: '',
+      createdAt: new Date().toISOString()
+    }))
+    
+    localStorage.setItem('eliteArrowsFixtures', JSON.stringify([...existingFixtures, ...newFixtures]))
     localStorage.setItem('eliteArrowsCups', JSON.stringify([...cups, newCup]))
-    alert('Cup tournament created! Players can now submit results to progress through the bracket.')
+    alert('Cup tournament created! Fixtures have been created for Round 1 matches.')
     setShowCreate(false)
     setSelectedPlayers([])
     setMatches([])

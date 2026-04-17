@@ -19,6 +19,7 @@ import Support from './pages/Support'
 import Tournaments from './pages/Tournaments'
 import Cups from './pages/Cups'
 import CupBracket from './pages/CupBrackets'
+import CupFixtures from './pages/CupFixtures'
 import Games from './pages/Games'
 import Leaderboards from './pages/Leaderboards'
 import Rewards from './pages/Rewards'
@@ -327,6 +328,13 @@ function AppRoutes() {
         <SubscribedRoute>
           <AppLayout>
             <CupBracket />
+          </AppLayout>
+        </SubscribedRoute>
+      } />
+      <Route path="/cup-fixtures" element={
+        <SubscribedRoute>
+          <AppLayout>
+            <CupFixtures />
           </AppLayout>
         </SubscribedRoute>
       } />
