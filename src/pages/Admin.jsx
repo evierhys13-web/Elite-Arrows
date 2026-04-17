@@ -350,7 +350,7 @@ export default function Admin() {
     );
   }
 
-  const isFullAdmin = user.isAdmin || ADMIN_EMAILS.includes(user?.email?.toLowerCase())
+  const isFullAdmin = user?.isAdmin || ADMIN_EMAILS.includes(user?.email?.toLowerCase())
 
   return (
     <div className="page">
@@ -1512,7 +1512,7 @@ export default function Admin() {
         </div>
       )}
 
-      {activeTab === 'moneypot' && isFullAdmin && (
+      {activeTab === 'moneypot' && (
         <div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
             <div className="card">
