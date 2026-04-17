@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { db, doc, setDoc, getDoc, deleteDoc, updateDoc } from '../firebase'
+import AdminCupResults from './AdminCupResults'
 
 export default function Admin() {
   const { user, getAllUsers, updateUser, getResults, adminData, updateAdminData, addToMoneyHistory } = useAuth()
@@ -1683,92 +1684,7 @@ export default function Admin() {
             <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
               Manually enter results for cup matches
             </p>
-            {(() => {
-              const cups = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
-              const fixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
-              const allUsers = getAllUsers()
-              
-              if (cups.length === 0) {
-                return <p style={{ color: 'var(--text-muted)' }}>No cups created yet</p>
-              }
-              
-              return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                  {cups.filter(cup => cup.status !== 'completed').map(cup => {
-                    const cupFixtures = fixtures.filter(f => f.cupId === cup.id)
-                    const pendingCupFixtures = cupFixtures.filter(f => f.status !== 'result_submitted' && f.status !== 'approved')
-                    
-                    return (
-                      <div key={cup.id} style={{ 
-                        padding: '15px', 
-                        background: 'var(--bg-secondary)', 
-                        borderRadius: '8px' 
-                      }}>
-                        <h4 style={{ marginBottom: '10px', color: 'var(--accent-cyan)' }}>{cup.name}</h4>
-                        {cup.matches?.filter(m => m.player1 && m.player2).map(match => {
-                          const p1Name = allUsers.find(u => u.id === match.player1)?.username || 'Unknown'
-                          const p2Name = allUsers.find(u => u.id === match.player2)?.username || 'Unknown'
-                          const isComplete = match.winner !== null
-                          
-                          return (
-                            <div key={match.id} style={{ 
-                              display: 'flex', 
-                              justifyContent: 'space-between', 
-                              alignItems: 'center',
-                              padding: '10px',
-                              background: isComplete ? 'rgba(34, 197, 94, 0.1)' : 'var(--bg-primary)',
-                              borderRadius: '6px',
-                              marginBottom: '8px'
-                            }}>
-                              <span style={{ fontWeight: 'bold' }}>
-                                {p1Name} vs {p2Name}
-                              </span>
-                              {isComplete ? (
-                                <span style={{ color: 'var(--success)' }}>
-                                  Winner: {match.winner === match.player1 ? p1Name : p2Name}
-                                </span>
-                              ) : (
-                                <div style={{ display: 'flex', gap: '10px' }}>
-                                  <button 
-                                    className="btn btn-success btn-sm"
-                                    onClick={() => {
-                                      const winner = prompt(`Who won?\n1: ${p1Name}\n2: ${p2Name}`)
-                                      if (winner === '1') {
-                                        const updatedMatches = cup.matches.map(m => 
-                                          m.id === match.id ? { ...m, winner: match.player1 } : m
-                                        )
-                                        const updatedCup = { ...cup, matches: updatedMatches }
-                                        const cupIndex = cups.findIndex(c => c.id === cup.id)
-                                        cups[cupIndex] = updatedCup
-                                        localStorage.setItem('eliteArrowsCups', JSON.stringify(cups))
-                                        alert(`${p1Name} wins!`)
-                                        window.location.reload()
-                                      } else if (winner === '2') {
-                                        const updatedMatches = cup.matches.map(m => 
-                                          m.id === match.id ? { ...m, winner: match.player2 } : m
-                                        )
-                                        const updatedCup = { ...cup, matches: updatedMatches }
-                                        const cupIndex = cups.findIndex(c => c.id === cup.id)
-                                        cups[cupIndex] = updatedCup
-                                        localStorage.setItem('eliteArrowsCups', JSON.stringify(cups))
-                                        alert(`${p2Name} wins!`)
-                                        window.location.reload()
-                                      }
-                                    }}
-                                  >
-                                    Enter Result
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )
-                  })}
-                </div>
-              )
-            })()}
+            <AdminCupResults />
           </div>
 
           <div className="card" style={{ marginTop: '20px' }}>
