@@ -6,7 +6,7 @@ export default function Table() {
   const { user, getAllUsers, getResults, dataRefreshTrigger } = useAuth()
   const [refreshKey, setRefreshKey] = useState(0)
 
-  const divisions = ['Overall', 'Elite', 'Diamond', 'Gold', 'Silver', 'Bronze', 'Unassigned']
+  const divisions = ['Overall', 'Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Iron', 'Unassigned']
 
   useEffect(() => {
     setRefreshKey(prev => prev + 1)

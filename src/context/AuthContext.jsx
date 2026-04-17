@@ -5,7 +5,7 @@ const AuthContext = createContext(null)
 
 const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
 
-export const DIVISIONS = ['Elite', 'Diamond', 'Gold', 'Silver', 'Bronze']
+export const DIVISIONS = ['Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Iron']
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)

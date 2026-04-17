@@ -585,9 +585,11 @@ export default function Admin() {
               <option value="">Select Division</option>
               <option value="Elite">Elite</option>
               <option value="Diamond">Diamond</option>
+              <option value="Platinum">Platinum</option>
               <option value="Gold">Gold</option>
               <option value="Silver">Silver</option>
               <option value="Bronze">Bronze</option>
+              <option value="Iron">Iron</option>
             </select>
           </div>
 
@@ -813,9 +815,11 @@ export default function Admin() {
               <option value="Unassigned">Unassigned</option>
               <option value="Elite">Elite</option>
               <option value="Diamond">Diamond</option>
+              <option value="Platinum">Platinum</option>
               <option value="Gold">Gold</option>
               <option value="Silver">Silver</option>
               <option value="Bronze">Bronze</option>
+              <option value="Iron">Iron</option>
             </select>
             
             <div className="form-group">
@@ -1475,8 +1479,8 @@ export default function Admin() {
                 style={{ flex: 1, minWidth: '150px' }}
                 onChange={(e) => {
                   if (!e.target.value) return
-                  const division = prompt('Enter new division (Elite, Diamond, Gold, Silver, Bronze):')
-                  if (division && ['Elite', 'Diamond', 'Gold', 'Silver', 'Bronze'].includes(division)) {
+                  const division = prompt('Enter new division (Elite, Diamond, Platinum, Gold, Silver, Bronze, Iron):')
+                  if (division && ['Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Iron'].includes(division)) {
                     const users = getAllUsers()
                     const index = users.findIndex(u => u.id === e.target.value)
                     if (index !== -1) {
