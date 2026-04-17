@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 export default function CupTournaments() {
   const { user, getAllUsers } = useAuth()
   const [showCreate, setShowCreate] = useState(false)
-  const [formData, setFormData] = useState({ name: '', entryFee: 5, maxPlayers: 8 })
+  const [formData, setFormData] = useState({ name: '', entryFee: 5, maxPlayers: 8, startScore: 501, bestOf: 5, firstTo: 3 })
   const [selectedPlayers, setSelectedPlayers] = useState([])
   const [matches, setMatches] = useState([])
   
@@ -83,6 +83,9 @@ export default function CupTournaments() {
       id: Date.now() + m.id,
       cupId: newCup.id,
       cupName: formData.name,
+      startScore: formData.startScore,
+      bestOf: formData.bestOf,
+      firstTo: formData.firstTo,
       player1: m.player1,
       player2: m.player2,
       matchId: m.id,
@@ -164,6 +167,28 @@ export default function CupTournaments() {
               <option value={16}>16</option>
               <option value={32}>32</option>
               <option value={64}>64</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Starting Score</label>
+            <select 
+              value={formData.startScore} 
+              onChange={(e) => setFormData({...formData, startScore: parseInt(e.target.value)})}
+            >
+              <option value={301}>301</option>
+              <option value={501}>501</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Best Of (Legs)</label>
+            <select 
+              value={formData.bestOf} 
+              onChange={(e) => setFormData({...formData, bestOf: parseInt(e.target.value), firstTo: Math.ceil(parseInt(e.target.value) / 2)})}
+            >
+              <option value={3}>Best of 3 (First to 2)</option>
+              <option value={5}>Best of 5 (First to 3)</option>
+              <option value={7}>Best of 7 (First to 4)</option>
+              <option value={9}>Best of 9 (First to 5)</option>
             </select>
           </div>
           
@@ -261,7 +286,7 @@ export default function CupTournaments() {
               </div>
             </div>
             <p style={{ color: 'var(--text-muted)', marginTop: '10px' }}>
-              Entry: £{cup.entryFee} | Players: {cup.players?.length || 0} | Prize Pot: £{prizePot}
+              Entry: £{cup.entryFee} | Players: {cup.players?.length || 0} | Prize Pot: £{prizePot} | Format: {cup.startScore || 501} / Best of {cup.bestOf || 5}
             </p>
             <p style={{ fontSize: '0.85rem', color: 'var(--accent-cyan)' }}>
               Status: {cup.status === 'completed' ? 'Completed' : `Active - Round ${cup.currentRound || 1}`}
