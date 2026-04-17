@@ -265,7 +265,7 @@ export default function SeasonManagement() {
             <option value="Gold">Gold</option>
             <option value="Silver">Silver</option>
             <option value="Bronze">Bronze</option>
-            <option value="Iron">Iron</option>
+            <option value="Development">Development</option>
           </select>
           <button className="btn btn-primary" onClick={movePlayerDivision}>
             Move Player
