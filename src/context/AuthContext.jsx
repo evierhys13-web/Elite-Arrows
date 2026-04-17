@@ -71,7 +71,7 @@ export function AuthProvider({ children }) {
       }
 
       const token = await getToken(messaging, {
-        vapidKey: 'BEl63iSdKGlx3Gc8D5P8C8R2Ui6eJ8eG9Q8R2U6Y4B3H6J8K9L0M1N2O3P4Q5',
+        vapidKey: 'BCeZoSxuL3tWAkXFIGr1x8-Ns4YwOm2iffUVL2yUDK02QhEfMPpJ61CH349hX7cXjBAjSF92_EsZKzmyJXynnxg',
         serviceWorkerRegistration: await navigator.serviceWorker.getRegistration()
       })
 
@@ -130,6 +130,74 @@ export function AuthProvider({ children }) {
       navigator.setAppBadge(count).catch(() => {})
     }
   }, [])
+
+  const sendNotification = useCallback(async (toUserId, notification) => {
+    const newNotification = {
+      id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      ...notification,
+      toUserId,
+      isRead: false,
+      createdAt: new Date().toISOString()
+    }
+    
+    const existingNotifications = JSON.parse(localStorage.getItem('eliteArrowsNotifications') || '[]')
+    existingNotifications.unshift(newNotification)
+    localStorage.setItem('eliteArrowsNotifications', JSON.stringify(existingNotifications))
+    
+    try {
+      await addDoc(collection(db, 'notifications'), newNotification)
+    } catch (e) {
+      console.log('Error saving notification to Firebase:', e)
+    }
+    
+    if (user?.id === toUserId) {
+      setNotifications(prev => [newNotification, ...prev])
+      setUnreadCount(prev => prev + 1)
+      updateBadgeCount(unreadCount + 1)
+    }
+    
+    return newNotification
+  }, [user?.id, unreadCount, updateBadgeCount])
+
+  const notifyAllSubscribers = useCallback(async (title, body, data = {}) => {
+    const subscribers = allUsers.filter(u => u.isSubscribed || u.isAdmin)
+    
+    for (const subscriber of subscribers) {
+      await sendNotification(subscriber.id, {
+        type: data.type || 'table_updated',
+        title,
+        message: body,
+        data
+      })
+    }
+    
+    if (subscribers.some(s => s.id === user?.id)) {
+      setUnreadCount(prev => prev + subscribers.length)
+      updateBadgeCount(unreadCount + subscribers.length)
+    }
+  }, [allUsers, user?.id, unreadCount, updateBadgeCount, sendNotification])
+
+  const notifyAdmins = useCallback(async (title, body, data = {}) => {
+    const admins = allUsers.filter(u => u.isAdmin || u.isTournamentAdmin)
+    
+    for (const admin of admins) {
+      await sendNotification(admin.id, {
+        type: data.type || 'admin_alert',
+        title,
+        message: body,
+        data
+      })
+    }
+  }, [allUsers, sendNotification])
+
+  const notifyUser = useCallback(async (toUserId, title, body, type, data = {}) => {
+    await sendNotification(toUserId, {
+      type,
+      title,
+      message: body,
+      data
+    })
+  }, [sendNotification])
 
   const triggerDataRefresh = useCallback((dataType = 'all') => {
     setDataRefreshTrigger(prev => prev + 1)
@@ -684,6 +752,10 @@ const cleanUserData = (users) => {
       registerFCMToken,
       showLocalNotification,
       updateBadgeCount,
+      sendNotification,
+      notifyAllSubscribers,
+      notifyAdmins,
+      notifyUser,
       signUp, 
       signIn, 
       signOut: handleSignOut, 

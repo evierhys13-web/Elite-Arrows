@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { db, updateDoc, doc } from '../firebase'
 
 export default function Results() {
-  const { user, getResults, triggerDataRefresh, dataRefreshTrigger } = useAuth()
+  const { user, getResults, triggerDataRefresh, dataRefreshTrigger, notifyUser, notifyAllSubscribers } = useAuth()
   const [activeTab, setActiveTab] = useState('approved')
   const [refreshKey, setRefreshKey] = useState(0)
 
@@ -30,10 +30,16 @@ export default function Results() {
         alert('Result not found')
         return
       }
+      const result = results[index]
       results[index].status = 'approved'
       localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
       
       await updateDoc(doc(db, 'results', resultId), { status: 'approved' })
+      
+      notifyUser(result.player1Id, 'Result Approved', `Your result (${result.score1}-${result.score2} vs ${result.player2}) was approved!`, 'result_approved', { resultId })
+      notifyUser(result.player2Id, 'Result Approved', `Your result (${result.score2}-${result.score1} vs ${result.player1}) was approved!`, 'result_approved', { resultId })
+      notifyAllSubscribers('League Table Updated', 'The league table has been updated with the latest results', { type: 'table_updated' })
+      
       triggerDataRefresh('results')
       setRefreshKey(prev => prev + 1)
       alert('Result approved!')
@@ -52,10 +58,15 @@ export default function Results() {
         alert('Result not found')
         return
       }
+      const result = results[index]
       results[index].status = 'rejected'
       localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
       
       await updateDoc(doc(db, 'results', resultId), { status: 'rejected' })
+      
+      notifyUser(result.player1Id, 'Result Rejected', `Your result (${result.score1}-${result.score2} vs ${result.player2}) was rejected`, 'result_rejected', { resultId })
+      notifyUser(result.player2Id, 'Result Rejected', `Your opponent's result was rejected`, 'result_rejected', { resultId })
+      
       triggerDataRefresh('results')
       setRefreshKey(prev => prev + 1)
       alert('Result rejected.')

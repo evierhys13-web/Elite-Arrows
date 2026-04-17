@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { db, collection, addDoc } from '../firebase'
 
 export default function SubmitResult() {
-  const { user, getAllUsers, addTokens, triggerDataRefresh } = useAuth()
+  const { user, getAllUsers, addTokens, triggerDataRefresh, notifyAdmins } = useAuth()
   const fileInputRef = useRef(null)
   const [formData, setFormData] = useState({
     gameType: 'Friendly',
@@ -167,6 +167,12 @@ export default function SubmitResult() {
     } catch (e) {
       console.log('Error saving to Firestore:', e)
     }
+
+    notifyAdmins(
+      'New Result Pending',
+      `${user.username} submitted a result: ${newResult.player1} ${newResult.score1}-${newResult.score2} ${newResult.player2} (${newResult.gameType})`,
+      { type: 'result_submitted', resultId: newResult.id }
+    )
 
     const isWin = parseInt(formData.yourScore) > parseInt(formData.opponentScore)
     if (isWin) {

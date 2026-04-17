@@ -5,7 +5,7 @@ import { db, doc, setDoc, getDoc, deleteDoc, updateDoc } from '../firebase'
 import CupManagement from './CupManagement'
 
 export default function Admin() {
-  const { user, getAllUsers, updateUser, getResults, adminData, updateAdminData, addToMoneyHistory, getSupportRequests, getSeasons, triggerDataRefresh, dataRefreshTrigger } = useAuth()
+  const { user, getAllUsers, updateUser, getResults, adminData, updateAdminData, addToMoneyHistory, getSupportRequests, getSeasons, triggerDataRefresh, dataRefreshTrigger, notifyUser, notifyAllSubscribers } = useAuth()
   const navigate = useNavigate()
   const subscriptionPot = adminData.subscriptionPot || 0
   const subscriptionPot10 = adminData.subscriptionPot10 || 0
@@ -184,6 +184,10 @@ export default function Admin() {
         }
       }
       
+      notifyUser(result.player1Id, 'Result Approved', `Your result (${result.score1}-${result.score2} vs ${result.player2}) was approved!`, 'result_approved', { resultId, gameType: result.gameType })
+      notifyUser(result.player2Id, 'Result Approved', `Your result (${result.score2}-${result.score1} vs ${result.player1}) was approved!`, 'result_approved', { resultId, gameType: result.gameType })
+      notifyAllSubscribers('League Table Updated', 'The league table has been updated with the latest results', { type: 'table_updated' })
+      
       setPendingResults(prev => prev.filter(r => r.id !== resultId));
       alert(result.gameType === 'Cup' ? 'Result approved! Cup bracket updated.' : 'Result approved!')
     } catch (e) {
@@ -192,12 +196,23 @@ export default function Admin() {
     }
   };
 
-  const rejectResult = (resultId) => {
+  const rejectResult = async (resultId) => {
     const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]');
     const index = results.findIndex(r => r.id === resultId);
     if (index !== -1) {
+      const result = results[index]
       results[index].status = 'rejected';
       localStorage.setItem('eliteArrowsResults', JSON.stringify(results));
+      
+      try {
+        await updateDoc(doc(db, 'results', resultId), { status: 'rejected' })
+      } catch (e) {
+        console.log('Error updating result status in Firebase:', e)
+      }
+      
+      notifyUser(result.player1Id, 'Result Rejected', `Your result (${result.score1}-${result.score2} vs ${result.player2}) was rejected`, 'result_rejected', { resultId })
+      notifyUser(result.player2Id, 'Result Rejected', `Your opponent's result was rejected`, 'result_rejected', { resultId })
+      
       setPendingResults(prev => prev.filter(r => r.id !== resultId));
     }
   };
