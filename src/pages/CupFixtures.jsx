@@ -41,20 +41,18 @@ export default function CupFixtures() {
 
   const userFixtures = fixtures.filter(f => f.player1 === user.id || f.player2 === user.id)
   
-  const awaitingProposal = userFixtures.filter(f => {
-    if (f.status === 'pending' && !f.proposedDate && !f.proposedBy) return true
-    if (f.status === 'pending' && f.proposedBy === user.id) return true
-    return false
-  })
+  const needsScheduling = userFixtures.filter(f => 
+    f.status === 'pending' && !f.proposedDate
+  )
   
-  const pendingResponse = userFixtures.filter(f => {
-    if (f.status === 'pending' && f.proposedBy && f.proposedBy !== user.id) return true
+  const awaitingYourResponse = userFixtures.filter(f => {
+    if (f.status === 'pending' && f.proposedDate && f.proposedBy !== user.id) return true
     if (f.status === 'countered' && f.counterBy !== user.id) return true
     return false
   })
   
-  const pendingSent = userFixtures.filter(f => {
-    if (f.status === 'pending' && f.proposedBy === user.id) return true
+  const awaitingOpponentResponse = userFixtures.filter(f => {
+    if (f.status === 'pending' && f.proposedBy === user.id && !f.counterDate) return true
     if (f.status === 'countered' && f.counterBy === user.id) return true
     return false
   })
@@ -72,7 +70,6 @@ export default function CupFixtures() {
       allFixtures[index].proposedDate = scheduleDate
       allFixtures[index].proposedTime = scheduleTime
       allFixtures[index].proposedBy = user.id
-      allFixtures[index].status = 'pending'
       localStorage.setItem('eliteArrowsFixtures', JSON.stringify(allFixtures))
       loadFixtures()
       setSelectedFixture(null)
@@ -186,13 +183,13 @@ export default function CupFixtures() {
         <h1 className="page-title">Cup Fixtures</h1>
       </div>
 
-      {awaitingProposal.length > 0 && (
+      {needsScheduling.length > 0 && (
         <div className="card" style={{ marginBottom: '20px', borderLeft: '4px solid var(--accent-cyan)' }}>
-          <h3 style={{ color: 'var(--accent-cyan)', marginBottom: '15px' }}>Schedule Your Match</h3>
+          <h3 style={{ color: 'var(--accent-cyan)', marginBottom: '15px' }}>Schedule Your Match ({needsScheduling.length})</h3>
           <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
             Propose a date and time for your cup match
           </p>
-          {awaitingProposal.map(fixture => (
+          {needsScheduling.map(fixture => (
             <div key={fixture.id} style={{ 
               padding: '15px', 
               background: 'var(--bg-secondary)', 
@@ -227,13 +224,13 @@ export default function CupFixtures() {
         </div>
       )}
 
-      {pendingResponse.length > 0 && (
+      {awaitingYourResponse.length > 0 && (
         <div className="card" style={{ marginBottom: '20px', borderLeft: '4px solid var(--warning)' }}>
-          <h3 style={{ color: 'var(--warning)', marginBottom: '15px' }}>⏳ Awaiting Your Response ({pendingResponse.length})</h3>
+          <h3 style={{ color: 'var(--warning)', marginBottom: '15px' }}>⏳ Awaiting Your Response ({awaitingYourResponse.length})</h3>
           <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
             Someone proposed a time - accept, counter, or reject
           </p>
-          {pendingResponse.map(fixture => (
+          {awaitingYourResponse.map(fixture => (
             <div key={fixture.id} style={{ 
               padding: '15px', 
               background: 'var(--bg-secondary)', 
@@ -290,13 +287,13 @@ export default function CupFixtures() {
         </div>
       )}
 
-      {pendingSent.length > 0 && (
+      {awaitingOpponentResponse.length > 0 && (
         <div className="card" style={{ marginBottom: '20px' }}>
-          <h3 style={{ marginBottom: '15px' }}>Your Proposals</h3>
+          <h3 style={{ marginBottom: '15px' }}>Your Proposals ({awaitingOpponentResponse.length})</h3>
           <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
             Waiting for opponent to respond
           </p>
-          {pendingSent.map(fixture => (
+          {awaitingOpponentResponse.map(fixture => (
             <div key={fixture.id} style={{ 
               padding: '15px', 
               background: 'var(--bg-secondary)', 
