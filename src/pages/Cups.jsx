@@ -310,9 +310,6 @@ export default function CupTournaments() {
       {cups.map(cup => {
         const prizePot = cup.entryFee * (cup.players?.length || 0)
         return (
-          <div key={`${cup.id}-${refreshKey}`} className="card" style={{ marginTop: '20px' }}>
-        const prizePot = cup.entryFee * (cup.players?.length || 0)
-        return (
           <div key={cup.id} className="card" style={{ marginTop: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 className="card-title" style={{ margin: 0 }}>{cup.name}</h3>
