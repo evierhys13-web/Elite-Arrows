@@ -276,6 +276,11 @@ export default function CupTournaments() {
                       if (confirm(`Are you sure you want to delete "${cup.name}"?`)) {
                         const updatedCups = cups.filter(c => c.id !== cup.id)
                         localStorage.setItem('eliteArrowsCups', JSON.stringify(updatedCups))
+                        
+                        const fixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+                        const updatedFixtures = fixtures.filter(f => f.cupId !== cup.id)
+                        localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
+                        
                         window.location.reload()
                       }
                     }}
