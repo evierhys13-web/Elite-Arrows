@@ -11,13 +11,18 @@ export default function CupFixtures() {
 
   useEffect(() => {
     loadFixtures()
+    alert('Cup Fixtures page loaded!\nUser ID: ' + user.id + '\nUser: ' + user.username)
   }, [])
 
   const loadFixtures = () => {
     const allFixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
     const cupFixtures = allFixtures.filter(f => f.cupId)
+    const userFixtures = cupFixtures.filter(f => f.player1 === user.id || f.player2 === user.id || f.player1Id === user.id || f.player2Id === user.id)
+    
+    alert('All fixtures in storage: ' + allFixtures.length + '\nCup fixtures: ' + cupFixtures.length + '\nYour fixtures: ' + userFixtures.length)
     console.log('All fixtures:', allFixtures)
     console.log('Cup fixtures:', cupFixtures)
+    console.log('User fixtures:', userFixtures)
     console.log('Current user id:', user.id)
     setFixtures(cupFixtures)
   }
