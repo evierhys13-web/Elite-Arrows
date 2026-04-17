@@ -5,9 +5,10 @@ import { Link } from 'react-router-dom'
 export default function CupTournaments() {
   const { user, getAllUsers } = useAuth()
   const [showCreate, setShowCreate] = useState(false)
-  const [formData, setFormData] = useState({ name: '', entryFee: 5, maxPlayers: 8, startScore: 501, bestOf: 5, firstTo: 3 })
+  const [formData, setFormData] = useState({ name: '', entryFee: 5, maxPlayers: 8 })
   const [selectedPlayers, setSelectedPlayers] = useState([])
   const [matches, setMatches] = useState([])
+  const [roundFormats, setRoundFormats] = useState({})
   
   const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
   const isEmailAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
@@ -33,6 +34,20 @@ export default function CupTournaments() {
     const shuffled = [...selectedPlayers].sort(() => Math.random() - 0.5)
     const newMatches = []
     const numRounds = Math.ceil(Math.log2(shuffled.length))
+    
+    const defaultFormats = {}
+    for (let r = 1; r <= numRounds; r++) {
+      if (r === numRounds) {
+        defaultFormats[r] = { startScore: 501, bestOf: 9, firstTo: 5 }
+      } else if (r === numRounds - 1) {
+        defaultFormats[r] = { startScore: 501, bestOf: 7, firstTo: 4 }
+      } else if (r === numRounds - 2) {
+        defaultFormats[r] = { startScore: 501, bestOf: 5, firstTo: 3 }
+      } else {
+        defaultFormats[r] = { startScore: 501, bestOf: 3, firstTo: 2 }
+      }
+    }
+    setRoundFormats(defaultFormats)
     
     let matchId = 1
     let roundStartId = 1
@@ -62,6 +77,16 @@ export default function CupTournaments() {
     setMatches(newMatches)
   }
 
+  const updateRoundFormat = (round, field, value) => {
+    setRoundFormats(prev => ({
+      ...prev,
+      [round]: {
+        ...prev[round],
+        [field]: parseInt(value)
+      }
+    }))
+  }
+
   const saveCup = () => {
     if (!formData.name) return alert('Enter cup name')
     if (matches.length === 0) return alert('Generate a bracket first')
@@ -71,6 +96,7 @@ export default function CupTournaments() {
       ...formData,
       players: selectedPlayers,
       matches,
+      roundFormats,
       createdAt: new Date().toISOString(),
       status: 'active',
       currentRound: 1
@@ -83,9 +109,9 @@ export default function CupTournaments() {
       id: Date.now() + m.id,
       cupId: newCup.id,
       cupName: formData.name,
-      startScore: formData.startScore,
-      bestOf: formData.bestOf,
-      firstTo: formData.firstTo,
+      startScore: roundFormats[1]?.startScore || 501,
+      bestOf: roundFormats[1]?.bestOf || 3,
+      firstTo: roundFormats[1]?.firstTo || 2,
       player1: m.player1,
       player2: m.player2,
       matchId: m.id,
@@ -169,28 +195,6 @@ export default function CupTournaments() {
               <option value={64}>64</option>
             </select>
           </div>
-          <div className="form-group">
-            <label>Starting Score</label>
-            <select 
-              value={formData.startScore} 
-              onChange={(e) => setFormData({...formData, startScore: parseInt(e.target.value)})}
-            >
-              <option value={301}>301</option>
-              <option value={501}>501</option>
-            </select>
-          </div>
-          <div className="form-group">
-            <label>Best Of (Legs)</label>
-            <select 
-              value={formData.bestOf} 
-              onChange={(e) => setFormData({...formData, bestOf: parseInt(e.target.value), firstTo: Math.ceil(parseInt(e.target.value) / 2)})}
-            >
-              <option value={3}>Best of 3 (First to 2)</option>
-              <option value={5}>Best of 5 (First to 3)</option>
-              <option value={7}>Best of 7 (First to 4)</option>
-              <option value={9}>Best of 9 (First to 5)</option>
-            </select>
-          </div>
           
           <h4 style={{ marginTop: '20px', marginBottom: '10px' }}>Select Players ({selectedPlayers.length}/{formData.maxPlayers})</h4>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
@@ -214,7 +218,7 @@ export default function CupTournaments() {
 
           {matches.length > 0 && (
             <>
-              <h4 style={{ marginTop: '20px', marginBottom: '15px' }}>Bracket Preview</h4>
+              <h4 style={{ marginTop: '20px', marginBottom: '15px' }}>Bracket Preview & Round Formats</h4>
               <div style={{ display: 'flex', gap: '20px', overflowX: 'auto', padding: '10px' }}>
                 {Array.from(new Set(matches.map(m => m.round))).sort((a, b) => b - a).map(round => (
                   <div key={round} style={{ minWidth: '200px' }}>
@@ -223,6 +227,34 @@ export default function CupTournaments() {
                        round === Math.max(...matches.map(m => m.round)) - 1 ? 'Semi-Final' : 
                        round === Math.max(...matches.map(m => m.round)) - 2 ? 'Quarter-Final' : `Round ${round}`}
                     </h5>
+                    
+                    <div style={{ background: 'var(--bg-secondary)', padding: '10px', borderRadius: '8px', marginBottom: '10px' }}>
+                      <div className="form-group" style={{ marginBottom: '8px' }}>
+                        <label style={{ fontSize: '0.75rem' }}>Start Score</label>
+                        <select 
+                          value={roundFormats[round]?.startScore || 501}
+                          onChange={(e) => updateRoundFormat(round, 'startScore', e.target.value)}
+                          style={{ fontSize: '0.8rem', padding: '5px' }}
+                        >
+                          <option value={301}>301</option>
+                          <option value={501}>501</option>
+                        </select>
+                      </div>
+                      <div className="form-group" style={{ marginBottom: '0' }}>
+                        <label style={{ fontSize: '0.75rem' }}>Best Of</label>
+                        <select 
+                          value={roundFormats[round]?.bestOf || 3}
+                          onChange={(e) => updateRoundFormat(round, 'bestOf', e.target.value)}
+                          style={{ fontSize: '0.8rem', padding: '5px' }}
+                        >
+                          <option value={3}>Best of 3</option>
+                          <option value={5}>Best of 5</option>
+                          <option value={7}>Best of 7</option>
+                          <option value={9}>Best of 9</option>
+                        </select>
+                      </div>
+                    </div>
+                    
                     {matches.filter(m => m.round === round).map(match => (
                       <div key={match.id} style={{ 
                         background: 'var(--bg-secondary)', 
@@ -291,8 +323,16 @@ export default function CupTournaments() {
               </div>
             </div>
             <p style={{ color: 'var(--text-muted)', marginTop: '10px' }}>
-              Entry: £{cup.entryFee} | Players: {cup.players?.length || 0} | Prize Pot: £{prizePot} | Format: {cup.startScore || 501} / Best of {cup.bestOf || 5}
+              Entry: £{cup.entryFee} | Players: {cup.players?.length || 0} | Prize Pot: £{prizePot}
             </p>
+            {cup.roundFormats && (
+              <p style={{ fontSize: '0.85rem', color: 'var(--accent-cyan)', marginTop: '5px' }}>
+                {Object.entries(cup.roundFormats).map(([round, format]) => {
+                  const roundName = parseInt(round) === cup.currentRound ? 'Current' : ''
+                  return `${roundName}${roundName ? ' ' : ''}R${round}: ${format.startScore} / Bo${format.bestOf}`
+                }).join(' | ')}
+              </p>
+            )}
             <p style={{ fontSize: '0.85rem', color: 'var(--accent-cyan)' }}>
               Status: {cup.status === 'completed' ? 'Completed' : `Active - Round ${cup.currentRound || 1}`}
             </p>

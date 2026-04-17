@@ -276,7 +276,7 @@ export default function CupBracket() {
         {fixtures.filter(f => f.status !== 'approved').length === 0 ? (
           <p style={{ color: 'var(--success)', textAlign: 'center' }}>✓ All matches completed!</p>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '15px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px' }}>
             {fixtures.filter(f => f.status !== 'approved').map(fixture => (
               <div key={fixture.id} style={{ 
                 padding: '15px', 
@@ -285,12 +285,27 @@ export default function CupBracket() {
                 border: '1px solid var(--accent-cyan)'
               }}>
                 <div style={{ 
-                  fontSize: '0.8rem', 
-                  color: 'var(--accent-cyan)',
-                  marginBottom: '8px',
-                  fontWeight: 'bold'
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '8px'
                 }}>
-                  {getRoundName(fixture.round)}
+                  <span style={{ 
+                    fontSize: '0.8rem', 
+                    color: 'var(--accent-cyan)',
+                    fontWeight: 'bold'
+                  }}>
+                    {getRoundName(fixture.round)}
+                  </span>
+                  <span style={{ 
+                    fontSize: '0.7rem', 
+                    color: 'var(--text-muted)',
+                    background: 'rgba(255,255,255,0.1)',
+                    padding: '2px 8px',
+                    borderRadius: '4px'
+                  }}>
+                    {fixture.startScore || 501} / Bo{fixture.bestOf || 3}
+                  </span>
                 </div>
                 <div style={{ fontSize: '1rem', color: 'white' }}>
                   {getPlayerName(fixture.player1) || 'TBD'} 
