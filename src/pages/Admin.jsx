@@ -1541,12 +1541,10 @@ export default function Admin() {
                   />
                   <button 
                     className="btn btn-primary"
-                    onClick={() => {
+                    onClick={async () => {
                       const amount = parseFloat(document.getElementById('subPotAdjust').value) || 0
                       if (amount !== 0) {
-                        const newPot = subscriptionPot + amount
-                        setSubscriptionPot(newPot)
-                        localStorage.setItem('eliteArrowsSubscriptionPot', newPot.toString())
+                        await updateAdminData({ subscriptionPot: subscriptionPot + amount })
                         addToMoneyHistory('subscription', amount, 'Manual adjustment')
                         alert(`Subscription pot ${amount >= 0 ? 'increased' : 'decreased'} by £${Math.abs(amount).toFixed(2)}`)
                         document.getElementById('subPotAdjust').value = ''
@@ -1586,12 +1584,10 @@ export default function Admin() {
                   />
                   <button 
                     className="btn btn-primary"
-                    onClick={() => {
+                    onClick={async () => {
                       const amount = parseFloat(document.getElementById('subPot10Adjust').value) || 0
                       if (amount !== 0) {
-                        const newPot10 = subscriptionPot10 + amount
-                        setSubscriptionPot10(newPot10)
-                        localStorage.setItem('eliteArrowsSubscriptionPot10', newPot10.toString())
+                        await updateAdminData({ subscriptionPot10: subscriptionPot10 + amount })
                         addToMoneyHistory('subscription', amount, 'Manual adjustment (£5 tier)')
                         alert(`Premium subscription pot ${amount >= 0 ? 'increased' : 'decreased'} by £${Math.abs(amount).toFixed(2)}`)
                         document.getElementById('subPot10Adjust').value = ''
