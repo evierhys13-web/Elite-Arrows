@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { db, doc, setDoc, getDoc, deleteDoc, updateDoc } from '../firebase'
-import AdminCupResults from './AdminCupResults'
+import CupManagement from './CupManagement'
 
 export default function Admin() {
   const { user, getAllUsers, updateUser, getResults, adminData, updateAdminData, addToMoneyHistory } = useAuth()
@@ -390,6 +390,14 @@ export default function Admin() {
             onClick={() => setActiveTab('moneypot')}
           >
             Money Pot
+          </button>
+        )}
+        {isFullAdmin && (
+          <button
+            className={`division-tab ${activeTab === 'cups' ? 'active' : ''}`}
+            onClick={() => setActiveTab('cups')}
+          >
+            Cup Management
           </button>
         )}
         <button
@@ -1682,18 +1690,17 @@ export default function Admin() {
               )
             })()}
           </div>
+        </div>
+      )}
 
-          <div className="card" style={{ marginTop: '20px' }}>
-            <h3 className="card-title" style={{ marginBottom: '15px' }}>Manual Cup Result Entry</h3>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
-              Manually enter results for cup matches
-            </p>
-            <AdminCupResults />
-          </div>
+      {activeTab === 'cups' && (
+        <CupManagement />
+      )}
 
-          <div className="card" style={{ marginTop: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-              <h3 className="card-title" style={{ margin: 0 }}>Money Pot History</h3>
+      {activeTab === 'moneypot' && (
+        <div className="card" style={{ marginTop: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+            <h3 className="card-title" style={{ margin: 0 }}>Money Pot History</h3>
               <button 
                 className="btn btn-danger"
                 onClick={() => {
@@ -1744,7 +1751,6 @@ export default function Admin() {
               )
             })()}
           </div>
-        </div>
       )}
     </div>
   )
