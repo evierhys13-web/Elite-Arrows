@@ -24,27 +24,10 @@ export default function Settings() {
     twitter: user?.socialLinks?.twitter || ''
   })
   const [notifications, setNotifications] = useState([])
-  const [isStandalone, setIsStandalone] = useState(false)
 
   useEffect(() => {
     setNotifications(contextNotifications)
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsStandalone(true)
-    }
   }, [contextNotifications])
-
-  const handleInstallAndroid = async () => {
-    if (window.deferredPrompt) {
-      window.deferredPrompt.prompt()
-      const { outcome } = await window.deferredPrompt.userChoice
-      if (outcome === 'accepted') {
-        alert('App installed! Check your home screen.')
-      }
-      window.deferredPrompt = null
-    } else {
-      alert('Install prompt not available.\n\nOn Android:\n1. Open Chrome browser\n2. Visit this page\n3. Look for the blue banner at the bottom\n4. Tap Install')
-    }
-  }
 
   const markAsRead = (id) => {
     const updated = notifications.map(n => n.id === id ? { ...n, isRead: true } : n)
@@ -193,7 +176,6 @@ export default function Settings() {
         <button className={`division-tab ${activeTab === 'social' ? 'active' : ''}`} onClick={() => setActiveTab('social')}>Social Links</button>
         <button className={`division-tab ${activeTab === 'blocked' ? 'active' : ''}`} onClick={() => setActiveTab('blocked')}>Blocked</button>
         <button className={`division-tab ${activeTab === 'appearance' ? 'active' : ''}`} onClick={() => setActiveTab('appearance')}>Appearance</button>
-        <button className={`division-tab ${activeTab === 'app' ? 'active' : ''}`} onClick={() => setActiveTab('app')}>Install App</button>
       </div>
 
       {activeTab === 'account' && (
@@ -469,70 +451,6 @@ export default function Settings() {
             </select>
           </div>
           <button className="btn btn-secondary btn-block" onClick={() => navigate('/profile')} style={{ marginTop: '12px' }}>Edit Profile</button>
-        </div>
-      )}
-
-      {activeTab === 'app' && (
-        <div>
-          {isStandalone ? (
-            <div className="card">
-              <div style={{ textAlign: 'center', padding: '30px' }}>
-                <div style={{ fontSize: '3rem', marginBottom: '15px' }}>✓</div>
-                <h3 style={{ color: 'var(--success)', marginBottom: '10px' }}>App Installed!</h3>
-                <p style={{ color: 'var(--text-muted)' }}>
-                  Elite Arrows is installed on your device and ready to use.
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div>
-              <div className="card" style={{ marginBottom: '20px', border: '2px solid var(--accent-cyan)' }}>
-                <h3 className="card-title">📱 Install Elite Arrows</h3>
-                <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>
-                  Add Elite Arrows to your home screen for a better experience - faster loading and app-like feel!
-                </p>
-                
-                <div style={{ padding: '20px', background: 'var(--bg-secondary)', borderRadius: '12px', marginBottom: '20px' }}>
-                  <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span>🍎</span> iPhone / iPad
-                  </h4>
-                  <ol style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '2' }}>
-                    <li>Open this page in <strong>Safari</strong> (not Chrome)</li>
-                    <li>Tap the <strong>Share</strong> button at the bottom</li>
-                    <li>Scroll down and tap <strong>"Add to Home Screen"</strong></li>
-                    <li>Tap <strong>Add</strong> in the top right</li>
-                  </ol>
-                </div>
-
-                <div style={{ padding: '20px', background: 'var(--bg-secondary)', borderRadius: '12px', marginBottom: '20px' }}>
-                  <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span>🤖</span> Android
-                  </h4>
-                  <ol style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '2' }}>
-                    <li>Open this page in <strong>Chrome</strong></li>
-                    <li>Look for the banner at the bottom saying "Add to home screen"</li>
-                    <li>Tap <strong>Install</strong> or <strong>Add to Home Screen</strong></li>
-                    <li>Tap <strong>Add</strong> to confirm</li>
-                  </ol>
-                  {window.deferredPrompt && (
-                    <button 
-                      className="btn btn-primary btn-block" 
-                      style={{ marginTop: '15px' }}
-                      onClick={handleInstallAndroid}
-                    >
-                      Try One-Tap Install
-                    </button>
-                  )}
-                </div>
-
-                <div style={{ padding: '15px', background: 'rgba(0, 212, 255, 0.1)', borderRadius: '8px', textAlign: 'center' }}>
-                  <p style={{ color: 'var(--accent-cyan)', margin: 0, fontSize: '0.9rem' }}>
-                    💡 The app works offline and loads faster when installed!
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       )}
 

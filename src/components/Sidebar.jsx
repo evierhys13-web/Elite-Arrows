@@ -206,7 +206,7 @@ export default function Sidebar() {
   ]
 
   const utilityItems = [
-    { path: '/settings', label: 'Install App', icon: DownloadIcon },
+    { path: '/install', label: 'Install App', icon: DownloadIcon },
   ]
 
   const subscriberItems = [

@@ -25,6 +25,7 @@ import Rewards from './pages/Rewards'
 import Fixtures from './pages/Fixtures'
 import CupFixtures from './pages/CupFixtures'
 import Guide from './pages/Guide'
+import Install from './pages/Install'
 import SeedData from './pages/SeedData'
 import Sidebar from './components/Sidebar'
 import InstallPrompt from './components/InstallPrompt'
@@ -303,6 +304,13 @@ function AppRoutes() {
         <ProtectedRoute>
           <AppLayout>
             <Guide />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/install" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <Install />
           </AppLayout>
         </ProtectedRoute>
       } />
