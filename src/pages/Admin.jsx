@@ -21,6 +21,12 @@ export default function Admin() {
   const [refreshKey, setRefreshKey] = useState(0)
   const [pendingResults, setPendingResults] = useState([])
   const [activeTab, setActiveTab] = useState('results')
+  const [showColorsForm, setShowColorsForm] = useState(false)
+  const [colors, setColors] = useState({
+    primary: localStorage.getItem('eliteArrowsColors') ? JSON.parse(localStorage.getItem('eliteArrowsColors')).primary : '#00d4ff',
+    background: localStorage.getItem('eliteArrowsColors') ? JSON.parse(localStorage.getItem('eliteArrowsColors')).background : '#0a0a1a',
+    button: localStorage.getItem('eliteArrowsColors') ? JSON.parse(localStorage.getItem('eliteArrowsColors')).button : '#00d4ff'
+  })
 
   useEffect(() => {
     window.scrollTo(0, 0)
