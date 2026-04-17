@@ -334,7 +334,7 @@ export default function Admin() {
   const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
   const isEmailAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
   const isDbAdmin = user?.isAdmin === true
-  const canAccess = isEmailAdmin || isDbAdmin || user?.isTournamentAdmin
+  const canAccess = isEmailAdmin || isDbAdmin || user?.isTournamentAdmin || user?.isCupAdmin
   
   if (!canAccess) {
     return (
@@ -392,7 +392,7 @@ export default function Admin() {
             Money Pot
           </button>
         )}
-        {isFullAdmin && (
+        {(isFullAdmin || user?.isCupAdmin) && (
           <button
             className={`division-tab ${activeTab === 'cups' ? 'active' : ''}`}
             onClick={() => setActiveTab('cups')}
@@ -963,6 +963,23 @@ export default function Admin() {
                     }}
                   >
                     {u.isTournamentAdmin ? 'Remove Tournament Admin' : 'Add Tournament Admin'}
+                  </button>
+                  <button 
+                    className="btn btn-secondary btn-sm"
+                    onClick={async () => {
+                      await setDoc(doc(db, 'users', u.id), { isCupAdmin: !u.isCupAdmin }, { merge: true })
+                      
+                      const users = getAllUsers()
+                      const index = users.findIndex(us => us.id === u.id)
+                      if (index !== -1) {
+                        users[index].isCupAdmin = !u.isCupAdmin
+                        localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+                      }
+                      
+                      alert(`${u.username} ${u.isCupAdmin ? 'removed from' : 'added as'} cup admin`)
+                    }}
+                  >
+                    {u.isCupAdmin ? 'Remove Cup Admin' : 'Add Cup Admin'}
                   </button>
                   {u.id !== user.id && (
                     <button 
