@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 
 export default function InstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] = useState(null)
   const [showBanner, setShowBanner] = useState(false)
   const [isInstalled, setIsInstalled] = useState(false)
 
@@ -13,11 +12,15 @@ export default function InstallPrompt() {
 
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault()
-      setDeferredPrompt(e)
+      window.deferredPrompt = e
       setShowBanner(true)
     }
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+
+    if (window.deferredPrompt) {
+      setShowBanner(true)
+    }
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
@@ -25,16 +28,19 @@ export default function InstallPrompt() {
   }, [])
 
   const handleInstall = async () => {
-    if (!deferredPrompt) return
+    if (!window.deferredPrompt) {
+      alert('Install prompt expired. Please visit the page again to see the install option.')
+      return
+    }
 
-    deferredPrompt.prompt()
-    const { outcome } = await deferredPrompt.userChoice
+    window.deferredPrompt.prompt()
+    const { outcome } = await window.deferredPrompt.userChoice
     
     if (outcome === 'accepted') {
       setShowBanner(false)
       setIsInstalled(true)
     }
-    setDeferredPrompt(null)
+    window.deferredPrompt = null
   }
 
   const handleDismiss = () => {

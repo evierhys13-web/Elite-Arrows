@@ -38,11 +38,11 @@ export default function Settings() {
       window.deferredPrompt.prompt()
       const { outcome } = await window.deferredPrompt.userChoice
       if (outcome === 'accepted') {
-        alert('App installed!')
+        alert('App installed! Check your home screen.')
       }
       window.deferredPrompt = null
     } else {
-      alert('Install prompt not available. Try using Chrome browser and visiting this page again.')
+      alert('Install prompt not available.\n\nOn Android:\n1. Open Chrome browser\n2. Visit this page\n3. Look for the blue banner at the bottom\n4. Tap Install')
     }
   }
 
@@ -514,13 +514,15 @@ export default function Settings() {
                     <li>Tap <strong>Install</strong> or <strong>Add to Home Screen</strong></li>
                     <li>Tap <strong>Add</strong> to confirm</li>
                   </ol>
-                  <button 
-                    className="btn btn-primary btn-block" 
-                    style={{ marginTop: '15px' }}
-                    onClick={handleInstallAndroid}
-                  >
-                    Try One-Tap Install
-                  </button>
+                  {window.deferredPrompt && (
+                    <button 
+                      className="btn btn-primary btn-block" 
+                      style={{ marginTop: '15px' }}
+                      onClick={handleInstallAndroid}
+                    >
+                      Try One-Tap Install
+                    </button>
+                  )}
                 </div>
 
                 <div style={{ padding: '15px', background: 'rgba(0, 212, 255, 0.1)', borderRadius: '8px', textAlign: 'center' }}>
