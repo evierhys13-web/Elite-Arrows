@@ -910,7 +910,27 @@ export default function Admin() {
                 if (index !== -1) {
                   users[index].isSubscribed = false
                   users[index].freeAdminSubscription = false
+                  users[index].paymentPending = false
+                  users[index].paymentDate = null
+                  users[index].subscriptionDate = null
+                  users[index].subscriptionExpiry = null
+                  users[index].subscriptionSource = null
                   localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+                  
+                  try {
+                    setDoc(doc(db, 'users', users[index].id), {
+                      isSubscribed: false,
+                      freeAdminSubscription: false,
+                      paymentPending: false,
+                      paymentDate: null,
+                      subscriptionDate: null,
+                      subscriptionExpiry: null,
+                      subscriptionSource: null
+                    }, { merge: true })
+                  } catch (err) {
+                    console.log('Error saving to Firebase:', err)
+                  }
+                  
                   alert('Subscription removed')
                   e.target.value = ''
                 }
