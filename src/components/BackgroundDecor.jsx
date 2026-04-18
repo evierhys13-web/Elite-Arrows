@@ -1,95 +1,4 @@
-import { useState, useEffect } from 'react'
-
-const DartThrowerSVG = () => (
-  <svg viewBox="0 0 100 160" fill="currentColor">
-    <ellipse cx="50" cy="22" rx="14" ry="18" />
-    <path d="M50 40 L45 70 L35 110 L30 155 L42 155 L48 120 L52 120 L58 155 L70 155 L65 110 L55 70 Z" />
-    <path d="M55 50 L75 45 L88 38 L85 35 L72 42 L58 47 Z" />
-    <circle cx="90" cy="36" r="3" />
-  </svg>
-)
-
-const AimingPlayerSVG = () => (
-  <svg viewBox="0 0 100 160" fill="currentColor">
-    <ellipse cx="50" cy="22" rx="14" ry="18" />
-    <path d="M50 40 L45 70 L35 110 L30 155 L42 155 L48 120 L52 120 L58 155 L70 155 L65 110 L55 70 Z" />
-    <path d="M55 50 L70 35 L82 28 L80 25 L68 32 L58 47 Z" />
-    <circle cx="84" cy="26" r="2.5" />
-    <path d="M45 55 L30 65 L28 62 L43 52 Z" />
-  </svg>
-)
-
-const CelebratingPlayerSVG = () => (
-  <svg viewBox="0 0 120 160" fill="currentColor">
-    <ellipse cx="60" cy="22" rx="14" ry="18" />
-    <path d="M60 40 L55 70 L45 110 L40 155 L52 155 L58 120 L62 120 L68 155 L80 155 L75 110 L65 70 Z" />
-    <path d="M55 50 L25 20 L20 15 L23 12 L30 18 L58 47 Z" />
-    <path d="M65 50 L95 20 L100 15 L97 12 L90 18 L62 47 Z" />
-  </svg>
-)
-
-const ReadyStanceSVG = () => (
-  <svg viewBox="0 0 100 160" fill="currentColor">
-    <ellipse cx="50" cy="22" rx="14" ry="18" />
-    <path d="M50 40 L42 70 L35 110 L30 155 L42 155 L48 120 L52 120 L58 155 L70 155 L65 110 L58 70 Z" />
-    <path d="M55 50 L72 55 L85 50 L83 47 L70 52 L58 47 Z" />
-    <circle cx="87" cy="48" r="2.5" />
-    <path d="M42 55 L28 60 L26 57 L40 52 Z" />
-  </svg>
-)
-
-const DartboardSVG = () => (
-  <svg viewBox="0 0 100 100" fill="currentColor">
-    <circle cx="50" cy="50" r="48" fill="none" stroke="currentColor" strokeWidth="4" />
-    <circle cx="50" cy="50" r="38" fill="none" stroke="currentColor" strokeWidth="2" />
-    <circle cx="50" cy="50" r="28" fill="none" stroke="currentColor" strokeWidth="2" />
-    <circle cx="50" cy="50" r="18" fill="none" stroke="currentColor" strokeWidth="2" />
-    <circle cx="50" cy="50" r="8" fill="currentColor" />
-    <line x1="50" y1="2" x2="50" y2="98" stroke="currentColor" strokeWidth="1.5" />
-    <line x1="2" y1="50" x2="98" y2="50" stroke="currentColor" strokeWidth="1.5" />
-    <line x1="16" y1="16" x2="84" y2="84" stroke="currentColor" strokeWidth="1.5" />
-    <line x1="84" y1="16" x2="16" y2="84" stroke="currentColor" strokeWidth="1.5" />
-    <circle cx="45" cy="35" r="2" fill="currentColor" />
-    <circle cx="62" cy="42" r="2" fill="currentColor" />
-    <circle cx="55" cy="60" r="2" fill="currentColor" />
-  </svg>
-)
-
-const FlyingDartSVG = () => (
-  <svg viewBox="0 0 120 40" fill="currentColor">
-    <path d="M0 18 L15 15 L15 25 L0 22 Z" />
-    <path d="M15 15 L18 8 L22 10 L19 17 Z" />
-    <path d="M15 25 L18 32 L22 30 L19 23 Z" />
-    <rect x="22" y="17" width="60" height="6" rx="1" />
-    <path d="M82 14 L95 20 L82 26 Z" />
-    <circle cx="97" cy="20" r="3" />
-  </svg>
-)
-
-const svgThemes = [
-  { component: DartThrowerSVG, name: 'Throwing' },
-  { component: AimingPlayerSVG, name: 'Aiming' },
-  { component: CelebratingPlayerSVG, name: 'Celebrating' },
-  { component: ReadyStanceSVG, name: 'Ready' },
-  { component: DartboardSVG, name: 'Dartboard' },
-  { component: FlyingDartSVG, name: 'Flying Dart' },
-]
-
 export default function BackgroundDecor() {
-  const [decorations, setDecorations] = useState([])
-
-  useEffect(() => {
-    const items = []
-    for (let i = 0; i < 20; i++) {
-      items.push({
-        ...svgThemes[i % svgThemes.length],
-        id: i,
-        ...getRandomStyle(i)
-      })
-    }
-    setDecorations(items)
-  }, [])
-
   return (
     <div style={{
       position: 'fixed',
@@ -99,74 +8,99 @@ export default function BackgroundDecor() {
       bottom: 0,
       pointerEvents: 'none',
       zIndex: -1,
-      overflow: 'hidden'
+      overflow: 'hidden',
+      background: `
+        linear-gradient(135deg, #0A0F2A 0%, #1A2E7A 50%, #0A0F2A 100%)
+      `
     }}>
-      {decorations.map((item) => {
-        const Component = item.component
-        return (
-          <div
-            key={item.id}
-            style={{
-              position: 'absolute',
-              ...item.position,
-              width: `${item.size}rem`,
-              height: `${item.size}rem`,
-              color: item.color,
-              opacity: item.opacity
-            }}
-          >
-            <Component />
-          </div>
-        )
-      })}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: `
+          radial-gradient(ellipse at 30% 40%, #4A2E8A 0%, transparent 60%),
+          radial-gradient(ellipse at 70% 60%, #1A2E7A 0%, transparent 50%),
+          radial-gradient(circle at 0% 0%, rgba(138, 43, 226, 0.15) 0%, transparent 40%),
+          radial-gradient(circle at 100% 100%, rgba(26, 46, 122, 0.2) 0%, transparent 40%),
+          radial-gradient(circle at 0% 100%, rgba(10, 15, 42, 0.3) 0%, transparent 50%),
+          radial-gradient(circle at 100% 0%, rgba(74, 46, 138, 0.12) 0%, transparent 45%),
+          radial-gradient(ellipse at 50% 50%, rgba(255, 255, 255, 0.04) 0%, transparent 70%),
+          radial-gradient(ellipse at 50% 50%, rgba(26, 46, 122, 0.15) 0%, transparent 80%)
+        `
+      }} />
+
+      <div style={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: '500px',
+        height: '500px',
+        opacity: 0.06
+      }}>
+        <svg viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="250" cy="250" r="240" stroke="rgba(255,255,255,0.5)" strokeWidth="4" />
+          <circle cx="250" cy="250" r="200" stroke="rgba(255,255,255,0.4)" strokeWidth="2" />
+          <circle cx="250" cy="250" r="160" stroke="rgba(255,255,255,0.3)" strokeWidth="2" />
+          <circle cx="250" cy="250" r="120" stroke="rgba(255,255,255,0.3)" strokeWidth="2" />
+          <circle cx="250" cy="250" r="80" stroke="rgba(255,255,255,0.4)" strokeWidth="2" />
+          <circle cx="250" cy="250" r="40" stroke="rgba(255,255,255,0.5)" strokeWidth="2" />
+          <circle cx="250" cy="250" r="15" fill="rgba(255,255,255,0.6)" />
+          <line x1="250" y1="10" x2="250" y2="490" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" />
+          <line x1="10" y1="250" x2="490" y2="250" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" />
+          <line x1="80" y1="80" x2="420" y2="420" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" />
+          <line x1="420" y1="80" x2="80" y2="420" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" />
+          <line x1="140" y1="30" x2="360" y2="470" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
+          <line x1="360" y1="30" x2="140" y2="470" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
+          <line x1="30" y1="140" x2="470" y2="360" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
+          <line x1="470" y1="140" x2="30" y2="360" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
+        </svg>
+      </div>
+
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '40%',
+        height: '40%',
+        background: 'radial-gradient(circle at 20% 20%, rgba(138, 43, 226, 0.08) 0%, transparent 70%)',
+        filter: 'blur(60px)'
+      }} />
+
+      <div style={{
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        width: '50%',
+        height: '50%',
+        background: 'radial-gradient(circle at 80% 80%, rgba(26, 46, 122, 0.12) 0%, transparent 70%)',
+        filter: 'blur(80px)'
+      }} />
+
+      <div style={{
+        position: 'absolute',
+        top: '10%',
+        right: '10%',
+        width: '30%',
+        height: '30%',
+        background: 'radial-gradient(circle, rgba(74, 46, 138, 0.06) 0%, transparent 60%)',
+        filter: 'blur(50px)'
+      }} />
+
+      <div style={{
+        position: 'absolute',
+        bottom: '15%',
+        left: '5%',
+        width: '35%',
+        height: '35%',
+        background: 'radial-gradient(circle, rgba(10, 15, 42, 0.1) 0%, transparent 60%)',
+        filter: 'blur(70px)'
+      }} />
+
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: 'radial-gradient(ellipse at 50% 50%, rgba(255, 255, 255, 0.03) 0%, transparent 50%)'
+      }} />
     </div>
   )
-}
-
-function getRandomStyle(index) {
-  const colors = [
-    '#00d4ff',
-    '#4da8da',
-    '#22c55e',
-    '#f59e0b',
-    '#ef4444',
-    '#a855f7',
-    '#ec4899',
-    '#06b6d4',
-    '#84cc16',
-    '#f97316',
-  ]
-  
-  const positions = [
-    { top: '3%', left: '5%' },
-    { top: '8%', left: '20%' },
-    { top: '5%', right: '10%' },
-    { top: '15%', right: '25%' },
-    { top: '20%', left: '8%' },
-    { top: '25%', right: '5%' },
-    { top: '30%', left: '15%' },
-    { top: '35%', right: '18%' },
-    { top: '40%', left: '3%' },
-    { top: '45%', right: '12%' },
-    { top: '50%', left: '25%' },
-    { top: '55%', right: '8%' },
-    { top: '60%', left: '10%' },
-    { top: '65%', right: '22%' },
-    { top: '70%', left: '5%' },
-    { top: '75%', right: '15%' },
-    { top: '80%', left: '18%' },
-    { top: '85%', right: '10%' },
-    { top: '90%', left: '12%' },
-    { top: '88%', right: '25%' },
-  ]
-  
-  const sizes = [2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 3.2, 3.8, 4.2, 4.8, 5.2]
-  const opacities = [0.12, 0.15, 0.18, 0.2, 0.14, 0.16, 0.19]
-
-  return {
-    position: positions[index % positions.length],
-    size: sizes[index % sizes.length],
-    color: colors[index % colors.length],
-    opacity: opacities[index % opacities.length]
-  }
 }
