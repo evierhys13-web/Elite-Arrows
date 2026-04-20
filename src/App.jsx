@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, Outlet } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import Auth from './pages/Auth'
@@ -93,14 +93,30 @@ function SubscribedRoute({ children }) {
   return children
 }
 
-function AppLayout({ children }) {
+function AppLayout() {
   return (
     <div className="app-layout">
       <Sidebar />
       <main className="main-content">
-        {children}
+        <Outlet />
       </main>
     </div>
+  )
+}
+
+function ProtectedLayout() {
+  return (
+    <ProtectedRoute>
+      <AppLayout />
+    </ProtectedRoute>
+  )
+}
+
+function SubscribedLayout() {
+  return (
+    <SubscribedRoute>
+      <AppLayout />
+    </SubscribedRoute>
   )
 }
 
@@ -108,154 +124,57 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/auth" element={<Auth />} />
-      <Route path="/home" element={
-        <ProtectedRoute>
-          <AppLayout>
-            <Home />
-          </AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/subscription" element={
-        <ProtectedRoute>
-          <AppLayout>
-            <Subscription />
-          </AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/table" element={
-        <ProtectedRoute>
-          <AppLayout>
-            <Table />
-          </AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/results" element={
-        <ProtectedRoute>
-          <AppLayout>
-            <Results />
-          </AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/match-log" element={
-        <ProtectedRoute>
-          <AppLayout>
-            <MatchLog />
-          </AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/players" element={
-        <ProtectedRoute>
-          <AppLayout>
-            <Players />
-          </AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/submit-result" element={
-        <SubscribedRoute>
-          <AppLayout>
-            {(() => {
-              const { user } = useAuth();
-              if (user?.isTournamentAdmin) {
-                return (
-                  <div style={{ padding: '40px', textAlign: 'center' }}>
-                    <div style={{ background: 'var(--bg-secondary)', padding: '30px', borderRadius: '12px', maxWidth: '400px', margin: '0 auto' }}>
-                      <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '15px' }}>Access Restricted</h2>
-                      <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>
-                        Tournament admins cannot submit League/Friendly game results.
-                      </p>
-                      <button className="btn btn-secondary" onClick={() => navigate('/tournaments')}>
-                        Go to Tournaments
-                      </button>
-                    </div>
-                  </div>
-                );
-              }
-              return <SubmitResult />;
-            })()}
-          </AppLayout>
-        </SubscribedRoute>
-      } />
-      <Route path="/chat" element={
-        <ProtectedRoute>
-          <AppLayout>
-            <Chat />
-          </AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/profile" element={
-        <ProtectedRoute>
-          <AppLayout>
-            <Profile />
-          </AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/profile/:id" element={
-        <ProtectedRoute>
-          <AppLayout>
-            <Profile />
-          </AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/settings" element={
-        <ProtectedRoute>
-          <AppLayout>
-            <Settings />
-          </AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/contact" element={
-        <ProtectedRoute>
-          <AppLayout>
-            <Contact />
-          </AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/support" element={
-        <ProtectedRoute>
-          <AppLayout>
-            <Support />
-          </AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/tournaments" element={
-        <ProtectedRoute>
-          <AppLayout>
-            <Tournaments />
-          </AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/games" element={
-        <SubscribedRoute>
-          <AppLayout>
-            <Games />
-          </AppLayout>
-        </SubscribedRoute>
-      } />
-      <Route path="/leaderboards" element={
-        <ProtectedRoute>
-          <AppLayout>
-            <Leaderboards />
-          </AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/rewards" element={
-        <ProtectedRoute>
-          <AppLayout>
-            <Rewards />
-          </AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/admin" element={
-        <SubscribedRoute>
-          <AppLayout>
-            <Admin />
-          </AppLayout>
-        </SubscribedRoute>
-      } />
+      
+      <Route element={<ProtectedLayout />}>
+        <Route path="/home" element={<Home />} />
+        <Route path="/subscription" element={<Subscription />} />
+        <Route path="/table" element={<Table />} />
+        <Route path="/results" element={<Results />} />
+        <Route path="/match-log" element={<MatchLog />} />
+        <Route path="/players" element={<Players />} />
+        <Route path="/chat" element={<Chat />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/profile/:id" element={<Profile />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/contact" element={<Contact />} />
+        <Route path="/support" element={<Support />} />
+        <Route path="/tournaments" element={<Tournaments />} />
+        <Route path="/leaderboards" element={<Leaderboards />} />
+        <Route path="/rewards" element={<Rewards />} />
+      </Route>
+
+      <Route element={<SubscribedLayout />}>
+        <Route path="/submit-result" element={<SubmitResultWrapper />} />
+        <Route path="/games" element={<Games />} />
+        <Route path="/admin" element={<Admin />} />
+      </Route>
+
       <Route path="/" element={<Navigate to="/home" replace />} />
       <Route path="*" element={<Navigate to="/home" replace />} />
     </Routes>
   )
+}
+
+function SubmitResultWrapper() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  
+  if (user?.isTournamentAdmin) {
+    return (
+      <div style={{ padding: '40px', textAlign: 'center' }}>
+        <div style={{ background: 'var(--bg-secondary)', padding: '30px', borderRadius: '12px', maxWidth: '400px', margin: '0 auto' }}>
+          <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '15px' }}>Access Restricted</h2>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>
+            Tournament admins cannot submit League/Friendly game results.
+          </p>
+          <button className="btn btn-secondary" onClick={() => navigate('/tournaments')}>
+            Go to Tournaments
+          </button>
+        </div>
+      </div>
+    );
+  }
+  return <SubmitResult />;
 }
 
 export default function App() {

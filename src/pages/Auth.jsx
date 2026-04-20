@@ -72,7 +72,7 @@ export default function Auth() {
         alert('Sign in successful!')
       }
 
-      window.location.href = '/home'
+      navigate('/home')
     } catch (err) {
       alert('Error: ' + err.message)
       setError(err.message)
