@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, Outlet } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, Outlet, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import Auth from './pages/Auth'
@@ -94,10 +94,11 @@ function SubscribedRoute({ children }) {
 }
 
 function AppLayout() {
+  const location = useLocation()
   return (
     <div className="app-layout">
       <Sidebar />
-      <main className="main-content">
+      <main className="main-content" key={location.pathname}>
         <Outlet />
       </main>
     </div>
