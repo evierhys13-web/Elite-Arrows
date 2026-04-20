@@ -27,6 +27,7 @@ import CupFixtures from './pages/CupFixtures'
 import Calendar from './pages/Calendar'
 import Guide from './pages/Guide'
 import Install from './pages/Install'
+import Analytics from './pages/Analytics'
 import SeedData from './pages/SeedData'
 import Sidebar from './components/Sidebar'
 import InstallPrompt from './components/InstallPrompt'
@@ -374,6 +375,13 @@ function AppRoutes() {
         <SubscribedRoute>
           <AppLayout>
             <Games />
+          </AppLayout>
+        </SubscribedRoute>
+      } />
+      <Route path="/analytics" element={
+        <SubscribedRoute>
+          <AppLayout>
+            <Analytics />
           </AppLayout>
         </SubscribedRoute>
       } />
