@@ -26,11 +26,7 @@ import BackgroundDecor from './components/BackgroundDecor'
 
 function AppLayout() {
   const location = useLocation()
-  const { isAuthenticated, loading } = useAuth()
-
-  if (loading) {
-    return <div className="loading">Loading...</div>
-  }
+  const { isAuthenticated } = useAuth()
 
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />
@@ -48,12 +44,8 @@ function AppLayout() {
 
 function SubscribedLayout() {
   const location = useLocation()
-  const { user, isAuthenticated, loading } = useAuth()
+  const { user, isAuthenticated } = useAuth()
   const navigate = useNavigate()
-
-  if (loading) {
-    return <div className="loading">Loading...</div>
-  }
 
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />
@@ -113,7 +105,27 @@ function SubscribedLayout() {
   )
 }
 
+function LoadingScreen() {
+  return (
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'var(--bg-primary)'
+    }}>
+      <div className="loading" style={{ fontSize: '1.2rem' }}>Loading...</div>
+    </div>
+  )
+}
+
 function AppRoutes() {
+  const { loading } = useAuth()
+
+  if (loading) {
+    return <LoadingScreen />
+  }
+
   return (
     <Routes>
       <Route path="/auth" element={<Auth />} />
