@@ -19,6 +19,7 @@ import Tournaments from './pages/Tournaments'
 import Games from './pages/Games'
 import Leaderboards from './pages/Leaderboards'
 import Rewards from './pages/Rewards'
+import Analytics from './pages/Analytics'
 import SeedData from './pages/SeedData'
 import Sidebar from './components/Sidebar'
 import BackgroundDecor from './components/BackgroundDecor'
@@ -133,6 +134,7 @@ function AppRoutes() {
         <Route path="/tournaments" element={<Tournaments />} />
         <Route path="/leaderboards" element={<Leaderboards />} />
         <Route path="/rewards" element={<Rewards />} />
+        <Route path="/analytics" element={<Analytics />} />
       </Route>
 
       <Route element={<SubscribedLayout />}>

@@ -163,6 +163,14 @@ const CloseIcon = () => (
   </svg>
 )
 
+const BarChartIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <line x1="12" y1="20" x2="12" y2="10" />
+    <line x1="18" y1="20" x2="18" y2="4" />
+    <line x1="6" y1="20" x2="6" y2="16" />
+  </svg>
+)
+
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false)
   const { signOut, user } = useAuth()
@@ -182,6 +190,7 @@ export default function Sidebar() {
     { path: '/tournaments', label: 'Tournaments', icon: TrophyIcon2 },
     { path: '/leaderboards', label: 'Leaderboards', icon: TrophyIcon },
     { path: '/rewards', label: 'Rewards', icon: GiftIcon },
+    { path: '/analytics', label: 'Analytics', icon: BarChartIcon },
     { path: '/games', label: 'Games', icon: GamepadIcon },
     ...(user?.isSubscribed && !user?.isTournamentAdmin ? [{ path: '/submit-result', label: 'Submit Result', icon: PlusCircleIcon }] : []),
     { path: '/chat', label: 'Chat', icon: MessageIcon },
