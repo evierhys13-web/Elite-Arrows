@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
+import { auth, sendPasswordResetEmail } from '../firebase'
 
 export default function Settings() {
-  const { signOut, user, updateUser, getAllUsers } = useAuth()
+  const { signOut, user, updateUser, getAllUsers, notifications: contextNotifications } = useAuth()
   const { theme, toggleTheme, language, setLanguage, chatSettings, setChatSettings } = useTheme()
   const navigate = useNavigate()
   
@@ -25,10 +26,8 @@ export default function Settings() {
   const [notifications, setNotifications] = useState([])
 
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem('eliteArrowsNotifications') || '[]')
-    const userNotifications = stored.filter(n => n.toUserId === user.id || n.fromUserId === user.id || !n.toUserId)
-    setNotifications(userNotifications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)))
-  }, [user.id])
+    setNotifications(contextNotifications)
+  }, [contextNotifications])
 
   const markAsRead = (id) => {
     const updated = notifications.map(n => n.id === id ? { ...n, isRead: true } : n)
@@ -58,6 +57,9 @@ export default function Settings() {
       case 'tournament_update': return '📢'
       case 'payment_approved': return '£'
       case 'support_response': return '?'
+      case 'friend_request': return '👤'
+      case 'friend_accepted': return '✅'
+      case 'friend_rejected': return '❌'
       default: return '•'
     }
   }
@@ -85,14 +87,20 @@ export default function Settings() {
     alert('Email updated!')
   }
 
-  const handleUpdatePassword = () => {
-    if (!newPassword || newPassword.length < 6) return alert('Password must be at least 6 characters')
-    if (newPassword !== confirmPassword) return alert('Passwords do not match')
-    updateUser({ password: newPassword })
-    setShowPasswordForm(false)
-    setNewPassword('')
-    setConfirmPassword('')
-    alert('Password updated!')
+  const handleForgotPassword = async () => {
+    if (!user?.email) {
+      alert('You must be logged in')
+      return
+    }
+    if (!confirm('Send password reset email to your email address?')) return
+    
+    try {
+      await sendPasswordResetEmail(auth, user.email)
+      alert('Password reset email sent! Check your inbox.')
+      setShowPasswordForm(false)
+    } catch (error) {
+      alert('Error: ' + error.message)
+    }
   }
 
   const handleSaveSocials = () => {
@@ -172,11 +180,17 @@ export default function Settings() {
 
       {activeTab === 'account' && (
         <div>
+          {!user?.dartCounterUsername && (
+            <div className="card" style={{ marginBottom: '20px', border: '2px solid var(--accent-primary)', background: 'rgba(139, 69, 19, 0.1)' }}>
+              <h3 style={{ color: 'var(--accent-primary)', marginBottom: '10px' }}>Welcome! Please add your DartCounter details</h3>
+              <p style={{ color: 'var(--text-muted)' }}>You need to add your DartCounter username before using the app.</p>
+            </div>
+          )}
           <div className="card" style={{ marginBottom: '20px' }}>
             <h3 className="card-title">Account Details</h3>
             <div className="form-group">
               <label>DartCounter Username</label>
-              <input type="text" value={user?.dartCounterUsername || ''} onChange={(e) => updateUser({ dartCounterUsername: e.target.value, dartCounterLink: `https://dartcounter.net/player/${e.target.value}` })} placeholder="Enter your DartCounter username" />
+              <input type="text" value={user?.dartCounterUsername || ''} onChange={(e) => updateUser({ dartCounterUsername: e.target.value, dartCounterLink: `https://dartcounter.app/profile/${e.target.value}` })} placeholder="Enter your DartCounter username" />
             </div>
             <div className="form-group">
               <label>Date of Birth</label>
@@ -203,24 +217,12 @@ export default function Settings() {
 
           <div className="card" style={{ marginBottom: '20px' }}>
             <h3 className="card-title">Change Password</h3>
-            {!showPasswordForm ? (
-              <button className="btn btn-secondary btn-block" onClick={() => setShowPasswordForm(true)}>Change Password</button>
-            ) : (
-              <>
-                <div className="form-group">
-                  <label>New Password</label>
-                  <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Enter new password" />
-                </div>
-                <div className="form-group">
-                  <label>Confirm Password</label>
-                  <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirm new password" />
-                </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button className="btn btn-primary" onClick={handleUpdatePassword}>Save</button>
-                  <button className="btn btn-secondary" onClick={() => setShowPasswordForm(false)}>Cancel</button>
-                </div>
-              </>
-            )}
+            <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
+              Send a password reset link to your email address.
+            </p>
+            <button className="btn btn-primary btn-block" onClick={handleForgotPassword}>
+              Send Reset Email
+            </button>
           </div>
 
           <div className="card" style={{ marginBottom: '20px' }}>
@@ -341,14 +343,16 @@ export default function Settings() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
               <span>Date paid</span>
-              <span>{user?.paymentDate ? new Date(user.paymentDate).toLocaleDateString() : 'N/A'}</span>
+              <span>{user?.subscriptionDate ? new Date(user.subscriptionDate).toLocaleDateString() : 'N/A'}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-              <span>Next billing date</span>
+              <span>Expiry date</span>
               <span>
-                {user?.paymentDate 
-                  ? new Date(new Date(user.paymentDate).setMonth(new Date(user.paymentDate).getMonth() + 1)).toLocaleDateString()
-                  : 'N/A'}
+                {user?.subscriptionExpiry 
+                  ? new Date(user.subscriptionExpiry).toLocaleDateString()
+                  : user?.subscriptionDate 
+                    ? new Date(new Date(user.subscriptionDate).getTime() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()
+                    : 'N/A'}
               </span>
             </div>
             {user?.freeAdminSubscription && (

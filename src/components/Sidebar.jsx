@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
+import NotificationBell from './NotificationBell'
 
 const HomeIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -138,6 +139,15 @@ const TrophyIcon2 = () => (
   </svg>
 )
 
+const CalendarIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+    <line x1="16" y1="2" x2="16" y2="6" />
+    <line x1="8" y1="2" x2="8" y2="6" />
+    <line x1="3" y1="10" x2="21" y2="10" />
+  </svg>
+)
+
 const GamepadIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <rect x="2" y="6" width="20" height="12" rx="2" />
@@ -163,11 +173,11 @@ const CloseIcon = () => (
   </svg>
 )
 
-const BarChartIcon = () => (
+const DownloadIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <line x1="12" y1="20" x2="12" y2="10" />
-    <line x1="18" y1="20" x2="18" y2="4" />
-    <line x1="6" y1="20" x2="6" y2="16" />
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <polyline points="7,10 12,15 17,10" />
+    <line x1="12" y1="15" x2="12" y2="3" />
   </svg>
 )
 
@@ -181,27 +191,64 @@ export default function Sidebar() {
     navigate('/auth')
   }
 
-  const navItems = [
+  const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
+  const isAdminEmail = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
+  const isAdmin = user?.isAdmin || user?.isTournamentAdmin || isAdminEmail
+  const isFreeTier = !user?.division || user?.division === 'Unassigned'
+  const isSubscribed = user?.isSubscribed === true
+  
+  const freeTierItems = [
     { path: '/home', label: 'Home', icon: HomeIcon },
-    { path: '/table', label: 'Table', icon: TableIcon },
-    { path: '/results', label: 'Results', icon: TrophyIcon },
-    { path: '/match-log', label: 'Match Log', icon: HistoryIcon },
+    { path: '/guide', label: 'Guide', icon: HelpIcon },
+    { path: '/table', label: 'League Table', icon: TableIcon },
     { path: '/players', label: 'Players', icon: UsersIcon },
-    { path: '/tournaments', label: 'Tournaments', icon: TrophyIcon2 },
     { path: '/leaderboards', label: 'Leaderboards', icon: TrophyIcon },
-    { path: '/rewards', label: 'Rewards', icon: GiftIcon },
-    { path: '/analytics', label: 'Analytics', icon: BarChartIcon },
-    { path: '/games', label: 'Games', icon: GamepadIcon },
-    ...(user?.isSubscribed && !user?.isTournamentAdmin ? [{ path: '/submit-result', label: 'Submit Result', icon: PlusCircleIcon }] : []),
-    { path: '/chat', label: 'Chat', icon: MessageIcon },
     { path: '/profile', label: 'Profile', icon: UserIcon },
-    ...(!user?.isTournamentAdmin ? [{ path: '/settings', label: 'Settings', icon: SettingsIcon }] : []),
-    { path: '/contact', label: 'Contact', icon: MailIcon },
-    { path: '/support', label: 'Support', icon: HelpIcon },
-    ...(user?.isAdmin ? [{ path: '/subscription', label: 'Subscription', icon: CreditCardIcon }] : []),
   ]
 
-  const showAdmin = (user?.isAdmin || user?.isTournamentAdmin) && user?.isSubscribed
+  const utilityItems = [
+    { path: '/install', label: 'Install App', icon: DownloadIcon },
+  ]
+
+  const subscriberItems = [
+    { path: '/fixtures', label: 'Fixtures', icon: CalendarIcon },
+    { path: '/calendar', label: 'Calendar', icon: CalendarIcon },
+    { path: '/results', label: 'Results', icon: TrophyIcon },
+    { path: '/match-log', label: 'Match Log', icon: HistoryIcon },
+    { path: '/submit-result', label: 'Submit Result', icon: PlusCircleIcon },
+    { path: '/cups', label: 'Cups', icon: TrophyIcon },
+    { path: '/tournaments', label: 'Tournaments', icon: TrophyIcon2 },
+    { path: '/rewards', label: 'Rewards', icon: GiftIcon },
+    { path: '/chat', label: 'Chat', icon: MessageIcon },
+    { path: '/games', label: 'Games', icon: GamepadIcon },
+  ]
+
+  const adminItems = [
+    { path: '/admin', label: 'Admin Panel', icon: ShieldIcon },
+  ]
+
+  const bottomItems = [
+    { path: '/settings', label: 'Settings', icon: SettingsIcon },
+    { path: '/contact', label: 'Contact', icon: MailIcon },
+    { path: '/support', label: 'Support', icon: HelpIcon },
+    { path: '/subscription', label: 'Subscription', icon: CreditCardIcon },
+  ]
+  
+  let navItems = [...freeTierItems]
+  
+  if (isSubscribed || isAdmin) {
+    navItems = [...navItems, ...subscriberItems]
+  }
+  
+  if (isAdmin) {
+    navItems = [...navItems, ...adminItems]
+  }
+  
+  navItems = [...navItems, ...bottomItems]
+  
+  navItems = [...navItems, ...utilityItems]
+
+  const showAdmin = isAdmin
 
   return (
     <>
@@ -213,7 +260,10 @@ export default function Sidebar() {
           <img src="/logo.jpg" alt="Elite Arrows" style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover' }} />
           <span style={{ marginLeft: '8px' }}>Elite Arrows</span>
         </span>
-        <div style={{ width: 40 }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <NotificationBell />
+          <div style={{ width: 40 }} />
+        </div>
       </div>
 
       <div className={`mobile-sidebar-overlay ${isOpen ? 'open' : ''}`} onClick={() => setIsOpen(false)} />
@@ -245,32 +295,26 @@ export default function Sidebar() {
             <div style={{ fontWeight: '600', fontSize: '0.95rem' }}>{user?.username}</div>
             <div style={{ color: 'var(--accent-cyan)', fontSize: '0.85rem' }}>{user?.threeDartAverage?.toFixed(2) || 0} avg</div>
           </div>
+          <NotificationBell />
         </div>
 
         <nav className="sidebar-nav">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-              onClick={() => setIsOpen(false)}
-              end={item.path === '/home'}
-            >
-              <item.icon />
-              <span>{item.label}</span>
-            </NavLink>
-          ))}
-
-          {showAdmin && (
-            <NavLink
-              to="/admin"
-              className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-              onClick={() => setIsOpen(false)}
-            >
-              <ShieldIcon />
-              <span>Admin</span>
-            </NavLink>
-          )}
+          {navItems.map((item) => {
+            const isActive = window.location.pathname === item.path || (item.path === '/home' && window.location.pathname === '/')
+            return (
+              <button
+                key={item.path}
+                className={`nav-item ${isActive ? 'active' : ''}`}
+                onClick={() => {
+                  navigate(item.path)
+                  setIsOpen(false)
+                }}
+              >
+                <item.icon />
+                <span>{item.label}</span>
+              </button>
+            )
+          })}
 
           <button className="nav-item nav-item-signout" onClick={handleSignOut}>
             <LogOutIcon />

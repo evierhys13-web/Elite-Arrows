@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { doc, setDoc } from '../firebase'
 
 export default function SeasonManagement() {
   const { user, getAllUsers } = useAuth()
@@ -124,6 +125,24 @@ export default function SeasonManagement() {
         </p>
       </div>
 
+      <div className="card" style={{ marginBottom: '20px', border: '2px solid var(--warning)' }}>
+        <h3 className="card-title" style={{ color: 'var(--warning)' }}>⚠️ Clear All Divisions</h3>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
+          Remove division from all users. Admins will need to reassign divisions.
+        </p>
+        <button className="btn btn-danger" onClick={async () => {
+          if (!confirm('Remove division from ALL users?')) return
+          const allUsers = getAllUsers()
+          for (const u of allUsers) {
+            await setDoc(doc(db, 'users', u.id), { division: null }, { merge: true })
+          }
+          alert(`Divisions cleared for ${allUsers.length} users!`)
+          window.location.reload()
+        }}>
+          Clear All Divisions
+        </button>
+      </div>
+
       <div className="card" style={{ marginBottom: '20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
           <h3 className="card-title" style={{ margin: 0 }}>Seasons</h3>
@@ -240,11 +259,13 @@ export default function SeasonManagement() {
             style={{ flex: 1, minWidth: '150px' }}
           >
             <option value="">Select Division</option>
-            <option value="Elite">Elite (55+)</option>
-            <option value="Premier">Premier (50-54.99)</option>
-            <option value="Champion">Champion (45-49.99)</option>
-            <option value="Diamond">Diamond (40-44.99)</option>
-            <option value="Gold">Gold (Below 40)</option>
+            <option value="Elite">Elite</option>
+            <option value="Diamond">Diamond</option>
+            <option value="Platinum">Platinum</option>
+            <option value="Gold">Gold</option>
+            <option value="Silver">Silver</option>
+            <option value="Bronze">Bronze</option>
+            <option value="Development">Development</option>
           </select>
           <button className="btn btn-primary" onClick={movePlayerDivision}>
             Move Player

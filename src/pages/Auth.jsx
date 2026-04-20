@@ -10,13 +10,14 @@ export default function Auth() {
     email: '',
     password: '',
     confirmPassword: '',
+    dartCounterUsername: '',
     threeDartAverage: '',
     rememberMe: false
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const { signUp, signIn, isAuthenticated, loading: authLoading } = useAuth()
+  const { signUp, signIn, isAuthenticated, loading: authLoading, getAllUsers } = useAuth()
   const navigate = useNavigate()
 
   if (authLoading) {
@@ -48,28 +49,36 @@ export default function Auth() {
 
     try {
       if (isSignUp) {
-        if (!formData.username || !formData.email || !formData.password || !formData.threeDartAverage) {
-          throw new Error('All fields are required')
+        if (!formData.email || !formData.password) {
+          throw new Error('Email and password are required')
         }
-        const avg = parseFloat(formData.threeDartAverage);
-        if (isNaN(avg) || avg < 0) {
-          throw new Error('Please enter a valid 3-dart average')
+        if (!formData.dartCounterUsername) {
+          throw new Error('DartCounter username is required')
         }
+        if (!formData.threeDartAverage) {
+          throw new Error('3-Dart average is required')
+        }
+        if (formData.password !== formData.confirmPassword) {
+          throw new Error('Passwords do not match')
+        }
+        const avg = parseFloat(formData.threeDartAverage) || 0;
 
+        const username = formData.dartCounterUsername || formData.email.split('@')[0]
+        
         await signUp({
-          username: formData.username,
+          username: username,
           email: formData.email,
           password: formData.password,
-          threeDartAverage: avg
+          threeDartAverage: avg,
+          dartCounterUsername: formData.dartCounterUsername,
+          dartCounterLink: formData.dartCounterUsername ? `https://dartcounter.app/profile/${formData.dartCounterUsername}` : ''
         }, formData.rememberMe)
-        alert('Sign up successful!')
       } else {
         if (!formData.email || !formData.password) {
           throw new Error('Email and password are required')
         }
 
         await signIn(formData.email, formData.password, formData.rememberMe)
-        alert('Sign in successful!')
       }
 
       navigate('/home')
@@ -109,49 +118,39 @@ export default function Auth() {
 
           <form className="auth-form" onSubmit={handleSubmit}>
             {isSignUp && (
+              <div className="form-group">
+                <label htmlFor="email">Email</label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="Enter your email"
+                  autoComplete="email"
+                />
+              </div>
+            )}
+
+            {!isSignUp && (
               <>
                 <div className="form-group">
-                  <label htmlFor="username">Username</label>
+                  <label htmlFor="email">Email Address (or DartCounter Username)</label>
                   <input
                     type="text"
-                    id="username"
-                    name="username"
-                    value={formData.username}
+                    id="email"
+                    name="email"
+                    value={formData.email || ''}
                     onChange={handleChange}
-                    placeholder="Enter your username"
-                    autoComplete="username"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="threeDartAverage">3-Dart Average</label>
-                  <input
-                    type="number"
-                    id="threeDartAverage"
-                    name="threeDartAverage"
-                    value={formData.threeDartAverage}
-                    onChange={handleChange}
-                    placeholder="Enter your 3-dart average"
-                    step="0.01"
-                    min="0"
+                    placeholder="Enter your email or DartCounter username"
                     autoComplete="off"
                   />
                 </div>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '-10px', marginBottom: '15px' }}>
+                  You can sign in with either your email address or your DartCounter username
+                </p>
               </>
             )}
-
-            <div className="form-group">
-              <label htmlFor="email">Email</label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="Enter your email"
-                autoComplete="email"
-              />
-            </div>
 
             <div className="form-group">
               <label htmlFor="password">Password</label>
@@ -181,7 +180,39 @@ export default function Auth() {
               </div>
             )}
 
-            <div className="checkbox-group">
+            {isSignUp && (
+              <>
+                <div className="form-group">
+                  <label htmlFor="dartCounterUsername">DartCounter Username</label>
+                  <input
+                    type="text"
+                    id="dartCounterUsername"
+                    name="dartCounterUsername"
+                    value={formData.dartCounterUsername || ''}
+                    onChange={handleChange}
+                    placeholder="Enter your DartCounter username"
+                    autoComplete="off"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="threeDartAverage">3-Dart Average</label>
+                  <input
+                    type="number"
+                    id="threeDartAverage"
+                    name="threeDartAverage"
+                    value={formData.threeDartAverage}
+                    onChange={handleChange}
+                    placeholder="Enter your 3-dart average"
+                    step="0.01"
+                    min="0"
+                    autoComplete="off"
+                  />
+                </div>
+              </>
+            )}
+
+          <div className="checkbox-group">
               <input
                 type="checkbox"
                 id="rememberMe"

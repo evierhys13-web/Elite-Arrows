@@ -1,23 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import { db, doc, setDoc } from '../firebase'
+import { db, doc, setDoc, getDoc, deleteDoc, updateDoc } from '../firebase'
+import CupManagement from './CupManagement'
 
 export default function Admin() {
-  const { user, getAllUsers, updateUser } = useAuth()
+  const { user, getAllUsers, updateUser, getResults, adminData, updateAdminData, addToMoneyHistory, getSupportRequests, getSeasons, getNews, postNews, deleteNews, togglePinNews, triggerDataRefresh, dataRefreshTrigger, notifyUser, notifyAllSubscribers } = useAuth()
   const navigate = useNavigate()
-  const [pendingResults, setPendingResults] = useState([])
-  const [activeTab, setActiveTab] = useState('results')
-  const [showTournamentForm, setShowTournamentForm] = useState(false)
-  const [showColorsForm, setShowColorsForm] = useState(false)
-  const [tournamentForm, setTournamentForm] = useState({ 
-    name: '', type: 'knockout', divisions: [], entryFee: 0,
-    isCashBased: false, prizeInfo: '', maxParticipants: 16,
-    entryDeadline: '', daysBetweenRounds: 3,
-    formatR1: '3', formatR2: '3', formatQF: '3', formatSF: '5', formatF: '7'
-  })
-  const [colors, setColors] = useState(() => JSON.parse(localStorage.getItem('eliteArrowsColors') || '{"primary": "#4da8da", "background": "#0a1628", "button": "#4da8da"}'))
-  const [showSubmitGame, setShowSubmitGame] = useState(false)
+  const subscriptionPot = adminData.subscriptionPot || 0
+  const subscriptionPot10 = adminData.subscriptionPot10 || 0
+  const tournamentPot = adminData.tournamentPot || 0
+  const moneyHistory = adminData.moneyHistory || []
   const [gameForm, setGameForm] = useState({
     player1: '',
     player2: '',
@@ -26,44 +19,255 @@ export default function Admin() {
     gameType: 'Friendly',
     division: ''
   })
+  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
-    const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]');
+    setRefreshKey(prev => prev + 1)
+  }, [dataRefreshTrigger])
+  const [pendingResults, setPendingResults] = useState([])
+  const [activeTab, setActiveTab] = useState('results')
+  const [showColorsForm, setShowColorsForm] = useState(false)
+  const [colors, setColors] = useState({
+    primary: localStorage.getItem('eliteArrowsColors') ? JSON.parse(localStorage.getItem('eliteArrowsColors')).primary : '#00d4ff',
+    background: localStorage.getItem('eliteArrowsColors') ? JSON.parse(localStorage.getItem('eliteArrowsColors')).background : '#0a0a1a',
+    button: localStorage.getItem('eliteArrowsColors') ? JSON.parse(localStorage.getItem('eliteArrowsColors')).button : '#00d4ff'
+  })
+
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [refreshKey])
+
+  const clearCacheAndReload = () => {
+    if ('caches' in window) {
+      caches.keys().then(names => {
+        names.forEach(name => caches.delete(name))
+      })
+    }
+    localStorage.removeItem('eliteArrowsUsers')
+    window.location.reload(true)
+  }
+
+  const refreshUsers = () => {
+    setRefreshKey(k => k + 1)
+  }
+
+  useEffect(() => {
+    const results = getResults();
     const pending = results.filter(r => r.status === 'pending');
     if (user.isTournamentAdmin && !user.isAdmin) {
       setPendingResults(pending.filter(r => r.gameType === 'Tournament'));
     } else {
       setPendingResults(pending);
     }
+
+    if (user?.isAdmin) {
+      let seasons = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
+      if (seasons.length === 0) {
+        seasons.push({ id: Date.now(), name: 'Season 1', createdAt: new Date().toISOString(), status: 'active', isArchived: false, startDate: '2026-05-01', endDate: '2026-06-01' })
+        localStorage.setItem('eliteArrowsSeasons', JSON.stringify(seasons))
+        localStorage.setItem('eliteArrowsCurrentSeason', 'Season 1')
+      } else {
+        seasons = seasons.map(s => {
+          if (!s.startDate || !s.endDate || isNaN(new Date(s.startDate).getTime()) || isNaN(new Date(s.endDate).getTime())) {
+            return { ...s, startDate: '2026-05-01', endDate: '2026-06-01' }
+          }
+          return s
+        })
+        localStorage.setItem('eliteArrowsSeasons', JSON.stringify(seasons))
+        if (!localStorage.getItem('eliteArrowsCurrentSeason')) {
+          localStorage.setItem('eliteArrowsCurrentSeason', seasons[0].name)
+        }
+      }
+    }
   }, [user.isAdmin, user.isTournamentAdmin]);
 
-  const approveResult = (resultId) => {
+  const approveResult = async (resultId) => {
     const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]');
     const index = results.findIndex(r => r.id === resultId);
-    if (index !== -1) {
+    if (index === -1) {
+      alert('Result not found')
+      return
+    }
+    
+    try {
+      const result = results[index]
       results[index].status = 'approved';
       localStorage.setItem('eliteArrowsResults', JSON.stringify(results));
+      
+      await updateDoc(doc(db, 'results', resultId), { status: 'approved' })
+      
+      if (result.gameType === 'Cup') {
+        const cups = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
+        const cupIndex = cups.findIndex(c => c.id === result.cupId)
+        if (cupIndex !== -1) {
+          const cup = cups[cupIndex]
+          const matchIndex = cup.matches.findIndex(m => m.id === result.matchId)
+          if (matchIndex !== -1) {
+            const winnerId = result.score1 > result.score2 ? result.player1Id : result.player2Id
+            cup.matches[matchIndex].winner = winnerId
+            
+            if (cup.matches[matchIndex].nextMatchId) {
+              const nextMatchIndex = cup.matches.findIndex(m => m.id === cup.matches[matchIndex].nextMatchId)
+              if (nextMatchIndex !== -1) {
+                if (cup.matches[nextMatchIndex].player1 === null) {
+                  cup.matches[nextMatchIndex].player1 = winnerId
+                } else {
+                  cup.matches[nextMatchIndex].player2 = winnerId
+                }
+              }
+            }
+            
+            const allRoundsComplete = Array.from(new Set(cup.matches.map(m => m.round))).every(round => {
+              return cup.matches.filter(m => m.round === round).every(m => m.winner)
+            })
+            
+            if (allRoundsComplete) {
+              cup.status = 'completed'
+            } else {
+              const activeRound = Array.from(new Set(cup.matches.map(m => m.round))).sort((a, b) => a - b).find(round => {
+                return !cup.matches.filter(m => m.round === round).every(m => m.winner)
+              })
+              cup.currentRound = activeRound || cup.currentRound
+            }
+            
+            cups[cupIndex] = cup
+            localStorage.setItem('eliteArrowsCups', JSON.stringify(cups))
+          }
+        }
+      }
+      
+      if (result.player1Id) {
+        const p1Doc = await getDoc(doc(db, 'users', result.player1Id))
+        if (p1Doc.exists()) {
+          const p1Data = p1Doc.data()
+          const p1Stats = p1Data.stats || { played: 0, wins: 0, losses: 0, legsWon: 0, legsLost: 0, '180s': 0, '170s': 0, highestCheckout: 0, doubleSuccess: 0 }
+          p1Stats.played = (p1Stats.played || 0) + 1
+          p1Stats.legsWon = (p1Stats.legsWon || 0) + result.score1
+          p1Stats.legsLost = (p1Stats.legsLost || 0) + result.score2
+          p1Stats['180s'] = (p1Stats['180s'] || 0) + (result.player1Stats?.['180s'] || 0)
+          if ((result.player1Stats?.highestCheckout || 0) >= 170) {
+            p1Stats['170s'] = (p1Stats['170s'] || 0) + 1
+          }
+          if ((result.player1Stats?.highestCheckout || 0) > (p1Stats.highestCheckout || 0)) {
+            p1Stats.highestCheckout = result.player1Stats.highestCheckout
+          }
+          if (result.score1 > result.score2) {
+            p1Stats.wins = (p1Stats.wins || 0) + 1
+          } else if (result.score1 < result.score2) {
+            p1Stats.losses = (p1Stats.losses || 0) + 1
+          }
+          await setDoc(doc(db, 'users', result.player1Id), { stats: p1Stats }, { merge: true })
+        }
+      }
+      
+      if (result.player2Id) {
+        const p2Doc = await getDoc(doc(db, 'users', result.player2Id))
+        if (p2Doc.exists()) {
+          const p2Data = p2Doc.data()
+          const p2Stats = p2Data.stats || { played: 0, wins: 0, losses: 0, legsWon: 0, legsLost: 0, '180s': 0, '170s': 0, highestCheckout: 0, doubleSuccess: 0 }
+          p2Stats.played = (p2Stats.played || 0) + 1
+          p2Stats.legsWon = (p2Stats.legsWon || 0) + result.score2
+          p2Stats.legsLost = (p2Stats.legsLost || 0) + result.score1
+          p2Stats['180s'] = (p2Stats['180s'] || 0) + (result.player2Stats?.['180s'] || 0)
+          if ((result.player2Stats?.highestCheckout || 0) >= 170) {
+            p2Stats['170s'] = (p2Stats['170s'] || 0) + 1
+          }
+          if ((result.player2Stats?.highestCheckout || 0) > (p2Stats.highestCheckout || 0)) {
+            p2Stats.highestCheckout = result.player2Stats.highestCheckout
+          }
+          if (result.score2 > result.score1) {
+            p2Stats.wins = (p2Stats.wins || 0) + 1
+          } else if (result.score2 < result.score1) {
+            p2Stats.losses = (p2Stats.losses || 0) + 1
+          }
+          await setDoc(doc(db, 'users', result.player2Id), { stats: p2Stats }, { merge: true })
+        }
+      }
+      
+      notifyUser(result.player1Id, 'Result Approved', `Your result (${result.score1}-${result.score2} vs ${result.player2}) was approved!`, 'result_approved', { resultId, gameType: result.gameType })
+      notifyUser(result.player2Id, 'Result Approved', `Your result (${result.score2}-${result.score1} vs ${result.player1}) was approved!`, 'result_approved', { resultId, gameType: result.gameType })
+      notifyAllSubscribers('League Table Updated', 'The league table has been updated with the latest results', { type: 'table_updated' })
+      
       setPendingResults(prev => prev.filter(r => r.id !== resultId));
+      alert(result.gameType === 'Cup' ? 'Result approved! Cup bracket updated.' : 'Result approved!')
+    } catch (e) {
+      console.error('Error approving result:', e)
+      alert('Error approving result: ' + e.message)
     }
   };
 
-  const rejectResult = (resultId) => {
+  const rejectResult = async (resultId) => {
     const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]');
     const index = results.findIndex(r => r.id === resultId);
     if (index !== -1) {
+      const result = results[index]
       results[index].status = 'rejected';
       localStorage.setItem('eliteArrowsResults', JSON.stringify(results));
+      
+      try {
+        await updateDoc(doc(db, 'results', resultId), { status: 'rejected' })
+      } catch (e) {
+        console.log('Error updating result status in Firebase:', e)
+      }
+      
+      notifyUser(result.player1Id, 'Result Rejected', `Your result (${result.score1}-${result.score2} vs ${result.player2}) was rejected`, 'result_rejected', { resultId })
+      notifyUser(result.player2Id, 'Result Rejected', `Your opponent's result was rejected`, 'result_rejected', { resultId })
+      
       setPendingResults(prev => prev.filter(r => r.id !== resultId));
     }
   };
 
-  const approvePayment = (userId) => {
+  const approvePayment = async (userId) => {
     const users = getAllUsers()
     const index = users.findIndex(u => u.id === userId)
-    if (index !== -1) {
-      users[index].isSubscribed = true
-      users[index].paymentPending = false
+    if (index === -1) {
+      alert('User not found')
+      return
+    }
+    
+    try {
+      const userDivision = users[index].division
+      const isHighTier = userDivision === 'Elite' || userDivision === 'Diamond'
+      const amount = isHighTier ? 10 : 5
+      
+      const seasonStart = new Date('2026-05-01')
+      const seasonEnd = new Date('2026-06-01')
+      const now = new Date()
+      
+      const updates = {
+        isSubscribed: true,
+        paymentPending: false,
+        subscriptionDate: now.toISOString(),
+        subscriptionExpiry: now < seasonStart ? seasonEnd.toISOString() : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        subscriptionSource: 'payment'
+      }
+      
+      // Filter out undefined values
+      const cleanUpdates = {}
+      Object.keys(updates).forEach(key => {
+        if (updates[key] !== undefined) {
+          cleanUpdates[key] = updates[key]
+        }
+      })
+      
+      // Update Firestore
+      await setDoc(doc(db, 'users', userId), cleanUpdates, { merge: true })
+      
+      // Update local state
+      users[index] = { ...users[index], ...cleanUpdates }
       localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+      
+      if (isHighTier) {
+        await updateAdminData({ subscriptionPot10: subscriptionPot10 + amount })
+      } else {
+        await updateAdminData({ subscriptionPot: subscriptionPot + amount })
+      }
+      addToMoneyHistory('subscription', amount, `Payment from ${users[index].username}`)
+      
+      alert('Payment approved!')
+    } catch (e) {
+      console.error(e)
+      alert('Error: ' + e.message)
     }
   }
 
@@ -111,8 +315,8 @@ export default function Admin() {
       return
     }
 
-    const player1User = allUsers.find(u => u.id === gameForm.player1)
-    const player2User = allUsers.find(u => u.id === gameForm.player2)
+    const player1User = getAllUsers().find(u => u.id === gameForm.player1)
+    const player2User = getAllUsers().find(u => u.id === gameForm.player2)
 
     const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
     results.push({
@@ -140,14 +344,18 @@ export default function Admin() {
     setGameForm({ player1: '', player2: '', score1: '', score2: '', gameType: 'Friendly', division: '' })
   }
 
-  const allUsers = getAllUsers()
-  const pendingAdmins = allUsers.filter(u => u.adminRequestPending && !u.isAdmin && !u.isTournamentAdmin)
-  const pendingPayments = allUsers.filter(u => u.paymentPending && !u.isSubscribed)
-  const subscribers = allUsers.filter(u => u.isSubscribed)
-  const freeUsers = allUsers.filter(u => !u.isSubscribed && !u.paymentPending)
-  const tournamentAdmins = allUsers.filter(u => u.isTournamentAdmin)
+  const pendingAdmins = getAllUsers().filter(u => u.adminRequestPending && !u.isAdmin && !u.isTournamentAdmin)
+  const pendingPayments = getAllUsers().filter(u => u.paymentPending && !u.isSubscribed)
+  const subscribers = getAllUsers().filter(u => u.isSubscribed)
+  const freeUsers = getAllUsers().filter(u => !u.isSubscribed && !u.paymentPending)
+  const tournamentAdmins = getAllUsers().filter(u => u.isTournamentAdmin)
 
-  if (!user.isAdmin && !user.isTournamentAdmin) {
+  const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
+  const isEmailAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
+  const isDbAdmin = user?.isAdmin === true
+  const canAccess = isEmailAdmin || isDbAdmin || user?.isTournamentAdmin || user?.isCupAdmin
+  
+  if (!canAccess) {
     return (
       <div className="page">
         <div className="page-header">
@@ -162,7 +370,7 @@ export default function Admin() {
     );
   }
 
-  const isFullAdmin = user.isAdmin
+  const isFullAdmin = user?.isAdmin || ADMIN_EMAILS.includes(user?.email?.toLowerCase())
 
   return (
     <div className="page">
@@ -195,6 +403,22 @@ export default function Admin() {
             Payments ({pendingPayments.length})
           </button>
         )}
+        {isFullAdmin && (
+          <button
+            className={`division-tab ${activeTab === 'moneypot' ? 'active' : ''}`}
+            onClick={() => setActiveTab('moneypot')}
+          >
+            Money Pot
+          </button>
+        )}
+        {(isFullAdmin || user?.isCupAdmin) && (
+          <button
+            className={`division-tab ${activeTab === 'cups' ? 'active' : ''}`}
+            onClick={() => setActiveTab('cups')}
+          >
+            Cup Management
+          </button>
+        )}
         <button
           className={`division-tab ${activeTab === 'players' ? 'active' : ''}`}
           onClick={() => setActiveTab('players')}
@@ -206,6 +430,12 @@ export default function Admin() {
           onClick={() => setActiveTab('support')}
         >
           Support
+        </button>
+        <button
+          className={`division-tab ${activeTab === 'news' ? 'active' : ''}`}
+          onClick={() => setActiveTab('news')}
+        >
+          News
         </button>
         {isFullAdmin && (
           <>
@@ -236,10 +466,10 @@ export default function Admin() {
           </>
         )}
         <button
-          className={`division-tab ${activeTab === 'tournaments' ? 'active' : ''}`}
-          onClick={() => setActiveTab('tournaments')}
+          className={`division-tab ${activeTab === 'games' ? 'active' : ''}`}
+          onClick={() => setActiveTab('games')}
         >
-          Tournaments
+          Games
         </button>
         {isFullAdmin && (
           <button
@@ -307,12 +537,12 @@ export default function Admin() {
               <select 
                 value={gameForm.player1}
                 onChange={(e) => {
-                  const selected = allUsers.find(u => u.id === e.target.value)
+                  const selected = getAllUsers().find(u => u.id === e.target.value)
                   setGameForm({...gameForm, player1: e.target.value, division: selected?.division || ''})
                 }}
               >
                 <option value="">Select player</option>
-                {allUsers.map(u => (
+                {getAllUsers().map(u => (
                   <option key={u.id} value={u.id}>{u.username} ({u.division})</option>
                 ))}
               </select>
@@ -324,7 +554,7 @@ export default function Admin() {
                 onChange={(e) => setGameForm({...gameForm, player2: e.target.value})}
               >
                 <option value="">Select player</option>
-                {allUsers.filter(u => u.id !== gameForm.player1).map(u => (
+                {getAllUsers().filter(u => u.id !== gameForm.player1).map(u => (
                   <option key={u.id} value={u.id}>{u.username} ({u.division})</option>
                 ))}
               </select>
@@ -353,17 +583,19 @@ export default function Admin() {
           </div>
 
           <div className="form-group">
-            <label>Division (optional - uses player 1's division if left blank)</label>
+            <label>Division</label>
             <select 
               value={gameForm.division}
               onChange={(e) => setGameForm({...gameForm, division: e.target.value})}
             >
-              <option value="">Auto (Player 1's division)</option>
+              <option value="">Select Division</option>
               <option value="Elite">Elite</option>
-              <option value="Premier">Premier</option>
-              <option value="Champion">Champion</option>
               <option value="Diamond">Diamond</option>
+              <option value="Platinum">Platinum</option>
               <option value="Gold">Gold</option>
+              <option value="Silver">Silver</option>
+              <option value="Bronze">Bronze</option>
+              <option value="Development">Development</option>
             </select>
           </div>
 
@@ -416,6 +648,8 @@ export default function Admin() {
                 <div className="player-info">
                   <h3>{u.username}</h3>
                   <p>{u.email}</p>
+                  {u.freeAdminSubscription && <p style={{ color: 'var(--accent-cyan)', fontSize: '0.75rem' }}>Free (Admin)</p>}
+                  {u.subscriptionDate && <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Since: {new Date(u.subscriptionDate).toLocaleDateString()}</p>}
                 </div>
                 <span style={{ color: 'var(--success)' }}>Active</span>
               </div>
@@ -433,15 +667,33 @@ export default function Admin() {
                 </div>
                 <button 
                   className="btn btn-primary"
-                  onClick={() => {
+                  onClick={async () => {
+                    const seasonStart = new Date('2026-05-01')
+                    const seasonEnd = new Date('2026-06-01')
+                    const now = new Date()
+                    
+                    const cleanUpdates = {
+                      isSubscribed: true,
+                      freeAdminSubscription: true,
+                      subscriptionDate: now.toISOString(),
+                      subscriptionExpiry: now < seasonStart ? seasonEnd.toISOString() : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                      subscriptionSource: 'admin_granted'
+                    }
+                    
                     const users = getAllUsers()
                     const index = users.findIndex(us => us.id === u.id)
-                    if (index !== -1) {
-                      users[index].isSubscribed = true
-                      users[index].freeAdminSubscription = true
-                      localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
-                      alert(`${u.username} now has free subscription (admin granted)`)
-                    }
+                    if (index === -1) return
+                    
+                    users[index] = { ...users[index], ...cleanUpdates }
+                    localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+                    
+                    const amount = 5
+                    await updateAdminData({ subscriptionPot: subscriptionPot + amount })
+                    addToMoneyHistory('subscription', amount, `Free subscription granted to ${u.username}`)
+                    
+                    await setDoc(doc(db, 'users', u.id), cleanUpdates, { merge: true })
+                    
+                    alert(`${u.username} now has free subscription (admin granted)`)
                   }}
                 >
                   Grant Free Sub
@@ -457,7 +709,7 @@ export default function Admin() {
           <div className="card">
             <h3 className="card-title">Support Requests</h3>
             {(() => {
-              const supportRequests = JSON.parse(localStorage.getItem('eliteArrowsSupportRequests') || '[]')
+              const supportRequests = getSupportRequests()
               const pendingRequests = supportRequests.filter(r => r.status === 'pending')
               
               if (pendingRequests.length === 0) {
@@ -479,13 +731,19 @@ export default function Admin() {
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{request.email}</p>
                   <button 
                     className="btn btn-primary btn-block" 
-                    style={{ marginTop: '8px' }}
-                    onClick={() => {
-                      const all = JSON.parse(localStorage.getItem('eliteArrowsSupportRequests') || '[]')
+                    style={{ marginTop: '8px'}}
+                    onClick={async () => {
+                      const all = getSupportRequests()
                       const idx = all.findIndex(r => r.id === request.id)
                       if (idx !== -1) {
                         all[idx].status = 'resolved'
                         localStorage.setItem('eliteArrowsSupportRequests', JSON.stringify(all))
+                        try {
+                          await setDoc(doc(db, 'supportRequests', request.id.toString()), all[idx], { merge: true })
+                        } catch (e) {
+                          console.log('Error saving to Firebase:', e)
+                        }
+                        triggerDataRefresh('supportRequests')
                         alert('Request marked as resolved')
                       }
                     }}
@@ -499,10 +757,82 @@ export default function Admin() {
         </div>
       )}
 
+      {activeTab === 'news' && (
+        <div>
+          <div className="card" style={{ marginBottom: '20px' }}>
+            <h3 className="card-title">Post Announcement</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <input
+                type="text"
+                id="newsTitle"
+                placeholder="Announcement title..."
+                style={{ width: '100%', padding: '12px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '1rem' }}
+              />
+              <textarea
+                id="newsMessage"
+                placeholder="Announcement message..."
+                rows={4}
+                style={{ width: '100%', padding: '12px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '0.95rem', resize: 'vertical', fontFamily: 'inherit' }}
+              />
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', fontSize: '0.9rem', cursor: 'pointer' }}>
+                  <input type="checkbox" id="newsPinned" /> Pin to top
+                </label>
+              </div>
+              <button
+                className="btn btn-primary btn-block"
+                onClick={async () => {
+                  const title = document.getElementById('newsTitle').value.trim()
+                  const message = document.getElementById('newsMessage').value.trim()
+                  const pinned = document.getElementById('newsPinned').checked
+                  if (!title || !message) return alert('Please fill in both title and message')
+                  await postNews(title, message, pinned)
+                  document.getElementById('newsTitle').value = ''
+                  document.getElementById('newsMessage').value = ''
+                  document.getElementById('newsPinned').checked = false
+                  alert('Announcement posted!')
+                }}
+              >
+                Post Announcement
+              </button>
+            </div>
+          </div>
+
+          <div className="card">
+            <h3 className="card-title">All Announcements</h3>
+            {(() => {
+              const allNews = getNews()
+              if (allNews.length === 0) {
+                return <p style={{ color: 'var(--text-muted)' }}>No announcements yet</p>
+              }
+              return allNews.map(item => (
+                <div key={item.id} className="player-card" style={{ marginBottom: '10px' }}>
+                  <div className="player-info" style={{ flex: 1 }}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {item.pinned && <span style={{ color: 'var(--accent-primary)' }}>📌</span>}
+                      {item.title}
+                    </h3>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{item.authorName} · {new Date(item.createdAt).toLocaleDateString()}</p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button className="btn btn-secondary btn-sm" onClick={() => togglePinNews(item.id, item.pinned)}>
+                      {item.pinned ? 'Unpin' : 'Pin'}
+                    </button>
+                    <button className="btn btn-danger btn-sm" onClick={() => { if (confirm('Delete this announcement?')) deleteNews(item.id) }}>
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))
+            })()}
+          </div>
+        </div>
+      )}
+
       {activeTab === 'players' && (
         <div className="card">
           <h3 className="card-title">All Players</h3>
-          {allUsers.length === 0 ? (
+          {getAllUsers().length === 0 ? (
             <p style={{ color: 'var(--text-muted)' }}>No players found</p>
           ) : (
             <table className="data-table">
@@ -516,11 +846,11 @@ export default function Admin() {
                 </tr>
               </thead>
               <tbody>
-                {allUsers.map(player => (
+                {getAllUsers().map(player => (
                   <tr key={player.id}>
                     <td>{player.username}</td>
                     <td>{player.email}</td>
-                    <td>{player.division || 'Gold'}</td>
+                    <td>{player.division || 'Unassigned'}</td>
                     <td>{player.threeDartAverage?.toFixed(2) || 0}</td>
                     <td>
                       <button 
@@ -538,34 +868,109 @@ export default function Admin() {
         </div>
       )}
 
-      {activeTab === 'subscriptions' && (
-        <div>
+{activeTab === 'subscriptions' && (
+        <>
           <div className="card" style={{ marginBottom: '20px' }}>
-            <h3 className="card-title">Grant Free Admin Subscription</h3>
+            <h3 className="card-title">Assign Division & Subscription</h3>
             <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
-              Give a user free subscription (admin granted)
+              Assign a player to a division and/or grant subscription
             </p>
             <select 
-              id="grantFreeSub"
+              id="assignDivisionUser"
               style={{ width: '100%', padding: '12px', marginBottom: '12px' }}
-              onChange={(e) => {
-                if (!e.target.value) return
-                const users = getAllUsers()
-                const index = users.findIndex(u => u.id === e.target.value)
-                if (index !== -1) {
-                  users[index].isSubscribed = true
-                  users[index].freeAdminSubscription = true
-                  localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
-                  alert('Free subscription granted!')
-                  e.target.value = ''
-                }
-              }}
             >
-              <option value="">Select user to grant free subscription</option>
-              {allUsers.filter(u => !u.isSubscribed).map(u => (
-                <option key={u.id} value={u.id}>{u.username} ({u.email})</option>
+              <option value="">Select user</option>
+              {getAllUsers().map(u => (
+                <option key={u.id} value={u.id}>{u.username} - {u.division || 'Unassigned'}</option>
               ))}
             </select>
+            
+            <select 
+              id="assignDivision"
+              style={{ width: '100%', padding: '12px', marginBottom: '12px' }}
+            >
+              <option value="">Select Division</option>
+              <option value="Unassigned">Unassigned</option>
+              <option value="Elite">Elite</option>
+              <option value="Diamond">Diamond</option>
+              <option value="Platinum">Platinum</option>
+              <option value="Gold">Gold</option>
+              <option value="Silver">Silver</option>
+              <option value="Bronze">Bronze</option>
+              <option value="Development">Development</option>
+            </select>
+            
+            <div className="form-group">
+              <label>Subscription Type</label>
+              <select id="grantSubType">
+                <option value="">Select Pass</option>
+                <option value="Elite Pass">Elite Pass (£5)</option>
+                <option value="Standard Pass">Standard Pass (£5)</option>
+              </select>
+            </div>
+            
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <input type="checkbox" id="freeSubCheck" />
+              <span>Free (Admin Granted)</span>
+            </label>
+            
+            <button 
+              className="btn btn-primary"
+              onClick={async () => {
+                const userId = document.getElementById('assignDivisionUser').value
+                const division = document.getElementById('assignDivision').value
+                const subType = document.getElementById('grantSubType').value
+                const freeSub = document.getElementById('freeSubCheck').checked
+                
+                if (!userId) return alert('Select a user')
+                if (!division && !subType) return alert('Select a division and/or subscription type')
+                
+                const users = getAllUsers()
+                const index = users.findIndex(u => u.id === userId)
+                if (index === -1) return
+                
+                const userUpdates = {}
+                if (division) userUpdates.division = division
+                if (subType) {
+                  const seasonStart = new Date('2026-05-01')
+                  const seasonEnd = new Date('2026-06-01')
+                  const now = new Date()
+                  
+                  userUpdates.isSubscribed = true
+                  userUpdates.subscriptionType = subType
+                  userUpdates.subscriptionDate = now.toISOString()
+                  userUpdates.subscriptionExpiry = now < seasonStart ? seasonEnd.toISOString() : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
+                  userUpdates.subscriptionSource = freeSub ? 'admin_granted' : 'paid'
+                }
+                if (freeSub) userUpdates.freeAdminSubscription = true
+                
+                // Filter out undefined
+                const cleanUpdates = {}
+                Object.keys(userUpdates).forEach(key => {
+                  if (userUpdates[key] !== undefined) {
+                    cleanUpdates[key] = userUpdates[key]
+                  }
+                })
+                
+                // Update local state
+                users[index] = { ...users[index], ...cleanUpdates }
+                localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+                
+                // Update Firestore
+                await setDoc(doc(db, 'users', userId), cleanUpdates, { merge: true })
+                
+                const amount = 5
+                if (subType && !freeSub) {
+                  await updateAdminData({ subscriptionPot: subscriptionPot + amount })
+                }
+                addToMoneyHistory('subscription', amount, `Updated ${users[index].username} - ${subType || ''} Division: ${division || 'Unassigned'}`)
+                
+                alert(`${users[index].username} updated!`)
+                setActiveTab('subscriptions')
+              }}
+            >
+              Update User
+            </button>
           </div>
 
           <div className="card" style={{ marginBottom: '20px' }}>
@@ -583,14 +988,34 @@ export default function Admin() {
                 if (index !== -1) {
                   users[index].isSubscribed = false
                   users[index].freeAdminSubscription = false
+                  users[index].paymentPending = false
+                  users[index].paymentDate = null
+                  users[index].subscriptionDate = null
+                  users[index].subscriptionExpiry = null
+                  users[index].subscriptionSource = null
                   localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+                  
+                  try {
+                    setDoc(doc(db, 'users', users[index].id), {
+                      isSubscribed: false,
+                      freeAdminSubscription: false,
+                      paymentPending: false,
+                      paymentDate: null,
+                      subscriptionDate: null,
+                      subscriptionExpiry: null,
+                      subscriptionSource: null
+                    }, { merge: true })
+                  } catch (err) {
+                    console.log('Error saving to Firebase:', err)
+                  }
+                  
                   alert('Subscription removed')
                   e.target.value = ''
                 }
               }}
             >
               <option value="">Select user to remove subscription</option>
-              {allUsers.filter(u => u.isSubscribed).map(u => (
+              {getAllUsers().filter(u => u.isSubscribed).map(u => (
                 <option key={u.id} value={u.id}>{u.username} ({u.email})</option>
               ))}
             </select>
@@ -611,14 +1036,14 @@ export default function Admin() {
               </div>
             ))}
           </div>
-        </div>
+        </>
       )}
 
       {activeTab === 'admins' && isFullAdmin && (
         <div>
           <div className="card" style={{ marginBottom: '20px' }}>
             <h3 className="card-title">Existing Admins</h3>
-            {allUsers.filter(u => u.isAdmin).map(u => (
+            {getAllUsers().filter(u => u.isAdmin).map(u => (
               <div key={u.id} className="player-card">
                 <div className="player-avatar">
                   {u.username.charAt(0).toUpperCase()}
@@ -634,6 +1059,14 @@ export default function Admin() {
                       onClick={async () => {
                         if (confirm(`Remove admin privileges from ${u.username}?`)) {
                           await setDoc(doc(db, 'users', u.id), { isAdmin: false }, { merge: true })
+                          
+                          const users = getAllUsers()
+                          const index = users.findIndex(us => us.id === u.id)
+                          if (index !== -1) {
+                            users[index].isAdmin = false
+                            localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+                          }
+                          
                           alert(`${u.username} is no longer an admin`)
                         }
                       }}
@@ -645,11 +1078,52 @@ export default function Admin() {
                     className="btn btn-secondary btn-sm"
                     onClick={async () => {
                       await setDoc(doc(db, 'users', u.id), { isTournamentAdmin: !u.isTournamentAdmin }, { merge: true })
+                      
+                      const users = getAllUsers()
+                      const index = users.findIndex(us => us.id === u.id)
+                      if (index !== -1) {
+                        users[index].isTournamentAdmin = !u.isTournamentAdmin
+                        localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+                      }
+                      
                       alert(`${u.username} ${u.isTournamentAdmin ? 'removed from' : 'added as'} tournament admin`)
                     }}
                   >
                     {u.isTournamentAdmin ? 'Remove Tournament Admin' : 'Add Tournament Admin'}
                   </button>
+                  <button 
+                    className="btn btn-secondary btn-sm"
+                    onClick={async () => {
+                      await setDoc(doc(db, 'users', u.id), { isCupAdmin: !u.isCupAdmin }, { merge: true })
+                      
+                      const users = getAllUsers()
+                      const index = users.findIndex(us => us.id === u.id)
+                      if (index !== -1) {
+                        users[index].isCupAdmin = !u.isCupAdmin
+                        localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+                      }
+                      
+                      alert(`${u.username} ${u.isCupAdmin ? 'removed from' : 'added as'} cup admin`)
+                    }}
+                  >
+                    {u.isCupAdmin ? 'Remove Cup Admin' : 'Add Cup Admin'}
+                  </button>
+                  {u.id !== user.id && (
+                    <button 
+                      className="btn btn-danger btn-sm"
+                      style={{ marginTop: '5px' }}
+                      onClick={async () => {
+                        if (confirm(`Remove ${u.username} from the league entirely?`)) {
+                          const userIdToDelete = u.id
+                          await deleteDoc(doc(db, 'users', userIdToDelete))
+                          setUsersList(prev => prev.filter(us => us.id !== userIdToDelete))
+                          setTimeout(() => setUsersList(prev => prev.filter(us => us.id !== userIdToDelete)), 500)
+                        }
+                      }}
+                    >
+                      Remove from League
+                    </button>
+                  )}
                   {u.id === user.id && (
                     <span style={{ color: 'var(--accent-cyan)', fontSize: '0.8rem' }}>You</span>
                   )}
@@ -678,11 +1152,31 @@ export default function Admin() {
                     onClick={async () => {
                       if (confirm(`Remove tournament admin privileges from ${u.username}?`)) {
                         await setDoc(doc(db, 'users', u.id), { isTournamentAdmin: false }, { merge: true })
+                        
+                        const users = getAllUsers()
+                        const index = users.findIndex(us => us.id === u.id)
+                        if (index !== -1) {
+                          users[index].isTournamentAdmin = false
+                          localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+                        }
+                        
                         alert(`${u.username} is no longer a tournament admin`)
                       }
                     }}
                   >
                     Remove
+                  </button>
+                  <button 
+                    className="btn btn-danger btn-sm"
+                    style={{ marginTop: '5px' }}
+                    onClick={async () => {
+                      if (confirm(`Remove ${u.username} from the league entirely?`)) {
+                        await deleteDoc(doc(db, 'users', u.id))
+                        clearCacheAndReload()
+                      }
+                    }}
+                  >
+                    Remove from League
                   </button>
                 </div>
               ))
@@ -696,12 +1190,20 @@ export default function Admin() {
                 onChange={async (e) => {
                   if (!e.target.value) return
                   await setDoc(doc(db, 'users', e.target.value), { isTournamentAdmin: true }, { merge: true })
+                  
+                  const users = getAllUsers()
+                  const index = users.findIndex(u => u.id === e.target.value)
+                  if (index !== -1) {
+                    users[index].isTournamentAdmin = true
+                    localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+                  }
+                  
                   alert(`User is now a tournament admin`)
                   e.target.value = ''
                 }}
               >
                 <option value="">Select user to make Tournament Admin</option>
-                {allUsers.filter(u => !u.isAdmin && !u.isTournamentAdmin).map(u => (
+                {getAllUsers().filter(u => !u.isAdmin && !u.isTournamentAdmin).map(u => (
                   <option key={u.id} value={u.id}>{u.username} ({u.email})</option>
                 ))}
               </select>
@@ -725,12 +1227,20 @@ export default function Admin() {
                 await setDoc(doc(db, 'users', e.target.value), {
                   isAdmin: true
                 }, { merge: true })
+                
+                const users = getAllUsers()
+                const index = users.findIndex(u => u.id === e.target.value)
+                if (index !== -1) {
+                  users[index].isAdmin = true
+                  localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+                }
+                
                 alert(`User is now a full admin`)
                 e.target.value = ''
               }}
             >
               <option value="">Select user to make Admin</option>
-              {allUsers.filter(u => !u.isAdmin).map(u => (
+              {getAllUsers().filter(u => !u.isAdmin).map(u => (
                 <option key={u.id} value={u.id}>{u.username} ({u.email})</option>
               ))}
             </select>
@@ -738,7 +1248,7 @@ export default function Admin() {
 
           <div className="card" style={{ marginBottom: '20px' }}>
             <h3 className="card-title">All Members - Remove Users</h3>
-            {allUsers.map(u => (
+            {getAllUsers().map(u => (
               <div key={u.id} className="player-card">
                 <div className="player-avatar">
                   {u.username.charAt(0).toUpperCase()}
@@ -756,12 +1266,15 @@ export default function Admin() {
                 {u.id !== user.id && (
                   <button 
                     className="btn btn-danger"
-                    onClick={() => {
+                    onClick={async () => {
                       if (confirm(`Are you sure you want to remove ${u.username} from the league?`)) {
-                        const users = getAllUsers()
-                        const filtered = users.filter(us => us.id !== u.id)
-                        localStorage.setItem('eliteArrowsUsers', JSON.stringify(filtered))
-                        alert(`${u.username} has been removed`)
+                        try {
+                          await deleteDoc(doc(db, 'users', u.id))
+                          setRefreshKey(k => k + 1)
+                        } catch (error) {
+                          console.error('Error removing user:', error)
+                          alert('Failed to remove user: ' + error.message)
+                        }
                       }
                     }}
                   >
@@ -812,176 +1325,60 @@ export default function Admin() {
         </div>
       )}
 
-      {activeTab === 'tournaments' && (
-        <div>
-          <div className="card" style={{ marginBottom: '20px' }}>
-            <button className="btn btn-primary btn-block" onClick={() => setShowTournamentForm(true)} style={{ marginBottom: '20px' }}>
-              Create New Tournament
-            </button>
-
-            {showTournamentForm && (
-              <div style={{ padding: '20px', background: 'var(--bg-secondary)', borderRadius: '8px', marginBottom: '20px' }}>
-                <h4 style={{ marginBottom: '15px' }}>Create Tournament</h4>
-                <div className="form-group">
-                  <label>Tournament Name</label>
-                  <input 
-                    type="text" 
-                    value={tournamentForm.name}
-                    onChange={(e) => setTournamentForm({...tournamentForm, name: e.target.value})}
-                    placeholder="Enter tournament name"
-                  />
+      {activeTab === 'games' && (
+        <div className="card">
+          <h3 className="card-title">Manage Games</h3>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>View and manage all games played in the league.</p>
+          
+          {(() => {
+            const games = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+            const allUsers = JSON.parse(localStorage.getItem('eliteArrowsUsers') || '[]')
+            
+            return (
+              <div>
+                <div style={{ marginBottom: '20px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                  <strong>Total Games:</strong> {games.length}
                 </div>
-                <div className="form-group">
-                  <label>Max Participants</label>
-                  <select value={tournamentForm.maxParticipants} onChange={(e) => setTournamentForm({...tournamentForm, maxParticipants: parseInt(e.target.value)})}>
-                    <option value="8">8 Players</option>
-                    <option value="16">16 Players</option>
-                    <option value="32">32 Players</option>
-                    <option value="64">64 Players</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Tournament Format</label>
-                  <div style={{ display: 'flex', gap: '20px', marginTop: '10px' }}>
-                    <label><input type="radio" checked={!tournamentForm.isCashBased} onChange={() => setTournamentForm({...tournamentForm, isCashBased: false, entryFee: 0})} /> Free / Reward</label>
-                    <label><input type="radio" checked={tournamentForm.isCashBased} onChange={() => setTournamentForm({...tournamentForm, isCashBased: true})} /> Cash Entry</label>
-                  </div>
-                </div>
-                {tournamentForm.isCashBased && (
-                  <div className="form-group">
-                    <label>Entry Fee (£)</label>
-                    <input type="number" value={tournamentForm.entryFee} onChange={(e) => setTournamentForm({...tournamentForm, entryFee: parseFloat(e.target.value) || 0})} min="0" step="0.01" />
-                  </div>
-                )}
-                {!tournamentForm.isCashBased && (
-                  <div className="form-group">
-                    <label>Prize / Reward Info</label>
-                    <input type="text" value={tournamentForm.prizeInfo} onChange={(e) => setTournamentForm({...tournamentForm, prizeInfo: e.target.value})} placeholder="e.g., Weekly leaderboard prizes" />
-                  </div>
-                )}
-                <div className="form-group">
-                  <label>Entry Deadline</label>
-                  <input type="datetime-local" value={tournamentForm.entryDeadline} onChange={(e) => setTournamentForm({...tournamentForm, entryDeadline: e.target.value})} />
-                </div>
-                <div className="form-group">
-                  <label>Days Between Rounds</label>
-                  <select value={tournamentForm.daysBetweenRounds} onChange={(e) => setTournamentForm({...tournamentForm, daysBetweenRounds: parseInt(e.target.value)})}>
-                    <option value="1">1 Day</option>
-                    <option value="2">2 Days</option>
-                    <option value="3">3 Days</option>
-                    <option value="4">4 Days</option>
-                    <option value="5">5 Days</option>
-                    <option value="6">6 Days</option>
-                    <option value="7">1 Week</option>
-                  </select>
-                </div>
-                <div style={{ borderTop: '1px solid var(--border)', paddingTop: '15px', marginTop: '15px' }}>
-                  <h4 style={{ marginBottom: '15px' }}>Best Of Settings (First to X legs)</h4>
-                  <div className="form-group">
-                    <label>Round 1 / Round of 32/16</label>
-                    <select value={tournamentForm.formatR1} onChange={(e) => setTournamentForm({...tournamentForm, formatR1: e.target.value})}>
-                      {[1,2,3,4,5,6,7,8,9,10,11,12,13].map(n => <option key={n} value={n}>First to {n}</option>)}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label>Round 2 / Round of 16/8</label>
-                    <select value={tournamentForm.formatR2} onChange={(e) => setTournamentForm({...tournamentForm, formatR2: e.target.value})}>
-                      {[1,2,3,4,5,6,7,8,9,10,11,12,13].map(n => <option key={n} value={n}>First to {n}</option>)}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label>Quarter Finals</label>
-                    <select value={tournamentForm.formatQF} onChange={(e) => setTournamentForm({...tournamentForm, formatQF: e.target.value})}>
-                      {[1,2,3,4,5,6,7,8,9,10,11,12,13].map(n => <option key={n} value={n}>First to {n}</option>)}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label>Semi Finals</label>
-                    <select value={tournamentForm.formatSF} onChange={(e) => setTournamentForm({...tournamentForm, formatSF: e.target.value})}>
-                      {[1,2,3,4,5,6,7,8,9,10,11,12,13].map(n => <option key={n} value={n}>First to {n}</option>)}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label>Final</label>
-                    <select value={tournamentForm.formatF} onChange={(e) => setTournamentForm({...tournamentForm, formatF: e.target.value})}>
-                      {[1,2,3,4,5,6,7,8,9,10,11,12,13].map(n => <option key={n} value={n}>First to {n}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div className="form-group" style={{ marginTop: '15px' }}>
-                  <label>Divisions</label>
-                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '10px' }}>
-                    {['Elite', 'Premier', 'Champion', 'Diamond', 'Gold'].map(div => (
-                      <label key={div}>
-                        <input type="checkbox" checked={tournamentForm.divisions.includes(div)}
-                          onChange={(e) => setTournamentForm({...tournamentForm, divisions: e.target.checked ? [...tournamentForm.divisions, div] : tournamentForm.divisions.filter(d => d !== div)})} />
-                        {' '}{div}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
-                  <button className="btn btn-primary" onClick={createTournament}>Create</button>
-                  <button className="btn btn-secondary" onClick={() => setShowTournamentForm(false)}>Cancel</button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="card">
-            <h3 className="card-title">All Tournaments</h3>
-            {(() => {
-              const tournaments = JSON.parse(localStorage.getItem('eliteArrowsTournaments') || '[]')
-              const tournamentSignups = JSON.parse(localStorage.getItem('eliteArrowsTournamentSignups') || '[]')
-              
-              if (tournaments.length === 0) {
-                return <p style={{ color: 'var(--text-muted)', textAlign: 'center' }}>No tournaments yet</p>
-              }
-              
-              return tournaments.map(t => {
-                const signups = tournamentSignups.filter(s => s.tournamentId === t.id && s.status === 'approved')
-                const isClosed = t.entryDeadline && new Date(t.entryDeadline) < new Date()
                 
-                return (
-                  <div key={t.id} style={{ padding: '15px', borderBottom: '1px solid var(--border)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                      <div>
-                        <h4>{t.name}</h4>
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{t.type} • {t.divisions?.join(', ') || 'All divisions'}</p>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <span style={{ color: t.status === 'open' ? 'var(--success)' : 'var(--accent-cyan)' }}>
-                          {t.status === 'open' ? (isClosed ? 'Closing' : 'Open') : 'In Progress'}
-                        </span>
-                        <button onClick={() => {
-                          if (confirm('Delete this tournament?')) {
-                            localStorage.setItem('eliteArrowsTournaments', JSON.stringify(tournaments.filter(tour => tour.id !== t.id)))
-                            localStorage.setItem('eliteArrowsTournamentSignups', JSON.stringify(tournamentSignups.filter(s => s.tournamentId !== t.id)))
-                            alert('Tournament deleted')
-                          }
-                        }} style={{ display: 'block', background: 'none', border: 'none', color: 'var(--error)', fontSize: '0.8rem', cursor: 'pointer', marginTop: '5px' }}>
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '0.85rem', padding: '4px 8px', background: 'var(--bg-secondary)', borderRadius: '4px' }}>
-                        {t.isCashBased ? `£${t.entryFee} Entry` : 'Free Entry'}
-                      </span>
-                      <span style={{ fontSize: '0.85rem', padding: '4px 8px', background: 'var(--bg-secondary)', borderRadius: '4px' }}>
-                        {signups.length} / {t.maxParticipants} Players
-                      </span>
-                      {t.entryDeadline && (
-                        <span style={{ fontSize: '0.85rem', padding: '4px 8px', background: isClosed ? 'var(--error)' : 'var(--warning)', color: isClosed ? '#fff' : '#000', borderRadius: '4px' }}>
-                          {isClosed ? 'Closed: ' : 'Ends: '}{new Date(t.entryDeadline).toLocaleDateString()}
-                        </span>
-                      )}
-                    </div>
+                {games.length === 0 ? (
+                  <div className="empty-state">
+                    <p>No games recorded yet.</p>
                   </div>
-                )
-              })
-            })()}
-          </div>
+                ) : (
+                  <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                          <th style={{ padding: '10px', textAlign: 'left' }}>Date</th>
+                          <th style={{ padding: '10px', textAlign: 'left' }}>Player 1</th>
+                          <th style={{ padding: '10px', textAlign: 'left' }}>Player 2</th>
+                          <th style={{ padding: '10px', textAlign: 'left' }}>Score</th>
+                          <th style={{ padding: '10px', textAlign: 'left' }}>Type</th>
+                          <th style={{ padding: '10px', textAlign: 'left' }}>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {games.slice(0, 50).map((game, index) => {
+                          const p1 = allUsers.find(u => u.id === game.player1Id)
+                          const p2 = allUsers.find(u => u.id === game.player2Id)
+                          return (
+                            <tr key={index} style={{ borderBottom: '1px solid var(--border)' }}>
+                              <td style={{ padding: '10px' }}>{new Date(game.date).toLocaleDateString()}</td>
+                              <td style={{ padding: '10px' }}>{p1?.username || 'Unknown'}</td>
+                              <td style={{ padding: '10px' }}>{p2?.username || 'Unknown'}</td>
+                              <td style={{ padding: '10px' }}>{game.score1} - {game.score2}</td>
+                              <td style={{ padding: '10px' }}>{game.gameType}</td>
+                              <td style={{ padding: '10px' }}>{game.status}</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
         </div>
       )}
 
@@ -1037,26 +1434,49 @@ export default function Admin() {
             <div style={{ padding: '15px', background: 'var(--accent-cyan)', color: '#000', borderRadius: '8px', textAlign: 'center', fontWeight: 'bold' }}>
               {localStorage.getItem('eliteArrowsCurrentSeason') || new Date().getFullYear().toString()}
             </div>
+            {(() => {
+              const seasons = getSeasons()
+              const activeSeasonName = localStorage.getItem('eliteArrowsCurrentSeason')
+              const currentSeason = seasons.find(s => s.name === activeSeasonName)
+              if (currentSeason?.startDate && currentSeason?.endDate) {
+                return (
+                  <p style={{ color: '#000', marginTop: '10px', fontSize: '0.9rem' }}>
+                    {new Date(currentSeason.startDate).toLocaleDateString()} - {new Date(currentSeason.endDate).toLocaleDateString()}
+                  </p>
+                )
+              }
+              return null
+            })()}
           </div>
 
           <div className="card" style={{ marginBottom: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
               <h3 className="card-title" style={{ margin: 0 }}>Seasons</h3>
-              <button className="btn btn-primary" onClick={() => {
+              <button className="btn btn-primary" onClick={async () => {
                 const name = prompt('Enter season name:')
                 if (name) {
-                  const seasons = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
-                  const newSeason = { id: Date.now(), name, createdAt: new Date().toISOString(), status: 'active', isArchived: false }
-                  seasons.push(newSeason)
-                  localStorage.setItem('eliteArrowsSeasons', JSON.stringify(seasons))
-                  localStorage.setItem('eliteArrowsCurrentSeason', name)
-                  alert(`Season "${name}" created!`)
+                  const startDate = prompt('Enter start date (YYYY-MM-DD):', '2025-05-01')
+                  const endDate = prompt('Enter end date (YYYY-MM-DD):', '2025-06-01')
+                  if (startDate && endDate) {
+                    const seasons = getSeasons()
+                    const newSeason = { id: Date.now(), name, createdAt: new Date().toISOString(), status: 'active', isArchived: false, startDate, endDate }
+                    seasons.push(newSeason)
+                    localStorage.setItem('eliteArrowsSeasons', JSON.stringify(seasons))
+                    localStorage.setItem('eliteArrowsCurrentSeason', name)
+                    try {
+                      await setDoc(doc(db, 'seasons', newSeason.id.toString()), newSeason)
+                    } catch (e) {
+                      console.log('Error saving season to Firebase:', e)
+                    }
+                    triggerDataRefresh('seasons')
+                    alert(`Season "${name}" created! (${startDate} - ${endDate})`)
+                  }
                 }
               }}>Create New Season</button>
             </div>
 
             {(() => {
-              const seasons = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
+              const seasons = getSeasons()
               const activeSeason = localStorage.getItem('eliteArrowsCurrentSeason') || new Date().getFullYear().toString()
               const activeSeasons = seasons.filter(s => !s.isArchived)
               const archivedSeasons = seasons.filter(s => s.isArchived)
@@ -1073,19 +1493,27 @@ export default function Admin() {
                         <div key={s.id} className="player-card">
                           <div className="player-info">
                             <h3>{s.name}</h3>
-                            <p style={{ fontSize: '0.8rem' }}>Created: {new Date(s.createdAt).toLocaleDateString()}</p>
+                            <p style={{ fontSize: '0.8rem' }}>{new Date(s.startDate).toLocaleDateString()} - {new Date(s.endDate).toLocaleDateString()}</p>
                           </div>
                           <div style={{ display: 'flex', gap: '8px' }}>
                             {s.name !== activeSeason && (
                               <button className="btn btn-secondary btn-sm" onClick={() => {
                                 localStorage.setItem('eliteArrowsCurrentSeason', s.name)
+                                triggerDataRefresh('seasons')
                                 alert(`Active season changed to "${s.name}"`)
                               }}>Set Active</button>
                             )}
-                            <button className="btn btn-danger btn-sm" onClick={() => {
+                            <button className="btn btn-danger btn-sm" onClick={async () => {
                               if (confirm('Archive this season?')) {
-                                const updated = seasons.map(season => season.id === s.id ? { ...season, isArchived: true, status: 'archived' } : season)
+                                const allSeasons = getSeasons()
+                                const updated = allSeasons.map(season => season.id === s.id ? { ...season, isArchived: true, status: 'archived' } : season)
                                 localStorage.setItem('eliteArrowsSeasons', JSON.stringify(updated))
+                                try {
+                                  await setDoc(doc(db, 'seasons', s.id.toString()), { isArchived: true, status: 'archived' }, { merge: true })
+                                } catch (e) {
+                                  console.log('Error saving to Firebase:', e)
+                                }
+                                triggerDataRefresh('seasons')
                                 alert('Season archived')
                               }
                             }}>Archive</button>
@@ -1102,10 +1530,17 @@ export default function Admin() {
                           <div className="player-info">
                             <h3>{s.name}</h3>
                           </div>
-                          <button className="btn btn-secondary btn-sm" onClick={() => {
-                            const updated = seasons.map(season => season.id === s.id ? { ...season, isArchived: false, status: 'active' } : { ...season, status: 'archived' })
+                          <button className="btn btn-secondary btn-sm" onClick={async () => {
+                            const allSeasons = getSeasons()
+                            const updated = allSeasons.map(season => season.id === s.id ? { ...season, isArchived: false, status: 'active' } : { ...season, status: 'archived' })
                             localStorage.setItem('eliteArrowsSeasons', JSON.stringify(updated))
                             localStorage.setItem('eliteArrowsCurrentSeason', s.name)
+                            try {
+                              await setDoc(doc(db, 'seasons', s.id.toString()), { isArchived: false, status: 'active' }, { merge: true })
+                            } catch (e) {
+                              console.log('Error saving to Firebase:', e)
+                            }
+                            triggerDataRefresh('seasons')
                             alert('Season restored')
                           }}>Restore</button>
                         </div>
@@ -1128,6 +1563,7 @@ export default function Admin() {
                 const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
                 const filtered = results.filter(r => r.season !== currentSeason)
                 localStorage.setItem('eliteArrowsResults', JSON.stringify(filtered))
+                triggerDataRefresh('results')
                 alert('Table reset!')
               }
             }}>Reset Current Season Table</button>
@@ -1141,8 +1577,8 @@ export default function Admin() {
                 style={{ flex: 1, minWidth: '150px' }}
                 onChange={(e) => {
                   if (!e.target.value) return
-                  const division = prompt('Enter new division (Elite, Premier, Champion, Diamond, Gold):')
-                  if (division && ['Elite', 'Premier', 'Champion', 'Diamond', 'Gold'].includes(division)) {
+                  const division = prompt('Enter new division (Elite, Diamond, Platinum, Gold, Silver, Bronze, Development):')
+                  if (division && ['Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Development'].includes(division)) {
                     const users = getAllUsers()
                     const index = users.findIndex(u => u.id === e.target.value)
                     if (index !== -1) {
@@ -1155,7 +1591,7 @@ export default function Admin() {
                 }}
               >
                 <option value="">Select Player</option>
-                {allUsers.map(p => (
+                {getAllUsers().map(p => (
                   <option key={p.id} value={p.id}>{p.username} ({p.division})</option>
                 ))}
               </select>
@@ -1178,7 +1614,7 @@ export default function Admin() {
                 style={{ width: '100%', padding: '12px', marginBottom: '12px' }}
               >
                 <option value="">Select a player</option>
-                {allUsers.map(p => (
+                {getAllUsers().map(p => (
                   <option key={p.id} value={p.id}>{p.username} - {p.eliteTokens || 0} tokens</option>
                 ))}
               </select>
@@ -1231,7 +1667,7 @@ export default function Admin() {
 
           <div className="card">
             <h3 className="card-title">All Players - Token Balance</h3>
-            {allUsers
+            {getAllUsers()
               .sort((a, b) => (b.eliteTokens || 0) - (a.eliteTokens || 0))
               .map(p => (
                 <div key={p.id} className="player-card">
@@ -1249,6 +1685,238 @@ export default function Admin() {
               ))}
           </div>
         </div>
+      )}
+
+      {activeTab === 'moneypot' && (
+        <div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
+            <div className="card">
+              <h3 className="card-title">Standard Subscription Pot (£5)</h3>
+              <div style={{ 
+                padding: '30px', 
+                background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-cyan))',
+                borderRadius: '12px',
+                textAlign: 'center',
+                marginBottom: '20px'
+              }}>
+                <p style={{ fontSize: '0.9rem', marginBottom: '5px', opacity: 0.9 }}>Gold/Silver/Bronze</p>
+                <p style={{ fontSize: '3rem', fontWeight: 'bold', margin: 0 }}>£{subscriptionPot.toFixed(2)}</p>
+              </div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                From £5/month subscriptions
+              </p>
+              <div style={{ marginTop: '15px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                <h4 style={{ marginBottom: '10px' }}>Adjust Pot</h4>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <input 
+                    type="number" 
+                    id="subPotAdjust"
+                    placeholder="Amount"
+                    style={{ flex: 1, padding: '8px' }}
+                  />
+                  <button 
+                    className="btn btn-primary"
+                    onClick={async () => {
+                      const amount = parseFloat(document.getElementById('subPotAdjust').value) || 0
+                      if (amount !== 0) {
+                        await updateAdminData({ subscriptionPot: subscriptionPot + amount })
+                        addToMoneyHistory('subscription', amount, 'Manual adjustment')
+                        alert(`Subscription pot ${amount >= 0 ? 'increased' : 'decreased'} by £${Math.abs(amount).toFixed(2)}`)
+                        document.getElementById('subPotAdjust').value = ''
+                      }
+                    }}
+                  >
+                    Update
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="card">
+              <h3 className="card-title">Premium Subscription Pot (£5)</h3>
+              <div style={{ 
+                padding: '30px', 
+                background: 'linear-gradient(135deg, #ffd700, #ff8c00)',
+                borderRadius: '12px',
+                textAlign: 'center',
+                marginBottom: '20px',
+                color: '#000'
+              }}>
+                <p style={{ fontSize: '0.9rem', marginBottom: '5px', opacity: 0.9 }}>Elite/Diamond</p>
+                <p style={{ fontSize: '3rem', fontWeight: 'bold', margin: 0 }}>£{subscriptionPot10.toFixed(2)}</p>
+              </div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                From £5/month subscriptions
+              </p>
+              <div style={{ marginTop: '15px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                <h4 style={{ marginBottom: '10px' }}>Adjust Pot</h4>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <input 
+                    type="number" 
+                    id="subPot10Adjust"
+                    placeholder="Amount"
+                    style={{ flex: 1, padding: '8px' }}
+                  />
+                  <button 
+                    className="btn btn-primary"
+                    onClick={async () => {
+                      const amount = parseFloat(document.getElementById('subPot10Adjust').value) || 0
+                      if (amount !== 0) {
+                        await updateAdminData({ subscriptionPot10: subscriptionPot10 + amount })
+                        addToMoneyHistory('subscription', amount, 'Manual adjustment (£5 tier)')
+                        alert(`Premium subscription pot ${amount >= 0 ? 'increased' : 'decreased'} by £${Math.abs(amount).toFixed(2)}`)
+                        document.getElementById('subPot10Adjust').value = ''
+                      }
+                    }}
+                  >
+                    Update
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="card">
+              <h3 className="card-title">Tournament Pot</h3>
+              <div style={{ 
+                padding: '30px', 
+                background: 'linear-gradient(135deg, var(--accent-cyan), var(--success))',
+                borderRadius: '12px',
+                textAlign: 'center',
+                marginBottom: '20px'
+              }}>
+                <p style={{ fontSize: '0.9rem', marginBottom: '5px', opacity: 0.9 }}>Total From Entry Fees</p>
+                <p style={{ fontSize: '3rem', fontWeight: 'bold', margin: 0 }}>£{tournamentPot.toFixed(2)}</p>
+              </div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                From tournament cash entries
+              </p>
+              <div style={{ marginTop: '15px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                <h4 style={{ marginBottom: '10px' }}>Adjust Pot</h4>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <input 
+                    type="number" 
+                    id="tourPotAdjust"
+                    placeholder="Amount"
+                    style={{ flex: 1, padding: '8px' }}
+                  />
+                  <button 
+                    className="btn btn-primary"
+                    onClick={async () => {
+                      const amount = parseFloat(document.getElementById('tourPotAdjust').value) || 0
+                      if (amount !== 0) {
+                        await updateAdminData({ tournamentPot: tournamentPot + amount })
+                        addToMoneyHistory('tournament', amount, 'Manual adjustment')
+                        alert(`Tournament pot ${amount >= 0 ? 'increased' : 'decreased'} by £${Math.abs(amount).toFixed(2)}`)
+                        document.getElementById('tourPotAdjust').value = ''
+                      }
+                    }}
+                  >
+                    Update
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="card" style={{ marginTop: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+              <h3 className="card-title" style={{ margin: 0 }}>Cup Prize Pots</h3>
+            </div>
+            {(() => {
+              const cups = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
+              if (cups.length === 0) {
+                return <p style={{ color: 'var(--text-muted)' }}>No cups created yet</p>
+              }
+              return (
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Cup Name</th>
+                      <th>Entry Fee</th>
+                      <th>Players</th>
+                      <th>Prize Pot</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cups.map(cup => {
+                      const prizePot = cup.entryFee * (cup.players?.length || 0)
+                      return (
+                        <tr key={cup.id}>
+                          <td>{cup.name}</td>
+                          <td>£{cup.entryFee}</td>
+                          <td>{cup.players?.length || 0}</td>
+                          <td style={{ color: 'var(--success)', fontWeight: 'bold' }}>£{prizePot}</td>
+                          <td>{cup.status || 'Active'}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              )
+            })()}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'cups' && (
+        <CupManagement />
+      )}
+
+      {activeTab === 'moneypot' && (
+        <div className="card" style={{ marginTop: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+            <h3 className="card-title" style={{ margin: 0 }}>Money Pot History</h3>
+              <button 
+                className="btn btn-danger"
+                onClick={() => {
+                  if (confirm('Are you sure you want to reset all money history? This cannot be undone.')) {
+                    localStorage.setItem('eliteArrowsMoneyHistory', JSON.stringify([]))
+                    alert('Money history has been reset')
+                  }
+                }}
+              >
+                Reset History
+              </button>
+            </div>
+            {(() => {
+              const history = JSON.parse(localStorage.getItem('eliteArrowsMoneyHistory') || '[]')
+              if (history.length === 0) {
+                return <p style={{ color: 'var(--text-muted)' }}>No transactions yet</p>
+              }
+              return (
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Type</th>
+                      <th>Amount</th>
+                      <th>Description</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {history.slice(-20).reverse().map((item, index) => (
+                      <tr key={index}>
+                        <td>{new Date(item.date).toLocaleDateString()}</td>
+                        <td>
+                          <span style={{ 
+                            color: item.type === 'subscription' ? 'var(--accent-cyan)' : 'var(--success)',
+                            fontWeight: 'bold'
+                          }}>
+                            {item.type === 'subscription' ? 'Subscription' : 'Tournament'}
+                          </span>
+                        </td>
+                        <td style={{ color: item.amount >= 0 ? 'var(--success)' : 'var(--error)' }}>
+                          {item.amount >= 0 ? '+' : ''}£{item.amount.toFixed(2)}
+                        </td>
+                        <td>{item.description}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )
+            })()}
+          </div>
       )}
     </div>
   )

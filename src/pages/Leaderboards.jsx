@@ -1,13 +1,18 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 
 export default function Leaderboards() {
-  const { user, getAllUsers } = useAuth()
+  const { user, getAllUsers, getResults, dataRefreshTrigger } = useAuth()
   const [selectedDivision, setSelectedDivision] = useState('all')
   const [timeFilter, setTimeFilter] = useState('week')
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  useEffect(() => {
+    setRefreshKey(prev => prev + 1)
+  }, [dataRefreshTrigger])
 
   const allUsers = getAllUsers()
-  const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+  const results = getResults()
   const approvedResults = results.filter(r => r.status === 'approved')
 
   const now = new Date()
@@ -28,17 +33,18 @@ export default function Leaderboards() {
       id: player.id,
       username: player.username,
       nickname: player.nickname,
-      division: player.division || 'Gold',
+      division: player.division || 'Unassigned',
       profilePicture: player.profilePicture,
-      played: 0,
-      wins: 0,
-      losses: 0,
+      played: player.stats?.played || 0,
+      wins: player.stats?.wins || 0,
+      losses: player.stats?.losses || 0,
       draws: 0,
-      points: 0,
-      legsWon: 0,
-      legsLost: 0,
-      '180s': 0,
-      highestCheckout: 0,
+      points: (player.stats?.wins || 0) * 3,
+      legsWon: player.stats?.legsWon || 0,
+      legsLost: player.stats?.legsLost || 0,
+      '180s': player.stats?.['180s'] || 0,
+      '170s': player.stats?.['170s'] || 0,
+      highestCheckout: player.stats?.highestCheckout || 0,
       average: 0
     }
   })
@@ -98,7 +104,7 @@ export default function Leaderboards() {
     leaderboard = leaderboard.filter(p => p.division === selectedDivision)
   }
 
-  const divisions = ['all', 'Elite', 'Premier', 'Champion', 'Diamond', 'Gold']
+  const divisions = ['all', 'Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Development']
 
   return (
     <div className="page">
@@ -233,7 +239,7 @@ export default function Leaderboards() {
 
       <div className="card" style={{ marginTop: '20px' }}>
         <h3 className="card-title">Top Stats</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
           <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
             <div style={{ fontSize: '2rem', marginBottom: '5px' }}>🎯</div>
             <div style={{ fontWeight: 'bold', color: 'var(--accent-cyan)' }}>
@@ -244,12 +250,21 @@ export default function Leaderboards() {
             </div>
           </div>
           <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
-            <div style={{ fontSize: '2rem', marginBottom: '5px' }}>🏆</div>
+            <div style={{ fontSize: '2rem', marginBottom: '5px' }}>🐟</div>
             <div style={{ fontWeight: 'bold', color: 'var(--accent-cyan)' }}>
-              {leaderboard.reduce((max, p) => p.wins > max.wins ? p : max, { wins: 0 }).username}
+              {leaderboard.reduce((max, p) => p['170s'] > max['170s'] ? p : max, { '170s': 0 }).username}
             </div>
             <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              Most Wins ({leaderboard.reduce((max, p) => p.wins > max.wins ? p : max, { wins: 0 }).wins})
+              Big Fishes 170+ ({leaderboard.reduce((max, p) => p['170s'] > max['170s'] ? p : max, { '170s': 0 })['170s']})
+            </div>
+          </div>
+          <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
+            <div style={{ fontSize: '2rem', marginBottom: '5px' }}>🏆</div>
+            <div style={{ fontWeight: 'bold', color: 'var(--accent-cyan)' }}>
+              {leaderboard.reduce((max, p) => p.highestCheckout > max.highestCheckout ? p : max, { highestCheckout: 0 }).username}
+            </div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              Highest Checkout ({leaderboard.reduce((max, p) => p.highestCheckout > max.highestCheckout ? p : max, { highestCheckout: 0 }).highestCheckout})
             </div>
           </div>
         </div>

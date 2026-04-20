@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export default function Profile() {
-  const { user, updateUser, requestAdminRole, getAllUsers, addFriend, removeFriend } = useAuth()
+  const { user, updateUser, requestAdminRole, getAllUsers, addFriend, removeFriend, cancelFriendRequest, acceptFriendRequest, declineFriendRequest } = useAuth()
   const navigate = useNavigate()
   const { id } = useParams()
   
@@ -12,18 +12,55 @@ export default function Profile() {
   const displayUser = isViewingOther ? viewedUser : user
   
   const [formData, setFormData] = useState({
-    username: user.username || '',
-    nickname: user.nickname || '',
-    bio: user.bio || '',
-    darts: user.dart || '',
-    country: user.country || '',
-    dartCounterUsername: user.dartCounterUsername || '',
-    dartCounterLink: user.dartCounterLink || '',
-    threeDartAverage: user.threeDartAverage || 0
+    username: '',
+    nickname: '',
+    bio: '',
+    country: '',
+    dartCounterUsername: '',
+    dartCounterLink: '',
+    threeDartAverage: ''
   })
-  const [profilePicture, setProfilePicture] = useState(user.profilePicture || '')
+  
+  useEffect(() => {
+    if (displayUser) {
+      setFormData({
+        username: displayUser.username || '',
+        nickname: displayUser.nickname || '',
+        bio: displayUser.bio || '',
+        country: displayUser.country || '',
+        dartCounterUsername: displayUser.dartCounterUsername || '',
+        dartCounterLink: displayUser.dartCounterLink || '',
+        threeDartAverage: displayUser.threeDartAverage !== undefined && displayUser.threeDartAverage !== null 
+          ? String(displayUser.threeDartAverage) 
+          : ''
+      })
+      setProfilePicture(displayUser.profilePicture || '')
+      setTags(displayUser.tags || [])
+    }
+  }, [displayUser?.id, displayUser?.bio, displayUser?.nickname, displayUser?.threeDartAverage])
+  const [profilePicture, setProfilePicture] = useState('')
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
+  const [tags, setTags] = useState([])
+  const [newTag, setNewTag] = useState('')
+
+  const handleAddTag = () => {
+    if (newTag.trim() && !tags.includes(newTag.trim()) && tags.length < 10) {
+      setTags([...tags, newTag.trim()])
+      setNewTag('')
+    }
+  }
+
+  const handleRemoveTag = (tagToRemove) => {
+    setTags(tags.filter(tag => tag !== tagToRemove))
+  }
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleAddTag()
+    }
+  }
 
   const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
   const approvedResults = results.filter(r => r.status === 'approved')
@@ -84,24 +121,40 @@ export default function Profile() {
     }
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setSaving(true)
-    updateUser({
-      username: formData.username,
-      nickname: formData.nickname,
-      bio: formData.bio,
-      darts: formData.darts,
-      country: formData.country,
-      dartCounterUsername: formData.dartCounterUsername,
-      dartCounterLink: formData.dartCounterLink || (formData.dartCounterUsername ? `https://dartcounter.net/player/${formData.dartCounterUsername}` : ''),
-      threeDartAverage: formData.threeDartAverage,
-      profilePicture
+    const avgValue = parseFloat(formData.threeDartAverage) || 0
+    
+    const updates = {
+      username: formData.username?.trim() || '',
+      nickname: formData.nickname?.trim() || '',
+      bio: formData.bio?.trim() || '',
+      country: formData.country?.trim() || '',
+      dartCounterUsername: formData.dartCounterUsername?.trim() || '',
+      threeDartAverage: formData.threeDartAverage ? avgValue : 0,
+      profilePicture: profilePicture || '',
+      tags: tags || []
+    }
+    
+    if (updates.dartCounterUsername) {
+      updates.dartCounterLink = `https://dartcounter.app/profile/${updates.dartCounterUsername}`
+    }
+    
+    Object.keys(updates).forEach(key => {
+      if (updates[key] === '') delete updates[key]
     })
-    setTimeout(() => {
-      setSaving(false)
-      setMessage('Profile updated successfully!')
-      setTimeout(() => setMessage(''), 3000)
-    }, 500)
+    
+    console.log('Saving updates:', updates)
+    
+    try {
+      await updateUser(updates, false)
+      alert('Profile updated!')
+      navigate(0) // Force page reload
+    } catch (e) {
+      console.error('Save error:', e)
+      alert('Error saving: ' + e.message)
+    }
+    setSaving(false)
   }
 
   const handleRequestAdmin = () => {
@@ -144,13 +197,33 @@ export default function Profile() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px', marginBottom: '20px' }}>
             <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
-              <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>{viewedUser.division || 'Gold'}</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>{viewedUser.division || 'Unassigned'}</div>
               <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Division</div>
             </div>
             <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
               <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>{viewedUser.threeDartAverage?.toFixed(2) || 0}</div>
               <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>3-Dart Avg</div>
             </div>
+            {viewedUser.stats && (
+              <>
+                <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>{viewedUser.stats.played || 0}</div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Played</div>
+                </div>
+                <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--success)' }}>{viewedUser.stats.wins || 0}</div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Wins</div>
+                </div>
+                <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>{viewedUser.stats['180s'] || 0}</div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>180s</div>
+                </div>
+                <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>{viewedUser.stats.highestCheckout || 0}</div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Hi Checkout</div>
+                </div>
+              </>
+            )}
             {viewedUser.country && (
               <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
                 <div style={{ fontSize: '1.2rem' }}>{viewedUser.country}</div>
@@ -173,7 +246,7 @@ export default function Profile() {
           {(viewedUser.dartCounterLink || viewedUser.dartCounterUsername) && (
             <div style={{ marginBottom: '15px' }}>
               <a 
-                href={viewedUser.dartCounterLink || `https://dartcounter.net/player/${viewedUser.dartCounterUsername}`}
+                href={viewedUser.dartCounterLink || `https://dartcounter.app/profile/${viewedUser.dartCounterUsername}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn btn-primary btn-block"
@@ -211,6 +284,27 @@ export default function Profile() {
             <div style={{ marginBottom: '15px' }}>
               <h4 style={{ marginBottom: '8px' }}>About</h4>
               <p style={{ color: 'var(--text-muted)' }}>{viewedUser.bio}</p>
+            </div>
+          )}
+
+          {viewedUser.tags && viewedUser.tags.length > 0 && (
+            <div style={{ marginBottom: '15px' }}>
+              <h4 style={{ marginBottom: '8px' }}>Tags</h4>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {viewedUser.tags.map((tag, index) => (
+                  <span 
+                    key={index} 
+                    style={{ 
+                      padding: '4px 12px',
+                      background: 'var(--accent-primary)',
+                      borderRadius: '15px',
+                      fontSize: '0.85rem'
+                    }}
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
 
@@ -269,7 +363,7 @@ export default function Profile() {
                     >
                       Remove Friend
                     </button>
-                    {user.isSubscribed && (
+                    {(user.isSubscribed || user.isAdmin) && (
                       <button 
                         className="btn btn-secondary"
                         onClick={() => navigate('/chat', { state: { openChat: `friend_${viewedUser.id}` } })}
@@ -279,12 +373,23 @@ export default function Profile() {
                     )}
                   </>
                 ) : (user.sentFriendRequests || []).includes(viewedUser.id) ? (
-                  <button 
-                    className="btn btn-secondary"
-                    onClick={() => cancelFriendRequest(viewedUser.id)}
-                  >
-                    Cancel Request
-                  </button>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <span style={{ 
+                      padding: '8px 16px', 
+                      background: 'var(--warning)', 
+                      borderRadius: '8px',
+                      fontSize: '0.9rem',
+                      fontWeight: '500'
+                    }}>
+                      Pending
+                    </span>
+                    <button 
+                      className="btn btn-secondary"
+                      onClick={() => cancelFriendRequest(viewedUser.id)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 ) : (user.receivedFriendRequests || []).includes(viewedUser.id) ? (
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <button 
@@ -303,7 +408,10 @@ export default function Profile() {
                 ) : (
                   <button 
                     className="btn btn-primary"
-                    onClick={() => addFriend(viewedUser.id)}
+                    onClick={() => {
+                      console.log('Add Friend button clicked', viewedUser.id)
+                      addFriend(viewedUser.id)
+                    }}
                   >
                     Add Friend
                   </button>
@@ -370,18 +478,7 @@ export default function Profile() {
               rows={3}
               placeholder="Tell us about yourself..."
             />
-          </div>
 
-          <div className="form-group">
-            <label htmlFor="darts">Darts</label>
-            <input
-              type="text"
-              id="darts"
-              name="darts"
-              value={formData.darts}
-              onChange={handleChange}
-              placeholder="e.g., Winmau Blade 5, Target Darts..."
-            />
           </div>
 
           <div className="form-group">
@@ -394,6 +491,62 @@ export default function Profile() {
               onChange={handleChange}
               placeholder="e.g., England, Scotland, Wales..."
             />
+          </div>
+
+          <div className="form-group">
+            <label>Tags (up to 10)</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+              {tags.map((tag, index) => (
+                <span 
+                  key={index} 
+                  style={{ 
+                    padding: '4px 10px',
+                    background: 'var(--accent-primary)',
+                    borderRadius: '15px',
+                    fontSize: '0.85rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  {tag}
+                  <button 
+                    type="button"
+                    onClick={() => handleRemoveTag(tag)}
+                    style={{ 
+                      background: 'none', 
+                      border: 'none', 
+                      color: 'var(--text-primary)', 
+                      cursor: 'pointer',
+                      padding: '0',
+                      fontSize: '1rem',
+                      lineHeight: '1'
+                    }}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input
+                type="text"
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Add a tag..."
+                style={{ flex: 1 }}
+                disabled={tags.length >= 10}
+              />
+              <button 
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleAddTag}
+                disabled={tags.length >= 10 || !newTag.trim()}
+              >
+                Add
+              </button>
+            </div>
           </div>
 
           <div className="form-group">

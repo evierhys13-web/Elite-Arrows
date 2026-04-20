@@ -1,74 +1,420 @@
-import { createContext, useContext, useState, useEffect } from 'react'
-import { db, auth, usersCollection, doc, setDoc, getDoc, getDocs, query, where, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged } from '../firebase'
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
+import { db, auth, usersCollection, adminDataCollection, fcmTokensCollection, doc, setDoc, getDoc, getDocs, query, collection, orderBy, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, addDoc, updateDoc, deleteDoc, FieldValue, getMessagingInstance, getToken, onMessage, isSupported } from '../firebase'
 
 const AuthContext = createContext(null)
 
-const ADMIN_EMAIL = 'rhyshowe2023@outlook.com'
+const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
 
-function getDivisionFromAverage(average) {
-  if (average >= 55) return 'Elite'
-  if (average >= 50) return 'Premier'
-  if (average >= 45) return 'Champion'
-  if (average >= 40) return 'Diamond'
-  return 'Gold'
-}
+export const DIVISIONS = ['Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Development']
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [allUsers, setAllUsers] = useState([])
+  const [notifications, setNotifications] = useState([])
+  const [results, setResults] = useState([])
+  const [fixtures, setFixtures] = useState([])
+  const [cups, setCups] = useState([])
+  const [supportRequests, setSupportRequests] = useState([])
+  const [seasons, setSeasons] = useState([])
+  const [dataRefreshTrigger, setDataRefreshTrigger] = useState(0)
+  const [adminData, setAdminData] = useState({ subscriptionPot: 0, subscriptionPot10: 0, moneyHistory: [] })
+  const [notificationPermission, setNotificationPermission] = useState('default')
+  const [fcmToken, setFcmToken] = useState(null)
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [news, setNews] = useState([])
+  const unsubscribeRef = useRef(null)
+  
+  const SENSITIVE_FIELDS = ['password', 'passwordString', 'passwordHash', 'passwordKey', 'passwordStringValue', 'password', 'firebaseId', 'pwd', 'pass', 'passwd']
 
+  const requestNotificationPermission = useCallback(async () => {
+    if (!('Notification' in window)) {
+      console.log('This browser does not support notifications')
+      return false
+    }
+
+    if (Notification.permission === 'granted') {
+      setNotificationPermission('granted')
+      return true
+    }
+
+    if (Notification.permission !== 'denied') {
+      const permission = await Notification.requestPermission()
+      setNotificationPermission(permission)
+      
+      if (permission === 'granted') {
+        await registerFCMToken()
+        return true
+      }
+      return false
+    }
+
+    setNotificationPermission('denied')
+    return false
+  }, [user?.id])
+
+  const registerFCMToken = useCallback(async () => {
+    if (!user?.id) return null
+    
+    try {
+      const supported = await isSupported()
+      if (!supported) {
+        console.log('Firebase messaging not supported')
+        return null
+      }
+
+      const messaging = await getMessagingInstance()
+      if (!messaging) return null
+
+      if ('serviceWorker' in navigator) {
+        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js')
+        console.log('FCM SW registered:', registration)
+      }
+
+      const token = await getToken(messaging, {
+        vapidKey: 'BCeZoSxuL3tWAkXFIGr1x8-Ns4YwOm2iffUVL2yUDK02QhEfMPpJ61CH349hX7cXjBAjSF92_EsZKzmyJXynnxg',
+        serviceWorkerRegistration: await navigator.serviceWorker.getRegistration()
+      })
+
+      if (token) {
+        setFcmToken(token)
+        localStorage.setItem('eliteArrowsFcmToken', token)
+        
+        await setDoc(doc(db, 'fcmTokens', user.id), {
+          userId: user.id,
+          username: user.username,
+          token: token,
+          updatedAt: new Date().toISOString()
+        }, { merge: true })
+
+        console.log('FCM Token registered:', token.substring(0, 20) + '...')
+        return token
+      }
+    } catch (error) {
+      console.error('Error registering FCM token:', error)
+    }
+    return null
+  }, [user?.id, user?.username])
+
+  const showLocalNotification = useCallback((title, options = {}) => {
+    if (Notification.permission === 'granted') {
+      const notification = new Notification(title, {
+        icon: '/logo.jpg',
+        badge: '/logo.jpg',
+        ...options
+      })
+      
+      notification.onclick = () => {
+        window.focus()
+        notification.close()
+        if (options.data?.url) {
+          window.location.href = options.data.url
+        }
+      }
+    }
+  }, [])
+
+  const updateBadgeCount = useCallback((count) => {
+    setUnreadCount(count)
+    localStorage.setItem('eliteArrowsUnreadCount', String(count))
+    
+    if ('caches' in window) {
+      navigator.serviceWorker.ready.then(registration => {
+        registration.active?.postMessage({
+          type: 'SET_BADGE',
+          count: count
+        })
+      })
+    }
+    
+    if (navigator.setAppBadge) {
+      navigator.setAppBadge(count).catch(() => {})
+    }
+  }, [])
+
+  const sendNotification = useCallback(async (toUserId, notification) => {
+    const newNotification = {
+      id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      ...notification,
+      toUserId,
+      isRead: false,
+      createdAt: new Date().toISOString()
+    }
+    
+    const existingNotifications = JSON.parse(localStorage.getItem('eliteArrowsNotifications') || '[]')
+    existingNotifications.unshift(newNotification)
+    localStorage.setItem('eliteArrowsNotifications', JSON.stringify(existingNotifications))
+    
+    try {
+      await addDoc(collection(db, 'notifications'), newNotification)
+    } catch (e) {
+      console.log('Error saving notification to Firebase:', e)
+    }
+    
+    if (user?.id === toUserId) {
+      setNotifications(prev => [newNotification, ...prev])
+      setUnreadCount(prev => prev + 1)
+      updateBadgeCount(unreadCount + 1)
+    }
+    
+    return newNotification
+  }, [user?.id, unreadCount, updateBadgeCount])
+
+  const notifyAllSubscribers = useCallback(async (title, body, data = {}) => {
+    const subscribers = allUsers.filter(u => u.isSubscribed || u.isAdmin)
+    
+    for (const subscriber of subscribers) {
+      await sendNotification(subscriber.id, {
+        type: data.type || 'table_updated',
+        title,
+        message: body,
+        data
+      })
+    }
+    
+    if (subscribers.some(s => s.id === user?.id)) {
+      setUnreadCount(prev => prev + subscribers.length)
+      updateBadgeCount(unreadCount + subscribers.length)
+    }
+  }, [allUsers, user?.id, unreadCount, updateBadgeCount, sendNotification])
+
+  const notifyAdmins = useCallback(async (title, body, data = {}) => {
+    const admins = allUsers.filter(u => u.isAdmin || u.isTournamentAdmin)
+    
+    for (const admin of admins) {
+      await sendNotification(admin.id, {
+        type: data.type || 'admin_alert',
+        title,
+        message: body,
+        data
+      })
+    }
+  }, [allUsers, sendNotification])
+
+  const notifyUser = useCallback(async (toUserId, title, body, type, data = {}) => {
+    await sendNotification(toUserId, {
+      type,
+      title,
+      message: body,
+      data
+    })
+  }, [sendNotification])
+
+  const triggerDataRefresh = useCallback((dataType = 'all') => {
+    setDataRefreshTrigger(prev => prev + 1)
+    console.log(`Data refresh triggered: ${dataType}`)
+  }, [])
+
+  useEffect(() => {
+    const unsubscribeUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
+      const users = snapshot.docs.map(doc => {
+        const data = doc.data()
+        SENSITIVE_FIELDS.forEach(field => delete data[field])
+        return { id: doc.id, ...data }
+      })
+      setAllUsers(users)
+      localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+    })
+    
+    const unsubscribeResults = onSnapshot(collection(db, 'results'), (snapshot) => {
+      const resultsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      if (resultsData.length > 0) {
+        setResults(resultsData)
+        localStorage.setItem('eliteArrowsResults', JSON.stringify(resultsData))
+        triggerDataRefresh('results')
+      }
+    })
+    
+    const unsubscribeFixtures = onSnapshot(collection(db, 'fixtures'), (snapshot) => {
+      const fixturesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      setFixtures(fixturesData)
+      localStorage.setItem('eliteArrowsFixtures', JSON.stringify(fixturesData))
+      triggerDataRefresh('fixtures')
+    })
+    
+    const unsubscribeCups = onSnapshot(collection(db, 'cups'), (snapshot) => {
+      const cupsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      setCups(cupsData)
+      localStorage.setItem('eliteArrowsCups', JSON.stringify(cupsData))
+      triggerDataRefresh('cups')
+    })
+    
+    const unsubscribeSupport = onSnapshot(collection(db, 'supportRequests'), (snapshot) => {
+      const supportData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      setSupportRequests(supportData)
+      localStorage.setItem('eliteArrowsSupportRequests', JSON.stringify(supportData))
+      triggerDataRefresh('supportRequests')
+    })
+    
+    const unsubscribeSeasons = onSnapshot(collection(db, 'seasons'), (snapshot) => {
+      const seasonsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      setSeasons(seasonsData)
+      localStorage.setItem('eliteArrowsSeasons', JSON.stringify(seasonsData))
+      if (seasonsData.length > 0) {
+        const activeSeason = seasonsData.find(s => s.isActive)
+        if (activeSeason) {
+          localStorage.setItem('eliteArrowsCurrentSeason', activeSeason.name)
+        }
+      }
+      triggerDataRefresh('seasons')
+    })
+    
+    const unsubscribeNews = onSnapshot(query(collection(db, 'news'), orderBy('createdAt', 'desc')), (snapshot) => {
+      const newsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      setNews(newsData)
+      localStorage.setItem('eliteArrowsNews', JSON.stringify(newsData))
+    }, (error) => {
+      console.log('News listener error:', error)
+      setNews([])
+    })
+    
+    const unsubscribeAdmin = onSnapshot(doc(db, 'adminData', 'main'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data()
+        setAdminData({
+          subscriptionPot: data.subscriptionPot || 0,
+          subscriptionPot10: data.subscriptionPot10 || 0,
+          moneyHistory: data.moneyHistory || []
+        })
+        localStorage.setItem('eliteArrowsSubscriptionPot', String(data.subscriptionPot || 0))
+        localStorage.setItem('eliteArrowsSubscriptionPot10', String(data.subscriptionPot10 || 0))
+        localStorage.setItem('eliteArrowsMoneyHistory', JSON.stringify(data.moneyHistory || []))
+      }
+    })
+    
+    return () => {
+      unsubscribeUsers()
+      unsubscribeResults()
+      unsubscribeFixtures()
+      unsubscribeCups()
+      unsubscribeSupport()
+      unsubscribeSeasons()
+      unsubscribeNews()
+      unsubscribeAdmin()
+    }
+  }, [triggerDataRefresh])
+  
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
           if (userDoc.exists()) {
-            setUser({ id: userDoc.id, ...userDoc.data() })
+            let userData = userDoc.data()
+            SENSITIVE_FIELDS.forEach(field => delete userData[field])
+            const fullUser = { id: userDoc.id, ...userData }
+            setUser(fullUser)
+            localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(fullUser))
           } else {
-            await firebaseSignOut(auth)
-            setUser(null)
+            const newUserData = {
+              username: firebaseUser.email?.split('@')[0] || 'User',
+              email: firebaseUser.email,
+              threeDartAverage: 0,
+              division: null,
+              isAdmin: false,
+              isTournamentAdmin: false,
+              isSubscribed: false,
+              freeAdminSubscription: false,
+              adminRequestPending: false,
+              friends: [],
+              isOnline: true,
+              showOnlineStatus: true,
+              doNotDisturb: false,
+              dndEndTime: null,
+              eliteTokens: 0,
+              lastSeen: new Date().toISOString(),
+              createdAt: new Date().toISOString()
+            }
+            await setDoc(doc(db, 'users', firebaseUser.uid), newUserData)
+            const fullUser = { id: firebaseUser.uid, ...newUserData }
+            setUser(fullUser)
+            localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(fullUser))
           }
         } catch (e) {
-          console.error('Error fetching user:', e)
-          setUser(null)
+          const stored = localStorage.getItem('eliteArrowsCurrentUser')
+          if (stored) setUser(JSON.parse(stored))
         }
-      } else {
-        setUser(null)
       }
       setLoading(false)
     })
-
-    const unsubscribeUsers = onSnapshot(usersCollection, (snapshot) => {
-      const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-      setAllUsers(users)
-    }, (error) => {
-      console.log('Users snapshot error (may need Firestore rules):', error)
+    return () => unsubscribeAuth()
+  }, [])
+  
+const cleanUserData = (users) => {
+    return users.map(u => {
+      const cleaned = { ...u }
+      SENSITIVE_FIELDS.forEach(field => delete cleaned[field])
+      return cleaned
     })
-
-    return () => {
-      unsubscribeAuth()
-      unsubscribeUsers()
+  }
+  
+  const removeSensitiveFieldsFromFirestore = async (users) => {
+    const userToDelete = users.find(u => u.email?.toLowerCase() === 'brentedwards87@gmail.com')
+    if (userToDelete && userToDelete.id) {
+      try {
+        await deleteDoc(doc(db, 'users', userToDelete.id))
+        console.log('Deleted user document for brentedwards87@gmail.com')
+      } catch (e) {
+        console.log('Error deleting user:', e)
+      }
     }
+    
+    for (const user of users) {
+      if (user.id) {
+        const updates = {}
+        SENSITIVE_FIELDS.forEach(field => updates[field] = FieldValue.delete())
+        try {
+          await updateDoc(doc(db, 'users', user.id), updates)
+        } catch (e) {
+          console.log('Error removing fields for', user.id, e)
+        }
+      }
+    }
+  }
+
+  const runCleanup = async () => {
+    try {
+      const snapshot = await getDocs(collection(db, 'users'))
+      const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      
+      await removeSensitiveFieldsFromFirestore(users)
+      await removeSensitiveFieldsFromFirestore(users)
+      await removeSensitiveFieldsFromFirestore(users)
+      
+      const cleanedUsers = cleanUserData(users)
+      if (users.length > 0) {
+        setAllUsers(cleanedUsers)
+        localStorage.setItem('eliteArrowsUsers', JSON.stringify(cleanedUsers))
+      }
+      console.log('Cleanup complete - password fields removed from Firestore')
+    } catch (e) {
+      console.log('Cleanup error:', e)
+    }
+  }
+
+  useEffect(() => {
+    runCleanup()
+    const timer = setTimeout(runCleanup, 2000)
+    return () => clearTimeout(timer)
   }, [])
 
   const signUp = async (userData, rememberMe = false) => {
     const emailLower = userData.email.toLowerCase()
-    const isAdmin = emailLower === ADMIN_EMAIL.toLowerCase()
-    const division = getDivisionFromAverage(userData.threeDartAverage || 0)
+    const isAdmin = ADMIN_EMAILS.includes(emailLower)
 
     try {
-      console.log('Attempting Firebase sign up...')
       const { user: firebaseUser } = await createUserWithEmailAndPassword(auth, userData.email, userData.password)
-      console.log('Firebase auth successful, user ID:', firebaseUser.uid)
+      
+      const { password, threeDartAverage, ...userDataWithoutPassword } = userData
       
       const newUser = {
-        ...userData,
-        threeDartAverage: userData.threeDartAverage || 0,
-        division: division,
+        ...userDataWithoutPassword,
+        threeDartAverage: threeDartAverage || 0,
+        division: isAdmin ? 'Admin' : null,
         isAdmin: isAdmin,
         isTournamentAdmin: false,
-        isSubscribed: isAdmin,
+        isSubscribed: isAdmin || userData.isSubscribed || false,
+        freeAdminSubscription: isAdmin || false,
         adminRequestPending: false,
         friends: [],
         isOnline: true,
@@ -81,7 +427,20 @@ export function AuthProvider({ children }) {
       }
 
       await setDoc(doc(db, 'users', firebaseUser.uid), newUser)
-      setUser({ id: firebaseUser.uid, ...newUser })
+      
+      const cleanedUser = { ...newUser }
+      const fullUser = { id: firebaseUser.uid, ...cleanedUser }
+      setUser(fullUser)
+      localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(fullUser))
+      
+      const updatedUsers = [...allUsers, fullUser]
+      const cleanedUpdated = updatedUsers.map(u => {
+        const { password, ...rest } = u
+        return rest
+      })
+      setAllUsers(cleanedUpdated)
+      localStorage.setItem('eliteArrowsUsers', JSON.stringify(cleanedUpdated))
+      
       return newUser
     } catch (error) {
       throw new Error(error.message)
@@ -90,32 +449,9 @@ export function AuthProvider({ children }) {
 
   const signIn = async (email, password, rememberMe = false) => {
     try {
-      console.log('Attempting Firebase sign in...')
-      const { user: firebaseUser } = await signInWithEmailAndPassword(auth, email, password)
-      console.log('Firebase auth successful, user ID:', firebaseUser.uid)
-      
-      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
-      console.log('User doc exists:', userDoc.exists())
-      
-      if (!userDoc.exists()) {
-        await firebaseSignOut(auth)
-        throw new Error('User data not found')
-      }
-
-      const userData = userDoc.data()
-      const isAdminEmail = email.toLowerCase() === ADMIN_EMAIL.toLowerCase()
-      
-      if (isAdminEmail) {
-        userData.isAdmin = true
-        userData.isSubscribed = true
-        await setDoc(doc(db, 'users', firebaseUser.uid), userData, { merge: true })
-      }
-
-      userData.isOnline = true
-      await setDoc(doc(db, 'users', firebaseUser.uid), { isOnline: true, lastSeen: new Date().toISOString() }, { merge: true })
-      
-      setUser({ id: firebaseUser.uid, ...userData })
-      return userData
+      await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence)
+      await signInWithEmailAndPassword(auth, email, password)
+      return
     } catch (error) {
       throw new Error(error.message)
     }
@@ -131,25 +467,46 @@ export function AuthProvider({ children }) {
     setUser(null)
   }
 
-  const updateUser = async (updates) => {
-    if (!user) return
+  const updateUser = async (updates, showAlert = true) => {
+    if (!user?.id) return
+    
+    const cleanUpdates = {}
+    Object.keys(updates).forEach(key => {
+      if (updates[key] !== undefined && updates[key] !== null && updates[key] !== '') {
+        cleanUpdates[key] = updates[key]
+      }
+    })
+    
+    if (Object.keys(cleanUpdates).length === 0) return
+    
     try {
-      await setDoc(doc(db, 'users', user.id), updates, { merge: true })
-      setUser({ ...user, ...updates })
+      const userRef = doc(db, 'users', user.id)
+      await setDoc(userRef, cleanUpdates, { merge: true })
+      
+      const updatedUser = { ...user, ...cleanUpdates }
+      setUser(updatedUser)
+      localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(updatedUser))
+      
+      setAllUsers(prev => {
+        const updated = prev.map(u => u.id === user.id ? { ...u, ...cleanUpdates } : u)
+        localStorage.setItem('eliteArrowsUsers', JSON.stringify(updated))
+        return updated
+      })
+      
+      if (showAlert) alert('Profile updated!')
     } catch (error) {
-      console.error('Error updating user:', error)
+      if (showAlert) alert('Error: ' + error.message)
     }
   }
 
   const addUserManually = async (userData) => {
     const emailLower = userData.email.toLowerCase()
-    const isAdmin = emailLower === ADMIN_EMAIL.toLowerCase()
-    const division = getDivisionFromAverage(userData.threeDartAverage || 0)
+    const isAdmin = ADMIN_EMAILS.includes(emailLower)
 
     const newUser = {
       ...userData,
       threeDartAverage: userData.threeDartAverage || 0,
-      division: division,
+      division: null,
       isAdmin: isAdmin,
       isTournamentAdmin: false,
       isSubscribed: isAdmin || userData.isSubscribed || false,
@@ -172,20 +529,36 @@ export function AuthProvider({ children }) {
   const addFriend = async (friendId) => {
     if (!user) return
     const currentRequests = user.sentFriendRequests || []
-    if (currentRequests.includes(friendId)) {
-      alert('Friend request already sent!')
-      return
+    if (currentRequests.includes(friendId)) return
+    
+    await updateUser({ sentFriendRequests: [...currentRequests, friendId] })
+    
+    const allUsersData = getAllUsers()
+    const friendUser = allUsersData.find(u => u.id === friendId)
+    
+    const notification = {
+      id: `friend_request_${Date.now()}`,
+      type: 'friend_request',
+      fromUserId: user.id,
+      fromUsername: user.username,
+      toUserId: friendId,
+      toUsername: friendUser?.username || 'Unknown',
+      message: `${user.username} sent you a friend request`,
+      isRead: false,
+      createdAt: new Date().toISOString()
     }
-    await updateUser({ 
-      sentFriendRequests: [...currentRequests, friendId]
-    })
-    const friend = allUsers.find(u => u.id === friendId)
-    if (friend) {
-      const friendRequests = friend.receivedFriendRequests || []
-      await setDoc(doc(db, 'users', friendId), { 
-        receivedFriendRequests: [...friendRequests, user.id] 
-      }, { merge: true })
+    
+    const existingNotifications = JSON.parse(localStorage.getItem('eliteArrowsNotifications') || '[]')
+    localStorage.setItem('eliteArrowsNotifications', JSON.stringify([...existingNotifications, notification]))
+    
+    try {
+      await addDoc(collection(db, 'notifications'), {
+        ...notification
+      })
+    } catch (e) {
+      console.log('Error saving to Firebase:', e)
     }
+    
     alert('Friend request sent!')
   }
 
@@ -195,57 +568,50 @@ export function AuthProvider({ children }) {
     const currentRequests = user.receivedFriendRequests || []
     const newFriends = [...currentFriends, userId]
     const newRequests = currentRequests.filter(id => id !== userId)
-    await updateUser({ 
-      friends: newFriends,
-      receivedFriendRequests: newRequests
-    })
-    const requester = allUsers.find(u => u.id === userId)
-    if (requester) {
-      const requesterFriends = requester.friends || []
-      const requesterSent = requester.sentFriendRequests || []
-      await setDoc(doc(db, 'users', userId), { 
-        friends: [...requesterFriends, user.id],
-        sentFriendRequests: requesterSent.filter(id => id !== user.id)
-      }, { merge: true })
+    await updateUser({ friends: newFriends, receivedFriendRequests: newRequests })
+    
+    const allUsersData = getAllUsers()
+    const requestUser = allUsersData.find(u => u.id === userId)
+    
+    const notification = {
+      id: `friend_accepted_${Date.now()}`,
+      type: 'friend_accepted',
+      fromUserId: user.id,
+      fromUsername: user.username,
+      toUserId: userId,
+      toUsername: requestUser?.username || 'Unknown',
+      message: `${user.username} accepted your friend request`,
+      isRead: false,
+      createdAt: new Date().toISOString()
     }
-    alert('Friend added!')
+    const existingNotifications = JSON.parse(localStorage.getItem('eliteArrowsNotifications') || '[]')
+    localStorage.setItem('eliteArrowsNotifications', JSON.stringify([...existingNotifications, notification]))
+    
+    try {
+      await addDoc(collection(db, 'notifications'), {
+        ...notification
+      })
+    } catch (e) {
+      console.log('Error saving to Firebase:', e)
+    }
   }
 
   const declineFriendRequest = async (userId) => {
     if (!user) return
     const currentRequests = user.receivedFriendRequests || []
-    await updateUser({ 
-      receivedFriendRequests: currentRequests.filter(id => id !== userId)
-    })
-    alert('Friend request declined')
+    await updateUser({ receivedFriendRequests: currentRequests.filter(id => id !== userId) })
   }
 
   const cancelFriendRequest = async (userId) => {
     if (!user) return
     const currentSent = user.sentFriendRequests || []
-    await updateUser({ 
-      sentFriendRequests: currentSent.filter(id => id !== userId)
-    })
-    const friend = allUsers.find(u => u.id === userId)
-    if (friend) {
-      const friendRequests = friend.receivedFriendRequests || []
-      await setDoc(doc(db, 'users', userId), { 
-        receivedFriendRequests: friendRequests.filter(id => id !== user.id)
-      }, { merge: true })
-    }
+    await updateUser({ sentFriendRequests: currentSent.filter(id => id !== userId) })
   }
 
   const removeFriend = async (friendId) => {
     if (!user) return
     const newFriends = (user.friends || []).filter(id => id !== friendId)
     await updateUser({ friends: newFriends })
-    const friend = allUsers.find(u => u.id === friendId)
-    if (friend) {
-      const friendFriends = friend.friends || []
-      await setDoc(doc(db, 'users', friendId), { 
-        friends: friendFriends.filter(id => id !== user.id)
-      }, { merge: true })
-    }
   }
 
   const subscribe = () => {
@@ -256,10 +622,96 @@ export function AuthProvider({ children }) {
     updateUser({ adminRequestPending: true })
   }
 
-  const getAllUsers = () => allUsers
+  const getAllUsers = () => {
+    if (allUsers.length > 0) return allUsers
+    const localUsers = JSON.parse(localStorage.getItem('eliteArrowsUsers') || '[]')
+    return localUsers
+  }
 
   const getFriends = () => {
     return allUsers.filter(u => (user?.friends || []).includes(u.id))
+  }
+
+  const getResults = () => {
+    if (results.length > 0) return results
+    const local = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+    return local
+  }
+
+  const getFixtures = () => {
+    if (fixtures.length > 0) return fixtures
+    const local = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+    return local
+  }
+
+  const getCups = () => {
+    if (cups.length > 0) return cups
+    const local = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
+    return local
+  }
+
+  const getSupportRequests = () => {
+    if (supportRequests.length > 0) return supportRequests
+    const local = JSON.parse(localStorage.getItem('eliteArrowsSupportRequests') || '[]')
+    return local
+  }
+
+  const getSeasons = () => {
+    if (seasons.length > 0) return seasons
+    const local = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
+    return local
+  }
+
+  const getNews = () => {
+    if (news.length > 0) return news
+    const local = JSON.parse(localStorage.getItem('eliteArrowsNews') || '[]')
+    return local
+  }
+
+  const postNews = async (title, message, pinned = false) => {
+    if (!user) return
+    const newPost = {
+      id: `news_${Date.now()}`,
+      title,
+      message,
+      authorId: user.id,
+      authorName: user.username,
+      createdAt: new Date().toISOString(),
+      pinned
+    }
+    try {
+      await addDoc(collection(db, 'news'), newPost)
+    } catch (e) {
+      console.log('Error posting news to Firebase:', e)
+    }
+    const local = JSON.parse(localStorage.getItem('eliteArrowsNews') || '[]')
+    local.unshift(newPost)
+    localStorage.setItem('eliteArrowsNews', JSON.stringify(local))
+    setNews(local)
+  }
+
+  const deleteNews = async (newsId) => {
+    try {
+      await deleteDoc(doc(db, 'news', newsId))
+    } catch (e) {
+      console.log('Error deleting news from Firebase:', e)
+    }
+    const local = JSON.parse(localStorage.getItem('eliteArrowsNews') || '[]')
+    const updated = local.filter(n => n.id !== newsId)
+    localStorage.setItem('eliteArrowsNews', JSON.stringify(updated))
+    setNews(updated)
+  }
+
+  const togglePinNews = async (newsId, currentPinned) => {
+    try {
+      await setDoc(doc(db, 'news', newsId), { pinned: !currentPinned }, { merge: true })
+    } catch (e) {
+      console.log('Error pinning news:', e)
+    }
+    const local = JSON.parse(localStorage.getItem('eliteArrowsNews') || '[]')
+    const updated = local.map(n => n.id === newsId ? { ...n, pinned: !currentPinned } : n)
+    localStorage.setItem('eliteArrowsNews', JSON.stringify(updated))
+    setNews(updated)
   }
 
   const addTokens = async (amount) => {
@@ -275,11 +727,98 @@ export function AuthProvider({ children }) {
     await updateUser({ eliteTokens: newTokens })
     return true
   }
+  
+  const updateAdminData = async (newData) => {
+    try {
+      const currentData = adminData
+      const updated = { ...currentData, ...newData }
+      await setDoc(doc(db, 'adminData', 'main'), updated, { merge: true })
+      setAdminData(updated)
+    } catch (e) {
+      console.error('Error updating admin data:', e)
+    }
+  }
+  
+  const addToMoneyHistory = (type, amount, description) => {
+    const newEntry = { id: Date.now(), type, amount, description, date: new Date().toISOString() }
+    const updatedHistory = [...(adminData.moneyHistory || []), newEntry]
+    updateAdminData({ moneyHistory: updatedHistory })
+  }
+
+  useEffect(() => {
+    if (!user?.id) return
+    const storedNotifs = JSON.parse(localStorage.getItem('eliteArrowsNotifications') || '[]')
+    const userNotifs = storedNotifs.filter(n => n.toUserId === user.id)
+    setNotifications(userNotifs)
+    const unread = userNotifs.filter(n => !n.isRead).length
+    setUnreadCount(unread)
+    updateBadgeCount(unread)
+  }, [user?.id])
+
+  useEffect(() => {
+    const setupForegroundMessages = async () => {
+      try {
+        const messaging = await getMessagingInstance()
+        if (!messaging) return
+        
+        onMessage(messaging, (payload) => {
+          console.log('Foreground message received:', payload)
+          
+          const { title, body, data } = payload
+          
+          if (Notification.permission === 'granted') {
+            new Notification(title || 'Elite Arrows', {
+              body: body || 'New notification',
+              icon: '/logo.jpg',
+              badge: '/logo.jpg',
+              data: data
+            })
+          }
+        })
+      } catch (error) {
+        console.log('FCM onMessage setup error:', error)
+      }
+    }
+    
+    if (user?.id) {
+      setupForegroundMessages()
+    }
+  }, [user?.id])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setNotificationPermission(Notification.permission)
+    }
+    
+    const storedToken = localStorage.getItem('eliteArrowsFcmToken')
+    if (storedToken) {
+      setFcmToken(storedToken)
+    }
+    
+    const storedUnread = localStorage.getItem('eliteArrowsUnreadCount')
+    if (storedUnread) {
+      setUnreadCount(parseInt(storedUnread) || 0)
+    }
+  }, [])
 
   return (
     <AuthContext.Provider value={{ 
       user, 
       loading, 
+      notifications,
+      unreadCount,
+      notificationPermission,
+      fcmToken,
+      dataRefreshTrigger,
+      triggerDataRefresh,
+      requestNotificationPermission,
+      registerFCMToken,
+      showLocalNotification,
+      updateBadgeCount,
+      sendNotification,
+      notifyAllSubscribers,
+      notifyAdmins,
+      notifyUser,
       signUp, 
       signIn, 
       signOut: handleSignOut, 
@@ -294,8 +833,20 @@ export function AuthProvider({ children }) {
       requestAdminRole,
       getAllUsers,
       getFriends,
+      getResults,
+      getFixtures,
+      getCups,
+      getSupportRequests,
+      getSeasons,
+      getNews,
+      postNews,
+      deleteNews,
+      togglePinNews,
       addTokens,
       useTokens,
+      adminData,
+      updateAdminData,
+      addToMoneyHistory,
       isAuthenticated: !!user 
     }}>
       {children}

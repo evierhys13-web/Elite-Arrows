@@ -1,17 +1,29 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import NewsFeed from '../components/NewsFeed'
 
 export default function Home() {
-  const { user, getAllUsers } = useAuth()
-  const [seasonInfo, setSeasonInfo] = useState(() => JSON.parse(localStorage.getItem('eliteArrowsSeason') || '{"startDate": "2026-06-01", "endDate": "2026-07-01", "name": "Season 1"}'))
+  const { user, getAllUsers, getResults, dataRefreshTrigger } = useAuth()
+  const SEASON_START = new Date('2026-05-01')
+  const SEASON_END = new Date('2026-06-01')
+  
+  const [refreshKey, setRefreshKey] = useState(0)
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
+  const [isSeasonActive, setIsSeasonActive] = useState(false)
+
+  useEffect(() => {
+    setRefreshKey(prev => prev + 1)
+  }, [dataRefreshTrigger])
 
   useEffect(() => {
     const calculateTimeLeft = () => {
-      const end = new Date(seasonInfo.endDate)
       const now = new Date()
-      const diff = end - now
+      const isActive = now >= SEASON_START && now <= SEASON_END
+      setIsSeasonActive(isActive)
+      
+      const targetDate = isActive ? SEASON_END : SEASON_START
+      const diff = targetDate - now
       
       if (diff > 0) {
         setTimeLeft({
@@ -20,17 +32,21 @@ export default function Home() {
           minutes: Math.floor((diff / (1000 * 60)) % 60),
           seconds: Math.floor((diff / 1000) % 60)
         })
+      } else {
+        if (!isActive && now > SEASON_END) {
+          setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 })
+        }
       }
     }
     
     calculateTimeLeft()
     const timer = setInterval(calculateTimeLeft, 1000)
     return () => clearInterval(timer)
-  }, [seasonInfo.endDate])
+  }, [])
 
   const allUsers = getAllUsers()
-  const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
-  const approvedResults = results.filter(r => r.status === 'approved')
+  const allResults = getResults()
+  const approvedResults = allResults.filter(r => r.status === 'approved')
   const userResults = approvedResults.filter(r => r.player1Id === user.id || r.player2Id === user.id)
   const tournaments = JSON.parse(localStorage.getItem('eliteArrowsTournaments') || '[]')
   
@@ -58,11 +74,18 @@ export default function Home() {
         <p style={{ color: 'var(--text-muted)' }}>Here's your darts overview</p>
       </div>
 
+      <NewsFeed />
+
       <div className="card" style={{ marginBottom: '20px', border: '2px solid var(--accent-cyan)' }}>
         <div style={{ textAlign: 'center' }}>
-          <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>{seasonInfo.name}</h2>
+          <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>
+            {isSeasonActive ? 'Season in Progress' : 'Season Starts In'}
+          </h2>
           <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
-            1st June 2026 - 1st July 2026
+            {isSeasonActive 
+              ? `${new Date(SEASON_START).toLocaleDateString()} - ${new Date(SEASON_END).toLocaleDateString()}`
+              : `Season 1: ${new Date(SEASON_START).toLocaleDateString()} - ${new Date(SEASON_END).toLocaleDateString()}`
+            }
           </p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '20px' }}>
             <div className="stat-card" style={{ padding: '15px' }}>
