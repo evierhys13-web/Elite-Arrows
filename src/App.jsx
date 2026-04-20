@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, Outlet, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
@@ -24,77 +23,18 @@ import SeedData from './pages/SeedData'
 import Sidebar from './components/Sidebar'
 import BackgroundDecor from './components/BackgroundDecor'
 
-function ProtectedRoute({ children }) {
-  const { isAuthenticated, loading, user } = useAuth()
-  
-  if (loading) {
-    return <div className="loading">Loading...</div>
-  }
-  
-  if (!isAuthenticated) {
-    return <Navigate to="/auth" replace />
-  }
-  
-  return children
-}
-
-function SubscribedRoute({ children }) {
-  const { user, isAuthenticated, loading } = useAuth()
-  const navigate = useNavigate()
-  const [showPopup, setShowPopup] = useState(false)
-  
-  if (loading) {
-    return <div className="loading">Loading...</div>
-  }
-  
-  if (!isAuthenticated) {
-    return <Navigate to="/auth" replace />
-  }
-  
-  if (!user?.isSubscribed) {
-    return (
-      <div style={{ 
-        padding: '40px', 
-        textAlign: 'center',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '50vh'
-      }}>
-        <div style={{ 
-          background: 'var(--bg-secondary)', 
-          padding: '30px', 
-          borderRadius: '12px',
-          maxWidth: '400px'
-        }}>
-          <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '15px' }}>Full Access Required</h2>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>
-            You need an Elite Arrows Pass subscription to access this feature.
-          </p>
-          <button 
-            className="btn btn-primary btn-block"
-            onClick={() => navigate('/subscription')}
-            style={{ marginBottom: '10px' }}
-          >
-            Get Full Access - Subscribe Now
-          </button>
-          <button 
-            className="btn btn-secondary btn-block"
-            onClick={() => navigate('/home')}
-          >
-            Go Home
-          </button>
-        </div>
-      </div>
-    )
-  }
-  
-  return children
-}
-
 function AppLayout() {
   const location = useLocation()
+  const { isAuthenticated, loading } = useAuth()
+
+  if (loading) {
+    return <div className="loading">Loading...</div>
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />
+  }
+
   return (
     <div className="app-layout">
       <Sidebar />
@@ -105,19 +45,70 @@ function AppLayout() {
   )
 }
 
-function ProtectedLayout() {
-  return (
-    <ProtectedRoute>
-      <AppLayout />
-    </ProtectedRoute>
-  )
-}
-
 function SubscribedLayout() {
+  const location = useLocation()
+  const { user, isAuthenticated, loading } = useAuth()
+  const navigate = useNavigate()
+
+  if (loading) {
+    return <div className="loading">Loading...</div>
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />
+  }
+
+  if (!user?.isSubscribed) {
+    return (
+      <div className="app-layout">
+        <Sidebar />
+        <main className="main-content" key={location.pathname}>
+          <div style={{
+            padding: '40px',
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '50vh'
+          }}>
+            <div style={{
+              background: 'var(--bg-secondary)',
+              padding: '30px',
+              borderRadius: '12px',
+              maxWidth: '400px'
+            }}>
+              <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '15px' }}>Full Access Required</h2>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>
+                You need an Elite Arrows Pass subscription to access this feature.
+              </p>
+              <button
+                className="btn btn-primary btn-block"
+                onClick={() => navigate('/subscription')}
+                style={{ marginBottom: '10px' }}
+              >
+                Get Full Access - Subscribe Now
+              </button>
+              <button
+                className="btn btn-secondary btn-block"
+                onClick={() => navigate('/home')}
+              >
+                Go Home
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
   return (
-    <SubscribedRoute>
-      <AppLayout />
-    </SubscribedRoute>
+    <div className="app-layout">
+      <Sidebar />
+      <main className="main-content" key={location.pathname}>
+        <Outlet />
+      </main>
+    </div>
   )
 }
 
@@ -125,8 +116,8 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/auth" element={<Auth />} />
-      
-      <Route element={<ProtectedLayout />}>
+
+      <Route element={<AppLayout />}>
         <Route path="/home" element={<Home />} />
         <Route path="/subscription" element={<Subscription />} />
         <Route path="/table" element={<Table />} />
