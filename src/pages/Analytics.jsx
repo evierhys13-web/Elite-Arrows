@@ -35,8 +35,18 @@ export default function Analytics() {
     const stats = { played: 0, wins: 0, losses: 0, draws: 0, points: 0, legsWon: 0, legsLost: 0, total180s: 0, highestCheckout: 0, totalDoubleSuccess: 0, doubleSuccessCount: 0 }
     const monthlyData = {}
     const opponentStats = {}
+    const threeDartAvgTrend = []
+    const checkoutTrend = []
+    let currentStreak = 0
+    let streakType = ''
+    let longestWinStreak = 0
+    let longestLossStreak = 0
+    let tempStreak = 0
+    let tempStreakType = ''
 
-    userResults.forEach(r => {
+    const sortedResults = [...userResults].sort((a, b) => a.date.localeCompare(b.date))
+
+    sortedResults.forEach((r, idx) => {
       const isP1 = r.player1Id === user.id
       const myScore = isP1 ? r.score1 : r.score2
       const theirScore = isP1 ? r.score2 : r.score1
@@ -56,6 +66,35 @@ export default function Analytics() {
       if (myStats?.doubleSuccess) {
         stats.totalDoubleSuccess += myStats.doubleSuccess
         stats.doubleSuccessCount++
+      }
+
+      const totalLegs = myScore + theirScore
+      const estimatedDartsThrown = totalLegs * 18
+      const legScore = myScore / (totalLegs || 1)
+      const estimatedAvg = totalLegs > 0 ? ((myScore / (totalLegs || 1)) * 180).toFixed(1) : 0
+
+      threeDartAvgTrend.push({
+        date: r.date,
+        average: parseFloat(estimatedAvg),
+        legs: myScore
+      })
+
+      if (myStats?.doubleSuccess !== undefined) {
+        checkoutTrend.push({
+          date: r.date,
+          doubleSuccess: parseFloat(myStats.doubleSuccess)
+        })
+      }
+
+      const result = myScore > theirScore ? 'W' : myScore < theirScore ? 'L' : 'D'
+      if (result === 'W') {
+        if (tempStreakType === 'W') { tempStreak++ } else { tempStreak = 1; tempStreakType = 'W' }
+        longestWinStreak = Math.max(longestWinStreak, tempStreak)
+      } else if (result === 'L') {
+        if (tempStreakType === 'L') { tempStreak++ } else { tempStreak = 1; tempStreakType = 'L' }
+        longestLossStreak = Math.max(longestLossStreak, tempStreak)
+      } else {
+        tempStreak = 0; tempStreakType = ''
       }
 
       const month = r.date.substring(0, 7)
@@ -78,8 +117,19 @@ export default function Analytics() {
       else opponentStats[oppId].draws++
     })
 
+    if (tempStreakType === 'W') currentStreak = tempStreak
+    else if (tempStreakType === 'L') currentStreak = -tempStreak
+
     const avgLegsPerMatch = stats.played > 0 ? ((stats.legsWon / stats.played) * 100).toFixed(1) : 0
     const avgDoubleSuccess = stats.doubleSuccessCount > 0 ? (stats.totalDoubleSuccess / stats.doubleSuccessCount).toFixed(1) : 0
+
+    const bestOpponent = Object.values(opponentStats)
+      .filter(o => o.played >= 2 && o.wins > 0)
+      .sort((a, b) => (b.wins / b.played) - (a.wins / a.played))[0]
+
+    const worstOpponent = Object.values(opponentStats)
+      .filter(o => o.played >= 2 && o.losses > 0)
+      .sort((a, b) => (a.losses / a.played) - (b.losses / b.played))[0]
 
     return {
       ...stats,
@@ -91,7 +141,14 @@ export default function Analytics() {
         ...o,
         myAvg: o.played > 0 ? (o.myAvg / o.played).toFixed(1) : 0,
         theirAvg: o.played > 0 ? (o.theirAvg / o.played).toFixed(1) : 0
-      })).sort((a, b) => b.played - a.played)
+      })).sort((a, b) => b.played - a.played),
+      threeDartAvgTrend,
+      checkoutTrend,
+      currentStreak,
+      longestWinStreak,
+      longestLossStreak,
+      bestOpponent,
+      worstOpponent
     }
   }, [userResults, user.id])
 
@@ -134,7 +191,7 @@ export default function Analytics() {
     filteredResults.forEach(r => {
       totalMatches++
 
-      if (!divisionStats[r.division]) divisionStats[r.division] = { division: r.division, players: 0, matches: 0, totalLegs: 0, total180s: 0 }
+      if (!divisionStats[r.division]) divisionStats[r.division] = { division: r.division, players: 0, matches: 0, totalLegs: 0, total180s: 0, totalWins: 0, totalPoints: 0 }
       divisionStats[r.division].matches++
       divisionStats[r.division].totalLegs += r.score1 + r.score2
       divisionStats[r.division].total180s += (r.player1Stats?.['180s'] || 0) + (r.player2Stats?.['180s'] || 0)
@@ -143,17 +200,18 @@ export default function Analytics() {
         { id: r.player1Id, name: r.player1, score: r.score1, stats: r.player1Stats },
         { id: r.player2Id, name: r.player2, score: r.score2, stats: r.player2Stats }
       ].forEach(({ id, name, score, stats }) => {
-        if (!playerStats[id]) playerStats[id] = { id, name, played: 0, wins: 0, losses: 0, draws: 0, legsWon: 0, legsLost: 0, '_180s': 0, highestCheckout: 0, points: 0 }
+        if (!playerStats[id]) playerStats[id] = { id, name, played: 0, wins: 0, losses: 0, draws: 0, legsWon: 0, legsLost: 0, '_180s': 0, highestCheckout: 0, points: 0, division: r.division }
         const p = playerStats[id]
         p.played++
         p.legsWon += score
         const oppScore = id === r.player1Id ? r.score2 : r.score1
         p.legsLost += oppScore
-        if (score > oppScore) { p.wins++; p.points += 3 }
+        if (score > oppScore) { p.wins++; p.points += 3; divisionStats[r.division].totalWins++ }
         else if (score < oppScore) p.losses++
         else { p.draws++; p.points += 1 }
         p['180s'] += stats?.['180s'] || 0
         if ((stats?.highestCheckout || 0) > p.highestCheckout) p.highestCheckout = stats.highestCheckout
+        divisionStats[r.division].totalPoints += score > oppScore ? 3 : score === oppScore ? 1 : 0
       })
 
       const month = r.date.substring(0, 7)
@@ -166,7 +224,8 @@ export default function Analytics() {
     const divData = Object.values(divisionStats).map(d => ({
       ...d,
       avgLegsPerMatch: d.matches > 0 ? (d.totalLegs / d.matches).toFixed(1) : 0,
-      avg180sPerMatch: d.matches > 0 ? (d.total180s / d.matches).toFixed(1) : 0
+      avg180sPerMatch: d.matches > 0 ? (d.total180s / d.matches).toFixed(1) : 0,
+      avgPointsPerMatch: d.matches > 0 ? (d.totalPoints / d.matches).toFixed(1) : 0
     }))
 
     const players = Object.values(playerStats).sort((a, b) => b.points - a.points)
@@ -177,8 +236,19 @@ export default function Analytics() {
 
     const monthlyData = Object.values(monthlyTotals).sort((a, b) => a.month.localeCompare(b.month))
 
-    return { divData, players, topWins, top180s, topCheckout, topLegDiff, monthlyData, totalMatches, uniquePlayers: Object.keys(playerStats).length }
-  }, [filteredResults])
+    const userDivision = userResults.length > 0 ? userResults[0].division : null
+    const userDivisionAvg = divData.find(d => d.division === userDivision)
+
+    const userLeagueStats = playerStats[user.id] || { played: 0, wins: 0, losses: 0, draws: 0, legsWon: 0, legsLost: 0, '_180s': 0, highestCheckout: 0, points: 0 }
+    const userLeagueAvg = {
+      legsPerMatch: userLeagueStats.played > 0 ? (userLeagueStats.legsWon / userLeagueStats.played).toFixed(1) : 0,
+      winRate: userLeagueStats.played > 0 ? ((userLeagueStats.wins / userLeagueStats.played) * 100).toFixed(1) : 0,
+      pointsPerMatch: userLeagueStats.played > 0 ? (userLeagueStats.points / userLeagueStats.played).toFixed(1) : 0,
+      '_180sPerMatch': userLeagueStats.played > 0 ? (userLeagueStats['180s'] / userLeagueStats.played).toFixed(1) : 0
+    }
+
+    return { divData, players, topWins, top180s, topCheckout, topLegDiff, monthlyData, totalMatches, uniquePlayers: Object.keys(playerStats).length, userDivision, userDivisionAvg, userLeagueAvg }
+  }, [filteredResults, userResults, user.id])
 
   const sections = [
     { id: 'personal', label: 'Personal Performance' },
@@ -250,6 +320,16 @@ export default function Analytics() {
               <div className="stat-value">{personalStats.avgDoubleSuccess}%</div>
               <div className="stat-label">Avg Double %</div>
             </div>
+            <div className="stat-card">
+              <div className="stat-value" style={{ color: personalStats.currentStreak > 0 ? 'var(--success)' : personalStats.currentStreak < 0 ? 'var(--error)' : 'var(--text-muted)' }}>
+                {personalStats.currentStreak > 0 ? `W${personalStats.currentStreak}` : personalStats.currentStreak < 0 ? `L${Math.abs(personalStats.currentStreak)}` : '-'}
+              </div>
+              <div className="stat-label">Current Streak</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-value" style={{ color: 'var(--success)' }}>{personalStats.longestWinStreak}</div>
+              <div className="stat-label">Longest Win Streak</div>
+            </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '20px', marginBottom: '20px' }}>
@@ -308,6 +388,36 @@ export default function Analytics() {
                 </BarChart>
               </ResponsiveContainer>
             </div>
+
+            {personalStats.threeDartAvgTrend.length > 0 && (
+              <div className="card">
+                <h3 className="card-title">3-Dart Average Trend</h3>
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={personalStats.threeDartAvgTrend}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                    <XAxis dataKey="date" stroke="var(--text-muted)" tick={{ fontSize: 11 }} />
+                    <YAxis stroke="var(--text-muted)" domain={['auto', 'auto']} />
+                    <Tooltip contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '8px' }} />
+                    <Line type="monotone" dataKey="average" stroke="#a855f7" strokeWidth={2} dot={{ r: 3 }} name="3-Dart Avg" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {personalStats.checkoutTrend.length > 0 && (
+              <div className="card">
+                <h3 className="card-title">Checkout Success Rate</h3>
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={personalStats.checkoutTrend}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                    <XAxis dataKey="date" stroke="var(--text-muted)" tick={{ fontSize: 11 }} />
+                    <YAxis stroke="var(--text-muted)" domain={[0, 100]} />
+                    <Tooltip contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '8px' }} />
+                    <Line type="monotone" dataKey="doubleSuccess" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} name="Double %" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </div>
 
           {personalStats.opponentData.length > 0 && (
@@ -324,6 +434,35 @@ export default function Analytics() {
                   <Bar dataKey="losses" fill="#ef4444" name="Losses" />
                 </BarChart>
               </ResponsiveContainer>
+            </div>
+          )}
+
+          {(personalStats.bestOpponent || personalStats.worstOpponent) && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '20px' }}>
+              {personalStats.bestOpponent && (
+                <div className="card" style={{ borderTop: '3px solid var(--success)' }}>
+                  <h3 className="card-title" style={{ color: 'var(--success)' }}>Best Opponent</h3>
+                  <div style={{ padding: '12px 0' }}>
+                    <div style={{ fontSize: '1.2rem', fontWeight: '700', marginBottom: '8px' }}>{personalStats.bestOpponent.name}</div>
+                    <div style={{ display: 'flex', gap: '16px', color: 'var(--text-muted)' }}>
+                      <span>{personalStats.bestOpponent.wins}W - {personalStats.bestOpponent.losses}L</span>
+                      <span>{((personalStats.bestOpponent.wins / personalStats.bestOpponent.played) * 100).toFixed(0)}% Win Rate</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {personalStats.worstOpponent && (
+                <div className="card" style={{ borderTop: '3px solid var(--error)' }}>
+                  <h3 className="card-title" style={{ color: 'var(--error)' }}>Worst Opponent</h3>
+                  <div style={{ padding: '12px 0' }}>
+                    <div style={{ fontSize: '1.2rem', fontWeight: '700', marginBottom: '8px' }}>{personalStats.worstOpponent.name}</div>
+                    <div style={{ display: 'flex', gap: '16px', color: 'var(--text-muted)' }}>
+                      <span>{personalStats.worstOpponent.wins}W - {personalStats.worstOpponent.losses}L</span>
+                      <span>{((personalStats.worstOpponent.wins / personalStats.worstOpponent.played) * 100).toFixed(0)}% Win Rate</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -533,6 +672,28 @@ export default function Analytics() {
               </ResponsiveContainer>
             </div>
           </div>
+
+          {leagueStats.userDivisionAvg && (
+            <div className="card" style={{ marginBottom: '20px' }}>
+              <h3 className="card-title">Your Performance vs {leagueStats.userDivisionAvg.division} Division Average</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={[
+                  { metric: 'Legs/Match', you: parseFloat(leagueStats.userLeagueAvg.legsPerMatch), division: parseFloat(leagueStats.userDivisionAvg.avgLegsPerMatch) },
+                  { metric: 'Win Rate %', you: parseFloat(leagueStats.userLeagueAvg.winRate), division: leagueStats.userDivisionAvg.matches > 0 ? ((leagueStats.userDivisionAvg.totalWins / (leagueStats.userDivisionAvg.matches * 2)) * 100).toFixed(1) : 0 },
+                  { metric: 'Pts/Match', you: parseFloat(leagueStats.userLeagueAvg.pointsPerMatch), division: parseFloat(leagueStats.userDivisionAvg.avgPointsPerMatch) },
+                  { metric: '180s/Match', you: parseFloat(leagueStats.userLeagueAvg['_180sPerMatch']), division: parseFloat(leagueStats.userDivisionAvg.avg180sPerMatch) }
+                ]}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="metric" stroke="var(--text-muted)" />
+                  <YAxis stroke="var(--text-muted)" />
+                  <Tooltip contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '8px' }} />
+                  <Legend />
+                  <Bar dataKey="you" fill="#4da8da" name="You" />
+                  <Bar dataKey="division" fill="#6b7280" name="Division Avg" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '20px' }}>
             <div className="card">
