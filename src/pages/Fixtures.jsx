@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { Link } from 'react-router-dom'
 import { db, doc, setDoc, collection, addDoc } from '../firebase'
+import UserSearchSelect from '../components/UserSearchSelect'
 
 export default function Fixtures() {
   const { user, getAllUsers, getFixtures, triggerDataRefresh } = useAuth()
@@ -385,18 +386,19 @@ export default function Fixtures() {
             </div>
 
             <div className="form-group">
-              <label>Select Opponent</label>
-              <select 
-                value={createForm.opponent} 
-                onChange={e => setCreateForm({...createForm, opponent: e.target.value})}
-              >
-                <option value="">Select opponent</option>
-                {getFilteredOpponents(createForm.gameType).map(p => (
-                  <option key={p.id} value={p.id}>
-                    {p.username} ({p.division}) {playedOpponentIds.includes(p.id) ? '- Played' : '- To Play'}
-                  </option>
-                ))}
-              </select>
+              <UserSearchSelect
+                users={getFilteredOpponents(createForm.gameType)}
+                selectedId={createForm.opponent}
+                onSelect={(id) => setCreateForm({...createForm, opponent: id})}
+                placeholder="Search for opponent..."
+                excludeIds={[user.id, ...playedOpponentIds]}
+                label="Select Opponent"
+              />
+              {playedOpponentIds.length > 0 && (
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  {playedOpponentIds.length} opponent(s) already played this season
+                </p>
+              )}
             </div>
 
             <div style={{ display: 'flex', gap: '15px' }}>

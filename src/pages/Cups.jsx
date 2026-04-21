@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { Link } from 'react-router-dom'
 import { db, doc, setDoc, collection, addDoc } from '../firebase'
+import UserSearchSelect from '../components/UserSearchSelect'
 
 export default function CupTournaments() {
   const { user, getAllUsers, getCups, getFixtures, triggerDataRefresh } = useAuth()
@@ -213,18 +214,34 @@ export default function CupTournaments() {
           </div>
           
           <h4 style={{ marginTop: '20px', marginBottom: '10px' }}>Select Players ({selectedPlayers.length}/{formData.maxPlayers})</h4>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-            {allUsers.map(p => (
-              <button
-                key={p.id}
-                className={`btn ${selectedPlayers.includes(p.id) ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => handlePlayerSelect(p.id)}
-                style={{ padding: '8px 12px', fontSize: '0.85rem' }}
-              >
-                {p.username}
-              </button>
-            ))}
+          <UserSearchSelect
+            users={allUsers}
+            selectedId={null}
+            onSelect={handlePlayerSelect}
+            placeholder="Search and add players..."
+            label=""
+          />
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '15px' }}>
+            {selectedPlayers.map(playerId => {
+              const player = allUsers.find(u => u.id === playerId)
+              if (!player) return null
+              return (
+                <button
+                  key={player.id}
+                  className="btn btn-primary"
+                  onClick={() => handlePlayerSelect(player.id)}
+                  style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                >
+                  ✕ {player.username}
+                </button>
+              )
+            })}
           </div>
+          {selectedPlayers.length < 2 && (
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '10px' }}>
+              Search and add at least 2 players to create a cup
+            </p>
+          )}
 
           {selectedPlayers.length >= 2 && (
             <button className="btn btn-primary btn-block" style={{ marginTop: '20px' }} onClick={createBracket}>

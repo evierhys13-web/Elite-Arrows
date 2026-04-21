@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { db, doc, setDoc, getDoc, deleteDoc, updateDoc } from '../firebase'
 import CupManagement from './CupManagement'
+import UserSearchSelect from '../components/UserSearchSelect'
 
 export default function Admin() {
   const { user, getAllUsers, updateUser, getResults, adminData, updateAdminData, addToMoneyHistory, getSupportRequests, getSeasons, getNews, postNews, deleteNews, togglePinNews, triggerDataRefresh, dataRefreshTrigger, notifyUser, notifyAllSubscribers } = useAuth()
@@ -32,6 +33,8 @@ export default function Admin() {
     background: localStorage.getItem('eliteArrowsColors') ? JSON.parse(localStorage.getItem('eliteArrowsColors')).background : '#0a0a1a',
     button: localStorage.getItem('eliteArrowsColors') ? JSON.parse(localStorage.getItem('eliteArrowsColors')).button : '#00d4ff'
   })
+  const [selectedAssignUser, setSelectedAssignUser] = useState('')
+  const [selectedRemoveSubUser, setSelectedRemoveSubUser] = useState('')
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -533,31 +536,25 @@ export default function Admin() {
 
           <div style={{ display: 'flex', gap: '12px', marginBottom: '15px' }}>
             <div className="form-group" style={{ flex: 1 }}>
-              <label>Player 1</label>
-              <select 
-                value={gameForm.player1}
-                onChange={(e) => {
-                  const selected = getAllUsers().find(u => u.id === e.target.value)
-                  setGameForm({...gameForm, player1: e.target.value, division: selected?.division || ''})
+              <UserSearchSelect
+                users={getAllUsers()}
+                selectedId={gameForm.player1}
+                onSelect={(id) => {
+                  const selected = getAllUsers().find(u => u.id === id)
+                  setGameForm({...gameForm, player1: id, division: selected?.division || ''})
                 }}
-              >
-                <option value="">Select player</option>
-                {getAllUsers().map(u => (
-                  <option key={u.id} value={u.id}>{u.username} ({u.division})</option>
-                ))}
-              </select>
+                placeholder="Select player 1..."
+                label="Player 1"
+              />
             </div>
             <div className="form-group" style={{ flex: 1 }}>
-              <label>Player 2</label>
-              <select 
-                value={gameForm.player2}
-                onChange={(e) => setGameForm({...gameForm, player2: e.target.value})}
-              >
-                <option value="">Select player</option>
-                {getAllUsers().filter(u => u.id !== gameForm.player1).map(u => (
-                  <option key={u.id} value={u.id}>{u.username} ({u.division})</option>
-                ))}
-              </select>
+              <UserSearchSelect
+                users={getAllUsers().filter(u => u.id !== gameForm.player1)}
+                selectedId={gameForm.player2}
+                onSelect={(id) => setGameForm({...gameForm, player2: id})}
+                placeholder="Select player 2..."
+                label="Player 2"
+              />
             </div>
           </div>
 
@@ -875,15 +872,13 @@ export default function Admin() {
             <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
               Assign a player to a division and/or grant subscription
             </p>
-            <select 
-              id="assignDivisionUser"
-              style={{ width: '100%', padding: '12px', marginBottom: '12px' }}
-            >
-              <option value="">Select user</option>
-              {getAllUsers().map(u => (
-                <option key={u.id} value={u.id}>{u.username} - {u.division || 'Unassigned'}</option>
-              ))}
-            </select>
+            <UserSearchSelect
+              users={getAllUsers()}
+              selectedId={selectedAssignUser}
+              onSelect={setSelectedAssignUser}
+              placeholder="Search for player..."
+              label="Select Player"
+            />
             
             <select 
               id="assignDivision"
@@ -917,7 +912,7 @@ export default function Admin() {
             <button 
               className="btn btn-primary"
               onClick={async () => {
-                const userId = document.getElementById('assignDivisionUser').value
+                const userId = selectedAssignUser
                 const division = document.getElementById('assignDivision').value
                 const subType = document.getElementById('grantSubType').value
                 const freeSub = document.getElementById('freeSubCheck').checked
@@ -978,13 +973,21 @@ export default function Admin() {
             <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
               Remove subscription from a user
             </p>
-            <select 
-              style={{ width: '100%', padding: '12px', marginBottom: '12px' }}
-              onChange={(e) => {
-                if (!e.target.value) return
+            <UserSearchSelect
+              users={getAllUsers().filter(u => u.isSubscribed)}
+              selectedId={selectedRemoveSubUser}
+              onSelect={setSelectedRemoveSubUser}
+              placeholder="Search for subscriber..."
+              label="Select Subscriber"
+            />
+            <button 
+              className="btn btn-primary"
+              style={{ marginTop: '12px' }}
+              onClick={async () => {
+                if (!selectedRemoveSubUser) return alert('Select a user')
                 if (!confirm('Are you sure you want to remove this subscription?')) return
                 const users = getAllUsers()
-                const index = users.findIndex(u => u.id === e.target.value)
+                const index = users.findIndex(u => u.id === selectedRemoveSubUser)
                 if (index !== -1) {
                   users[index].isSubscribed = false
                   users[index].freeAdminSubscription = false
@@ -1010,15 +1013,12 @@ export default function Admin() {
                   }
                   
                   alert('Subscription removed')
-                  e.target.value = ''
+                  setSelectedRemoveSubUser('')
                 }
               }}
             >
-              <option value="">Select user to remove subscription</option>
-              {getAllUsers().filter(u => u.isSubscribed).map(u => (
-                <option key={u.id} value={u.id}>{u.username} ({u.email})</option>
-              ))}
-            </select>
+              Remove Subscription
+            </button>
           </div>
 
           <div className="card">

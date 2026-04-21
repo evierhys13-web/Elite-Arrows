@@ -6,13 +6,18 @@ export default function Guide() {
 
   const sections = [
     { id: 'getting-started', label: 'Getting Started', icon: '🎯' },
+    { id: 'account', label: 'Account Setup', icon: '👤' },
     { id: 'subscription', label: 'Subscription', icon: '⭐' },
     { id: 'fixtures', label: 'Fixtures', icon: '📅' },
     { id: 'results', label: 'Results', icon: '🏆' },
     { id: 'cups', label: 'Cups & Tournaments', icon: '🎯' },
     { id: 'league', label: 'League Games', icon: '📊' },
+    { id: 'leaderboards', label: 'Leaderboards', icon: '📈' },
+    { id: 'chat', label: 'Chat', icon: '💬' },
     { id: 'tokens', label: 'Tokens & Rewards', icon: '💰' },
-    { id: 'profile', label: 'Profile & Stats', icon: '👤' }
+    { id: 'profile', label: 'Profile & Stats', icon: '📋' },
+    { id: 'search', label: 'Finding Players', icon: '🔍' },
+    { id: 'divisions', label: 'Divisions', icon: '🏅' }
   ]
 
   return (
@@ -30,7 +35,9 @@ export default function Guide() {
           background: 'var(--bg-secondary)',
           borderRadius: '12px',
           padding: '15px',
-          height: 'fit-content'
+          height: 'fit-content',
+          position: 'sticky',
+          top: '20px'
         }}>
           <h4 style={{ marginBottom: '10px', color: 'var(--accent-cyan)' }}>Quick Links</h4>
           {sections.map(section => (
@@ -73,7 +80,9 @@ export default function Guide() {
               <div style={{ marginTop: '20px' }}>
                 <h4 style={{ color: 'var(--accent-cyan)' }}>Your First Steps</h4>
                 <ol style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-                  <li><strong>Set up your profile</strong> - Add your details and profile picture</li>
+                  <li><strong>Create an account</strong> - Sign up with your email and set a username</li>
+                  <li><strong>Enter your 3-dart average</strong> - This helps place you in the right division</li>
+                  <li><strong>Set up your profile</strong> - Add your details, profile picture, and bio</li>
                   <li><strong>Get assigned to a division</strong> - Admins will place you in the appropriate league division</li>
                   <li><strong>Subscribe for full access</strong> - Unlock all features with Elite Arrows Pass</li>
                   <li><strong>Start playing!</strong> - Create fixtures, submit results, and earn tokens</li>
@@ -85,6 +94,51 @@ export default function Guide() {
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
                   Use the sidebar on the left to navigate between different sections of the app.
                   On mobile, tap the hamburger menu (☰) to open navigation.
+                </p>
+              </div>
+
+              <div style={{ marginTop: '20px', padding: '15px', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '8px', borderLeft: '4px solid var(--success)' }}>
+                <h4 style={{ color: 'var(--success)' }}>💡 Pro Tip</h4>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                  Use the search bar in the sidebar (subscribers only) to quickly find and add players as friends!
+                </p>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'account' && (
+            <div className="card">
+              <h2 className="card-title">👤 Account Setup</h2>
+              
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>Setting Up Your Profile</h4>
+                <ol style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
+                  <li>Go to <strong>Profile</strong> page</li>
+                  <li>Click <strong>Edit Profile</strong></li>
+                  <li>Add your <strong>username</strong>, <strong>bio</strong>, and <strong>profile picture</strong></li>
+                  <li>Add your <strong>DartCounter username</strong> to link your stats</li>
+                  <li>Changes save automatically</li>
+                </ol>
+              </div>
+
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>Settings You Can Customize</h4>
+                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
+                  <li><strong>Username</strong> - Your display name in the app</li>
+                  <li><strong>Nickname</strong> - A fun nickname others will see</li>
+                  <li><strong>Bio</strong> - A short description about yourself</li>
+                  <li><strong>Profile Picture</strong> - Upload a photo</li>
+                  <li><strong>DartCounter Link</strong> - Link your DartCounter stats</li>
+                  <li><strong>Online Status</strong> - Show/hide when you're online</li>
+                  <li><strong>Do Not Disturb</strong> - Block notifications temporarily</li>
+                </ul>
+              </div>
+
+              <div style={{ marginTop: '20px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>Privacy Options</h4>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                  You can hide your online status and enable Do Not Disturb mode from your profile settings.
+                  This is useful if you want to play without being disturbed.
                 </p>
               </div>
             </div>
@@ -113,6 +167,7 @@ export default function Guide() {
                   <li>✗ Cannot create fixtures</li>
                   <li>✗ Cannot submit results</li>
                   <li>✗ Cannot join cups/tournaments</li>
+                  <li>✗ Cannot access rewards shop</li>
                 </ul>
               </div>
 
@@ -125,6 +180,7 @@ export default function Guide() {
                   <li>✓ Enter cup tournaments</li>
                   <li>✓ Earn tokens and rewards</li>
                   <li>✓ Access to games and challenges</li>
+                  <li>✓ Chat with friends</li>
                   <li>✓ Priority support</li>
                 </ul>
               </div>
@@ -149,7 +205,7 @@ export default function Guide() {
                   <li>Go to <strong>Fixtures</strong> page</li>
                   <li>Click <strong>+ Create Fixture</strong></li>
                   <li>Select game type (Friendly or League)</li>
-                  <li>Choose your opponent</li>
+                  <li>Use the <strong>search bar</strong> to find and select your opponent</li>
                   <li>Pick a date and time</li>
                   <li>Click <strong>Send Challenge</strong></li>
                 </ol>
@@ -163,6 +219,15 @@ export default function Guide() {
                   <li><strong>Pending</strong> - Incoming challenges awaiting your response</li>
                   <li><strong>Sent</strong> - Challenges you've sent to others</li>
                   <li><strong>Cup Fixtures</strong> - Your cup tournament matches</li>
+                </ul>
+              </div>
+
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>Responding to Fixtures</h4>
+                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
+                  <li><strong>Accept</strong> - Confirm you can play at the proposed time</li>
+                  <li><strong>Counter</strong> - Suggest an alternative date/time</li>
+                  <li><strong>Decline</strong> - Reject the challenge (provide a reason)</li>
                 </ul>
               </div>
 
@@ -219,8 +284,18 @@ export default function Guide() {
                 <h4 style={{ color: 'var(--accent-cyan)' }}>What are Cups?</h4>
                 <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
                   Cup tournaments are knockout competitions where players compete to win the prize pot.
-                  Admins create cups with entry fees, and players are randomly placed in a bracket.
+                  Admins create cups with entry fees, and players are placed in a bracket.
                 </p>
+              </div>
+
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>How to Enter a Cup</h4>
+                <ol style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
+                  <li>Go to <strong>Cups</strong> page</li>
+                  <li>Find an open cup tournament</li>
+                  <li>Pay the entry fee</li>
+                  <li>Wait for the admin to add you to the bracket</li>
+                </ol>
               </div>
 
               <div style={{ marginTop: '20px' }}>
@@ -234,23 +309,14 @@ export default function Guide() {
               </div>
 
               <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>How Cup Fixtures Work</h4>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>Cup Fixtures</h4>
                 <ol style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-                  <li>Admin creates a cup and selects players</li>
                   <li>Fixtures appear in your <strong>Cup Fixtures</strong> tab</li>
                   <li><strong>Propose a date/time</strong> for your match</li>
                   <li>Opponent accepts or counters your proposal</li>
                   <li>Once accepted, <strong>Submit Result</strong> after playing</li>
                   <li>Winner advances to the next round</li>
                 </ol>
-              </div>
-
-              <div style={{ marginTop: '20px', padding: '15px', background: 'rgba(255, 193, 7, 0.1)', borderRadius: '8px', borderLeft: '4px solid #ffc107' }}>
-                <h4 style={{ color: '#ffc107' }}>⏳ Scheduling</h4>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                  If your opponent proposes a time you can't make, use the <strong>Counter</strong> 
-                  button to suggest an alternative date.
-                </p>
               </div>
             </div>
           )}
@@ -277,19 +343,74 @@ export default function Guide() {
                 </ul>
               </div>
 
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Division System</h4>
-                <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                  Players are grouped into divisions (Division 1, 2, 3, etc.). Top performers 
-                  get promoted to higher divisions, while lower performers get relegated.
-                </p>
-              </div>
-
               <div style={{ marginTop: '20px', padding: '15px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', borderLeft: '4px solid #ef4444' }}>
                 <h4 style={{ color: '#ef4444' }}>⚠️ Important</h4>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
                   You must upload a screenshot as proof for all League game results. 
                   This helps prevent disputes and ensures fair competition.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'leaderboards' && (
+            <div className="card">
+              <h2 className="card-title">📈 Leaderboards</h2>
+              
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>View Rankings</h4>
+                <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
+                  Check the leaderboards to see how you and other players rank. Filter by division
+                  to see where you stand in your league.
+                </p>
+              </div>
+
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>Leaderboard Types</h4>
+                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
+                  <li><strong>Weekly Leaderboard</strong> - Points earned this week</li>
+                  <li><strong>Season Leaderboard</strong> - Points earned this season</li>
+                  <li><strong>All-Time Leaderboard</strong> - Total points earned</li>
+                </ul>
+              </div>
+
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>Filters</h4>
+                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
+                  <li><strong>Division</strong> - View standings within your division</li>
+                  <li><strong>Time Period</strong> - This week, month, or all time</li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'chat' && (
+            <div className="card">
+              <h2 className="card-title">💬 Chat</h2>
+              
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>Chatting with Friends</h4>
+                <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
+                  You can chat with other players who are on your friends list. Send messages,
+                  coordinate fixtures, and stay in touch!
+                </p>
+              </div>
+
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>How to Chat</h4>
+                <ol style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
+                  <li>Go to the <strong>Players</strong> page</li>
+                  <li>Find a player and click <strong>Add Friend</strong></li>
+                  <li>Once accepted, click <strong>Chat</strong> on their profile</li>
+                  <li>Or use the chat icon on the <strong>Players</strong> page</li>
+                </ol>
+              </div>
+
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>Privacy</h4>
+                <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
+                  Chat is only available between friends. You can hide your online status
+                  and enable Do Not Disturb mode from your profile settings.
                 </p>
               </div>
             </div>
@@ -330,20 +451,12 @@ export default function Guide() {
                   <li>Premium features (coming soon)</li>
                 </ul>
               </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Leaderboards</h4>
-                <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                  Check the <Link to="/leaderboards" style={{ color: 'var(--accent-cyan)' }}>Leaderboards</Link> 
-                  to see who's earned the most tokens!
-                </p>
-              </div>
             </div>
           )}
 
           {activeSection === 'profile' && (
             <div className="card">
-              <h2 className="card-title">👤 Profile & Stats</h2>
+              <h2 className="card-title">📋 Profile & Stats</h2>
               
               <div style={{ marginTop: '20px' }}>
                 <h4 style={{ color: 'var(--accent-cyan)' }}>Your Profile</h4>
@@ -365,11 +478,12 @@ export default function Guide() {
               </div>
 
               <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Updating Your Profile</h4>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>Viewing Other Players</h4>
                 <ol style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-                  <li>Go to <strong>Settings</strong> page</li>
-                  <li>Update your username, bio, or profile picture</li>
-                  <li>Changes save automatically</li>
+                  <li>Go to the <strong>Players</strong> page</li>
+                  <li>Search for a player or browse the list</li>
+                  <li>Click on their name to view their profile</li>
+                  <li>See their stats, division, and recent form</li>
                 </ol>
               </div>
 
@@ -378,6 +492,94 @@ export default function Guide() {
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
                   Visit <Link to="/match-log" style={{ color: 'var(--accent-cyan)' }}>Match Log</Link> 
                   to see your complete game history and detailed stats!
+                </p>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'search' && (
+            <div className="card">
+              <h2 className="card-title">🔍 Finding Players</h2>
+              
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>Global Search (Subscribers Only)</h4>
+                <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
+                  Use the search bar in the sidebar to quickly find any player. You can search by
+                  username or DartCounter username.
+                </p>
+              </div>
+
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>Search Features</h4>
+                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
+                  <li><strong>Search by username</strong> - Find players by their display name</li>
+                  <li><strong>Search by DartCounter</strong> - Find players by their DartCounter name</li>
+                  <li><strong>Quick actions</strong> - Add friend, chat, or view profile from search results</li>
+                </ul>
+              </div>
+
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>How to Use Search</h4>
+                <ol style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
+                  <li>Look for the <strong>search bar</strong> in the sidebar (left side)</li>
+                  <li>Type a player's username or DartCounter name</li>
+                  <li>Click on a result to see quick actions</li>
+                  <li><strong>View Profile</strong> - See their full stats</li>
+                  <li><strong>Add Friend</strong> - Send a friend request</li>
+                  <li><strong>Chat</strong> - Open a chat (friends only)</li>
+                </ol>
+              </div>
+
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>Other Ways to Find Players</h4>
+                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
+                  <li><strong>Players Page</strong> - Browse all players or filter by friends</li>
+                  <li><strong>Leaderboards</strong> - Find top-ranked players</li>
+                  <li><strong>Division Pages</strong> - See players in your division</li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'divisions' && (
+            <div className="card">
+              <h2 className="card-title">🏅 Divisions</h2>
+              
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>Division System</h4>
+                <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
+                  Players are grouped into divisions based on their skill level (3-dart average).
+                  Higher divisions mean better players!
+                </p>
+              </div>
+
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>Division Tiers</h4>
+                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
+                  <li><strong>Elite</strong> - 55+ average (Top players)</li>
+                  <li><strong>Premier</strong> - 50+ average</li>
+                  <li><strong>Champion</strong> - 45+ average</li>
+                  <li><strong>Diamond</strong> - 40+ average</li>
+                  <li><strong>Gold</strong> - Under 40 average</li>
+                </ul>
+              </div>
+
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>How Divisions Work</h4>
+                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
+                  <li>Your division is based on your <strong>3-dart average</strong></li>
+                  <li>League games are played <strong>within your division</strong></li>
+                  <li>Top performers get <strong>promoted</strong> to higher divisions</li>
+                  <li>Lower performers get <strong>relegated</strong></li>
+                  <li>Admins can manually assign divisions</li>
+                </ul>
+              </div>
+
+              <div style={{ marginTop: '20px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>Your Division</h4>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                  Your division is shown on your profile and in the league table.
+                  If you think you're in the wrong division, contact an admin.
                 </p>
               </div>
             </div>
