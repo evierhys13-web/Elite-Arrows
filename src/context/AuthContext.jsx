@@ -804,6 +804,7 @@ const cleanUserData = (users) => {
   return (
     <AuthContext.Provider value={{ 
       user, 
+      allUsers,
       loading, 
       notifications,
       unreadCount,

@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import NotificationBell from './NotificationBell'
+import GlobalSearch from './GlobalSearch'
 
 const HomeIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -306,6 +307,8 @@ export default function Sidebar() {
           </div>
           <NotificationBell />
         </div>
+
+        {(isSubscribed || isAdmin) && <GlobalSearch />}
 
         <nav className="sidebar-nav">
           {navItems.map((item) => {
