@@ -730,22 +730,24 @@ const cleanUserData = (users) => {
   
   const updateAdminData = async (newData) => {
     try {
-      const currentData = adminData
-      const updated = { ...currentData, ...newData }
-      await setDoc(doc(db, 'adminData', 'main'), updated, { merge: true })
-      setAdminData(updated)
-      localStorage.setItem('eliteArrowsSubscriptionPot', String(updated.subscriptionPot || 0))
-      localStorage.setItem('eliteArrowsSubscriptionPot10', String(updated.subscriptionPot10 || 0))
-      localStorage.setItem('eliteArrowsMoneyHistory', JSON.stringify(updated.moneyHistory || []))
+      await setDoc(doc(db, 'adminData', 'main'), newData, { merge: true })
+      console.log('Admin data updated:', newData)
     } catch (e) {
       console.error('Error updating admin data:', e)
     }
   }
   
-  const addToMoneyHistory = (type, amount, description) => {
-    const newEntry = { id: Date.now(), type, amount, description, date: new Date().toISOString() }
-    const updatedHistory = [...(adminData.moneyHistory || []), newEntry]
-    updateAdminData({ moneyHistory: updatedHistory })
+  const addToMoneyHistory = async (type, amount, description) => {
+    try {
+      const docRef = doc(db, 'adminData', 'main')
+      const docSnap = await getDoc(docRef)
+      const currentData = docSnap.exists() ? docSnap.data() : {}
+      const currentHistory = currentData.moneyHistory || []
+      const newEntry = { id: Date.now(), type, amount, description, date: new Date().toISOString() }
+      await setDoc(docRef, { moneyHistory: [...currentHistory, newEntry] }, { merge: true })
+    } catch (e) {
+      console.error('Error adding to money history:', e)
+    }
   }
 
   useEffect(() => {
