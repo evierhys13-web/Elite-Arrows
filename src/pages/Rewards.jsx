@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 
 const DIVISIONS = ['Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Development']
 
 export default function Rewards() {
-  const { user, getAllUsers, useTokens } = useAuth()
+  const { user, getAllUsers, useTokens, updateUser } = useAuth()
   const [bets, setBets] = useState([])
   const [showBetForm, setShowBetForm] = useState(null)
   const [betAmount, setBetAmount] = useState(10)
@@ -12,11 +12,23 @@ export default function Rewards() {
   const [predictedScore1, setPredictedScore1] = useState('')
   const [predictedScore2, setPredictedScore2] = useState('')
   const [selectedDivision, setSelectedDivision] = useState(user.division || 'All')
+  const [showWheel, setShowWheel] = useState(false)
+  const [wheelSpinning, setWheelSpinning] = useState(false)
+  const [wheelWinner, setWheelWinner] = useState(null)
+  const wheelRef = useRef(null)
+
+  const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
+  const isAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase()) || user?.isAdmin || user?.isTournamentAdmin
 
   const allUsers = getAllUsers()
   const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
   const approvedResults = results.filter(r => r.status === 'approved')
   const currentSeason = localStorage.getItem('eliteArrowsCurrentSeason') || 'Season 1'
+  
+  const seasons = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
+  const activeSeason = seasons.find(s => s.status === 'active')
+  const seasonStartDate = activeSeason?.startDate ? new Date(activeSeason.startDate) : null
+  const seasonEnded = seasonStartDate && new Date() > seasonStartDate
 
   useEffect(() => {
     const storedBets = JSON.parse(localStorage.getItem('eliteArrowsBets') || '[]')
@@ -36,11 +48,17 @@ export default function Rewards() {
     ).length
   }
 
+  const getDivisionMaxGames = (division) => {
+    const playersInDiv = allUsers.filter(u => u.division === division)
+    return Math.max(0, playersInDiv.length - 1)
+  }
+
   const getPotentialMatches = () => {
     const divisionsToCheck = selectedDivision === 'All' ? DIVISIONS : [selectedDivision]
     const matches = []
 
     divisionsToCheck.forEach(division => {
+      const maxGames = getDivisionMaxGames(division)
       const playersInDiv = allUsers.filter(u => u.division === division && u.id !== user.id)
       
       playersInDiv.forEach(player1 => {
@@ -50,7 +68,7 @@ export default function Rewards() {
           const player1GamesPlayed = getPlayerGameCount(player1.id, division)
           const player2GamesPlayed = getPlayerGameCount(player2.id, division)
           
-          if (player1GamesPlayed >= 8 || player2GamesPlayed >= 8) return
+          if (player1GamesPlayed >= maxGames || player2GamesPlayed >= maxGames) return
 
           const alreadyPlayed = approvedResults.find(r => 
             r.season === currentSeason && 
@@ -72,7 +90,7 @@ export default function Rewards() {
               status: 'fixture',
               player1GamesPlayed,
               player2GamesPlayed,
-              maxGames: 8,
+              maxGames: maxGames,
               alreadyBet: !!alreadyBet
             })
           }
@@ -223,6 +241,71 @@ export default function Rewards() {
 
   const userStats = getUserStats()
 
+  const checkAllGamesComplete = () => {
+    for (const division of DIVISIONS) {
+      const playersInDiv = allUsers.filter(u => u.division === division)
+      const maxGames = playersInDiv.length - 1
+      if (maxGames <= 0) continue
+      
+      for (const player of playersInDiv) {
+        const gamesPlayed = getPlayerGameCount(player.id, division)
+        if (gamesPlayed < maxGames) {
+          return false
+        }
+      }
+    }
+    return true
+  }
+
+  const allGamesComplete = checkAllGamesComplete()
+
+  const spinWheel = () => {
+    if (promotionDraw.length === 0) {
+      alert('No participants in the promotion draw!')
+      return
+    }
+    if (!allGamesComplete) {
+      alert('Cannot spin the wheel until all league games are complete!')
+      return
+    }
+    setShowWheel(true)
+    setWheelSpinning(true)
+    setWheelWinner(null)
+    
+    const wheelElement = wheelRef.current
+    if (wheelElement) {
+      const segmentAngle = 360 / promotionDraw.length
+      const randomSegment = Math.floor(Math.random() * promotionDraw.length)
+      const randomOffset = Math.random() * segmentAngle * 0.8
+      const totalRotation = 360 * 5 + (randomSegment * segmentAngle) + randomOffset
+      
+      wheelElement.style.transition = 'transform 4s ease-out'
+      wheelElement.style.transform = `rotate(${totalRotation}deg)`
+      
+      setTimeout(() => {
+        setWheelSpinning(false)
+        const winnerId = promotionDraw[randomSegment]
+        const winner = allUsers.find(u => u.id === winnerId)
+        setWheelWinner(winner?.username || 'Unknown')
+        
+        localStorage.setItem('eliteArrowsPromotionWinner', winnerId)
+        localStorage.setItem('eliteArrowsPromotionDrawSpun', 'true')
+      }, 4000)
+    }
+  }
+
+  const resetWheel = () => {
+    setShowWheel(false)
+    setWheelWinner(null)
+    if (wheelRef.current) {
+      wheelRef.current.style.transition = 'none'
+      wheelRef.current.style.transform = 'rotate(0deg)'
+    }
+  }
+
+  const promotionDrawSpun = localStorage.getItem('eliteArrowsPromotionDrawSpun') === 'true'
+  const previousWinner = localStorage.getItem('eliteArrowsPromotionWinner')
+
   return (
     <div className="page">
       <div className="page-header">
@@ -256,11 +339,13 @@ export default function Rewards() {
         <div style={{ marginBottom: '15px' }}>
           {DIVISIONS.map(div => {
             const userGames = getPlayerGameCount(user.id, div)
+            const maxGames = getDivisionMaxGames(div)
+            const playersInDiv = allUsers.filter(u => u.division === div).length
             return (
               <div key={div} style={{ marginBottom: '10px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                  <span>{div}</span>
-                  <span>{userGames}/8 games</span>
+                  <span>{div} ({playersInDiv} players)</span>
+                  <span>{userGames}/{maxGames} games</span>
                 </div>
                 <div style={{ 
                   height: '8px', 
@@ -269,9 +354,9 @@ export default function Rewards() {
                   overflow: 'hidden'
                 }}>
                   <div style={{ 
-                    width: `${Math.min(100, (userGames / 8) * 100)}%`,
+                    width: maxGames > 0 ? `${Math.min(100, (userGames / maxGames) * 100)}%` : '0%',
                     height: '100%',
-                    background: userGames >= 8 ? 'var(--success)' : 'var(--accent-cyan)',
+                    background: userGames >= maxGames && maxGames > 0 ? 'var(--success)' : 'var(--accent-cyan)',
                     transition: 'width 0.3s'
                   }} />
                 </div>
@@ -321,6 +406,34 @@ export default function Rewards() {
         <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '10px' }}>
           Draw participants: {promotionDraw.length}
         </p>
+        {previousWinner && (
+          <p style={{ fontSize: '0.85rem', color: 'var(--success)', marginTop: '10px' }}>
+            Previous winner: {allUsers.find(u => u.id === previousWinner)?.username || 'Unknown'}
+          </p>
+        )}
+        {isAdmin && (
+          <div style={{ marginTop: '15px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '10px' }}>
+              Admin Controls
+            </p>
+            {!allGamesComplete ? (
+              <p style={{ fontSize: '0.8rem', color: 'var(--warning)' }}>
+                All league games must be complete before spinning the wheel
+              </p>
+            ) : promotionDrawSpun ? (
+              <button className="btn btn-secondary" onClick={resetWheel}>
+                Reset Wheel
+              </button>
+            ) : (
+              <button className="btn btn-primary" onClick={spinWheel}>
+                Spin the Wheel
+              </button>
+            )}
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px' }}>
+              {allGamesComplete ? 'All league games complete! Ready to spin.' : 'Waiting for all league games to complete...'}
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="card" style={{ marginBottom: '20px' }}>
@@ -455,6 +568,16 @@ export default function Rewards() {
           </div>
         )}
       </div>
+
+      <SpinWheelModal 
+        isOpen={showWheel}
+        onClose={() => setShowWheel(false)}
+        promotionDraw={promotionDraw}
+        allUsers={allUsers}
+        wheelSpinning={wheelSpinning}
+        wheelWinner={wheelWinner}
+        wheelRef={wheelRef}
+      />
     </div>
   )
 }
@@ -479,7 +602,7 @@ function MatchCard({ match, bets, showBetForm, setShowBetForm, betAmount, setBet
         </span>
       </div>
       <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '10px' }}>
-        {match.player1}: {match.player1GamesPlayed}/8 | {match.player2}: {match.player2GamesPlayed}/8
+        {match.player1}: {match.player1GamesPlayed}/{match.maxGames} | {match.player2}: {match.player2GamesPlayed}/{match.maxGames}
       </div>
       
       {userBetOnGame ? (
@@ -559,6 +682,118 @@ function MatchCard({ match, bets, showBetForm, setShowBetForm, betAmount, setBet
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function SpinWheelModal({ isOpen, onClose, promotionDraw, allUsers, wheelSpinning, wheelWinner, wheelRef }) {
+  if (!isOpen) return null
+  
+  const colors = ['#ef4444', '#3b82f6', '#22c55e', '#eab308', '#a855f7', '#ec4899', '#06b6d4', '#f97316']
+  
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: 'rgba(0,0,0,0.9)',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000
+    }}>
+      <h2 style={{ color: '#fff', marginBottom: '30px' }}>Promotion Draw</h2>
+      
+      <div style={{ position: 'relative', width: '300px', height: '300px', marginBottom: '30px' }}>
+        <div style={{
+          position: 'absolute',
+          top: '-15px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: 0,
+          height: 0,
+          borderLeft: '15px solid transparent',
+          borderRight: '15px solid transparent',
+          borderTop: '25px solid #fff',
+          zIndex: 10
+        }} />
+        <div 
+          ref={wheelRef}
+          style={{
+            width: '100%',
+            height: '100%',
+            borderRadius: '50%',
+            background: `conic-gradient(${promotionDraw.map((id, i) => {
+              const player = allUsers.find(u => u.id === id)
+              const color = colors[i % colors.length]
+              const startAngle = (i / promotionDraw.length) * 360
+              const endAngle = ((i + 1) / promotionDraw.length) * 360
+              return `${color} ${startAngle}deg ${endAngle}deg`
+            }).join(', ')})`,
+            boxShadow: '0 0 20px rgba(0,0,0,0.5)',
+            border: '5px solid #fff'
+          }}
+        >
+          {promotionDraw.map((id, i) => {
+            const player = allUsers.find(u => u.id === id)
+            const angle = (i / promotionDraw.length) * 360 + (180 / promotionDraw.length)
+            const playerName = player?.username || 'Unknown'
+            const shortName = playerName.length > 6 ? playerName.substring(0, 6) + '...' : playerName
+            return (
+              <div
+                key={id}
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: `rotate(${angle}deg) translateX(80px) rotate(90deg)`,
+                  transformOrigin: 'center',
+                  fontSize: '0.7rem',
+                  color: '#fff',
+                  textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {shortName}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+      
+      {wheelSpinning && (
+        <p style={{ color: '#fff', fontSize: '1.2rem', animation: 'pulse 0.5s infinite' }}>
+          Spinning...
+        </p>
+      )}
+      
+      {wheelWinner && !wheelSpinning && (
+        <div style={{
+          padding: '20px 40px',
+          background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+          borderRadius: '12px',
+          textAlign: 'center',
+          marginBottom: '20px'
+        }}>
+          <p style={{ color: '#fff', margin: 0, fontSize: '1.5rem', fontWeight: 'bold' }}>
+            Winner!
+          </p>
+          <p style={{ color: '#fff', margin: '10px 0 0 0', fontSize: '2rem', fontWeight: 'bold' }}>
+            {wheelWinner}
+          </p>
+        </div>
+      )}
+      
+      <button 
+        className="btn btn-secondary" 
+        onClick={onClose}
+        disabled={wheelSpinning}
+      >
+        Close
+      </button>
     </div>
   )
 }
