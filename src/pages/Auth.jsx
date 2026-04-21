@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import BackgroundDecor from '../components/BackgroundDecor'
+import { auth, sendPasswordResetEmail } from '../firebase'
 
 export default function Auth() {
   const [isSignUp, setIsSignUp] = useState(false)
@@ -16,6 +17,10 @@ export default function Auth() {
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [resetEmail, setResetEmail] = useState('')
+  const [resetSent, setResetSent] = useState(false)
+  const [resetLoading, setResetLoading] = useState(false)
 
   const { signUp, signIn, isAuthenticated, loading: authLoading, getAllUsers } = useAuth()
   const navigate = useNavigate()
@@ -40,6 +45,27 @@ export default function Auth() {
       [name]: type === 'checkbox' ? checked : value
     }))
     setError('')
+  }
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault()
+    setError('')
+    setResetLoading(true)
+
+    try {
+      if (!resetEmail) {
+        throw new Error('Please enter your email address')
+      }
+      await sendPasswordResetEmail(auth, resetEmail)
+      setResetSent(true)
+    } catch (err) {
+      if (err.code === 'auth/user-not-found') {
+        throw new Error('No account found with this email address')
+      }
+      throw new Error(err.message)
+    } finally {
+      setResetLoading(false)
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -228,9 +254,103 @@ export default function Auth() {
             <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
               {loading ? 'Loading...' : isSignUp ? 'Sign Up' : 'Sign In'}
             </button>
+
+            {!isSignUp && (
+              <p style={{ textAlign: 'center', marginTop: '15px' }}>
+                <button 
+                  type="button"
+                  onClick={() => { setShowForgotPassword(true); setError(''); setResetSent(false); setResetEmail(''); }}
+                  style={{ background: 'none', border: 'none', color: 'var(--accent-cyan)', cursor: 'pointer', textDecoration: 'underline', fontSize: '0.9rem' }}
+                >
+                  Forgot Password?
+                </button>
+              </p>
+            )}
           </form>
         </div>
       </div>
+
+      {showForgotPassword && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }}>
+          <div style={{
+            background: 'var(--bg-secondary)',
+            borderRadius: '12px',
+            padding: '30px',
+            maxWidth: '400px',
+            width: '100%',
+            border: '1px solid var(--border)'
+          }}>
+            <h2 style={{ marginTop: 0, marginBottom: '15px', color: 'var(--accent-cyan)' }}>Reset Password</h2>
+            {resetSent ? (
+              <>
+                <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
+                  Password reset email sent! Check your inbox for instructions on how to reset your password.
+                </p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                  If you don't see the email, check your spam folder.
+                </p>
+                <button 
+                  className="btn btn-primary btn-block" 
+                  onClick={() => setShowForgotPassword(false)}
+                  style={{ marginTop: '20px' }}
+                >
+                  Back to Sign In
+                </button>
+              </>
+            ) : (
+              <>
+                <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>
+                  Enter your email address and we'll send you a link to reset your password.
+                </p>
+                <form onSubmit={handleForgotPassword}>
+                  <div className="form-group">
+                    <label htmlFor="resetEmail">Email Address</label>
+                    <input
+                      type="email"
+                      id="resetEmail"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      placeholder="Enter your email"
+                      autoComplete="email"
+                    />
+                  </div>
+                  {error && <p className="form-error">{error}</p>}
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                    <button 
+                      type="button"
+                      className="btn btn-secondary" 
+                      onClick={() => setShowForgotPassword(false)}
+                      style={{ flex: 1 }}
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      type="submit"
+                      className="btn btn-primary" 
+                      disabled={resetLoading}
+                      style={{ flex: 1 }}
+                    >
+                      {resetLoading ? 'Sending...' : 'Send Reset Link'}
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
