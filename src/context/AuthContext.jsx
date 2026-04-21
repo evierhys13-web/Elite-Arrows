@@ -734,6 +734,9 @@ const cleanUserData = (users) => {
       const updated = { ...currentData, ...newData }
       await setDoc(doc(db, 'adminData', 'main'), updated, { merge: true })
       setAdminData(updated)
+      localStorage.setItem('eliteArrowsSubscriptionPot', String(updated.subscriptionPot || 0))
+      localStorage.setItem('eliteArrowsSubscriptionPot10', String(updated.subscriptionPot10 || 0))
+      localStorage.setItem('eliteArrowsMoneyHistory', JSON.stringify(updated.moneyHistory || []))
     } catch (e) {
       console.error('Error updating admin data:', e)
     }
