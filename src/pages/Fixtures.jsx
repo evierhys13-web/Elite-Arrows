@@ -26,6 +26,12 @@ export default function Fixtures() {
   const isAdmin = isEmailAdmin || isDbAdmin || isTournamentAdmin
   const isSubscribed = user?.isSubscribed === true
 
+  const seasons = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
+  const currentSeason = seasons.find(s => s.status === 'active')
+  const seasonStartDate = currentSeason?.startDate ? new Date(currentSeason.startDate) : null
+  const seasonHasStarted = !seasonStartDate || new Date() >= seasonStartDate
+  const canCreateLeagueFixtures = seasonHasStarted || isAdmin
+
   const allUsers = getAllUsers()
   const availablePlayers = allUsers.filter(u => u.id !== user.id)
   
@@ -303,6 +309,11 @@ export default function Fixtures() {
         <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
           + Create Fixture
         </button>
+        {currentSeason && !seasonHasStarted && (
+          <p style={{ marginTop: '10px', fontSize: '0.85rem', color: 'var(--accent-cyan)' }}>
+            League fixtures can be created when the season starts ({new Date(currentSeason.startDate).toLocaleDateString()})
+          </p>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
@@ -376,11 +387,20 @@ export default function Fixtures() {
                 }}
               >
                 <option value="Friendly">Friendly</option>
-                <option value="League">League</option>
+                {!canCreateLeagueFixtures ? (
+                  <option value="League" disabled>League (Season not started)</option>
+                ) : (
+                  <option value="League">League</option>
+                )}
               </select>
               {createForm.gameType === 'League' && (
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '5px' }}>
                   Only players in your division ({user.division}) are shown
+                </p>
+              )}
+              {!canCreateLeagueFixtures && (
+                <p style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)', marginTop: '5px' }}>
+                  League fixtures can be created when the season starts ({currentSeason ? new Date(currentSeason.startDate).toLocaleDateString() : 'TBA'})
                 </p>
               )}
             </div>
