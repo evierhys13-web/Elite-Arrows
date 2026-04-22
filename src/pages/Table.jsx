@@ -95,22 +95,43 @@ export default function Table() {
           return bLegDiff - aLegDiff
         })
 
+  const DIVISION_LOGOS = {
+    'Elite': { emoji: '👑', color: '#FFD700', name: 'Elite' },
+    'Diamond': { emoji: '💎', color: '#B9F2FF', name: 'Diamond' },
+    'Platinum': { emoji: '🥈', color: '#E5E4E2', name: 'Platinum' },
+    'Gold': { emoji: '🥇', color: '#FFD700', name: 'Gold' },
+    'Silver': { emoji: '🥈', color: '#C0C0C0', name: 'Silver' },
+    'Bronze': { emoji: '🥉', color: '#CD7F32', name: 'Bronze' },
+    'Development': { emoji: '🌱', color: '#22c55e', name: 'Development' },
+    'Overall': { emoji: '🏆', color: '#7C5CFC', name: 'Overall' }
+  }
+
+  const getDivisionStyle = (division) => DIVISION_LOGOS[division] || DIVISION_LOGOS['Overall']
+  const currentDivStyle = getDivisionStyle(activeDivision)
+
   return (
     <div className="page" key={refreshKey}>
       <div className="page-header">
-        <h1 className="page-title">League Table</h1>
+        <h1 className="page-title">
+          <span style={{ marginRight: '10px' }}>{currentDivStyle.emoji}</span>
+          League Table
+        </h1>
       </div>
 
       <div className="division-tabs">
-        {divisions.map(div => (
-          <button
-            key={div}
-            className={`division-tab ${activeDivision === div ? 'active' : ''}`}
-            onClick={() => setActiveDivision(div)}
-          >
-            {div}
-          </button>
-        ))}
+        {divisions.map(div => {
+          const divStyle = getDivisionStyle(div)
+          return (
+            <button
+              key={div}
+              className={`division-tab ${activeDivision === div ? 'active' : ''}`}
+              onClick={() => setActiveDivision(div)}
+            >
+              <span style={{ marginRight: '4px' }}>{divStyle.emoji}</span>
+              {div}
+            </button>
+          )
+        })}
       </div>
 
       <div className="card">
@@ -170,7 +191,14 @@ export default function Table() {
                             <span className="admin-badge" style={{ marginLeft: '8px', background: 'var(--accent-cyan)' }}>Admin</span>
                           )}
                         </td>
-                        {activeDivision === 'Overall' && <td>{player.displayDivision}</td>}
+                        {activeDivision === 'Overall' && (
+                          <td>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span>{getDivisionStyle(player.displayDivision).emoji}</span>
+                              <span>{player.displayDivision}</span>
+                            </div>
+                          </td>
+                        )}
                         <td>{player.stats.played}</td>
                         <td>{player.stats.wins}</td>
                         <td>{player.stats.draws}</td>
