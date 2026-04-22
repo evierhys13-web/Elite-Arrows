@@ -1574,78 +1574,6 @@ export default function Admin() {
           </div>
 
           <div className="card" style={{ marginBottom: '20px' }}>
-            <h3 className="card-title">Season Rollover</h3>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
-              End the current season and promote/relegate players automatically.
-            </p>
-            <button className="btn btn-primary" onClick={async () => {
-              if (!confirm('End current season and move players? This cannot be undone.')) return
-              
-              const divisions = ['Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Development']
-              const allUsers = getAllUsers()
-              const approvedResults = getResults().filter(r => r.status === 'approved')
-              
-              const stats = {}
-              allUsers.forEach(u => {
-                stats[u.id] = { points: 0, legsWon: 0, legsLost: 0 }
-              })
-              
-              approvedResults.forEach(r => {
-                if (stats[r.player1Id]) {
-                  stats[r.player1Id].legsWon += r.score1 || 0
-                  stats[r.player1Id].legsLost += r.score2 || 0
-                  if (r.score1 > r.score2) stats[r.player1Id].points += 3
-                  else if (r.score1 === r.score2) stats[r.player1Id].points += 1
-                }
-                if (stats[r.player2Id]) {
-                  stats[r.player2Id].legsWon += r.score2 || 0
-                  stats[r.player2Id].legsLost += r.score1 || 0
-                  if (r.score2 > r.score1) stats[r.player2Id].points += 3
-                  else if (r.score2 === r.score1) stats[r.player2Id].points += 1
-                }
-              })
-              
-              const promotionRelegation = {}
-              divisions.forEach((div) => {
-                const playersInDiv = allUsers.filter(u => u.division === div)
-                const sorted = [...playersInDiv].sort((a, b) => {
-                  const aS = stats[a.id] || { points: 0 }
-                  const bS = stats[b.id] || { points: 0 }
-                  if (bS.points !== aS.points) return bS.points - aS.points
-                  return (bS.legsWon - bS.legsLost) - (aS.legsWon - aS.legsLost)
-                })
-                
-                const top2 = sorted.slice(0, 2)
-                const bottom2 = sorted.slice(Math.max(0, sorted.length - 2))
-                
-                promotionRelegation[div] = { promoted: top2.map(p => p.id), relegated: bottom2.map(p => p.id) }
-              })
-              
-              for (const [div, { promoted, relegated }] of Object.entries(promotionRelegation)) {
-                const divIndex = divisions.indexOf(div)
-                const nextDivUp = divisions[divIndex - 1]
-                const nextDivDown = divisions[divIndex + 1]
-                
-                for (const playerId of promoted) {
-                  if (nextDivUp) {
-                    await updateUser({ id: playerId, division: nextDivUp }, false)
-                  }
-                }
-                
-                for (const playerId of relegated) {
-                  if (nextDivDown) {
-                    await updateUser({ id: playerId, division: nextDivDown }, false)
-                  }
-                }
-              }
-              
-              localStorage.setItem('eliteArrowsSeasonRolledOver', JSON.stringify(promotionRelegation))
-              triggerDataRefresh('users')
-              alert('Season ended! Players have been promoted/relegated.')
-            }}>End Season & Rollover Players</button>
-          </div>
-
-          <div className="card" style={{ marginBottom: '20px' }}>
             <h3 className="card-title">Reset Table</h3>
             <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
               Clear all results for the current season.
@@ -1663,9 +1591,9 @@ export default function Admin() {
           </div>
 
           <div className="card" style={{ marginBottom: '20px' }}>
-            <h3 className="card-title">Prize Pool & Promotion/Relegation</h3>
+            <h3 className="card-title">Prize Pool Calculator</h3>
             <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
-              Calculate prize distribution. Top 2 → Promotion (green), Bottom 2 → Relegation (red)
+              Prize money split between 7 divisions. Each division 1st place gets the same amount.
             </p>
             {(() => {
               const totalPot = subscriptionPot + subscriptionPot10
@@ -1687,6 +1615,10 @@ export default function Admin() {
                       <strong style={{ color: 'var(--success)' }}>£{totalPot.toFixed(2)}</strong>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span>7 Divisions:</span>
+                      <strong>{numDivisions}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                       <span>Per Division 1st Place:</span>
                       <strong style={{ color: 'var(--accent-cyan)' }}>£{perDivisionFirst.toFixed(2)}</strong>
                     </div>
@@ -1695,75 +1627,9 @@ export default function Admin() {
                       <span style={{ color: 'var(--text-muted)' }}>£{adminFee.toFixed(2)}</span>
                     </div>
                   </div>
-                  
-                  <table className="table">
-                    <thead>
-                      <tr>
-                        <th>Position</th>
-                        <th>Division</th>
-                        <th>Prize</th>
-                        <th>Movement</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {divisions.map((div, index) => (
-                        <tr key={div}>
-                          <td>#{index + 1}</td>
-                          <td>{div}</td>
-                          <td style={{ fontWeight: 'bold', color: 'var(--success)' }}>£{perDivisionFirst.toFixed(2)}</td>
-                          <td>
-                            {index <= 1 && (
-                              <span style={{ 
-                                color: '#22c55e', 
-                                fontWeight: 'bold',
-                                background: 'rgba(34, 197, 94, 0.2)',
-                                padding: '2px 8px',
-                                borderRadius: '4px'
-                              }}>
-                                ↑ Promotion
-                              </span>
-                            )}
-                            {index >= 5 && (
-                              <span style={{ 
-                                color: '#ef4444', 
-                                fontWeight: 'bold',
-                                background: 'rgba(239, 68, 68, 0.2)',
-                                padding: '2px 8px',
-                                borderRadius: '4px'
-                              }}>
-                                ↓ Relegation
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  
-                  <div style={{ 
-                    display: 'flex', 
-                    gap: '20px', 
-                    marginTop: '15px',
-                    fontSize: '0.85rem'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ 
-                        color: '#22c55e',
-                        background: 'rgba(34, 197, 94, 0.2)',
-                        padding: '2px 6px',
-                        borderRadius: '4px'
-                      }}>↑</span>
-                      <span>Top 2 → Promotion</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ 
-                        color: '#ef4444',
-                        background: 'rgba(239, 68, 68, 0.2)',
-                        padding: '2px 6px',
-                        borderRadius: '4px'
-                      }}>↓</span>
-                      <span>Bottom 2 → Relegation</span>
-                    </div>
+                   
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    <p style={{ marginBottom: '8px' }}>Note: Promotion and relegation happens within each division standings (top 2 wins, bottom 2 lose).</p>
                   </div>
                 </>
               )
