@@ -9,7 +9,7 @@ const DIVISION_IMGS = {
   'Silver': '/silver.png',
   'Bronze': '/brnze.png',
   'Development': '/development.png',
-  'Overall': '/logo.jpg'
+  'Overall': '/logo.png'
 }
 
 const DIVISION_EMOJIS = {
