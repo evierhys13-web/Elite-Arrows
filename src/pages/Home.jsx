@@ -133,7 +133,7 @@ export default function Home() {
           </Tooltip>
           <Tooltip content="Computer Aided Marking - scores are automatically calculated">
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px', cursor: 'help' }}>
-              <span>CAM On</span>
+              <span>CAM</span>
               <span style={{ fontWeight: 'bold' }}>In use</span>
             </div>
           </Tooltip>
@@ -143,13 +143,16 @@ export default function Home() {
               <span style={{ fontWeight: 'bold' }}>DartCounter</span>
             </div>
           </Tooltip>
-          <Tooltip content="Earn Elite Tokens for winning matches">
+          <Tooltip content="Earn Elite Tokens for winning league games">
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px', cursor: 'help' }}>
               <span>Tokens</span>
-              <span style={{ fontWeight: 'bold', color: 'var(--success)' }}>+50 for win</span>
+              <span style={{ fontWeight: 'bold', color: 'var(--success)' }}>+100 for win</span>
             </div>
           </Tooltip>
         </div>
+        <p style={{ marginTop: '16px', fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+          Be respectful and enjoy the game!
+        </p>
       </div>
 
       <div className="card" style={{ marginBottom: '20px' }}>
