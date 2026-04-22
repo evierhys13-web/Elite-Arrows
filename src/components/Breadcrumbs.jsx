@@ -10,7 +10,7 @@ export function Breadcrumbs({ items }) {
         return (
           <React.Fragment key={item.path || index}>
             {isLast ? (
-              <span className="breadcrumb-item current">
+              <span className="breadcrumb-item current" aria-current="page">
                 {item.label}
               </span>
             ) : (
@@ -18,7 +18,7 @@ export function Breadcrumbs({ items }) {
                 <Link to={item.path} className="breadcrumb-item">
                   {item.label}
                 </Link>
-                <span className="breadcrumb-separator">/</span>
+                <span className="breadcrumb-separator" aria-hidden="true">/</span>
               </>
             )}
           </React.Fragment>

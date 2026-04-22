@@ -1107,6 +1107,57 @@ body {
   background: var(--text-muted);
 }
 
+/* Skip Navigation Link */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: var(--accent-primary);
+  color: white;
+  padding: 8px 16px;
+  z-index: 10000;
+  text-decoration: none;
+  font-weight: 600;
+  border-radius: 0 0 8px 0;
+  transition: top 0.3s ease;
+}
+
+.skip-link:focus {
+  top: 0;
+  outline: 3px solid var(--accent-cyan);
+  outline-offset: 2px;
+}
+
+/* Focus Ring Visibility */
+:focus-visible {
+  outline: 3px solid var(--accent-cyan);
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--accent-cyan);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Remove default focus for mouse users */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --text-muted: #8b9bb4;
+    --border: #2a3d66;
+    --accent-primary: #9d7fff;
+  }
+}
+
 /* Skeleton Loading */
 .skeleton {
   background: linear-gradient(

@@ -263,10 +263,16 @@ export default function Sidebar() {
   return (
     <>
       <div className="mobile-header">
-        <button className="mobile-menu-btn" onClick={() => setIsOpen(true)}>
+        <button 
+          className="mobile-menu-btn" 
+          onClick={() => setIsOpen(true)}
+          aria-label="Open navigation menu"
+          aria-expanded={isOpen}
+          aria-controls="sidebar-nav"
+        >
           <MenuIcon />
         </button>
-        <span className="sidebar-logo">
+        <span className="sidebar-logo" role="banner">
           <img src="/logo.jpg" alt="Elite Arrows" style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover' }} />
           <span style={{ marginLeft: '8px' }}>Elite Arrows</span>
         </span>
@@ -276,14 +282,23 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <div className={`mobile-sidebar-overlay ${isOpen ? 'open' : ''}`} onClick={() => setIsOpen(false)} />
+      <div 
+        className={`mobile-sidebar-overlay ${isOpen ? 'open' : ''}`} 
+        onClick={() => setIsOpen(false)}
+        aria-hidden="true"
+      />
 
-      <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
+      <aside 
+        className={`sidebar ${isOpen ? 'open' : ''}`}
+        role="navigation"
+        aria-label="Main navigation"
+      >
         <div className="sidebar-header">
           <button 
             className="mobile-menu-btn" 
             onClick={() => setIsOpen(false)}
             style={{ display: 'none' }}
+            aria-label="Close navigation menu"
           >
             <CloseIcon />
           </button>
@@ -310,7 +325,7 @@ export default function Sidebar() {
 
         {(isSubscribed || isAdmin) && <GlobalSearch />}
 
-        <nav className="sidebar-nav">
+        <nav id="sidebar-nav" className="sidebar-nav" aria-label="Sidebar navigation">
           {navItems.map((item) => {
             const isActive = window.location.pathname === item.path || (item.path === '/home' && window.location.pathname === '/')
             return (
@@ -321,6 +336,7 @@ export default function Sidebar() {
                   navigate(item.path)
                   setIsOpen(false)
                 }}
+                aria-current={isActive ? 'page' : undefined}
               >
                 <item.icon />
                 <span>{item.label}</span>
@@ -328,7 +344,11 @@ export default function Sidebar() {
             )
           })}
 
-          <button className="nav-item nav-item-signout" onClick={handleSignOut}>
+          <button 
+            className="nav-item nav-item-signout" 
+            onClick={handleSignOut}
+            aria-label="Sign out of your account"
+          >
             <LogOutIcon />
             <span>Logout</span>
           </button>

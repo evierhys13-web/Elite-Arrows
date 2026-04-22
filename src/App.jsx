@@ -174,19 +174,22 @@ function AppLayout({ children }) {
   const [whatsNewOpen, setWhatsNewOpen] = useState(showWhatsNew)
   
   return (
-    <div className="app-layout">
-      <Sidebar />
-      <main className="main-content">
-        {children}
-      </main>
-      <InstallPrompt />
-      <DataRefreshToast refreshTrigger={dataRefreshTrigger} />
-      <NotificationPermissionPrompt />
-      {showOnboarding && (
-        <OnboardingTour onComplete={completeOnboarding} />
-      )}
-      <WhatsNewPopup isOpen={whatsNewOpen} onClose={() => setWhatsNewOpen(false)} />
-    </div>
+    <>
+      <a href="#main-content" className="skip-link">Skip to main content</a>
+      <div className="app-layout">
+        <Sidebar />
+        <main id="main-content" className="main-content" tabIndex={-1}>
+          {children}
+        </main>
+        <InstallPrompt />
+        <DataRefreshToast refreshTrigger={dataRefreshTrigger} />
+        <NotificationPermissionPrompt />
+        {showOnboarding && (
+          <OnboardingTour onComplete={completeOnboarding} />
+        )}
+        <WhatsNewPopup isOpen={whatsNewOpen} onClose={() => setWhatsNewOpen(false)} />
+      </div>
+    </>
   )
 }
 

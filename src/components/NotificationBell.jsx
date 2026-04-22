@@ -174,7 +174,9 @@ export default function NotificationBell() {
         }}
         onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-secondary)'}
         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-        aria-label={`Notifications ${unreadCount > 0 ? `(${unreadCount} unread)` : ''}`}
+        aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
+        aria-expanded={isOpen}
+        aria-haspopup="true"
       >
         <BellIcon hasUnread={unreadCount > 0} />
         {unreadCount > 0 && (
@@ -196,6 +198,7 @@ export default function NotificationBell() {
               minWidth: '18px',
               boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
             }}
+            aria-hidden="true"
           >
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
@@ -204,6 +207,8 @@ export default function NotificationBell() {
 
       {isOpen && (
         <div
+          role="dialog"
+          aria-label="Notifications"
           style={{
             position: 'absolute',
             top: '100%',
@@ -230,11 +235,12 @@ export default function NotificationBell() {
               borderBottom: '1px solid var(--border)'
             }}
           >
-            <h3 style={{ margin: 0, fontSize: '1rem' }}>Notifications</h3>
+            <h3 id="notifications-title" style={{ margin: 0, fontSize: '1rem' }}>Notifications</h3>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               {unreadCount > 0 && (
                 <button
                   onClick={markAllAsRead}
+                  aria-label="Mark all notifications as read"
                   style={{
                     background: 'transparent',
                     border: 'none',
@@ -250,6 +256,7 @@ export default function NotificationBell() {
               )}
               <button
                 onClick={() => setIsOpen(false)}
+                aria-label="Close notifications"
                 style={{
                   background: 'transparent',
                   border: 'none',
@@ -263,9 +270,14 @@ export default function NotificationBell() {
             </div>
           </div>
 
-          <div style={{ flex: 1, overflowY: 'auto' }}>
+          <div 
+            style={{ flex: 1, overflowY: 'auto' }}
+            role="list"
+            aria-labelledby="notifications-title"
+          >
             {localNotifications.length === 0 ? (
               <div
+                role="listitem"
                 style={{
                   padding: '40px 20px',
                   textAlign: 'center',
@@ -278,7 +290,15 @@ export default function NotificationBell() {
               localNotifications.map((notification) => (
                 <div
                   key={notification.id}
+                  role="listitem"
                   onClick={() => handleNotificationClick(notification)}
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      handleNotificationClick(notification)
+                    }
+                  }}
                   style={{
                     padding: '12px 16px',
                     borderBottom: '1px solid var(--border)',
@@ -334,6 +354,7 @@ export default function NotificationBell() {
                           flexShrink: 0,
                           marginTop: '6px'
                         }}
+                        aria-hidden="true"
                       />
                     )}
                   </div>
