@@ -34,6 +34,8 @@ import InstallPrompt from './components/InstallPrompt'
 import DataRefreshToast from './components/DataRefreshToast'
 import BackgroundDecor from './components/BackgroundDecor'
 import NotificationPermissionPrompt from './components/NotificationPermissionPrompt'
+import OnboardingTour, { useOnboarding } from './components/OnboardingTour'
+import WhatsNewPopup, { useWhatsNew } from './components/WhatsNewPopup'
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading, user } = useAuth()
@@ -167,6 +169,8 @@ function AdminRoute({ children }) {
 
 function AppLayout({ children }) {
   const { dataRefreshTrigger } = useAuth()
+  const { showOnboarding, completeOnboarding } = useOnboarding()
+  const { showWhatsNew } = useWhatsNew()
   
   return (
     <div className="app-layout">
@@ -177,6 +181,10 @@ function AppLayout({ children }) {
       <InstallPrompt />
       <DataRefreshToast refreshTrigger={dataRefreshTrigger} />
       <NotificationPermissionPrompt />
+      {showOnboarding && (
+        <OnboardingTour onComplete={completeOnboarding} />
+      )}
+      <WhatsNewPopup isOpen={showWhatsNew} onClose={() => {}} />
     </div>
   )
 }

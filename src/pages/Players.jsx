@@ -1,11 +1,19 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { SkeletonList } from '../components/Skeleton'
+import Breadcrumbs from '../components/Breadcrumbs'
+import Tooltip from '../components/Tooltip'
 
 export default function Players() {
-  const { user, getAllUsers, addFriend, removeFriend, cancelFriendRequest, acceptFriendRequest, declineFriendRequest } = useAuth()
+  const { user, getAllUsers, addFriend, removeFriend, cancelFriendRequest, acceptFriendRequest, declineFriendRequest, loading } = useAuth()
   const [showFriendsOnly, setShowFriendsOnly] = useState(false)
+  const [visible, setVisible] = useState(false)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    setVisible(true)
+  }, [])
 
   const allUsers = getAllUsers()
   const players = showFriendsOnly 
@@ -14,11 +22,16 @@ export default function Players() {
 
   return (
     <div className="page">
-      <div className="page-header">
+      <Breadcrumbs items={[
+        { label: 'Home', path: '/home' },
+        { label: 'Players' }
+      ]} />
+      
+      <div className={`page-header animate-fade-in ${visible ? '' : 'opacity-0'}`}>
         <h1 className="page-title">Players</h1>
       </div>
 
-      <div style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
+      <div style={{ marginBottom: '20px', display: 'flex', gap: '10px' }} className={`animate-fade-in-up ${visible ? '' : 'opacity-0'}`}>
         <button 
           className={`btn ${!showFriendsOnly ? 'btn-primary' : 'btn-secondary'}`}
           onClick={() => setShowFriendsOnly(false)}
@@ -34,15 +47,17 @@ export default function Players() {
       </div>
 
       <div>
-        {players.length === 0 ? (
+        {loading ? (
+          <SkeletonList items={6} />
+        ) : players.length === 0 ? (
           <div className="card">
             <p style={{ color: 'var(--text-muted)', textAlign: 'center' }}>
               {showFriendsOnly ? 'No friends yet. Add players to your friends list!' : 'No other players registered yet.'}
             </p>
           </div>
         ) : (
-          players.map(player => (
-            <div key={player.id} className="player-card" style={{ flexWrap: 'wrap' }}>
+          players.map((player, index) => (
+            <div key={player.id} className={`player-card stagger-item`} style={{ flexWrap: 'wrap' }}>
               <div className="player-avatar">
                 {player.profilePicture ? (
                   <img src={player.profilePicture} alt={player.username} />

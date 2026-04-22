@@ -2,19 +2,27 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import NewsFeed from '../components/NewsFeed'
+import { SkeletonList } from '../components/Skeleton'
+import Tooltip from '../components/Tooltip'
+import Breadcrumbs from '../components/Breadcrumbs'
 
 export default function Home() {
-  const { user, getAllUsers, getResults, dataRefreshTrigger } = useAuth()
+  const { user, getAllUsers, getResults, dataRefreshTrigger, loading } = useAuth()
   const SEASON_START = new Date('2026-05-01')
   const SEASON_END = new Date('2026-06-01')
   
   const [refreshKey, setRefreshKey] = useState(0)
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
   const [isSeasonActive, setIsSeasonActive] = useState(false)
+  const [visible, setVisible] = useState(false)
 
   useEffect(() => {
     setRefreshKey(prev => prev + 1)
   }, [dataRefreshTrigger])
+
+  useEffect(() => {
+    setVisible(true)
+  }, [])
 
   useEffect(() => {
     const calculateTimeLeft = () => {
@@ -68,15 +76,21 @@ export default function Home() {
 
   return (
     <div className="page">
-      <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-        <img src="/logo.jpg" alt="Elite Arrows" style={{ width: '80px', height: '80px', borderRadius: '12px', objectFit: 'cover', marginBottom: '15px' }} />
-        <h1 style={{ color: 'var(--accent-cyan)', fontSize: '1.8rem' }}>Welcome back, {user.username}!</h1>
-        <p style={{ color: 'var(--text-muted)' }}>Here's your darts overview</p>
+      <Breadcrumbs items={[{ label: 'Home', path: '/home' }]} />
+      
+      <div className={`animate-fade-in-up ${visible ? '' : 'opacity-0'}`}>
+        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+          <img src="/logo.jpg" alt="Elite Arrows" style={{ width: '80px', height: '80px', borderRadius: '12px', objectFit: 'cover', marginBottom: '15px' }} />
+          <h1 style={{ color: 'var(--accent-cyan)', fontSize: '1.8rem' }}>Welcome back, {user.username}!</h1>
+          <p style={{ color: 'var(--text-muted)' }}>Here's your darts overview</p>
+        </div>
       </div>
 
-      <NewsFeed />
+      <div className={`animate-fade-in-up stagger-item`}>
+        <NewsFeed />
+      </div>
 
-      <div className="card" style={{ marginBottom: '20px', border: '2px solid var(--accent-cyan)' }}>
+      <div className={`card animate-fade-in-up stagger-item`} style={{ marginBottom: '20px', border: '2px solid var(--accent-cyan)' }}>
         <div style={{ textAlign: 'center' }}>
           <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>
             {isSeasonActive ? 'Season in Progress' : 'Season Starts In'}
@@ -111,22 +125,30 @@ export default function Home() {
       <div className="card" style={{ marginBottom: '20px', background: 'var(--bg-secondary)' }}>
         <h3 className="card-title" style={{ color: 'var(--accent-cyan)' }}>League Game Rules</h3>
         <div style={{ display: 'grid', gap: '10px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px' }}>
-            <span>Format</span>
-            <span style={{ fontWeight: 'bold' }}>Best of 8 legs (First to 5)</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px' }}>
-            <span>CAM On</span>
-            <span style={{ fontWeight: 'bold' }}>In use</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px' }}>
-            <span>Platform</span>
-            <span style={{ fontWeight: 'bold' }}>DartCounter</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px' }}>
-            <span>Tokens</span>
-            <span style={{ fontWeight: 'bold', color: 'var(--success)' }}>+50 for win</span>
-          </div>
+          <Tooltip content="Standard league format: First to win 5 legs wins the match">
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px', cursor: 'help' }}>
+              <span>Format</span>
+              <span style={{ fontWeight: 'bold' }}>Best of 8 legs (First to 5)</span>
+            </div>
+          </Tooltip>
+          <Tooltip content="Computer Aided Marking - scores are automatically calculated">
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px', cursor: 'help' }}>
+              <span>CAM On</span>
+              <span style={{ fontWeight: 'bold' }}>In use</span>
+            </div>
+          </Tooltip>
+          <Tooltip content="Play online using DartCounter app">
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px', cursor: 'help' }}>
+              <span>Platform</span>
+              <span style={{ fontWeight: 'bold' }}>DartCounter</span>
+            </div>
+          </Tooltip>
+          <Tooltip content="Earn Elite Tokens for winning matches">
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px', cursor: 'help' }}>
+              <span>Tokens</span>
+              <span style={{ fontWeight: 'bold', color: 'var(--success)' }}>+50 for win</span>
+            </div>
+          </Tooltip>
         </div>
       </div>
 
