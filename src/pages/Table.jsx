@@ -95,43 +95,40 @@ export default function Table() {
           return bLegDiff - aLegDiff
         })
 
-  const DIVISION_LOGOS = {
-    'Elite': { emoji: '👑', color: '#FFD700', name: 'Elite' },
-    'Diamond': { emoji: '💎', color: '#B9F2FF', name: 'Diamond' },
-    'Platinum': { emoji: '🥈', color: '#E5E4E2', name: 'Platinum' },
-    'Gold': { emoji: '🥇', color: '#FFD700', name: 'Gold' },
-    'Silver': { emoji: '🥈', color: '#C0C0C0', name: 'Silver' },
-    'Bronze': { emoji: '🥉', color: '#CD7F32', name: 'Bronze' },
-    'Development': { emoji: '🌱', color: '#22c55e', name: 'Development' },
-    'Overall': { emoji: '🏆', color: '#7C5CFC', name: 'Overall' }
+  const DIVISION_IMAGES = {
+    'Elite': '/gold.png',
+    'Diamond': '/diamond.png',
+    'Platinum': '/platinum.png',
+    'Gold': '/gold.png',
+    'Silver': '/silver.png',
+    'Bronze': '/brnze.png',
+    'Development': '/development.png',
+    'Overall': '/logo.jpg'
   }
 
-  const getDivisionStyle = (division) => DIVISION_LOGOS[division] || DIVISION_LOGOS['Overall']
-  const currentDivStyle = getDivisionStyle(activeDivision)
+  const getDivisionImage = (division) => DIVISION_IMAGES[division] || DIVISION_IMAGES['Overall']
+  const currentImage = getDivisionImage(activeDivision)
 
   return (
     <div className="page" key={refreshKey}>
       <div className="page-header">
-        <h1 className="page-title">
-          <span style={{ marginRight: '10px' }}>{currentDivStyle.emoji}</span>
-          League Table
-        </h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <img src={currentImage} alt={activeDivision} style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
+          <h1 className="page-title">League Table</h1>
+        </div>
       </div>
 
       <div className="division-tabs">
-        {divisions.map(div => {
-          const divStyle = getDivisionStyle(div)
-          return (
-            <button
-              key={div}
-              className={`division-tab ${activeDivision === div ? 'active' : ''}`}
-              onClick={() => setActiveDivision(div)}
-            >
-              <span style={{ marginRight: '4px' }}>{divStyle.emoji}</span>
-              {div}
-            </button>
-          )
-        })}
+        {divisions.map(div => (
+          <button
+            key={div}
+            className={`division-tab ${activeDivision === div ? 'active' : ''}`}
+            onClick={() => setActiveDivision(div)}
+          >
+            <img src={getDivisionImage(div)} alt={div} style={{ width: '20px', height: '20px', objectFit: 'contain', marginRight: '6px' }} />
+            {div}
+          </button>
+        ))}
       </div>
 
       <div className="card">
@@ -194,7 +191,7 @@ export default function Table() {
                         {activeDivision === 'Overall' && (
                           <td>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <span>{getDivisionStyle(player.displayDivision).emoji}</span>
+                              <img src={getDivisionImage(player.displayDivision)} alt={player.displayDivision} style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
                               <span>{player.displayDivision}</span>
                             </div>
                           </td>
