@@ -451,6 +451,19 @@ export default function Settings() {
             </select>
           </div>
           <button className="btn btn-secondary btn-block" onClick={() => navigate('/profile')} style={{ marginTop: '12px' }}>Edit Profile</button>
+          
+          <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
+            <h4 style={{ marginBottom: '12px' }}>App Updates</h4>
+            <button 
+              className="btn btn-secondary btn-block" 
+              onClick={() => {
+                localStorage.removeItem('eliteArrowsLastVersionSeen')
+                alert('You will see the What\'s New popup on next refresh!')
+              }}
+            >
+              Show Updates Again
+            </button>
+          </div>
         </div>
       )}
 

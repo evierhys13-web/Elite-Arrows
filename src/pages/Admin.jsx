@@ -1574,6 +1574,78 @@ export default function Admin() {
           </div>
 
           <div className="card" style={{ marginBottom: '20px' }}>
+            <h3 className="card-title">Season Rollover</h3>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
+              End the current season and promote/relegate players automatically.
+            </p>
+            <button className="btn btn-primary" onClick={async () => {
+              if (!confirm('End current season and move players? This cannot be undone.')) return
+              
+              const divisions = ['Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Development']
+              const allUsers = getAllUsers()
+              const approvedResults = getResults().filter(r => r.status === 'approved')
+              
+              const stats = {}
+              allUsers.forEach(u => {
+                stats[u.id] = { points: 0, legsWon: 0, legsLost: 0 }
+              })
+              
+              approvedResults.forEach(r => {
+                if (stats[r.player1Id]) {
+                  stats[r.player1Id].legsWon += r.score1 || 0
+                  stats[r.player1Id].legsLost += r.score2 || 0
+                  if (r.score1 > r.score2) stats[r.player1Id].points += 3
+                  else if (r.score1 === r.score2) stats[r.player1Id].points += 1
+                }
+                if (stats[r.player2Id]) {
+                  stats[r.player2Id].legsWon += r.score2 || 0
+                  stats[r.player2Id].legsLost += r.score1 || 0
+                  if (r.score2 > r.score1) stats[r.player2Id].points += 3
+                  else if (r.score2 === r.score1) stats[r.player2Id].points += 1
+                }
+              })
+              
+              const promotionRelegation = {}
+              divisions.forEach((div) => {
+                const playersInDiv = allUsers.filter(u => u.division === div)
+                const sorted = [...playersInDiv].sort((a, b) => {
+                  const aS = stats[a.id] || { points: 0 }
+                  const bS = stats[b.id] || { points: 0 }
+                  if (bS.points !== aS.points) return bS.points - aS.points
+                  return (bS.legsWon - bS.legsLost) - (aS.legsWon - aS.legsLost)
+                })
+                
+                const top2 = sorted.slice(0, 2)
+                const bottom2 = sorted.slice(Math.max(0, sorted.length - 2))
+                
+                promotionRelegation[div] = { promoted: top2.map(p => p.id), relegated: bottom2.map(p => p.id) }
+              })
+              
+              for (const [div, { promoted, relegated }] of Object.entries(promotionRelegation)) {
+                const divIndex = divisions.indexOf(div)
+                const nextDivUp = divisions[divIndex - 1]
+                const nextDivDown = divisions[divIndex + 1]
+                
+                for (const playerId of promoted) {
+                  if (nextDivUp) {
+                    await updateUser({ id: playerId, division: nextDivUp }, false)
+                  }
+                }
+                
+                for (const playerId of relegated) {
+                  if (nextDivDown) {
+                    await updateUser({ id: playerId, division: nextDivDown }, false)
+                  }
+                }
+              }
+              
+              localStorage.setItem('eliteArrowsSeasonRolledOver', JSON.stringify(promotionRelegation))
+              triggerDataRefresh('users')
+              alert('Season ended! Players have been promoted/relegated.')
+            }}>End Season & Rollover Players</button>
+          </div>
+
+          <div className="card" style={{ marginBottom: '20px' }}>
             <h3 className="card-title">Reset Table</h3>
             <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
               Clear all results for the current season.
