@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 
 const DIVISION_IMGS = {
-  'Elite': '/gold.png',
+  'Elite': '/elite.png',
   'Diamond': '/diamond.png',
   'Platinum': '/platinum.png',
   'Gold': '/gold.png',
