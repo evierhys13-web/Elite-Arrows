@@ -96,14 +96,14 @@ export default function Table() {
         })
 
   const DIVISION_DATA = {
-    'Elite': { src: '/gold.png', label: 'Elite' },
-    'Diamond': { src: '/diamond.png', label: 'Diamond' },
-    'Platinum': { src: '/platinum.png', label: 'Platinum' },
-    'Gold': { src: '/gold.png', label: 'Gold' },
-    'Silver': { src: '/silver.png', label: 'Silver' },
-    'Bronze': { src: '/brnze.png', label: 'Bronze' },
-    'Development': { src: '/development.png', label: 'Development' },
-    'Overall': { src: '/logo.jpg', label: 'Overall' }
+    'Elite': { src: '/gold.png', label: 'E', emoji: '👑' },
+    'Diamond': { src: '/diamond.png', label: 'D', emoji: '💎' },
+    'Platinum': { src: '/platinum.png', label: 'P', emoji: '💠' },
+    'Gold': { src: '/gold.png', label: 'G', emoji: '🥇' },
+    'Silver': { src: '/silver.png', label: 'S', emoji: '🥈' },
+    'Bronze': { src: '/brnze.png', label: 'B', emoji: '🥉' },
+    'Development': { src: '/development.png', label: 'Dev', emoji: '🌱' },
+    'Overall': { src: '/logo.jpg', label: '🏆', emoji: '🏆' }
   }
 
   const getDivisionData = (division) => DIVISION_DATA[division] || DIVISION_DATA['Overall']
@@ -113,12 +113,18 @@ export default function Table() {
     <div className="page" key={refreshKey}>
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <img 
-            src={currentDivData.src} 
-            alt={currentDivData.label}
-            style={{ width: '48px', height: '48px', objectFit: 'contain' }}
-            onError={(e) => { e.target.style.display = 'none' }}
-          />
+          <div style={{
+            width: '48px',
+            height: '48px',
+            background: 'var(--accent-primary)',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '1.5rem'
+          }}>
+            {currentDivData.emoji}
+          </div>
           <h1 className="page-title">League Table</h1>
         </div>
       </div>
@@ -132,12 +138,7 @@ export default function Table() {
               className={`division-tab ${activeDivision === div ? 'active' : ''}`}
               onClick={() => setActiveDivision(div)}
             >
-              <img 
-                src={divData.src} 
-                alt={divData.label}
-                style={{ width: '18px', height: '18px', objectFit: 'contain', marginRight: '6px' }}
-                onError={(e) => { e.target.style.display = 'none' }}
-              />
+              <span style={{ marginRight: '4px' }}>{divData.emoji}</span>
               {div}
             </button>
           )
@@ -204,12 +205,7 @@ export default function Table() {
                         {activeDivision === 'Overall' && (
                           <td>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <img 
-                                src={getDivisionData(player.displayDivision).src}
-                                alt={player.displayDivision}
-                                style={{ width: '18px', height: '18px', objectFit: 'contain' }}
-                                onError={(e) => { e.target.style.display = 'none' }}
-                              />
+                              <span>{getDivisionData(player.displayDivision).emoji}</span>
                               <span>{player.displayDivision}</span>
                             </div>
                           </td>
