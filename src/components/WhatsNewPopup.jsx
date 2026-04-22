@@ -134,21 +134,19 @@ export function WhatsNewPopup({ isOpen, onClose }) {
 }
 
 export function useWhatsNew() {
-  const [showWhatsNew, setShowWhatsNew] = useState(false);
+  const checkShouldShow = () => {
+    const lastSeen = localStorage.getItem('eliteArrowsLastVersionSeen');
+    const hasUser = localStorage.getItem('eliteArrowsCurrentUser');
+    return !lastSeen && hasUser;
+  };
+  
+  const [showWhatsNew, setShowWhatsNew] = useState(checkShouldShow);
 
   useEffect(() => {
-    const lastSeen = localStorage.getItem('eliteArrowsLastVersionSeen');
-    const currentVersion = CHANGELOG[0].version;
-    
-    if (!lastSeen) {
-      const hasUser = localStorage.getItem('eliteArrowsCurrentUser');
-      if (hasUser) {
-        setShowWhatsNew(true);
-      }
-    }
+    setShowWhatsNew(checkShouldShow());
   }, []);
 
-  return { showWhatsNew };
+  return { showWhatsNew, refreshWhatsNew: () => setShowWhatsNew(true) };
 }
 
 export default WhatsNewPopup;

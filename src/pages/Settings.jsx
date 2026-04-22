@@ -458,7 +458,7 @@ export default function Settings() {
               className="btn btn-secondary btn-block" 
               onClick={() => {
                 localStorage.removeItem('eliteArrowsLastVersionSeen')
-                alert('You will see the What\'s New popup on next refresh!')
+                window.location.reload()
               }}
             >
               Show Updates Again
