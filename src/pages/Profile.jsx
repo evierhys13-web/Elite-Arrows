@@ -1,6 +1,18 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import Tooltip from '../components/Tooltip'
+
+const AVAILABLE_BADGES = [
+  { id: 'competitive', label: 'Competitive', icon: '🏆', color: '#FFD700' },
+  { id: 'friendly', label: 'Friendly', icon: '🤝', color: '#22C55E' },
+  { id: 'practice', label: 'Practice', icon: '🎯', color: '#7C5CFC' },
+  { id: 'tournament', label: 'Tournament Pro', icon: '🥇', color: '#F59E0B' },
+  { id: 'social', label: 'Social Player', icon: '💬', color: '#00D4FF' },
+  { id: 'improver', label: 'Always Improving', icon: '📈', color: '#EC4899' },
+  { id: 'veteran', label: 'League Veteran', icon: '⭐', color: '#6366F1' },
+  { id: ' newcomer', label: 'Newcomer', icon: '🌟', color: '#10B981' },
+]
 
 export default function Profile() {
   const { user, updateUser, requestAdminRole, getAllUsers, addFriend, removeFriend, cancelFriendRequest, acceptFriendRequest, declineFriendRequest } = useAuth()
@@ -36,6 +48,7 @@ export default function Profile() {
       })
       setProfilePicture(displayUser.profilePicture || '')
       setTags(displayUser.tags || [])
+      setSelectedBadges(displayUser.badges || [])
     }
   }, [displayUser?.id, displayUser?.bio, displayUser?.nickname, displayUser?.threeDartAverage])
   const [profilePicture, setProfilePicture] = useState('')
@@ -43,6 +56,8 @@ export default function Profile() {
   const [message, setMessage] = useState('')
   const [tags, setTags] = useState([])
   const [newTag, setNewTag] = useState('')
+  const [selectedBadges, setSelectedBadges] = useState([])
+  const [showBadgeSelector, setShowBadgeSelector] = useState(false)
 
   const handleAddTag = () => {
     if (newTag.trim() && !tags.includes(newTag.trim()) && tags.length < 10) {
@@ -53,6 +68,14 @@ export default function Profile() {
 
   const handleRemoveTag = (tagToRemove) => {
     setTags(tags.filter(tag => tag !== tagToRemove))
+  }
+
+  const handleToggleBadge = (badgeId) => {
+    if (selectedBadges.includes(badgeId)) {
+      setSelectedBadges(selectedBadges.filter(b => b !== badgeId))
+    } else if (selectedBadges.length < 4) {
+      setSelectedBadges([...selectedBadges, badgeId])
+    }
   }
 
   const handleKeyPress = (e) => {
@@ -133,7 +156,8 @@ export default function Profile() {
       dartCounterUsername: formData.dartCounterUsername?.trim() || '',
       threeDartAverage: formData.threeDartAverage ? avgValue : 0,
       profilePicture: profilePicture || '',
-      tags: tags || []
+      tags: tags || [],
+      badges: selectedBadges || []
     }
     
     if (updates.dartCounterUsername) {
@@ -193,6 +217,26 @@ export default function Profile() {
             <h2 style={{ color: 'var(--accent-cyan)' }}>{viewedUser.username}</h2>
             {viewedUser.nickname && <p style={{ color: 'var(--text-muted)' }}>"{viewedUser.nickname}"</p>}
             {viewedUser.isAdmin && <span className="admin-badge">Admin</span>}
+            {viewedUser.badges && viewedUser.badges.length > 0 && (
+              <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', marginTop: '8px', flexWrap: 'wrap' }}>
+                {viewedUser.badges.map(badgeId => {
+                  const badge = AVAILABLE_BADGES.find(b => b.id === badgeId)
+                  return badge ? (
+                    <Tooltip key={badgeId} content={badge.label}>
+                      <span style={{ 
+                        padding: '4px 8px', 
+                        background: badge.color + '20',
+                        border: `2px solid ${badge.color}`,
+                        borderRadius: '12px',
+                        fontSize: '0.9rem'
+                      }}>
+                        {badge.icon}
+                      </span>
+                    </Tooltip>
+                  ) : null
+                })}
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px', marginBottom: '20px' }}>
@@ -442,6 +486,26 @@ export default function Profile() {
             )}
             <input type="file" accept="image/*" onChange={handlePictureChange} />
           </label>
+          {user.badges && user.badges.length > 0 && (
+            <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', marginTop: '12px', flexWrap: 'wrap' }}>
+              {user.badges.map(badgeId => {
+                const badge = AVAILABLE_BADGES.find(b => b.id === badgeId)
+                return badge ? (
+                  <Tooltip key={badgeId} content={badge.label}>
+                    <span style={{ 
+                      padding: '4px 8px', 
+                      background: badge.color + '20',
+                      border: `2px solid ${badge.color}`,
+                      borderRadius: '12px',
+                      fontSize: '0.9rem'
+                    }}>
+                      {badge.icon}
+                    </span>
+                  </Tooltip>
+                ) : null
+              })}
+            </div>
+          )}
         </div>
 
         <div className="profile-form">
@@ -547,6 +611,92 @@ export default function Profile() {
                 Add
               </button>
             </div>
+          </div>
+
+          <div className="form-group">
+            <label>Profile Badges (select up to 4)</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+              {selectedBadges.map(badgeId => {
+                const badge = AVAILABLE_BADGES.find(b => b.id === badgeId)
+                return badge ? (
+                  <span 
+                    key={badgeId}
+                    style={{ 
+                      padding: '4px 10px',
+                      background: badge.color + '20',
+                      border: `2px solid ${badge.color}`,
+                      borderRadius: '12px',
+                      fontSize: '0.85rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    {badge.icon} {badge.label}
+                    <button 
+                      type="button"
+                      onClick={() => handleToggleBadge(badgeId)}
+                      style={{ 
+                        background: 'none', 
+                        border: 'none', 
+                        color: 'var(--text-primary)', 
+                        cursor: 'pointer',
+                        padding: '0',
+                        fontSize: '1rem',
+                        lineHeight: '1'
+                      }}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ) : null
+              })}
+            </div>
+            <button 
+              type="button"
+              className="btn btn-secondary btn-block"
+              onClick={() => setShowBadgeSelector(!showBadgeSelector)}
+            >
+              {showBadgeSelector ? 'Hide Badges' : 'Choose Badges'}
+            </button>
+            {showBadgeSelector && (
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(2, 1fr)', 
+                gap: '8px', 
+                marginTop: '12px',
+                padding: '12px',
+                background: 'var(--bg-primary)',
+                borderRadius: '8px'
+              }}>
+                {AVAILABLE_BADGES.map(badge => (
+                  <button
+                    key={badge.id}
+                    type="button"
+                    onClick={() => handleToggleBadge(badge.id)}
+                    style={{
+                      padding: '8px 12px',
+                      background: selectedBadges.includes(badge.id) ? badge.color + '30' : 'var(--bg-secondary)',
+                      border: selectedBadges.includes(badge.id) ? `2px solid ${badge.color}` : '1px solid var(--border)',
+                      borderRadius: '8px',
+                      color: 'var(--text-primary)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      fontSize: '0.85rem',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <span>{badge.icon}</span>
+                    <span>{badge.label}</span>
+                    {selectedBadges.includes(badge.id) && (
+                      <span style={{ marginLeft: 'auto', fontSize: '0.75rem' }}>✓</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="form-group">
