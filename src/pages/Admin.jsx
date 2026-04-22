@@ -392,7 +392,7 @@ export default function Admin() {
             <div className="stat-label">Pending Payments</div>
           </div>
           <div className="stat-card">
-            <div className="stat-value" style={{ color: 'var(--success)' }}>£{subscriptionPot}</div>
+            <div className="stat-value" style={{ color: 'var(--success)' }}>£{subscriptionPot + subscriptionPot10}</div>
             <div className="stat-label">Subscription Pot</div>
           </div>
           <div className="stat-card">
