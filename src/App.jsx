@@ -171,6 +171,7 @@ function AppLayout({ children }) {
   const { dataRefreshTrigger } = useAuth()
   const { showOnboarding, completeOnboarding } = useOnboarding()
   const { showWhatsNew } = useWhatsNew()
+  const [whatsNewOpen, setWhatsNewOpen] = useState(showWhatsNew)
   
   return (
     <div className="app-layout">
@@ -184,7 +185,7 @@ function AppLayout({ children }) {
       {showOnboarding && (
         <OnboardingTour onComplete={completeOnboarding} />
       )}
-      <WhatsNewPopup isOpen={showWhatsNew} onClose={() => {}} />
+      <WhatsNewPopup isOpen={whatsNewOpen} onClose={() => setWhatsNewOpen(false)} />
     </div>
   )
 }
