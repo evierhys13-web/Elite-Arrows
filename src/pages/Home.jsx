@@ -126,26 +126,26 @@ export default function Home() {
         <h3 className="card-title" style={{ color: 'var(--accent-cyan)' }}>League Game Rules</h3>
         <div style={{ display: 'grid', gap: '10px' }}>
           <Tooltip content="Standard league format: First to win 5 legs wins the match">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px', cursor: 'help' }}>
-              <span style={{ flexShrink: 0 }}>Format</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px', cursor: 'help', gap: '16px' }}>
+              <span>Format</span>
               <span style={{ fontWeight: 'bold', textAlign: 'right' }}>Best of 8 legs</span>
             </div>
           </Tooltip>
           <Tooltip content="Computer Aided Marking - scores are automatically calculated">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px', cursor: 'help' }}>
-              <span style={{ flexShrink: 0 }}>CAM</span>
-              <span style={{ fontWeight: 'bold', textAlign: 'right' }}>In use</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px', cursor: 'help', gap: '16px' }}>
+              <span>CAM</span>
+              <span style={{ fontWeight: 'bold', textAlign: 'right' }}>Must be on</span>
             </div>
           </Tooltip>
           <Tooltip content="Play online using DartCounter app">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px', cursor: 'help' }}>
-              <span style={{ flexShrink: 0 }}>Platform</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px', cursor: 'help', gap: '16px' }}>
+              <span>Platform</span>
               <span style={{ fontWeight: 'bold', textAlign: 'right' }}>DartCounter</span>
             </div>
           </Tooltip>
           <Tooltip content="Earn Elite Tokens for winning league games">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px', cursor: 'help' }}>
-              <span style={{ flexShrink: 0 }}>Tokens</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px', cursor: 'help', gap: '16px' }}>
+              <span>Tokens</span>
               <span style={{ fontWeight: 'bold', color: 'var(--success)', textAlign: 'right' }}>+100 for win</span>
             </div>
           </Tooltip>
