@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Tooltip from '../components/Tooltip'
+import { compressImage } from '../components/ImageUtils'
 
 const AVAILABLE_BADGES = [
   { id: 'competitive', label: 'Competitive', icon: '🏆', color: '#FFD700' },
@@ -133,14 +134,11 @@ export default function Profile() {
     }))
   }
 
-  const handlePictureChange = (e) => {
+  const handlePictureChange = async (e) => {
     const file = e.target.files[0]
     if (file) {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setProfilePicture(reader.result)
-      }
-      reader.readAsDataURL(file)
+      const compressed = await compressImage(file, 200, 200, 0.7)
+      setProfilePicture(compressed)
     }
   }
 

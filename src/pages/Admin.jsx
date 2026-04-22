@@ -381,6 +381,27 @@ export default function Admin() {
         <h1 className="page-title">Admin Panel</h1>
       </div>
 
+      {isFullAdmin && (
+        <div className="home-stats-grid" style={{ marginBottom: '20px' }}>
+          <div className="stat-card">
+            <div className="stat-value" style={{ color: 'var(--accent-cyan)' }}>{pendingResults.length}</div>
+            <div className="stat-label">Pending Results</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-value" style={{ color: 'var(--warning)' }}>{pendingPayments.length}</div>
+            <div className="stat-label">Pending Payments</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-value" style={{ color: 'var(--success)' }}>£{subscriptionPot}</div>
+            <div className="stat-label">Subscription Pot</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-value" style={{ color: 'var(--accent-primary)' }}>{getAllUsers().length}</div>
+            <div className="stat-label">Total Players</div>
+          </div>
+        </div>
+      )}
+
       <div className="division-tabs">
         {isFullAdmin && (
           <>
