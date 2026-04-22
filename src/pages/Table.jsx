@@ -119,98 +119,82 @@ export default function Table() {
             <p>No players in this division yet</p>
           </div>
         ) : (
-          <div className="table-container">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Pos</th>
-                  <th>Player</th>
-                  {activeDivision === 'Overall' && <th>Div</th>}
-                  <th>P</th>
-                  <th>W</th>
-                  <th>D</th>
-                  <th>L</th>
-                  <th>+/-</th>
-                  <th>LW</th>
-                  <th>Pts</th>
-                  <th>Avg</th>
-                </tr>
-              </thead>
-              <tbody>
-                {playersInDivision.map((player, index) => {
-                  const legDiff = player.stats.legsWon - player.stats.legsLost
-                  const isPromotion = index < 2
-                  const isRelegation = index >= playersInDivision.length - 2
-                  const isPromotionCandidate = activeDivision !== 'Overall' && activeDivision !== 'Unassigned' && isPromotion
-                  const isRelegationCandidate = activeDivision !== 'Overall' && activeDivision !== 'Unassigned' && isRelegation && playersInDivision.length > 4
-                  
-                  return (
-                    <tr key={player.id} style={{ 
-                      background: player.id === user.id ? 'var(--bg-hover)' : 'transparent',
-                      borderLeft: isPromotionCandidate ? '3px solid #22c55e' : isRelegationCandidate ? '3px solid #ef4444' : 'none'
-                    }}>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          {index + 1}
-                          {isPromotionCandidate && (
-                            <span style={{ 
-                              color: '#22c55e', 
-                              fontSize: '0.75rem',
-                              fontWeight: 'bold'
-                            }}>↑</span>
+          <>
+            <div className="table-container">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Pos</th>
+                    <th>Player</th>
+                    {activeDivision === 'Overall' && <th>Div</th>}
+                    <th>P</th>
+                    <th>W</th>
+                    <th>D</th>
+                    <th>L</th>
+                    <th>+/-</th>
+                    <th>LW</th>
+                    <th>Pts</th>
+                    <th>Avg</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {playersInDivision.map((player, index) => {
+                    const legDiff = player.stats.legsWon - player.stats.legsLost
+                    const isPromotion = index < 2
+                    const isRelegation = index >= playersInDivision.length - 2
+                    const isPromotionCandidate = activeDivision !== 'Overall' && activeDivision !== 'Unassigned' && isPromotion
+                    const isRelegationCandidate = activeDivision !== 'Overall' && activeDivision !== 'Unassigned' && isRelegation && playersInDivision.length > 4
+                    
+                    return (
+                      <tr key={player.id} style={{ 
+                        background: player.id === user.id ? 'var(--bg-hover)' : 'transparent',
+                        borderLeft: isPromotionCandidate ? '3px solid #22c55e' : isRelegationCandidate ? '3px solid #ef4444' : 'none'
+                      }}>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            {index + 1}
+                            {isPromotionCandidate && (
+                              <span style={{ color: '#22c55e', fontWeight: 'bold' }}>↑</span>
+                            )}
+                            {isRelegationCandidate && (
+                              <span style={{ color: '#ef4444', fontWeight: 'bold' }}>↓</span>
+                            )}
+                          </div>
+                        </td>
+                        <td>
+                          {player.dartCounterUsername || player.username}
+                          {player.id === user.id && (
+                            <span className="admin-badge" style={{ marginLeft: '8px' }}>You</span>
                           )}
-                          {isRelegationCandidate && (
-                            <span style={{ 
-                              color: '#ef4444', 
-                              fontSize: '0.75rem',
-                              fontWeight: 'bold'
-                            }}>↓</span>
+                          {player.isAdmin && (
+                            <span className="admin-badge" style={{ marginLeft: '8px', background: 'var(--accent-cyan)' }}>Admin</span>
                           )}
-                        </div>
-                      </td>
-                      <td>
-                        {player.dartCounterUsername || player.username}
-                        {player.id === user.id && (
-                          <span className="admin-badge" style={{ marginLeft: '8px' }}>You</span>
-                        )}
-                        {player.isAdmin && (
-                          <span className="admin-badge" style={{ marginLeft: '8px', background: 'var(--accent-cyan)' }}>Admin</span>
-                        )}
-                      </td>
-                      {activeDivision === 'Overall' && <td>{player.displayDivision}</td>}
-                      <td>{player.stats.played}</td>
-                      <td>{player.stats.wins}</td>
-                      <td>{player.stats.draws}</td>
-                      <td>{player.stats.losses}</td>
-                      <td style={{ color: legDiff >= 0 ? 'var(--success)' : 'var(--error)' }}>
-                        {legDiff > 0 ? '+' : ''}{legDiff}
-                      </td>
-                      <td>{player.stats.legsWon}</td>
-                      <td style={{ fontWeight: '600' }}>{player.stats.points}</td>
-                      <td>{player.threeDartAverage?.toFixed(2) || 0}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-</div>
-          <div style={{ 
-            display: 'flex', 
-            gap: '16px', 
-            marginTop: '12px',
-            fontSize: '0.8rem',
-            color: 'var(--text-muted)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        </td>
+                        {activeDivision === 'Overall' && <td>{player.displayDivision}</td>}
+                        <td>{player.stats.played}</td>
+                        <td>{player.stats.wins}</td>
+                        <td>{player.stats.draws}</td>
+                        <td>{player.stats.losses}</td>
+                        <td style={{ color: legDiff >= 0 ? 'var(--success)' : 'var(--error)' }}>
+                          {legDiff > 0 ? '+' : ''}{legDiff}
+                        </td>
+                        <td>{player.stats.legsWon}</td>
+                        <td style={{ fontWeight: '600' }}>{player.stats.points}</td>
+                        <td>{player.threeDartAverage?.toFixed(2) || 0}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ display: 'flex', gap: '16px', marginTop: '12px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
               <span style={{ color: '#22c55e', fontWeight: 'bold' }}>↑</span>
               <span>Promotion Zone</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ color: '#ef4444', fontWeight: 'bold' }}>↓</span>
               <span>Relegation Zone</span>
             </div>
-          </div>
-        </div>
+          </>
+        )}
       </div>
     </div>
   )
