@@ -95,40 +95,53 @@ export default function Table() {
           return bLegDiff - aLegDiff
         })
 
-  const DIVISION_IMAGES = {
-    'Elite': '/gold.png',
-    'Diamond': '/diamond.png',
-    'Platinum': '/platinum.png',
-    'Gold': '/gold.png',
-    'Silver': '/silver.png',
-    'Bronze': '/brnze.png',
-    'Development': '/development.png',
-    'Overall': '/logo.jpg'
+  const DIVISION_DATA = {
+    'Elite': { src: '/gold.png', label: 'Elite' },
+    'Diamond': { src: '/diamond.png', label: 'Diamond' },
+    'Platinum': { src: '/platinum.png', label: 'Platinum' },
+    'Gold': { src: '/gold.png', label: 'Gold' },
+    'Silver': { src: '/silver.png', label: 'Silver' },
+    'Bronze': { src: '/brnze.png', label: 'Bronze' },
+    'Development': { src: '/development.png', label: 'Development' },
+    'Overall': { src: '/logo.jpg', label: 'Overall' }
   }
 
-  const getDivisionImage = (division) => DIVISION_IMAGES[division] || DIVISION_IMAGES['Overall']
-  const currentImage = getDivisionImage(activeDivision)
+  const getDivisionData = (division) => DIVISION_DATA[division] || DIVISION_DATA['Overall']
+  const currentDivData = getDivisionData(activeDivision)
 
   return (
     <div className="page" key={refreshKey}>
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <img src={currentImage} alt={activeDivision} style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
+          <img 
+            src={currentDivData.src} 
+            alt={currentDivData.label}
+            style={{ width: '48px', height: '48px', objectFit: 'contain' }}
+            onError={(e) => { e.target.style.display = 'none' }}
+          />
           <h1 className="page-title">League Table</h1>
         </div>
       </div>
 
       <div className="division-tabs">
-        {divisions.map(div => (
-          <button
-            key={div}
-            className={`division-tab ${activeDivision === div ? 'active' : ''}`}
-            onClick={() => setActiveDivision(div)}
-          >
-            <img src={getDivisionImage(div)} alt={div} style={{ width: '20px', height: '20px', objectFit: 'contain', marginRight: '6px' }} />
-            {div}
-          </button>
-        ))}
+        {divisions.map(div => {
+          const divData = getDivisionData(div)
+          return (
+            <button
+              key={div}
+              className={`division-tab ${activeDivision === div ? 'active' : ''}`}
+              onClick={() => setActiveDivision(div)}
+            >
+              <img 
+                src={divData.src} 
+                alt={divData.label}
+                style={{ width: '18px', height: '18px', objectFit: 'contain', marginRight: '6px' }}
+                onError={(e) => { e.target.style.display = 'none' }}
+              />
+              {div}
+            </button>
+          )
+        })}
       </div>
 
       <div className="card">
@@ -191,7 +204,12 @@ export default function Table() {
                         {activeDivision === 'Overall' && (
                           <td>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <img src={getDivisionImage(player.displayDivision)} alt={player.displayDivision} style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
+                              <img 
+                                src={getDivisionData(player.displayDivision).src}
+                                alt={player.displayDivision}
+                                style={{ width: '18px', height: '18px', objectFit: 'contain' }}
+                                onError={(e) => { e.target.style.display = 'none' }}
+                              />
                               <span>{player.displayDivision}</span>
                             </div>
                           </td>
