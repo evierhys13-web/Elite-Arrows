@@ -1,6 +1,28 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 
+const DIVISION_IMGS = {
+  'Elite': '/gold.png',
+  'Diamond': '/diamond.png',
+  'Platinum': '/platinum.png',
+  'Gold': '/gold.png',
+  'Silver': '/silver.png',
+  'Bronze': '/brnze.png',
+  'Development': '/development.png',
+  'Overall': '/logo.jpg'
+}
+
+const DIVISION_EMOJIS = {
+  'Elite': '👑',
+  'Diamond': '💎',
+  'Platinum': '💠',
+  'Gold': '🥇',
+  'Silver': '🥈',
+  'Bronze': '🥉',
+  'Development': '🌱',
+  'Overall': '🏆'
+}
+
 export default function Table() {
   const [activeDivision, setActiveDivision] = useState('Overall')
   const { user, getAllUsers, getResults, dataRefreshTrigger } = useAuth()
@@ -95,54 +117,40 @@ export default function Table() {
           return bLegDiff - aLegDiff
         })
 
-  const DIVISION_DATA = {
-    'Elite': { src: '/gold.png', label: 'E', emoji: '👑' },
-    'Diamond': { src: '/diamond.png', label: 'D', emoji: '💎' },
-    'Platinum': { src: '/platinum.png', label: 'P', emoji: '💠' },
-    'Gold': { src: '/gold.png', label: 'G', emoji: '🥇' },
-    'Silver': { src: '/silver.png', label: 'S', emoji: '🥈' },
-    'Bronze': { src: '/brnze.png', label: 'B', emoji: '🥉' },
-    'Development': { src: '/development.png', label: 'Dev', emoji: '🌱' },
-    'Overall': { src: '/logo.jpg', label: '🏆', emoji: '🏆' }
-  }
-
-  const getDivisionData = (division) => DIVISION_DATA[division] || DIVISION_DATA['Overall']
-  const currentDivData = getDivisionData(activeDivision)
+  const headerImg = DIVISION_IMGS[activeDivision] || DIVISION_IMGS['Overall']
+  const headerEmoji = DIVISION_EMOJIS[activeDivision] || DIVISION_EMOJIS['Overall']
 
   return (
     <div className="page" key={refreshKey}>
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
-            width: '48px',
-            height: '48px',
-            background: 'var(--accent-primary)',
-            borderRadius: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '1.5rem'
-          }}>
-            {currentDivData.emoji}
-          </div>
+          <img 
+            src={headerImg} 
+            alt={activeDivision}
+            style={{ width: '48px', height: '48px', objectFit: 'contain' }}
+            onError={(e) => { 
+              e.target.style.display = 'none'
+              const fallback = document.createElement('span')
+              fallback.textContent = headerEmoji
+              fallback.style.cssText = 'width:48px;height:48px;background:var(--accent-primary);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.5rem'
+              e.target.parentNode.insertBefore(fallback, e.target.nextSibling)
+            }}
+          />
           <h1 className="page-title">League Table</h1>
         </div>
       </div>
 
       <div className="division-tabs">
-        {divisions.map(div => {
-          const divData = getDivisionData(div)
-          return (
-            <button
-              key={div}
-              className={`division-tab ${activeDivision === div ? 'active' : ''}`}
-              onClick={() => setActiveDivision(div)}
-            >
-              <span style={{ marginRight: '4px' }}>{divData.emoji}</span>
-              {div}
-            </button>
-          )
-        })}
+        {divisions.map(div => (
+          <button
+            key={div}
+            className={`division-tab ${activeDivision === div ? 'active' : ''}`}
+            onClick={() => setActiveDivision(div)}
+          >
+            <span style={{ marginRight: '4px' }}>{DIVISION_EMOJIS[div] || DIVISION_EMOJIS['Overall']}</span>
+            {div}
+          </button>
+        ))}
       </div>
 
       <div className="card">
@@ -205,7 +213,7 @@ export default function Table() {
                         {activeDivision === 'Overall' && (
                           <td>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <span>{getDivisionData(player.displayDivision).emoji}</span>
+                              <span>{DIVISION_EMOJIS[player.displayDivision]}</span>
                               <span>{player.displayDivision}</span>
                             </div>
                           </td>
