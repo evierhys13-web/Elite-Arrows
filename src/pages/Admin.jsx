@@ -1591,9 +1591,9 @@ export default function Admin() {
           </div>
 
           <div className="card" style={{ marginBottom: '20px' }}>
-            <h3 className="card-title">Prize Pool Calculator</h3>
+            <h3 className="card-title">Prize Pool & Promotion/Relegation</h3>
             <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
-              Calculate prize distribution based on total subscription pot. Each division top player gets the same amount.
+              Calculate prize distribution. Top 2 → Promotion (green), Bottom 2 → Relegation (red)
             </p>
             {(() => {
               const totalPot = subscriptionPot + subscriptionPot10
@@ -1615,20 +1615,11 @@ export default function Admin() {
                       <strong style={{ color: 'var(--success)' }}>£{totalPot.toFixed(2)}</strong>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span>Number of Divisions:</span>
-                      <strong>{numDivisions}</strong>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                       <span>Per Division 1st Place:</span>
                       <strong style={{ color: 'var(--accent-cyan)' }}>£{perDivisionFirst.toFixed(2)}</strong>
                     </div>
-                    <div style={{ 
-                      display: 'flex', 
-                      justifyContent: 'space-between',
-                      paddingTop: '8px',
-                      borderTop: '1px solid var(--border)'
-                    }}>
-                      <span>Admin Fee (remaining):</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid var(--border)' }}>
+                      <span>Admin Fee:</span>
                       <span style={{ color: 'var(--text-muted)' }}>£{adminFee.toFixed(2)}</span>
                     </div>
                   </div>
@@ -1636,19 +1627,72 @@ export default function Admin() {
                   <table className="table">
                     <thead>
                       <tr>
+                        <th>Position</th>
                         <th>Division</th>
-                        <th>1st Place</th>
+                        <th>Prize</th>
+                        <th>Movement</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {divisions.map(div => (
+                      {divisions.map((div, index) => (
                         <tr key={div}>
+                          <td>#{index + 1}</td>
                           <td>{div}</td>
-                          <td style={{ color: 'var(--success)', fontWeight: 'bold' }}>£{perDivisionFirst.toFixed(2)}</td>
+                          <td style={{ fontWeight: 'bold', color: 'var(--success)' }}>£{perDivisionFirst.toFixed(2)}</td>
+                          <td>
+                            {index <= 1 && (
+                              <span style={{ 
+                                color: '#22c55e', 
+                                fontWeight: 'bold',
+                                background: 'rgba(34, 197, 94, 0.2)',
+                                padding: '2px 8px',
+                                borderRadius: '4px'
+                              }}>
+                                ↑ Promotion
+                              </span>
+                            )}
+                            {index >= 5 && (
+                              <span style={{ 
+                                color: '#ef4444', 
+                                fontWeight: 'bold',
+                                background: 'rgba(239, 68, 68, 0.2)',
+                                padding: '2px 8px',
+                                borderRadius: '4px'
+                              }}>
+                                ↓ Relegation
+                              </span>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                  
+                  <div style={{ 
+                    display: 'flex', 
+                    gap: '20px', 
+                    marginTop: '15px',
+                    fontSize: '0.85rem'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ 
+                        color: '#22c55e',
+                        background: 'rgba(34, 197, 94, 0.2)',
+                        padding: '2px 6px',
+                        borderRadius: '4px'
+                      }}>↑</span>
+                      <span>Top 2 → Promotion</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ 
+                        color: '#ef4444',
+                        background: 'rgba(239, 68, 68, 0.2)',
+                        padding: '2px 6px',
+                        borderRadius: '4px'
+                      }}>↓</span>
+                      <span>Bottom 2 → Relegation</span>
+                    </div>
+                  </div>
                 </>
               )
             })()}

@@ -139,11 +139,35 @@ export default function Table() {
               <tbody>
                 {playersInDivision.map((player, index) => {
                   const legDiff = player.stats.legsWon - player.stats.legsLost
+                  const isPromotion = index < 2
+                  const isRelegation = index >= playersInDivision.length - 2
+                  const isPromotionCandidate = activeDivision !== 'Overall' && activeDivision !== 'Unassigned' && isPromotion
+                  const isRelegationCandidate = activeDivision !== 'Overall' && activeDivision !== 'Unassigned' && isRelegation && playersInDivision.length > 4
+                  
                   return (
                     <tr key={player.id} style={{ 
-                      background: player.id === user.id ? 'var(--bg-hover)' : 'transparent'
+                      background: player.id === user.id ? 'var(--bg-hover)' : 'transparent',
+                      borderLeft: isPromotionCandidate ? '3px solid #22c55e' : isRelegationCandidate ? '3px solid #ef4444' : 'none'
                     }}>
-                      <td>{index + 1}</td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {index + 1}
+                          {isPromotionCandidate && (
+                            <span style={{ 
+                              color: '#22c55e', 
+                              fontSize: '0.75rem',
+                              fontWeight: 'bold'
+                            }}>↑</span>
+                          )}
+                          {isRelegationCandidate && (
+                            <span style={{ 
+                              color: '#ef4444', 
+                              fontSize: '0.75rem',
+                              fontWeight: 'bold'
+                            }}>↓</span>
+                          )}
+                        </div>
+                      </td>
                       <td>
                         {player.dartCounterUsername || player.username}
                         {player.id === user.id && (
@@ -169,8 +193,24 @@ export default function Table() {
                 })}
               </tbody>
             </table>
+</div>
+          <div style={{ 
+            display: 'flex', 
+            gap: '16px', 
+            marginTop: '12px',
+            fontSize: '0.8rem',
+            color: 'var(--text-muted)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ color: '#22c55e', fontWeight: 'bold' }}>↑</span>
+              <span>Promotion Zone</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ color: '#ef4444', fontWeight: 'bold' }}>↓</span>
+              <span>Relegation Zone</span>
+            </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   )
