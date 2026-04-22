@@ -121,7 +121,7 @@ export default function Auth() {
       <BackgroundDecor />
       <div className="auth-container">
         <div className="auth-logo">
-          <img src="/logo.jpg" alt="Elite Arrows" style={{ width: '80px', height: '80px', borderRadius: '12px', objectFit: 'cover', marginBottom: '10px' }} />
+          <img src="/logo.png" alt="Elite Arrows" style={{ width: '80px', height: '80px', borderRadius: '12px', objectFit: 'cover', marginBottom: '10px' }} />
           <h1>Elite Arrows</h1>
           <p>Darts League</p>
         </div>

@@ -99,8 +99,8 @@ export function AuthProvider({ children }) {
   const showLocalNotification = useCallback((title, options = {}) => {
     if (Notification.permission === 'granted') {
       const notification = new Notification(title, {
-        icon: '/logo.jpg',
-        badge: '/logo.jpg',
+        icon: '/logo.png',
+        badge: '/logo.png',
         ...options
       })
       
@@ -774,8 +774,8 @@ const cleanUserData = (users) => {
           if (Notification.permission === 'granted') {
             new Notification(title || 'Elite Arrows', {
               body: body || 'New notification',
-              icon: '/logo.jpg',
-              badge: '/logo.jpg',
+              icon: '/logo.png',
+              badge: '/logo.png',
               data: data
             })
           }
