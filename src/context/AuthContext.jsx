@@ -513,12 +513,6 @@ const cleanUserData = (users) => {
       const userRef = doc(db, 'users', userId)
       await setDoc(userRef, cleanUpdates, { merge: true })
       
-      setAllUsers(prev => {
-        const updated = prev.map(u => u.id === userId ? { ...u, ...cleanUpdates } : u)
-        localStorage.setItem('eliteArrowsUsers', JSON.stringify(updated))
-        return updated
-      })
-      
       if (userId === user?.id) {
         const updatedUser = { ...user, ...cleanUpdates }
         setUser(updatedUser)
@@ -526,6 +520,7 @@ const cleanUserData = (users) => {
       }
     } catch (error) {
       console.error('Error updating user:', error)
+      throw error
     }
   }
 
