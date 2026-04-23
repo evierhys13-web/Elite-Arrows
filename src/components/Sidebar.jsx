@@ -241,6 +241,7 @@ export default function Sidebar() {
     { path: '/settings', label: 'Settings', icon: SettingsIcon },
     { path: '/contact', label: 'Contact', icon: MailIcon },
     { path: '/support', label: 'Support', icon: HelpIcon },
+    { path: '/privacy-policy', label: 'Privacy Policy', icon: HelpIcon },
     { path: '/subscription', label: 'Subscription', icon: CreditCardIcon },
   ]
   
