@@ -499,6 +499,36 @@ const cleanUserData = (users) => {
     }
   }
 
+  const updateOtherUser = async (userId, updates) => {
+    const cleanUpdates = {}
+    Object.keys(updates).forEach(key => {
+      if (updates[key] !== undefined) {
+        cleanUpdates[key] = updates[key]
+      }
+    })
+    
+    if (Object.keys(cleanUpdates).length === 0) return
+    
+    try {
+      const userRef = doc(db, 'users', userId)
+      await setDoc(userRef, cleanUpdates, { merge: true })
+      
+      setAllUsers(prev => {
+        const updated = prev.map(u => u.id === userId ? { ...u, ...cleanUpdates } : u)
+        localStorage.setItem('eliteArrowsUsers', JSON.stringify(updated))
+        return updated
+      })
+      
+      if (userId === user?.id) {
+        const updatedUser = { ...user, ...cleanUpdates }
+        setUser(updatedUser)
+        localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(updatedUser))
+      }
+    } catch (error) {
+      console.error('Error updating user:', error)
+    }
+  }
+
   const addUserManually = async (userData) => {
     const emailLower = userData.email.toLowerCase()
     const isAdmin = ADMIN_EMAILS.includes(emailLower)
@@ -829,6 +859,7 @@ const cleanUserData = (users) => {
       signIn, 
       signOut: handleSignOut, 
       updateUser,
+      updateOtherUser,
       addUserManually,
       addFriend,
       acceptFriendRequest,

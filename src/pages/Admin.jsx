@@ -6,7 +6,7 @@ import CupManagement from './CupManagement'
 import UserSearchSelect from '../components/UserSearchSelect'
 
 export default function Admin() {
-  const { user, getAllUsers, updateUser, getResults, adminData, updateAdminData, addToMoneyHistory, getSupportRequests, getSeasons, getNews, postNews, deleteNews, togglePinNews, triggerDataRefresh, dataRefreshTrigger, notifyUser, notifyAllSubscribers } = useAuth()
+  const { user, getAllUsers, updateUser, updateOtherUser, getResults, adminData, updateAdminData, addToMoneyHistory, getSupportRequests, getSeasons, getNews, postNews, deleteNews, togglePinNews, triggerDataRefresh, dataRefreshTrigger, notifyUser, notifyAllSubscribers } = useAuth()
   const navigate = useNavigate()
   const subscriptionPot = adminData.subscriptionPot || 0
   const subscriptionPot10 = adminData.subscriptionPot10 || 0
@@ -968,12 +968,7 @@ export default function Admin() {
                   }
                 })
                 
-                // Update local state
-                users[index] = { ...users[index], ...cleanUpdates }
-                localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
-                
-                // Update Firestore
-                await setDoc(doc(db, 'users', userId), cleanUpdates, { merge: true })
+                await updateOtherUser(userId, cleanUpdates)
                 
                 const amount = 5
                 if (subType && !freeSub) {
@@ -1642,18 +1637,15 @@ export default function Admin() {
               <select 
                 id="movePlayerDivision"
                 style={{ flex: 1, minWidth: '150px' }}
-                onChange={(e) => {
+                onChange={async (e) => {
                   if (!e.target.value) return
                   const division = prompt('Enter new division (Elite, Diamond, Platinum, Gold, Silver, Bronze, Development):')
                   if (division && ['Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Development'].includes(division)) {
+                    await updateOtherUser(e.target.value, { division })
                     const users = getAllUsers()
-                    const index = users.findIndex(u => u.id === e.target.value)
-                    if (index !== -1) {
-                      users[index].division = division
-                      localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
-                      alert(`${users[index].username} moved to ${division}`)
-                      e.target.value = ''
-                    }
+                    const user = users.find(u => u.id === e.target.value)
+                    alert(`${user?.username} moved to ${division}`)
+                    e.target.value = ''
                   }
                 }}
               >
