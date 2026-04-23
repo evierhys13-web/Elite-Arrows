@@ -31,36 +31,32 @@ export default function Guide() {
 
       <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
         <div style={{ 
-          minWidth: '200px',
+          width: '100%',
+          marginBottom: '20px',
           background: 'var(--bg-secondary)',
           borderRadius: '12px',
-          padding: '15px',
-          height: 'fit-content',
-          position: 'sticky',
-          top: '20px'
+          padding: '15px'
         }}>
           <h4 style={{ marginBottom: '10px', color: 'var(--accent-cyan)' }}>Quick Links</h4>
-          {sections.map(section => (
-            <button
-              key={section.id}
-              onClick={() => setActiveSection(section.id)}
-              style={{
-                display: 'block',
-                width: '100%',
-                textAlign: 'left',
-                padding: '10px 12px',
-                marginBottom: '5px',
-                background: activeSection === section.id ? 'var(--accent-cyan)' : 'transparent',
-                color: activeSection === section.id ? '#000' : 'var(--text)',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '0.9rem'
-              }}
-            >
-              {section.icon} {section.label}
-            </button>
-          ))}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {sections.map(section => (
+              <button
+                key={section.id}
+                onClick={() => setActiveSection(section.id)}
+                style={{
+                  padding: '8px 12px',
+                  background: activeSection === section.id ? 'var(--accent-cyan)' : 'var(--bg-primary)',
+                  color: activeSection === section.id ? '#000' : 'var(--text)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '0.85rem'
+                }}
+              >
+                {section.icon} {section.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div style={{ flex: 1, minWidth: '300px' }}>
