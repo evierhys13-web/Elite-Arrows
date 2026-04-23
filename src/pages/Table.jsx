@@ -1,17 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 
-const DIVISION_IMGS = {
-  'Elite': '/elite.png',
-  'Diamond': '/diamond.png',
-  'Platinum': '/platinum.png',
-  'Gold': '/gold.png',
-  'Silver': '/silver.png',
-  'Bronze': '/brnze.png',
-  'Development': '/development.png',
-  'Overall': '/elite arrows.jpg'
-}
-
 const DIVISION_EMOJIS = {
   'Elite': '👑',
   'Diamond': '💎',
@@ -117,25 +106,12 @@ export default function Table() {
           return bLegDiff - aLegDiff
         })
 
-  const headerImg = DIVISION_IMGS[activeDivision] || DIVISION_IMGS['Overall']
   const headerEmoji = DIVISION_EMOJIS[activeDivision] || DIVISION_EMOJIS['Overall']
 
   return (
     <div className="page" key={refreshKey}>
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <img 
-            src={headerImg} 
-            alt={activeDivision}
-            style={{ width: '48px', height: '48px', objectFit: 'contain' }}
-            onError={(e) => { 
-              e.target.style.display = 'none'
-              const fallback = document.createElement('span')
-              fallback.textContent = headerEmoji
-              fallback.style.cssText = 'width:48px;height:48px;background:var(--accent-primary);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.5rem'
-              e.target.parentNode.insertBefore(fallback, e.target.nextSibling)
-            }}
-          />
           <h1 className="page-title">League Table</h1>
         </div>
       </div>
