@@ -273,7 +273,7 @@ export default function Sidebar() {
           <MenuIcon />
         </button>
         <span className="sidebar-logo" role="banner">
-          <img src="/logo.png" alt="Elite Arrows" style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover' }} />
+          <img src="/elite arrows.jpg" alt="Elite Arrows" style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover' }} />
           <span style={{ marginLeft: '8px' }}>Elite Arrows</span>
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -303,7 +303,7 @@ export default function Sidebar() {
             <CloseIcon />
           </button>
           <div className="sidebar-logo">
-            <img src="/logo.png" alt="Elite Arrows" style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover' }} />
+            <img src="/elite arrows.jpg" alt="Elite Arrows" style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover' }} />
             <span style={{ marginLeft: '8px' }}>Elite Arrows</span>
           </div>
         </div>

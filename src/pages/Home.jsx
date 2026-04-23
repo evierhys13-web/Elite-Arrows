@@ -80,7 +80,7 @@ export default function Home() {
       
       <div className={`animate-fade-in-up ${visible ? '' : 'opacity-0'}`}>
         <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-          <img src="/logo.png" alt="Elite Arrows" style={{ width: '80px', height: '80px', borderRadius: '12px', objectFit: 'cover', marginBottom: '15px' }} />
+          <img src="/elite arrows.jpg" alt="Elite Arrows" style={{ width: '80px', height: '80px', borderRadius: '12px', objectFit: 'cover', marginBottom: '15px' }} />
           <h1 style={{ color: 'var(--accent-cyan)', fontSize: '1.8rem' }}>Welcome back, {user.username}!</h1>
           <p style={{ color: 'var(--text-muted)' }}>Here's your darts overview</p>
         </div>
