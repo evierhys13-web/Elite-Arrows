@@ -36,6 +36,7 @@ const CupFixtures = lazy(() => import('./pages/CupFixtures'))
 const Calendar = lazy(() => import('./pages/Calendar'))
 const Guide = lazy(() => import('./pages/Guide'))
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
+const Donations = lazy(() => import('./pages/Donations'))
 const Install = lazy(() => import('./pages/Install'))
 const Analytics = lazy(() => import('./pages/Analytics'))
 const SeedData = lazy(() => import('./pages/SeedData'))
@@ -291,6 +292,11 @@ function AppRoutes() {
       } />
       <Route path="/privacy-policy" element={
         <AppLayout><PrivacyPolicy /></AppLayout>
+      } />
+      <Route path="/donations" element={
+        <ProtectedRoute>
+          <AppLayout><Donations /></AppLayout>
+        </ProtectedRoute>
       } />
       <Route path="/install" element={
         <ProtectedRoute>
