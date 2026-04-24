@@ -1,7 +1,6 @@
 import { useState } from 'react'
 
 export default function Donations() {
-  const [reference, setReference] = useState('')
   const [copied, setCopied] = useState('')
 
   const copyToClipboard = (text) => {
@@ -41,27 +40,9 @@ export default function Donations() {
       <div className="card" style={{ marginBottom: '20px' }}>
         <h3 style={{ color: 'var(--accent-cyan)', marginBottom: '15px' }}>Bank Transfer</h3>
         
-        <div style={{ marginBottom: '15px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text)' }}>
-            What are you donating for? (reference)
-          </label>
-          <input
-            type="text"
-            value={reference}
-            onChange={(e) => setReference(e.target.value)}
-            placeholder="e.g., League fees, Cup entry, General donation, App fees"
-            style={{
-              width: '100%',
-              padding: '12px',
-              fontSize: '1rem',
-              background: 'var(--bg-primary)',
-              border: '2px solid var(--accent-cyan)',
-              borderRadius: '8px',
-              color: 'var(--text)',
-              outline: 'none'
-            }}
-          />
-        </div>
+        <p style={{ marginBottom: '15px', color: 'var(--text)' }}>
+          Put on the reference what you are donating for.
+        </p>
 
         <div style={{ background: 'var(--bg-primary)', borderRadius: '8px', padding: '15px' }}>
           <div style={{ marginBottom: '10px' }}>
@@ -74,20 +55,12 @@ export default function Donations() {
               80249442 {copied === '80249442' && <span style={{ color: 'var(--accent-cyan)' }}> (copied!)</span>}
             </strong>
           </div>
-          <div style={{ marginBottom: '10px' }}>
+          <div>
             <span style={{ color: 'var(--text)' }}>Sort code: </span>
             <strong style={{ color: 'var(--text)', cursor: 'pointer' }} onClick={() => copyToClipboard('600909')}>
               60-09-09 {copied === '600909' && <span style={{ color: 'var(--accent-cyan)' }}> (copied!)</span>}
             </strong>
           </div>
-          {reference && (
-            <div>
-              <span style={{ color: 'var(--text)' }}>Reference: </span>
-              <strong style={{ color: 'var(--accent-cyan)', cursor: 'pointer' }} onClick={() => copyToClipboard(reference)}>
-                {reference} {copied === reference && <span style={{ color: 'var(--accent-cyan)' }}> (copied!)</span>}
-              </strong>
-            </div>
-          )}
         </div>
 
         <p style={{ marginTop: '15px', color: 'var(--text)', fontSize: '0.9rem' }}>
