@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { db, auth, usersCollection, adminDataCollection, fcmTokensCollection, doc, setDoc, getDoc, getDocs, query, collection, orderBy, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, addDoc, updateDoc, deleteDoc, FieldValue, getMessagingInstance, getToken, onMessage, isSupported } from '../firebase'
+import SurveyModal from '../components/SurveyModal'
 
 const AuthContext = createContext(null)
 
@@ -23,6 +24,7 @@ export function AuthProvider({ children }) {
   const [fcmToken, setFcmToken] = useState(null)
   const [unreadCount, setUnreadCount] = useState(0)
   const [news, setNews] = useState([])
+  const [showSurvey, setShowSurvey] = useState(false)
   const unsubscribeRef = useRef(null)
   
   const SENSITIVE_FIELDS = ['password', 'passwordString', 'passwordHash', 'passwordKey', 'passwordStringValue', 'password', 'firebaseId', 'pwd', 'pass', 'passwd']
@@ -304,6 +306,11 @@ export function AuthProvider({ children }) {
             SENSITIVE_FIELDS.forEach(field => delete userData[field])
             const fullUser = { id: userDoc.id, ...userData }
             setUser(fullUser)
+            
+            if (!userData.surveyCompleted) {
+              setShowSurvey(true)
+            }
+            
             localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(fullUser))
           } else {
             const newUserData = {
@@ -322,6 +329,7 @@ export function AuthProvider({ children }) {
               doNotDisturb: false,
               dndEndTime: null,
               eliteTokens: 0,
+              surveyCompleted: false,
               lastSeen: new Date().toISOString(),
               createdAt: new Date().toISOString()
             }
@@ -831,17 +839,29 @@ const cleanUserData = (users) => {
     }
   }, [])
 
+const handleSurveyComplete = () => {
+    setShowSurvey(false)
+    setUser(prev => prev ? { ...prev, surveyCompleted: true } : null)
+  }
+
   return (
-    <AuthContext.Provider value={{ 
-      user, 
+    <AuthContext.Provider value={{
+      user,
+      loading,
       allUsers,
-      loading, 
       notifications,
-      unreadCount,
+      results,
+      fixtures,
+      cups,
+      supportRequests,
+      seasons,
+      dataRefreshTrigger,
+      adminData,
       notificationPermission,
       fcmToken,
-      dataRefreshTrigger,
-      triggerDataRefresh,
+      unreadCount,
+      news,
+      showSurvey,
       requestNotificationPermission,
       registerFCMToken,
       showLocalNotification,
@@ -881,6 +901,14 @@ const cleanUserData = (users) => {
       addToMoneyHistory,
       isAuthenticated: !!user 
     }}>
+      {showSurvey && user && (
+        <SurveyModal
+          isOpen={showSurvey}
+          onComplete={handleSurveyComplete}
+          userId={user.id}
+          userName={user.username}
+        />
+      )}
       {children}
     </AuthContext.Provider>
   )
