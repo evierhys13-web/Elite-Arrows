@@ -32,7 +32,7 @@ export default function Donations() {
 
           <ul style={{ marginBottom: '15px', paddingLeft: '20px' }}>
             <li><strong>App Store & Google Play fees</strong> - £99/year for Apple App Store, £25 one-time for Google Play</li>
-            <li><strong>Domain renewal</strong> - Annual cost of maintaining elite-arrows.co.uk</li>
+            <li><strong>Domain renewal</strong> - £7.99/month for elite-arrows.co.uk</li>
             <li><strong>Transaction fees</strong> - 15% fees on subscriptions when paid through the app on Google Play / Apple App Store</li>
           </ul>
 
