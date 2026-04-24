@@ -1,12 +1,8 @@
 import { useState } from 'react'
 
 export default function Donations() {
-  const [selectedAmount, setSelectedAmount] = useState(null)
-  const [customAmount, setCustomAmount] = useState('')
   const [reference, setReference] = useState('')
   const [copied, setCopied] = useState('')
-
-  const suggestedAmounts = [1, 2, 5, 10, 20]
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text)
@@ -43,75 +39,17 @@ export default function Donations() {
       </div>
 
       <div className="card" style={{ marginBottom: '20px' }}>
-        <h3 style={{ color: 'var(--accent-cyan)', marginBottom: '15px' }}>Choose Amount</h3>
-        
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '15px' }}>
-          {suggestedAmounts.map(amount => (
-            <button
-              key={amount}
-              onClick={() => { setSelectedAmount(amount); setCustomAmount('') }}
-              style={{
-                padding: '12px 20px',
-                background: selectedAmount === amount ? 'var(--accent-cyan)' : 'var(--bg-primary)',
-                color: selectedAmount === amount ? '#000' : 'var(--text)',
-                border: '2px solid var(--accent-cyan)',
-                borderRadius: '8px',
-                fontSize: '1rem',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                minWidth: '70px'
-              }}
-            >
-              £{amount}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ marginBottom: '15px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text)' }}>
-            Custom amount:
-          </label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '1.2rem', color: 'var(--text)' }}>£</span>
-            <input
-              type="number"
-              value={customAmount}
-              onChange={(e) => { setCustomAmount(e.target.value); setSelectedAmount(null) }}
-              placeholder="Enter amount"
-              style={{
-                flex: 1,
-                padding: '12px',
-                fontSize: '1rem',
-                background: 'var(--bg-primary)',
-                border: '2px solid var(--accent-cyan)',
-                borderRadius: '8px',
-                color: 'var(--text)',
-                outline: 'none'
-              }}
-            />
-          </div>
-        </div>
-
-        <div style={{ padding: '15px', background: 'var(--bg-primary)', borderRadius: '8px', textAlign: 'center' }}>
-          <span style={{ color: 'var(--text)', marginRight: '8px' }}>Selected: </span>
-          <span style={{ color: 'var(--accent-cyan)', fontSize: '1.5rem', fontWeight: 'bold' }}>
-            £{customAmount || selectedAmount || '0'}
-          </span>
-        </div>
-      </div>
-
-      <div className="card" style={{ marginBottom: '20px' }}>
         <h3 style={{ color: 'var(--accent-cyan)', marginBottom: '15px' }}>Bank Transfer</h3>
         
         <div style={{ marginBottom: '15px' }}>
           <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text)' }}>
-            What are you donating for?
+            What are you donating for? (reference)
           </label>
           <input
             type="text"
             value={reference}
             onChange={(e) => setReference(e.target.value)}
-            placeholder="e.g., League fees, Cup entry, General donation"
+            placeholder="e.g., League fees, Cup entry, General donation, App fees"
             style={{
               width: '100%',
               padding: '12px',
