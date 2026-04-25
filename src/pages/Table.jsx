@@ -158,15 +158,15 @@ export default function Table() {
                   <tr>
                     <th>#</th>
                     <th>Player</th>
-                    {activeDivision === 'Overall' && <th className="hide-mobile">Div</th>}
+                    {activeDivision === 'Overall' && <th>Div</th>}
                     <th>P</th>
                     <th>W</th>
-                    <th className="hide-mobile">D</th>
-                    <th className="hide-mobile">L</th>
+                    <th>D</th>
+                    <th>L</th>
                     <th>+/-</th>
-                    <th className="hide-mobile">LW</th>
+                    <th>LW</th>
                     <th>Pts</th>
-                    <th className="hide-mobile">Avg</th>
+                    <th>Avg</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -203,20 +203,20 @@ export default function Table() {
                           )}
                         </td>
                         {activeDivision === 'Overall' && (
-                          <td className="hide-mobile">
+                          <td>
                             <span>{DIVISION_EMOJIS[player.displayDivision]}</span>
                           </td>
                         )}
                         <td>{player.stats.played}</td>
                         <td>{player.stats.wins}</td>
-                        <td className="hide-mobile">{player.stats.draws}</td>
-                        <td className="hide-mobile">{player.stats.losses}</td>
+                        <td>{player.stats.draws}</td>
+                        <td>{player.stats.losses}</td>
                         <td style={{ color: legDiff >= 0 ? 'var(--success)' : 'var(--error)' }}>
                           {legDiff > 0 ? '+' : ''}{legDiff}
                         </td>
-                        <td className="hide-mobile">{player.stats.legsWon}</td>
+                        <td>{player.stats.legsWon}</td>
                         <td style={{ fontWeight: '600' }}>{player.stats.points}</td>
-                        <td className="hide-mobile">{player.threeDartAverage?.toFixed(2) || 0}</td>
+                        <td>{player.threeDartAverage?.toFixed(2) || 0}</td>
                       </tr>
                     )
                   })}

@@ -1557,94 +1557,84 @@ textarea:focus-visible {
 
 /* Mobile Table Optimization */
 @media (max-width: 768px) {
-  .hide-mobile {
-    display: none !important;
-  }
-  
   .table-container {
-    overflow-x: hidden;
-    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
   
   .table {
-    font-size: 0.7rem;
+    font-size: 0.6rem;
     width: 100%;
-    min-width: unset;
+    min-width: 100%;
   }
   
   .table th,
   .table td {
-    padding: 8px 4px;
+    padding: 6px 3px;
     white-space: nowrap;
   }
   
   .table th {
-    font-size: 0.65rem;
-    padding: 10px 4px;
+    font-size: 0.55rem;
+    padding: 8px 3px;
   }
   
   .table td {
-    font-size: 0.7rem;
-  }
-  
-  .table th:first-child,
-  .table td:first-child {
-    width: 30px;
-    text-align: center;
+    font-size: 0.6rem;
   }
   
   .table th:nth-child(2),
   .table td:nth-child(2) {
-    max-width: 120px;
+    max-width: 80px;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   
   .card {
-    padding: 8px;
+    padding: 6px;
   }
   
   .page {
-    padding: 10px;
+    padding: 8px;
   }
   
   .page-header {
-    margin-bottom: 12px;
-  }
-  
-  .page-title {
-    font-size: 1.2rem;
-  }
-  
-  .division-tabs {
-    gap: 4px;
     margin-bottom: 10px;
   }
   
+  .page-title {
+    font-size: 1.1rem;
+  }
+  
+  .division-tabs {
+    gap: 3px;
+    margin-bottom: 8px;
+  }
+  
   .division-tab {
-    padding: 6px 8px;
-    font-size: 0.65rem;
+    padding: 5px 6px;
+    font-size: 0.6rem;
   }
   
   .home-stats-grid {
     grid-template-columns: repeat(2, 1fr) !important;
-    gap: 6px !important;
+    gap: 4px !important;
   }
   
   .stat-card {
-    padding: 8px !important;
+    padding: 6px !important;
   }
   
   .stat-value {
-    font-size: 1rem !important;
+    font-size: 0.9rem !important;
   }
   
   .stat-label {
-    font-size: 0.65rem !important;
+    font-size: 0.6rem !important;
   }
   
   .admin-badge {
-    font-size: 0.55rem !important;
-    padding: 1px 3px !important;
+    font-size: 0.5rem !important;
+    padding: 1px 2px !important;
   }
 }
