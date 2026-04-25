@@ -1576,23 +1576,23 @@ textarea:focus-visible {
   }
   
   .table {
-    font-size: 0.75rem;
-    min-width: 600px;
+    font-size: 0.65rem;
+    min-width: 500px;
   }
   
   .table th,
   .table td {
-    padding: 8px 6px;
+    padding: 6px 4px;
     white-space: nowrap;
   }
   
   .table th {
-    font-size: 0.7rem;
-    padding: 10px 6px;
+    font-size: 0.6rem;
+    padding: 8px 4px;
   }
   
   .table td {
-    font-size: 0.75rem;
+    font-size: 0.65rem;
   }
   
   .card {
