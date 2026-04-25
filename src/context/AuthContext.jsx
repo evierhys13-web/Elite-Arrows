@@ -844,6 +844,10 @@ const handleSurveyComplete = () => {
     setUser(prev => prev ? { ...prev, surveyCompleted: true } : null)
   }
 
+  const handleSurveySkip = () => {
+    setShowSurvey(false)
+  }
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -905,6 +909,7 @@ const handleSurveyComplete = () => {
         <SurveyModal
           isOpen={showSurvey}
           onComplete={handleSurveyComplete}
+          onSkip={handleSurveySkip}
           userId={user.id}
           userName={user.username}
         />

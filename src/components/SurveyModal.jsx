@@ -81,24 +81,45 @@ const SURVEY_QUESTIONS = [
   }
 ]
 
-export default function SurveyModal({ isOpen, onComplete, userId, userName }) {
+export default function SurveyModal({ isOpen, onComplete, onSkip, userId, userName }) {
   const [currentStep, setCurrentStep] = useState(0)
   const [responses, setResponses] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+
+  // Load saved responses from localStorage
+  useEffect(() => {
+    if (isOpen && userId) {
+      const saved = localStorage.getItem(`survey_${userId}`)
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved)
+          setResponses(parsed.responses || {})
+          setCurrentStep(parsed.currentStep || 0)
+        } catch (e) {
+          console.error('Failed to load saved survey:', e)
+        }
+      } else {
+        setCurrentStep(0)
+        setResponses({})
+      }
+      setError('')
+    }
+  }, [isOpen, userId])
+
+  // Save responses to localStorage as user progresses
+  useEffect(() => {
+    if (userId && Object.keys(responses).length > 0) {
+      localStorage.setItem(`survey_${userId}`, JSON.stringify({ responses, currentStep }))
+    }
+  }, [responses, currentStep, userId])
 
   // Filter questions based on conditions
   const filteredQuestions = SURVEY_QUESTIONS.filter(q => !q.condition || q.condition(responses))
   const question = filteredQuestions[currentStep]
   const progress = filteredQuestions.length > 0 ? ((currentStep + 1) / filteredQuestions.length) * 100 : 0
 
-  useEffect(() => {
-    if (isOpen) {
-      setCurrentStep(0)
-      setResponses({})
-      setError('')
-    }
-  }, [isOpen])
+  if (!isOpen) return null
 
   const handleResponse = (value) => {
     setResponses(prev => ({ ...prev, [question.id]: value }))
@@ -148,20 +169,34 @@ export default function SurveyModal({ isOpen, onComplete, userId, userName }) {
 
       await addDoc(collection(db, 'surveys'), surveyData)
       
-      await updateDoc(doc(db, 'users', userId), {
-        surveyCompleted: true
-      })
+      // Mark as completed in Firestore (don't block user if this fails)
+      try {
+        await updateDoc(doc(db, 'users', userId), {
+          surveyCompleted: true
+        })
+      } catch (e) {
+        console.error('Failed to update user survey status:', e)
+      }
+
+      // Clear saved survey from localStorage
+      localStorage.removeItem(`survey_${userId}`)
 
       onComplete()
     } catch (err) {
       console.error('Survey submit error:', err)
-      setError('Failed to submit. Please try again.')
+      setError('Failed to submit. Your answers are saved - try again later.')
     } finally {
       setSubmitting(false)
     }
   }
 
-  if (!isOpen) return null
+  const handleSkip = () => {
+    // Save current progress so user can return later
+    if (userId && Object.keys(responses).length > 0) {
+      localStorage.setItem(`survey_${userId}`, JSON.stringify({ responses, currentStep }))
+    }
+    onSkip()
+  }
 
   return (
     <div style={{
@@ -365,6 +400,24 @@ export default function SurveyModal({ isOpen, onComplete, userId, userName }) {
           </button>
         </div>
 
+        <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
+          <button
+            onClick={handleSkip}
+            style={{
+              flex: 1,
+              padding: '14px',
+              background: 'transparent',
+              border: '2px solid var(--border)',
+              borderRadius: '8px',
+              color: 'var(--text)',
+              cursor: 'pointer',
+              fontSize: '0.9rem'
+            }}
+          >
+            Skip for now
+          </button>
+        </div>
+
         <p style={{
           textAlign: 'center',
           marginTop: '16px',
@@ -372,7 +425,7 @@ export default function SurveyModal({ isOpen, onComplete, userId, userName }) {
           fontSize: '0.85rem',
           opacity: 0.7
         }}>
-          You must complete this survey to continue using the app
+          Your progress is saved automatically. You can return to it later in Settings.
         </p>
       </div>
     </div>
