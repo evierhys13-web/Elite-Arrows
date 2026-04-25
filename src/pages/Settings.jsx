@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
-import { auth, sendPasswordResetEmail } from '../firebase'
+import { auth, sendPasswordResetEmail, db, doc, deleteDoc, usersCollection } from '../firebase'
 
 export default function Settings() {
   const { signOut, user, updateUser, getAllUsers, notifications: contextNotifications } = useAuth()
@@ -66,6 +66,38 @@ export default function Settings() {
 
   const allUsers = getAllUsers()
   const blockedPlayers = allUsers.filter(u => (user?.blockedUsers || []).includes(u.id))
+
+  const handleDeleteAccount = async () => {
+    if (!confirm('Are you sure you want to delete your account? This action cannot be undone. All your data including match history, stats, and messages will be permanently deleted.')) return
+    if (!confirm('FINAL WARNING: This will permanently delete your Elite Arrows account. Type "DELETE" in the next prompt to confirm.')) return
+    
+    const confirmation = prompt('Type DELETE to confirm account deletion:')
+    if (confirmation !== 'DELETE') {
+      alert('Account deletion cancelled.')
+      return
+    }
+
+    try {
+      // Delete user document from Firestore
+      await deleteDoc(doc(db, 'users', user.id))
+      
+      // Delete user from Firebase Auth
+      await auth.currentUser.delete()
+      
+      // Clear local storage
+      localStorage.removeItem('eliteArrowsCurrentUser')
+      
+      alert('Your account has been permanently deleted.')
+      signOut()
+      navigate('/auth')
+    } catch (error) {
+      if (error.code === 'auth/requires-recent-login') {
+        alert('For security, please log out and log back in, then try deleting your account again.')
+      } else {
+        alert('Error deleting account: ' + error.message)
+      }
+    }
+  }
 
   const handleSignOut = () => {
     signOut()
@@ -243,8 +275,16 @@ export default function Settings() {
             </div>
           </div>
 
+          <div className="card" style={{ marginBottom: '20px' }}>
+            <h3 className="card-title" style={{ color: 'var(--error)' }}>Danger Zone</h3>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
+              Once you delete your account, there is no going back. Please be certain.
+            </p>
+            <button className="btn btn-danger btn-block" onClick={handleDeleteAccount}>Delete My Account</button>
+          </div>
+
           <div className="card">
-            <button className="btn btn-danger btn-block" onClick={handleSignOut}>Logout</button>
+            <button className="btn btn-secondary btn-block" onClick={handleSignOut}>Logout</button>
           </div>
         </div>
       )}
