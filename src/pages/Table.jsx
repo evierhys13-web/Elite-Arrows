@@ -89,10 +89,17 @@ export default function Table() {
           stats: playerStats[p.id] || { played: 0, wins: 0, draws: 0, losses: 0, legsWon: 0, legsLost: 0, points: 0 }
         }))
         .sort((a, b) => {
-          if (b.stats.points !== a.stats.points) return b.stats.points - a.stats.points
-          const aLegDiff = a.stats.legsWon - a.stats.legsLost
-          const bLegDiff = b.stats.legsWon - b.stats.legsLost
-          return bLegDiff - aLegDiff
+          const aPoints = a.stats.points || 0
+          const bPoints = b.stats.points || 0
+          if (aPoints > 0 || bPoints > 0) {
+            if (bPoints !== aPoints) return bPoints - aPoints
+            const aLegDiff = a.stats.legsWon - a.stats.legsLost
+            const bLegDiff = b.stats.legsWon - b.stats.legsLost
+            return bLegDiff - aLegDiff
+          }
+          const aAvg = a.threeDartAverage || 0
+          const bAvg = b.threeDartAverage || 0
+          return bAvg - aAvg
         })
     : allUsers
         .filter(u => u.division === activeDivision)
@@ -102,10 +109,17 @@ export default function Table() {
           stats: playerStats[p.id] || { played: 0, wins: 0, draws: 0, losses: 0, legsWon: 0, legsLost: 0, points: 0 }
         }))
         .sort((a, b) => {
-          if (b.stats.points !== a.stats.points) return b.stats.points - a.stats.points
-          const aLegDiff = a.stats.legsWon - a.stats.legsLost
-          const bLegDiff = b.stats.legsWon - b.stats.legsLost
-          return bLegDiff - aLegDiff
+          const aPoints = a.stats.points || 0
+          const bPoints = b.stats.points || 0
+          if (aPoints > 0 || bPoints > 0) {
+            if (bPoints !== aPoints) return bPoints - aPoints
+            const aLegDiff = a.stats.legsWon - a.stats.legsLost
+            const bLegDiff = b.stats.legsWon - b.stats.legsLost
+            return bLegDiff - aLegDiff
+          }
+          const aAvg = a.threeDartAverage || 0
+          const bAvg = b.threeDartAverage || 0
+          return bAvg - aAvg
         })
 
   const headerEmoji = DIVISION_EMOJIS[activeDivision] || DIVISION_EMOJIS['Overall']
