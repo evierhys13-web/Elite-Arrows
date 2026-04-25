@@ -214,11 +214,10 @@ export default function Sidebar() {
   
   const freeTierItems = [
     { path: '/home', label: 'Home', icon: HomeIcon },
-    { path: '/guide', label: 'Guide', icon: HelpIcon },
     { path: '/table', label: 'League Table', icon: TableIcon },
     { path: '/players', label: 'Players', icon: UsersIcon },
-    { path: '/leaderboards', label: 'Leaderboards', icon: TrophyIcon },
-    { path: '/profile', label: 'Profile', icon: UserIcon },
+    { path: '/results', label: 'Results', icon: TrophyIcon },
+    { path: '/match-log', label: 'Match Log', icon: HistoryIcon },
   ]
 
   const utilityItems = [
@@ -226,31 +225,33 @@ export default function Sidebar() {
   ]
 
   const subscriberItems = [
+    { path: '/submit-result', label: 'Submit Result', icon: PlusCircleIcon },
     { path: '/fixtures', label: 'Fixtures', icon: CalendarIcon },
     { path: '/calendar', label: 'Calendar', icon: CalendarIcon },
-    { path: '/results', label: 'Results', icon: TrophyIcon },
-    { path: '/match-log', label: 'Match Log', icon: HistoryIcon },
-    { path: '/submit-result', label: 'Submit Result', icon: PlusCircleIcon },
     { path: '/cups', label: 'Cups', icon: TrophyIcon },
     { path: '/tournaments', label: 'Tournaments', icon: TrophyIcon2 },
     { path: '/rewards', label: 'Rewards', icon: GiftIcon },
     { path: '/chat', label: 'Chat', icon: MessageIcon },
     { path: '/games', label: 'Games', icon: GamepadIcon },
+    { path: '/leaderboards', label: 'Leaderboards', icon: TrophyIcon },
     { path: '/analytics', label: 'Analytics', icon: BarChartIcon },
   ]
 
   const adminItems = [
     { path: '/admin', label: 'Admin Panel', icon: ShieldIcon },
     { path: '/surveys', label: 'Survey Results', icon: GiftIcon },
+    { path: '/season-management', label: 'Seasons', icon: CalendarIcon },
   ]
 
   const bottomItems = [
+    { path: '/profile', label: 'Profile', icon: UserIcon },
+    { path: '/guide', label: 'Guide', icon: HelpIcon },
     { path: '/settings', label: 'Settings', icon: SettingsIcon },
+    { path: '/subscription', label: 'Subscription', icon: CreditCardIcon },
     { path: '/contact', label: 'Contact', icon: MailIcon },
     { path: '/support', label: 'Support', icon: HelpIcon },
     { path: '/privacy-policy', label: 'Privacy Policy', icon: HelpIcon },
     { path: '/donations', label: 'Donations', icon: HeartIcon },
-    { path: '/subscription', label: 'Subscription', icon: CreditCardIcon },
   ]
   
   let navItems = [...freeTierItems]
