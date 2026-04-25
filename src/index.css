@@ -1590,6 +1590,72 @@ textarea:focus-visible {
     text-overflow: ellipsis;
   }
   
+  /* Submit Result Mobile Optimization */
+  .submit-result-form .match-setup {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+  
+  .submit-result-form .match-setup .vs-text {
+    text-align: center;
+    font-size: 0.9rem;
+  }
+  
+  .submit-result-form .player-select {
+    width: 100% !important;
+  }
+  
+  .submit-result-form .player-select label {
+    font-size: 0.7rem;
+  }
+  
+  .submit-result-form .player-select select,
+  .submit-result-form .player-select div {
+    font-size: 0.75rem;
+    padding: 8px !important;
+  }
+  
+  .submit-result-form > div[style*="display: flex"] {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+  
+  .submit-result-form > div[style*="display: flex"] > div {
+    width: 100% !important;
+    flex: unset !important;
+  }
+  
+  .submit-result-form h4 {
+    font-size: 0.85rem;
+    margin-bottom: 10px !important;
+  }
+  
+  .submit-result-form .form-group label {
+    font-size: 0.7rem;
+  }
+  
+  .submit-result-form .form-group input,
+  .submit-result-form .form-group select {
+    font-size: 0.75rem;
+    padding: 8px !important;
+  }
+  
+  .submit-result-form > div[style*="background: var(--bg-secondary)"] {
+    padding: 10px !important;
+    margin-bottom: 15px !important;
+  }
+  
+  .submit-result-form > div[style*="background: var(--bg-secondary)"] > div[style*="display: flex"] {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  
+  .submit-result-form .btn-block {
+    font-size: 0.8rem;
+    padding: 10px !important;
+  }
+  
+  /* General Mobile Page Optimization */
   .card {
     padding: 6px;
   }
@@ -1636,5 +1702,21 @@ textarea:focus-visible {
   .admin-badge {
     font-size: 0.5rem !important;
     padding: 1px 2px !important;
+  }
+  
+  .form-group {
+    margin-bottom: 10px !important;
+  }
+  
+  .form-group label {
+    font-size: 0.7rem;
+    margin-bottom: 4px !important;
+  }
+  
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    font-size: 0.75rem;
+    padding: 8px !important;
   }
 }
