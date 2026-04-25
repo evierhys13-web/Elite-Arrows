@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { db, chatMessagesCollection, doc, setDoc, query, where, onSnapshot } from '../firebase'
+import { db, chatMessagesCollection, doc, setDoc, deleteDoc, query, where, onSnapshot } from '../firebase'
 
 export default function Chat() {
   const { user, getAllUsers } = useAuth()
@@ -176,7 +176,17 @@ export default function Chat() {
 
   const handleReply = (msg) => setReplyTo(msg)
   const handleEdit = (msg) => { if (msg.senderId === user.id) { setEditingMessage(msg); setNewMessage(msg.text) }}
-  const handleDelete = (msgId) => { if (confirm('Delete this message?')) setMessages(prev => prev.filter(m => m.id !== msgId)) }
+  const handleDelete = async (msg) => {
+    if (!confirm('Delete this message?')) return
+    const isOwner = msg.senderId === user.id
+    const isAdmin = user.isAdmin || user.isTournamentAdmin
+    if (!isOwner && !isAdmin) return
+    try {
+      await deleteDoc(doc(db, 'chatMessages', msg.id.toString()))
+    } catch (err) {
+      alert('Failed to delete message')
+    }
+  }
 
   const getChatTitle = () => {
     if (activeChat === 'announcements') return 'Announcements'
@@ -370,8 +380,11 @@ export default function Chat() {
                 {msg.senderId === user.id && (
                   <>
                     <button style={{ fontSize: '0.65rem', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0 4px' }} onClick={() => handleEdit(msg)}>Edit</button>
-                    <button style={{ fontSize: '0.65rem', background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer', padding: 0 }} onClick={() => handleDelete(msg.id)}>Delete</button>
+                    <button style={{ fontSize: '0.65rem', background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer', padding: 0 }} onClick={() => handleDelete(msg)}>Delete</button>
                   </>
+                )}
+                {(user.isAdmin || user.isTournamentAdmin) && msg.senderId !== user.id && (
+                  <button style={{ fontSize: '0.65rem', background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer', padding: 0 }} onClick={() => handleDelete(msg)}>Delete</button>
                 )}
               </div>
             </div>
