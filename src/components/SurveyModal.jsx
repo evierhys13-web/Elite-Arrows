@@ -64,6 +64,20 @@ const SURVEY_QUESTIONS = [
     question: 'Any additional feedback?',
     type: 'textarea',
     placeholder: 'Anything else you want to say...'
+  },
+  {
+    id: 'signUpIssues',
+    question: 'Why was the sign-up process not great?',
+    type: 'textarea',
+    placeholder: 'What made signing up difficult...?',
+    condition: (responses) => responses.signUpSmooth !== undefined && responses.signUpSmooth < 8
+  },
+  {
+    id: 'appDifficult',
+    question: 'What is difficult to use?',
+    type: 'textarea',
+    placeholder: 'What parts of the app are confusing or hard to use...?',
+    condition: (responses) => responses.easyToUse !== undefined && responses.easyToUse < 8
   }
 ]
 
@@ -73,8 +87,10 @@ export default function SurveyModal({ isOpen, onComplete, userId, userName }) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
-  const question = SURVEY_QUESTIONS[currentStep]
-  const progress = ((currentStep + 1) / SURVEY_QUESTIONS.length) * 100
+  // Filter questions based on conditions
+  const filteredQuestions = SURVEY_QUESTIONS.filter(q => !q.condition || q.condition(responses))
+  const question = filteredQuestions[currentStep]
+  const progress = filteredQuestions.length > 0 ? ((currentStep + 1) / filteredQuestions.length) * 100 : 0
 
   useEffect(() => {
     if (isOpen) {
@@ -100,7 +116,11 @@ export default function SurveyModal({ isOpen, onComplete, userId, userName }) {
       return
     }
     
-    if (currentStep < SURVEY_QUESTIONS.length - 1) {
+    // Re-filter questions after each answer to include/exclude conditional questions
+    const newFilteredQuestions = SURVEY_QUESTIONS.filter(q => !q.condition || q.condition({ ...responses, [question.id]: responses[question.id] }))
+    const newQuestionIndex = filteredQuestions.findIndex(q => q.id === question.id)
+    
+    if (newQuestionIndex < newFilteredQuestions.length - 1) {
       setCurrentStep(prev => prev + 1)
     } else {
       submitSurvey()
@@ -177,7 +197,7 @@ export default function SurveyModal({ isOpen, onComplete, userId, userName }) {
               Feedback Survey
             </h2>
             <span style={{ color: 'var(--text)', fontSize: '0.9rem' }}>
-              {currentStep + 1} / {SURVEY_QUESTIONS.length}
+              {currentStep + 1} / {filteredQuestions.length}
             </span>
           </div>
           <div style={{
@@ -341,7 +361,7 @@ export default function SurveyModal({ isOpen, onComplete, userId, userName }) {
               opacity: submitting ? 0.7 : 1
             }}
           >
-            {submitting ? 'Submitting...' : currentStep === SURVEY_QUESTIONS.length - 1 ? 'Submit' : 'Next'}
+            {submitting ? 'Submitting...' : currentStep === filteredQuestions.length - 1 ? 'Submit' : 'Next'}
           </button>
         </div>
 
