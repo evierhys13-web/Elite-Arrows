@@ -3,6 +3,6 @@
   "target": {
     "namespace": "android_app",
     "package_name": "com.elitearrows.app",
-    "sha256_cert_fingerprints": ["PLACEHOLDER_SHA256"]
+    "sha256_cert_fingerprints": ["36:E7:15:69:72:EE:5A:1B:58:E6:11:29:4A:B4:A4:F5:BA:9D:C5:A1:4B:32:54:A5:05:FF:BE:3F:1C:84:4A:03"]
   }
 }]
