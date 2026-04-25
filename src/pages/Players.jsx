@@ -80,12 +80,12 @@ export default function Players() {
                       width: '10px', 
                       height: '10px', 
                       borderRadius: '50%',
-                      background: player.isOnline ? 'var(--success)' : 'var(--text-muted)',
-                      border: player.isOnline ? '2px solid var(--bg-primary)' : '2px solid var(--bg-secondary)'
+                      background: player.isOnline && player.lastSeen && (Date.now() - new Date(player.lastSeen).getTime()) < 5 * 60 * 1000 ? 'var(--success)' : 'var(--text-muted)',
+                      border: player.isOnline && player.lastSeen && (Date.now() - new Date(player.lastSeen).getTime()) < 5 * 60 * 1000 ? '2px solid var(--bg-primary)' : '2px solid var(--bg-secondary)'
                     }} />
                   )}
                   {player.showOnlineStatus !== false ? (
-                    player.isOnline ? (
+                    player.isOnline && player.lastSeen && (Date.now() - new Date(player.lastSeen).getTime()) < 5 * 60 * 1000 ? (
                       <span style={{ fontSize: '0.85rem', color: 'var(--success)' }}>Online</span>
                     ) : player.lastSeen ? (
                       <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>

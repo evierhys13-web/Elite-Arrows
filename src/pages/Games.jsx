@@ -29,8 +29,10 @@ export default function Games() {
   useEffect(() => {
     const q = query(collection(db, 'users'), where('isOnline', '==', true))
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const online = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-      setOnlinePlayers(online.filter(u => u.id !== user?.id))
+      const online = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(u => u.lastSeen && (Date.now() - new Date(u.lastSeen).getTime()) < 5 * 60 * 1000 && u.id !== user?.id)
+      setOnlinePlayers(online)
     })
     return () => unsubscribe()
   }, [user?.id])

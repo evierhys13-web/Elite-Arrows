@@ -281,10 +281,10 @@ export default function Chat() {
                         width: '8px', 
                         height: '8px', 
                         borderRadius: '50%',
-                        background: chat.isOnline ? 'var(--success)' : 'var(--text-muted)'
+                        background: chat.isOnline && chat.lastSeen && (Date.now() - new Date(chat.lastSeen).getTime()) < 5 * 60 * 1000 ? 'var(--success)' : 'var(--text-muted)'
                       }} />
-                      <span style={{ fontSize: '0.75rem', color: chat.isOnline ? 'var(--success)' : 'var(--text-muted)' }}>
-                        {chat.isOnline ? 'Online' : 'Offline'}
+                      <span style={{ fontSize: '0.75rem', color: chat.isOnline && chat.lastSeen && (Date.now() - new Date(chat.lastSeen).getTime()) < 5 * 60 * 1000 ? 'var(--success)' : 'var(--text-muted)' }}>
+                        {chat.isOnline && chat.lastSeen && (Date.now() - new Date(chat.lastSeen).getTime()) < 5 * 60 * 1000 ? 'Online' : 'Offline'}
                       </span>
                     </div>
                   )}
