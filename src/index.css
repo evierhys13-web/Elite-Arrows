@@ -1557,89 +1557,94 @@ textarea:focus-visible {
 
 /* Mobile Table Optimization */
 @media (max-width: 768px) {
-  .table-container {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    border-radius: 8px;
-    position: relative;
+  .hide-mobile {
+    display: none !important;
   }
   
-  .table-container::after {
-    content: '← →';
-    position: absolute;
-    bottom: 8px;
-    right: 12px;
-    font-size: 0.7rem;
-    color: var(--text-muted);
-    opacity: 0.6;
-    pointer-events: none;
+  .table-container {
+    overflow-x: hidden;
+    width: 100%;
   }
   
   .table {
-    font-size: 0.65rem;
-    min-width: 500px;
+    font-size: 0.7rem;
+    width: 100%;
+    min-width: unset;
   }
   
   .table th,
   .table td {
-    padding: 6px 4px;
+    padding: 8px 4px;
     white-space: nowrap;
   }
   
   .table th {
-    font-size: 0.6rem;
-    padding: 8px 4px;
+    font-size: 0.65rem;
+    padding: 10px 4px;
   }
   
   .table td {
-    font-size: 0.65rem;
+    font-size: 0.7rem;
+  }
+  
+  .table th:first-child,
+  .table td:first-child {
+    width: 30px;
+    text-align: center;
+  }
+  
+  .table th:nth-child(2),
+  .table td:nth-child(2) {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   
   .card {
-    padding: 12px;
+    padding: 8px;
   }
   
   .page {
-    padding: 12px;
+    padding: 10px;
   }
   
   .page-header {
-    margin-bottom: 16px;
+    margin-bottom: 12px;
   }
   
   .page-title {
-    font-size: 1.3rem;
+    font-size: 1.2rem;
   }
   
   .division-tabs {
     gap: 4px;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
   }
   
   .division-tab {
-    padding: 6px 10px;
-    font-size: 0.7rem;
+    padding: 6px 8px;
+    font-size: 0.65rem;
   }
   
   .home-stats-grid {
     grid-template-columns: repeat(2, 1fr) !important;
-    gap: 8px !important;
+    gap: 6px !important;
   }
   
   .stat-card {
-    padding: 10px !important;
+    padding: 8px !important;
   }
   
   .stat-value {
-    font-size: 1.2rem !important;
+    font-size: 1rem !important;
   }
   
   .stat-label {
-    font-size: 0.7rem !important;
+    font-size: 0.65rem !important;
   }
   
   .admin-badge {
-    font-size: 0.6rem !important;
-    padding: 2px 4px !important;
+    font-size: 0.55rem !important;
+    padding: 1px 3px !important;
   }
 }

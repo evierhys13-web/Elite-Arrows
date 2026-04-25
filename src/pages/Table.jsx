@@ -156,17 +156,17 @@ export default function Table() {
               <table className="table">
                 <thead>
                   <tr>
-                    <th>Pos</th>
+                    <th>#</th>
                     <th>Player</th>
-                    {activeDivision === 'Overall' && <th>Div</th>}
+                    {activeDivision === 'Overall' && <th className="hide-mobile">Div</th>}
                     <th>P</th>
                     <th>W</th>
-                    <th>D</th>
-                    <th>L</th>
+                    <th className="hide-mobile">D</th>
+                    <th className="hide-mobile">L</th>
                     <th>+/-</th>
-                    <th>LW</th>
+                    <th className="hide-mobile">LW</th>
                     <th>Pts</th>
-                    <th>Avg</th>
+                    <th className="hide-mobile">Avg</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -183,7 +183,7 @@ export default function Table() {
                         borderLeft: isPromotionCandidate ? '3px solid #22c55e' : isRelegationCandidate ? '3px solid #ef4444' : 'none'
                       }}>
                         <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                             {index + 1}
                             {isPromotionCandidate && (
                               <span style={{ color: '#22c55e', fontWeight: 'bold' }}>↑</span>
@@ -196,30 +196,27 @@ export default function Table() {
                         <td>
                           {player.dartCounterUsername || player.username}
                           {player.id === user.id && (
-                            <span className="admin-badge" style={{ marginLeft: '8px' }}>You</span>
+                            <span className="admin-badge" style={{ marginLeft: '4px' }}>You</span>
                           )}
                           {player.isAdmin && (
-                            <span className="admin-badge" style={{ marginLeft: '8px', background: 'var(--accent-cyan)' }}>Admin</span>
+                            <span className="admin-badge" style={{ marginLeft: '4px', background: 'var(--accent-cyan)' }}>A</span>
                           )}
                         </td>
                         {activeDivision === 'Overall' && (
-                          <td>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <span>{DIVISION_EMOJIS[player.displayDivision]}</span>
-                              <span>{player.displayDivision}</span>
-                            </div>
+                          <td className="hide-mobile">
+                            <span>{DIVISION_EMOJIS[player.displayDivision]}</span>
                           </td>
                         )}
                         <td>{player.stats.played}</td>
                         <td>{player.stats.wins}</td>
-                        <td>{player.stats.draws}</td>
-                        <td>{player.stats.losses}</td>
+                        <td className="hide-mobile">{player.stats.draws}</td>
+                        <td className="hide-mobile">{player.stats.losses}</td>
                         <td style={{ color: legDiff >= 0 ? 'var(--success)' : 'var(--error)' }}>
                           {legDiff > 0 ? '+' : ''}{legDiff}
                         </td>
-                        <td>{player.stats.legsWon}</td>
+                        <td className="hide-mobile">{player.stats.legsWon}</td>
                         <td style={{ fontWeight: '600' }}>{player.stats.points}</td>
-                        <td>{player.threeDartAverage?.toFixed(2) || 0}</td>
+                        <td className="hide-mobile">{player.threeDartAverage?.toFixed(2) || 0}</td>
                       </tr>
                     )
                   })}
