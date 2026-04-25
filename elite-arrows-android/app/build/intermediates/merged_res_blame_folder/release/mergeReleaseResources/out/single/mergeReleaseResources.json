@@ -1,0 +1,50 @@
+[
+    {
+        "merged": "com.elitearrows.app-release-40:/mipmap-xxhdpi_ic_launcher_round.png.flat",
+        "source": "com.elitearrows.app-main-41:/mipmap-xxhdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "com.elitearrows.app-release-40:/mipmap-xxxhdpi_ic_launcher_round.png.flat",
+        "source": "com.elitearrows.app-main-41:/mipmap-xxxhdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "com.elitearrows.app-release-40:/mipmap-xxxhdpi_ic_launcher.png.flat",
+        "source": "com.elitearrows.app-main-41:/mipmap-xxxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.elitearrows.app-release-40:/mipmap-hdpi_ic_launcher.png.flat",
+        "source": "com.elitearrows.app-main-41:/mipmap-hdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.elitearrows.app-release-40:/mipmap-mdpi_ic_launcher_round.png.flat",
+        "source": "com.elitearrows.app-main-41:/mipmap-mdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "com.elitearrows.app-release-40:/drawable_splash.xml.flat",
+        "source": "com.elitearrows.app-main-41:/drawable/splash.xml"
+    },
+    {
+        "merged": "com.elitearrows.app-release-40:/xml_filepaths.xml.flat",
+        "source": "com.elitearrows.app-main-41:/xml/filepaths.xml"
+    },
+    {
+        "merged": "com.elitearrows.app-release-40:/mipmap-mdpi_ic_launcher.png.flat",
+        "source": "com.elitearrows.app-main-41:/mipmap-mdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.elitearrows.app-release-40:/mipmap-hdpi_ic_launcher_round.png.flat",
+        "source": "com.elitearrows.app-main-41:/mipmap-hdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "com.elitearrows.app-release-40:/mipmap-xhdpi_ic_launcher_round.png.flat",
+        "source": "com.elitearrows.app-main-41:/mipmap-xhdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "com.elitearrows.app-release-40:/mipmap-xxhdpi_ic_launcher.png.flat",
+        "source": "com.elitearrows.app-main-41:/mipmap-xxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.elitearrows.app-release-40:/mipmap-xhdpi_ic_launcher.png.flat",
+        "source": "com.elitearrows.app-main-41:/mipmap-xhdpi/ic_launcher.png"
+    }
+]

@@ -4,7 +4,7 @@ import SurveyModal from '../components/SurveyModal'
 
 const AuthContext = createContext(null)
 
-const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
+const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com', 'test@elitearrows.co.uk']
 
 export const DIVISIONS = ['Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Development']
 

@@ -1,0 +1,20 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.elitearrows.app-mergeReleaseResources-38:/values-hdpi-v4/values-hdpi-v4.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\XJ21c\\.gradle\\caches\\9.4.1\\transforms\\2ab7cfd57f073eb7d4daaa3edd9b89f5\\transformed\\appcompat-1.7.0\\res\\values-hdpi-v4\\values-hdpi-v4.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endLines": "6",
+                        "endColumns": "13",
+                        "endOffsets": "327"
+                    }
+                }
+            ]
+        }
+    ]
+}
