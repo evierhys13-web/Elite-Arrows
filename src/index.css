@@ -1554,3 +1554,92 @@ textarea:focus-visible {
   font-size: 0.9rem;
   margin: 0;
 }
+
+/* Mobile Table Optimization */
+@media (max-width: 768px) {
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+    position: relative;
+  }
+  
+  .table-container::after {
+    content: '← →';
+    position: absolute;
+    bottom: 8px;
+    right: 12px;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    opacity: 0.6;
+    pointer-events: none;
+  }
+  
+  .table {
+    font-size: 0.75rem;
+    min-width: 600px;
+  }
+  
+  .table th,
+  .table td {
+    padding: 8px 6px;
+    white-space: nowrap;
+  }
+  
+  .table th {
+    font-size: 0.7rem;
+    padding: 10px 6px;
+  }
+  
+  .table td {
+    font-size: 0.75rem;
+  }
+  
+  .card {
+    padding: 12px;
+  }
+  
+  .page {
+    padding: 12px;
+  }
+  
+  .page-header {
+    margin-bottom: 16px;
+  }
+  
+  .page-title {
+    font-size: 1.3rem;
+  }
+  
+  .division-tabs {
+    gap: 4px;
+    margin-bottom: 12px;
+  }
+  
+  .division-tab {
+    padding: 6px 10px;
+    font-size: 0.7rem;
+  }
+  
+  .home-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+  
+  .stat-card {
+    padding: 10px !important;
+  }
+  
+  .stat-value {
+    font-size: 1.2rem !important;
+  }
+  
+  .stat-label {
+    font-size: 0.7rem !important;
+  }
+  
+  .admin-badge {
+    font-size: 0.6rem !important;
+    padding: 2px 4px !important;
+  }
+}
