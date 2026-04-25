@@ -268,6 +268,14 @@ export default function Sidebar() {
   
   navItems = [...navItems, ...utilityItems]
 
+  // Group items for display with category headers
+  const navigationGroups = [
+    { title: 'League', items: freeTierItems },
+    ...(isSubscribed || isAdmin ? [{ title: 'Features', items: subscriberItems }] : []),
+    ...(isAdmin ? [{ title: 'Admin', items: adminItems }] : []),
+    { title: 'Account', items: bottomItems },
+  ]
+
   const showAdmin = isAdmin
 
   return (
@@ -336,23 +344,41 @@ export default function Sidebar() {
         {(isSubscribed || isAdmin) && <GlobalSearch />}
 
         <nav id="sidebar-nav" className="sidebar-nav" aria-label="Sidebar navigation">
-          {navItems.map((item) => {
-            const isActive = window.location.pathname === item.path || (item.path === '/home' && window.location.pathname === '/')
-            return (
-              <button
-                key={item.path}
-                className={`nav-item ${isActive ? 'active' : ''}`}
-                onClick={() => {
-                  navigate(item.path)
-                  setIsOpen(false)
-                }}
-                aria-current={isActive ? 'page' : undefined}
-              >
-                <item.icon />
-                <span>{item.label}</span>
-              </button>
-            )
-          })}
+          {navigationGroups.map((group, groupIndex) => (
+            <div key={group.title}>
+              <div style={{
+                padding: '10px 16px 6px',
+                fontSize: '0.7rem',
+                fontWeight: '700',
+                textTransform: 'uppercase',
+                letterSpacing: '1.5px',
+                color: 'var(--accent-cyan)',
+                opacity: 0.8
+              }}>
+                {group.title}
+              </div>
+              {group.items.map((item) => {
+                const isActive = window.location.pathname === item.path || (item.path === '/home' && window.location.pathname === '/')
+                return (
+                  <button
+                    key={item.path}
+                    className={`nav-item ${isActive ? 'active' : ''}`}
+                    onClick={() => {
+                      navigate(item.path)
+                      setIsOpen(false)
+                    }}
+                    aria-current={isActive ? 'page' : undefined}
+                  >
+                    <item.icon />
+                    <span>{item.label}</span>
+                  </button>
+                )
+              })}
+              {groupIndex < navigationGroups.length - 1 && (
+                <div style={{ height: '1px', background: 'var(--border)', margin: '8px 16px' }} />
+              )}
+            </div>
+          ))}
 
           <button 
             className="nav-item nav-item-signout" 
