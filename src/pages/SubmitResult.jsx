@@ -542,25 +542,25 @@ const handleSubmit = async (e) => {
           <div className="form-group">
             <label style={{ fontSize: '0.9rem', display: 'block', marginBottom: '8px' }}>Proof of Result (Photo/Screenshot) - Required for League</label>
             
-            {/* Hidden file inputs for mobile camera access */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={handleImageUpload}
-              style={{ display: 'none' }}
-            />
-            
-            {/* Touch-friendly upload area */}
-            <div style={{ 
+            {/* Touch-friendly upload area with label */}
+            <label style={{ 
               border: '2px dashed var(--border)', 
               borderRadius: '8px', 
-              padding: '20px',
+              padding: '30px 20px',
               textAlign: 'center',
               cursor: 'pointer',
-              background: 'var(--bg-secondary)'
-            }} onClick={() => fileInputRef.current?.click()}>
+              background: 'var(--bg-secondary)',
+              display: 'block',
+              touchAction: 'manipulation'
+            }}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleImageUpload}
+                style={{ display: 'none' }}
+              />
               {formData.proofImage ? (
                 <div style={{ position: 'relative' }}>
                   <img 
@@ -571,6 +571,7 @@ const handleSubmit = async (e) => {
                   <button
                     type="button"
                     onClick={(e) => {
+                      e.preventDefault()
                       e.stopPropagation()
                       removeImage()
                     }}
@@ -582,9 +583,11 @@ const handleSubmit = async (e) => {
                       color: 'white',
                       border: 'none',
                       borderRadius: '50%',
-                      width: '24px',
-                      height: '24px',
-                      cursor: 'pointer'
+                      width: '28px',
+                      height: '28px',
+                      cursor: 'pointer',
+                      fontSize: '18px',
+                      lineHeight: '1'
                     }}
                   >
                     ×
@@ -593,26 +596,18 @@ const handleSubmit = async (e) => {
               ) : (
                 <div>
                   <p style={{ color: 'var(--text-muted)', marginBottom: '10px' }}>
-                    Click to upload a screenshot or photo of the game result
+                    Tap to take photo or upload screenshot
                   </p>
-                  <span style={{ color: 'var(--accent-cyan)', fontSize: '0.9rem' }}>
-                    📷 Upload Image
+                  <span style={{ color: 'var(--accent-cyan)', fontSize: '1rem', fontWeight: 'bold' }}>
+                    📷 Take Photo / Upload
                   </span>
+</span>
                 </div>
               )}
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={handleImageUpload}
-              style={{ display: 'none' }}
-            />
-          </div>
+            </label>
 
           <button 
-            type="submit" 
+            type="submit"
             className="btn btn-primary btn-block"
             disabled={submitted}
           >
