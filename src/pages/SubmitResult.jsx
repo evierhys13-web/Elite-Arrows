@@ -107,6 +107,11 @@ export default function SubmitResult() {
   const handleImageUpload = (e) => {
     const file = e.target.files[0]
     if (file) {
+      // Check file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Image must be less than 5MB')
+        return
+      }
       const reader = new FileReader()
       reader.onloadend = () => {
         setFormData(prev => ({ ...prev, proofImage: reader.result }))
@@ -535,7 +540,19 @@ const handleSubmit = async (e) => {
           </div>
 
           <div className="form-group">
-            <label>Proof of Result (Screenshot/Photo) *Required for League games</label>
+            <label style={{ fontSize: '0.9rem', display: 'block', marginBottom: '8px' }}>Proof of Result (Photo/Screenshot) - Required for League</label>
+            
+            {/* Hidden file inputs for mobile camera access */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleImageUpload}
+              style={{ display: 'none' }}
+            />
+            
+            {/* Touch-friendly upload area */}
             <div style={{ 
               border: '2px dashed var(--border)', 
               borderRadius: '8px', 
@@ -588,6 +605,7 @@ const handleSubmit = async (e) => {
               ref={fileInputRef}
               type="file"
               accept="image/*"
+              capture="environment"
               onChange={handleImageUpload}
               style={{ display: 'none' }}
             />
