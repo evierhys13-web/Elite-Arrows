@@ -105,10 +105,10 @@ self.addEventListener('message', (event) => {
 
 async function setBadgeCount(count) {
   try {
-    if (navigator.setAppBadge) {
+    if (count > 0 && navigator.setAppBadge) {
       await navigator.setAppBadge(count);
-    } else if (navigator.setClientBadge) {
-      navigator.setClientBadge(count);
+    } else if (count === 0 && navigator.clearAppBadge) {
+      await navigator.clearAppBadge();
     }
   } catch (e) {
     console.log('Badge not supported:', e);

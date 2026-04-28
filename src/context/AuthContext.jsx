@@ -121,7 +121,7 @@ export function AuthProvider({ children }) {
     setUnreadCount(count)
     localStorage.setItem('eliteArrowsUnreadCount', String(count))
     
-    if ('caches' in window) {
+    if ('serviceWorker' in navigator) {
       navigator.serviceWorker.ready.then(registration => {
         registration.active?.postMessage({
           type: 'SET_BADGE',
@@ -130,8 +130,10 @@ export function AuthProvider({ children }) {
       })
     }
     
-    if (navigator.setAppBadge) {
+    if (count > 0 && navigator.setAppBadge) {
       navigator.setAppBadge(count).catch(() => {})
+    } else if (count === 0 && navigator.clearAppBadge) {
+      navigator.clearAppBadge().catch(() => {})
     }
   }, [])
 
