@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 const ThemeContext = createContext(null)
 
 export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState(() => localStorage.getItem('eliteArrowsTheme') || 'dark')
+  const [theme, setTheme] = useState(() => localStorage.getItem('eliteArrowsTheme') || 'light')
   const [language, setLanguage] = useState(() => localStorage.getItem('eliteArrowsLanguage') || 'en')
   const [chatSettings, setChatSettings] = useState(() => {
     return JSON.parse(
@@ -17,6 +17,26 @@ export function ThemeProvider({ children }) {
     document.documentElement.setAttribute('data-theme', theme)
     localStorage.setItem('eliteArrowsTheme', theme)
   }, [theme])
+
+  useEffect(() => {
+    const savedColors = localStorage.getItem('eliteArrowsColors')
+    if (!savedColors) return
+
+    try {
+      const colors = JSON.parse(savedColors)
+      if (colors.primary) {
+        document.documentElement.style.setProperty('--accent-primary', colors.primary)
+      }
+      if (colors.background) {
+        document.documentElement.style.setProperty('--bg-primary', colors.background)
+      }
+      if (colors.button) {
+        document.documentElement.style.setProperty('--button-color', colors.button)
+      }
+    } catch (error) {
+      console.log('Error applying saved colors:', error)
+    }
+  }, [])
 
   useEffect(() => {
     localStorage.setItem('eliteArrowsLanguage', language)
