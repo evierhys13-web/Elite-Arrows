@@ -104,7 +104,8 @@ function CupManagement() {
   }
 
   const deleteCup = async (cup) => {
-    if (!confirm(`Are you sure you want to delete "${cup.name}"?`)) return
+    const confirmed = window.confirm(`Are you sure you want to delete "${cup.name}"? This will also delete all fixtures.`)
+    if (!confirmed) return
     
     const cupsData = getCups()
     const updatedCups = cupsData.filter(c => c.id !== cup.id)
