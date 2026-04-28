@@ -1,12 +1,13 @@
-import { useState, useRef, useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
+import { db, doc, setDoc } from '../firebase'
 
 const BellIcon = ({ hasUnread }) => (
-  <svg 
-    viewBox="0 0 24 24" 
-    fill={hasUnread ? 'var(--accent-primary)' : 'none'} 
-    stroke="currentColor" 
+  <svg
+    viewBox="0 0 24 24"
+    fill={hasUnread ? 'var(--accent-primary)' : 'none'}
+    stroke="currentColor"
     strokeWidth="2"
     style={{ width: 22, height: 22 }}
   >
@@ -25,29 +26,38 @@ const CloseIcon = () => (
 const getNotificationIcon = (type) => {
   switch (type) {
     case 'result_approved':
-      return '✅'
+      return 'OK'
     case 'result_rejected':
-      return '❌'
+      return 'NO'
     case 'result_submitted':
-      return '📋'
+      return 'RS'
     case 'fixture_proposed':
-      return '📅'
+    case 'fixture_challenge':
+      return 'FX'
     case 'fixture_accepted':
-      return '✅'
+      return 'AC'
+    case 'fixture_declined':
+      return 'DC'
+    case 'fixture_countered':
+      return 'CT'
+    case 'fixture_cancelled':
+      return 'CA'
+    case 'fixture_activity':
+      return 'AD'
     case 'friend_request':
-      return '👤'
+      return 'FR'
     case 'friend_accepted':
-      return '🤝'
+      return 'FA'
     case 'cup_match':
-      return '🏆'
+      return 'CP'
     case 'table_updated':
-      return '📊'
+      return 'TB'
     case 'tournament':
-      return '🎯'
+      return 'TR'
     case 'chat':
-      return '💬'
+      return 'CH'
     default:
-      return '🔔'
+      return 'NT'
   }
 }
 
@@ -87,22 +97,28 @@ export default function NotificationBell() {
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside)
     }
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [isOpen])
 
-  const handleNotificationClick = (notification) => {
+  const handleNotificationClick = async (notification) => {
     let url = '/settings'
-    
+
     switch (notification.type) {
       case 'result_approved':
       case 'result_rejected':
         url = '/results'
         break
       case 'fixture_proposed':
+      case 'fixture_challenge':
       case 'fixture_accepted':
-        url = '/fixtures'
+      case 'fixture_declined':
+      case 'fixture_countered':
+      case 'fixture_cancelled':
+      case 'fixture_activity':
+        url = notification.data?.fixtureKind === 'cup' ? '/cup-fixtures' : '/fixtures'
         break
       case 'friend_request':
       case 'friend_accepted':
@@ -125,32 +141,44 @@ export default function NotificationBell() {
     }
 
     if (!notification.isRead) {
-      const updated = localNotifications.map(n => 
+      const updated = localNotifications.map((n) =>
         n.id === notification.id ? { ...n, isRead: true } : n
       )
       setLocalNotifications(updated)
-      const unread = updated.filter(n => !n.isRead).length
+      const unread = updated.filter((n) => !n.isRead).length
       updateBadgeCount(unread)
-      
+
       const allStored = JSON.parse(localStorage.getItem('eliteArrowsNotifications') || '[]')
-      const updatedStored = allStored.map(n => 
+      const updatedStored = allStored.map((n) =>
         n.id === notification.id ? { ...n, isRead: true } : n
       )
       localStorage.setItem('eliteArrowsNotifications', JSON.stringify(updatedStored))
+      try {
+        await setDoc(doc(db, 'notifications', notification.id), { isRead: true }, { merge: true })
+      } catch (error) {
+        console.log('Error marking notification read:', error)
+      }
     }
 
     setIsOpen(false)
     navigate(url)
   }
 
-  const markAllAsRead = () => {
-    const updated = localNotifications.map(n => ({ ...n, isRead: true }))
+  const markAllAsRead = async () => {
+    const updated = localNotifications.map((n) => ({ ...n, isRead: true }))
     setLocalNotifications(updated)
     updateBadgeCount(0)
-    
+
     const allStored = JSON.parse(localStorage.getItem('eliteArrowsNotifications') || '[]')
-    const updatedStored = allStored.map(n => ({ ...n, isRead: true }))
+    const updatedStored = allStored.map((n) => ({ ...n, isRead: true }))
     localStorage.setItem('eliteArrowsNotifications', JSON.stringify(updatedStored))
+    await Promise.all(
+      localNotifications
+        .filter((n) => !n.isRead)
+        .map((n) => setDoc(doc(db, 'notifications', n.id), { isRead: true }, { merge: true }))
+    ).catch((error) => {
+      console.log('Error marking all notifications read:', error)
+    })
   }
 
   if (!user) return null
@@ -172,8 +200,8 @@ export default function NotificationBell() {
           color: isOpen ? 'var(--accent-primary)' : 'var(--text-primary)',
           transition: 'all 0.2s ease'
         }}
-        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-secondary)'}
-        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-secondary)' }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
         aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
         aria-expanded={isOpen}
         aria-haspopup="true"
@@ -260,9 +288,12 @@ export default function NotificationBell() {
                 style={{
                   background: 'transparent',
                   border: 'none',
+                  color: 'var(--text-muted)',
                   cursor: 'pointer',
                   padding: '4px',
-                  color: 'var(--text-muted)'
+                  borderRadius: '4px',
+                  display: 'flex',
+                  alignItems: 'center'
                 }}
               >
                 <CloseIcon />
@@ -270,122 +301,45 @@ export default function NotificationBell() {
             </div>
           </div>
 
-          <div 
-            style={{ flex: 1, overflowY: 'auto' }}
-            role="list"
+          <div
             aria-labelledby="notifications-title"
+            style={{ overflowY: 'auto', flex: 1 }}
           >
             {localNotifications.length === 0 ? (
-              <div
-                role="listitem"
-                style={{
-                  padding: '40px 20px',
-                  textAlign: 'center',
-                  color: 'var(--text-muted)'
-                }}
-              >
+              <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
                 <p style={{ margin: 0, fontSize: '0.9rem' }}>No notifications yet</p>
               </div>
             ) : (
               localNotifications.map((notification) => (
-                <div
+                <button
                   key={notification.id}
-                  role="listitem"
                   onClick={() => handleNotificationClick(notification)}
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault()
-                      handleNotificationClick(notification)
-                    }
-                  }}
                   style={{
-                    padding: '12px 16px',
+                    width: '100%',
+                    textAlign: 'left',
+                    background: notification.isRead ? 'transparent' : 'rgba(77, 168, 218, 0.1)',
+                    border: 'none',
                     borderBottom: '1px solid var(--border)',
+                    padding: '14px 16px',
                     cursor: 'pointer',
-                    background: notification.isRead 
-                      ? 'transparent' 
-                      : 'rgba(0, 212, 255, 0.05)',
-                    transition: 'background 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!notification.isRead) return
-                    e.currentTarget.style.background = 'var(--bg-secondary)'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = notification.isRead 
-                      ? 'transparent' 
-                      : 'rgba(0, 212, 255, 0.05)'
+                    display: 'flex',
+                    gap: '12px'
                   }}
                 >
-                  <div style={{ display: 'flex', gap: '12px' }}>
-                    <span style={{ fontSize: '1.3rem', flexShrink: 0 }}>
-                      {getNotificationIcon(notification.type)}
-                    </span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p
-                        style={{
-                          margin: '0 0 4px 0',
-                          fontSize: '0.9rem',
-                          fontWeight: notification.isRead ? 'normal' : '600',
-                          color: 'var(--text-primary)',
-                          lineHeight: 1.3
-                        }}
-                      >
-                        {notification.message || notification.title || 'New notification'}
-                      </p>
-                      <p
-                        style={{
-                          margin: 0,
-                          fontSize: '0.75rem',
-                          color: 'var(--text-muted)'
-                        }}
-                      >
-                        {formatTime(notification.createdAt)}
-                      </p>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-cyan)', minWidth: '26px' }}>
+                    {getNotificationIcon(notification.type)}
+                  </span>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: '0.9rem', margin: 0, fontWeight: notification.isRead ? 'normal' : '600' }}>
+                      {notification.message || notification.title || 'New notification'}
+                    </p>
+                    <div style={{ marginTop: '4px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      {formatTime(notification.createdAt)}
                     </div>
-                    {!notification.isRead && (
-                      <span
-                        style={{
-                          width: '8px',
-                          height: '8px',
-                          background: 'var(--accent-primary)',
-                          borderRadius: '50%',
-                          flexShrink: 0,
-                          marginTop: '6px'
-                        }}
-                        aria-hidden="true"
-                      />
-                    )}
                   </div>
-                </div>
+                </button>
               ))
             )}
-          </div>
-
-          <div
-            style={{
-              padding: '10px 16px',
-              borderTop: '1px solid var(--border)',
-              textAlign: 'center'
-            }}
-          >
-            <button
-              onClick={() => {
-                setIsOpen(false)
-                navigate('/settings')
-              }}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--accent-primary)',
-                fontSize: '0.85rem',
-                cursor: 'pointer',
-                padding: '4px 8px'
-              }}
-            >
-              View all in Settings
-            </button>
           </div>
         </div>
       )}

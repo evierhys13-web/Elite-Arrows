@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { Link, useNavigate } from 'react-router-dom'
-import { db, doc, setDoc, collection, addDoc } from '../firebase'
+import { useNavigate } from 'react-router-dom'
+import { db, doc, setDoc, collection, addDoc, deleteDoc } from '../firebase'
 import UserSearchSelect from '../components/UserSearchSelect'
 
 export default function Fixtures() {
-  const { user, getAllUsers, getFixtures, triggerDataRefresh } = useAuth()
+  const { user, getAllUsers, getFixtures, triggerDataRefresh, notifyUser, notifyAdmins } = useAuth()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('upcoming')
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -71,6 +71,7 @@ export default function Fixtures() {
   })
   
   const cupAccepted = cupFixturesData.filter(f => f.status === 'accepted')
+  const upcomingCount = upcomingFixtures.length + cupAccepted.length
   
   const getPlayerName = (id) => allUsers.find(u => u.id === id)?.username || 'Unknown'
   
@@ -87,6 +88,28 @@ export default function Fixtures() {
     if (round === totalRounds - 1) return 'Semi-Final'
     if (round === totalRounds - 2) return 'Quarter-Final'
     return `Round ${round}`
+  }
+
+  const saveFixtures = (updatedFixtures) => {
+    localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
+  }
+
+  const sendFixtureActivityToAdmins = async (action, fixture, details = {}) => {
+    const fixtureKind = fixture.cupId ? 'cup' : 'league'
+    const opponentId = fixture.player1Id === user.id ? fixture.player2Id : fixture.player1Id
+    const opponentName = getPlayerName(opponentId)
+    await notifyAdmins(
+      'Fixture Activity',
+      `${user.username} ${action} a ${fixtureKind} fixture ${fixture.player1Name || getPlayerName(fixture.player1Id)} vs ${fixture.player2Name || getPlayerName(fixture.player2Id)}${opponentName ? ` (${opponentName})` : ''}`,
+      {
+        type: 'fixture_activity',
+        adminLog: true,
+        fixtureKind,
+        action,
+        fixtureId: fixture.id,
+        ...details
+      }
+    )
   }
   
   const proposeCupSchedule = async () => {
@@ -105,6 +128,15 @@ export default function Fixtures() {
       try {
         const fixtureDocRef = doc(db, 'fixtures', allFixtures[index].id.toString())
         await setDoc(fixtureDocRef, allFixtures[index], { merge: true })
+        const opponentId = allFixtures[index].player1Id === user.id ? allFixtures[index].player2Id : allFixtures[index].player1Id
+        await notifyUser(
+          opponentId,
+          'Cup Fixture Proposal',
+          `${user.username} proposed ${scheduleDate} at ${scheduleTime} for your cup fixture.`,
+          'fixture_proposed',
+          { fixtureKind: 'cup', fixtureId: allFixtures[index].id }
+        )
+        await sendFixtureActivityToAdmins('proposed', allFixtures[index], { proposedDate: scheduleDate, proposedTime: scheduleTime })
       } catch (e) {
         console.log('Error saving to Firebase:', e)
       }
@@ -130,6 +162,15 @@ export default function Fixtures() {
       try {
         const fixtureDocRef = doc(db, 'fixtures', allFixtures[index].id.toString())
         await setDoc(fixtureDocRef, allFixtures[index], { merge: true })
+        const opponentId = allFixtures[index].player1Id === user.id ? allFixtures[index].player2Id : allFixtures[index].player1Id
+        await notifyUser(
+          opponentId,
+          'Cup Fixture Accepted',
+          `${user.username} accepted your cup fixture proposal.`,
+          'fixture_accepted',
+          { fixtureKind: 'cup', fixtureId: allFixtures[index].id }
+        )
+        await sendFixtureActivityToAdmins('accepted', allFixtures[index])
       } catch (e) {
         console.log('Error saving to Firebase:', e)
       }
@@ -144,10 +185,19 @@ export default function Fixtures() {
     if (!confirm('Reject this fixture?')) return
     const allFixtures = getFixtures()
     const updatedFixtures = allFixtures.filter(f => f.id !== fixture.id)
-    localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
+    saveFixtures(updatedFixtures)
     
     try {
-      await setDoc(collection(db, 'fixtures'), { id: fixture.id, _deleted: true }, { merge: true })
+      await deleteDoc(doc(db, 'fixtures', fixture.id.toString()))
+      const opponentId = fixture.player1Id === user.id ? fixture.player2Id : fixture.player1Id
+      await notifyUser(
+        opponentId,
+        'Cup Fixture Rejected',
+        `${user.username} rejected your cup fixture proposal.`,
+        'fixture_declined',
+        { fixtureKind: 'cup', fixtureId: fixture.id }
+      )
+      await sendFixtureActivityToAdmins('declined', fixture)
     } catch (e) {
       console.log('Error saving to Firebase:', e)
     }
@@ -236,32 +286,57 @@ export default function Fixtures() {
   
   const playedOpponentIds = getPlayedOpponents()
 
-  const handleDeclineFixture = (fixtureId) => {
+  const handleDeclineFixture = async (fixtureId) => {
     if (!confirm('Decline this fixture?')) return
     
-    const fixture = regularFixtures.find(f => f.id === fixtureId)
-    const updatedFixtures = regularFixtures.filter(f => f.id !== fixtureId)
-    localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
-
-    const notifications = JSON.parse(localStorage.getItem('eliteArrowsNotifications') || '[]')
-    notifications.push({
-      id: `fixture_decline_${Date.now()}`,
-      type: 'fixture_declined',
-      fromUserId: user.id,
-      fromUsername: user.username,
-      toUserId: fixture.createdBy,
-      message: `${user.username} declined your fixture challenge`,
-      isRead: false,
-      createdAt: new Date().toISOString()
-    })
-    localStorage.setItem('eliteArrowsNotifications', JSON.stringify(notifications))
+    const fixture = getFixtures().find(f => f.id === fixtureId)
+    const updatedFixtures = getFixtures().filter(f => f.id !== fixtureId)
+    saveFixtures(updatedFixtures)
+    try {
+      await deleteDoc(doc(db, 'fixtures', fixtureId.toString()))
+      if (fixture?.createdBy) {
+        await notifyUser(
+          fixture.createdBy,
+          'Fixture Declined',
+          `${user.username} declined your ${fixture.gameType || 'league'} fixture challenge.`,
+          'fixture_declined',
+          { fixtureKind: 'league', fixtureId }
+        )
+      }
+      if (fixture) {
+        await sendFixtureActivityToAdmins('declined', fixture)
+      }
+    } catch (e) {
+      console.log('Error declining fixture:', e)
+    }
+    triggerDataRefresh('fixtures')
     alert('Fixture declined')
   }
 
-  const handleCancelFixture = (fixtureId) => {
+  const handleCancelFixture = async (fixtureId) => {
     if (!confirm('Cancel this fixture?')) return
-    const updatedFixtures = regularFixtures.filter(f => f.id !== fixtureId)
-    localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
+    const fixture = getFixtures().find(f => f.id === fixtureId)
+    const updatedFixtures = getFixtures().filter(f => f.id !== fixtureId)
+    saveFixtures(updatedFixtures)
+    try {
+      await deleteDoc(doc(db, 'fixtures', fixtureId.toString()))
+      const recipientId = fixture?.player2Id
+      if (recipientId) {
+        await notifyUser(
+          recipientId,
+          'Fixture Cancelled',
+          `${user.username} cancelled a ${fixture.gameType || 'league'} fixture request.`,
+          'fixture_cancelled',
+          { fixtureKind: 'league', fixtureId }
+        )
+      }
+      if (fixture) {
+        await sendFixtureActivityToAdmins('cancelled', fixture)
+      }
+    } catch (e) {
+      console.log('Error cancelling fixture:', e)
+    }
+    triggerDataRefresh('fixtures')
     alert('Fixture cancelled')
   }
 
@@ -279,11 +354,25 @@ export default function Fixtures() {
   }
 
   const handleAcceptFixture = async (fixtureId) => {
-    const allFixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+    const allFixtures = getFixtures()
     const index = allFixtures.findIndex(f => f.id === fixtureId)
     if (index !== -1) {
       allFixtures[index].status = 'accepted'
-      localStorage.setItem('eliteArrowsFixtures', JSON.stringify(allFixtures))
+      saveFixtures(allFixtures)
+      try {
+        await setDoc(doc(db, 'fixtures', allFixtures[index].id.toString()), allFixtures[index], { merge: true })
+        await notifyUser(
+          allFixtures[index].createdBy,
+          'Fixture Accepted',
+          `${user.username} accepted your ${allFixtures[index].gameType || 'league'} fixture challenge.`,
+          'fixture_accepted',
+          { fixtureKind: 'league', fixtureId }
+        )
+        await sendFixtureActivityToAdmins('accepted', allFixtures[index])
+      } catch (e) {
+        console.log('Error accepting fixture:', e)
+      }
+      triggerDataRefresh('fixtures')
       alert('Fixture accepted!')
     }
   }
@@ -328,7 +417,7 @@ export default function Fixtures() {
           className={`btn ${activeTab === 'upcoming' ? 'btn-primary' : 'btn-secondary'}`}
           onClick={() => setActiveTab('upcoming')}
         >
-          Upcoming ({upcomingFixtures.length})
+          Upcoming ({upcomingCount})
         </button>
         <button
           className={`btn ${activeTab === 'pending' ? 'btn-primary' : 'btn-secondary'}`}
@@ -483,21 +572,24 @@ export default function Fixtures() {
                     status: 'pending'
                   }
                   fixtures.push(newFixture)
-                  localStorage.setItem('eliteArrowsFixtures', JSON.stringify(fixtures))
+                  saveFixtures(fixtures)
                   
-                  await addDoc(collection(db, 'notifications'), {
-                    type: 'fixture_challenge',
-                    fromUserId: user.id,
-                    fromUsername: user.username,
-                    toUserId: opponentUser.id,
-                    toUsername: opponentUser.username,
-                    message: `${user.username} has sent you a fixture challenge: ${createForm.gameType} on ${createForm.fixtureDate} at ${createForm.fixtureTime}`,
-                    isRead: false,
-                    createdAt: new Date().toISOString()
+                  await setDoc(doc(db, 'fixtures', newFixture.id.toString()), newFixture)
+                  await notifyUser(
+                    opponentUser.id,
+                    'New Fixture Challenge',
+                    `${user.username} sent you a ${createForm.gameType} fixture challenge for ${createForm.fixtureDate} at ${createForm.fixtureTime}.`,
+                    'fixture_challenge',
+                    { fixtureKind: 'league', fixtureId: newFixture.id }
+                  )
+                  await sendFixtureActivityToAdmins('sent', newFixture, {
+                    fixtureDate: createForm.fixtureDate,
+                    fixtureTime: createForm.fixtureTime
                   })
                   
                   setShowCreateModal(false)
                   setCreateForm({ opponent: '', gameType: 'Friendly', fixtureDate: '', fixtureTime: '' })
+                  triggerDataRefresh('fixtures')
                   alert('Fixture challenge sent!')
                 }}
               >
@@ -545,7 +637,7 @@ export default function Fixtures() {
       {activeTab === 'upcoming' && (
         <div className="card">
           <h3 className="card-title">Upcoming Fixtures</h3>
-          {upcomingFixtures.length === 0 ? (
+          {upcomingFixtures.length === 0 && cupAccepted.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 20px' }}>
               <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
                 No upcoming fixtures
@@ -607,6 +699,68 @@ export default function Fixtures() {
                 </button>
               </div>
             ))
+          )}
+          {cupAccepted.length > 0 && (
+            <div style={{ marginTop: upcomingFixtures.length > 0 ? '20px' : 0 }}>
+              {upcomingFixtures.length > 0 && (
+                <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '12px' }}>Cup Fixtures</h4>
+              )}
+              {cupAccepted.map(fixture => (
+                <div key={fixture.id} style={{
+                  padding: '20px',
+                  background: 'rgba(34, 197, 94, 0.1)',
+                  border: '1px solid var(--success)',
+                  borderRadius: '12px',
+                  marginBottom: '15px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
+                    <div>
+                      <div style={{ fontSize: '1.1rem', marginBottom: '5px' }}>
+                        <strong>{getPlayerName(fixture.player1Id)}</strong>
+                        <span style={{ margin: '0 10px', color: 'var(--text-muted)' }}>vs</span>
+                        <strong>{getPlayerName(fixture.player2Id)}</strong>
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--accent-cyan)' }}>
+                        {getCupName(fixture.cupId)} | {getRoundName(fixture.round, fixture.cupId)}
+                      </div>
+                    </div>
+                    <span style={{
+                      padding: '5px 12px',
+                      background: 'var(--success)',
+                      color: '#000',
+                      borderRadius: '20px',
+                      fontSize: '0.8rem',
+                      fontWeight: 'bold'
+                    }}>
+                      CONFIRMED
+                    </span>
+                  </div>
+                  <div style={{
+                    display: 'flex',
+                    gap: '20px',
+                    padding: '15px',
+                    background: 'var(--bg-secondary)',
+                    borderRadius: '8px'
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '3px' }}>DATE</div>
+                      <div style={{ fontWeight: '600' }}>{fixture.date || fixture.proposedDate || 'TBC'}</div>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '3px' }}>TIME</div>
+                      <div style={{ fontWeight: '600' }}>{fixture.time || fixture.proposedTime || 'TBC'}</div>
+                    </div>
+                  </div>
+                  <button
+                    className="btn btn-primary"
+                    style={{ marginTop: '12px' }}
+                    onClick={() => navigate(`/submit-result?fixtureId=${fixture.id}`)}
+                  >
+                    Submit Result
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}

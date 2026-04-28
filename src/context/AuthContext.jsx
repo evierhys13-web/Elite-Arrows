@@ -26,6 +26,7 @@ export function AuthProvider({ children }) {
   const [news, setNews] = useState([])
   const [showSurvey, setShowSurvey] = useState(false)
   const unsubscribeRef = useRef(null)
+  const seenNotificationIdsRef = useRef(new Set())
   
   const SENSITIVE_FIELDS = ['password', 'passwordString', 'passwordHash', 'passwordKey', 'passwordStringValue', 'password', 'firebaseId', 'pwd', 'pass', 'passwd']
 
@@ -143,12 +144,8 @@ export function AuthProvider({ children }) {
       createdAt: new Date().toISOString()
     }
     
-    const existingNotifications = JSON.parse(localStorage.getItem('eliteArrowsNotifications') || '[]')
-    existingNotifications.unshift(newNotification)
-    localStorage.setItem('eliteArrowsNotifications', JSON.stringify(existingNotifications))
-    
     try {
-      await addDoc(collection(db, 'notifications'), newNotification)
+      await setDoc(doc(db, 'notifications', newNotification.id), newNotification)
     } catch (e) {
       console.log('Error saving notification to Firebase:', e)
     }
@@ -157,10 +154,17 @@ export function AuthProvider({ children }) {
       setNotifications(prev => [newNotification, ...prev])
       setUnreadCount(prev => prev + 1)
       updateBadgeCount(unreadCount + 1)
+      const existingNotifications = JSON.parse(localStorage.getItem('eliteArrowsNotifications') || '[]')
+      existingNotifications.unshift(newNotification)
+      localStorage.setItem('eliteArrowsNotifications', JSON.stringify(existingNotifications))
+      showLocalNotification(notification.title || 'Elite Arrows', {
+        body: notification.message || 'New notification',
+        data: notification.data
+      })
     }
     
     return newNotification
-  }, [user?.id, unreadCount, updateBadgeCount])
+  }, [user?.id, unreadCount, updateBadgeCount, showLocalNotification])
 
   const notifyAllSubscribers = useCallback(async (title, body, data = {}) => {
     const subscribers = allUsers.filter(u => u.isSubscribed || u.isAdmin)
@@ -585,9 +589,7 @@ const cleanUserData = (users) => {
     localStorage.setItem('eliteArrowsNotifications', JSON.stringify([...existingNotifications, notification]))
     
     try {
-      await addDoc(collection(db, 'notifications'), {
-        ...notification
-      })
+      await setDoc(doc(db, 'notifications', notification.id), notification)
     } catch (e) {
       console.log('Error saving to Firebase:', e)
     }
@@ -621,9 +623,7 @@ const cleanUserData = (users) => {
     localStorage.setItem('eliteArrowsNotifications', JSON.stringify([...existingNotifications, notification]))
     
     try {
-      await addDoc(collection(db, 'notifications'), {
-        ...notification
-      })
+      await setDoc(doc(db, 'notifications', notification.id), notification)
     } catch (e) {
       console.log('Error saving to Firebase:', e)
     }
@@ -784,14 +784,51 @@ const cleanUserData = (users) => {
   }
 
   useEffect(() => {
-    if (!user?.id) return
-    const storedNotifs = JSON.parse(localStorage.getItem('eliteArrowsNotifications') || '[]')
-    const userNotifs = storedNotifs.filter(n => n.toUserId === user.id)
-    setNotifications(userNotifs)
-    const unread = userNotifs.filter(n => !n.isRead).length
-    setUnreadCount(unread)
-    updateBadgeCount(unread)
-  }, [user?.id])
+    if (!user?.id) {
+      setNotifications([])
+      setUnreadCount(0)
+      updateBadgeCount(0)
+      seenNotificationIdsRef.current = new Set()
+      return
+    }
+
+    const notificationsQuery = query(collection(db, 'notifications'), where('toUserId', '==', user.id))
+    const unsubscribeNotifications = onSnapshot(notificationsQuery, (snapshot) => {
+      const userNotifs = snapshot.docs
+        .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+
+      const previousIds = seenNotificationIdsRef.current
+      const nextIds = new Set(userNotifs.map((notification) => notification.id))
+      const shouldAnnounceNewNotifications = previousIds.size > 0
+
+      userNotifs.forEach((notification) => {
+        if (shouldAnnounceNewNotifications && !previousIds.has(notification.id) && !notification.isRead) {
+          showLocalNotification(notification.title || 'Elite Arrows', {
+            body: notification.message || 'New notification',
+            data: notification.data
+          })
+        }
+      })
+
+      seenNotificationIdsRef.current = nextIds
+      setNotifications(userNotifs)
+      localStorage.setItem('eliteArrowsNotifications', JSON.stringify(userNotifs))
+      const unread = userNotifs.filter(n => !n.isRead).length
+      setUnreadCount(unread)
+      updateBadgeCount(unread)
+    }, (error) => {
+      console.log('Notifications listener error:', error)
+      const storedNotifs = JSON.parse(localStorage.getItem('eliteArrowsNotifications') || '[]')
+      const userNotifs = storedNotifs.filter(n => n.toUserId === user.id)
+      setNotifications(userNotifs)
+      const unread = userNotifs.filter(n => !n.isRead).length
+      setUnreadCount(unread)
+      updateBadgeCount(unread)
+    })
+
+    return () => unsubscribeNotifications()
+  }, [user?.id, showLocalNotification, updateBadgeCount])
 
   useEffect(() => {
     const setupForegroundMessages = async () => {

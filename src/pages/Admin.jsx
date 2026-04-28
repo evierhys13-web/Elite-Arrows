@@ -6,7 +6,7 @@ import CupManagement from './CupManagement'
 import UserSearchSelect from '../components/UserSearchSelect'
 
 export default function Admin() {
-  const { user, getAllUsers, updateUser, updateOtherUser, getResults, adminData, updateAdminData, addToMoneyHistory, getSupportRequests, getSeasons, getNews, postNews, deleteNews, togglePinNews, triggerDataRefresh, dataRefreshTrigger, notifyUser, notifyAllSubscribers } = useAuth()
+  const { user, notifications, getAllUsers, updateUser, updateOtherUser, getResults, adminData, updateAdminData, addToMoneyHistory, getSupportRequests, getSeasons, getNews, postNews, deleteNews, togglePinNews, triggerDataRefresh, dataRefreshTrigger, notifyUser, notifyAllSubscribers } = useAuth()
   const navigate = useNavigate()
   const subscriptionPot = adminData.subscriptionPot || 0
   const subscriptionPot10 = adminData.subscriptionPot10 || 0
@@ -352,6 +352,7 @@ export default function Admin() {
   const subscribers = getAllUsers().filter(u => u.isSubscribed)
   const freeUsers = getAllUsers().filter(u => !u.isSubscribed && !u.paymentPending)
   const tournamentAdmins = getAllUsers().filter(u => u.isTournamentAdmin)
+  const fixtureActivity = notifications.filter(n => n.type === 'fixture_activity').slice(0, 50)
 
   const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
   const isEmailAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
@@ -454,6 +455,12 @@ export default function Admin() {
           onClick={() => setActiveTab('support')}
         >
           Support
+        </button>
+        <button
+          className={`division-tab ${activeTab === 'fixture-activity' ? 'active' : ''}`}
+          onClick={() => setActiveTab('fixture-activity')}
+        >
+          Fixture Activity
         </button>
         <button
           className={`division-tab ${activeTab === 'news' ? 'active' : ''}`}
@@ -1395,6 +1402,41 @@ export default function Admin() {
               </div>
             )
           })()}
+        </div>
+      )}
+
+      {activeTab === 'fixture-activity' && (
+        <div className="card">
+          <h3 className="card-title">Fixture Activity</h3>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
+            Recent fixture actions across league and cup matches.
+          </p>
+          {fixtureActivity.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)' }}>No fixture activity yet.</p>
+          ) : (
+            fixtureActivity.map((entry) => (
+              <div
+                key={entry.id}
+                style={{
+                  padding: '14px 16px',
+                  borderBottom: '1px solid var(--border)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  gap: '12px'
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 600 }}>{entry.message || entry.title}</div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '4px' }}>
+                    {entry.data?.fixtureKind === 'cup' ? 'Cup' : 'League'} | {entry.data?.action || 'updated'}
+                  </div>
+                </div>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                  {new Date(entry.createdAt).toLocaleString()}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       )}
 
