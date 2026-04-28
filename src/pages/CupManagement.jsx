@@ -110,10 +110,12 @@ function CupManagement() {
     const cupsData = getCups()
     const updatedCups = cupsData.filter(c => c.id !== cup.id)
     localStorage.setItem('eliteArrowsCups', JSON.stringify(updatedCups))
+    setCups(updatedCups)
     
     const fixtures = getFixtures()
     const updatedFixtures = fixtures.filter(f => f.cupId !== cup.id)
     localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
+    setAllCupFixtures(updatedFixtures)
     
     try {
       await deleteDoc(doc(db, 'cups', cup.id.toString()))
@@ -127,15 +129,16 @@ function CupManagement() {
     alert('Cup deleted!')
     triggerDataRefresh('cups')
     triggerDataRefresh('fixtures')
-    setRefreshKey(prev => prev + 1)
   }
 
   const deleteFixture = async (fixture) => {
-    if (!confirm('Are you sure you want to delete this fixture?')) return
+    const confirmed = window.confirm('Are you sure you want to delete this fixture?')
+    if (!confirmed) return
     
     const fixtures = getFixtures()
     const updatedFixtures = fixtures.filter(f => f.id !== fixture.id)
     localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
+    setAllCupFixtures(updatedFixtures)
     
     try {
       await deleteDoc(doc(db, 'fixtures', fixture.id.toString()))
@@ -145,7 +148,6 @@ function CupManagement() {
     
     alert('Fixture deleted!')
     triggerDataRefresh('fixtures')
-    setRefreshKey(prev => prev + 1)
   }
 
   const completeCup = async (cup) => {
