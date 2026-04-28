@@ -4,7 +4,8 @@
     "namespace": "android_app",
     "package_name": "com.elitearrows.app",
     "sha256_cert_fingerprints": [
-      "D1:D0:B2:E8:2E:F5:09:45:C1:7A:AB:94:49:A6:EC:7C:A3:44:EA:B3:1D:2B:68:57:6F:A3:3C:27:A9:D9:B1:D5"
+      "D1:D0:B2:E8:2E:F5:09:45:C1:7A:AB:94:49:A6:EC:7C:A3:44:EA:B3:1D:2B:68:57:6F:A3:3C:27:A9:D9:B1:D5",
+      "36:E7:15:69:72:EE:5A:1B:58:E6:11:29:4A:B4:A4:F5:BA:9D:C5:A1:4B:32:54:A5:05:FF:BE:3F:1C:84:4A:03"
     ]
   }
 }]

@@ -158,9 +158,11 @@ body {
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border);
   padding: 0 15px;
+  padding-top: env(safe-area-inset-top);
   align-items: center;
   justify-content: space-between;
   z-index: 99;
+  box-sizing: border-box;
 }
 
 .mobile-menu-btn {

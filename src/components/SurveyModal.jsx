@@ -166,12 +166,14 @@ export default function SurveyModal({ isOpen, onComplete, onSkip, userId, userNa
         createdAt: serverTimestamp(),
         completed: true
       }
-
+      console.log('Submitting survey with data:', surveyData)
       await addDoc(collection(db, 'surveys'), surveyData)
+      console.log('Survey submitted successfully')
       
       // Mark as completed in Firestore (don't block user if this fails)
       try {
-        await updateDoc(doc(db, 'users', userId), {
+        const userRef = doc(db, 'users', userId)
+        await updateDoc(userRef, {
           surveyCompleted: true
         })
       } catch (e) {

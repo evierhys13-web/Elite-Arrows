@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import NotificationBell from './NotificationBell'
+import RefreshButton from './RefreshButton'
 import GlobalSearch from './GlobalSearch'
 
 const HomeIcon = () => (
@@ -296,6 +297,7 @@ export default function Sidebar() {
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <NotificationBell />
+          <RefreshButton size={20} />
           <div style={{ width: 40 }} />
         </div>
       </div>
