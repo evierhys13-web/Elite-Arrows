@@ -85,18 +85,18 @@ export default function Admin() {
   }, [user.isAdmin, user.isTournamentAdmin]);
 
   const approveResult = async (resultId) => {
-    const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]');
-    if (!Array.isArray(results)) {
-      alert('Error: Invalid results data')
-      return
-    }
-    const index = results.findIndex(r => String(r.id) === String(resultId));
-    if (index === -1) {
-      alert('Result not found')
-      return
-    }
-    
     try {
+      const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]');
+      if (!Array.isArray(results)) {
+        alert('Error: Invalid results data')
+        return
+      }
+      const index = results.findIndex(r => String(r.id) === String(resultId));
+      if (index === -1) {
+        alert('Result not found')
+        return
+      }
+      
       const result = results[index]
       results[index].status = 'approved';
       localStorage.setItem('eliteArrowsResults', JSON.stringify(results));
@@ -204,30 +204,31 @@ export default function Admin() {
   };
 
   const rejectResult = async (resultId) => {
-    const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]');
-    if (!Array.isArray(results)) {
-      alert('Error: Invalid results data')
-      return
-    }
-    const index = results.findIndex(r => String(r.id) === String(resultId));
-    if (index === -1) {
-      alert('Result not found')
-      return
-    }
-    const result = results[index]
-    results[index].status = 'rejected';
-    localStorage.setItem('eliteArrowsResults', JSON.stringify(results));
-    
     try {
+      const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]');
+      if (!Array.isArray(results)) {
+        alert('Error: Invalid results data')
+        return
+      }
+      const index = results.findIndex(r => String(r.id) === String(resultId));
+      if (index === -1) {
+        alert('Result not found')
+        return
+      }
+      const result = results[index]
+      results[index].status = 'rejected';
+      localStorage.setItem('eliteArrowsResults', JSON.stringify(results));
+      
       await updateDoc(doc(db, 'results', resultId), { status: 'rejected' })
+      
+      notifyUser(result.player1Id, 'Result Rejected', `Your result (${result.score1}-${result.score2} vs ${result.player2}) was rejected`, 'result_rejected', { resultId })
+      notifyUser(result.player2Id, 'Result Rejected', `Your opponent's result was rejected`, 'result_rejected', { resultId })
+      
+      setPendingResults(prev => prev.filter(r => String(r.id) !== String(resultId)));
     } catch (e) {
-      console.log('Error updating result status in Firebase:', e)
+      console.error('Error rejecting result:', e)
+      alert('Error rejecting result: ' + e.message)
     }
-    
-    notifyUser(result.player1Id, 'Result Rejected', `Your result (${result.score1}-${result.score2} vs ${result.player2}) was rejected`, 'result_rejected', { resultId })
-    notifyUser(result.player2Id, 'Result Rejected', `Your opponent's result was rejected`, 'result_rejected', { resultId })
-    
-    setPendingResults(prev => prev.filter(r => String(r.id) !== String(resultId)));
   };
 
   const approvePayment = async (userId) => {
