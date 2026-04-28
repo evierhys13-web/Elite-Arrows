@@ -1,9 +1,11 @@
-import { useState, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { db, collection, addDoc } from '../firebase'
+import { useSearchParams } from 'react-router-dom'
+import { db, collection, addDoc, doc, setDoc } from '../firebase'
 
 export default function SubmitResult() {
-  const { user, getAllUsers, addTokens, triggerDataRefresh, notifyAdmins } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, addTokens, triggerDataRefresh, notifyAdmins } = useAuth()
+  const [searchParams] = useSearchParams()
   const fileInputRef = useRef(null)
   const [formData, setFormData] = useState({
     gameType: 'Friendly',
@@ -25,18 +27,53 @@ export default function SubmitResult() {
 
   const allUsers = getAllUsers()
   const availablePlayers = allUsers.filter(u => u.id !== user.id)
-  
-  const cupFixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]').filter(f => 
-    f.cupId && (f.player1 === user.id || f.player2 === user.id) && f.status === 'accepted'
-  )
+  const fixtureIdParam = searchParams.get('fixtureId')
+  const allFixtures = getFixtures()
+  const allResults = getResults()
+
+  const getFixturePlayerIds = (fixture) => {
+    const player1Id = fixture.player1Id || fixture.player1
+    const player2Id = fixture.player2Id || fixture.player2
+    return { player1Id, player2Id }
+  }
+
+  const getFixtureOpponentId = (fixture) => {
+    const { player1Id, player2Id } = getFixturePlayerIds(fixture)
+    if (player1Id === user.id) return player2Id
+    if (player2Id === user.id) return player1Id
+    return null
+  }
+
+  const cupFixtures = allFixtures.filter((fixture) => {
+    if (!fixture.cupId || fixture.status !== 'accepted') return false
+    const { player1Id, player2Id } = getFixturePlayerIds(fixture)
+    return player1Id === user.id || player2Id === user.id
+  })
   const cups = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
 
   const opponentUser = availablePlayers.find(p => p.id === formData.opponent)
   const currentSeason = new Date().getFullYear().toString()
+  const selectedFixture = fixtureIdParam
+    ? allFixtures.find((fixture) => fixture.id.toString() === fixtureIdParam)
+    : null
+
+  useEffect(() => {
+    if (!selectedFixture) return
+
+    const opponentId = getFixtureOpponentId(selectedFixture)
+    if (!opponentId) return
+
+    setFormData((prev) => ({
+      ...prev,
+      gameType: selectedFixture.cupId ? 'Cup' : (selectedFixture.gameType || 'Friendly'),
+      opponent: opponentId,
+      bestOf: selectedFixture.bestOf ? selectedFixture.bestOf.toString() : prev.bestOf,
+      firstTo: selectedFixture.firstTo ? selectedFixture.firstTo.toString() : prev.firstTo
+    }))
+  }, [selectedFixture, user.id])
 
   const checkExistingLeagueMatch = (opponentId) => {
-    const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
-    const approvedResults = results.filter(r => r.status === 'approved')
+    const approvedResults = allResults.filter(r => r.status === 'approved')
     
     const existingMatch = approvedResults.find(r => {
       const isSameSeason = r.season === currentSeason
@@ -96,11 +133,6 @@ export default function SubmitResult() {
       return
     }
     
-    if (formData.gameType === 'Cup' && !cupFixture) {
-      setError('Please select a valid cup match')
-      return
-    }
-
     if (formData.gameType === 'League' && opponentUser) {
       const existingMatch = checkExistingLeagueMatch(opponentUser.id)
       if (existingMatch) {
@@ -114,21 +146,43 @@ export default function SubmitResult() {
       return
     }
 
-    const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
-    
     let cupFixture = null
     let cupId = null
     let matchId = null
     if (formData.gameType === 'Cup') {
       cupFixture = cupFixtures.find(f => {
-        const opponentId = f.player1 === user.id ? f.player2 : f.player1
+        const opponentId = getFixtureOpponentId(f)
         return opponentId === formData.opponent
       })
+      if (!cupFixture) {
+        setError('Please select a valid cup match')
+        return
+      }
       if (cupFixture) {
         cupId = cupFixture.cupId
         matchId = cupFixture.matchId
       }
     }
+
+    const duplicateResult = allResults.find((result) => {
+      if (formData.gameType === 'Cup' && cupId && matchId) {
+        return result.cupId === cupId && result.matchId === matchId && result.status !== 'rejected'
+      }
+      const isSamePlayers =
+        (result.player1Id === user.id && result.player2Id === formData.opponent) ||
+        (result.player2Id === user.id && result.player1Id === formData.opponent)
+      return isSamePlayers &&
+        result.gameType === formData.gameType &&
+        result.date === new Date().toISOString().split('T')[0] &&
+        result.status !== 'rejected'
+    })
+
+    if (duplicateResult) {
+      setError('A result for this fixture has already been submitted.')
+      return
+    }
+
+    const results = [...allResults]
     
     const newResult = {
       id: Date.now(),
@@ -168,6 +222,28 @@ export default function SubmitResult() {
       console.log('Error saving to Firestore:', e)
     }
 
+    const fixtureToUpdate = cupFixture || selectedFixture
+    if (fixtureToUpdate) {
+      const updatedFixtures = [...allFixtures]
+      const fixtureIndex = updatedFixtures.findIndex((fixture) => fixture.id === fixtureToUpdate.id)
+      if (fixtureIndex !== -1) {
+        updatedFixtures[fixtureIndex] = {
+          ...updatedFixtures[fixtureIndex],
+          status: 'result_submitted'
+        }
+        localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
+        try {
+          await setDoc(
+            doc(db, 'fixtures', updatedFixtures[fixtureIndex].id.toString()),
+            updatedFixtures[fixtureIndex],
+            { merge: true }
+          )
+        } catch (e) {
+          console.log('Error updating fixture in Firestore:', e)
+        }
+      }
+    }
+
     notifyAdmins(
       'New Result Pending',
       `${user.username} submitted a result: ${newResult.player1} ${newResult.score1}-${newResult.score2} ${newResult.player2} (${newResult.gameType})`,
@@ -181,6 +257,7 @@ export default function SubmitResult() {
     }
 
     triggerDataRefresh('results')
+    triggerDataRefresh('fixtures')
     setSubmitted(true)
     setTimeout(() => {
       setSubmitted(false)
@@ -276,7 +353,7 @@ export default function SubmitResult() {
                   <option value="">Select cup match</option>
                   {cupFixtures.map(f => {
                     const cup = cups.find(c => c.id === f.cupId)
-                    const opponentId = f.player1 === user.id ? f.player2 : f.player1
+                    const opponentId = getFixtureOpponentId(f)
                     const opponent = allUsers.find(u => u.id === opponentId)
                     return (
                       <option key={f.id} value={opponentId}>

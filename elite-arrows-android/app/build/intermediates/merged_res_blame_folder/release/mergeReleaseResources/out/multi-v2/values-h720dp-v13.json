@@ -1,10 +1,10 @@
 {
     "logs": [
         {
-            "outputFile": "com.elitearrows.app-mergeReleaseResources-38:/values-h720dp-v13/values-h720dp-v13.xml",
+            "outputFile": "com.elitearrows.app-mergeReleaseResources-2:/values-h720dp-v13/values-h720dp-v13.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\XJ21c\\.gradle\\caches\\9.4.1\\transforms\\2ab7cfd57f073eb7d4daaa3edd9b89f5\\transformed\\appcompat-1.7.0\\res\\values-h720dp-v13\\values-h720dp-v13.xml",
+                    "source": "C:\\Users\\XJ21c\\.gradle\\caches\\9.4.1\\transforms\\b35f7390310722c4a2986193e1373b27\\transformed\\appcompat-1.7.1\\res\\values-h720dp-v13\\values-h720dp-v13.xml",
                     "from": {
                         "startLines": "2",
                         "startColumns": "4",

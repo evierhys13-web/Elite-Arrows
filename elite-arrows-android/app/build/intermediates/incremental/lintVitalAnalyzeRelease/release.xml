@@ -2,11 +2,11 @@
     name="release"
     package="com.elitearrows.app"
     minSdkVersion="23"
-    targetSdkVersion="34"
+    targetSdkVersion="35"
     mergedManifest="build\intermediates\merged_manifest\release\processReleaseMainManifest\AndroidManifest.xml"
     proguardFiles="build\intermediates\default_proguard_files\global\proguard-android-optimize.txt-9.2.0;proguard-rules.pro"
     partialResultsDir="build\intermediates\lint_vital_partial_results\release\lintVitalAnalyzeRelease\out"
-    desugaredMethodsFiles="C:\Users\XJ21c\.gradle\caches\9.4.1\transforms\ca4a58224f5695e5d59e96a56a2d9b79\transformed\D8BackportedDesugaredMethods.txt">
+    desugaredMethodsFiles="C:\Users\XJ21c\.gradle\caches\9.4.1\transforms\dfd47ef7eee1b6b9dace3d81caf0c7ff\transformed\D8BackportedDesugaredMethods.txt">
   <buildFeatures/>
   <sourceProviders>
     <sourceProvider
@@ -26,6 +26,6 @@
       applicationId="com.elitearrows.app"
       generatedSourceFolders="build\generated\ap_generated_sources\release\out"
       generatedResourceFolders="build\generated\res\processReleaseGoogleServices"
-      desugaredMethodsFiles="C:\Users\XJ21c\.gradle\caches\9.4.1\transforms\ca4a58224f5695e5d59e96a56a2d9b79\transformed\D8BackportedDesugaredMethods.txt">
+      desugaredMethodsFiles="C:\Users\XJ21c\.gradle\caches\9.4.1\transforms\dfd47ef7eee1b6b9dace3d81caf0c7ff\transformed\D8BackportedDesugaredMethods.txt">
   </artifact>
 </variant>

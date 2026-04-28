@@ -201,6 +201,7 @@ export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false)
   const { signOut, user } = useAuth()
   const navigate = useNavigate()
+  const { navMode } = useTheme()
 
   const handleSignOut = () => {
     signOut()
@@ -277,30 +278,31 @@ export default function Sidebar() {
     { title: 'Account', items: bottomItems },
   ]
 
-  const showAdmin = isAdmin
+  const showMobileHeader = navMode === 'sidebar'
 
   return (
     <>
-      <div className="mobile-header">
-        <button 
-          className="mobile-menu-btn" 
-          onClick={() => setIsOpen(true)}
-          aria-label="Open navigation menu"
-          aria-expanded={isOpen}
-          aria-controls="sidebar-nav"
-        >
-          <MenuIcon />
-        </button>
-        <span className="sidebar-logo" role="banner">
-          <img src="/elite arrows.jpg" alt="Elite Arrows" style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover' }} />
-          <span style={{ marginLeft: '8px' }}>Elite Arrows</span>
-        </span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <NotificationBell />
-          <RefreshButton size={20} />
-          <div style={{ width: 40 }} />
+      {showMobileHeader && (
+        <div className="mobile-header">
+          <button 
+            className="mobile-menu-btn" 
+            onClick={() => setIsOpen(true)}
+            aria-label="Open navigation menu"
+            aria-expanded={isOpen}
+            aria-controls="sidebar-nav"
+          >
+            <MenuIcon />
+          </button>
+          <span className="mobile-header-brand sidebar-logo" role="banner">
+            <img src="/elite arrows.jpg" alt="Elite Arrows" style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover' }} />
+            <span style={{ marginLeft: '8px', display: 'inline' }}>Elite Arrows</span>
+          </span>
+          <div className="mobile-header-actions">
+            <NotificationBell />
+            <RefreshButton size={20} />
+          </div>
         </div>
-      </div>
+      )}
 
       <div 
         className={`mobile-sidebar-overlay ${isOpen ? 'open' : ''}`} 

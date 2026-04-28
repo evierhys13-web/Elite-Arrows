@@ -7,7 +7,7 @@ import SurveyModal from '../components/SurveyModal'
 
 export default function Settings() {
   const { signOut, user, updateUser, getAllUsers, notifications: contextNotifications } = useAuth()
-  const { theme, toggleTheme, language, setLanguage, chatSettings, setChatSettings } = useTheme()
+  const { theme, toggleTheme, language, setLanguage, chatSettings, setChatSettings, navMode, updateNavMode } = useTheme()
   const navigate = useNavigate()
   
   const [activeTab, setActiveTab] = useState('account')
@@ -509,6 +509,13 @@ export default function Settings() {
               <option value="es">Spanish</option>
               <option value="fr">French</option>
               <option value="de">German</option>
+            </select>
+          </div>
+          <div className="settings-option">
+            <label>Navigation</label>
+            <select value={navMode} onChange={(e) => updateNavMode(e.target.value)}>
+              <option value="bottom">Bottom Bar</option>
+              <option value="sidebar">Sidebar</option>
             </select>
           </div>
           <button className="btn btn-secondary btn-block" onClick={() => navigate('/profile')} style={{ marginTop: '12px' }}>Edit Profile</button>

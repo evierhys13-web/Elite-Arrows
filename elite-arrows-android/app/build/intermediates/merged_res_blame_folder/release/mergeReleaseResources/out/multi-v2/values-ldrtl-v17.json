@@ -1,10 +1,10 @@
 {
     "logs": [
         {
-            "outputFile": "com.elitearrows.app-mergeReleaseResources-38:/values-ldrtl-v17/values-ldrtl-v17.xml",
+            "outputFile": "com.elitearrows.app-mergeReleaseResources-2:/values-ldrtl-v17/values-ldrtl-v17.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\XJ21c\\.gradle\\caches\\9.4.1\\transforms\\4b423fb81432fd4538e398d82881466f\\transformed\\material-1.11.0\\res\\values-ldrtl-v17\\values-ldrtl-v17.xml",
+                    "source": "C:\\Users\\XJ21c\\.gradle\\caches\\9.4.1\\transforms\\a0acc3d5100b4ef3eeddc07ddfde7dc5\\transformed\\material-1.13.0\\res\\values-ldrtl-v17\\values-ldrtl-v17.xml",
                     "from": {
                         "startLines": "2,3",
                         "startColumns": "4,4",

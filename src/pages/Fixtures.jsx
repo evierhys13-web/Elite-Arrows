@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { db, doc, setDoc, collection, addDoc } from '../firebase'
 import UserSearchSelect from '../components/UserSearchSelect'
 
 export default function Fixtures() {
   const { user, getAllUsers, getFixtures, triggerDataRefresh } = useAuth()
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('upcoming')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [createForm, setCreateForm] = useState({
@@ -597,9 +598,13 @@ export default function Fixtures() {
                     <div style={{ fontWeight: '600' }}>⏰ {fixture.fixtureTime}</div>
                   </div>
                 </div>
-                <p style={{ marginTop: '10px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  Submit result at: <Link to="/submit-result" style={{ color: 'var(--accent-cyan)' }}>Submit Result</Link>
-                </p>
+                <button
+                  className="btn btn-primary"
+                  style={{ marginTop: '12px' }}
+                  onClick={() => navigate(`/submit-result?fixtureId=${fixture.id}`)}
+                >
+                  Submit Result
+                </button>
               </div>
             ))
           )}
@@ -882,10 +887,10 @@ export default function Fixtures() {
                       Format: {fixture.startScore || 501} / Best of {fixture.bestOf || 3}
                     </p>
                   </div>
-                  <button 
-                    className="btn btn-primary" 
+                  <button
+                    className="btn btn-primary"
                     style={{ marginTop: '10px' }}
-                    onClick={() => submitCupResult(fixture)}
+                    onClick={() => navigate(`/submit-result?fixtureId=${fixture.id}`)}
                   >
                     Submit Result
                   </button>

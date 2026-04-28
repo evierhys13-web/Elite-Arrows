@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useNavigate } from 'react-router-dom'
 import { db, doc, setDoc, deleteDoc, collection, addDoc } from '../firebase'
 
 export default function CupFixtures() {
   const { user, getAllUsers, getFixtures, getCups, triggerDataRefresh, dataRefreshTrigger } = useAuth()
+  const navigate = useNavigate()
   const [fixtures, setFixtures] = useState([])
   const [selectedFixture, setSelectedFixture] = useState(null)
   const [scheduleDate, setScheduleDate] = useState('')
@@ -419,10 +421,10 @@ export default function CupFixtures() {
                   Format: {fixture.startScore || 501} / Best of {fixture.bestOf || 3}
                 </p>
               </div>
-              <button 
-                className="btn btn-primary" 
+              <button
+                className="btn btn-primary"
                 style={{ marginTop: '10px' }}
-                onClick={() => submitResult(fixture)}
+                onClick={() => navigate(`/submit-result?fixtureId=${fixture.id}`)}
               >
                 Submit Result
               </button>
