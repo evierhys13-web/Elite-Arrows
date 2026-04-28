@@ -542,69 +542,62 @@ const handleSubmit = async (e) => {
           <div className="form-group">
             <label style={{ fontSize: '0.9rem', display: 'block', marginBottom: '8px' }}>Proof of Result (Photo/Screenshot) - Required for League</label>
             
-            {/* Touch-friendly upload area with label */}
-            <label style={{ 
-              border: '2px dashed var(--border)', 
-              borderRadius: '8px', 
-              padding: '30px 20px',
-              textAlign: 'center',
-              cursor: 'pointer',
-              background: 'var(--bg-secondary)',
-              display: 'block',
-              touchAction: 'manipulation'
-            }}>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleImageUpload}
-                style={{ display: 'none' }}
-              />
-              {formData.proofImage ? (
-                <div style={{ position: 'relative' }}>
-                  <img 
-                    src={formData.proofImage} 
-                    alt="Proof" 
-                    style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      removeImage()
-                    }}
-                    style={{
-                      position: 'absolute',
-                      top: '-10px',
-                      right: '-10px',
-                      background: '#ef4444',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '50%',
-                      width: '28px',
-                      height: '28px',
-                      cursor: 'pointer',
-                      fontSize: '18px',
-                      lineHeight: '1'
-                    }}
-                  >
-                    ×
-                  </button>
-                </div>
-              ) : (
-                <div>
-                  <p style={{ color: 'var(--text-muted)', marginBottom: '10px' }}>
-                    Tap to take photo or upload screenshot
-                  </p>
-                  <span style={{ color: 'var(--accent-cyan)', fontSize: '1rem', fontWeight: 'bold' }}>
-                    📷 Take Photo / Upload
-                  </span>
-</span>
-                </div>
-              )}
-            </label>
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleImageUpload}
+              style={{ display: 'none' }}
+            />
+            
+            {/* Upload area - clickable div */}
+            {!formData.proofImage ? (
+              <div style={{ 
+                border: '2px dashed var(--border)', 
+                borderRadius: '8px', 
+                padding: '30px 20px',
+                textAlign: 'center',
+                cursor: 'pointer',
+                background: 'var(--bg-secondary)'
+              }} onClick={() => fileInputRef.current?.click()}>
+                <p style={{ color: 'var(--text-muted)', marginBottom: '10px' }}>
+                  Tap to take photo or upload screenshot
+                </p>
+                <span style={{ color: 'var(--accent-cyan)', fontSize: '1rem', fontWeight: 'bold' }}>
+                  📷 Take Photo / Upload
+                </span>
+              </div>
+            ) : (
+              <div style={{ position: 'relative' }}>
+                <img 
+                  src={formData.proofImage} 
+                  alt="Proof" 
+                  style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeImage()}
+                  style={{
+                    position: 'absolute',
+                    top: '-10px',
+                    right: '-10px',
+                    background: '#ef4444',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '28px',
+                    height: '28px',
+                    cursor: 'pointer',
+                    fontSize: '18px'
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            )}
+          </div>
 
           <button 
             type="submit"
