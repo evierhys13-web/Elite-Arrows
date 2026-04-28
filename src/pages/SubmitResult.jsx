@@ -146,6 +146,10 @@ const handleSubmit = async (e) => {
       return
     }
     
+    if (!window.confirm(`Submit result: ${formData.yourScore} - ${formData.opponentScore} vs ${formData.opponent}?`)) {
+      return
+    }
+    
     if (formData.gameType === 'League' && opponentUser) {
       const existingMatch = checkExistingLeagueMatch(opponentUser.id)
       if (existingMatch) {
