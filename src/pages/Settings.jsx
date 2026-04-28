@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
-import { auth, sendPasswordResetEmail, db, doc, deleteDoc, usersCollection } from '../firebase'
+import { auth, sendPasswordResetEmail, db, doc, setDoc, deleteDoc, usersCollection } from '../firebase'
 import SurveyModal from '../components/SurveyModal'
 
 export default function Settings() {
@@ -31,23 +31,40 @@ export default function Settings() {
     setNotifications(contextNotifications)
   }, [contextNotifications])
 
-  const markAsRead = (id) => {
+  const markAsRead = async (id) => {
     const updated = notifications.map(n => n.id === id ? { ...n, isRead: true } : n)
     localStorage.setItem('eliteArrowsNotifications', JSON.stringify(updated))
     setNotifications(updated)
+    try {
+      await setDoc(doc(db, 'notifications', id), { isRead: true }, { merge: true })
+    } catch (error) {
+      console.log('Error marking notification as read:', error)
+    }
   }
 
-  const markAllAsRead = () => {
+  const markAllAsRead = async () => {
     const updated = notifications.map(n => ({ ...n, isRead: true }))
     localStorage.setItem('eliteArrowsNotifications', JSON.stringify(updated))
     setNotifications(updated)
+    await Promise.all(
+      notifications
+        .filter(n => !n.isRead)
+        .map(n => setDoc(doc(db, 'notifications', n.id), { isRead: true }, { merge: true }))
+    ).catch((error) => {
+      console.log('Error marking all notifications as read:', error)
+    })
   }
 
-  const deleteNotification = (id) => {
+  const deleteNotification = async (id) => {
     const all = JSON.parse(localStorage.getItem('eliteArrowsNotifications') || '[]')
     const filtered = all.filter(n => n.id !== id)
     localStorage.setItem('eliteArrowsNotifications', JSON.stringify(filtered))
     setNotifications(notifications.filter(n => n.id !== id))
+    try {
+      await deleteDoc(doc(db, 'notifications', id))
+    } catch (error) {
+      console.log('Error deleting notification:', error)
+    }
   }
 
   const getNotificationIcon = (type) => {

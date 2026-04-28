@@ -122,9 +122,17 @@ export default function SubmitResult() {
     }
   }
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!formData.opponent || !formData.yourScore || !formData.opponentScore) {
+    setError('')
+    
+    if (!formData.opponent) {
+      setError('Please select an opponent')
+      return
+    }
+    
+    if (!formData.yourScore || !formData.opponentScore) {
+      setError('Please enter both scores')
       return
     }
 
