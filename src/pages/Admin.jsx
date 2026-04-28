@@ -85,150 +85,63 @@ export default function Admin() {
   }, [user.isAdmin, user.isTournamentAdmin]);
 
   const approveResult = async (resultId) => {
-    try {
-      const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]');
-      if (!Array.isArray(results)) {
-        alert('Error: Invalid results data')
-        return
-      }
-      const index = results.findIndex(r => String(r.id) === String(resultId));
-      if (index === -1) {
-        alert('Result not found')
-        return
-      }
-      
-      const result = results[index]
-      results[index].status = 'approved';
-      localStorage.setItem('eliteArrowsResults', JSON.stringify(results));
-      
-      await updateDoc(doc(db, 'results', resultId), { status: 'approved' })
-      
-      if (result.gameType === 'Cup') {
-        const cups = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
-        const cupIndex = cups.findIndex(c => c.id === result.cupId)
-        if (cupIndex !== -1) {
-          const cup = cups[cupIndex]
-          const matchIndex = cup.matches.findIndex(m => m.id === result.matchId)
-          if (matchIndex !== -1) {
-            const winnerId = result.score1 > result.score2 ? result.player1Id : result.player2Id
-            cup.matches[matchIndex].winner = winnerId
-            
-            if (cup.matches[matchIndex].nextMatchId) {
-              const nextMatchIndex = cup.matches.findIndex(m => m.id === cup.matches[matchIndex].nextMatchId)
-              if (nextMatchIndex !== -1) {
-                if (cup.matches[nextMatchIndex].player1 === null) {
-                  cup.matches[nextMatchIndex].player1 = winnerId
-                } else {
-                  cup.matches[nextMatchIndex].player2 = winnerId
-                }
-              }
-            }
-            
-            const allRoundsComplete = Array.from(new Set(cup.matches.map(m => m.round))).every(round => {
-              return cup.matches.filter(m => m.round === round).every(m => m.winner)
-            })
-            
-            if (allRoundsComplete) {
-              cup.status = 'completed'
-            } else {
-              const activeRound = Array.from(new Set(cup.matches.map(m => m.round))).sort((a, b) => a - b).find(round => {
-                return !cup.matches.filter(m => m.round === round).every(m => m.winner)
-              })
-              cup.currentRound = activeRound || cup.currentRound
-            }
-            
-            cups[cupIndex] = cup
-            localStorage.setItem('eliteArrowsCups', JSON.stringify(cups))
-          }
-        }
-      }
-      
-      if (result.player1Id) {
-        const p1Doc = await getDoc(doc(db, 'users', result.player1Id))
-        if (p1Doc.exists()) {
-          const p1Data = p1Doc.data()
-          const p1Stats = p1Data.stats || { played: 0, wins: 0, losses: 0, legsWon: 0, legsLost: 0, '180s': 0, '170s': 0, highestCheckout: 0, doubleSuccess: 0 }
-          p1Stats.played = (p1Stats.played || 0) + 1
-          p1Stats.legsWon = (p1Stats.legsWon || 0) + result.score1
-          p1Stats.legsLost = (p1Stats.legsLost || 0) + result.score2
-          p1Stats['180s'] = (p1Stats['180s'] || 0) + (result.player1Stats?.['180s'] || 0)
-          if ((result.player1Stats?.highestCheckout || 0) >= 170) {
-            p1Stats['170s'] = (p1Stats['170s'] || 0) + 1
-          }
-          if ((result.player1Stats?.highestCheckout || 0) > (p1Stats.highestCheckout || 0)) {
-            p1Stats.highestCheckout = result.player1Stats.highestCheckout
-          }
-          if (result.score1 > result.score2) {
-            p1Stats.wins = (p1Stats.wins || 0) + 1
-          } else if (result.score1 < result.score2) {
-            p1Stats.losses = (p1Stats.losses || 0) + 1
-          }
-          await setDoc(doc(db, 'users', result.player1Id), { stats: p1Stats }, { merge: true })
-        }
-      }
-      
-      if (result.player2Id) {
-        const p2Doc = await getDoc(doc(db, 'users', result.player2Id))
-        if (p2Doc.exists()) {
-          const p2Data = p2Doc.data()
-          const p2Stats = p2Data.stats || { played: 0, wins: 0, losses: 0, legsWon: 0, legsLost: 0, '180s': 0, '170s': 0, highestCheckout: 0, doubleSuccess: 0 }
-          p2Stats.played = (p2Stats.played || 0) + 1
-          p2Stats.legsWon = (p2Stats.legsWon || 0) + result.score2
-          p2Stats.legsLost = (p2Stats.legsLost || 0) + result.score1
-          p2Stats['180s'] = (p2Stats['180s'] || 0) + (result.player2Stats?.['180s'] || 0)
-          if ((result.player2Stats?.highestCheckout || 0) >= 170) {
-            p2Stats['170s'] = (p2Stats['170s'] || 0) + 1
-          }
-          if ((result.player2Stats?.highestCheckout || 0) > (p2Stats.highestCheckout || 0)) {
-            p2Stats.highestCheckout = result.player2Stats.highestCheckout
-          }
-          if (result.score2 > result.score1) {
-            p2Stats.wins = (p2Stats.wins || 0) + 1
-          } else if (result.score2 < result.score1) {
-            p2Stats.losses = (p2Stats.losses || 0) + 1
-          }
-          await setDoc(doc(db, 'users', result.player2Id), { stats: p2Stats }, { merge: true })
-        }
-      }
-      
-      notifyUser(result.player1Id, 'Result Approved', `Your result (${result.score1}-${result.score2} vs ${result.player2}) was approved!`, 'result_approved', { resultId, gameType: result.gameType })
-      notifyUser(result.player2Id, 'Result Approved', `Your result (${result.score2}-${result.score1} vs ${result.player1}) was approved!`, 'result_approved', { resultId, gameType: result.gameType })
-      notifyAllSubscribers('League Table Updated', 'The league table has been updated with the latest results', { type: 'table_updated' })
-      
-      setPendingResults(prev => prev.filter(r => r.id !== resultId));
-      alert(result.gameType === 'Cup' ? 'Result approved! Cup bracket updated.' : 'Result approved!')
-    } catch (e) {
-      console.error('Error approving result:', e)
-      alert('Error approving result: ' + e.message)
+    if (!window.confirm('Approve this result?')) return
+    
+    console.log('Approving result:', resultId)
+    const resultIdStr = String(resultId)
+    const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+    console.log('Found results:', results.length)
+    
+    const index = results.findIndex(r => String(r.id) === resultIdStr)
+    console.log('Found at index:', index)
+    
+    if (index === -1) {
+      alert('Result not found')
+      return
     }
-  };
+    
+    const result = results[index]
+    results[index].status = 'approved'
+    localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
+    console.log('Updated local storage')
+    
+    try {
+      await updateDoc(doc(db, 'results', resultIdStr), { status: 'approved' })
+      console.log('Updated Firebase')
+    } catch (e) {
+      console.log('Firebase error (non-fatal):', e)
+    }
+    
+    setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
+    triggerDataRefresh('results')
+    alert('Result approved!')
+  }
 
   const rejectResult = async (resultId) => {
-    try {
-      const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]');
-      if (!Array.isArray(results)) {
-        alert('Error: Invalid results data')
-        return
-      }
-      const index = results.findIndex(r => String(r.id) === String(resultId));
-      if (index === -1) {
-        alert('Result not found')
-        return
-      }
-      const result = results[index]
-      results[index].status = 'rejected';
-      localStorage.setItem('eliteArrowsResults', JSON.stringify(results));
-      
-      await updateDoc(doc(db, 'results', resultId), { status: 'rejected' })
-      
-      notifyUser(result.player1Id, 'Result Rejected', `Your result (${result.score1}-${result.score2} vs ${result.player2}) was rejected`, 'result_rejected', { resultId })
-      notifyUser(result.player2Id, 'Result Rejected', `Your opponent's result was rejected`, 'result_rejected', { resultId })
-      
-      setPendingResults(prev => prev.filter(r => String(r.id) !== String(resultId)));
-    } catch (e) {
-      console.error('Error rejecting result:', e)
-      alert('Error rejecting result: ' + e.message)
+    if (!window.confirm('Reject this result?')) return
+    
+    const resultIdStr = String(resultId)
+    const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+    const index = results.findIndex(r => String(r.id) === resultIdStr)
+    
+    if (index === -1) {
+      alert('Result not found')
+      return
     }
+    
+    const result = results[index]
+    results[index].status = 'rejected'
+    localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
+    
+    try {
+      await updateDoc(doc(db, 'results', resultIdStr), { status: 'rejected' })
+    } catch (e) {
+      console.log('Firebase error (non-fatal):', e)
+    }
+    
+    setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
+    triggerDataRefresh('results')
+    alert('Result rejected!')
   };
 
   const approvePayment = async (userId) => {
