@@ -1,4 +1,4 @@
-const CACHE_NAME = 'elite-arrows-v1';
+const CACHE_NAME = 'elite-arrows-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -34,6 +34,13 @@ self.addEventListener('fetch', (event) => {
 
   if (request.method !== 'GET') return;
 
+  // Always fetch fresh for API and HTML pages
+  if (url.pathname.includes('/api/') || url.pathname.endsWith('.html')) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
+  // Cache-first for static assets
   if (url.pathname.endsWith('.js') || 
       url.pathname.endsWith('.css') || 
       url.pathname.endsWith('.jpg') ||
@@ -59,6 +66,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Network-first for everything else (HTML, JSON, etc)
   event.respondWith(
     fetch(request)
       .then((response) => {

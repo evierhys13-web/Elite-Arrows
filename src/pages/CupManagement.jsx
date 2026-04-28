@@ -104,41 +104,39 @@ function CupManagement() {
   }
 
   const deleteCup = async (cup) => {
-    const confirmed = window.confirm(`Are you sure you want to delete "${cup.name}"? This will also delete all fixtures.`)
+    const confirmed = window.confirm(`Are you sure you want to delete "${cup.name}"? This will also delete fixtures.`)
     if (!confirmed) return
-    
-    const cupsData = getCups()
-    const updatedCups = cupsData.filter(c => c.id !== cup.id)
-    localStorage.setItem('eliteArrowsCups', JSON.stringify(updatedCups))
-    setCups(updatedCups)
-    
-    const fixtures = getFixtures()
-    const updatedFixtures = fixtures.filter(f => f.cupId !== cup.id)
-    localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
-    setAllCupFixtures(updatedFixtures)
     
     try {
       await deleteDoc(doc(db, 'cups', cup.id.toString()))
-      for (const fixture of fixtures.filter(f => f.cupId === cup.id)) {
+      const fixtures = getFixtures().filter(f => f.cupId === cup.id)
+      for (const fixture of fixtures) {
         await deleteDoc(doc(db, 'fixtures', fixture.id.toString()))
       }
     } catch (e) {
       console.log('Error deleting from Firebase:', e)
     }
     
-    alert('Cup deleted!')
+    const cupsData = getCups()
+    const updatedCups = cupsData.filter(c => c.id !== cup.id)
+    localStorage.setItem('eliteArrowsCups', JSON.stringify(updatedCups))
+    
+    const fixturesData = getFixtures()
+    const updatedFixtures = fixturesData.filter(f => f.cupId !== cup.id)
+    localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
+    
+    setCups(updatedCups)
+    setAllCupFixtures(updatedFixtures)
+    setRefreshKey(prev => prev + 1)
+    
     triggerDataRefresh('cups')
     triggerDataRefresh('fixtures')
+    alert('Cup deleted!')
   }
 
   const deleteFixture = async (fixture) => {
     const confirmed = window.confirm('Are you sure you want to delete this fixture?')
     if (!confirmed) return
-    
-    const fixtures = getFixtures()
-    const updatedFixtures = fixtures.filter(f => f.id !== fixture.id)
-    localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
-    setAllCupFixtures(updatedFixtures)
     
     try {
       await deleteDoc(doc(db, 'fixtures', fixture.id.toString()))
@@ -146,8 +144,14 @@ function CupManagement() {
       console.log('Error deleting from Firebase:', e)
     }
     
-    alert('Fixture deleted!')
+    const fixturesData = getFixtures()
+    const updatedFixtures = fixturesData.filter(f => f.id !== fixture.id)
+    localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
+    setAllCupFixtures(updatedFixtures)
+    setRefreshKey(prev => prev + 1)
+    
     triggerDataRefresh('fixtures')
+    alert('Fixture deleted!')
   }
 
   const completeCup = async (cup) => {
