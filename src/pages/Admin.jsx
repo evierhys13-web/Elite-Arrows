@@ -86,7 +86,11 @@ export default function Admin() {
 
   const approveResult = async (resultId) => {
     const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]');
-    const index = results.findIndex(r => r.id === resultId);
+    if (!Array.isArray(results)) {
+      alert('Error: Invalid results data')
+      return
+    }
+    const index = results.findIndex(r => String(r.id) === String(resultId));
     if (index === -1) {
       alert('Result not found')
       return
@@ -201,23 +205,29 @@ export default function Admin() {
 
   const rejectResult = async (resultId) => {
     const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]');
-    const index = results.findIndex(r => r.id === resultId);
-    if (index !== -1) {
-      const result = results[index]
-      results[index].status = 'rejected';
-      localStorage.setItem('eliteArrowsResults', JSON.stringify(results));
-      
-      try {
-        await updateDoc(doc(db, 'results', resultId), { status: 'rejected' })
-      } catch (e) {
-        console.log('Error updating result status in Firebase:', e)
-      }
-      
-      notifyUser(result.player1Id, 'Result Rejected', `Your result (${result.score1}-${result.score2} vs ${result.player2}) was rejected`, 'result_rejected', { resultId })
-      notifyUser(result.player2Id, 'Result Rejected', `Your opponent's result was rejected`, 'result_rejected', { resultId })
-      
-      setPendingResults(prev => prev.filter(r => r.id !== resultId));
+    if (!Array.isArray(results)) {
+      alert('Error: Invalid results data')
+      return
     }
+    const index = results.findIndex(r => String(r.id) === String(resultId));
+    if (index === -1) {
+      alert('Result not found')
+      return
+    }
+    const result = results[index]
+    results[index].status = 'rejected';
+    localStorage.setItem('eliteArrowsResults', JSON.stringify(results));
+    
+    try {
+      await updateDoc(doc(db, 'results', resultId), { status: 'rejected' })
+    } catch (e) {
+      console.log('Error updating result status in Firebase:', e)
+    }
+    
+    notifyUser(result.player1Id, 'Result Rejected', `Your result (${result.score1}-${result.score2} vs ${result.player2}) was rejected`, 'result_rejected', { resultId })
+    notifyUser(result.player2Id, 'Result Rejected', `Your opponent's result was rejected`, 'result_rejected', { resultId })
+    
+    setPendingResults(prev => prev.filter(r => String(r.id) !== String(resultId)));
   };
 
   const approvePayment = async (userId) => {
