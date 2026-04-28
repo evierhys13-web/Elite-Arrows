@@ -269,9 +269,14 @@ const handleSubmit = async (e) => {
       addTokens(tokensToAdd)
     }
 
-    triggerDataRefresh('results')
+triggerDataRefresh('results')
     triggerDataRefresh('fixtures')
+    
+    // Show success state
     setSubmitted(true)
+    setError('')
+    
+    // Reset form after delay
     setTimeout(() => {
       setSubmitted(false)
       setFormData({
@@ -292,8 +297,11 @@ const handleSubmit = async (e) => {
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
-    }, 2000)
+    }, 3000)
   }
+  
+  // Success message display
+  const showSuccess = submitted && !error
 
   const getOpponentStatus = (opponentId, opponentName) => {
     if (formData.gameType === 'Friendly') return null
@@ -552,23 +560,29 @@ const handleSubmit = async (e) => {
               style={{ display: 'none' }}
             />
             
-            {/* Upload area - clickable div */}
+            {/* Upload area - button */}
             {!formData.proofImage ? (
-              <div style={{ 
-                border: '2px dashed var(--border)', 
-                borderRadius: '8px', 
-                padding: '30px 20px',
-                textAlign: 'center',
-                cursor: 'pointer',
-                background: 'var(--bg-secondary)'
-              }} onClick={() => fileInputRef.current?.click()}>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                style={{ 
+                  border: '2px dashed var(--border)', 
+                  borderRadius: '8px', 
+                  padding: '30px 20px',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  background: 'var(--bg-secondary)',
+                  width: '100%',
+                  color: 'var(--text)'
+                }}
+              >
                 <p style={{ color: 'var(--text-muted)', marginBottom: '10px' }}>
                   Tap to take photo or upload screenshot
                 </p>
                 <span style={{ color: 'var(--accent-cyan)', fontSize: '1rem', fontWeight: 'bold' }}>
                   📷 Take Photo / Upload
                 </span>
-              </div>
+              </button>
             ) : (
               <div style={{ position: 'relative' }}>
                 <img 

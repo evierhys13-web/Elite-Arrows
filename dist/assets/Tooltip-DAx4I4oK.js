@@ -1,1 +1,0 @@
-import{n as e,t}from"./jsx-runtime-DWSWI4JT.js";e();var n=t();function r({children:e,content:t,position:r=`top`}){return(0,n.jsxs)(`div`,{className:`tooltip-wrapper`,children:[e,(0,n.jsx)(`div`,{className:`tooltip tooltip-${r}`,children:t})]})}export{r as t};

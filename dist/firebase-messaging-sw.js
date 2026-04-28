@@ -56,7 +56,10 @@ self.addEventListener('push', (event) => {
   }
 
   event.waitUntil(
-    self.registration.showNotification(data.title, options)
+    Promise.all([
+      self.registration.showNotification(data.title, options),
+      setBadgeCount(1)
+    ])
   )
 })
 
@@ -94,26 +97,24 @@ self.addEventListener('message', (event) => {
   }
   
   if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
-    self.registration.showNotification(event.data.title, {
-      body: event.data.body,
-      icon: event.data.icon || '/logo.jpg',
-      badge: event.data.badge || '/logo.jpg',
-      data: event.data.data || {}
-    })
+    event.waitUntil(Promise.all([
+      self.registration.showNotification(event.data.title, {
+        body: event.data.body,
+        icon: event.data.icon || '/logo.jpg',
+        badge: event.data.badge || '/logo.jpg',
+        data: event.data.data || {}
+      }),
+      setBadgeCount(1)
+    ]))
   }
 })
 
 async function setBadgeCount(count) {
-  if (navigator.setAppBadge) {
-    await navigator.setAppBadge(count)
-  } else if (navigator.setClientBadge) {
-    navigator.setClientBadge(count)
-  }
-  
   try {
-    const registration = await navigator.serviceWorker.getRegistration()
-    if (registration) {
-      await registration.update()
+    if (count > 0 && navigator.setAppBadge) {
+      await navigator.setAppBadge(count)
+    } else if (count === 0 && navigator.clearAppBadge) {
+      await navigator.clearAppBadge()
     }
   } catch (e) {
     console.log('[FCM SW] Error updating badge:', e)
