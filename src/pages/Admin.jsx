@@ -86,8 +86,12 @@ export default function Admin() {
 
   const approveResult = async (resultId) => {
     const resultIdStr = String(resultId)
+    console.log('Approve called with ID:', resultIdStr, typeof resultIdStr)
+    
     const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+    console.log('LocalStorage results:', results.length)
     const resultsIndex = results.findIndex(r => String(r.id) === resultIdStr)
+    console.log('Found at index:', resultsIndex)
     
     if (resultsIndex === -1) {
       alert('Result not found')
@@ -100,17 +104,25 @@ export default function Admin() {
     
     results[resultsIndex].status = 'approved'
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
+    console.log('Updated localStorage')
     
-    await setDoc(doc(db, 'results', resultIdStr), { status: 'approved' }, { merge: true })
+    try {
+      await setDoc(doc(db, 'results', resultIdStr), { status: 'approved' }, { merge: true })
+      console.log('Updated Firebase!')
+    } catch (e) {
+      console.log('Firebase error:', e)
+    }
     
     setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
     
     alert('Result approved!')
-    window.location.reload()
+    setTimeout(() => window.location.reload(), 1000)
   }
 
   const rejectResult = async (resultId) => {
     const resultIdStr = String(resultId)
+    console.log('Reject called with ID:', resultIdStr)
+    
     const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
     const resultsIndex = results.findIndex(r => String(r.id) === resultIdStr)
     
@@ -125,13 +137,19 @@ export default function Admin() {
     
     results[resultsIndex].status = 'rejected'
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
+    console.log('Updated localStorage')
     
-    await setDoc(doc(db, 'results', resultIdStr), { status: 'rejected' }, { merge: true })
+    try {
+      await setDoc(doc(db, 'results', resultIdStr), { status: 'rejected' }, { merge: true })
+      console.log('Updated Firebase!')
+    } catch (e) {
+      console.log('Firebase error:', e)
+    }
     
     setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
     
     alert('Result rejected!')
-    window.location.reload()
+    setTimeout(() => window.location.reload(), 1000)
   }
 
   const approvePayment = async (userId) => {
