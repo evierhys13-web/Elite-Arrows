@@ -11,10 +11,11 @@ const DIVISION_EMOJIS = {
   'Development': '🌱',
   'Overall': '🏆'
 }
+const DEFAULT_LEAGUE_TABLE_RESET_AT = '2026-04-29T16:14:21.338+01:00'
 
 export default function Table() {
   const [activeDivision, setActiveDivision] = useState('Overall')
-  const { user, getAllUsers, getResults, dataRefreshTrigger } = useAuth()
+  const { user, getAllUsers, getResults, dataRefreshTrigger, adminData } = useAuth()
   const [refreshKey, setRefreshKey] = useState(0)
 
   const divisions = ['Overall', 'Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Development', 'Unassigned']
@@ -25,7 +26,19 @@ export default function Table() {
 
   const allUsers = getAllUsers()
   const results = getResults()
-  const approvedResults = results.filter(r => r.status === 'approved')
+  const resetTimes = [DEFAULT_LEAGUE_TABLE_RESET_AT, adminData?.leagueTableResetAt]
+    .map(value => value ? new Date(value).getTime() : 0)
+    .filter(value => Number.isFinite(value) && value > 0)
+  const leagueTableResetTime = resetTimes.length ? Math.max(...resetTimes) : 0
+  const getResultTime = (result) => {
+    const time = new Date(result.submittedAt || result.createdAt || result.date || 0).getTime()
+    return Number.isFinite(time) ? time : 0
+  }
+  const leagueResults = results.filter(r => (
+    r.status === 'approved' &&
+    r.gameType === 'League' &&
+    (!leagueTableResetTime || getResultTime(r) > leagueTableResetTime)
+  ))
 
   const playerStats = useMemo(() => {
     const stats = {}
@@ -42,7 +55,7 @@ export default function Table() {
       }
     })
 
-    approvedResults.forEach(r => {
+    leagueResults.forEach(r => {
       if (stats[r.player1Id]) {
         stats[r.player1Id].played++
         stats[r.player1Id].legsWon += r.score1
@@ -79,7 +92,7 @@ export default function Table() {
     })
 
     return stats
-  }, [allUsers, approvedResults, refreshKey])
+  }, [allUsers, leagueResults, refreshKey])
 
   const playersInDivision = activeDivision === 'Overall' 
     ? allUsers

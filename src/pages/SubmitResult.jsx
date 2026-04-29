@@ -258,6 +258,7 @@ const handleSubmit = async (e) => {
         gameType: formData.gameType,
         season: currentSeason,
         date: new Date().toISOString().split('T')[0],
+        submittedAt: new Date().toISOString(),
         bestOf: formData.bestOf,
         firstTo: formData.firstTo,
         proofImage: formData.proofImage,

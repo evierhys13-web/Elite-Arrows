@@ -19,7 +19,7 @@ export function AuthProvider({ children }) {
   const [supportRequests, setSupportRequests] = useState([])
   const [seasons, setSeasons] = useState([])
   const [dataRefreshTrigger, setDataRefreshTrigger] = useState(0)
-  const [adminData, setAdminData] = useState({ subscriptionPot: 0, subscriptionPot10: 0, moneyHistory: [] })
+  const [adminData, setAdminData] = useState({ subscriptionPot: 0, subscriptionPot10: 0, moneyHistory: [], leagueTableResetAt: null })
   const [notificationPermission, setNotificationPermission] = useState('default')
   const [fcmToken, setFcmToken] = useState(null)
   const [unreadCount, setUnreadCount] = useState(0)
@@ -344,7 +344,8 @@ export function AuthProvider({ children }) {
           subscriptionPot: data.subscriptionPot || 0,
           subscriptionPot10: data.subscriptionPot10 || 0,
           moneyHistory: data.moneyHistory || [],
-          resultStatusOverrides: data.resultStatusOverrides || {}
+          resultStatusOverrides: data.resultStatusOverrides || {},
+          leagueTableResetAt: data.leagueTableResetAt || null
         })
         resultStatusOverridesRef.current = data.resultStatusOverrides || {}
         localStorage.setItem('eliteArrowsResultStatusOverrides', JSON.stringify(data.resultStatusOverrides || {}))

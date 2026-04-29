@@ -238,6 +238,7 @@ export default function Fixtures() {
       gameType: 'Cup',
       season: new Date().getFullYear().toString(),
       date: new Date().toISOString().split('T')[0],
+      submittedAt: new Date().toISOString(),
       status: 'pending',
       cupId: fixture.cupId,
       matchId: fixture.matchId,

@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 
+const DEFAULT_LEAGUE_TABLE_RESET_AT = '2026-04-29T16:14:21.338+01:00'
+
 export default function Leaderboards() {
-  const { user, getAllUsers, getResults, dataRefreshTrigger } = useAuth()
+  const { user, getAllUsers, getResults, dataRefreshTrigger, adminData } = useAuth()
   const [selectedDivision, setSelectedDivision] = useState('all')
   const [timeFilter, setTimeFilter] = useState('week')
   const [refreshKey, setRefreshKey] = useState(0)
@@ -13,7 +15,19 @@ export default function Leaderboards() {
 
   const allUsers = getAllUsers()
   const results = getResults()
-  const approvedResults = results.filter(r => r.status === 'approved')
+  const resetTimes = [DEFAULT_LEAGUE_TABLE_RESET_AT, adminData?.leagueTableResetAt]
+    .map(value => value ? new Date(value).getTime() : 0)
+    .filter(value => Number.isFinite(value) && value > 0)
+  const leagueTableResetTime = resetTimes.length ? Math.max(...resetTimes) : 0
+  const getResultTime = (result) => {
+    const time = new Date(result.submittedAt || result.createdAt || result.date || 0).getTime()
+    return Number.isFinite(time) ? time : 0
+  }
+  const approvedResults = results.filter(r => (
+    r.status === 'approved' &&
+    r.gameType === 'League' &&
+    (!leagueTableResetTime || getResultTime(r) > leagueTableResetTime)
+  ))
 
   const now = new Date()
   const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)

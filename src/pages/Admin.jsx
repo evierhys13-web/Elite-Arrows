@@ -383,6 +383,7 @@ export default function Admin() {
       gameType: gameForm.gameType,
       season: new Date().getFullYear().toString(),
       date: new Date().toISOString().split('T')[0],
+      submittedAt: new Date().toISOString(),
       bestOf: '3',
       firstTo: '3',
       proofImage: '',
@@ -1769,7 +1770,20 @@ export default function Admin() {
           <div className="card" style={{ marginBottom: '20px' }}>
             <h3 className="card-title">Reset Table</h3>
             <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
-              Clear all results for the current season.
+              Reset league table points from now without deleting existing results.
+            </p>
+            <button className="btn btn-danger" onClick={async () => {
+              if (confirm('Reset league table points to 0 from now? Existing results will stay in match history but stop counting toward the table.')) {
+                const resetAt = new Date().toISOString()
+                await updateAdminData({ leagueTableResetAt: resetAt })
+                localStorage.setItem('eliteArrowsLeagueTableResetAt', resetAt)
+                triggerDataRefresh('results')
+                alert('League table points reset to 0!')
+              }
+            }}>Reset League Points</button>
+
+            <p style={{ color: 'var(--text-muted)', margin: '18px 0 15px' }}>
+              Permanently clear all results for the current season.
             </p>
             <button className="btn btn-danger" onClick={async () => {
               const currentSeason = localStorage.getItem('eliteArrowsCurrentSeason') || new Date().getFullYear().toString()

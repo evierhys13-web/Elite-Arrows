@@ -6,8 +6,10 @@ import { SkeletonList } from '../components/Skeleton'
 import Tooltip from '../components/Tooltip'
 import Breadcrumbs from '../components/Breadcrumbs'
 
+const DEFAULT_LEAGUE_TABLE_RESET_AT = '2026-04-29T16:14:21.338+01:00'
+
 export default function Home() {
-  const { user, getAllUsers, getResults, dataRefreshTrigger, loading } = useAuth()
+  const { user, getAllUsers, getResults, dataRefreshTrigger, loading, adminData } = useAuth()
   const SEASON_START = new Date('2026-05-01')
   const SEASON_END = new Date('2026-06-01')
   
@@ -57,6 +59,14 @@ export default function Home() {
   const approvedResults = allResults.filter(r => r.status === 'approved')
   const userResults = approvedResults.filter(r => r.player1Id === user.id || r.player2Id === user.id)
   const tournaments = JSON.parse(localStorage.getItem('eliteArrowsTournaments') || '[]')
+  const resetTimes = [DEFAULT_LEAGUE_TABLE_RESET_AT, adminData?.leagueTableResetAt]
+    .map(value => value ? new Date(value).getTime() : 0)
+    .filter(value => Number.isFinite(value) && value > 0)
+  const leagueTableResetTime = resetTimes.length ? Math.max(...resetTimes) : 0
+  const getResultTime = (result) => {
+    const time = new Date(result.submittedAt || result.createdAt || result.date || 0).getTime()
+    return Number.isFinite(time) ? time : 0
+  }
   
   const stats = userResults.reduce((acc, r) => {
     acc.played++
@@ -70,7 +80,10 @@ export default function Home() {
       else if (r.score2 < r.score1) acc.losses++
       else acc.draws++
     }
-    acc.points += (isPlayer1 ? (r.score1 > r.score2 ? 3 : r.score1 === r.score2 ? 1 : 0) : (r.score2 > r.score1 ? 3 : r.score2 === r.score1 ? 1 : 0))
+    const countsForLeaguePoints = r.gameType === 'League' && (!leagueTableResetTime || getResultTime(r) > leagueTableResetTime)
+    if (countsForLeaguePoints) {
+      acc.points += (isPlayer1 ? (r.score1 > r.score2 ? 3 : r.score1 === r.score2 ? 1 : 0) : (r.score2 > r.score1 ? 3 : r.score2 === r.score1 ? 1 : 0))
+    }
     return acc
   }, { played: 0, wins: 0, losses: 0, draws: 0, points: 0 })
 
