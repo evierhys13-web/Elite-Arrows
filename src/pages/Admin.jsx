@@ -88,8 +88,8 @@ export default function Admin() {
     const resultIdStr = String(resultId)
     console.log('Approve called with ID:', resultIdStr, typeof resultIdStr)
     
-    const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
-    console.log('LocalStorage results:', results.length)
+    const results = getResults()
+    console.log('Firestore results count:', results.length)
     const resultsIndex = results.findIndex(r => String(r.id) === resultIdStr)
     console.log('Found at index:', resultsIndex)
     
@@ -131,7 +131,7 @@ export default function Admin() {
     const resultIdStr = String(resultId)
     console.log('Reject called with ID:', resultIdStr)
     
-    const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+    const results = getResults()
     const resultsIndex = results.findIndex(r => String(r.id) === resultIdStr)
     
     if (resultsIndex === -1) {
