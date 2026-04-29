@@ -162,6 +162,12 @@ export default function Home() {
               <span style={{ fontWeight: 'bold', color: 'var(--success)', textAlign: 'right' }}>+100 for win</span>
             </div>
           </Tooltip>
+          <Tooltip content="League table scoring: win = 3 points, draw = 1 point, loss = 0 points">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px', cursor: 'help', gap: '16px' }}>
+              <span>Points</span>
+              <span style={{ fontWeight: 'bold', textAlign: 'right' }}>W 3 / D 1 / L 0</span>
+            </div>
+          </Tooltip>
         </div>
         <p style={{ marginTop: '16px', fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
           Be respectful and enjoy the game!

@@ -336,6 +336,7 @@ export default function Guide() {
                   <li>You can only play each opponent once per season</li>
                   <li>Proof screenshot required when submitting</li>
                   <li>Results affect your league table position</li>
+                  <li><strong>Points system:</strong> 3 points for a win, 1 point for a draw, 0 points for a loss</li>
                 </ul>
               </div>
 
