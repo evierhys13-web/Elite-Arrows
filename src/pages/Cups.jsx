@@ -22,12 +22,15 @@ export default function CupTournaments() {
 
   const allUsers = getAllUsers()
   const cups = getCups()
+  const selectablePlayers = allUsers.filter(u => !selectedPlayers.includes(u.id))
 
   const handlePlayerSelect = (playerId) => {
     if (selectedPlayers.includes(playerId)) {
       setSelectedPlayers(selectedPlayers.filter(id => id !== playerId))
+      setMatches([])
     } else if (selectedPlayers.length < formData.maxPlayers) {
       setSelectedPlayers([...selectedPlayers, playerId])
+      setMatches([])
     }
   }
 
@@ -203,7 +206,12 @@ export default function CupTournaments() {
             <label>Max Players</label>
             <select 
               value={formData.maxPlayers} 
-              onChange={(e) => setFormData({...formData, maxPlayers: parseInt(e.target.value)})}
+              onChange={(e) => {
+                const maxPlayers = parseInt(e.target.value)
+                setFormData({...formData, maxPlayers})
+                setSelectedPlayers(prev => prev.slice(0, maxPlayers))
+                setMatches([])
+              }}
             >
               <option value={4}>4</option>
               <option value={8}>8</option>
@@ -214,26 +222,49 @@ export default function CupTournaments() {
           </div>
           
           <h4 style={{ marginTop: '20px', marginBottom: '10px' }}>Select Players ({selectedPlayers.length}/{formData.maxPlayers})</h4>
-          <UserSearchSelect
-            users={allUsers}
-            selectedId={null}
-            onSelect={handlePlayerSelect}
-            placeholder="Search and add players..."
-            label=""
-          />
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '15px' }}>
-            {selectedPlayers.map(playerId => {
+          {selectedPlayers.length < formData.maxPlayers ? (
+            <UserSearchSelect
+              users={selectablePlayers}
+              selectedId={null}
+              onSelect={handlePlayerSelect}
+              placeholder="Search by name, nickname, or DartCounter..."
+              label=""
+              maxResults={allUsers.length}
+            />
+          ) : (
+            <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+              Maximum players selected. Remove someone below to add another player.
+            </div>
+          )}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '8px', marginTop: '15px' }}>
+            {selectedPlayers.map((playerId, index) => {
               const player = allUsers.find(u => u.id === playerId)
               if (!player) return null
               return (
-                <button
+                <div
                   key={player.id}
-                  className="btn btn-primary"
-                  onClick={() => handlePlayerSelect(player.id)}
-                  style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '8px',
+                    padding: '8px 10px',
+                    background: 'var(--bg-secondary)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px'
+                  }}
                 >
-                  ✕ {player.username}
-                </button>
+                  <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {index + 1}. {player.username}
+                  </span>
+                  <button
+                    className="btn btn-danger btn-sm"
+                    onClick={() => handlePlayerSelect(player.id)}
+                    style={{ padding: '4px 8px', flexShrink: 0 }}
+                  >
+                    Remove
+                  </button>
+                </div>
               )
             })}
           </div>

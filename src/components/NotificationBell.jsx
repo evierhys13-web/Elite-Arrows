@@ -142,6 +142,7 @@ export default function NotificationBell() {
     }
 
     if (!notification.isRead) {
+      const notificationDocId = notification.notificationDocId || notification.id
       const updated = localNotifications.map((n) =>
         n.id === notification.id ? { ...n, isRead: true } : n
       )
@@ -155,7 +156,7 @@ export default function NotificationBell() {
       )
       localStorage.setItem('eliteArrowsNotifications', JSON.stringify(updatedStored))
       try {
-        await setDoc(doc(db, 'notifications', notification.id), { isRead: true }, { merge: true })
+        await setDoc(doc(db, 'notifications', notificationDocId), { isRead: true }, { merge: true })
       } catch (error) {
         console.log('Error marking notification read:', error)
       }
@@ -171,12 +172,16 @@ export default function NotificationBell() {
     updateBadgeCount(0)
 
     const allStored = JSON.parse(localStorage.getItem('eliteArrowsNotifications') || '[]')
-    const updatedStored = allStored.map((n) => ({ ...n, isRead: true }))
+    const unreadNotifications = notifications.filter((n) => !n.isRead)
+    const unreadIds = new Set(unreadNotifications.map((n) => n.id))
+    const updatedStored = allStored.map((n) => (
+      n.toUserId === user.id || unreadIds.has(n.id) ? { ...n, isRead: true } : n
+    ))
     localStorage.setItem('eliteArrowsNotifications', JSON.stringify(updatedStored))
     await Promise.all(
-      localNotifications
-        .filter((n) => !n.isRead)
-        .map((n) => setDoc(doc(db, 'notifications', n.id), { isRead: true }, { merge: true }))
+      unreadNotifications.map((n) => 
+        setDoc(doc(db, 'notifications', n.notificationDocId || n.id), { isRead: true }, { merge: true })
+      )
     ).catch((error) => {
       console.log('Error marking all notifications read:', error)
     })

@@ -828,7 +828,14 @@ const cleanUserData = (users) => {
     const notificationsQuery = query(collection(db, 'notifications'), where('toUserId', '==', user.id))
     const unsubscribeNotifications = onSnapshot(notificationsQuery, (snapshot) => {
       const userNotifs = snapshot.docs
-        .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+        .map((docSnap) => {
+          const data = docSnap.data()
+          return {
+            ...data,
+            id: data.id || docSnap.id,
+            notificationDocId: docSnap.id
+          }
+        })
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
 
       const previousIds = seenNotificationIdsRef.current

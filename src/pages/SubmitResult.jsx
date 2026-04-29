@@ -27,6 +27,9 @@ export default function SubmitResult() {
 
   const allUsers = getAllUsers()
   const availablePlayers = allUsers.filter(u => u.id !== user.id)
+  const opponentOptions = formData.gameType === 'League'
+    ? availablePlayers.filter(u => u.division === user.division)
+    : availablePlayers
   const fixtureIdParam = searchParams.get('fixtureId')
   const allFixtures = getFixtures()
   const allResults = getResults()
@@ -95,9 +98,14 @@ export default function SubmitResult() {
     }
     if (name === 'gameType') {
       if (value === 'League') {
-        setFormData(prev => ({ ...prev, bestOf: '8', firstTo: '5' }))
+        setFormData(prev => ({
+          ...prev,
+          opponent: availablePlayers.find(p => p.id === prev.opponent)?.division === user.division ? prev.opponent : '',
+          bestOf: '8',
+          firstTo: '5'
+        }))
       } else if (value === 'Cup') {
-        setFormData(prev => ({ ...prev, bestOf: '3', firstTo: '2' }))
+        setFormData(prev => ({ ...prev, opponent: '', bestOf: '3', firstTo: '2' }))
       } else {
         setFormData(prev => ({ ...prev, bestOf: '3', firstTo: '2' }))
       }
@@ -155,6 +163,11 @@ const handleSubmit = async (e) => {
     }
     
     if (formData.gameType === 'League' && opponentUser) {
+      if (opponentUser.division !== user.division) {
+        setError('League results can only be submitted against players in your division.')
+        return
+      }
+
       const existingMatch = checkExistingLeagueMatch(opponentUser.id)
       if (existingMatch) {
         setError(`You've already played ${formData.opponent} in a league match this season. Only one league match per opponent is allowed.`)
@@ -385,7 +398,7 @@ const handleSubmit = async (e) => {
                   required
                 >
                   <option value="">Select opponent</option>
-                  {availablePlayers.map(p => {
+                  {opponentOptions.map(p => {
                     const status = getOpponentStatus(p.id, p.username)
                     return (
                       <option key={p.id} value={p.id}>

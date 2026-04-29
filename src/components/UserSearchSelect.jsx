@@ -13,7 +13,8 @@ export default function UserSearchSelect({
   onSelect, 
   placeholder = 'Search players...',
   excludeIds = [],
-  label = 'Select Player'
+  label = 'Select Player',
+  maxResults = 15
 }) {
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
@@ -40,7 +41,7 @@ export default function UserSearchSelect({
         u.dartCounterUsername?.toLowerCase().includes(searchTerm)
       )
     })
-    .slice(0, 15)
+    .slice(0, maxResults)
 
   const selectedUser = users.find(u => u.id === selectedId)
 
@@ -52,9 +53,11 @@ export default function UserSearchSelect({
 
   return (
     <div ref={wrapperRef} style={{ position: 'relative' }}>
-      <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '0.9rem' }}>
-        {label}
-      </label>
+      {label && (
+        <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '0.9rem' }}>
+          {label}
+        </label>
+      )}
       <div 
         onClick={() => setIsOpen(!isOpen)}
         style={{
