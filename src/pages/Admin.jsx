@@ -115,29 +115,37 @@ export default function Admin() {
     console.log('Updated localStorage')
     
     try {
+      alert('Step 1: Checking if document exists in Firestore...')
       const docRef = doc(db, 'results', resultIdStr)
       const docSnap = await getDoc(docRef)
+      alert('Step 2: Doc exists: ' + docSnap.exists() + ' Data: ' + JSON.stringify(docSnap.data()))
       console.log('Doc exists in Firestore:', docSnap.exists())
       console.log('Doc ID:', docSnap.id, 'Data:', docSnap.data())
       
       if (!docSnap.exists()) {
+        alert('FATAL: Document does NOT exist in Firestore with ID: ' + resultIdStr)
         console.error('FATAL: Document does NOT exist in Firestore with ID:', resultIdStr)
-        alert('Error: Document not found in database!')
         return
       }
       
+      alert('Step 3: Writing to Firestore...')
       await setDoc(docRef, { status: 'approved' }, { merge: true })
+      alert('Step 4: Write complete, verifying...')
       console.log('Successfully updated Firebase!')
       
       // Verify the update actually persisted
       const verifySnap = await getDoc(docRef)
+      alert('Step 5: Verification - status is now: ' + verifySnap.data()?.status)
       console.log('Verification - status is now:', verifySnap.data()?.status)
       
       if (verifySnap.data()?.status !== 'approved') {
-        alert('Update failed - status did not change!')
+        alert('Update FAILED - status did not change!')
         return
       }
+      
+      alert('SUCCESS: Result approved and saved!')
     } catch (e) {
+      alert('ERROR: ' + e.code + ' - ' + e.message)
       console.error('FATAL Firebase error:', e.code, e.message)
     }
     
