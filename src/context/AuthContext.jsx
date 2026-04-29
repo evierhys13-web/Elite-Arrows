@@ -665,17 +665,10 @@ const cleanUserData = (users) => {
     return allUsers.filter(u => (user?.friends || []).includes(u.id))
   }
 
-  const getResults = async () => {
-    try {
-      const snapshot = await getDocs(collection(db, 'results'))
-      const resultsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-      return resultsData
-    } catch (e) {
-      console.error('Error fetching results:', e)
-      if (results.length > 0) return results
-      const local = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
-      return local
-    }
+  const getResults = () => {
+    if (results.length > 0) return results
+    const local = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+    return local
   }
 
   const getFixtures = () => {

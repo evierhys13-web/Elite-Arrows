@@ -55,16 +55,13 @@ export default function Admin() {
   }
 
   useEffect(() => {
-    async function loadResults() {
-      const results = await getResults();
-      const pending = results.filter(r => r.status === 'pending');
-      if (user.isTournamentAdmin && !user.isAdmin) {
-        setPendingResults(pending.filter(r => r.gameType === 'Tournament'));
-      } else {
-        setPendingResults(pending);
-      }
+    const results = getResults();
+    const pending = results.filter(r => r.status === 'pending');
+    if (user.isTournamentAdmin && !user.isAdmin) {
+      setPendingResults(pending.filter(r => r.gameType === 'Tournament'));
+    } else {
+      setPendingResults(pending);
     }
-    loadResults()
 
     if (user?.isAdmin) {
       let seasons = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
@@ -91,7 +88,7 @@ export default function Admin() {
     const resultIdStr = String(resultId)
     console.log('Approve called with ID:', resultIdStr, typeof resultIdStr)
     
-    const results = await getResults()
+    const results = getResults()
     console.log('Firestore results count:', results.length)
     const resultsIndex = results.findIndex(r => String(r.id) === resultIdStr)
     console.log('Found at index:', resultsIndex)
@@ -161,7 +158,7 @@ export default function Admin() {
     const resultIdStr = String(resultId)
     console.log('Reject called with ID:', resultIdStr)
     
-    const results = await getResults()
+    const results = getResults()
     const resultsIndex = results.findIndex(r => String(r.id) === resultIdStr)
     
     if (resultsIndex === -1) {
