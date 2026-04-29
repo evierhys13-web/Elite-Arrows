@@ -144,15 +144,14 @@ export default function Admin() {
       }
       
       alert('SUCCESS: Result approved and saved!')
+      
+      // Force clear localStorage so reload MUST fetch fresh from Firebase
+      localStorage.removeItem('eliteArrowsResults')
+      setTimeout(() => window.location.reload(), 1500)
     } catch (e) {
       alert('ERROR: ' + e.code + ' - ' + e.message)
       console.error('FATAL Firebase error:', e.code, e.message)
     }
-    
-    setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
-    
-    alert('Result approved! Page will reload to refresh data...')
-    setTimeout(() => window.location.reload(), 1500)
   }
 
   const rejectResult = async (resultId) => {
