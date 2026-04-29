@@ -119,8 +119,19 @@ export default function Results() {
           {pendingResults.length === 0 ? (
             <p style={{ color: 'var(--text-muted)', textAlign: 'center' }}>No pending results</p>
           ) : (
-            pendingResults.map(result => (
-              <div key={result.id} className="result-item" style={{ border: '1px solid var(--accent-cyan)', marginBottom: '15px' }}>
+            pendingResults.map(result => {
+                const userWon = (result.player1Id === user.id && result.score1 > result.score2) || (result.player2Id === user.id && result.score2 > result.score1)
+                const userLost = (result.player1Id === user.id && result.score1 < result.score2) || (result.player2Id === user.id && result.score2 < result.score1)
+                return (
+                  <div 
+                    key={result.id} 
+                    className="result-item" 
+                    style={{ 
+                      marginBottom: '15px',
+                      border: userWon ? '2px solid #22c55e' : userLost ? '2px solid #ef4444' : '1px solid var(--accent-cyan)',
+                      boxShadow: userWon ? '0 0 10px rgba(34, 197, 94, 0.4)' : userLost ? '0 0 10px rgba(239, 68, 68, 0.4)' : 'none'
+                    }}
+                  >
                 <div>
                   <div className="result-players">
                     <span>{result.player1}</span>
@@ -157,8 +168,9 @@ export default function Results() {
                   </div>
                 </div>
               </div>
-            ))
-          )}
+                )
+              })
+            )}
         </div>
       )}
 

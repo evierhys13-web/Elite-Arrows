@@ -277,36 +277,15 @@ const handleSubmit = async (e) => {
       addTokens(tokensToAdd)
     }
 
-triggerDataRefresh('results')
+    triggerDataRefresh('results')
     triggerDataRefresh('fixtures')
     
-    // Show success state
     setSubmitted(true)
     setError('')
     
-    // Reset form after delay
     setTimeout(() => {
-      setSubmitted(false)
-      setFormData({
-        gameType: 'Friendly',
-        opponent: '',
-        yourScore: '',
-        opponentScore: '',
-        bestOf: '3',
-        firstTo: '3',
-        your180s: '',
-        opponent180s: '',
-        yourHighestCheckout: '',
-        opponentHighestCheckout: '',
-        yourDoubleSuccess: '',
-        opponentDoubleSuccess: '',
-        proofImage: ''
-      })
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
       window.location.reload()
-    }, 3000)
+    }, 2000)
   }
   
   // Success message display

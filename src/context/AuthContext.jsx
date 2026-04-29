@@ -226,11 +226,9 @@ export function AuthProvider({ children }) {
     
     const unsubscribeResults = onSnapshot(collection(db, 'results'), (snapshot) => {
       const resultsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-      if (resultsData.length > 0) {
-        setResults(resultsData)
-        localStorage.setItem('eliteArrowsResults', JSON.stringify(resultsData))
-        triggerDataRefresh('results')
-      }
+      setResults(resultsData)
+      localStorage.setItem('eliteArrowsResults', JSON.stringify(resultsData))
+      triggerDataRefresh('results')
     })
     
     const unsubscribeFixtures = onSnapshot(collection(db, 'fixtures'), (snapshot) => {
