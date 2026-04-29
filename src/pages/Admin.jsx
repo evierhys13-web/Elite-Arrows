@@ -98,18 +98,22 @@ export default function Admin() {
     const confirmMsg = `Approve result: ${resultItem.player1} ${resultItem.score1} - ${resultItem.score2} ${resultItem.player2}?`
     if (!window.confirm(confirmMsg)) return
     
-    results[resultsIndex].status = 'approved'
-    localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
-    
     try {
       await updateDoc(doc(db, 'results', resultIdStr), { status: 'approved' })
+      alert('Result approved in Firebase!')
     } catch (e) {
-      console.log('Firebase error (non-fatal):', e)
+      console.log('Firebase error:', e)
+      alert('Failed to update Firebase, saving locally only')
+      results[resultsIndex].status = 'approved'
+      localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     }
     
     setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
-    triggerDataRefresh('results')
-    alert('Result approved!')
+    
+    setTimeout(() => {
+      triggerDataRefresh('results')
+      window.location.reload()
+    }, 500)
   }
 
   const rejectResult = async (resultId) => {
@@ -126,18 +130,22 @@ export default function Admin() {
     const confirmMsg = `Reject result: ${resultItem.player1} ${resultItem.score1} - ${resultItem.score2} ${resultItem.player2}?`
     if (!window.confirm(confirmMsg)) return
     
-    results[resultsIndex].status = 'rejected'
-    localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
-    
     try {
       await updateDoc(doc(db, 'results', resultIdStr), { status: 'rejected' })
+      alert('Result rejected in Firebase!')
     } catch (e) {
-      console.log('Firebase error (non-fatal):', e)
+      console.log('Firebase error:', e)
+      alert('Failed to update Firebase, saving locally only')
+      results[resultsIndex].status = 'rejected'
+      localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     }
     
     setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
-    triggerDataRefresh('results')
-    alert('Result rejected!')
+    
+    setTimeout(() => {
+      triggerDataRefresh('results')
+      window.location.reload()
+    }, 500)
   }
 
   const approvePayment = async (userId) => {

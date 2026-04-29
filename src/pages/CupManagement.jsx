@@ -113,8 +113,10 @@ function CupManagement() {
       for (const fixture of fixtures) {
         await deleteDoc(doc(db, 'fixtures', fixture.id.toString()))
       }
+      alert('Cup deleted from Firebase!')
     } catch (e) {
       console.log('Error deleting from Firebase:', e)
+      alert('Cup deleted locally')
     }
     
     const cupsData = getCups()
@@ -127,6 +129,10 @@ function CupManagement() {
     
     setCups(updatedCups)
     setAllCupFixtures(updatedFixtures)
+    
+    setTimeout(() => {
+      window.location.reload()
+    }, 500)
     setRefreshKey(prev => prev + 1)
     
     triggerDataRefresh('cups')

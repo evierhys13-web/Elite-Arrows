@@ -305,6 +305,7 @@ triggerDataRefresh('results')
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
+      window.location.reload()
     }, 3000)
   }
   
