@@ -238,7 +238,9 @@ const handleSubmit = async (e) => {
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     
     try {
-      await addDoc(collection(db, 'results'), newResult)
+      const docRef = await addDoc(collection(db, 'results'), newResult)
+      newResult.id = docRef.id
+      localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     } catch (e) {
       console.log('Error saving to Firestore:', e)
     }
