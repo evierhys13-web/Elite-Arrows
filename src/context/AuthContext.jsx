@@ -27,6 +27,8 @@ export function AuthProvider({ children }) {
   const [showSurvey, setShowSurvey] = useState(false)
   const unsubscribeRef = useRef(null)
   const seenNotificationIdsRef = useRef(new Set())
+  const resultRowsRef = useRef([])
+  const resultStatusOverridesRef = useRef(JSON.parse(localStorage.getItem('eliteArrowsResultStatusOverrides') || '{}'))
   
   const SENSITIVE_FIELDS = ['password', 'passwordString', 'passwordHash', 'passwordKey', 'passwordStringValue', 'password', 'firebaseId', 'pwd', 'pass', 'passwd']
 
@@ -213,6 +215,52 @@ export function AuthProvider({ children }) {
     console.log(`Data refresh triggered: ${dataType}`)
   }, [])
 
+  const getResultSignature = (row) => {
+    const playerKey = row.player1Id && row.player2Id
+      ? `${row.player1Id}|${row.player2Id}`
+      : `${row.player1 || ''}|${row.player2 || ''}`
+    return `${playerKey}|${row.score1 ?? ''}|${row.score2 ?? ''}|${row.date || ''}|${row.gameType || ''}`
+  }
+
+  const publishResults = useCallback(() => {
+    const statusRank = { approved: 3, rejected: 3, pending: 2 }
+    const overrides = resultStatusOverridesRef.current || {}
+    const resultRows = resultRowsRef.current.map(row => {
+      const override = overrides[String(row.id)] || overrides[row.firestoreId] || overrides[getResultSignature(row)]
+      return override ? { ...row, status: override.status } : row
+    })
+
+    const resultsData = Array.from(resultRows.reduce((byId, row) => {
+      const logicalId = getResultSignature(row) || String(row.id)
+      const existing = byId.get(logicalId)
+      if (!existing) {
+        byId.set(logicalId, row)
+        return byId
+      }
+
+      const existingHasPlayers = existing.player1 || existing.player2
+      const rowHasPlayers = row.player1 || row.player2
+      const base = rowHasPlayers && !existingHasPlayers ? row : existing
+      const overlay = base === row ? existing : row
+      const preferredStatus = (statusRank[overlay.status] || 0) > (statusRank[base.status] || 0)
+        ? overlay.status
+        : base.status
+
+      byId.set(logicalId, {
+        ...overlay,
+        ...base,
+        id: base.id || overlay.id,
+        status: preferredStatus,
+        firestoreId: rowHasPlayers ? row.firestoreId : existing.firestoreId
+      })
+      return byId
+    }, new Map()).values())
+
+    setResults(resultsData)
+    localStorage.setItem('eliteArrowsResults', JSON.stringify(resultsData))
+    triggerDataRefresh('results')
+  }, [triggerDataRefresh])
+
   useEffect(() => {
     const unsubscribeUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
       const users = snapshot.docs.map(doc => {
@@ -225,7 +273,7 @@ export function AuthProvider({ children }) {
     })
     
     const unsubscribeResults = onSnapshot(collection(db, 'results'), (snapshot) => {
-      const resultRows = snapshot.docs.map(docSnap => {
+      resultRowsRef.current = snapshot.docs.map(docSnap => {
         const data = docSnap.data()
         return {
           ...data,
@@ -233,44 +281,7 @@ export function AuthProvider({ children }) {
           firestoreId: docSnap.id
         }
       })
-      const statusRank = { approved: 3, rejected: 3, pending: 2 }
-      const getResultKey = (row) => {
-        const playerKey = row.player1Id && row.player2Id
-          ? `${row.player1Id}|${row.player2Id}`
-          : `${row.player1 || ''}|${row.player2 || ''}`
-        if (row.score1 !== undefined && row.score2 !== undefined && row.date && row.gameType) {
-          return `${playerKey}|${row.score1}|${row.score2}|${row.date}|${row.gameType}`
-        }
-        return String(row.id)
-      }
-      const resultsData = Array.from(resultRows.reduce((byId, row) => {
-        const logicalId = getResultKey(row)
-        const existing = byId.get(logicalId)
-        if (!existing) {
-          byId.set(logicalId, row)
-          return byId
-        }
-
-        const existingHasPlayers = existing.player1 || existing.player2
-        const rowHasPlayers = row.player1 || row.player2
-        const base = rowHasPlayers && !existingHasPlayers ? row : existing
-        const overlay = base === row ? existing : row
-        const preferredStatus = (statusRank[overlay.status] || 0) > (statusRank[base.status] || 0)
-          ? overlay.status
-          : base.status
-
-        byId.set(logicalId, {
-          ...overlay,
-          ...base,
-          id: base.id || overlay.id,
-          status: preferredStatus,
-          firestoreId: rowHasPlayers ? row.firestoreId : existing.firestoreId
-        })
-        return byId
-      }, new Map()).values())
-      setResults(resultsData)
-      localStorage.setItem('eliteArrowsResults', JSON.stringify(resultsData))
-      triggerDataRefresh('results')
+      publishResults()
     })
     
     const unsubscribeFixtures = onSnapshot(collection(db, 'fixtures'), (snapshot) => {
@@ -332,11 +343,15 @@ export function AuthProvider({ children }) {
         setAdminData({
           subscriptionPot: data.subscriptionPot || 0,
           subscriptionPot10: data.subscriptionPot10 || 0,
-          moneyHistory: data.moneyHistory || []
+          moneyHistory: data.moneyHistory || [],
+          resultStatusOverrides: data.resultStatusOverrides || {}
         })
+        resultStatusOverridesRef.current = data.resultStatusOverrides || {}
+        localStorage.setItem('eliteArrowsResultStatusOverrides', JSON.stringify(data.resultStatusOverrides || {}))
         localStorage.setItem('eliteArrowsSubscriptionPot', String(data.subscriptionPot || 0))
         localStorage.setItem('eliteArrowsSubscriptionPot10', String(data.subscriptionPot10 || 0))
         localStorage.setItem('eliteArrowsMoneyHistory', JSON.stringify(data.moneyHistory || []))
+        publishResults()
       }
     })
     
@@ -350,7 +365,7 @@ export function AuthProvider({ children }) {
       unsubscribeNews()
       unsubscribeAdmin()
     }
-  }, [triggerDataRefresh])
+  }, [triggerDataRefresh, publishResults])
   
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {

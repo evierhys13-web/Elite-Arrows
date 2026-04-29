@@ -71,6 +71,32 @@ export default function Admin() {
     }, 1800)
   }
 
+  const getResultSignature = (result) => {
+    const playerKey = result.player1Id && result.player2Id
+      ? `${result.player1Id}|${result.player2Id}`
+      : `${result.player1 || ''}|${result.player2 || ''}`
+    return `${playerKey}|${result.score1 ?? ''}|${result.score2 ?? ''}|${result.date || ''}|${result.gameType || ''}`
+  }
+
+  const persistResultStatusOverride = async (result, status) => {
+    const nextOverrides = {
+      ...(adminData.resultStatusOverrides || {})
+    }
+    const override = {
+      status,
+      resultId: String(result.id),
+      firestoreId: result.firestoreId || null,
+      signature: getResultSignature(result),
+      updatedAt: new Date().toISOString()
+    }
+
+    nextOverrides[String(result.id)] = override
+    if (result.firestoreId) nextOverrides[result.firestoreId] = override
+    nextOverrides[getResultSignature(result)] = override
+    localStorage.setItem('eliteArrowsResultStatusOverrides', JSON.stringify(nextOverrides))
+    await updateAdminData({ resultStatusOverrides: nextOverrides })
+  }
+
   const getResultDocIds = async (result) => {
     const logicalId = String(result.id)
     const preferredId = result.firestoreId ? String(result.firestoreId) : logicalId
@@ -162,6 +188,7 @@ export default function Admin() {
       await Promise.all(resultDocIds.map(resultDocId =>
         setDoc(doc(db, 'results', resultDocId), { status: 'approved', firestoreId: resultDocId }, { merge: true })
       ))
+      await persistResultStatusOverride(updatedResult, 'approved')
       console.log('Successfully approved in Firebase!')
       triggerDataRefresh('results')
       showSuccessMessage('You have successfully approved a result')
@@ -198,6 +225,7 @@ export default function Admin() {
       await Promise.all(resultDocIds.map(resultDocId =>
         setDoc(doc(db, 'results', resultDocId), { status: 'rejected', firestoreId: resultDocId }, { merge: true })
       ))
+      await persistResultStatusOverride(updatedResult, 'rejected')
       console.log('Successfully updated Firebase!')
     } catch (e) {
       console.error('FATAL Firebase error:', e.code, e.message)
@@ -230,6 +258,7 @@ export default function Admin() {
       await Promise.all(resultDocIds.map(resultDocId =>
         setDoc(doc(db, 'results', resultDocId), { status: null, firestoreId: resultDocId }, { merge: true })
       ))
+      await persistResultStatusOverride(updatedResult, null)
       triggerDataRefresh('results')
       showToast('Result status reset')
     } catch (e) {
