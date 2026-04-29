@@ -99,7 +99,15 @@ export default function Admin() {
     }
     
     const resultItem = results[resultsIndex]
-    const confirmMsg = `Approve result: ${resultItem.player1} ${resultItem.score1} - ${resultItem.score2} ${resultItem.player2}?`
+    console.log('Result item data:', resultItem)
+    
+    // Handle both old and new data formats
+    const p1Name = resultItem.player1 || resultItem.player1Id || 'Unknown'
+    const p2Name = resultItem.player2 || resultItem.player2Id || 'Unknown'
+    const s1 = resultItem.score1 ?? resultItem.yourScore ?? '?'
+    const s2 = resultItem.score2 ?? resultItem.opponentScore ?? '?'
+    
+    const confirmMsg = `Approve result: ${p1Name} ${s1} - ${s2} ${p2Name}?`
     if (!window.confirm(confirmMsg)) return
     
     results[resultsIndex].status = 'approved'
@@ -120,17 +128,23 @@ export default function Admin() {
       
       await setDoc(docRef, { status: 'approved' }, { merge: true })
       console.log('Successfully updated Firebase!')
+      
+      // Verify the update actually persisted
+      const verifySnap = await getDoc(docRef)
+      console.log('Verification - status is now:', verifySnap.data()?.status)
+      
+      if (verifySnap.data()?.status !== 'approved') {
+        alert('Update failed - status did not change!')
+        return
+      }
     } catch (e) {
       console.error('FATAL Firebase error:', e.code, e.message)
     }
     
     setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
     
-    alert('Result approved!')
-    setTimeout(() => {
-      localStorage.removeItem('eliteArrowsResults')
-      window.location.reload()
-    }, 1000)
+    alert('Result approved! Page will reload to refresh data...')
+    setTimeout(() => window.location.reload(), 1500)
   }
 
   const rejectResult = async (resultId) => {
@@ -167,17 +181,22 @@ export default function Admin() {
       
       await setDoc(docRef, { status: 'rejected' }, { merge: true })
       console.log('Successfully updated Firebase!')
+      
+      const verifySnap = await getDoc(docRef)
+      console.log('Verification - status is now:', verifySnap.data()?.status)
+      
+      if (verifySnap.data()?.status !== 'rejected') {
+        alert('Update failed - status did not change!')
+        return
+      }
     } catch (e) {
       console.error('FATAL Firebase error:', e.code, e.message)
     }
     
     setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
     
-    alert('Result rejected!')
-    setTimeout(() => {
-      localStorage.removeItem('eliteArrowsResults')
-      window.location.reload()
-    }, 1000)
+    alert('Result rejected! Page will reload to refresh data...')
+    setTimeout(() => window.location.reload(), 1500)
   }
 
   const approvePayment = async (userId) => {
