@@ -107,45 +107,30 @@ export default function Admin() {
     const s1 = resultItem.score1 ?? resultItem.yourScore ?? '?'
     const s2 = resultItem.score2 ?? resultItem.opponentScore ?? '?'
     
-    const confirmMsg = `Approve result: ${p1Name} ${s1} - ${s2} ${p2Name}?`
-    if (!window.confirm(confirmMsg)) return
+    // Show custom confirm dialog
+    const confirmed = window.confirm(`Approve result: ${p1Name} ${s1} - ${s2} ${p2Name}?`)
+    if (!confirmed) return
     
+    // Execute approve directly without further prompts
     results[resultsIndex].status = 'approved'
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     console.log('Updated localStorage')
     
     try {
-      alert('Step 1: Checking if document exists in Firestore...')
       const docRef = doc(db, 'results', resultIdStr)
       const docSnap = await getDoc(docRef)
-      alert('Step 2: Doc exists: ' + docSnap.exists() + ' Data: ' + JSON.stringify(docSnap.data()))
       console.log('Doc exists in Firestore:', docSnap.exists())
       console.log('Doc ID:', docSnap.id, 'Data:', docSnap.data())
       
       if (!docSnap.exists()) {
-        alert('FATAL: Document does NOT exist in Firestore with ID: ' + resultIdStr)
-        console.error('FATAL: Document does NOT exist in Firestore with ID:', resultIdStr)
+        alert('Document not found in Firestore!')
         return
       }
       
-      alert('Step 3: Writing to Firestore...')
       await setDoc(docRef, { status: 'approved' }, { merge: true })
-      alert('Step 4: Write complete, verifying...')
-      console.log('Successfully updated Firebase!')
+      console.log('Successfully approved in Firebase!')
       
-      // Verify the update actually persisted
-      const verifySnap = await getDoc(docRef)
-      alert('Step 5: Verification - status is now: ' + verifySnap.data()?.status)
-      console.log('Verification - status is now:', verifySnap.data()?.status)
-      
-      if (verifySnap.data()?.status !== 'approved') {
-        alert('Update FAILED - status did not change!')
-        return
-      }
-      
-      alert('SUCCESS: Result approved and saved!')
-      
-      // Force clear localStorage so reload MUST fetch fresh from Firebase
+      // Force clear localStorage and reload
       localStorage.removeItem('eliteArrowsResults')
       setTimeout(() => window.location.reload(), 1500)
     } catch (e) {
