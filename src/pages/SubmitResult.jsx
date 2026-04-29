@@ -229,13 +229,12 @@ const handleSubmit = async (e) => {
       if (formData.gameType === 'Cup' && cupId && matchId) {
         return result.cupId === cupId && result.matchId === matchId && result.status !== 'rejected'
       }
-      const isSamePlayers =
-        (result.player1Id === user.id && result.player2Id === formData.opponent) ||
-        (result.player2Id === user.id && result.player1Id === formData.opponent)
-      return isSamePlayers &&
-        result.gameType === formData.gameType &&
-        result.date === new Date().toISOString().split('T')[0] &&
-        result.status !== 'rejected'
+
+      if (selectedFixture?.id) {
+        return String(result.fixtureId || '') === String(selectedFixture.id) && result.status !== 'rejected'
+      }
+
+      return false
     })
 
     if (duplicateResult) {
@@ -273,6 +272,7 @@ const handleSubmit = async (e) => {
           doubleSuccess: parseFloat(formData.opponentDoubleSuccess) || 0
         },
         status: 'pending',
+        ...(selectedFixture?.id && { fixtureId: selectedFixture.id }),
         ...(cupId && { cupId, matchId })
       }
 
