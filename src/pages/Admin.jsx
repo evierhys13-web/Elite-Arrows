@@ -27,6 +27,7 @@ export default function Admin() {
   }, [dataRefreshTrigger])
   const [pendingResults, setPendingResults] = useState([])
   const [activeTab, setActiveTab] = useState('results')
+  const [showConfirmModal, setShowConfirmModal] = useState(null)
   const [showColorsForm, setShowColorsForm] = useState(false)
   const [colors, setColors] = useState({
     primary: localStorage.getItem('eliteArrowsColors') ? JSON.parse(localStorage.getItem('eliteArrowsColors')).primary : '#00d4ff',
@@ -86,32 +87,17 @@ export default function Admin() {
 
   const approveResult = async (resultId) => {
     const resultIdStr = String(resultId)
-    console.log('Approve called with ID:', resultIdStr, typeof resultIdStr)
+    console.log('Approve called with ID:', resultIdStr)
     
     const results = getResults()
-    console.log('Firestore results count:', results.length)
     const resultsIndex = results.findIndex(r => String(r.id) === resultIdStr)
-    console.log('Found at index:', resultsIndex)
     
     if (resultsIndex === -1) {
       alert('Result not found')
       return
     }
     
-    const resultItem = results[resultsIndex]
-    console.log('Result item data:', resultItem)
-    
-    // Handle both old and new data formats
-    const p1Name = resultItem.player1 || resultItem.player1Id || 'Unknown'
-    const p2Name = resultItem.player2 || resultItem.player2Id || 'Unknown'
-    const s1 = resultItem.score1 ?? resultItem.yourScore ?? '?'
-    const s2 = resultItem.score2 ?? resultItem.opponentScore ?? '?'
-    
-    // Show custom confirm dialog
-    const confirmed = window.confirm(`Approve result: ${p1Name} ${s1} - ${s2} ${p2Name}?`)
-    if (!confirmed) return
-    
-    // Execute approve directly without further prompts
+    // Execute approve
     results[resultsIndex].status = 'approved'
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     console.log('Updated localStorage')
@@ -151,10 +137,7 @@ export default function Admin() {
       return
     }
     
-    const resultItem = results[resultsIndex]
-    const confirmMsg = `Reject result: ${resultItem.player1} ${resultItem.score1} - ${resultItem.score2} ${resultItem.player2}?`
-    if (!window.confirm(confirmMsg)) return
-    
+    // Execute reject
     results[resultsIndex].status = 'rejected'
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     console.log('Updated localStorage')
@@ -502,10 +485,10 @@ export default function Admin() {
                   Score: {result.score1} - {result.score2} | Division: {result.division}
                 </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
-                  <button className="btn btn-primary" onClick={() => approveResult(result.id)}>
+                  <button className="btn btn-primary" onClick={() => setShowConfirmModal({ type: 'approve', result })}>
                     Approve
                   </button>
-                  <button className="btn btn-danger" onClick={() => rejectResult(result.id)}>
+                  <button className="btn btn-danger" onClick={() => setShowConfirmModal({ type: 'reject', result })}>
                     Reject
                   </button>
                 </div>
@@ -1984,11 +1967,62 @@ export default function Admin() {
                         <td>{item.description}</td>
                       </tr>
                     ))}
-                  </tbody>
+</tbody>
                 </table>
               )
             })()}
           </div>
+      )}
+      
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.85)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999
+        }}>
+          <div style={{
+            backgroundColor: 'var(--card-bg)',
+            padding: '30px',
+            borderRadius: '12px',
+            maxWidth: '90%',
+            textAlign: 'center',
+            border: '2px solid var(--accent-cyan)'
+          }}>
+            <h3 style={{ marginBottom: '20px', color: 'var(--text)' }}>
+              {showConfirmModal.type === 'approve' ? 'Approve Result?' : 'Reject Result?'}
+            </h3>
+            <p style={{ marginBottom: '20px', color: 'var(--text-muted)' }}>
+              {showConfirmModal.result.player1} {showConfirmModal.result.score1} - {showConfirmModal.result.score2} {showConfirmModal.result.player2}
+            </p>
+            <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
+              <button 
+                className="btn btn-primary"
+                onClick={async () => {
+                  const action = showConfirmModal.type === 'approve' ? approveResult : rejectResult
+                  const result = showConfirmModal.result
+                  setShowConfirmModal(null)
+                  await action(result.id)
+                }}
+              >
+                Yes - {showConfirmModal.type === 'approve' ? 'Approve' : 'Reject'}
+              </button>
+              <button 
+                className="btn btn-danger"
+                onClick={() => setShowConfirmModal(null)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
