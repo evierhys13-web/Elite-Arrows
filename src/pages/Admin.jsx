@@ -64,11 +64,11 @@ export default function Admin() {
     setTimeout(() => setToast(null), 3000)
   }
 
-  const showSuccessAndRefresh = (message) => {
+  const showSuccessMessage = (message) => {
     setSuccessMessage(message)
     setTimeout(() => {
-      window.location.reload()
-    }, 1400)
+      setSuccessMessage('')
+    }, 1800)
   }
 
   useEffect(() => {
@@ -143,7 +143,8 @@ export default function Admin() {
         await deleteDoc(doc(db, 'results', resultIdStr)).catch(() => {})
       }
       console.log('Successfully approved in Firebase!')
-      showSuccessAndRefresh('You have successfully approved a result')
+      triggerDataRefresh('results')
+      showSuccessMessage('You have successfully approved a result')
     } catch (e) {
       alert('ERROR: ' + e.code + ' - ' + e.message)
       console.error('FATAL Firebase error:', e.code, e.message)
@@ -229,6 +230,7 @@ export default function Admin() {
       if (resultDocId !== resultIdStr) {
         await deleteDoc(doc(db, 'results', resultIdStr)).catch(() => {})
       }
+      triggerDataRefresh('results')
       showToast('Result status reset')
     } catch (e) {
       alert('ERROR: ' + e.message)

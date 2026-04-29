@@ -328,8 +328,8 @@ const handleSubmit = async (e) => {
     setError('')
     setSuccessMessage('You have successfully submitted a result')
     setTimeout(() => {
-      window.location.reload()
-    }, 1400)
+      setSuccessMessage('')
+    }, 1800)
     } catch (e) {
       console.error('FATAL: Error submitting result:', e.code, e.message)
       setError('Error submitting result: ' + (e.message || 'Please try again.'))

@@ -46,8 +46,8 @@ export default function Results() {
     triggerDataRefresh('results')
     setSuccessMessage('You have successfully approved a result')
     setTimeout(() => {
-      window.location.reload()
-    }, 1400)
+      setSuccessMessage('')
+    }, 1800)
   }
   
   const handleReject = async (resultId) => {
@@ -70,8 +70,11 @@ export default function Results() {
       await deleteDoc(doc(db, 'results', resultIdStr)).catch(() => {})
     }
     
-    alert('Result rejected!')
     triggerDataRefresh('results')
+    setSuccessMessage('You have successfully rejected a result')
+    setTimeout(() => {
+      setSuccessMessage('')
+    }, 1800)
   }
 
   if (!isSubscribed && !isAdmin) {
