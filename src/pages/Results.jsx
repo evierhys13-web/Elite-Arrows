@@ -6,6 +6,7 @@ export default function Results() {
   const { user, getResults, triggerDataRefresh, dataRefreshTrigger, notifyUser, notifyAllSubscribers } = useAuth()
   const [activeTab, setActiveTab] = useState('approved')
   const [refreshKey, setRefreshKey] = useState(0)
+  const [successMessage, setSuccessMessage] = useState('')
 
   useEffect(() => {
     setRefreshKey(prev => prev + 1)
@@ -42,8 +43,11 @@ export default function Results() {
       await deleteDoc(doc(db, 'results', resultIdStr)).catch(() => {})
     }
     
-    alert('Result approved!')
     triggerDataRefresh('results')
+    setSuccessMessage('You have successfully approved a result')
+    setTimeout(() => {
+      window.location.reload()
+    }, 1400)
   }
   
   const handleReject = async (resultId) => {
@@ -87,6 +91,33 @@ export default function Results() {
 
   return (
     <div className="page">
+      {successMessage && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 10000,
+          background: 'rgba(0,0,0,0.65)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
+        }}>
+          <div style={{
+            width: 'min(420px, 100%)',
+            background: 'var(--bg-secondary)',
+            border: '2px solid var(--success)',
+            borderRadius: '12px',
+            padding: '28px',
+            textAlign: 'center',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.45)'
+          }}>
+            <div style={{ fontSize: '2rem', color: 'var(--success)', fontWeight: 800, marginBottom: '10px' }}>Success</div>
+            <p style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.05rem', fontWeight: 600 }}>
+              {successMessage}
+            </p>
+          </div>
+        </div>
+      )}
       <div className="page-header">
         <h1 className="page-title">Results</h1>
       </div>

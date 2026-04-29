@@ -24,6 +24,7 @@ export default function SubmitResult() {
   })
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
 
   const allUsers = getAllUsers()
   const availablePlayers = allUsers.filter(u => u.id !== user.id)
@@ -325,15 +326,15 @@ const handleSubmit = async (e) => {
     
     setSubmitted(true)
     setError('')
-    alert('Result submitted successfully!')
+    setSuccessMessage('You have successfully submitted a result')
+    setTimeout(() => {
+      window.location.reload()
+    }, 1400)
     } catch (e) {
       console.error('FATAL: Error submitting result:', e.code, e.message)
       setError('Error submitting result: ' + (e.message || 'Please try again.'))
     }
   }
-  
-  // Success message display
-  const showSuccess = submitted && !error
 
   const getOpponentStatus = (opponentId, opponentName) => {
     if (formData.gameType === 'Friendly') return null
@@ -346,6 +347,33 @@ const handleSubmit = async (e) => {
 
   return (
     <div className="page">
+      {successMessage && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 10000,
+          background: 'rgba(0,0,0,0.65)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
+        }}>
+          <div style={{
+            width: 'min(420px, 100%)',
+            background: 'var(--bg-secondary)',
+            border: '2px solid var(--success)',
+            borderRadius: '12px',
+            padding: '28px',
+            textAlign: 'center',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.45)'
+          }}>
+            <div style={{ fontSize: '2rem', color: 'var(--success)', fontWeight: 800, marginBottom: '10px' }}>Success</div>
+            <p style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.05rem', fontWeight: 600 }}>
+              {successMessage}
+            </p>
+          </div>
+        </div>
+      )}
       <div className="page-header">
         <h1 className="page-title">Submit Result</h1>
       </div>
