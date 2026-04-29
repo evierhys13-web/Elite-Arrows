@@ -71,28 +71,45 @@ export default function Admin() {
     }, 1800)
   }
 
-  const resolveResultDocId = async (result) => {
+  const getResultDocIds = async (result) => {
     const logicalId = String(result.id)
     const preferredId = result.firestoreId ? String(result.firestoreId) : logicalId
-    const matches = await getDocs(query(collection(db, 'results'), where('id', '==', result.id)))
-    const fullMatch = matches.docs.find(docSnap => {
-      const data = docSnap.data()
-      return data.player1 || data.player2 || data.player1Id || data.player2Id
-    })
+    const docIds = new Set([logicalId, preferredId])
+    const resultQueries = [query(collection(db, 'results'), where('id', '==', result.id))]
 
-    if (fullMatch) return fullMatch.id
-
-    const preferredSnap = await getDoc(doc(db, 'results', preferredId))
-    if (preferredSnap.exists()) {
-      const data = preferredSnap.data()
-      if (data.player1 || data.player2 || data.player1Id || data.player2Id) {
-        return preferredId
-      }
+    if (String(result.id) !== result.id) {
+      resultQueries.push(query(collection(db, 'results'), where('id', '==', String(result.id))))
     }
 
-    if (!matches.empty) return matches.docs[0].id
-    if (preferredSnap.exists()) return preferredId
-    return logicalId
+    const numericId = Number(result.id)
+    if (!Number.isNaN(numericId)) {
+      resultQueries.push(query(collection(db, 'results'), where('id', '==', numericId)))
+    }
+
+    if (result.player1Id) {
+      resultQueries.push(query(collection(db, 'results'), where('player1Id', '==', result.player1Id)))
+    }
+
+    for (const resultQuery of resultQueries) {
+      const snapshot = await getDocs(resultQuery)
+      snapshot.docs.forEach(docSnap => {
+        const data = docSnap.data()
+        const sameLogicalId = String(data.id || docSnap.id) === logicalId
+        const sameGame =
+          data.player1Id === result.player1Id &&
+          data.player2Id === result.player2Id &&
+          String(data.score1) === String(result.score1) &&
+          String(data.score2) === String(result.score2) &&
+          data.date === result.date &&
+          data.gameType === result.gameType
+
+        if (sameLogicalId || sameGame) {
+          docIds.add(docSnap.id)
+        }
+      })
+    }
+
+    return Array.from(docIds)
   }
 
   useEffect(() => {
@@ -141,7 +158,7 @@ export default function Admin() {
     }
     
     const updatedResult = { ...results[resultsIndex], status: 'approved' }
-    const resultDocId = await resolveResultDocId(updatedResult)
+    const resultDocIds = await getResultDocIds(updatedResult)
     results[resultsIndex] = updatedResult
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     console.log('Updated localStorage')
@@ -153,18 +170,9 @@ export default function Admin() {
     })
     
     try {
-      const docRef = doc(db, 'results', resultDocId)
-      const docSnap = await getDoc(docRef)
-      console.log('Doc exists in Firestore:', docSnap.exists())
-      
-      if (!docSnap.exists()) {
-        await setDoc(docRef, { ...updatedResult, firestoreId: resultDocId }, { merge: true })
-      } else {
-        await setDoc(docRef, { status: 'approved', firestoreId: resultDocId }, { merge: true })
-      }
-      if (resultDocId !== resultIdStr) {
-        await deleteDoc(doc(db, 'results', resultIdStr)).catch(() => {})
-      }
+      await Promise.all(resultDocIds.map(resultDocId =>
+        setDoc(doc(db, 'results', resultDocId), { status: 'approved', firestoreId: resultDocId }, { merge: true })
+      ))
       console.log('Successfully approved in Firebase!')
       triggerDataRefresh('results')
       showSuccessMessage('You have successfully approved a result')
@@ -187,7 +195,7 @@ export default function Admin() {
     }
     
     const updatedResult = { ...results[resultsIndex], status: 'rejected' }
-    const resultDocId = await resolveResultDocId(updatedResult)
+    const resultDocIds = await getResultDocIds(updatedResult)
     results[resultsIndex] = updatedResult
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     console.log('Updated localStorage')
@@ -198,28 +206,10 @@ export default function Admin() {
     })
     
     try {
-      const docRef = doc(db, 'results', resultDocId)
-      const docSnap = await getDoc(docRef)
-      console.log('Doc exists in Firestore:', docSnap.exists())
-      console.log('Doc ID:', docSnap.id, 'Data:', docSnap.data())
-      
-      if (!docSnap.exists()) {
-        await setDoc(docRef, { ...updatedResult, firestoreId: resultDocId }, { merge: true })
-      } else {
-        await setDoc(docRef, { status: 'rejected', firestoreId: resultDocId }, { merge: true })
-      }
-      if (resultDocId !== resultIdStr) {
-        await deleteDoc(doc(db, 'results', resultIdStr)).catch(() => {})
-      }
+      await Promise.all(resultDocIds.map(resultDocId =>
+        setDoc(doc(db, 'results', resultDocId), { status: 'rejected', firestoreId: resultDocId }, { merge: true })
+      ))
       console.log('Successfully updated Firebase!')
-      
-      const verifySnap = await getDoc(docRef)
-      console.log('Verification - status is now:', verifySnap.data()?.status)
-      
-      if (verifySnap.data()?.status !== 'rejected') {
-        alert('Update failed - status did not change!')
-        return
-      }
     } catch (e) {
       console.error('FATAL Firebase error:', e.code, e.message)
     }
@@ -240,7 +230,7 @@ export default function Admin() {
     }
     
     const updatedResult = { ...results[resultsIndex], status: null }
-    const resultDocId = await resolveResultDocId(updatedResult)
+    const resultDocIds = await getResultDocIds(updatedResult)
     results[resultsIndex] = updatedResult
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     
@@ -248,10 +238,9 @@ export default function Admin() {
     setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
     
     try {
-      await setDoc(doc(db, 'results', resultDocId), { status: null, firestoreId: resultDocId }, { merge: true })
-      if (resultDocId !== resultIdStr) {
-        await deleteDoc(doc(db, 'results', resultIdStr)).catch(() => {})
-      }
+      await Promise.all(resultDocIds.map(resultDocId =>
+        setDoc(doc(db, 'results', resultDocId), { status: null, firestoreId: resultDocId }, { merge: true })
+      ))
       triggerDataRefresh('results')
       showToast('Result status reset')
     } catch (e) {
