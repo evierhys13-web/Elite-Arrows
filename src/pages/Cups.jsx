@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { Link } from 'react-router-dom'
-import { db, doc, setDoc, collection, addDoc } from '../firebase'
+import { db, doc, setDoc, deleteDoc } from '../firebase'
 import UserSearchSelect from '../components/UserSearchSelect'
 
 export default function CupTournaments() {
@@ -378,9 +378,9 @@ export default function CupTournaments() {
                         localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
                         
                         try {
-                          await setDoc(doc(db, 'cups', cup.id.toString()), { _deleted: true }, { merge: true })
-                          for (const fixture of updatedFixtures) {
-                            await setDoc(doc(db, 'fixtures', fixture.id.toString()), { _deleted: true }, { merge: true })
+                          await deleteDoc(doc(db, 'cups', cup.id.toString()))
+                          for (const fixture of fixtures.filter(f => f.cupId === cup.id)) {
+                            await deleteDoc(doc(db, 'fixtures', fixture.id.toString()))
                           }
                           triggerDataRefresh('cups')
                           triggerDataRefresh('fixtures')

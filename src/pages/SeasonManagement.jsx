@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { doc, setDoc } from '../firebase'
+import { db, doc, setDoc, deleteDoc } from '../firebase'
 
 export default function SeasonManagement() {
   const { user, getAllUsers } = useAuth()
@@ -19,7 +19,7 @@ export default function SeasonManagement() {
     setPlayers(users)
   }, [])
 
-  const createSeason = () => {
+  const createSeason = async () => {
     if (!newSeasonName.trim()) return alert('Please enter a season name')
     
     const newSeason = {
@@ -34,44 +34,59 @@ export default function SeasonManagement() {
     localStorage.setItem('eliteArrowsSeasons', JSON.stringify(updatedSeasons))
     setSeasons(updatedSeasons)
     localStorage.setItem('eliteArrowsCurrentSeason', newSeasonName)
+    await setDoc(doc(db, 'seasons', newSeason.id.toString()), newSeason, { merge: true })
     setNewSeasonName('')
     setShowCreateForm(false)
     alert(`Season "${newSeasonName}" created and set as active!`)
   }
 
-  const archiveSeason = (seasonId) => {
+  const archiveSeason = async (seasonId) => {
     if (!confirm('Archive this season? Archived seasons will be hidden from the main view.')) return
     
     const updatedSeasons = seasons.map(s => 
       s.id === seasonId ? { ...s, isArchived: true, status: 'archived' } : s
     )
     localStorage.setItem('eliteArrowsSeasons', JSON.stringify(updatedSeasons))
+    await setDoc(doc(db, 'seasons', seasonId.toString()), { isArchived: true, status: 'archived' }, { merge: true })
     setSeasons(updatedSeasons)
     alert('Season archived')
   }
 
-  const restoreSeason = (seasonId) => {
+  const restoreSeason = async (seasonId) => {
     const updatedSeasons = seasons.map(s => 
       s.id === seasonId ? { ...s, isArchived: false, status: 'active' } : { ...s, status: 'archived' }
     )
     localStorage.setItem('eliteArrowsSeasons', JSON.stringify(updatedSeasons))
     setSeasons(updatedSeasons)
-    localStorage.setItem('eliteArrowsCurrentSeason', seasons.find(s => s.id === seasonId)?.name || '')
+    const restoredSeason = seasons.find(s => s.id === seasonId)
+    localStorage.setItem('eliteArrowsCurrentSeason', restoredSeason?.name || '')
+    await Promise.all(updatedSeasons.map(season => (
+      setDoc(doc(db, 'seasons', season.id.toString()), {
+        isArchived: season.isArchived,
+        status: season.status
+      }, { merge: true })
+    )))
     alert('Season restored and set as active')
   }
 
-  const resetTable = () => {
+  const resetTable = async () => {
     if (!confirm('Are you sure you want to reset all tables? This will clear all results for the current season but keep player data.')) return
     
     const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
     const currentSeason = localStorage.getItem('eliteArrowsCurrentSeason') || new Date().getFullYear().toString()
     const filteredResults = results.filter(r => r.season !== currentSeason)
+    const currentSeasonResults = results.filter(r => r.season === currentSeason)
     localStorage.setItem('eliteArrowsResults', JSON.stringify(filteredResults))
+    await Promise.all(currentSeasonResults.map(result => (
+      deleteDoc(doc(db, 'results', String(result.firestoreId || result.id))).catch(e => {
+        console.log('Error deleting result from Firebase:', e)
+      })
+    )))
     setShowResetConfirm(false)
     alert('Table reset! All results for the current season have been cleared.')
   }
 
-  const movePlayerDivision = () => {
+  const movePlayerDivision = async () => {
     if (!selectedPlayer || !newDivision) return alert('Please select a player and new division')
     
     const users = getAllUsers()
@@ -79,6 +94,7 @@ export default function SeasonManagement() {
     if (userIndex !== -1) {
       users[userIndex].division = newDivision
       localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+      await setDoc(doc(db, 'users', selectedPlayer), { division: newDivision }, { merge: true })
       alert(`${users[userIndex].username} moved to ${newDivision}`)
       setSelectedPlayer('')
       setNewDivision('')

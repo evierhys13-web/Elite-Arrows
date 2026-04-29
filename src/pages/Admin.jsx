@@ -2125,9 +2125,10 @@ export default function Admin() {
             <h3 className="card-title" style={{ margin: 0 }}>Money Pot History</h3>
               <button 
                 className="btn btn-danger"
-                onClick={() => {
+                onClick={async () => {
                   if (confirm('Are you sure you want to reset all money history? This cannot be undone.')) {
                     localStorage.setItem('eliteArrowsMoneyHistory', JSON.stringify([]))
+                    await updateAdminData({ moneyHistory: [] })
                     alert('Money history has been reset')
                   }
                 }}

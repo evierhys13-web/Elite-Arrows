@@ -265,28 +265,36 @@ export function AuthProvider({ children }) {
     })
     
     const unsubscribeFixtures = onSnapshot(collection(db, 'fixtures'), (snapshot) => {
-      const fixturesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      const fixturesData = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(item => !item._deleted)
       setFixtures(fixturesData)
       localStorage.setItem('eliteArrowsFixtures', JSON.stringify(fixturesData))
       triggerDataRefresh('fixtures')
     })
     
     const unsubscribeCups = onSnapshot(collection(db, 'cups'), (snapshot) => {
-      const cupsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      const cupsData = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(item => !item._deleted)
       setCups(cupsData)
       localStorage.setItem('eliteArrowsCups', JSON.stringify(cupsData))
       triggerDataRefresh('cups')
     })
     
     const unsubscribeSupport = onSnapshot(collection(db, 'supportRequests'), (snapshot) => {
-      const supportData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      const supportData = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(item => !item._deleted)
       setSupportRequests(supportData)
       localStorage.setItem('eliteArrowsSupportRequests', JSON.stringify(supportData))
       triggerDataRefresh('supportRequests')
     })
     
     const unsubscribeSeasons = onSnapshot(collection(db, 'seasons'), (snapshot) => {
-      const seasonsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      const seasonsData = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(item => !item._deleted)
       setSeasons(seasonsData)
       localStorage.setItem('eliteArrowsSeasons', JSON.stringify(seasonsData))
       if (seasonsData.length > 0) {
@@ -299,7 +307,9 @@ export function AuthProvider({ children }) {
     })
     
     const unsubscribeNews = onSnapshot(query(collection(db, 'news'), orderBy('createdAt', 'desc')), (snapshot) => {
-      const newsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      const newsData = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(item => !item._deleted)
       setNews(newsData)
       localStorage.setItem('eliteArrowsNews', JSON.stringify(newsData))
     }, (error) => {
@@ -746,7 +756,7 @@ const cleanUserData = (users) => {
       pinned
     }
     try {
-      await addDoc(collection(db, 'news'), newPost)
+      await setDoc(doc(db, 'news', newPost.id), newPost, { merge: true })
     } catch (e) {
       console.log('Error posting news to Firebase:', e)
     }
