@@ -63,13 +63,12 @@ export default function Table() {
         
         if (r.score1 > r.score2) {
           stats[r.player1Id].wins++
-          stats[r.player1Id].points += 3 + r.score1
+          stats[r.player1Id].points += 3
         } else if (r.score1 === r.score2) {
           stats[r.player1Id].draws++
-          stats[r.player1Id].points += 1 + r.score1
+          stats[r.player1Id].points += 1
         } else {
           stats[r.player1Id].losses++
-          stats[r.player1Id].points += r.score1
         }
       }
       
@@ -80,13 +79,12 @@ export default function Table() {
         
         if (r.score2 > r.score1) {
           stats[r.player2Id].wins++
-          stats[r.player2Id].points += 3 + r.score2
+          stats[r.player2Id].points += 3
         } else if (r.score2 === r.score1) {
           stats[r.player2Id].draws++
-          stats[r.player2Id].points += 1 + r.score2
+          stats[r.player2Id].points += 1
         } else {
           stats[r.player2Id].losses++
-          stats[r.player2Id].points += r.score2
         }
       }
     })
