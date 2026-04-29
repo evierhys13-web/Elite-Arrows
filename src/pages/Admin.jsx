@@ -101,18 +101,11 @@ export default function Admin() {
     results[resultsIndex].status = 'approved'
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     
-    try {
-      await updateDoc(doc(db, 'results', resultIdStr), { status: 'approved' })
-    } catch (e) {
-      console.log('Firebase error:', e)
-    }
+    await updateDoc(doc(db, 'results', resultIdStr), { status: 'approved' })
     
     setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
     
-    setTimeout(() => {
-      triggerDataRefresh('results')
-      window.location.reload()
-    }, 500)
+    window.location.reload()
   }
 
   const rejectResult = async (resultId) => {
@@ -132,18 +125,11 @@ export default function Admin() {
     results[resultsIndex].status = 'rejected'
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     
-    try {
-      await updateDoc(doc(db, 'results', resultIdStr), { status: 'rejected' })
-    } catch (e) {
-      console.log('Firebase error:', e)
-    }
+    await updateDoc(doc(db, 'results', resultIdStr), { status: 'rejected' })
     
     setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
     
-    setTimeout(() => {
-      triggerDataRefresh('results')
-      window.location.reload()
-    }, 500)
+    window.location.reload()
   }
 
   const approvePayment = async (userId) => {

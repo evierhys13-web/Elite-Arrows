@@ -23,57 +23,53 @@ export default function Results() {
   const pendingResults = allResults.filter(r => r.status === 'pending')
   
   const handleApprove = async (resultId) => {
-    try {
-      const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
-      const index = results.findIndex(r => r.id === resultId)
-      if (index === -1) {
-        alert('Result not found')
-        return
-      }
-      const result = results[index]
-      results[index].status = 'approved'
-      localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
-      
-      await updateDoc(doc(db, 'results', resultId), { status: 'approved' })
-      
-      notifyUser(result.player1Id, 'Result Approved', `Your result (${result.score1}-${result.score2} vs ${result.player2}) was approved!`, 'result_approved', { resultId })
-      notifyUser(result.player2Id, 'Result Approved', `Your result (${result.score2}-${result.score1} vs ${result.player1}) was approved!`, 'result_approved', { resultId })
-      notifyAllSubscribers('League Table Updated', 'The league table has been updated with the latest results', { type: 'table_updated' })
-      
-      triggerDataRefresh('results')
-      setRefreshKey(prev => prev + 1)
-      alert('Result approved!')
-    } catch (e) {
-      console.error(e)
-      alert('Error: ' + e.message)
+    if (!confirm('Approve this result?')) return
+    
+    const resultIdStr = String(resultId)
+    const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+    const index = results.findIndex(r => String(r.id) === resultIdStr)
+    if (index === -1) {
+      alert('Result not found')
+      return
     }
+    const result = results[index]
+    results[index].status = 'approved'
+    localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
+    
+    try {
+      await updateDoc(doc(db, 'results', resultIdStr), { status: 'approved' })
+    } catch (e) {
+      console.log('Firebase error:', e)
+    }
+    
+    setTimeout(() => {
+      window.location.reload()
+    }, 500)
   }
   
   const handleReject = async (resultId) => {
-    if (!confirm('Are you sure you want to reject this result?')) return
-    try {
-      const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
-      const index = results.findIndex(r => r.id === resultId)
-      if (index === -1) {
-        alert('Result not found')
-        return
-      }
-      const result = results[index]
-      results[index].status = 'rejected'
-      localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
-      
-      await updateDoc(doc(db, 'results', resultId), { status: 'rejected' })
-      
-      notifyUser(result.player1Id, 'Result Rejected', `Your result (${result.score1}-${result.score2} vs ${result.player2}) was rejected`, 'result_rejected', { resultId })
-      notifyUser(result.player2Id, 'Result Rejected', `Your opponent's result was rejected`, 'result_rejected', { resultId })
-      
-      triggerDataRefresh('results')
-      setRefreshKey(prev => prev + 1)
-      alert('Result rejected.')
-    } catch (e) {
-      console.error(e)
-      alert('Error: ' + e.message)
+    if (!confirm('Reject this result?')) return
+    
+    const resultIdStr = String(resultId)
+    const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+    const index = results.findIndex(r => String(r.id) === resultIdStr)
+    if (index === -1) {
+      alert('Result not found')
+      return
     }
+    const result = results[index]
+    results[index].status = 'rejected'
+    localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
+    
+    try {
+      await updateDoc(doc(db, 'results', resultIdStr), { status: 'rejected' })
+    } catch (e) {
+      console.log('Firebase error:', e)
+    }
+    
+    setTimeout(() => {
+      window.location.reload()
+    }, 500)
   }
 
   if (!isSubscribed && !isAdmin) {
