@@ -116,7 +116,10 @@ export default function Admin() {
     setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
     
     alert('Result approved!')
-    setTimeout(() => window.location.reload(), 1000)
+    setTimeout(() => {
+      localStorage.removeItem('eliteArrowsResults')
+      window.location.reload()
+    }, 1000)
   }
 
   const rejectResult = async (resultId) => {
@@ -149,7 +152,10 @@ export default function Admin() {
     setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
     
     alert('Result rejected!')
-    setTimeout(() => window.location.reload(), 1000)
+    setTimeout(() => {
+      localStorage.removeItem('eliteArrowsResults')
+      window.location.reload()
+    }, 1000)
   }
 
   const approvePayment = async (userId) => {
