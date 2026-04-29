@@ -108,6 +108,7 @@ export default function Admin() {
       return
     }
     
+    const resultDocId = String(results[resultsIndex].firestoreId || results[resultsIndex].id)
     const updatedResult = { ...results[resultsIndex], status: 'approved' }
     results[resultsIndex] = updatedResult
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
@@ -120,7 +121,7 @@ export default function Admin() {
     })
     
     try {
-      const docRef = doc(db, 'results', resultIdStr)
+      const docRef = doc(db, 'results', resultDocId)
       const docSnap = await getDoc(docRef)
       console.log('Doc exists in Firestore:', docSnap.exists())
       
@@ -130,6 +131,9 @@ export default function Admin() {
       }
       
       await setDoc(docRef, { status: 'approved' }, { merge: true })
+      if (resultDocId !== resultIdStr) {
+        await deleteDoc(doc(db, 'results', resultIdStr)).catch(() => {})
+      }
       console.log('Successfully approved in Firebase!')
       showToast('Result approved')
     } catch (e) {
@@ -150,6 +154,7 @@ export default function Admin() {
       return
     }
     
+    const resultDocId = String(results[resultsIndex].firestoreId || results[resultsIndex].id)
     const updatedResult = { ...results[resultsIndex], status: 'rejected' }
     results[resultsIndex] = updatedResult
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
@@ -161,7 +166,7 @@ export default function Admin() {
     })
     
     try {
-      const docRef = doc(db, 'results', resultIdStr)
+      const docRef = doc(db, 'results', resultDocId)
       const docSnap = await getDoc(docRef)
       console.log('Doc exists in Firestore:', docSnap.exists())
       console.log('Doc ID:', docSnap.id, 'Data:', docSnap.data())
@@ -173,6 +178,9 @@ export default function Admin() {
       }
       
       await setDoc(docRef, { status: 'rejected' }, { merge: true })
+      if (resultDocId !== resultIdStr) {
+        await deleteDoc(doc(db, 'results', resultIdStr)).catch(() => {})
+      }
       console.log('Successfully updated Firebase!')
       
       const verifySnap = await getDoc(docRef)
@@ -201,6 +209,7 @@ export default function Admin() {
       return
     }
     
+    const resultDocId = String(results[resultsIndex].firestoreId || results[resultsIndex].id)
     results[resultsIndex] = { ...results[resultsIndex], status: null }
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     
@@ -208,7 +217,10 @@ export default function Admin() {
     setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
     
     try {
-      await setDoc(doc(db, 'results', resultIdStr), { status: null }, { merge: true })
+      await setDoc(doc(db, 'results', resultDocId), { status: null }, { merge: true })
+      if (resultDocId !== resultIdStr) {
+        await deleteDoc(doc(db, 'results', resultIdStr)).catch(() => {})
+      }
       showToast('Result status reset')
     } catch (e) {
       alert('ERROR: ' + e.message)
@@ -308,7 +320,7 @@ export default function Admin() {
     alert('Colors saved!')
   }
 
-  const submitAdminGame = () => {
+  const submitAdminGame = async () => {
     if (!gameForm.player1 || !gameForm.player2 || !gameForm.score1 || !gameForm.score2) {
       alert('Please fill in all required fields')
       return
@@ -318,8 +330,10 @@ export default function Admin() {
     const player2User = getAllUsers().find(u => u.id === gameForm.player2)
 
     const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
-    results.push({
-      id: Date.now(),
+    const resultId = Date.now().toString()
+    const newResult = {
+      id: resultId,
+      firestoreId: resultId,
       player1: player1User.username,
       player1Id: player1User.id,
       player2: player2User.username,
@@ -335,8 +349,10 @@ export default function Admin() {
       proofImage: '',
       submittedBy: 'admin',
       status: 'approved'
-    })
+    }
+    results.push(newResult)
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
+    await setDoc(doc(db, 'results', resultId), newResult, { merge: true })
 
     alert('Game submitted and approved!')
     setShowSubmitGame(false)
@@ -1212,8 +1228,9 @@ export default function Admin() {
                         if (confirm(`Remove ${u.username} from the league entirely?`)) {
                           const userIdToDelete = u.id
                           await deleteDoc(doc(db, 'users', userIdToDelete))
-                          setUsersList(prev => prev.filter(us => us.id !== userIdToDelete))
-                          setTimeout(() => setUsersList(prev => prev.filter(us => us.id !== userIdToDelete)), 500)
+                          const users = getAllUsers().filter(us => us.id !== userIdToDelete)
+                          localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+                          triggerDataRefresh('users')
                         }
                       }}
                     >
@@ -1688,12 +1705,18 @@ export default function Admin() {
             <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
               Clear all results for the current season.
             </p>
-            <button className="btn btn-danger" onClick={() => {
+            <button className="btn btn-danger" onClick={async () => {
               const currentSeason = localStorage.getItem('eliteArrowsCurrentSeason') || new Date().getFullYear().toString()
               if (confirm(`Reset all results for "${currentSeason}" season?`)) {
                 const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+                const currentSeasonResults = results.filter(r => r.season === currentSeason)
                 const filtered = results.filter(r => r.season !== currentSeason)
                 localStorage.setItem('eliteArrowsResults', JSON.stringify(filtered))
+                await Promise.all(currentSeasonResults.map(result => 
+                  deleteDoc(doc(db, 'results', String(result.firestoreId || result.id))).catch(e => {
+                    console.log('Error deleting result from Firebase:', e)
+                  })
+                ))
                 triggerDataRefresh('results')
                 alert('Table reset!')
               }

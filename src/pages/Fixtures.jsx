@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import { db, doc, setDoc, collection, addDoc, deleteDoc } from '../firebase'
+import { db, doc, setDoc, deleteDoc } from '../firebase'
 import UserSearchSelect from '../components/UserSearchSelect'
 
 export default function Fixtures() {
@@ -224,8 +224,10 @@ export default function Fixtures() {
     if (score2 === null) return
     
     const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+    const resultId = Date.now().toString()
     const newResult = {
-      id: Date.now(),
+      id: resultId,
+      firestoreId: resultId,
       player1: getPlayerName(fixture.player1Id),
       player1Id: fixture.player1Id,
       player2: getPlayerName(fixture.player2Id),
@@ -247,7 +249,7 @@ export default function Fixtures() {
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     
     try {
-      await addDoc(collection(db, 'results'), newResult)
+      await setDoc(doc(db, 'results', resultId), newResult, { merge: true })
     } catch (e) {
       console.log('Error saving to Firebase:', e)
     }

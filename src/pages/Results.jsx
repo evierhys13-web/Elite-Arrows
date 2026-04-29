@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { db, updateDoc, doc } from '../firebase'
+import { db, setDoc, deleteDoc, doc } from '../firebase'
 
 export default function Results() {
   const { user, getResults, triggerDataRefresh, dataRefreshTrigger, notifyUser, notifyAllSubscribers } = useAuth()
@@ -33,13 +33,17 @@ export default function Results() {
       return
     }
     const result = results[index]
+    const resultDocId = String(result.firestoreId || result.id)
     results[index].status = 'approved'
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     
-    await setDoc(doc(db, 'results', resultIdStr), { status: 'approved' }, { merge: true })
+    await setDoc(doc(db, 'results', resultDocId), { status: 'approved' }, { merge: true })
+    if (resultDocId !== resultIdStr) {
+      await deleteDoc(doc(db, 'results', resultIdStr)).catch(() => {})
+    }
     
     alert('Result approved!')
-    window.location.reload()
+    triggerDataRefresh('results')
   }
   
   const handleReject = async (resultId) => {
@@ -53,13 +57,17 @@ export default function Results() {
       return
     }
     const result = results[index]
+    const resultDocId = String(result.firestoreId || result.id)
     results[index].status = 'rejected'
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     
-    await setDoc(doc(db, 'results', resultIdStr), { status: 'rejected' }, { merge: true })
+    await setDoc(doc(db, 'results', resultDocId), { status: 'rejected' }, { merge: true })
+    if (resultDocId !== resultIdStr) {
+      await deleteDoc(doc(db, 'results', resultIdStr)).catch(() => {})
+    }
     
     alert('Result rejected!')
-    window.location.reload()
+    triggerDataRefresh('results')
   }
 
   if (!isSubscribed && !isAdmin) {

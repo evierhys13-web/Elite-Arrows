@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useSearchParams } from 'react-router-dom'
-import { db, collection, addDoc, doc, setDoc } from '../firebase'
+import { db, doc, setDoc } from '../firebase'
 
 export default function SubmitResult() {
   const { user, getAllUsers, getFixtures, getResults, addTokens, triggerDataRefresh, notifyAdmins } = useAuth()
@@ -205,8 +205,10 @@ const handleSubmit = async (e) => {
 
     const results = [...allResults]
     
+    const resultId = Date.now().toString()
     const newResult = {
-      id: Date.now(),
+      id: resultId,
+      firestoreId: resultId,
       player1: user.username,
       player1Id: user.id,
       player2: opponentUser?.username || allUsers.find(u => u.id === formData.opponent)?.username || formData.opponent,
@@ -239,10 +241,8 @@ const handleSubmit = async (e) => {
     
     try {
       console.log('Attempting to save to Firestore with data:', newResult)
-      const docRef = await addDoc(collection(db, 'results'), newResult)
-      console.log('Document written with ID:', docRef.id)
-      newResult.id = docRef.id
-      localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
+      await setDoc(doc(db, 'results', resultId), newResult, { merge: true })
+      console.log('Document written with ID:', resultId)
       alert('Result submitted successfully!')
     } catch (e) {
       console.error('FATAL: Error saving to Firestore:', e.code, e.message)

@@ -225,7 +225,40 @@ export function AuthProvider({ children }) {
     })
     
     const unsubscribeResults = onSnapshot(collection(db, 'results'), (snapshot) => {
-      const resultsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      const resultRows = snapshot.docs.map(docSnap => {
+        const data = docSnap.data()
+        return {
+          ...data,
+          id: data.id || docSnap.id,
+          firestoreId: docSnap.id
+        }
+      })
+      const statusRank = { approved: 3, rejected: 3, pending: 2 }
+      const resultsData = Array.from(resultRows.reduce((byId, row) => {
+        const logicalId = String(row.id)
+        const existing = byId.get(logicalId)
+        if (!existing) {
+          byId.set(logicalId, row)
+          return byId
+        }
+
+        const existingHasPlayers = existing.player1 || existing.player2
+        const rowHasPlayers = row.player1 || row.player2
+        const base = rowHasPlayers && !existingHasPlayers ? row : existing
+        const overlay = base === row ? existing : row
+        const preferredStatus = (statusRank[overlay.status] || 0) > (statusRank[base.status] || 0)
+          ? overlay.status
+          : base.status
+
+        byId.set(logicalId, {
+          ...overlay,
+          ...base,
+          id: logicalId,
+          status: preferredStatus,
+          firestoreId: rowHasPlayers ? row.firestoreId : existing.firestoreId
+        })
+        return byId
+      }, new Map()).values())
       setResults(resultsData)
       localStorage.setItem('eliteArrowsResults', JSON.stringify(resultsData))
       triggerDataRefresh('results')
