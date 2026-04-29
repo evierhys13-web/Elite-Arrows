@@ -238,11 +238,15 @@ const handleSubmit = async (e) => {
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     
     try {
+      console.log('Attempting to save to Firestore with data:', newResult)
       const docRef = await addDoc(collection(db, 'results'), newResult)
+      console.log('Document written with ID:', docRef.id)
       newResult.id = docRef.id
       localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
+      alert('Result submitted successfully!')
     } catch (e) {
-      console.log('Error saving to Firestore:', e)
+      console.error('FATAL: Error saving to Firestore:', e.code, e.message)
+      alert('Error submitting result: ' + e.message)
     }
 
     const fixtureToUpdate = cupFixture || selectedFixture

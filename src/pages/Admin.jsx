@@ -112,10 +112,16 @@ export default function Admin() {
       console.log('Doc exists in Firestore:', docSnap.exists())
       console.log('Doc ID:', docSnap.id, 'Data:', docSnap.data())
       
+      if (!docSnap.exists()) {
+        console.error('FATAL: Document does NOT exist in Firestore with ID:', resultIdStr)
+        alert('Error: Document not found in database!')
+        return
+      }
+      
       await setDoc(docRef, { status: 'approved' }, { merge: true })
-      console.log('Updated Firebase!')
+      console.log('Successfully updated Firebase!')
     } catch (e) {
-      console.log('Firebase error:', e)
+      console.error('FATAL Firebase error:', e.code, e.message)
     }
     
     setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
@@ -153,10 +159,16 @@ export default function Admin() {
       console.log('Doc exists in Firestore:', docSnap.exists())
       console.log('Doc ID:', docSnap.id, 'Data:', docSnap.data())
       
+      if (!docSnap.exists()) {
+        console.error('FATAL: Document does NOT exist in Firestore with ID:', resultIdStr)
+        alert('Error: Document not found in database!')
+        return
+      }
+      
       await setDoc(docRef, { status: 'rejected' }, { merge: true })
-      console.log('Updated Firebase!')
+      console.log('Successfully updated Firebase!')
     } catch (e) {
-      console.log('Firebase error:', e)
+      console.error('FATAL Firebase error:', e.code, e.message)
     }
     
     setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
