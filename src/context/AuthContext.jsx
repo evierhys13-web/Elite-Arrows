@@ -234,8 +234,17 @@ export function AuthProvider({ children }) {
         }
       })
       const statusRank = { approved: 3, rejected: 3, pending: 2 }
+      const getResultKey = (row) => {
+        const playerKey = row.player1Id && row.player2Id
+          ? `${row.player1Id}|${row.player2Id}`
+          : `${row.player1 || ''}|${row.player2 || ''}`
+        if (row.score1 !== undefined && row.score2 !== undefined && row.date && row.gameType) {
+          return `${playerKey}|${row.score1}|${row.score2}|${row.date}|${row.gameType}`
+        }
+        return String(row.id)
+      }
       const resultsData = Array.from(resultRows.reduce((byId, row) => {
-        const logicalId = String(row.id)
+        const logicalId = getResultKey(row)
         const existing = byId.get(logicalId)
         if (!existing) {
           byId.set(logicalId, row)
@@ -253,7 +262,7 @@ export function AuthProvider({ children }) {
         byId.set(logicalId, {
           ...overlay,
           ...base,
-          id: logicalId,
+          id: base.id || overlay.id,
           status: preferredStatus,
           firestoreId: rowHasPlayers ? row.firestoreId : existing.firestoreId
         })

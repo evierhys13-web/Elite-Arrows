@@ -27,39 +27,28 @@ export default function Results() {
     const logicalId = String(result.id)
     const preferredId = result.firestoreId ? String(result.firestoreId) : logicalId
     const docIds = new Set([logicalId, preferredId])
-    const resultQueries = [query(collection(db, 'results'), where('id', '==', result.id))]
 
-    if (String(result.id) !== result.id) {
-      resultQueries.push(query(collection(db, 'results'), where('id', '==', String(result.id))))
-    }
+    const snapshot = await getDocs(collection(db, 'results'))
+    snapshot.docs.forEach(docSnap => {
+      const data = docSnap.data()
+      const sameLogicalId = String(data.id || docSnap.id) === logicalId
+      const samePlayersById =
+        data.player1Id === result.player1Id &&
+        data.player2Id === result.player2Id
+      const samePlayersByName =
+        data.player1 === result.player1 &&
+        data.player2 === result.player2
+      const sameGame =
+        (samePlayersById || samePlayersByName) &&
+        String(data.score1) === String(result.score1) &&
+        String(data.score2) === String(result.score2) &&
+        data.date === result.date &&
+        data.gameType === result.gameType
 
-    const numericId = Number(result.id)
-    if (!Number.isNaN(numericId)) {
-      resultQueries.push(query(collection(db, 'results'), where('id', '==', numericId)))
-    }
-
-    if (result.player1Id) {
-      resultQueries.push(query(collection(db, 'results'), where('player1Id', '==', result.player1Id)))
-    }
-
-    for (const resultQuery of resultQueries) {
-      const snapshot = await getDocs(resultQuery)
-      snapshot.docs.forEach(docSnap => {
-        const data = docSnap.data()
-        const sameLogicalId = String(data.id || docSnap.id) === logicalId
-        const sameGame =
-          data.player1Id === result.player1Id &&
-          data.player2Id === result.player2Id &&
-          String(data.score1) === String(result.score1) &&
-          String(data.score2) === String(result.score2) &&
-          data.date === result.date &&
-          data.gameType === result.gameType
-
-        if (sameLogicalId || sameGame) {
-          docIds.add(docSnap.id)
-        }
-      })
-    }
+      if (sameLogicalId || sameGame) {
+        docIds.add(docSnap.id)
+      }
+    })
 
     return Array.from(docIds)
   }
