@@ -45,13 +45,21 @@ export default function Fixtures() {
   }, [])
 
   const fixtures = getFixtures()
+  const allResults = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
   
   const regularFixtures = fixtures.filter(f => !f.cupId)
 
   const pendingFixtures = regularFixtures.filter(f => f.player2Id === user.id && f.status === 'pending')
-  const sentFixtures = regularFixtures.filter(f => f.createdBy === user.id)
+  const sentFixtures = regularFixtures.filter(f => 
+    (f.proposalStatus === 'sent' || f.player1Id === user.id || f.createdBy === user.id) &&
+    f.status === 'pending'
+  )
   const upcomingFixtures = regularFixtures.filter(f => 
     (f.player1Id === user.id || f.player2Id === user.id) && f.status === 'accepted'
+  )
+  const completedResults = allResults.filter(r =>
+    r.status === 'approved' &&
+    (r.player1Id === user.id || r.player2Id === user.id)
   )
 
   const cupFixturesData = fixtures.filter(f => f.cupId && (f.player1Id === user.id || f.player2Id === user.id))
@@ -123,6 +131,7 @@ export default function Fixtures() {
       allFixtures[index].proposedDate = scheduleDate
       allFixtures[index].proposedTime = scheduleTime
       allFixtures[index].proposedBy = user.id
+      allFixtures[index].proposalStatus = 'sent'
       localStorage.setItem('eliteArrowsFixtures', JSON.stringify(allFixtures))
       
       try {
@@ -133,7 +142,7 @@ export default function Fixtures() {
           opponentId,
           'Cup Fixture Proposal',
           `${user.username} proposed ${scheduleDate} at ${scheduleTime} for your cup fixture.`,
-          'fixture_proposed',
+          'proposal_pending',
           { fixtureKind: 'cup', fixtureId: allFixtures[index].id }
         )
         await sendFixtureActivityToAdmins('proposed', allFixtures[index], { proposedDate: scheduleDate, proposedTime: scheduleTime })
@@ -155,6 +164,7 @@ export default function Fixtures() {
     const index = allFixtures.findIndex(f => f.id === fixture.id)
     if (index !== -1) {
       allFixtures[index].status = 'accepted'
+      allFixtures[index].proposalStatus = 'accepted'
       allFixtures[index].date = fixture.proposedDate
       allFixtures[index].time = fixture.proposedTime
       localStorage.setItem('eliteArrowsFixtures', JSON.stringify(allFixtures))
@@ -358,6 +368,7 @@ export default function Fixtures() {
     const index = allFixtures.findIndex(f => f.id === fixtureId)
     if (index !== -1) {
       allFixtures[index].status = 'accepted'
+      allFixtures[index].proposalStatus = 'accepted'
       saveFixtures(allFixtures)
       try {
         await setDoc(doc(db, 'fixtures', allFixtures[index].id.toString()), allFixtures[index], { merge: true })
@@ -418,6 +429,12 @@ export default function Fixtures() {
           onClick={() => setActiveTab('upcoming')}
         >
           Upcoming ({upcomingCount})
+        </button>
+        <button
+          className={`btn ${activeTab === 'completed' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setActiveTab('completed')}
+        >
+          Completed ({completedResults.length})
         </button>
         <button
           className={`btn ${activeTab === 'pending' ? 'btn-primary' : 'btn-secondary'}`}
@@ -569,7 +586,8 @@ export default function Fixtures() {
                     fixtureTime: createForm.fixtureTime,
                     createdBy: user.id,
                     createdAt: new Date().toISOString(),
-                    status: 'pending'
+                    status: 'pending',
+                    proposalStatus: 'sent'
                   }
                   fixtures.push(newFixture)
                   saveFixtures(fixtures)
@@ -577,9 +595,9 @@ export default function Fixtures() {
                   await setDoc(doc(db, 'fixtures', newFixture.id.toString()), newFixture)
                   await notifyUser(
                     opponentUser.id,
-                    'New Fixture Challenge',
-                    `${user.username} sent you a ${createForm.gameType} fixture challenge for ${createForm.fixtureDate} at ${createForm.fixtureTime}.`,
-                    'fixture_challenge',
+                    'Fixture Time Proposal',
+                    `${user.username} proposed a ${createForm.gameType} fixture for ${createForm.fixtureDate} at ${createForm.fixtureTime}.`,
+                    'proposal_pending',
                     { fixtureKind: 'league', fixtureId: newFixture.id }
                   )
                   await sendFixtureActivityToAdmins('sent', newFixture, {
@@ -761,6 +779,75 @@ export default function Fixtures() {
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'completed' && (
+        <div className="card">
+          <h3 className="card-title">Completed Games</h3>
+          {completedResults.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '40px 20px' }}>
+              No completed games yet
+            </p>
+          ) : (
+            completedResults
+              .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
+              .map(result => {
+                const isPlayer1 = result.player1Id === user.id
+                const userScore = isPlayer1 ? result.score1 : result.score2
+                const opponentScore = isPlayer1 ? result.score2 : result.score1
+                const opponentName = isPlayer1 ? result.player2 : result.player1
+                const didWin = Number(userScore) > Number(opponentScore)
+
+                return (
+                  <div key={result.id} style={{
+                    padding: '20px',
+                    background: 'var(--bg-secondary)',
+                    border: `1px solid ${didWin ? 'var(--success)' : 'var(--border)'}`,
+                    borderRadius: '12px',
+                    marginBottom: '15px'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', marginBottom: '12px' }}>
+                      <div>
+                        <div style={{ fontSize: '1.1rem', marginBottom: '5px' }}>
+                          You vs <strong>{opponentName}</strong>
+                        </div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--accent-cyan)' }}>
+                          {result.division} | {result.gameType}
+                        </div>
+                      </div>
+                      <span style={{
+                        padding: '5px 12px',
+                        background: 'var(--success)',
+                        color: '#000',
+                        borderRadius: '20px',
+                        fontSize: '0.8rem',
+                        fontWeight: 'bold'
+                      }}>
+                        COMPLETED
+                      </span>
+                    </div>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: '15px',
+                      padding: '15px',
+                      background: 'var(--bg-primary)',
+                      borderRadius: '8px'
+                    }}>
+                      <div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '3px' }}>SCORE</div>
+                        <div style={{ fontWeight: '700' }}>{userScore} - {opponentScore}</div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '3px' }}>DATE</div>
+                        <div style={{ fontWeight: '600' }}>{result.date || 'N/A'}</div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })
           )}
         </div>
       )}

@@ -26,6 +26,9 @@ export default function Admin() {
     setRefreshKey(prev => prev + 1)
   }, [dataRefreshTrigger])
   const [pendingResults, setPendingResults] = useState([])
+  const [resultFilter, setResultFilter] = useState('pending')
+  const [approvedResults, setApprovedResults] = useState([])
+  const [toast, setToast] = useState(null)
   const [activeTab, setActiveTab] = useState('results')
   const [showConfirmModal, setShowConfirmModal] = useState(null)
   const [showColorsForm, setShowColorsForm] = useState(false)
@@ -55,13 +58,21 @@ export default function Admin() {
     setRefreshKey(k => k + 1)
   }
 
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 3000)
+  }
+
   useEffect(() => {
     const results = getResults();
     const pending = results.filter(r => r.status === 'pending');
+    const managed = results.filter(r => ['pending', 'approved', 'rejected'].includes(r.status));
     if (user.isTournamentAdmin && !user.isAdmin) {
       setPendingResults(pending.filter(r => r.gameType === 'Tournament'));
+      setApprovedResults(managed.filter(r => r.gameType === 'Tournament'));
     } else {
       setPendingResults(pending);
+      setApprovedResults(managed);
     }
 
     if (user?.isAdmin) {
@@ -97,16 +108,21 @@ export default function Admin() {
       return
     }
     
-    // Execute approve
-    results[resultsIndex].status = 'approved'
+    const updatedResult = { ...results[resultsIndex], status: 'approved' }
+    results[resultsIndex] = updatedResult
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     console.log('Updated localStorage')
+    
+    setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
+    setApprovedResults(prev => {
+      const withoutResult = prev.filter(r => String(r.id) !== resultIdStr)
+      return [updatedResult, ...withoutResult]
+    })
     
     try {
       const docRef = doc(db, 'results', resultIdStr)
       const docSnap = await getDoc(docRef)
       console.log('Doc exists in Firestore:', docSnap.exists())
-      console.log('Doc ID:', docSnap.id, 'Data:', docSnap.data())
       
       if (!docSnap.exists()) {
         alert('Document not found in Firestore!')
@@ -115,10 +131,7 @@ export default function Admin() {
       
       await setDoc(docRef, { status: 'approved' }, { merge: true })
       console.log('Successfully approved in Firebase!')
-      
-      // Force clear localStorage and reload
-      localStorage.removeItem('eliteArrowsResults')
-      setTimeout(() => window.location.reload(), 1500)
+      showToast('Result approved')
     } catch (e) {
       alert('ERROR: ' + e.code + ' - ' + e.message)
       console.error('FATAL Firebase error:', e.code, e.message)
@@ -137,10 +150,15 @@ export default function Admin() {
       return
     }
     
-    // Execute reject
-    results[resultsIndex].status = 'rejected'
+    const updatedResult = { ...results[resultsIndex], status: 'rejected' }
+    results[resultsIndex] = updatedResult
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     console.log('Updated localStorage')
+    setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
+    setApprovedResults(prev => {
+      const withoutResult = prev.filter(r => String(r.id) !== resultIdStr)
+      return [updatedResult, ...withoutResult]
+    })
     
     try {
       const docRef = doc(db, 'results', resultIdStr)
@@ -167,11 +185,35 @@ export default function Admin() {
     } catch (e) {
       console.error('FATAL Firebase error:', e.code, e.message)
     }
+
+    showToast('Result rejected')
+  }
+
+  const resetResultStatus = async (resultId) => {
+    const resultIdStr = String(resultId)
+    if (!confirm('Reset this result status? It will be removed from approved result management.')) return
     
+    const results = getResults()
+    const resultsIndex = results.findIndex(r => String(r.id) === resultIdStr)
+    
+    if (resultsIndex === -1) {
+      alert('Result not found')
+      return
+    }
+    
+    results[resultsIndex] = { ...results[resultsIndex], status: null }
+    localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
+    
+    setApprovedResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
     setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
     
-    alert('Result rejected! Page will reload to refresh data...')
-    setTimeout(() => window.location.reload(), 1500)
+    try {
+      await setDoc(doc(db, 'results', resultIdStr), { status: null }, { merge: true })
+      showToast('Result status reset')
+    } catch (e) {
+      alert('ERROR: ' + e.message)
+      console.error(e)
+    }
   }
 
   const approvePayment = async (userId) => {
@@ -181,7 +223,7 @@ export default function Admin() {
       alert('User not found')
       return
     }
-    
+
     try {
       const userDivision = users[index].division
       const isHighTier = userDivision === 'Elite' || userDivision === 'Diamond'
@@ -329,9 +371,28 @@ export default function Admin() {
   }
 
   const isFullAdmin = user?.isAdmin || ADMIN_EMAILS.includes(user?.email?.toLowerCase())
+  const filteredManagedResults = approvedResults.filter(result => (
+    resultFilter === 'all' ? true : result.status === resultFilter
+  ))
 
   return (
     <div className="page">
+      {toast && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          zIndex: 10000,
+          padding: '12px 18px',
+          borderRadius: '8px',
+          background: toast.type === 'success' ? 'var(--success)' : 'var(--accent-cyan)',
+          color: '#000',
+          fontWeight: 700,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.25)'
+        }}>
+          {toast.message}
+        </div>
+      )}
       <div className="page-header">
         <h1 className="page-title">Admin Panel</h1>
       </div>
@@ -467,34 +528,92 @@ export default function Admin() {
       </div>
 
       {activeTab === 'results' && (
-        <div className="card">
-          {pendingResults.length === 0 ? (
-            <div className="empty-state">
-              <p>No pending results to approve</p>
-            </div>
-          ) : (
-            pendingResults.map(result => (
-              <div key={result.id} className="result-item" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
-                <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <div>
-                    <strong>{result.player1}</strong> vs <strong>{result.player2}</strong>
-                  </div>
-                  <span style={{ color: 'var(--text-muted)' }}>{result.date}</span>
-                </div>
-                <div style={{ marginBottom: '12px' }}>
-                  Score: {result.score1} - {result.score2} | Division: {result.division}
-                </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button className="btn btn-primary" onClick={() => setShowConfirmModal({ type: 'approve', result })}>
-                    Approve
-                  </button>
-                  <button className="btn btn-danger" onClick={() => setShowConfirmModal({ type: 'reject', result })}>
-                    Reject
-                  </button>
-                </div>
+        <div>
+          <div className="card" style={{ marginBottom: '20px' }}>
+            <h3 className="card-title">Pending Results</h3>
+            {pendingResults.length === 0 ? (
+              <div className="empty-state">
+                <p>No pending results to approve</p>
               </div>
-            ))
-          )}
+            ) : (
+              pendingResults.map(result => (
+                <div key={result.id} className="result-item" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                  <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <div>
+                      <strong>{result.player1}</strong> vs <strong>{result.player2}</strong>
+                    </div>
+                    <span style={{ color: 'var(--text-muted)' }}>{result.date}</span>
+                  </div>
+                  <div style={{ marginBottom: '12px' }}>
+                    Score: {result.score1} - {result.score2} | Division: {result.division}
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button className="btn btn-primary" onClick={() => setShowConfirmModal({ type: 'approve', result })}>
+                      Approve
+                    </button>
+                    <button className="btn btn-danger" onClick={() => setShowConfirmModal({ type: 'reject', result })}>
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '15px' }}>
+              <h3 className="card-title" style={{ margin: 0 }}>Approved Results</h3>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {['all', 'pending', 'approved', 'rejected'].map(filter => (
+                  <button
+                    key={filter}
+                    className={`btn btn-sm ${resultFilter === filter ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setResultFilter(filter)}
+                  >
+                    {filter.charAt(0).toUpperCase() + filter.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {filteredManagedResults.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '30px 10px' }}>
+                No {resultFilter === 'all' ? '' : resultFilter} results found
+              </p>
+            ) : (
+              filteredManagedResults.map(result => (
+                <div key={result.id} className="result-item" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                  <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', gap: '12px', marginBottom: '12px' }}>
+                    <div>
+                      <strong>{result.player1}</strong> vs <strong>{result.player2}</strong>
+                    </div>
+                    <span style={{
+                      color: result.status === 'approved' ? 'var(--success)' : result.status === 'rejected' ? 'var(--error)' : 'var(--warning)',
+                      fontWeight: 700
+                    }}>
+                      {(result.status || 'No Status').toUpperCase()}
+                    </span>
+                  </div>
+                  <div style={{ color: 'var(--text-muted)', marginBottom: '12px' }}>
+                    {result.score1} - {result.score2} | {result.division} | {result.gameType} | {result.date}
+                  </div>
+                  {result.status === 'pending' ? (
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button className="btn btn-primary" onClick={() => setShowConfirmModal({ type: 'approve', result })}>
+                        Approve
+                      </button>
+                      <button className="btn btn-danger" onClick={() => setShowConfirmModal({ type: 'reject', result })}>
+                        Reject
+                      </button>
+                    </div>
+                  ) : (
+                    <button className="btn btn-secondary" onClick={() => resetResultStatus(result.id)}>
+                      Delete/Reset
+                    </button>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
         </div>
       )}
 

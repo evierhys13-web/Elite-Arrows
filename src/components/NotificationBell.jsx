@@ -112,6 +112,7 @@ export default function NotificationBell() {
         url = '/results'
         break
       case 'fixture_proposed':
+      case 'proposal_pending':
       case 'fixture_challenge':
       case 'fixture_accepted':
       case 'fixture_declined':
