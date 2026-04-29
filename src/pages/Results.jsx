@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { db, setDoc, deleteDoc, doc } from '../firebase'
+import { db, setDoc, getDoc, getDocs, deleteDoc, doc, collection, query, where } from '../firebase'
 
 export default function Results() {
   const { user, getResults, triggerDataRefresh, dataRefreshTrigger, notifyUser, notifyAllSubscribers } = useAuth()
@@ -22,6 +22,30 @@ export default function Results() {
   const allResults = getResults()
   const approvedResults = allResults.filter(r => r.status === 'approved')
   const pendingResults = allResults.filter(r => r.status === 'pending')
+
+  const resolveResultDocId = async (result) => {
+    const logicalId = String(result.id)
+    const preferredId = result.firestoreId ? String(result.firestoreId) : logicalId
+    const matches = await getDocs(query(collection(db, 'results'), where('id', '==', result.id)))
+    const fullMatch = matches.docs.find(docSnap => {
+      const data = docSnap.data()
+      return data.player1 || data.player2 || data.player1Id || data.player2Id
+    })
+
+    if (fullMatch) return fullMatch.id
+
+    const preferredSnap = await getDoc(doc(db, 'results', preferredId))
+    if (preferredSnap.exists()) {
+      const data = preferredSnap.data()
+      if (data.player1 || data.player2 || data.player1Id || data.player2Id) {
+        return preferredId
+      }
+    }
+
+    if (!matches.empty) return matches.docs[0].id
+    if (preferredSnap.exists()) return preferredId
+    return logicalId
+  }
   
   const handleApprove = async (resultId) => {
     if (!confirm('Approve this result?')) return
@@ -34,11 +58,12 @@ export default function Results() {
       return
     }
     const result = results[index]
-    const resultDocId = String(result.firestoreId || result.id)
-    results[index].status = 'approved'
+    const updatedResult = { ...result, status: 'approved' }
+    const resultDocId = await resolveResultDocId(updatedResult)
+    results[index] = updatedResult
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     
-    await setDoc(doc(db, 'results', resultDocId), { status: 'approved' }, { merge: true })
+    await setDoc(doc(db, 'results', resultDocId), { status: 'approved', firestoreId: resultDocId }, { merge: true })
     if (resultDocId !== resultIdStr) {
       await deleteDoc(doc(db, 'results', resultIdStr)).catch(() => {})
     }
@@ -61,11 +86,12 @@ export default function Results() {
       return
     }
     const result = results[index]
-    const resultDocId = String(result.firestoreId || result.id)
-    results[index].status = 'rejected'
+    const updatedResult = { ...result, status: 'rejected' }
+    const resultDocId = await resolveResultDocId(updatedResult)
+    results[index] = updatedResult
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     
-    await setDoc(doc(db, 'results', resultDocId), { status: 'rejected' }, { merge: true })
+    await setDoc(doc(db, 'results', resultDocId), { status: 'rejected', firestoreId: resultDocId }, { merge: true })
     if (resultDocId !== resultIdStr) {
       await deleteDoc(doc(db, 'results', resultIdStr)).catch(() => {})
     }

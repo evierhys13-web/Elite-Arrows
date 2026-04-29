@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import { db, doc, setDoc, getDoc, deleteDoc, updateDoc } from '../firebase'
+import { db, doc, setDoc, getDoc, getDocs, deleteDoc, updateDoc, collection, query, where } from '../firebase'
 import CupManagement from './CupManagement'
 import UserSearchSelect from '../components/UserSearchSelect'
 
@@ -71,6 +71,30 @@ export default function Admin() {
     }, 1800)
   }
 
+  const resolveResultDocId = async (result) => {
+    const logicalId = String(result.id)
+    const preferredId = result.firestoreId ? String(result.firestoreId) : logicalId
+    const matches = await getDocs(query(collection(db, 'results'), where('id', '==', result.id)))
+    const fullMatch = matches.docs.find(docSnap => {
+      const data = docSnap.data()
+      return data.player1 || data.player2 || data.player1Id || data.player2Id
+    })
+
+    if (fullMatch) return fullMatch.id
+
+    const preferredSnap = await getDoc(doc(db, 'results', preferredId))
+    if (preferredSnap.exists()) {
+      const data = preferredSnap.data()
+      if (data.player1 || data.player2 || data.player1Id || data.player2Id) {
+        return preferredId
+      }
+    }
+
+    if (!matches.empty) return matches.docs[0].id
+    if (preferredSnap.exists()) return preferredId
+    return logicalId
+  }
+
   useEffect(() => {
     const results = getResults();
     const pending = results.filter(r => r.status === 'pending');
@@ -116,8 +140,8 @@ export default function Admin() {
       return
     }
     
-    const resultDocId = String(results[resultsIndex].firestoreId || results[resultsIndex].id)
     const updatedResult = { ...results[resultsIndex], status: 'approved' }
+    const resultDocId = await resolveResultDocId(updatedResult)
     results[resultsIndex] = updatedResult
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     console.log('Updated localStorage')
@@ -134,11 +158,10 @@ export default function Admin() {
       console.log('Doc exists in Firestore:', docSnap.exists())
       
       if (!docSnap.exists()) {
-        alert('Document not found in Firestore!')
-        return
+        await setDoc(docRef, { ...updatedResult, firestoreId: resultDocId }, { merge: true })
+      } else {
+        await setDoc(docRef, { status: 'approved', firestoreId: resultDocId }, { merge: true })
       }
-      
-      await setDoc(docRef, { status: 'approved' }, { merge: true })
       if (resultDocId !== resultIdStr) {
         await deleteDoc(doc(db, 'results', resultIdStr)).catch(() => {})
       }
@@ -163,8 +186,8 @@ export default function Admin() {
       return
     }
     
-    const resultDocId = String(results[resultsIndex].firestoreId || results[resultsIndex].id)
     const updatedResult = { ...results[resultsIndex], status: 'rejected' }
+    const resultDocId = await resolveResultDocId(updatedResult)
     results[resultsIndex] = updatedResult
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     console.log('Updated localStorage')
@@ -181,12 +204,10 @@ export default function Admin() {
       console.log('Doc ID:', docSnap.id, 'Data:', docSnap.data())
       
       if (!docSnap.exists()) {
-        console.error('FATAL: Document does NOT exist in Firestore with ID:', resultIdStr)
-        alert('Error: Document not found in database!')
-        return
+        await setDoc(docRef, { ...updatedResult, firestoreId: resultDocId }, { merge: true })
+      } else {
+        await setDoc(docRef, { status: 'rejected', firestoreId: resultDocId }, { merge: true })
       }
-      
-      await setDoc(docRef, { status: 'rejected' }, { merge: true })
       if (resultDocId !== resultIdStr) {
         await deleteDoc(doc(db, 'results', resultIdStr)).catch(() => {})
       }
@@ -218,15 +239,16 @@ export default function Admin() {
       return
     }
     
-    const resultDocId = String(results[resultsIndex].firestoreId || results[resultsIndex].id)
-    results[resultsIndex] = { ...results[resultsIndex], status: null }
+    const updatedResult = { ...results[resultsIndex], status: null }
+    const resultDocId = await resolveResultDocId(updatedResult)
+    results[resultsIndex] = updatedResult
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     
     setApprovedResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
     setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
     
     try {
-      await setDoc(doc(db, 'results', resultDocId), { status: null }, { merge: true })
+      await setDoc(doc(db, 'results', resultDocId), { status: null, firestoreId: resultDocId }, { merge: true })
       if (resultDocId !== resultIdStr) {
         await deleteDoc(doc(db, 'results', resultIdStr)).catch(() => {})
       }
