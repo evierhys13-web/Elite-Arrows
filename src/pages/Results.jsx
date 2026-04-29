@@ -36,15 +36,8 @@ export default function Results() {
     results[index].status = 'approved'
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     
-    try {
-      await updateDoc(doc(db, 'results', resultIdStr), { status: 'approved' })
-    } catch (e) {
-      console.log('Firebase error:', e)
-    }
-    
-    setTimeout(() => {
-      window.location.reload()
-    }, 500)
+    alert('Result approved!')
+    window.location.reload()
   }
   
   const handleReject = async (resultId) => {
@@ -61,15 +54,8 @@ export default function Results() {
     results[index].status = 'rejected'
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     
-    try {
-      await updateDoc(doc(db, 'results', resultIdStr), { status: 'rejected' })
-    } catch (e) {
-      console.log('Firebase error:', e)
-    }
-    
-    setTimeout(() => {
-      window.location.reload()
-    }, 500)
+    alert('Result rejected!')
+    window.location.reload()
   }
 
   if (!isSubscribed && !isAdmin) {

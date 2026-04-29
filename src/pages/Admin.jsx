@@ -101,10 +101,9 @@ export default function Admin() {
     results[resultsIndex].status = 'approved'
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     
-    await updateDoc(doc(db, 'results', resultIdStr), { status: 'approved' })
-    
     setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
     
+    alert('Result approved!')
     window.location.reload()
   }
 
@@ -125,10 +124,9 @@ export default function Admin() {
     results[resultsIndex].status = 'rejected'
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     
-    await updateDoc(doc(db, 'results', resultIdStr), { status: 'rejected' })
-    
     setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
     
+    alert('Result rejected!')
     window.location.reload()
   }
 
