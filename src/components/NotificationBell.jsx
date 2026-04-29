@@ -307,7 +307,7 @@ export default function NotificationBell() {
           >
             {localNotifications.length === 0 ? (
               <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                <p style={{ margin: 0, fontSize: '0.9rem' }}>No notifications yet</p>
+                <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text)' }}>No notifications yet</p>
               </div>
             ) : (
               localNotifications.map((notification) => (
@@ -330,7 +330,7 @@ export default function NotificationBell() {
                     {getNotificationIcon(notification.type)}
                   </span>
                   <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: '0.9rem', margin: 0, fontWeight: notification.isRead ? 'normal' : '600' }}>
+                    <p style={{ fontSize: '0.9rem', margin: 0, fontWeight: notification.isRead ? 'normal' : '600', color: 'var(--text)' }}>
                       {notification.message || notification.title || 'New notification'}
                     </p>
                     <div style={{ marginTop: '4px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>

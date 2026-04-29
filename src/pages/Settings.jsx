@@ -583,7 +583,7 @@ export default function Settings() {
                 >
                   <span style={{ fontSize: '1.2rem' }}>{getNotificationIcon(notification.type)}</span>
                   <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: '0.9rem', margin: 0, fontWeight: notification.isRead ? 'normal' : 'bold' }}>
+                    <p style={{ fontSize: '0.9rem', margin: 0, fontWeight: notification.isRead ? 'normal' : 'bold', color: 'var(--text)' }}>
                       {notification.message || notification.text || notification.title}
                     </p>
                     <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '2px 0 0' }}>
