@@ -101,6 +101,8 @@ export default function Admin() {
     results[resultsIndex].status = 'approved'
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     
+    await setDoc(doc(db, 'results', resultIdStr), { status: 'approved' }, { merge: true })
+    
     setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
     
     alert('Result approved!')
@@ -123,6 +125,8 @@ export default function Admin() {
     
     results[resultsIndex].status = 'rejected'
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
+    
+    await setDoc(doc(db, 'results', resultIdStr), { status: 'rejected' }, { merge: true })
     
     setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
     

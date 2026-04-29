@@ -36,6 +36,8 @@ export default function Results() {
     results[index].status = 'approved'
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     
+    await setDoc(doc(db, 'results', resultIdStr), { status: 'approved' }, { merge: true })
+    
     alert('Result approved!')
     window.location.reload()
   }
@@ -53,6 +55,8 @@ export default function Results() {
     const result = results[index]
     results[index].status = 'rejected'
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
+    
+    await setDoc(doc(db, 'results', resultIdStr), { status: 'rejected' }, { merge: true })
     
     alert('Result rejected!')
     window.location.reload()
