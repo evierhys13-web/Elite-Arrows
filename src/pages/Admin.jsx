@@ -94,7 +94,7 @@ export default function Admin() {
         }
       }
     }
-  }, [user.isAdmin, user.isTournamentAdmin]);
+  }, [user.isAdmin, user.isTournamentAdmin, dataRefreshTrigger]);
 
   const approveResult = async (resultId) => {
     const resultIdStr = String(resultId)

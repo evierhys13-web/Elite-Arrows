@@ -115,14 +115,40 @@ export default function SubmitResult() {
   const handleImageUpload = (e) => {
     const file = e.target.files[0]
     if (file) {
-      // Check file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         setError('Image must be less than 5MB')
         return
       }
+
       const reader = new FileReader()
       reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, proofImage: reader.result }))
+        const image = new Image()
+        image.onload = () => {
+          const canvas = document.createElement('canvas')
+          const maxDimension = 1200
+          const scale = Math.min(1, maxDimension / Math.max(image.width, image.height))
+          canvas.width = Math.max(1, Math.round(image.width * scale))
+          canvas.height = Math.max(1, Math.round(image.height * scale))
+
+          const ctx = canvas.getContext('2d')
+          ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
+
+          let quality = 0.75
+          let compressed = canvas.toDataURL('image/jpeg', quality)
+          while (compressed.length > 850000 && quality > 0.35) {
+            quality -= 0.1
+            compressed = canvas.toDataURL('image/jpeg', quality)
+          }
+
+          if (compressed.length > 950000) {
+            setError('Image is still too large. Please upload a smaller screenshot/photo.')
+            return
+          }
+
+          setFormData(prev => ({ ...prev, proofImage: compressed }))
+        }
+        image.onerror = () => setError('Could not read that image. Please try another photo.')
+        image.src = reader.result
       }
       reader.readAsDataURL(file)
     }
@@ -216,51 +242,49 @@ const handleSubmit = async (e) => {
       return
     }
 
-    const results = [...allResults]
-    
-    const resultId = Date.now().toString()
-    const newResult = {
-      id: resultId,
-      firestoreId: resultId,
-      player1: user.username,
-      player1Id: user.id,
-      player2: opponentUser?.username || allUsers.find(u => u.id === formData.opponent)?.username || formData.opponent,
-      player2Id: opponentUser?.id || formData.opponent,
-      score1: parseInt(formData.yourScore),
-      score2: parseInt(formData.opponentScore),
-      division: user.division,
-      gameType: formData.gameType,
-      season: currentSeason,
-      date: new Date().toISOString().split('T')[0],
-      bestOf: formData.bestOf,
-      firstTo: formData.firstTo,
-      proofImage: formData.proofImage,
-      player1Stats: {
-        '180s': parseInt(formData.your180s) || 0,
-         highestCheckout: parseInt(formData.yourHighestCheckout) || 0,
-         doubleSuccess: parseFloat(formData.yourDoubleSuccess) || 0
-       },
-       player2Stats: {
-        '180s': parseInt(formData.opponent180s) || 0,
-         highestCheckout: parseInt(formData.opponentHighestCheckout) || 0,
-         doubleSuccess: parseFloat(formData.opponentDoubleSuccess) || 0
-       },
-      status: 'pending',
-      ...(cupId && { cupId, matchId })
-    }
-
-    results.push(newResult)
-    localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
-    
     try {
+      const results = [...allResults]
+      const resultId = Date.now().toString()
+      const newResult = {
+        id: resultId,
+        firestoreId: resultId,
+        player1: user.username,
+        player1Id: user.id,
+        player2: opponentUser?.username || allUsers.find(u => u.id === formData.opponent)?.username || formData.opponent,
+        player2Id: opponentUser?.id || formData.opponent,
+        score1: parseInt(formData.yourScore),
+        score2: parseInt(formData.opponentScore),
+        division: user.division,
+        gameType: formData.gameType,
+        season: currentSeason,
+        date: new Date().toISOString().split('T')[0],
+        bestOf: formData.bestOf,
+        firstTo: formData.firstTo,
+        proofImage: formData.proofImage,
+        player1Stats: {
+          '180s': parseInt(formData.your180s) || 0,
+          highestCheckout: parseInt(formData.yourHighestCheckout) || 0,
+          doubleSuccess: parseFloat(formData.yourDoubleSuccess) || 0
+        },
+        player2Stats: {
+          '180s': parseInt(formData.opponent180s) || 0,
+          highestCheckout: parseInt(formData.opponentHighestCheckout) || 0,
+          doubleSuccess: parseFloat(formData.opponentDoubleSuccess) || 0
+        },
+        status: 'pending',
+        ...(cupId && { cupId, matchId })
+      }
+
       console.log('Attempting to save to Firestore with data:', newResult)
       await setDoc(doc(db, 'results', resultId), newResult, { merge: true })
       console.log('Document written with ID:', resultId)
-      alert('Result submitted successfully!')
-    } catch (e) {
-      console.error('FATAL: Error saving to Firestore:', e.code, e.message)
-      alert('Error submitting result: ' + e.message)
-    }
+
+      results.push(newResult)
+      try {
+        localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
+      } catch (storageError) {
+        console.log('Result saved to Firestore but local cache update failed:', storageError)
+      }
 
     const fixtureToUpdate = cupFixture || selectedFixture
     if (fixtureToUpdate) {
@@ -301,10 +325,11 @@ const handleSubmit = async (e) => {
     
     setSubmitted(true)
     setError('')
-    
-    setTimeout(() => {
-      window.location.reload()
-    }, 2000)
+    alert('Result submitted successfully!')
+    } catch (e) {
+      console.error('FATAL: Error submitting result:', e.code, e.message)
+      setError('Error submitting result: ' + (e.message || 'Please try again.'))
+    }
   }
   
   // Success message display
