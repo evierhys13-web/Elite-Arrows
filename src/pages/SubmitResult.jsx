@@ -146,7 +146,11 @@ const handleSubmit = async (e) => {
       return
     }
     
-    if (!window.confirm(`Submit result: ${formData.yourScore} - ${formData.opponentScore} vs ${formData.opponent}?`)) {
+    const allUsers = getAllUsers()
+    const opponentUser = allUsers.find(u => u.id === formData.opponent)
+    const opponentName = opponentUser?.name || opponentUser?.username || formData.opponent
+    
+    if (!window.confirm(`Submit result: ${user.name} ${formData.yourScore} - ${formData.opponentScore} ${opponentName}?`)) {
       return
     }
     

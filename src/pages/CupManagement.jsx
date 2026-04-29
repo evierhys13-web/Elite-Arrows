@@ -104,7 +104,7 @@ function CupManagement() {
   }
 
   const deleteCup = async (cup) => {
-    const confirmed = window.confirm(`Are you sure you want to delete "${cup.name}"? This will also delete fixtures.`)
+    const confirmed = window.confirm(`Delete cup "${cup.name}"?`)
     if (!confirmed) return
     
     try {
@@ -135,7 +135,7 @@ function CupManagement() {
   }
 
   const deleteFixture = async (fixture) => {
-    const confirmed = window.confirm('Are you sure you want to delete this fixture?')
+    const confirmed = window.confirm('Delete this fixture?')
     if (!confirmed) return
     
     try {

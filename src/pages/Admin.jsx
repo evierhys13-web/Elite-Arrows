@@ -85,29 +85,24 @@ export default function Admin() {
   }, [user.isAdmin, user.isTournamentAdmin]);
 
   const approveResult = async (resultId) => {
-    if (!window.confirm('Approve this result?')) return
-    
-    console.log('Approving result:', resultId)
     const resultIdStr = String(resultId)
     const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
-    console.log('Found results:', results.length)
+    const resultsIndex = results.findIndex(r => String(r.id) === resultIdStr)
     
-    const index = results.findIndex(r => String(r.id) === resultIdStr)
-    console.log('Found at index:', index)
-    
-    if (index === -1) {
+    if (resultsIndex === -1) {
       alert('Result not found')
       return
     }
     
-    const result = results[index]
-    results[index].status = 'approved'
+    const resultItem = results[resultsIndex]
+    const confirmMsg = `Approve result: ${resultItem.player1} ${resultItem.score1} - ${resultItem.score2} ${resultItem.player2}?`
+    if (!window.confirm(confirmMsg)) return
+    
+    results[resultsIndex].status = 'approved'
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
-    console.log('Updated local storage')
     
     try {
       await updateDoc(doc(db, 'results', resultIdStr), { status: 'approved' })
-      console.log('Updated Firebase')
     } catch (e) {
       console.log('Firebase error (non-fatal):', e)
     }
@@ -118,19 +113,20 @@ export default function Admin() {
   }
 
   const rejectResult = async (resultId) => {
-    if (!window.confirm('Reject this result?')) return
-    
     const resultIdStr = String(resultId)
     const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
-    const index = results.findIndex(r => String(r.id) === resultIdStr)
+    const resultsIndex = results.findIndex(r => String(r.id) === resultIdStr)
     
-    if (index === -1) {
+    if (resultsIndex === -1) {
       alert('Result not found')
       return
     }
     
-    const result = results[index]
-    results[index].status = 'rejected'
+    const resultItem = results[resultsIndex]
+    const confirmMsg = `Reject result: ${resultItem.player1} ${resultItem.score1} - ${resultItem.score2} ${resultItem.player2}?`
+    if (!window.confirm(confirmMsg)) return
+    
+    results[resultsIndex].status = 'rejected'
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
     
     try {
@@ -142,7 +138,7 @@ export default function Admin() {
     setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
     triggerDataRefresh('results')
     alert('Result rejected!')
-  };
+  }
 
   const approvePayment = async (userId) => {
     const users = getAllUsers()
