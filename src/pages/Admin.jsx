@@ -107,7 +107,12 @@ export default function Admin() {
     console.log('Updated localStorage')
     
     try {
-      await setDoc(doc(db, 'results', resultIdStr), { status: 'approved' }, { merge: true })
+      const docRef = doc(db, 'results', resultIdStr)
+      const docSnap = await getDoc(docRef)
+      console.log('Doc exists in Firestore:', docSnap.exists())
+      console.log('Doc ID:', docSnap.id, 'Data:', docSnap.data())
+      
+      await setDoc(docRef, { status: 'approved' }, { merge: true })
       console.log('Updated Firebase!')
     } catch (e) {
       console.log('Firebase error:', e)
@@ -143,7 +148,12 @@ export default function Admin() {
     console.log('Updated localStorage')
     
     try {
-      await setDoc(doc(db, 'results', resultIdStr), { status: 'rejected' }, { merge: true })
+      const docRef = doc(db, 'results', resultIdStr)
+      const docSnap = await getDoc(docRef)
+      console.log('Doc exists in Firestore:', docSnap.exists())
+      console.log('Doc ID:', docSnap.id, 'Data:', docSnap.data())
+      
+      await setDoc(docRef, { status: 'rejected' }, { merge: true })
       console.log('Updated Firebase!')
     } catch (e) {
       console.log('Firebase error:', e)
