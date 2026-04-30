@@ -6,7 +6,7 @@ import Breadcrumbs from '../components/Breadcrumbs'
 import Tooltip from '../components/Tooltip'
 
 export default function Players() {
-  const { user, getAllUsers, addFriend, removeFriend, cancelFriendRequest, acceptFriendRequest, declineFriendRequest, loading } = useAuth()
+  const { user, getAllUsers, addFriend, removeFriend, loading } = useAuth()
   const [showFriendsOnly, setShowFriendsOnly] = useState(false)
   const [visible, setVisible] = useState(false)
   const navigate = useNavigate()
@@ -147,31 +147,6 @@ export default function Players() {
                   >
                     Remove
                   </button>
-                ) : (user.sentFriendRequests || []).includes(player.id) ? (
-                  <button 
-                    className="btn btn-secondary"
-                    style={{ padding: '8px 16px' }}
-                    onClick={() => cancelFriendRequest(player.id)}
-                  >
-                    Cancel Request
-                  </button>
-                ) : (user.receivedFriendRequests || []).includes(player.id) ? (
-                  <div style={{ display: 'flex', gap: '4px' }}>
-                    <button 
-                      className="btn btn-primary"
-                      style={{ padding: '8px 12px', fontSize: '0.8rem' }}
-                      onClick={() => acceptFriendRequest(player.id)}
-                    >
-                      Accept
-                    </button>
-                    <button 
-                      className="btn btn-secondary"
-                      style={{ padding: '8px 12px', fontSize: '0.8rem' }}
-                      onClick={() => declineFriendRequest(player.id)}
-                    >
-                      Decline
-                    </button>
-                  </div>
                 ) : (
                   <button 
                     className="btn btn-primary"

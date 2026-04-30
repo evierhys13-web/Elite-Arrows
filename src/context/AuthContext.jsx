@@ -601,6 +601,12 @@ const cleanUserData = (users) => {
         setUser(updatedUser)
         localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(updatedUser))
       }
+
+      setAllUsers(prev => {
+        const updated = prev.map(u => u.id === userId ? { ...u, ...cleanUpdates } : u)
+        localStorage.setItem('eliteArrowsUsers', JSON.stringify(updated))
+        return updated
+      })
     } catch (error) {
       console.error('Error updating user:', error)
       throw error
@@ -636,22 +642,40 @@ const cleanUserData = (users) => {
 
   const addFriend = async (friendId) => {
     if (!user) return
-    const currentRequests = user.sentFriendRequests || []
-    if (currentRequests.includes(friendId)) return
-    
-    await updateUser({ sentFriendRequests: [...currentRequests, friendId] })
+    if ((user.friends || []).includes(friendId)) {
+      alert('Already friends!')
+      return
+    }
     
     const allUsersData = getAllUsers()
     const friendUser = allUsersData.find(u => u.id === friendId)
+    if (!friendUser) {
+      alert('Could not find that player.')
+      return
+    }
+
+    const userFriends = Array.from(new Set([...(user.friends || []), friendId]))
+    const friendFriends = Array.from(new Set([...(friendUser.friends || []), user.id]))
+
+    await updateUser({
+      friends: userFriends,
+      sentFriendRequests: (user.sentFriendRequests || []).filter(id => id !== friendId),
+      receivedFriendRequests: (user.receivedFriendRequests || []).filter(id => id !== friendId)
+    }, false)
+    await updateOtherUser(friendId, {
+      friends: friendFriends,
+      sentFriendRequests: (friendUser.sentFriendRequests || []).filter(id => id !== user.id),
+      receivedFriendRequests: (friendUser.receivedFriendRequests || []).filter(id => id !== user.id)
+    })
     
     const notification = {
-      id: `friend_request_${Date.now()}`,
-      type: 'friend_request',
+      id: `friend_added_${Date.now()}`,
+      type: 'friend_accepted',
       fromUserId: user.id,
       fromUsername: user.username,
       toUserId: friendId,
       toUsername: friendUser?.username || 'Unknown',
-      message: `${user.username} sent you a friend request`,
+      message: `${user.username} added you as a friend`,
       isRead: false,
       createdAt: new Date().toISOString()
     }
@@ -665,19 +689,24 @@ const cleanUserData = (users) => {
       console.log('Error saving to Firebase:', e)
     }
     
-    alert('Friend request sent!')
+    alert(`${friendUser.username} is now your friend!`)
   }
 
   const acceptFriendRequest = async (userId) => {
     if (!user) return
-    const currentFriends = user.friends || []
-    const currentRequests = user.receivedFriendRequests || []
-    const newFriends = [...currentFriends, userId]
-    const newRequests = currentRequests.filter(id => id !== userId)
-    await updateUser({ friends: newFriends, receivedFriendRequests: newRequests })
-    
     const allUsersData = getAllUsers()
     const requestUser = allUsersData.find(u => u.id === userId)
+    if (!requestUser) return
+
+    const currentFriends = user.friends || []
+    const currentRequests = user.receivedFriendRequests || []
+    const newFriends = Array.from(new Set([...currentFriends, userId]))
+    const newRequests = currentRequests.filter(id => id !== userId)
+    await updateUser({ friends: newFriends, receivedFriendRequests: newRequests }, false)
+    await updateOtherUser(userId, {
+      friends: Array.from(new Set([...(requestUser.friends || []), user.id])),
+      sentFriendRequests: (requestUser.sentFriendRequests || []).filter(id => id !== user.id)
+    })
     
     const notification = {
       id: `friend_accepted_${Date.now()}`,
@@ -702,20 +731,38 @@ const cleanUserData = (users) => {
 
   const declineFriendRequest = async (userId) => {
     if (!user) return
+    const requestUser = getAllUsers().find(u => u.id === userId)
     const currentRequests = user.receivedFriendRequests || []
-    await updateUser({ receivedFriendRequests: currentRequests.filter(id => id !== userId) })
+    await updateUser({ receivedFriendRequests: currentRequests.filter(id => id !== userId) }, false)
+    if (requestUser) {
+      await updateOtherUser(userId, {
+        sentFriendRequests: (requestUser.sentFriendRequests || []).filter(id => id !== user.id)
+      })
+    }
   }
 
   const cancelFriendRequest = async (userId) => {
     if (!user) return
+    const requestUser = getAllUsers().find(u => u.id === userId)
     const currentSent = user.sentFriendRequests || []
-    await updateUser({ sentFriendRequests: currentSent.filter(id => id !== userId) })
+    await updateUser({ sentFriendRequests: currentSent.filter(id => id !== userId) }, false)
+    if (requestUser) {
+      await updateOtherUser(userId, {
+        receivedFriendRequests: (requestUser.receivedFriendRequests || []).filter(id => id !== user.id)
+      })
+    }
   }
 
   const removeFriend = async (friendId) => {
     if (!user) return
+    const friendUser = getAllUsers().find(u => u.id === friendId)
     const newFriends = (user.friends || []).filter(id => id !== friendId)
-    await updateUser({ friends: newFriends })
+    await updateUser({ friends: newFriends }, false)
+    if (friendUser) {
+      await updateOtherUser(friendId, {
+        friends: (friendUser.friends || []).filter(id => id !== user.id)
+      })
+    }
   }
 
   const subscribe = () => {

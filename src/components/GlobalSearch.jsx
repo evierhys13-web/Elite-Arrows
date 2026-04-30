@@ -28,7 +28,7 @@ const divisionColors = {
 }
 
 export default function GlobalSearch() {
-  const { user, allUsers, addFriend, removeFriend, cancelFriendRequest, acceptFriendRequest, declineFriendRequest, updateUser } = useAuth()
+  const { user, allUsers, addFriend, removeFriend, updateUser } = useAuth()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [isOpen, setIsOpen] = useState(false)
@@ -72,8 +72,6 @@ export default function GlobalSearch() {
 
   const getFriendStatus = (playerId) => {
     if ((user.friends || []).includes(playerId)) return 'friends'
-    if ((user.sentFriendRequests || []).includes(playerId)) return 'sent'
-    if ((user.receivedFriendRequests || []).includes(playerId)) return 'received'
     return 'none'
   }
 
@@ -98,15 +96,6 @@ export default function GlobalSearch() {
         break
       case 'removeFriend':
         await removeFriend(player.id)
-        break
-      case 'cancelRequest':
-        await cancelFriendRequest(player.id)
-        break
-      case 'acceptRequest':
-        await acceptFriendRequest(player.id)
-        break
-      case 'declineRequest':
-        await declineFriendRequest(player.id)
         break
       case 'subscribe':
         await updateUser({ isSubscribed: true })
@@ -268,38 +257,6 @@ export default function GlobalSearch() {
                       }}
                     >
                       + Add
-                    </button>
-                  )}
-                  {status === 'sent' && (
-                    <button
-                      onClick={() => handleAction('cancelRequest', player)}
-                      style={{
-                        padding: '6px 10px',
-                        fontSize: '0.75rem',
-                        background: 'var(--text-muted)',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Cancel
-                    </button>
-                  )}
-                  {status === 'received' && (
-                    <button
-                      onClick={() => handleAction('acceptRequest', player)}
-                      style={{
-                        padding: '6px 10px',
-                        fontSize: '0.75rem',
-                        background: 'var(--success)',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Accept
                     </button>
                   )}
                   {isAdmin && !player.isSubscribed && (

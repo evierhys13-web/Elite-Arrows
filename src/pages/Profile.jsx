@@ -16,7 +16,7 @@ const AVAILABLE_BADGES = [
 ]
 
 export default function Profile() {
-  const { user, updateUser, requestAdminRole, getAllUsers, addFriend, removeFriend, cancelFriendRequest, acceptFriendRequest, declineFriendRequest } = useAuth()
+  const { user, updateUser, requestAdminRole, getAllUsers, addFriend, removeFriend } = useAuth()
   const navigate = useNavigate()
   const { id } = useParams()
   
@@ -414,46 +414,10 @@ export default function Profile() {
                       </button>
                     )}
                   </>
-                ) : (user.sentFriendRequests || []).includes(viewedUser.id) ? (
-                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                    <span style={{ 
-                      padding: '8px 16px', 
-                      background: 'var(--warning)', 
-                      borderRadius: '8px',
-                      fontSize: '0.9rem',
-                      fontWeight: '500'
-                    }}>
-                      Pending
-                    </span>
-                    <button 
-                      className="btn btn-secondary"
-                      onClick={() => cancelFriendRequest(viewedUser.id)}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                ) : (user.receivedFriendRequests || []).includes(viewedUser.id) ? (
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button 
-                      className="btn btn-primary"
-                      onClick={() => acceptFriendRequest(viewedUser.id)}
-                    >
-                      Accept
-                    </button>
-                    <button 
-                      className="btn btn-secondary"
-                      onClick={() => declineFriendRequest(viewedUser.id)}
-                    >
-                      Decline
-                    </button>
-                  </div>
                 ) : (
                   <button 
                     className="btn btn-primary"
-                    onClick={() => {
-                      console.log('Add Friend button clicked', viewedUser.id)
-                      addFriend(viewedUser.id)
-                    }}
+                    onClick={() => addFriend(viewedUser.id)}
                   >
                     Add Friend
                   </button>

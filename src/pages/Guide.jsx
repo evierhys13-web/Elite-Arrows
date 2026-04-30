@@ -522,7 +522,7 @@ export default function Guide() {
                   <li>Type a player's username or DartCounter name</li>
                   <li>Click on a result to see quick actions</li>
                   <li><strong>View Profile</strong> - See their full stats</li>
-                  <li><strong>Add Friend</strong> - Send a friend request</li>
+                  <li><strong>Add Friend</strong> - Add the player to your friends list instantly</li>
                   <li><strong>Chat</strong> - Open a chat (friends only)</li>
                 </ol>
               </div>
