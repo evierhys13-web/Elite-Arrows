@@ -832,6 +832,7 @@ const cleanUserData = (users) => {
       refundPolicyAcknowledged: true,
       refundPolicyAcknowledgedAt: acknowledgedAt
     }, false)
+    window.location.reload()
   }
 
   const updateFixtures = (updatedFixtures) => {
