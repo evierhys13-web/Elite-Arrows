@@ -1,10 +1,12 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { db, auth, usersCollection, adminDataCollection, fcmTokensCollection, doc, setDoc, getDoc, getDocs, query, where, collection, orderBy, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, addDoc, updateDoc, deleteDoc, FieldValue, getMessagingInstance, getToken, onMessage, isSupported } from '../firebase'
 import SurveyModal from '../components/SurveyModal'
+import SeasonOneWelcomeModal from '../components/SeasonOneWelcomeModal'
 
 const AuthContext = createContext(null)
 
 const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com', 'test@elitearrows.co.uk']
+const SEASON_ONE_WELCOME_START = new Date('2026-05-01T00:00:00+01:00').getTime()
 
 export const DIVISIONS = ['Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Development']
 
@@ -25,6 +27,7 @@ export function AuthProvider({ children }) {
   const [unreadCount, setUnreadCount] = useState(0)
   const [news, setNews] = useState([])
   const [showSurvey, setShowSurvey] = useState(false)
+  const [showSeasonOneWelcome, setShowSeasonOneWelcome] = useState(false)
   const unsubscribeRef = useRef(null)
   const seenNotificationIdsRef = useRef(new Set())
   const resultRowsRef = useRef([])
@@ -745,6 +748,36 @@ const cleanUserData = (users) => {
     return local
   }
 
+  useEffect(() => {
+    if (!user?.id) {
+      setShowSeasonOneWelcome(false)
+      return
+    }
+
+    const isSubscriberOrAdmin = user.isSubscribed || user.isAdmin || user.isTournamentAdmin
+    const seasonHasStarted = Date.now() >= SEASON_ONE_WELCOME_START
+    const localAcknowledged = localStorage.getItem(`eliteArrowsSeasonOneWelcome_${user.id}`) === 'acknowledged'
+    setShowSeasonOneWelcome(Boolean(
+      isSubscriberOrAdmin &&
+      seasonHasStarted &&
+      !user.seasonOneWelcomeAcknowledged &&
+      !localAcknowledged
+    ))
+  }, [user?.id, user?.isSubscribed, user?.isAdmin, user?.isTournamentAdmin, user?.seasonOneWelcomeAcknowledged])
+
+  const acknowledgeSeasonOneWelcome = async () => {
+    if (!user?.id) return
+    const acknowledgedAt = new Date().toISOString()
+    localStorage.setItem(`eliteArrowsSeasonOneWelcome_${user.id}`, 'acknowledged')
+    setShowSeasonOneWelcome(false)
+    await updateUser({
+      seasonOneWelcomeAcknowledged: true,
+      seasonOneWelcomeAcknowledgedAt: acknowledgedAt,
+      refundPolicyAcknowledged: true,
+      refundPolicyAcknowledgedAt: acknowledgedAt
+    }, false)
+  }
+
   const updateFixtures = (updatedFixtures) => {
     setFixtures(updatedFixtures)
     localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
@@ -1031,6 +1064,13 @@ const handleSurveyComplete = () => {
           onSkip={handleSurveySkip}
           userId={user.id}
           userName={user.username}
+        />
+      )}
+      {showSeasonOneWelcome && user && (
+        <SeasonOneWelcomeModal
+          isOpen={showSeasonOneWelcome}
+          userName={user.username}
+          onAcknowledge={acknowledgeSeasonOneWelcome}
         />
       )}
       {children}
