@@ -18,6 +18,9 @@ export default function Fixtures() {
   const [selectedCupFixture, setSelectedCupFixture] = useState(null)
   const [scheduleDate, setScheduleDate] = useState('')
   const [scheduleTime, setScheduleTime] = useState('')
+  const [counterFixture, setCounterFixture] = useState(null)
+  const [counterDate, setCounterDate] = useState('')
+  const [counterTime, setCounterTime] = useState('')
   const [refreshKey, setRefreshKey] = useState(0)
 
   const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
@@ -49,17 +52,24 @@ export default function Fixtures() {
   
   const regularFixtures = fixtures.filter(f => !f.cupId)
 
-  const pendingFixtures = regularFixtures.filter(f => (
-    f.player2Id === user.id &&
-    f.createdBy !== user.id &&
-    f.status === 'pending' &&
-    (f.proposalStatus || 'sent') === 'sent'
-  ))
-  const sentFixtures = regularFixtures.filter(f => 
-    f.status === 'pending' &&
-    (f.proposalStatus || 'sent') === 'sent' &&
-    (f.createdBy === user.id || f.player1Id === user.id)
-  )
+  const pendingFixtures = regularFixtures.filter(f => {
+    if (f.status === 'pending' && (f.proposalStatus || 'sent') === 'sent') {
+      return f.player2Id === user.id && f.createdBy !== user.id
+    }
+    if (f.status === 'countered' && (f.proposalStatus || 'countered') === 'countered') {
+      return (f.player1Id === user.id || f.player2Id === user.id) && f.counterBy !== user.id
+    }
+    return false
+  })
+  const sentFixtures = regularFixtures.filter(f => {
+    if (f.status === 'pending' && (f.proposalStatus || 'sent') === 'sent') {
+      return f.createdBy === user.id || f.player1Id === user.id
+    }
+    if (f.status === 'countered' && (f.proposalStatus || 'countered') === 'countered') {
+      return f.counterBy === user.id
+    }
+    return false
+  })
   const upcomingFixtures = regularFixtures.filter(f => 
     (f.player1Id === user.id || f.player2Id === user.id) && f.status === 'accepted'
   )
@@ -124,6 +134,14 @@ export default function Fixtures() {
     await setDoc(doc(db, 'fixtures', fixture.id.toString()), stripUndefined(fixture), { merge: true })
   }
 
+  const findFixtureIndexById = (fixturesList, fixtureId) => (
+    fixturesList.findIndex(f => String(f.id) === String(fixtureId))
+  )
+
+  const findFixtureById = (fixtureId) => (
+    getFixtures().find(f => String(f.id) === String(fixtureId))
+  )
+
   const getOtherPlayerId = (fixture) => {
     if (!fixture) return null
     return fixture.player1Id === user.id ? fixture.player2Id : fixture.player1Id
@@ -153,7 +171,7 @@ export default function Fixtures() {
       return
     }
     const allFixtures = getFixtures()
-    const index = allFixtures.findIndex(f => f.id === selectedCupFixture.id)
+    const index = findFixtureIndexById(allFixtures, selectedCupFixture.id)
     if (index !== -1) {
       allFixtures[index].proposedDate = scheduleDate
       allFixtures[index].proposedTime = scheduleTime
@@ -187,7 +205,7 @@ export default function Fixtures() {
   
   const acceptCupProposal = async (fixture) => {
     const allFixtures = getFixtures()
-    const index = allFixtures.findIndex(f => f.id === fixture.id)
+    const index = findFixtureIndexById(allFixtures, fixture.id)
     if (index !== -1) {
       allFixtures[index].status = 'accepted'
       allFixtures[index].proposalStatus = 'accepted'
@@ -226,11 +244,11 @@ export default function Fixtures() {
   const rejectCupProposal = async (fixture) => {
     if (!confirm('Reject this fixture?')) return
     const allFixtures = getFixtures()
-    const updatedFixtures = allFixtures.filter(f => f.id !== fixture.id)
+    const updatedFixtures = allFixtures.filter(f => String(f.id) !== String(fixture.id))
     saveFixtures(updatedFixtures)
     
     try {
-      await deleteDoc(doc(db, 'fixtures', fixture.id.toString()))
+      await deleteDoc(doc(db, 'fixtures', String(fixture.id)))
       const opponentId = fixture.player1Id === user.id ? fixture.player2Id : fixture.player1Id
       await notifyUser(
         opponentId,
@@ -295,7 +313,7 @@ export default function Fixtures() {
     }
     
     const allFixtures = getFixtures()
-    const index = allFixtures.findIndex(f => f.id === fixture.id)
+    const index = findFixtureIndexById(allFixtures, fixture.id)
     if (index !== -1) {
       allFixtures[index].status = 'result_submitted'
       saveFixtures(allFixtures)
@@ -340,11 +358,15 @@ export default function Fixtures() {
   const handleDeclineFixture = async (fixtureId) => {
     if (!confirm('Decline this fixture?')) return
     
-    const fixture = getFixtures().find(f => f.id === fixtureId)
-    const updatedFixtures = getFixtures().filter(f => f.id !== fixtureId)
+    const fixture = findFixtureById(fixtureId)
+    if (!fixture) {
+      alert('Could not find that fixture. Please refresh and try again.')
+      return
+    }
+    const updatedFixtures = getFixtures().filter(f => String(f.id) !== String(fixtureId))
     saveFixtures(updatedFixtures)
     try {
-      await deleteDoc(doc(db, 'fixtures', fixtureId.toString()))
+      await deleteDoc(doc(db, 'fixtures', String(fixtureId)))
       if (fixture?.createdBy) {
         await notifyUser(
           fixture.createdBy,
@@ -373,11 +395,15 @@ export default function Fixtures() {
 
   const handleCancelFixture = async (fixtureId) => {
     if (!confirm('Cancel this fixture?')) return
-    const fixture = getFixtures().find(f => f.id === fixtureId)
-    const updatedFixtures = getFixtures().filter(f => f.id !== fixtureId)
+    const fixture = findFixtureById(fixtureId)
+    if (!fixture) {
+      alert('Could not find that fixture. Please refresh and try again.')
+      return
+    }
+    const updatedFixtures = getFixtures().filter(f => String(f.id) !== String(fixtureId))
     saveFixtures(updatedFixtures)
     try {
-      await deleteDoc(doc(db, 'fixtures', fixtureId.toString()))
+      await deleteDoc(doc(db, 'fixtures', String(fixtureId)))
       const recipientId = fixture?.player2Id
       if (recipientId) {
         await notifyUser(
@@ -398,9 +424,71 @@ export default function Fixtures() {
     alert('Fixture cancelled')
   }
 
+  const openCounterFixture = (fixture) => {
+    setCounterFixture(fixture)
+    setCounterDate(fixture.fixtureDate || '')
+    setCounterTime(fixture.fixtureTime || '')
+  }
+
+  const submitCounterFixture = async () => {
+    if (!counterFixture || !counterDate || !counterTime) {
+      alert('Please choose a counter date and time')
+      return
+    }
+
+    const allFixtures = getFixtures()
+    const index = findFixtureIndexById(allFixtures, counterFixture.id)
+    if (index === -1) {
+      alert('Could not find that fixture. Please refresh and try again.')
+      return
+    }
+
+    allFixtures[index] = {
+      ...allFixtures[index],
+      fixtureDate: counterDate,
+      fixtureTime: counterTime,
+      status: 'countered',
+      proposalStatus: 'countered',
+      counterBy: user.id,
+      counteredAt: new Date().toISOString()
+    }
+    saveFixtures(allFixtures)
+
+    try {
+      await persistFixture(allFixtures[index])
+      const recipientId = getOtherPlayerId(allFixtures[index])
+      if (recipientId) {
+        await notifyUser(
+          recipientId,
+          'Fixture Counter Proposal',
+          `${user.username} countered your ${allFixtures[index].gameType || 'league'} fixture proposal for ${counterDate} at ${counterTime}.`,
+          'fixture_countered',
+          { fixtureKind: 'league', fixtureId: allFixtures[index].id }
+        )
+      }
+      await notifyUser(
+        user.id,
+        'Counter Proposal Sent',
+        `You countered the ${allFixtures[index].gameType || 'league'} fixture proposal for ${counterDate} at ${counterTime}.`,
+        'fixture_countered',
+        { fixtureKind: 'league', fixtureId: allFixtures[index].id }
+      )
+      await sendFixtureActivityToAdmins('countered', allFixtures[index], { fixtureDate: counterDate, fixtureTime: counterTime })
+    } catch (e) {
+      console.log('Error countering fixture:', e)
+      alert('Counter saved locally, but there was a problem syncing it. Please try again if it does not update.')
+    }
+
+    setCounterFixture(null)
+    setCounterDate('')
+    setCounterTime('')
+    triggerDataRefresh('fixtures')
+    alert('Counter proposal sent')
+  }
+
   const handleScheduleCupMatch = (fixtureId, date, time) => {
     const allFixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
-    const index = allFixtures.findIndex(f => f.id === fixtureId)
+    const index = findFixtureIndexById(allFixtures, fixtureId)
     if (index !== -1) {
       allFixtures[index].date = date
       allFixtures[index].time = time
@@ -413,7 +501,11 @@ export default function Fixtures() {
 
   const handleAcceptFixture = async (fixtureId) => {
     const allFixtures = getFixtures()
-    const index = allFixtures.findIndex(f => f.id === fixtureId)
+    const index = findFixtureIndexById(allFixtures, fixtureId)
+    if (index === -1) {
+      alert('Could not find that fixture. Please refresh and try again.')
+      return
+    }
     if (index !== -1) {
       allFixtures[index].status = 'accepted'
       allFixtures[index].proposalStatus = 'accepted'
@@ -668,6 +760,60 @@ export default function Fixtures() {
                 }}
               >
                 Send Challenge
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {counterFixture && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.75)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }} onClick={() => setCounterFixture(null)}>
+          <div style={{
+            background: 'var(--bg-secondary)',
+            borderRadius: '16px',
+            padding: '25px',
+            maxWidth: '420px',
+            width: '100%',
+            border: '1px solid var(--border)'
+          }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ marginBottom: '16px', color: 'var(--accent-cyan)', textAlign: 'center' }}>
+              Counter Fixture Proposal
+            </h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '16px' }}>
+              Suggest a new date and time for {counterFixture.player1Name} vs {counterFixture.player2Name}.
+            </p>
+            <div className="form-group">
+              <label>Date</label>
+              <input
+                type="date"
+                value={counterDate}
+                onChange={e => setCounterDate(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+            <div className="form-group">
+              <label>Time</label>
+              <input
+                type="time"
+                value={counterTime}
+                onChange={e => setCounterTime(e.target.value)}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '18px' }}>
+              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setCounterFixture(null)}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={submitCounterFixture}>
+                Send Counter
               </button>
             </div>
           </div>
@@ -973,8 +1119,15 @@ export default function Fixtures() {
                   >
                     Accept
                   </button>
+                  <button
+                    className="btn btn-secondary"
+                    style={{ flex: 1 }}
+                    onClick={() => openCounterFixture(fixture)}
+                  >
+                    Counter
+                  </button>
                   <button 
-                    className="btn btn-secondary" 
+                    className="btn btn-danger" 
                     style={{ flex: 1 }}
                     onClick={() => handleDeclineFixture(fixture.id)}
                   >
