@@ -69,6 +69,12 @@ export default function CupBracket() {
     return { round, matches }
   })
 
+  const upcomingFixtures = fixtures.filter(fixture => {
+    const match = cup.matches?.find(m => String(m.id) === String(fixture.matchId))
+    const hasResult = ['approved', 'result_submitted', 'completed'].includes(fixture.status)
+    return !hasResult && !match?.winner
+  })
+
   return (
     <div className="page" style={{ padding: '20px' }}>
       <div className="page-header" style={{ marginBottom: '20px' }}>
@@ -268,11 +274,11 @@ export default function CupBracket() {
 
       <div className="card" style={{ marginTop: '20px' }}>
         <h3 className="card-title">Upcoming Matches</h3>
-        {fixtures.filter(f => f.status !== 'approved').length === 0 ? (
+        {upcomingFixtures.length === 0 ? (
           <p style={{ color: 'var(--success)', textAlign: 'center' }}>✓ All matches completed!</p>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px' }}>
-            {fixtures.filter(f => f.status !== 'approved').map(fixture => (
+            {upcomingFixtures.map(fixture => (
               <div key={fixture.id} style={{ 
                 padding: '15px', 
                 background: '#1e1e3f', 

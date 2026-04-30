@@ -475,7 +475,7 @@ export default function Fixtures() {
     saveFixtures(updatedFixtures)
     try {
       await deleteDoc(doc(db, 'fixtures', String(fixtureId)))
-      const recipientId = fixture?.player2Id
+      const recipientId = getOtherPlayerId(fixture)
       if (recipientId) {
         await notifyUser(
           recipientId,
@@ -493,6 +493,64 @@ export default function Fixtures() {
     }
     triggerDataRefresh('fixtures')
     alert('Fixture cancelled')
+  }
+
+  const cancelCupProposal = async (fixture) => {
+    if (!confirm('Cancel this cup fixture proposal?')) return
+
+    const allFixtures = getFixtures()
+    const index = findFixtureIndexById(allFixtures, fixture.id)
+    if (index === -1) {
+      alert('Could not find that fixture. Please refresh and try again.')
+      return
+    }
+
+    allFixtures[index] = {
+      ...allFixtures[index],
+      status: 'pending',
+      proposalStatus: 'needs_scheduling',
+      proposedDate: '',
+      proposedTime: '',
+      proposedBy: null,
+      counterDate: '',
+      counterTime: '',
+      counterBy: null,
+      counteredAt: null,
+      date: '',
+      time: '',
+      fixtureDate: '',
+      fixtureTime: '',
+      updatedAt: new Date().toISOString()
+    }
+    saveFixtures(allFixtures)
+
+    try {
+      await persistFixture(allFixtures[index])
+      const recipientId = getOtherPlayerId(fixture)
+      if (recipientId) {
+        await notifyUser(
+          recipientId,
+          'Cup Fixture Proposal Cancelled',
+          `${user.username} cancelled their cup fixture proposal. The match is back in cup fixtures for a new date and time.`,
+          'fixture_cancelled',
+          { fixtureKind: 'cup', fixtureId: fixture.id }
+        )
+      }
+      await notifyUser(
+        user.id,
+        'Cup Fixture Proposal Cancelled',
+        'You cancelled your cup fixture proposal. It is back in cup fixtures for a new proposal.',
+        'fixture_cancelled',
+        { fixtureKind: 'cup', fixtureId: fixture.id }
+      )
+      await sendFixtureActivityToAdmins('cancelled', allFixtures[index])
+    } catch (e) {
+      console.log('Error cancelling cup fixture proposal:', e)
+    }
+
+    triggerDataRefresh('fixtures')
+    setRefreshKey(prev => prev + 1)
+    alert('Cup fixture proposal cancelled. It is back in cup fixtures for a new proposal.')
   }
 
   const openCounterFixture = (fixture) => {
@@ -1234,7 +1292,7 @@ export default function Fixtures() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
                   <div>
                     <div style={{ fontSize: '1.1rem', marginBottom: '5px' }}>
-                      You vs <strong>{fixture.player2Name}</strong>
+                      You vs <strong>{fixture.player1Id === user.id ? fixture.player2Name : fixture.player1Name}</strong>
                     </div>
                     <div style={{ fontSize: '0.85rem', color: 'var(--accent-cyan)' }}>
                       {fixture.division} | {fixture.gameType}
@@ -1248,7 +1306,7 @@ export default function Fixtures() {
                     fontSize: '0.8rem',
                     fontWeight: 'bold'
                   }}>
-                    {fixture.status === 'accepted' ? 'ACCEPTED' : 'PENDING'}
+                    {fixture.status === 'accepted' ? 'ACCEPTED' : fixture.status === 'countered' ? 'COUNTER SENT' : 'PENDING'}
                   </span>
                 </div>
                 <div style={{ 
@@ -1268,12 +1326,12 @@ export default function Fixtures() {
                     <div style={{ fontWeight: '600' }}>⏰ {fixture.fixtureTime}</div>
                   </div>
                 </div>
-                {fixture.status === 'pending' && (
+                {['pending', 'countered'].includes(fixture.status) && (
                   <button 
                     className="btn btn-danger btn-block"
                     onClick={() => handleCancelFixture(fixture.id)}
                   >
-                    Cancel Request
+                    Cancel Proposal
                   </button>
                 )}
               </div>
@@ -1405,6 +1463,13 @@ export default function Fixtures() {
                     <p style={{ margin: '0', color: 'var(--warning)', fontSize: '0.85rem' }}>
                       Awaiting response... {waitingDate} {waitingTime}
                     </p>
+                    <button
+                      className="btn btn-danger btn-sm"
+                      style={{ marginTop: '10px' }}
+                      onClick={() => cancelCupProposal(fixture)}
+                    >
+                      Cancel Proposal
+                    </button>
                   </div>
                 )
               })}
