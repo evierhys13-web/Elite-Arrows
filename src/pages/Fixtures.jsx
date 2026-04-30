@@ -30,12 +30,6 @@ export default function Fixtures() {
   const isAdmin = isEmailAdmin || isDbAdmin || isTournamentAdmin
   const isSubscribed = user?.isSubscribed === true
 
-  const seasons = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
-  const currentSeason = seasons.find(s => s.status === 'active')
-  const seasonStartDate = currentSeason?.startDate ? new Date(currentSeason.startDate) : null
-  const seasonHasStarted = !seasonStartDate || new Date() >= seasonStartDate
-  const canCreateLeagueFixtures = seasonHasStarted || isAdmin
-
   const allUsers = getAllUsers()
   const availablePlayers = allUsers.filter(u => u.id !== user.id)
   
@@ -148,7 +142,7 @@ export default function Fixtures() {
   }
 
   const sendFixtureActivityToAdmins = async (action, fixture, details = {}) => {
-    const fixtureKind = fixture.cupId ? 'cup' : 'league'
+    const fixtureKind = fixture.cupId ? 'cup' : (fixture.gameType || 'league').toLowerCase()
     const opponentId = fixture.player1Id === user.id ? fixture.player2Id : fixture.player1Id
     const opponentName = getPlayerName(opponentId)
     await notifyAdmins(
@@ -337,7 +331,11 @@ export default function Fixtures() {
       opponents = opponents.filter(p => p.division === user.division)
     }
     const existingOpponentIds = regularFixtures
-      .filter(f => (f.player1Id === user.id || f.player2Id === user.id) && f.status !== 'completed')
+      .filter(f => (
+        (f.player1Id === user.id || f.player2Id === user.id) &&
+        f.gameType === gameType &&
+        ['pending', 'countered', 'accepted'].includes(f.status)
+      ))
       .map(f => f.player1Id === user.id ? f.player2Id : f.player1Id)
     opponents = opponents.filter(p => !existingOpponentIds.includes(p.id))
     return opponents
@@ -558,11 +556,6 @@ export default function Fixtures() {
         <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
           + Create Fixture
         </button>
-        {currentSeason && !seasonHasStarted && (
-          <p style={{ marginTop: '10px', fontSize: '0.85rem', color: 'var(--accent-cyan)' }}>
-            League fixtures can be created when the season starts ({new Date(currentSeason.startDate).toLocaleDateString()})
-          </p>
-        )}
       </div>
 
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
@@ -642,20 +635,11 @@ export default function Fixtures() {
                 }}
               >
                 <option value="Friendly">Friendly</option>
-                {!canCreateLeagueFixtures ? (
-                  <option value="League" disabled>League (Season not started)</option>
-                ) : (
-                  <option value="League">League</option>
-                )}
+                <option value="League">League</option>
               </select>
               {createForm.gameType === 'League' && (
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '5px' }}>
                   Only players in your division ({user.division}) are shown
-                </p>
-              )}
-              {!canCreateLeagueFixtures && (
-                <p style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)', marginTop: '5px' }}>
-                  League fixtures can be created when the season starts ({currentSeason ? new Date(currentSeason.startDate).toLocaleDateString() : 'TBA'})
                 </p>
               )}
             </div>
@@ -666,10 +650,10 @@ export default function Fixtures() {
                 selectedId={createForm.opponent}
                 onSelect={(id) => setCreateForm({...createForm, opponent: id})}
                 placeholder="Search for opponent..."
-                excludeIds={[user.id, ...playedOpponentIds]}
+                excludeIds={createForm.gameType === 'League' ? [user.id, ...playedOpponentIds] : [user.id]}
                 label="Select Opponent"
               />
-              {playedOpponentIds.length > 0 && (
+              {createForm.gameType === 'League' && playedOpponentIds.length > 0 && (
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
                   {playedOpponentIds.length} opponent(s) already played this season
                 </p>
@@ -713,13 +697,29 @@ export default function Fixtures() {
                     return
                   }
                   const opponentUser = availablePlayers.find(p => p.id === createForm.opponent)
+                  if (!opponentUser) {
+                    alert('Please select a valid opponent')
+                    return
+                  }
+                  if (createForm.gameType === 'League' && opponentUser.division !== user.division) {
+                    alert('League fixtures can only be sent to players in your division')
+                    return
+                  }
+                  if (createForm.gameType === 'League' && playedOpponentIds.includes(opponentUser.id)) {
+                    alert('You have already played this opponent in the league this season')
+                    return
+                  }
                   const fixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
                   const existingFixture = fixtures.find(f => 
-                    (f.player1Id === user.id && f.player2Id === opponentUser.id) ||
-                    (f.player1Id === opponentUser.id && f.player2Id === user.id)
+                    f.gameType === createForm.gameType &&
+                    ['pending', 'countered', 'accepted'].includes(f.status) &&
+                    (
+                      (f.player1Id === user.id && f.player2Id === opponentUser.id) ||
+                      (f.player1Id === opponentUser.id && f.player2Id === user.id)
+                    )
                   )
                   if (existingFixture) {
-                    alert('A fixture already exists with this player')
+                    alert(`An active ${createForm.gameType.toLowerCase()} fixture already exists with this player`)
                     return
                   }
                   const newFixture = {
@@ -746,7 +746,7 @@ export default function Fixtures() {
                     'Fixture Time Proposal',
                     `${user.username} proposed a ${createForm.gameType} fixture for ${createForm.fixtureDate} at ${createForm.fixtureTime}.`,
                     'proposal_pending',
-                    { fixtureKind: 'league', fixtureId: newFixture.id }
+                    { fixtureKind: createForm.gameType.toLowerCase(), fixtureId: newFixture.id }
                   )
                   await sendFixtureActivityToAdmins('sent', newFixture, {
                     fixtureDate: createForm.fixtureDate,
