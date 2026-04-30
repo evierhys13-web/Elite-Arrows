@@ -603,7 +603,8 @@ const cleanUserData = (users) => {
       }
 
       setAllUsers(prev => {
-        const updated = prev.map(u => u.id === userId ? { ...u, ...cleanUpdates } : u)
+        const sourceUsers = prev.length > 0 ? prev : JSON.parse(localStorage.getItem('eliteArrowsUsers') || '[]')
+        const updated = sourceUsers.map(u => u.id === userId ? { ...u, ...cleanUpdates } : u)
         localStorage.setItem('eliteArrowsUsers', JSON.stringify(updated))
         return updated
       })
@@ -660,11 +661,15 @@ const cleanUserData = (users) => {
       sentFriendRequests: (user.sentFriendRequests || []).filter(id => id !== friendId),
       receivedFriendRequests: (user.receivedFriendRequests || []).filter(id => id !== friendId)
     }, false)
-    await updateOtherUser(friendId, {
-      friends: friendFriends,
-      sentFriendRequests: (friendUser.sentFriendRequests || []).filter(id => id !== user.id),
-      receivedFriendRequests: (friendUser.receivedFriendRequests || []).filter(id => id !== user.id)
-    })
+    try {
+      await updateOtherUser(friendId, {
+        friends: friendFriends,
+        sentFriendRequests: (friendUser.sentFriendRequests || []).filter(id => id !== user.id),
+        receivedFriendRequests: (friendUser.receivedFriendRequests || []).filter(id => id !== user.id)
+      })
+    } catch (error) {
+      console.warn('Could not update friend record immediately:', error)
+    }
     
     const notification = {
       id: `friend_added_${Date.now()}`,
