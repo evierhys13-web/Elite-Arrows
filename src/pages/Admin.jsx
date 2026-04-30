@@ -33,6 +33,7 @@ export default function Admin() {
   const [successMessage, setSuccessMessage] = useState('')
   const [activeTab, setActiveTab] = useState('results')
   const [showConfirmModal, setShowConfirmModal] = useState(null)
+  const [proofPreviewResult, setProofPreviewResult] = useState(null)
   const [showColorsForm, setShowColorsForm] = useState(false)
   const [colors, setColors] = useState({
     primary: localStorage.getItem('eliteArrowsColors') ? JSON.parse(localStorage.getItem('eliteArrowsColors')).primary : '#00d4ff',
@@ -94,6 +95,75 @@ export default function Admin() {
     setTimeout(() => {
       setSuccessMessage('')
     }, 1800)
+  }
+
+  const hasResultProof = (result) => (
+    typeof result.proofImage === 'string' && result.proofImage.trim().length > 0
+  )
+
+  const renderResultProof = (result, showMissing = false) => {
+    if (!hasResultProof(result)) {
+      if (!showMissing) return null
+      return (
+        <div style={{
+          width: '100%',
+          padding: '12px',
+          marginBottom: '12px',
+          border: '1px dashed var(--border)',
+          borderRadius: '8px',
+          color: 'var(--text-muted)',
+          background: 'var(--bg-secondary)'
+        }}>
+          No proof uploaded for this result.
+        </div>
+      )
+    }
+
+    return (
+      <div style={{ width: '100%', marginBottom: '12px' }}>
+        <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '8px' }}>
+          Proof of result
+        </div>
+        <button
+          type="button"
+          onClick={() => setProofPreviewResult(result)}
+          style={{
+            display: 'block',
+            width: '100%',
+            maxWidth: '360px',
+            padding: 0,
+            border: '1px solid var(--border)',
+            borderRadius: '8px',
+            overflow: 'hidden',
+            background: 'var(--bg-primary)',
+            cursor: 'pointer',
+            textAlign: 'left'
+          }}
+          aria-label={`View proof for ${result.player1} versus ${result.player2}`}
+        >
+          <img
+            src={result.proofImage}
+            alt={`Proof for ${result.player1} versus ${result.player2}`}
+            style={{
+              display: 'block',
+              width: '100%',
+              maxHeight: '220px',
+              objectFit: 'contain',
+              background: '#000'
+            }}
+          />
+          <span style={{
+            display: 'block',
+            padding: '8px 10px',
+            color: 'var(--accent-cyan)',
+            fontSize: '0.85rem',
+            fontWeight: 700
+          }}>
+            View full proof
+          </span>
+        </button>
+      </div>
+    )
   }
 
   const getResultSignature = (result) => {
@@ -803,6 +873,7 @@ export default function Admin() {
                   <div style={{ marginBottom: '12px' }}>
                     Score: {result.score1} - {result.score2} | Division: {result.division}
                   </div>
+                  {renderResultProof(result, true)}
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <button className="btn btn-primary" onClick={() => setShowConfirmModal({ type: 'approve', result })}>
                       Approve
@@ -852,6 +923,7 @@ export default function Admin() {
                   <div style={{ color: 'var(--text-muted)', marginBottom: '12px' }}>
                     {result.score1} - {result.score2} | {result.division} | {result.gameType} | {result.date}
                   </div>
+                  {renderResultProof(result)}
                   {result.status === 'pending' ? (
                     <div style={{ display: 'flex', gap: '10px' }}>
                       <button className="btn btn-primary" onClick={() => setShowConfirmModal({ type: 'approve', result })}>
@@ -2370,6 +2442,71 @@ export default function Admin() {
           </div>
       )}
       
+      {/* Result Proof Preview */}
+      {proofPreviewResult && hasResultProof(proofPreviewResult) && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.9)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: '18px'
+          }}
+          onClick={() => setProofPreviewResult(null)}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '900px',
+              maxHeight: '92vh',
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border)',
+              borderRadius: '10px',
+              padding: '16px',
+              overflow: 'auto'
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '12px',
+              marginBottom: '12px'
+            }}>
+              <div>
+                <h3 style={{ margin: 0, color: 'var(--text)' }}>Result Proof</h3>
+                <p style={{ margin: '4px 0 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                  {proofPreviewResult.player1} {proofPreviewResult.score1} - {proofPreviewResult.score2} {proofPreviewResult.player2}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setProofPreviewResult(null)}
+              >
+                Close
+              </button>
+            </div>
+            <img
+              src={proofPreviewResult.proofImage}
+              alt={`Proof for ${proofPreviewResult.player1} versus ${proofPreviewResult.player2}`}
+              style={{
+                display: 'block',
+                width: '100%',
+                maxHeight: '78vh',
+                objectFit: 'contain',
+                background: '#000',
+                borderRadius: '8px'
+              }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Confirmation Modal */}
       {showConfirmModal && (
         <div style={{
