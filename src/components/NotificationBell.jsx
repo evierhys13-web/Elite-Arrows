@@ -241,6 +241,7 @@ export default function NotificationBell() {
 
       {isOpen && (
         <div
+          className="notifications-dropdown"
           role="dialog"
           aria-label="Notifications"
           style={{
@@ -248,13 +249,14 @@ export default function NotificationBell() {
             top: '100%',
             right: 0,
             marginTop: '8px',
-            width: '360px',
-            maxHeight: '480px',
-            background: 'var(--bg-primary)',
+            width: 'min(360px, calc(100vw - 24px))',
+            maxHeight: 'min(480px, calc(100vh - 90px))',
+            background: '#0b1228',
+            color: '#f8fafc',
             borderRadius: '12px',
             boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-            border: '1px solid var(--border)',
-            zIndex: 1000,
+            border: '1px solid rgba(148, 163, 184, 0.35)',
+            zIndex: 11000,
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column'
@@ -269,7 +271,7 @@ export default function NotificationBell() {
               borderBottom: '1px solid var(--border)'
             }}
           >
-            <h3 id="notifications-title" style={{ margin: 0, fontSize: '1rem' }}>Notifications</h3>
+            <h3 id="notifications-title" style={{ margin: 0, fontSize: '1rem', color: '#f8fafc' }}>Notifications</h3>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               {unreadCount > 0 && (
                 <button
@@ -278,7 +280,7 @@ export default function NotificationBell() {
                   style={{
                     background: 'transparent',
                     border: 'none',
-                    color: 'var(--accent-primary)',
+                    color: '#67e8f9',
                     fontSize: '0.8rem',
                     cursor: 'pointer',
                     padding: '4px 8px',
@@ -294,7 +296,7 @@ export default function NotificationBell() {
                 style={{
                   background: 'transparent',
                   border: 'none',
-                  color: 'var(--text-muted)',
+                  color: '#cbd5e1',
                   cursor: 'pointer',
                   padding: '4px',
                   borderRadius: '4px',
@@ -312,8 +314,8 @@ export default function NotificationBell() {
             style={{ overflowY: 'auto', flex: 1 }}
           >
             {localNotifications.length === 0 ? (
-              <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text)' }}>No notifications yet</p>
+              <div style={{ padding: '32px 20px', textAlign: 'center', color: '#cbd5e1' }}>
+                <p style={{ margin: 0, fontSize: '0.9rem', color: '#f8fafc' }}>No notifications yet</p>
               </div>
             ) : (
               localNotifications.map((notification) => (
@@ -323,23 +325,24 @@ export default function NotificationBell() {
                   style={{
                     width: '100%',
                     textAlign: 'left',
-                    background: notification.isRead ? 'transparent' : 'rgba(77, 168, 218, 0.1)',
+                    background: notification.isRead ? 'transparent' : 'rgba(103, 232, 249, 0.16)',
                     border: 'none',
-                    borderBottom: '1px solid var(--border)',
+                    borderBottom: '1px solid rgba(148, 163, 184, 0.22)',
                     padding: '14px 16px',
                     cursor: 'pointer',
                     display: 'flex',
-                    gap: '12px'
+                    gap: '12px',
+                    color: '#f8fafc'
                   }}
                 >
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-cyan)', minWidth: '26px' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#67e8f9', minWidth: '26px' }}>
                     {getNotificationIcon(notification.type)}
                   </span>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: '0.9rem', margin: 0, fontWeight: notification.isRead ? 'normal' : '600', color: 'var(--text)' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: '0.9rem', margin: 0, fontWeight: notification.isRead ? 'normal' : '600', color: '#f8fafc', overflowWrap: 'anywhere', whiteSpace: 'normal' }}>
                       {notification.message || notification.title || 'New notification'}
                     </p>
-                    <div style={{ marginTop: '4px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    <div style={{ marginTop: '4px', fontSize: '0.75rem', color: '#cbd5e1' }}>
                       {formatTime(notification.createdAt)}
                     </div>
                   </div>
