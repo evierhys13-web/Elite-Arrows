@@ -156,16 +156,6 @@ const CalendarIcon = () => (
   </svg>
 )
 
-const GamepadIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <rect x="2" y="6" width="20" height="12" rx="2" />
-    <line x1="6" y1="10" x2="6" y2="14" />
-    <line x1="10" y1="10" x2="10" y2="14" />
-    <line x1="14" y1="10" x2="14" y2="14" />
-    <line x1="18" y1="10" x2="18" y2="14" />
-  </svg>
-)
-
 const MenuIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 24, height: 24 }}>
     <line x1="3" y1="12" x2="21" y2="12" />
@@ -234,7 +224,6 @@ export default function Sidebar() {
     { path: '/tournaments', label: 'Tournaments', icon: TrophyIcon2 },
     { path: '/rewards', label: 'Rewards', icon: GiftIcon },
     { path: '/chat', label: 'Chat', icon: MessageIcon },
-    { path: '/games', label: 'Games', icon: GamepadIcon },
     { path: '/leaderboards', label: 'Leaderboards', icon: TrophyIcon },
     { path: '/analytics', label: 'Analytics', icon: BarChartIcon },
   ]

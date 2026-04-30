@@ -28,7 +28,6 @@ const Support = lazy(() => import('./pages/Support'))
 const Tournaments = lazy(() => import('./pages/Tournaments'))
 const Cups = lazy(() => import('./pages/Cups'))
 const CupBracket = lazy(() => import('./pages/CupBrackets'))
-const Games = lazy(() => import('./pages/Games'))
 const Leaderboards = lazy(() => import('./pages/Leaderboards'))
 const Rewards = lazy(() => import('./pages/Rewards'))
 const Fixtures = lazy(() => import('./pages/Fixtures'))
@@ -233,7 +232,6 @@ function AppRoutes() {
       <Route path="/tournaments" element={<SubscribedRoute><AppLayout><Tournaments /></AppLayout></SubscribedRoute>} />
       <Route path="/cups" element={<SubscribedRoute><AppLayout><Cups /></AppLayout></SubscribedRoute>} />
       <Route path="/cups/:cupId" element={<SubscribedRoute><AppLayout><CupBracket /></AppLayout></SubscribedRoute>} />
-      <Route path="/games" element={<SubscribedRoute><AppLayout><Games /></AppLayout></SubscribedRoute>} />
       <Route path="/leaderboards" element={<SubscribedRoute><AppLayout><Leaderboards /></AppLayout></SubscribedRoute>} />
       <Route path="/rewards" element={<SubscribedRoute><AppLayout><Rewards /></AppLayout></SubscribedRoute>} />
       <Route path="/fixtures" element={<SubscribedRoute><AppLayout><Fixtures /></AppLayout></SubscribedRoute>} />
