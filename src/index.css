@@ -925,6 +925,32 @@ body {
   width: 100%;
 }
 
+.result-proof-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.result-proof-picker {
+  display: block;
+}
+
+.result-proof-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 0;
+}
+
+.result-proof-actions .btn {
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
 .match-setup {
   display: grid;
   grid-template-columns: 1fr auto 1fr;

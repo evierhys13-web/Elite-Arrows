@@ -6,7 +6,8 @@ import { db, doc, setDoc } from '../firebase'
 export default function SubmitResult() {
   const { user, getAllUsers, getFixtures, getResults, addTokens, triggerDataRefresh, notifyAdmins } = useAuth()
   const [searchParams] = useSearchParams()
-  const fileInputRef = useRef(null)
+  const cameraInputRef = useRef(null)
+  const uploadInputRef = useRef(null)
   const [formData, setFormData] = useState({
     gameType: 'Friendly',
     opponent: '',
@@ -157,8 +158,11 @@ export default function SubmitResult() {
 
   const removeImage = () => {
     setFormData(prev => ({ ...prev, proofImage: '' }))
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
+    if (cameraInputRef.current) {
+      cameraInputRef.current.value = ''
+    }
+    if (uploadInputRef.current) {
+      uploadInputRef.current.value = ''
     }
   }
 
@@ -611,21 +615,28 @@ const handleSubmit = async (e) => {
           <div className="form-group">
             <label style={{ fontSize: '0.9rem', display: 'block', marginBottom: '8px' }}>Proof of Result (Photo/Screenshot) - Required for League</label>
             
-            {/* Hidden file input */}
+            {/* Native labels are more reliable than scripted clicks in mobile browsers and installed PWAs. */}
             <input
-              ref={fileInputRef}
+              id="result-proof-camera"
+              ref={cameraInputRef}
               type="file"
               accept="image/*"
               capture="environment"
               onChange={handleImageUpload}
-              style={{ display: 'none' }}
+              className="result-proof-input"
+            />
+            <input
+              id="result-proof-upload"
+              ref={uploadInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="result-proof-input"
             />
             
-            {/* Upload area - button */}
             {!formData.proofImage ? (
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
+              <div
+                className="result-proof-picker"
                 style={{ 
                   border: '2px dashed var(--border)', 
                   borderRadius: '8px', 
@@ -638,12 +649,17 @@ const handleSubmit = async (e) => {
                 }}
               >
                 <p style={{ color: 'var(--text-muted)', marginBottom: '10px' }}>
-                  Tap to take photo or upload screenshot
+                  Add proof of your result
                 </p>
-                <span style={{ color: 'var(--accent-cyan)', fontSize: '1rem', fontWeight: 'bold' }}>
-                  📷 Take Photo / Upload
-                </span>
-              </button>
+                <div className="result-proof-actions">
+                  <label htmlFor="result-proof-camera" className="btn btn-primary">
+                    Take Photo
+                  </label>
+                  <label htmlFor="result-proof-upload" className="btn btn-secondary">
+                    Upload Screenshot
+                  </label>
+                </div>
+              </div>
             ) : (
               <div style={{ position: 'relative' }}>
                 <img 
