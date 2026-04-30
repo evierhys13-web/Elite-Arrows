@@ -800,15 +800,25 @@ const cleanUserData = (users) => {
       return
     }
 
-    const isSubscriberOrAdmin = user.isSubscribed || user.isAdmin || user.isTournamentAdmin
-    const seasonHasStarted = Date.now() >= SEASON_ONE_WELCOME_START
-    const localAcknowledged = localStorage.getItem(`eliteArrowsSeasonOneWelcome_${user.id}`) === 'acknowledged'
-    setShowSeasonOneWelcome(Boolean(
-      isSubscriberOrAdmin &&
-      seasonHasStarted &&
-      !user.seasonOneWelcomeAcknowledged &&
-      !localAcknowledged
-    ))
+    const updateSeasonOneWelcome = () => {
+      const isSubscriberOrAdmin = user.isSubscribed || user.isAdmin || user.isTournamentAdmin
+      const seasonHasStarted = Date.now() >= SEASON_ONE_WELCOME_START
+      const localAcknowledged = localStorage.getItem(`eliteArrowsSeasonOneWelcome_${user.id}`) === 'acknowledged'
+      setShowSeasonOneWelcome(Boolean(
+        isSubscriberOrAdmin &&
+        seasonHasStarted &&
+        !user.seasonOneWelcomeAcknowledged &&
+        !localAcknowledged
+      ))
+    }
+
+    updateSeasonOneWelcome()
+
+    const delayUntilSeasonStarts = SEASON_ONE_WELCOME_START - Date.now()
+    if (delayUntilSeasonStarts <= 0) return
+
+    const timer = setTimeout(updateSeasonOneWelcome, Math.min(delayUntilSeasonStarts, 2147483647))
+    return () => clearTimeout(timer)
   }, [user?.id, user?.isSubscribed, user?.isAdmin, user?.isTournamentAdmin, user?.seasonOneWelcomeAcknowledged])
 
   const acknowledgeSeasonOneWelcome = async () => {

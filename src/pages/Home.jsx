@@ -7,15 +7,17 @@ import Tooltip from '../components/Tooltip'
 import Breadcrumbs from '../components/Breadcrumbs'
 
 const DEFAULT_LEAGUE_TABLE_RESET_AT = '2026-04-29T16:14:21.338+01:00'
+const SEASON_START = new Date('2026-05-01T00:00:00+01:00')
+const SEASON_END = new Date('2026-06-01T00:00:00+01:00')
+const SEASON_START_LABEL = '01/05/2026 00:00'
+const SEASON_END_LABEL = '01/06/2026 00:00'
 
 export default function Home() {
   const { user, getAllUsers, getResults, dataRefreshTrigger, loading, adminData } = useAuth()
-  const SEASON_START = new Date('2026-05-01')
-  const SEASON_END = new Date('2026-06-01')
   
   const [refreshKey, setRefreshKey] = useState(0)
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
-  const [isSeasonActive, setIsSeasonActive] = useState(false)
+  const [seasonPhase, setSeasonPhase] = useState('upcoming')
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
@@ -29,11 +31,11 @@ export default function Home() {
   useEffect(() => {
     const calculateTimeLeft = () => {
       const now = new Date()
-      const isActive = now >= SEASON_START && now <= SEASON_END
-      setIsSeasonActive(isActive)
-      
-      const targetDate = isActive ? SEASON_END : SEASON_START
-      const diff = targetDate - now
+      const nextPhase = now < SEASON_START ? 'upcoming' : now < SEASON_END ? 'active' : 'ended'
+      const targetDate = nextPhase === 'upcoming' ? SEASON_START : nextPhase === 'active' ? SEASON_END : null
+      const diff = targetDate ? targetDate - now : 0
+
+      setSeasonPhase(nextPhase)
       
       if (diff > 0) {
         setTimeLeft({
@@ -43,9 +45,7 @@ export default function Home() {
           seconds: Math.floor((diff / 1000) % 60)
         })
       } else {
-        if (!isActive && now > SEASON_END) {
-          setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 })
-        }
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 })
       }
     }
     
@@ -55,6 +55,8 @@ export default function Home() {
   }, [])
 
   const allUsers = getAllUsers()
+  const isSeasonActive = seasonPhase === 'active'
+  const seasonTimerTitle = seasonPhase === 'active' ? 'Season Ends In' : seasonPhase === 'ended' ? 'Season Ended' : 'Season Starts In'
   const allResults = getResults()
   const approvedResults = allResults.filter(r => r.status === 'approved')
   const userResults = approvedResults.filter(r => r.player1Id === user.id || r.player2Id === user.id)
@@ -106,12 +108,12 @@ export default function Home() {
       <div className={`card animate-fade-in-up stagger-item`} style={{ marginBottom: '20px', border: '2px solid var(--accent-cyan)' }}>
         <div style={{ textAlign: 'center' }}>
           <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>
-            {isSeasonActive ? 'Season in Progress' : 'Season Starts In'}
+            {seasonTimerTitle}
           </h2>
           <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
             {isSeasonActive 
-              ? `${new Date(SEASON_START).toLocaleDateString()} - ${new Date(SEASON_END).toLocaleDateString()}`
-              : `Season 1: ${new Date(SEASON_START).toLocaleDateString()} - ${new Date(SEASON_END).toLocaleDateString()}`
+              ? `${SEASON_START_LABEL} - ${SEASON_END_LABEL}`
+              : `Season 1: ${SEASON_START_LABEL} - ${SEASON_END_LABEL}`
             }
           </p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '20px' }}>
