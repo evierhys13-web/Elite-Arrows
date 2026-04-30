@@ -643,14 +643,12 @@ const cleanUserData = (users) => {
   const addFriend = async (friendId) => {
     if (!user) return
     if ((user.friends || []).includes(friendId)) {
-      alert('Already friends!')
       return
     }
     
     const allUsersData = getAllUsers()
     const friendUser = allUsersData.find(u => u.id === friendId)
     if (!friendUser) {
-      alert('Could not find that player.')
       return
     }
 
@@ -688,8 +686,6 @@ const cleanUserData = (users) => {
     } catch (e) {
       console.log('Error saving to Firebase:', e)
     }
-    
-    alert(`${friendUser.username} is now your friend!`)
   }
 
   const acceptFriendRequest = async (userId) => {

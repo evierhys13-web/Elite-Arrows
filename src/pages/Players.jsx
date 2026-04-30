@@ -151,7 +151,13 @@ export default function Players() {
                   <button 
                     className="btn btn-primary"
                     style={{ padding: '8px 16px' }}
-                    onClick={() => addFriend(player.id)}
+                    onClick={async () => {
+                      try {
+                        await addFriend(player.id)
+                      } catch (error) {
+                        console.error('Add friend failed:', error)
+                      }
+                    }}
                   >
                     Add Friend
                   </button>

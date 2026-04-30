@@ -417,7 +417,13 @@ export default function Profile() {
                 ) : (
                   <button 
                     className="btn btn-primary"
-                    onClick={() => addFriend(viewedUser.id)}
+                    onClick={async () => {
+                      try {
+                        await addFriend(viewedUser.id)
+                      } catch (error) {
+                        console.error('Add friend failed:', error)
+                      }
+                    }}
                   >
                     Add Friend
                   </button>

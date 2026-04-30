@@ -90,24 +90,30 @@ export default function GlobalSearch() {
   }
 
   const handleAction = async (action, player) => {
-    switch (action) {
-      case 'addFriend':
-        await addFriend(player.id)
-        break
-      case 'removeFriend':
-        await removeFriend(player.id)
-        break
-      case 'subscribe':
-        await updateUser({ isSubscribed: true })
-        break
-      case 'viewProfile':
-        handleViewProfile(player.id)
-        return
-      case 'chat':
-        handleChat(player.id)
-        return
-      default:
-        break
+    try {
+      switch (action) {
+        case 'addFriend':
+          await addFriend(player.id)
+          setQuery('')
+          setIsOpen(false)
+          break
+        case 'removeFriend':
+          await removeFriend(player.id)
+          break
+        case 'subscribe':
+          await updateUser({ isSubscribed: true })
+          break
+        case 'viewProfile':
+          handleViewProfile(player.id)
+          return
+        case 'chat':
+          handleChat(player.id)
+          return
+        default:
+          break
+      }
+    } catch (error) {
+      console.error('Friend action failed:', error)
     }
     setShowActionsFor(null)
   }
