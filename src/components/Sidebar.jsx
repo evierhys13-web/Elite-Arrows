@@ -230,7 +230,6 @@ export default function Sidebar() {
 
   const adminItems = [
     { path: '/admin', label: 'Admin Panel', icon: ShieldIcon },
-    { path: '/surveys', label: 'Survey Results', icon: GiftIcon },
     { path: '/season-management', label: 'Seasons', icon: CalendarIcon },
   ]
 

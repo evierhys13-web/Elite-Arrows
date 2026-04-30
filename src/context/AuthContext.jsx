@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
-import { db, auth, usersCollection, adminDataCollection, fcmTokensCollection, doc, setDoc, getDoc, getDocs, query, where, collection, orderBy, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, addDoc, updateDoc, deleteDoc, FieldValue, getMessagingInstance, getToken, onMessage, isSupported } from '../firebase'
-import SurveyModal from '../components/SurveyModal'
+import { db, auth, usersCollection, adminDataCollection, fcmTokensCollection, doc, setDoc, getDoc, getDocs, query, where, collection, orderBy, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, updateDoc, deleteDoc, FieldValue, getMessagingInstance, getToken, onMessage, isSupported } from '../firebase'
 import SeasonOneWelcomeModal from '../components/SeasonOneWelcomeModal'
 
 const AuthContext = createContext(null)
@@ -26,7 +25,6 @@ export function AuthProvider({ children }) {
   const [fcmToken, setFcmToken] = useState(null)
   const [unreadCount, setUnreadCount] = useState(0)
   const [news, setNews] = useState([])
-  const [showSurvey, setShowSurvey] = useState(false)
   const [showSeasonOneWelcome, setShowSeasonOneWelcome] = useState(false)
   const unsubscribeRef = useRef(null)
   const seenNotificationIdsRef = useRef(new Set())
@@ -386,11 +384,7 @@ export function AuthProvider({ children }) {
             SENSITIVE_FIELDS.forEach(field => delete userData[field])
             const fullUser = { id: userDoc.id, ...userData }
             setUser(fullUser)
-            
-            if (!userData.surveyCompleted) {
-              setShowSurvey(true)
-            }
-            
+
             localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(fullUser))
           } else {
             const newUserData = {
@@ -409,7 +403,6 @@ export function AuthProvider({ children }) {
               doNotDisturb: false,
               dndEndTime: null,
               eliteTokens: 0,
-              surveyCompleted: false,
               lastSeen: new Date().toISOString(),
               createdAt: new Date().toISOString()
             }
@@ -1043,15 +1036,6 @@ const cleanUserData = (users) => {
     }
   }, [])
 
-const handleSurveyComplete = () => {
-    setShowSurvey(false)
-    setUser(prev => prev ? { ...prev, surveyCompleted: true } : null)
-  }
-
-  const handleSurveySkip = () => {
-    setShowSurvey(false)
-  }
-
   return (
     <AuthContext.Provider value={{
       user,
@@ -1069,7 +1053,6 @@ const handleSurveyComplete = () => {
       fcmToken,
       unreadCount,
       news,
-      showSurvey,
       requestNotificationPermission,
       registerFCMToken,
       showLocalNotification,
@@ -1110,15 +1093,6 @@ const handleSurveyComplete = () => {
       addToMoneyHistory,
       isAuthenticated: !!user 
     }}>
-      {showSurvey && user && (
-        <SurveyModal
-          isOpen={showSurvey}
-          onComplete={handleSurveyComplete}
-          onSkip={handleSurveySkip}
-          userId={user.id}
-          userName={user.username}
-        />
-      )}
       {showSeasonOneWelcome && user && (
         <SeasonOneWelcomeModal
           isOpen={showSeasonOneWelcome}

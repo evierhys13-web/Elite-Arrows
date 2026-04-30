@@ -65,14 +65,7 @@ export default function PrivacyPolicy() {
             <li><strong>Data Portability:</strong> Request your data in a portable format</li>
           </ul>
 
-          <h3 style={{ color: 'var(--accent-cyan)', marginBottom: '10px', marginTop: '25px' }}>7. Feedback Survey Data</h3>
-          <p style={{ marginBottom: '15px' }}>
-            When users complete the feedback survey, their responses are stored securely in our database. 
-            Survey responses may include user identification information and are used solely for improving 
-            the Elite Arrows service. Access to survey data is restricted to administrators only.
-          </p>
-
-          <h3 style={{ color: 'var(--accent-cyan)', marginBottom: '10px', marginTop: '25px' }}>8. Children's Privacy</h3>
+          <h3 style={{ color: 'var(--accent-cyan)', marginBottom: '10px', marginTop: '25px' }}>7. Children's Privacy</h3>
           <p style={{ marginBottom: '15px' }}>
             Our service is not intended for children under 13 years of age. We do not knowingly collect 
             personal information from children under 13.

@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import { auth, sendPasswordResetEmail, db, doc, setDoc, deleteDoc, usersCollection } from '../firebase'
-import SurveyModal from '../components/SurveyModal'
 
 export default function Settings() {
   const { signOut, user, updateUser, getAllUsers, notifications: contextNotifications } = useAuth()
@@ -11,7 +10,6 @@ export default function Settings() {
   const navigate = useNavigate()
   
   const [activeTab, setActiveTab] = useState('account')
-  const [showSurvey, setShowSurvey] = useState(false)
   const [showEmailForm, setShowEmailForm] = useState(false)
   const [showPasswordForm, setShowPasswordForm] = useState(false)
   const [newEmail, setNewEmail] = useState('')
@@ -116,15 +114,6 @@ export default function Settings() {
         alert('Error deleting account: ' + error.message)
       }
     }
-  }
-
-  const handleSurveyComplete = () => {
-    setShowSurvey(false)
-    alert('Thank you for your feedback!')
-  }
-
-  const handleSurveySkip = () => {
-    setShowSurvey(false)
   }
 
   const handleSignOut = () => {
@@ -301,16 +290,6 @@ export default function Settings() {
                 <span className="toggle-slider"></span>
               </label>
             </div>
-          </div>
-
-          <div className="card" style={{ marginBottom: '20px' }}>
-            <h3 className="card-title">Feedback Survey</h3>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
-              Help us improve Elite Arrows by sharing your feedback.
-            </p>
-            <button className="btn btn-primary btn-block" onClick={() => setShowSurvey(true)}>
-              {localStorage.getItem(`survey_${user.id}`) ? 'Continue Survey' : 'Start Survey'}
-            </button>
           </div>
 
           <div className="card" style={{ marginBottom: '20px' }}>
@@ -612,13 +591,6 @@ export default function Settings() {
         </div>
       )}
 
-      <SurveyModal
-        isOpen={showSurvey}
-        onComplete={handleSurveyComplete}
-        onSkip={handleSurveySkip}
-        userId={user.id}
-        userName={user.username}
-      />
     </div>
   )
 }

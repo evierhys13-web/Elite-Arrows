@@ -37,7 +37,6 @@ const Guide = lazy(() => import('./pages/Guide'))
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
 const DeleteAccount = lazy(() => import('./pages/DeleteAccount'))
 const Donations = lazy(() => import('./pages/Donations'))
-const Surveys = lazy(() => import('./pages/Surveys'))
 const Install = lazy(() => import('./pages/Install'))
 const Analytics = lazy(() => import('./pages/Analytics'))
 const SeedData = lazy(() => import('./pages/SeedData'))
@@ -246,7 +245,6 @@ function AppRoutes() {
       <Route path="/season-management" element={<AdminRoute><AppLayout><SeedData /></AppLayout></AdminRoute>} />
       <Route path="/seed-data" element={<AdminRoute><AppLayout><SeedData /></AppLayout></AdminRoute>} />
       <Route path="/admin" element={<AdminRoute><AppLayout><Admin /></AppLayout></AdminRoute>} />
-      <Route path="/surveys" element={<AdminRoute><AppLayout><Surveys /></AppLayout></AdminRoute>} />
       <Route path="/" element={<Navigate to="/home" replace />} />
       <Route path="*" element={<Navigate to="/home" replace />} />
     </Routes>
