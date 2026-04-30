@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import { db, doc, setDoc, deleteDoc } from '../firebase'
+import { db, doc, setDoc } from '../firebase'
 
 export default function CupFixtures() {
-  const { user, getAllUsers, getFixtures, getCups, triggerDataRefresh, dataRefreshTrigger, notifyUser, notifyAdmins } = useAuth()
+  const { user, getAllUsers, getFixtures, getCups, updateFixtures, triggerDataRefresh, dataRefreshTrigger, notifyUser, notifyAdmins } = useAuth()
   const navigate = useNavigate()
   const [fixtures, setFixtures] = useState([])
   const [selectedFixture, setSelectedFixture] = useState(null)
+  const [scheduleMode, setScheduleMode] = useState('propose')
   const [scheduleDate, setScheduleDate] = useState('')
   const [scheduleTime, setScheduleTime] = useState('')
   const [refreshKey, setRefreshKey] = useState(0)
@@ -62,14 +63,31 @@ export default function CupFixtures() {
   const acceptedFixtures = userFixtures.filter(f => f.status === 'accepted')
 
   const saveFixtures = (updatedFixtures) => {
+    updateFixtures(updatedFixtures)
     localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
   }
 
+  const getFixturePlayerIds = (fixture) => ({
+    player1Id: fixture.player1Id || fixture.player1,
+    player2Id: fixture.player2Id || fixture.player2
+  })
+
   const getOpponentId = (fixture) => {
-    const player1Id = fixture.player1Id || fixture.player1
-    const player2Id = fixture.player2Id || fixture.player2
+    const { player1Id, player2Id } = getFixturePlayerIds(fixture)
     return player1Id === user.id ? player2Id : player1Id
   }
+
+  const getActiveProposalDate = (fixture) => (
+    fixture.status === 'countered' && fixture.counterDate
+      ? fixture.counterDate
+      : fixture.proposedDate
+  )
+
+  const getActiveProposalTime = (fixture) => (
+    fixture.status === 'countered' && fixture.counterTime
+      ? fixture.counterTime
+      : fixture.proposedTime
+  )
 
   const sendFixtureActivityToAdmins = async (action, fixture, details = {}) => {
     await notifyAdmins(
@@ -94,21 +112,46 @@ export default function CupFixtures() {
     const allFixtures = getFixtures()
     const index = allFixtures.findIndex(f => f.id === selectedFixture.id)
     if (index !== -1) {
-      allFixtures[index].proposedDate = scheduleDate
-      allFixtures[index].proposedTime = scheduleTime
-      allFixtures[index].proposedBy = user.id
+      const isCounter = scheduleMode === 'counter'
+      allFixtures[index] = {
+        ...allFixtures[index],
+        status: isCounter ? 'countered' : 'pending',
+        proposalStatus: isCounter ? 'countered' : 'sent',
+        ...(isCounter ? {
+          counterDate: scheduleDate,
+          counterTime: scheduleTime,
+          counterBy: user.id,
+          counteredAt: new Date().toISOString()
+        } : {
+          proposedDate: scheduleDate,
+          proposedTime: scheduleTime,
+          proposedBy: user.id,
+          counterDate: '',
+          counterTime: '',
+          counterBy: null,
+          counteredAt: null
+        }),
+        updatedAt: new Date().toISOString()
+      }
       saveFixtures(allFixtures)
       
       try {
         await setDoc(doc(db, 'fixtures', allFixtures[index].id.toString()), allFixtures[index], { merge: true })
         await notifyUser(
           getOpponentId(allFixtures[index]),
-          'Cup Fixture Proposal',
-          `${user.username} proposed ${scheduleDate} at ${scheduleTime} for your cup fixture.`,
-          'fixture_proposed',
+          isCounter ? 'Cup Fixture Counter Proposal' : 'Cup Fixture Proposal',
+          `${user.username} ${isCounter ? 'countered with' : 'proposed'} ${scheduleDate} at ${scheduleTime} for your cup fixture.`,
+          isCounter ? 'fixture_countered' : 'fixture_proposed',
           { fixtureKind: 'cup', fixtureId: allFixtures[index].id }
         )
-        await sendFixtureActivityToAdmins('proposed', allFixtures[index], { proposedDate: scheduleDate, proposedTime: scheduleTime })
+        await notifyUser(
+          user.id,
+          isCounter ? 'Counter Proposal Sent' : 'Cup Fixture Proposal Sent',
+          `You ${isCounter ? 'countered with' : 'proposed'} ${scheduleDate} at ${scheduleTime} for the cup fixture.`,
+          isCounter ? 'fixture_countered' : 'fixture_proposed',
+          { fixtureKind: 'cup', fixtureId: allFixtures[index].id }
+        )
+        await sendFixtureActivityToAdmins(isCounter ? 'countered' : 'proposed', allFixtures[index], { proposedDate: scheduleDate, proposedTime: scheduleTime })
       } catch (e) {
         console.log('Error saving to Firebase:', e)
       }
@@ -116,9 +159,10 @@ export default function CupFixtures() {
       triggerDataRefresh('fixtures')
       setRefreshKey(prev => prev + 1)
       setSelectedFixture(null)
+      setScheduleMode('propose')
       setScheduleDate('')
       setScheduleTime('')
-      alert('Schedule proposal sent!')
+      alert(scheduleMode === 'counter' ? 'Counter proposal sent!' : 'Schedule proposal sent!')
     }
   }
 
@@ -126,9 +170,15 @@ export default function CupFixtures() {
     const allFixtures = getFixtures()
     const index = allFixtures.findIndex(f => f.id === fixture.id)
     if (index !== -1) {
+      const acceptedDate = getActiveProposalDate(fixture)
+      const acceptedTime = getActiveProposalTime(fixture)
       allFixtures[index].status = 'accepted'
-      allFixtures[index].date = fixture.proposedDate
-      allFixtures[index].time = fixture.proposedTime
+      allFixtures[index].proposalStatus = 'accepted'
+      allFixtures[index].date = acceptedDate
+      allFixtures[index].time = acceptedTime
+      allFixtures[index].fixtureDate = acceptedDate
+      allFixtures[index].fixtureTime = acceptedTime
+      allFixtures[index].updatedAt = new Date().toISOString()
       saveFixtures(allFixtures)
       
       try {
@@ -137,6 +187,13 @@ export default function CupFixtures() {
           getOpponentId(allFixtures[index]),
           'Cup Fixture Accepted',
           `${user.username} accepted your cup fixture proposal.`,
+          'fixture_accepted',
+          { fixtureKind: 'cup', fixtureId: allFixtures[index].id }
+        )
+        await notifyUser(
+          user.id,
+          'Cup Fixture Confirmed',
+          `You accepted the cup fixture proposal. It is now confirmed.`,
           'fixture_accepted',
           { fixtureKind: 'cup', fixtureId: allFixtures[index].id }
         )
@@ -153,84 +210,97 @@ export default function CupFixtures() {
 
   const counterProposal = (fixture) => {
     setSelectedFixture(fixture)
-    setScheduleDate('')
-    setScheduleTime('')
-  }
-
-  const sendCounter = async () => {
-    if (!scheduleDate || !scheduleTime) {
-      alert('Please select a date and time for your counter proposal')
-      return
-    }
-    const allFixtures = getFixtures()
-    const index = allFixtures.findIndex(f => f.id === selectedFixture.id)
-    if (index !== -1) {
-      allFixtures[index].status = 'countered'
-      allFixtures[index].counterDate = scheduleDate
-      allFixtures[index].counterTime = scheduleTime
-      allFixtures[index].counterBy = user.id
-      saveFixtures(allFixtures)
-      
-      try {
-        await setDoc(doc(db, 'fixtures', allFixtures[index].id.toString()), allFixtures[index], { merge: true })
-        await notifyUser(
-          getOpponentId(allFixtures[index]),
-          'Cup Fixture Countered',
-          `${user.username} sent a counter proposal for your cup fixture: ${scheduleDate} at ${scheduleTime}.`,
-          'fixture_countered',
-          { fixtureKind: 'cup', fixtureId: allFixtures[index].id }
-        )
-        await sendFixtureActivityToAdmins('countered', allFixtures[index], { counterDate: scheduleDate, counterTime: scheduleTime })
-      } catch (e) {
-        console.log('Error saving to Firebase:', e)
-      }
-      
-      triggerDataRefresh('fixtures')
-      setRefreshKey(prev => prev + 1)
-      setSelectedFixture(null)
-      setScheduleDate('')
-      setScheduleTime('')
-      alert('Counter proposal sent!')
-    }
+    setScheduleMode('counter')
+    setScheduleDate(getActiveProposalDate(fixture) || '')
+    setScheduleTime(getActiveProposalTime(fixture) || '')
   }
 
   const rejectProposal = async (fixture) => {
     if (!confirm('Are you sure you want to reject this fixture?')) return
     const allFixtures = getFixtures()
-    const updatedFixtures = allFixtures.filter(f => f.id !== fixture.id)
-    saveFixtures(updatedFixtures)
+    const index = allFixtures.findIndex(f => f.id === fixture.id)
+    if (index === -1) {
+      alert('Could not find that fixture. Please refresh and try again.')
+      return
+    }
+    allFixtures[index] = {
+      ...allFixtures[index],
+      status: 'pending',
+      proposalStatus: 'needs_scheduling',
+      proposedDate: '',
+      proposedTime: '',
+      proposedBy: null,
+      counterDate: '',
+      counterTime: '',
+      counterBy: null,
+      counteredAt: null,
+      date: '',
+      time: '',
+      fixtureDate: '',
+      fixtureTime: '',
+      updatedAt: new Date().toISOString()
+    }
+    saveFixtures(allFixtures)
     
     try {
-      await deleteDoc(doc(db, 'fixtures', fixture.id.toString()))
+      await setDoc(doc(db, 'fixtures', fixture.id.toString()), allFixtures[index], { merge: true })
       await notifyUser(
         getOpponentId(fixture),
         'Cup Fixture Rejected',
-        `${user.username} rejected your cup fixture proposal.`,
+        `${user.username} rejected your cup fixture proposal. The match is back in cup fixtures for a new date and time.`,
+        'fixture_declined',
+        { fixtureKind: 'cup', fixtureId: fixture.id }
+      )
+      await notifyUser(
+        user.id,
+        'Cup Fixture Rejected',
+        `You rejected the cup fixture proposal. It is back in cup fixtures for a new proposal.`,
         'fixture_declined',
         { fixtureKind: 'cup', fixtureId: fixture.id }
       )
       await sendFixtureActivityToAdmins('declined', fixture)
     } catch (e) {
-      console.log('Error deleting from Firebase:', e)
+      console.log('Error saving to Firebase:', e)
     }
     
     triggerDataRefresh('fixtures')
     setRefreshKey(prev => prev + 1)
-    alert('Fixture rejected.')
+    alert('Fixture rejected. It is back in cup fixtures for a new proposal.')
   }
 
   const cancelProposal = async (fixture) => {
     if (!confirm('Cancel this fixture?')) return
     const allFixtures = getFixtures()
-    const updatedFixtures = allFixtures.filter(f => f.id !== fixture.id)
-    saveFixtures(updatedFixtures)
+    const index = allFixtures.findIndex(f => f.id === fixture.id)
+    if (index === -1) {
+      alert('Could not find that fixture. Please refresh and try again.')
+      return
+    }
+    allFixtures[index] = {
+      ...allFixtures[index],
+      status: 'pending',
+      proposalStatus: 'needs_scheduling',
+      proposedDate: '',
+      proposedTime: '',
+      proposedBy: null,
+      counterDate: '',
+      counterTime: '',
+      counterBy: null,
+      counteredAt: null,
+      date: '',
+      time: '',
+      fixtureDate: '',
+      fixtureTime: '',
+      updatedAt: new Date().toISOString()
+    }
+    saveFixtures(allFixtures)
     
     try {
-      await deleteDoc(doc(db, 'fixtures', fixture.id.toString()))
+      await setDoc(doc(db, 'fixtures', fixture.id.toString()), allFixtures[index], { merge: true })
       await notifyUser(
         getOpponentId(fixture),
         'Cup Fixture Cancelled',
-        `${user.username} cancelled a cup fixture proposal.`,
+        `${user.username} cancelled their cup fixture proposal. The match is back in cup fixtures for a new date and time.`,
         'fixture_cancelled',
         { fixtureKind: 'cup', fixtureId: fixture.id }
       )
@@ -241,7 +311,7 @@ export default function CupFixtures() {
     
     triggerDataRefresh('fixtures')
     setRefreshKey(prev => prev + 1)
-    alert('Fixture cancelled.')
+    alert('Proposal cancelled. The match is back in cup fixtures for a new proposal.')
   }
 
   return (
@@ -280,6 +350,7 @@ export default function CupFixtures() {
                 className="btn btn-primary" 
                 onClick={() => {
                   setSelectedFixture(fixture)
+                  setScheduleMode('propose')
                   setScheduleDate('')
                   setScheduleTime('')
                 }}
@@ -446,7 +517,9 @@ export default function CupFixtures() {
 
       {selectedFixture && (
         <div className="card" style={{ marginBottom: '20px', border: '2px solid var(--accent-cyan)' }}>
-          <h3 style={{ marginBottom: '15px' }}>Propose Date & Time</h3>
+          <h3 style={{ marginBottom: '15px' }}>
+            {scheduleMode === 'counter' ? 'Counter Date & Time' : 'Propose Date & Time'}
+          </h3>
           <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
             Proposing a match time against {getPlayerName(selectedFixture.player1 === user.id ? selectedFixture.player2 : selectedFixture.player1)}
           </p>
@@ -470,9 +543,12 @@ export default function CupFixtures() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button className="btn btn-primary" onClick={proposeSchedule}>Send Proposal</button>
+            <button className="btn btn-primary" onClick={proposeSchedule}>
+              {scheduleMode === 'counter' ? 'Send Counter' : 'Send Proposal'}
+            </button>
             <button className="btn btn-secondary" onClick={() => {
               setSelectedFixture(null)
+              setScheduleMode('propose')
               setScheduleDate('')
               setScheduleTime('')
             }}>Cancel</button>

@@ -107,13 +107,12 @@ export default function CupBracket() {
         </div>
       )}
 
-      <div style={{ 
+      <div className="cup-bracket-scroll" style={{ 
         background: '#0f0f23',
         borderRadius: '16px',
         padding: '30px',
         overflowX: 'auto',
-        width: '100%',
-        minWidth: 'fit-content'
+        width: '100%'
       }}>
         <h3 style={{ 
           color: 'white', 
@@ -125,18 +124,21 @@ export default function CupBracket() {
           BRACKET
         </h3>
         
-        <div style={{ 
+        <div className="cup-bracket-stage" style={{ 
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
-          gap: '0'
+          justifyContent: 'flex-start',
+          gap: '0',
+          width: 'max-content',
+          minWidth: '100%',
+          margin: '0 auto'
         }}>
           {roundsData.map((roundData, roundIndex) => {
             const isComplete = roundData.matches.every(m => m.winner)
             const isActive = !isComplete && roundData.matches.some(m => m.player1 && m.player2)
             
             return (
-              <div key={roundData.round} style={{ display: 'flex', alignItems: 'center' }}>
+              <div key={roundData.round} className="cup-bracket-round" style={{ display: 'flex', alignItems: 'center' }}>
                 <div style={{ 
                   minWidth: '160px',
                   padding: '0 8px'
@@ -245,7 +247,7 @@ export default function CupBracket() {
                 </div>
                 
                 {roundIndex < roundsData.length - 1 && (
-                  <div style={{ 
+                  <div className="cup-bracket-connector" style={{ 
                     width: '30px', 
                     display: 'flex',
                     alignItems: 'center',

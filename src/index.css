@@ -980,6 +980,18 @@ body {
   margin-bottom: 30px;
 }
 
+.cup-bracket-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+.cup-bracket-stage,
+.cup-bracket-round,
+.cup-bracket-connector {
+  max-width: none !important;
+  flex-shrink: 0;
+}
+
 .player-select {
   display: flex;
   flex-direction: column;
@@ -1711,6 +1723,18 @@ textarea:focus-visible {
   /* Submit Result Mobile Optimization */
   .submit-result-form {
     max-width: 100%;
+  }
+
+  .cup-bracket-scroll {
+    margin-left: -14px;
+    margin-right: -14px;
+    border-radius: 0 !important;
+    padding: 18px 14px !important;
+  }
+
+  .cup-bracket-stage {
+    width: max-content !important;
+    min-width: max-content !important;
   }
 
   .submit-result-form .match-setup {

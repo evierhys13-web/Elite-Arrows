@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { db, doc, setDoc, getDoc, getDocs, deleteDoc, updateDoc, collection, query, where } from '../firebase'
 import CupManagement from './CupManagement'
 import UserSearchSelect from '../components/UserSearchSelect'
 
 export default function Admin() {
-  const { user, notifications, getAllUsers, updateUser, updateOtherUser, getResults, adminData, updateAdminData, addToMoneyHistory, getSupportRequests, getSeasons, getNews, postNews, deleteNews, togglePinNews, triggerDataRefresh, dataRefreshTrigger, notifyUser, notifyAllSubscribers } = useAuth()
+  const { user, notifications, getAllUsers, updateUser, updateOtherUser, getResults, getFixtures, updateFixtures, getCups, getSupportRequests, getSeasons, getNews, postNews, deleteNews, togglePinNews, adminData, updateAdminData, addToMoneyHistory, triggerDataRefresh, dataRefreshTrigger, notifyUser, notifyAllSubscribers } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const subscriptionPot = adminData.subscriptionPot || 0
   const subscriptionPot10 = adminData.subscriptionPot10 || 0
   const tournamentPot = adminData.tournamentPot || 0
@@ -40,6 +41,30 @@ export default function Admin() {
   })
   const [selectedAssignUser, setSelectedAssignUser] = useState('')
   const [selectedRemoveSubUser, setSelectedRemoveSubUser] = useState('')
+
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    const allowedTabs = new Set([
+      'results',
+      'submit-game',
+      'payments',
+      'moneypot',
+      'cups',
+      'players',
+      'support',
+      'fixture-activity',
+      'news',
+      'subscriptions',
+      'admins',
+      'seasons',
+      'tokens',
+      'games',
+      'appearance'
+    ])
+    if (tab && allowedTabs.has(tab)) {
+      setActiveTab(tab)
+    }
+  }, [searchParams])
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -127,6 +152,148 @@ export default function Admin() {
     return Array.from(docIds)
   }
 
+  const syncCupApproval = async (result) => {
+    if (result.gameType !== 'Cup' || !result.cupId || !result.matchId) return
+
+    const cups = getCups()
+    const cupIndex = cups.findIndex(cup => String(cup.id) === String(result.cupId))
+    if (cupIndex === -1) return
+
+    const cup = { ...cups[cupIndex] }
+    const match = cup.matches?.find(item => String(item.id) === String(result.matchId))
+    if (!match) return
+
+    const score1 = Number(result.score1)
+    const score2 = Number(result.score2)
+    const winnerId = score1 > score2 ? result.player1Id : result.player2Id
+    const now = new Date().toISOString()
+
+    let updatedMatches = cup.matches.map(item => (
+      String(item.id) === String(match.id)
+        ? {
+          ...item,
+          player1: item.player1 || result.player1Id,
+          player2: item.player2 || result.player2Id,
+          winner: winnerId,
+          score1,
+          score2,
+          resultId: result.id
+        }
+        : { ...item }
+    ))
+
+    if (match.nextMatchId) {
+      updatedMatches = updatedMatches.map(item => {
+        if (String(item.id) !== String(match.nextMatchId)) return item
+        if (item.player1 === winnerId || item.player2 === winnerId) return item
+        if (!item.player1) return { ...item, player1: winnerId }
+        if (!item.player2) return { ...item, player2: winnerId }
+        return item
+      })
+    }
+
+    const allComplete = updatedMatches.every(item => {
+      if (!item.player1 || !item.player2) return true
+      return item.winner !== null && item.winner !== undefined
+    })
+    const nextOpenRound = updatedMatches
+      .filter(item => item.player1 && item.player2 && !item.winner)
+      .sort((a, b) => a.round - b.round)[0]?.round
+
+    const updatedCup = {
+      ...cup,
+      matches: updatedMatches,
+      status: allComplete ? 'completed' : 'active',
+      currentRound: nextOpenRound || cup.currentRound || 1,
+      updatedAt: now
+    }
+
+    const updatedCups = [...cups]
+    updatedCups[cupIndex] = updatedCup
+    localStorage.setItem('eliteArrowsCups', JSON.stringify(updatedCups))
+    await setDoc(doc(db, 'cups', String(cup.id)), updatedCup, { merge: true })
+
+    const fixtures = getFixtures()
+    const updatedFixtures = [...fixtures]
+    const currentFixtureIndex = updatedFixtures.findIndex(fixture => (
+      String(fixture.id) === String(result.fixtureId || '') ||
+      (String(fixture.cupId) === String(result.cupId) && String(fixture.matchId) === String(result.matchId))
+    ))
+
+    if (currentFixtureIndex !== -1) {
+      updatedFixtures[currentFixtureIndex] = {
+        ...updatedFixtures[currentFixtureIndex],
+        status: 'approved',
+        score1,
+        score2,
+        winnerId,
+        resultId: result.id,
+        updatedAt: now
+      }
+      await setDoc(doc(db, 'fixtures', String(updatedFixtures[currentFixtureIndex].id)), updatedFixtures[currentFixtureIndex], { merge: true })
+    }
+
+    const nextMatch = match.nextMatchId
+      ? updatedMatches.find(item => String(item.id) === String(match.nextMatchId))
+      : null
+    const nextFixtureExists = nextMatch
+      ? updatedFixtures.some(fixture => String(fixture.cupId) === String(cup.id) && String(fixture.matchId) === String(nextMatch.id))
+      : true
+
+    if (nextMatch?.player1 && nextMatch?.player2 && !nextFixtureExists) {
+      const roundFormat = cup.roundFormats?.[nextMatch.round] || {}
+      const bestOf = roundFormat.bestOf || 3
+      const nextFixture = {
+        id: Date.now() + Number(nextMatch.id || 0),
+        cupId: cup.id,
+        cupName: cup.name,
+        startScore: roundFormat.startScore || 501,
+        bestOf,
+        firstTo: Math.ceil(bestOf / 2),
+        player1: nextMatch.player1,
+        player1Id: nextMatch.player1,
+        player2: nextMatch.player2,
+        player2Id: nextMatch.player2,
+        matchId: nextMatch.id,
+        round: nextMatch.round,
+        date: '',
+        time: '',
+        scheduledBy: nextMatch.player1,
+        status: 'pending',
+        proposalStatus: 'needs_scheduling',
+        proposedDate: '',
+        proposedTime: '',
+        counterDate: '',
+        counterTime: '',
+        createdAt: now
+      }
+
+      updatedFixtures.push(nextFixture)
+      await setDoc(doc(db, 'fixtures', String(nextFixture.id)), nextFixture, { merge: true })
+      await Promise.all([nextMatch.player1, nextMatch.player2].map(playerId =>
+        notifyUser(
+          playerId,
+          'Cup Match Ready',
+          `${cup.name} ${getRoundNameForCup(nextMatch.round, updatedCup)} is ready. Propose a date and time in cup fixtures.`,
+          'cup_match',
+          { fixtureKind: 'cup', fixtureId: nextFixture.id, cupId: cup.id, url: '/cup-fixtures' }
+        )
+      ))
+    }
+
+    updateFixtures(updatedFixtures)
+    triggerDataRefresh('cups')
+    triggerDataRefresh('fixtures')
+  }
+
+  const getRoundNameForCup = (round, cup) => {
+    const totalRounds = Math.max(...(cup.matches?.map(match => match.round) || [1]))
+    if (round === totalRounds) return 'Final'
+    if (round === totalRounds - 1) return 'Semi-Final'
+    if (round === totalRounds - 2) return 'Quarter-Final'
+    return `Round ${round}`
+  }
+
   useEffect(() => {
     const results = getResults();
     const pending = results.filter(r => r.status === 'pending');
@@ -172,6 +339,11 @@ export default function Admin() {
       return
     }
     
+    if (results[resultsIndex].gameType === 'Cup' && Number(results[resultsIndex].score1) === Number(results[resultsIndex].score2)) {
+      alert('Cup matches cannot be approved with a tied score.')
+      return
+    }
+
     const updatedResult = { ...results[resultsIndex], status: 'approved' }
     const resultDocIds = await getResultDocIds(updatedResult)
     results[resultsIndex] = updatedResult
@@ -188,6 +360,7 @@ export default function Admin() {
       await Promise.all(resultDocIds.map(resultDocId =>
         setDoc(doc(db, 'results', resultDocId), { status: 'approved', firestoreId: resultDocId }, { merge: true })
       ))
+      await syncCupApproval(updatedResult)
       await persistResultStatusOverride(updatedResult, 'approved')
       console.log('Successfully approved in Firebase!')
       triggerDataRefresh('results')

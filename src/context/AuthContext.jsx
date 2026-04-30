@@ -192,7 +192,12 @@ export function AuthProvider({ children }) {
   }, [allUsers, user?.id, unreadCount, updateBadgeCount, sendNotification])
 
   const notifyAdmins = useCallback(async (title, body, data = {}) => {
-    const admins = allUsers.filter(u => u.isAdmin || u.isTournamentAdmin)
+    const admins = allUsers.filter(u => (
+      u.isAdmin ||
+      u.isTournamentAdmin ||
+      u.isCupAdmin ||
+      ADMIN_EMAILS.includes(u.email?.toLowerCase())
+    ))
     
     for (const admin of admins) {
       await sendNotification(admin.id, {
@@ -905,7 +910,7 @@ const cleanUserData = (users) => {
   const addTokens = async (amount) => {
     if (!user) return
     const newTokens = (user.eliteTokens || 0) + amount
-    await updateUser({ eliteTokens: newTokens })
+    await updateUser({ eliteTokens: newTokens }, false)
   }
 
   const useTokens = async (amount) => {

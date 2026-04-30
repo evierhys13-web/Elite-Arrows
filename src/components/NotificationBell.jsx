@@ -104,41 +104,46 @@ export default function NotificationBell() {
   }, [isOpen])
 
   const handleNotificationClick = async (notification) => {
-    let url = '/settings'
+    let url = notification.data?.url || '/settings'
 
-    switch (notification.type) {
-      case 'result_approved':
-      case 'result_rejected':
-        url = '/results'
-        break
-      case 'fixture_proposed':
-      case 'proposal_pending':
-      case 'fixture_challenge':
-      case 'fixture_accepted':
-      case 'fixture_declined':
-      case 'fixture_countered':
-      case 'fixture_cancelled':
-      case 'fixture_activity':
-        url = notification.data?.fixtureKind === 'cup' ? '/cup-fixtures' : '/fixtures'
-        break
-      case 'friend_request':
-      case 'friend_accepted':
-        url = '/settings'
-        break
-      case 'cup_match':
-        url = '/cups'
-        break
-      case 'table_updated':
-        url = '/table'
-        break
-      case 'tournament':
-        url = '/tournaments'
-        break
-      case 'chat':
-        url = '/chat'
-        break
-      default:
-        url = '/settings'
+    if (!notification.data?.url) {
+      switch (notification.type) {
+        case 'result_approved':
+        case 'result_rejected':
+          url = '/results'
+          break
+        case 'result_submitted':
+          url = '/admin?tab=results'
+          break
+        case 'fixture_proposed':
+        case 'proposal_pending':
+        case 'fixture_challenge':
+        case 'fixture_accepted':
+        case 'fixture_declined':
+        case 'fixture_countered':
+        case 'fixture_cancelled':
+        case 'fixture_activity':
+          url = notification.data?.fixtureKind === 'cup' ? '/cup-fixtures' : '/fixtures'
+          break
+        case 'friend_request':
+        case 'friend_accepted':
+          url = '/settings'
+          break
+        case 'cup_match':
+          url = '/cups'
+          break
+        case 'table_updated':
+          url = '/table'
+          break
+        case 'tournament':
+          url = '/tournaments'
+          break
+        case 'chat':
+          url = '/chat'
+          break
+        default:
+          url = '/settings'
+      }
     }
 
     if (!notification.isRead) {

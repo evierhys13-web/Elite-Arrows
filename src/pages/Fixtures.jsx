@@ -16,6 +16,7 @@ export default function Fixtures() {
     fixtureTime: ''
   })
   const [selectedCupFixture, setSelectedCupFixture] = useState(null)
+  const [cupScheduleMode, setCupScheduleMode] = useState('propose')
   const [scheduleDate, setScheduleDate] = useState('')
   const [scheduleTime, setScheduleTime] = useState('')
   const [counterFixture, setCounterFixture] = useState(null)
@@ -45,6 +46,22 @@ export default function Fixtures() {
   const allResults = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
   
   const regularFixtures = fixtures.filter(f => !f.cupId)
+  const getFixturePlayerIds = (fixture) => ({
+    player1Id: fixture.player1Id || fixture.player1,
+    player2Id: fixture.player2Id || fixture.player2
+  })
+
+  const getActiveCupProposalDate = (fixture) => (
+    fixture.status === 'countered' && fixture.counterDate
+      ? fixture.counterDate
+      : fixture.proposedDate
+  )
+
+  const getActiveCupProposalTime = (fixture) => (
+    fixture.status === 'countered' && fixture.counterTime
+      ? fixture.counterTime
+      : fixture.proposedTime
+  )
 
   const pendingFixtures = regularFixtures.filter(f => {
     if (f.status === 'pending' && (f.proposalStatus || 'sent') === 'sent') {
@@ -72,7 +89,10 @@ export default function Fixtures() {
     (r.player1Id === user.id || r.player2Id === user.id)
   )
 
-  const cupFixturesData = fixtures.filter(f => f.cupId && (f.player1Id === user.id || f.player2Id === user.id))
+  const cupFixturesData = fixtures.filter(f => {
+    const { player1Id, player2Id } = getFixturePlayerIds(f)
+    return f.cupId && (player1Id === user.id || player2Id === user.id)
+  })
   
   const cupNeedsScheduling = cupFixturesData.filter(f => f.status === 'pending' && !f.proposedDate)
   
@@ -138,16 +158,18 @@ export default function Fixtures() {
 
   const getOtherPlayerId = (fixture) => {
     if (!fixture) return null
-    return fixture.player1Id === user.id ? fixture.player2Id : fixture.player1Id
+    const { player1Id, player2Id } = getFixturePlayerIds(fixture)
+    return player1Id === user.id ? player2Id : player1Id
   }
 
   const sendFixtureActivityToAdmins = async (action, fixture, details = {}) => {
     const fixtureKind = fixture.cupId ? 'cup' : (fixture.gameType || 'league').toLowerCase()
-    const opponentId = fixture.player1Id === user.id ? fixture.player2Id : fixture.player1Id
+    const { player1Id, player2Id } = getFixturePlayerIds(fixture)
+    const opponentId = player1Id === user.id ? player2Id : player1Id
     const opponentName = getPlayerName(opponentId)
     await notifyAdmins(
       'Fixture Activity',
-      `${user.username} ${action} a ${fixtureKind} fixture ${fixture.player1Name || getPlayerName(fixture.player1Id)} vs ${fixture.player2Name || getPlayerName(fixture.player2Id)}${opponentName ? ` (${opponentName})` : ''}`,
+      `${user.username} ${action} a ${fixtureKind} fixture ${fixture.player1Name || getPlayerName(player1Id)} vs ${fixture.player2Name || getPlayerName(player2Id)}${opponentName ? ` (${opponentName})` : ''}`,
       {
         type: 'fixture_activity',
         adminLog: true,
@@ -167,31 +189,56 @@ export default function Fixtures() {
     const allFixtures = getFixtures()
     const index = findFixtureIndexById(allFixtures, selectedCupFixture.id)
     if (index !== -1) {
-      allFixtures[index].proposedDate = scheduleDate
-      allFixtures[index].proposedTime = scheduleTime
-      allFixtures[index].proposedBy = user.id
-      allFixtures[index].proposalStatus = 'sent'
+      const isCounter = cupScheduleMode === 'counter'
+      allFixtures[index] = {
+        ...allFixtures[index],
+        status: isCounter ? 'countered' : 'pending',
+        proposalStatus: isCounter ? 'countered' : 'sent',
+        ...(isCounter ? {
+          counterDate: scheduleDate,
+          counterTime: scheduleTime,
+          counterBy: user.id,
+          counteredAt: new Date().toISOString()
+        } : {
+          proposedDate: scheduleDate,
+          proposedTime: scheduleTime,
+          proposedBy: user.id,
+          counterDate: '',
+          counterTime: '',
+          counterBy: null,
+          counteredAt: null
+        }),
+        updatedAt: new Date().toISOString()
+      }
       saveFixtures(allFixtures)
       
       try {
         await persistFixture(allFixtures[index])
-        const opponentId = allFixtures[index].player1Id === user.id ? allFixtures[index].player2Id : allFixtures[index].player1Id
+        const opponentId = getOtherPlayerId(allFixtures[index])
         await notifyUser(
           opponentId,
-          'Cup Fixture Proposal',
-          `${user.username} proposed ${scheduleDate} at ${scheduleTime} for your cup fixture.`,
-          'proposal_pending',
+          isCounter ? 'Cup Fixture Counter Proposal' : 'Cup Fixture Proposal',
+          `${user.username} ${isCounter ? 'countered with' : 'proposed'} ${scheduleDate} at ${scheduleTime} for your cup fixture.`,
+          isCounter ? 'fixture_countered' : 'proposal_pending',
           { fixtureKind: 'cup', fixtureId: allFixtures[index].id }
         )
-        await sendFixtureActivityToAdmins('proposed', allFixtures[index], { proposedDate: scheduleDate, proposedTime: scheduleTime })
+        await notifyUser(
+          user.id,
+          isCounter ? 'Counter Proposal Sent' : 'Cup Fixture Proposal Sent',
+          `You ${isCounter ? 'countered with' : 'proposed'} ${scheduleDate} at ${scheduleTime} for the cup fixture.`,
+          isCounter ? 'fixture_countered' : 'proposal_pending',
+          { fixtureKind: 'cup', fixtureId: allFixtures[index].id }
+        )
+        await sendFixtureActivityToAdmins(isCounter ? 'countered' : 'proposed', allFixtures[index], { proposedDate: scheduleDate, proposedTime: scheduleTime })
       } catch (e) {
         console.log('Error saving to Firebase:', e)
       }
       
       setSelectedCupFixture(null)
+      setCupScheduleMode('propose')
       setScheduleDate('')
       setScheduleTime('')
-      alert('Schedule proposal sent!')
+      alert(cupScheduleMode === 'counter' ? 'Counter proposal sent!' : 'Schedule proposal sent!')
       triggerDataRefresh('fixtures')
       setRefreshKey(prev => prev + 1)
     }
@@ -201,10 +248,15 @@ export default function Fixtures() {
     const allFixtures = getFixtures()
     const index = findFixtureIndexById(allFixtures, fixture.id)
     if (index !== -1) {
+      const acceptedDate = getActiveCupProposalDate(fixture)
+      const acceptedTime = getActiveCupProposalTime(fixture)
       allFixtures[index].status = 'accepted'
       allFixtures[index].proposalStatus = 'accepted'
-      allFixtures[index].date = fixture.proposedDate
-      allFixtures[index].time = fixture.proposedTime
+      allFixtures[index].date = acceptedDate
+      allFixtures[index].time = acceptedTime
+      allFixtures[index].fixtureDate = acceptedDate
+      allFixtures[index].fixtureTime = acceptedTime
+      allFixtures[index].updatedAt = new Date().toISOString()
       saveFixtures(allFixtures)
       
       try {
@@ -238,23 +290,44 @@ export default function Fixtures() {
   const rejectCupProposal = async (fixture) => {
     if (!confirm('Reject this fixture?')) return
     const allFixtures = getFixtures()
-    const updatedFixtures = allFixtures.filter(f => String(f.id) !== String(fixture.id))
-    saveFixtures(updatedFixtures)
+    const index = findFixtureIndexById(allFixtures, fixture.id)
+    if (index === -1) {
+      alert('Could not find that fixture. Please refresh and try again.')
+      return
+    }
+    allFixtures[index] = {
+      ...allFixtures[index],
+      status: 'pending',
+      proposalStatus: 'needs_scheduling',
+      proposedDate: '',
+      proposedTime: '',
+      proposedBy: null,
+      counterDate: '',
+      counterTime: '',
+      counterBy: null,
+      counteredAt: null,
+      date: '',
+      time: '',
+      fixtureDate: '',
+      fixtureTime: '',
+      updatedAt: new Date().toISOString()
+    }
+    saveFixtures(allFixtures)
     
     try {
-      await deleteDoc(doc(db, 'fixtures', String(fixture.id)))
-      const opponentId = fixture.player1Id === user.id ? fixture.player2Id : fixture.player1Id
+      await persistFixture(allFixtures[index])
+      const opponentId = getOtherPlayerId(fixture)
       await notifyUser(
         opponentId,
         'Cup Fixture Rejected',
-        `${user.username} rejected your cup fixture proposal.`,
+        `${user.username} rejected your cup fixture proposal. The match is back in cup fixtures for a new date and time.`,
         'fixture_declined',
         { fixtureKind: 'cup', fixtureId: fixture.id }
       )
       await notifyUser(
         user.id,
         'Cup Fixture Rejected',
-        `You rejected the cup fixture proposal.`,
+        `You rejected the cup fixture proposal. It is back in cup fixtures for a new proposal.`,
         'fixture_declined',
         { fixtureKind: 'cup', fixtureId: fixture.id }
       )
@@ -263,7 +336,7 @@ export default function Fixtures() {
       console.log('Error saving to Firebase:', e)
     }
     
-    alert('Fixture rejected')
+    alert('Fixture rejected. It is back in cup fixtures for a new proposal.')
     triggerDataRefresh('fixtures')
     setRefreshKey(prev => prev + 1)
   }
@@ -1238,6 +1311,7 @@ export default function Fixtures() {
                     className="btn btn-primary" 
                     onClick={() => {
                       setSelectedCupFixture(fixture)
+                      setCupScheduleMode('propose')
                       setScheduleDate('')
                       setScheduleTime('')
                     }}
@@ -1252,106 +1326,137 @@ export default function Fixtures() {
           {cupAwaitingResponse.length > 0 && (
             <div className="card" style={{ marginBottom: '20px', borderLeft: '4px solid var(--warning)' }}>
               <h3 style={{ color: 'var(--warning)', marginBottom: '15px' }}>⏳ Awaiting Your Response ({cupAwaitingResponse.length})</h3>
-              {cupAwaitingResponse.map(fixture => (
-                <div key={fixture.id} style={{ 
-                  padding: '15px', 
-                  background: 'var(--bg-secondary)', 
-                  borderRadius: '8px',
-                  marginBottom: '10px'
-                }}>
-                  <div style={{ marginBottom: '10px' }}>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>
-                      {getCupName(fixture.cupId)} - {getRoundName(fixture.round, fixture.cupId)}
-                    </span>
-                    <div style={{ fontSize: '1rem', marginTop: '5px' }}>
-                      <strong>{getPlayerName(fixture.player1Id)}</strong>
-                      <span style={{ color: 'var(--text-muted)', margin: '0 10px' }}>vs</span>
-                      <strong>{getPlayerName(fixture.player2Id)}</strong>
+              {cupAwaitingResponse.map(fixture => {
+                const { player1Id, player2Id } = getFixturePlayerIds(fixture)
+                const activeDate = getActiveCupProposalDate(fixture)
+                const activeTime = getActiveCupProposalTime(fixture)
+                return (
+                  <div key={fixture.id} style={{ 
+                    padding: '15px', 
+                    background: 'var(--bg-secondary)', 
+                    borderRadius: '8px',
+                    marginBottom: '10px'
+                  }}>
+                    <div style={{ marginBottom: '10px' }}>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>
+                        {getCupName(fixture.cupId)} - {getRoundName(fixture.round, fixture.cupId)}
+                      </span>
+                      <div style={{ fontSize: '1rem', marginTop: '5px' }}>
+                        <strong>{getPlayerName(player1Id)}</strong>
+                        <span style={{ color: 'var(--text-muted)', margin: '0 10px' }}>vs</span>
+                        <strong>{getPlayerName(player2Id)}</strong>
+                      </div>
+                    </div>
+                    <div style={{ padding: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', marginBottom: '10px' }}>
+                      {fixture.status === 'countered' && fixture.proposedDate && (
+                        <p style={{ margin: '0 0 5px 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                          Original: {fixture.proposedDate} {fixture.proposedTime} (by {getPlayerName(fixture.proposedBy)})
+                        </p>
+                      )}
+                      <p style={{ margin: '0', color: 'var(--accent-cyan)', fontSize: '0.85rem' }}>
+                        {fixture.status === 'countered' ? 'Counter' : 'Proposed'}: {activeDate} {activeTime} (by {getPlayerName(fixture.status === 'countered' ? fixture.counterBy : fixture.proposedBy)})
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                      <button className="btn btn-success btn-sm" onClick={() => acceptCupProposal(fixture)}>Accept</button>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => {
+                          setSelectedCupFixture(fixture)
+                          setCupScheduleMode('counter')
+                          setScheduleDate(activeDate || '')
+                          setScheduleTime(activeTime || '')
+                        }}
+                      >
+                        Counter
+                      </button>
+                      <button className="btn btn-danger btn-sm" onClick={() => rejectCupProposal(fixture)}>Reject</button>
                     </div>
                   </div>
-                  <div style={{ padding: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', marginBottom: '10px' }}>
-                    <p style={{ margin: '0', color: 'var(--accent-cyan)', fontSize: '0.85rem' }}>
-                      Proposed: {fixture.proposedDate} {fixture.proposedTime} (by {getPlayerName(fixture.proposedBy)})
-                    </p>
-                  </div>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button className="btn btn-success btn-sm" onClick={() => acceptCupProposal(fixture)}>Accept</button>
-                    <button className="btn btn-danger btn-sm" onClick={() => rejectCupProposal(fixture)}>Reject</button>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
 
           {cupAwaitingOpponent.length > 0 && (
             <div className="card" style={{ marginBottom: '20px' }}>
               <h3 style={{ marginBottom: '15px' }}>Your Proposals ({cupAwaitingOpponent.length})</h3>
-              {cupAwaitingOpponent.map(fixture => (
-                <div key={fixture.id} style={{ 
-                  padding: '15px', 
-                  background: 'var(--bg-secondary)', 
-                  borderRadius: '8px',
-                  marginBottom: '10px'
-                }}>
-                  <div style={{ marginBottom: '10px' }}>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>
-                      {getCupName(fixture.cupId)} - {getRoundName(fixture.round, fixture.cupId)}
-                    </span>
-                    <div style={{ fontSize: '1rem', marginTop: '5px' }}>
-                      <strong>{getPlayerName(fixture.player1Id)}</strong>
-                      <span style={{ color: 'var(--text-muted)', margin: '0 10px' }}>vs</span>
-                      <strong>{getPlayerName(fixture.player2Id)}</strong>
+              {cupAwaitingOpponent.map(fixture => {
+                const { player1Id, player2Id } = getFixturePlayerIds(fixture)
+                const waitingDate = getActiveCupProposalDate(fixture)
+                const waitingTime = getActiveCupProposalTime(fixture)
+                return (
+                  <div key={fixture.id} style={{ 
+                    padding: '15px', 
+                    background: 'var(--bg-secondary)', 
+                    borderRadius: '8px',
+                    marginBottom: '10px'
+                  }}>
+                    <div style={{ marginBottom: '10px' }}>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>
+                        {getCupName(fixture.cupId)} - {getRoundName(fixture.round, fixture.cupId)}
+                      </span>
+                      <div style={{ fontSize: '1rem', marginTop: '5px' }}>
+                        <strong>{getPlayerName(player1Id)}</strong>
+                        <span style={{ color: 'var(--text-muted)', margin: '0 10px' }}>vs</span>
+                        <strong>{getPlayerName(player2Id)}</strong>
+                      </div>
                     </div>
+                    <p style={{ margin: '0', color: 'var(--warning)', fontSize: '0.85rem' }}>
+                      Awaiting response... {waitingDate} {waitingTime}
+                    </p>
                   </div>
-                  <p style={{ margin: '0', color: 'var(--warning)', fontSize: '0.85rem' }}>
-                    Awaiting response... {fixture.proposedDate} {fixture.proposedTime}
-                  </p>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
 
           {cupAccepted.length > 0 && (
             <div className="card" style={{ marginBottom: '20px', borderLeft: '4px solid var(--success)' }}>
               <h3 style={{ color: 'var(--success)', marginBottom: '15px' }}>Confirmed Fixtures</h3>
-              {cupAccepted.map(fixture => (
-                <div key={fixture.id} style={{ 
-                  padding: '15px', 
-                  background: 'var(--bg-secondary)', 
-                  borderRadius: '8px',
-                  marginBottom: '10px'
-                }}>
-                  <div>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>
-                      {getCupName(fixture.cupId)} - {getRoundName(fixture.round, fixture.cupId)}
-                    </span>
-                    <div style={{ fontSize: '1rem', marginTop: '5px' }}>
-                      <strong>{getPlayerName(fixture.player1Id)}</strong>
-                      <span style={{ color: 'var(--text-muted)', margin: '0 10px' }}>vs</span>
-                      <strong>{getPlayerName(fixture.player2Id)}</strong>
+              {cupAccepted.map(fixture => {
+                const { player1Id, player2Id } = getFixturePlayerIds(fixture)
+                return (
+                  <div key={fixture.id} style={{ 
+                    padding: '15px', 
+                    background: 'var(--bg-secondary)', 
+                    borderRadius: '8px',
+                    marginBottom: '10px'
+                  }}>
+                    <div>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>
+                        {getCupName(fixture.cupId)} - {getRoundName(fixture.round, fixture.cupId)}
+                      </span>
+                      <div style={{ fontSize: '1rem', marginTop: '5px' }}>
+                        <strong>{getPlayerName(player1Id)}</strong>
+                        <span style={{ color: 'var(--text-muted)', margin: '0 10px' }}>vs</span>
+                        <strong>{getPlayerName(player2Id)}</strong>
+                      </div>
+                      <p style={{ margin: '5px 0 0 0', fontSize: '0.85rem' }}>
+                        Scheduled: {fixture.date} at {fixture.time}
+                      </p>
+                      <p style={{ margin: '3px 0 0 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                        Format: {fixture.startScore || 501} / Best of {fixture.bestOf || 3}
+                      </p>
                     </div>
-                    <p style={{ margin: '5px 0 0 0', fontSize: '0.85rem' }}>
-                      Scheduled: {fixture.date} at {fixture.time}
-                    </p>
-                    <p style={{ margin: '3px 0 0 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                      Format: {fixture.startScore || 501} / Best of {fixture.bestOf || 3}
-                    </p>
+                    <button
+                      className="btn btn-primary"
+                      style={{ marginTop: '10px' }}
+                      onClick={() => navigate(`/submit-result?fixtureId=${fixture.id}`)}
+                    >
+                      Submit Result
+                    </button>
                   </div>
-                  <button
-                    className="btn btn-primary"
-                    style={{ marginTop: '10px' }}
-                    onClick={() => navigate(`/submit-result?fixtureId=${fixture.id}`)}
-                  >
-                    Submit Result
-                  </button>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
 
           {selectedCupFixture && (
             <div className="card" style={{ marginBottom: '20px', border: '2px solid var(--accent-cyan)' }}>
-              <h3 style={{ marginBottom: '15px' }}>Propose Date & Time</h3>
+              <h3 style={{ marginBottom: '15px' }}>
+                {cupScheduleMode === 'counter' ? 'Counter Date & Time' : 'Propose Date & Time'}
+              </h3>
               <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
                 <div style={{ flex: 1 }}>
                   <label>Date</label>
@@ -1372,9 +1477,12 @@ export default function Fixtures() {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '10px' }}>
-                <button className="btn btn-primary" onClick={proposeCupSchedule}>Send Proposal</button>
+                <button className="btn btn-primary" onClick={proposeCupSchedule}>
+                  {cupScheduleMode === 'counter' ? 'Send Counter' : 'Send Proposal'}
+                </button>
                 <button className="btn btn-secondary" onClick={() => {
                   setSelectedCupFixture(null)
+                  setCupScheduleMode('propose')
                   setScheduleDate('')
                   setScheduleTime('')
                 }}>Cancel</button>

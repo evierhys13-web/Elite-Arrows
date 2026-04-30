@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { db, doc, setDoc } from '../firebase'
 
 export default function SubmitResult() {
   const { user, getAllUsers, getFixtures, getResults, addTokens, triggerDataRefresh, notifyAdmins } = useAuth()
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const cameraInputRef = useRef(null)
   const uploadInputRef = useRef(null)
@@ -24,6 +25,7 @@ export default function SubmitResult() {
     proofImage: ''
   })
   const [submitted, setSubmitted] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
 
@@ -58,6 +60,8 @@ export default function SubmitResult() {
 
   const opponentUser = availablePlayers.find(p => p.id === formData.opponent)
   const currentSeason = new Date().getFullYear().toString()
+  const adminEmails = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
+  const isAdminUser = user?.isAdmin || user?.isTournamentAdmin || adminEmails.includes(user?.email?.toLowerCase())
   const selectedFixture = fixtureIdParam
     ? allFixtures.find((fixture) => fixture.id.toString() === fixtureIdParam)
     : null
@@ -169,6 +173,7 @@ export default function SubmitResult() {
 const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    setSuccessMessage('')
     
     if (!formData.opponent) {
       setError('Please select an opponent')
@@ -215,10 +220,12 @@ const handleSubmit = async (e) => {
     let cupId = null
     let matchId = null
     if (formData.gameType === 'Cup') {
-      cupFixture = cupFixtures.find(f => {
-        const opponentId = getFixtureOpponentId(f)
-        return opponentId === formData.opponent
-      })
+      cupFixture = selectedFixture?.cupId
+        ? selectedFixture
+        : cupFixtures.find(f => {
+          const opponentId = getFixtureOpponentId(f)
+          return opponentId === formData.opponent
+        })
       if (!cupFixture) {
         setError('Please select a valid cup match')
         return
@@ -247,8 +254,10 @@ const handleSubmit = async (e) => {
     }
 
     try {
+      setIsSubmitting(true)
       const results = [...allResults]
       const resultId = Date.now().toString()
+      const fixtureForResult = cupFixture || selectedFixture
       const newResult = {
         id: resultId,
         firestoreId: resultId,
@@ -277,8 +286,11 @@ const handleSubmit = async (e) => {
           doubleSuccess: parseFloat(formData.opponentDoubleSuccess) || 0
         },
         status: 'pending',
-        ...(selectedFixture?.id && { fixtureId: selectedFixture.id }),
-        ...(cupId && { cupId, matchId })
+        submittedBy: user.id,
+        ...(fixtureForResult?.id && { fixtureId: fixtureForResult.id }),
+        ...(cupId && { cupId, matchId }),
+        ...(cupFixture?.cupName && { cupName: cupFixture.cupName }),
+        ...(cupFixture?.startScore && { startScore: cupFixture.startScore })
       }
 
       console.log('Attempting to save to Firestore with data:', newResult)
@@ -299,7 +311,10 @@ const handleSubmit = async (e) => {
       if (fixtureIndex !== -1) {
         updatedFixtures[fixtureIndex] = {
           ...updatedFixtures[fixtureIndex],
-          status: 'result_submitted'
+          status: 'result_submitted',
+          resultId,
+          submittedResultId: resultId,
+          updatedAt: new Date().toISOString()
         }
         localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
         try {
@@ -317,7 +332,7 @@ const handleSubmit = async (e) => {
     notifyAdmins(
       'New Result Pending',
       `${user.username} submitted a result: ${newResult.player1} ${newResult.score1}-${newResult.score2} ${newResult.player2} (${newResult.gameType})`,
-      { type: 'result_submitted', resultId: newResult.id }
+      { type: 'result_submitted', resultId: newResult.id, url: '/admin?tab=results' }
     )
 
     const isWin = parseInt(formData.yourScore) > parseInt(formData.opponentScore)
@@ -331,13 +346,22 @@ const handleSubmit = async (e) => {
     
     setSubmitted(true)
     setError('')
-    setSuccessMessage('You have successfully submitted a result')
+    setSuccessMessage(
+      isAdminUser
+        ? 'Result submitted for approval. Opening the admin pending results now.'
+        : 'Result submitted for admin approval. Admins can now see it in Pending Results.'
+    )
     setTimeout(() => {
       setSuccessMessage('')
-    }, 1800)
+    }, 4500)
+    if (isAdminUser) {
+      setTimeout(() => navigate('/admin?tab=results'), 1200)
+    }
     } catch (e) {
       console.error('FATAL: Error submitting result:', e.code, e.message)
       setError('Error submitting result: ' + (e.message || 'Please try again.'))
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -693,9 +717,9 @@ const handleSubmit = async (e) => {
           <button 
             type="submit"
             className="btn btn-primary btn-block"
-            disabled={submitted}
+            disabled={submitted || isSubmitting}
           >
-            {submitted ? 'Submitted for Approval!' : 'Submit Result (Awaiting Approval)'}
+            {isSubmitting ? 'Submitting...' : submitted ? 'Submitted for Approval!' : 'Submit Result (Awaiting Approval)'}
           </button>
 
           <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '10px' }}>
