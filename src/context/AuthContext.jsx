@@ -745,6 +745,12 @@ const cleanUserData = (users) => {
     return local
   }
 
+  const updateFixtures = (updatedFixtures) => {
+    setFixtures(updatedFixtures)
+    localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
+    triggerDataRefresh('fixtures')
+  }
+
   const getCups = () => {
     if (cups.length > 0) return cups
     const local = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
@@ -1003,6 +1009,7 @@ const handleSurveyComplete = () => {
       getFriends,
       getResults,
       getFixtures,
+      updateFixtures,
       getCups,
       getSupportRequests,
       getSeasons,
