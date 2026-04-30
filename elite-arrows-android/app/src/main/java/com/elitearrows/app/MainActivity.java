@@ -1,8 +1,11 @@
 package com.elitearrows.app;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -17,8 +20,12 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import android.widget.ProgressBar;
+import android.widget.Toast;
+import androidx.annotation.NonNull;
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 
 import com.google.firebase.FirebaseApp;
@@ -27,6 +34,7 @@ import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
@@ -34,9 +42,11 @@ public class MainActivity extends AppCompatActivity {
     private WebView mWebView;
     private ProgressBar mProgressBar;
     private ValueCallback<Uri[]> filePathCallback;
+    private WebChromeClient.FileChooserParams pendingFileChooserParams;
     private Uri cameraPhotoUri;
     private static final String BASE_URL = "https://elite-arrows.co.uk";
     private static final int FILE_CHOOSER_REQUEST_CODE = 1001;
+    private static final int CAMERA_PERMISSION_REQUEST_CODE = 1002;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -78,6 +88,8 @@ public class MainActivity extends AppCompatActivity {
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setDatabaseEnabled(true);
+        settings.setAllowFileAccess(true);
+        settings.setAllowContentAccess(true);
         settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
@@ -109,27 +121,18 @@ public class MainActivity extends AppCompatActivity {
                     MainActivity.this.filePathCallback.onReceiveValue(null);
                 }
                 MainActivity.this.filePathCallback = filePathCallback;
+                MainActivity.this.pendingFileChooserParams = fileChooserParams;
 
-                Intent fileIntent;
-                try {
-                    fileIntent = fileChooserParams.createIntent();
-                } catch (Exception e) {
-                    fileIntent = new Intent(Intent.ACTION_GET_CONTENT);
-                    fileIntent.addCategory(Intent.CATEGORY_OPENABLE);
-                    fileIntent.setType("image/*");
+                if (fileChooserParams.isCaptureEnabled() && !hasCameraPermission()) {
+                    ActivityCompat.requestPermissions(
+                            MainActivity.this,
+                            new String[] { Manifest.permission.CAMERA },
+                            CAMERA_PERMISSION_REQUEST_CODE
+                    );
+                    return true;
                 }
 
-                try {
-                    Intent cameraIntent = createCameraIntent();
-                    if (fileChooserParams.isCaptureEnabled() && cameraIntent != null) {
-                        startActivityForResult(cameraIntent, FILE_CHOOSER_REQUEST_CODE);
-                    } else {
-                        startActivityForResult(fileIntent, FILE_CHOOSER_REQUEST_CODE);
-                    }
-                } catch (ActivityNotFoundException e) {
-                    MainActivity.this.filePathCallback = null;
-                    return false;
-                }
+                launchFileChooser(fileChooserParams);
                 return true;
             }
         });
@@ -149,7 +152,7 @@ public class MainActivity extends AppCompatActivity {
 
         Uri[] results = null;
         if (resultCode == Activity.RESULT_OK) {
-            if (data == null || data.getData() == null) {
+            if (data == null || (data.getData() == null && data.getClipData() == null)) {
                 if (cameraPhotoUri != null) {
                     results = new Uri[] { cameraPhotoUri };
                 }
@@ -160,6 +163,82 @@ public class MainActivity extends AppCompatActivity {
 
         filePathCallback.onReceiveValue(results);
         filePathCallback = null;
+        pendingFileChooserParams = null;
+        cameraPhotoUri = null;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(
+            int requestCode,
+            @NonNull String[] permissions,
+            @NonNull int[] grantResults
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode != CAMERA_PERMISSION_REQUEST_CODE) {
+            return;
+        }
+
+        if (filePathCallback == null || pendingFileChooserParams == null) {
+            cancelFileChooser();
+            return;
+        }
+
+        if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            launchFileChooser(pendingFileChooserParams);
+            return;
+        }
+
+        Toast.makeText(this, "Camera permission is needed to take a result photo.", Toast.LENGTH_LONG).show();
+        cancelFileChooser();
+    }
+
+    private boolean hasCameraPermission() {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void launchFileChooser(WebChromeClient.FileChooserParams fileChooserParams) {
+        Intent cameraIntent = hasCameraPermission() ? createCameraIntent() : null;
+        Intent pickerIntent = createImagePickerIntent(fileChooserParams);
+        Intent launchIntent;
+
+        if (fileChooserParams != null && fileChooserParams.isCaptureEnabled() && cameraIntent != null) {
+            launchIntent = cameraIntent;
+        } else {
+            launchIntent = Intent.createChooser(pickerIntent, "Select result proof");
+            if (cameraIntent != null) {
+                launchIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[] { cameraIntent });
+            }
+        }
+
+        try {
+            startActivityForResult(launchIntent, FILE_CHOOSER_REQUEST_CODE);
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(this, "No app found to choose a result image.", Toast.LENGTH_LONG).show();
+            cancelFileChooser();
+        }
+    }
+
+    private Intent createImagePickerIntent(WebChromeClient.FileChooserParams fileChooserParams) {
+        Intent pickerIntent = new Intent(Intent.ACTION_GET_CONTENT);
+        pickerIntent.addCategory(Intent.CATEGORY_OPENABLE);
+        pickerIntent.setType("image/*");
+
+        if (fileChooserParams != null
+                && fileChooserParams.getMode() == WebChromeClient.FileChooserParams.MODE_OPEN_MULTIPLE) {
+            pickerIntent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+        }
+
+        return pickerIntent;
+    }
+
+    private void cancelFileChooser() {
+        if (filePathCallback != null) {
+            filePathCallback.onReceiveValue(null);
+        }
+        filePathCallback = null;
+        pendingFileChooserParams = null;
         cameraPhotoUri = null;
     }
 
@@ -178,6 +257,14 @@ public class MainActivity extends AppCompatActivity {
             );
             cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, cameraPhotoUri);
             cameraIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            List<ResolveInfo> cameraActivities = getPackageManager().queryIntentActivities(cameraIntent, PackageManager.MATCH_DEFAULT_ONLY);
+            for (ResolveInfo activity : cameraActivities) {
+                grantUriPermission(
+                        activity.activityInfo.packageName,
+                        cameraPhotoUri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                );
+            }
             return cameraIntent;
         } catch (IOException e) {
             cameraPhotoUri = null;

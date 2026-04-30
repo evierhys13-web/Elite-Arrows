@@ -10,6 +10,7 @@ export default function Surveys() {
   const [loading, setLoading] = useState(true)
   const [selectedSurvey, setSelectedSurvey] = useState(null)
   const [filter, setFilter] = useState('all')
+  const [error, setError] = useState('')
 
   useEffect(() => {
     loadSurveys()
@@ -17,6 +18,7 @@ export default function Surveys() {
 
   const loadSurveys = async () => {
     try {
+      setError('')
       const q = query(collection(db, 'surveys'), orderBy('createdAt', 'desc'))
       const snapshot = await getDocs(q)
       const surveyData = snapshot.docs.map(doc => ({
@@ -26,6 +28,7 @@ export default function Surveys() {
       setSurveys(surveyData)
     } catch (err) {
       console.error('Error loading surveys:', err)
+      setError('Survey results could not be loaded. Please check the Firestore rules have been deployed.')
     } finally {
       setLoading(false)
     }
@@ -143,6 +146,10 @@ export default function Surveys() {
         
         {loading ? (
           <div className="loading">Loading...</div>
+        ) : error ? (
+          <p style={{ color: '#ef4444', textAlign: 'center', padding: '40px' }}>
+            {error}
+          </p>
         ) : surveys.length === 0 ? (
           <p style={{ color: 'var(--text)', textAlign: 'center', padding: '40px' }}>
             No survey responses yet. Survey will appear here once users complete it.
