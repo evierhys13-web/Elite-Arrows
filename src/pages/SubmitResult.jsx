@@ -615,25 +615,6 @@ const handleSubmit = async (e) => {
           <div className="form-group">
             <label style={{ fontSize: '0.9rem', display: 'block', marginBottom: '8px' }}>Proof of Result (Photo/Screenshot) - Required for League</label>
             
-            {/* Native labels are more reliable than scripted clicks in mobile browsers and installed PWAs. */}
-            <input
-              id="result-proof-camera"
-              ref={cameraInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={handleImageUpload}
-              className="result-proof-input"
-            />
-            <input
-              id="result-proof-upload"
-              ref={uploadInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleImageUpload}
-              className="result-proof-input"
-            />
-            
             {!formData.proofImage ? (
               <div
                 className="result-proof-picker"
@@ -652,12 +633,31 @@ const handleSubmit = async (e) => {
                   Add proof of your result
                 </p>
                 <div className="result-proof-actions">
-                  <label htmlFor="result-proof-camera" className="btn btn-primary">
-                    Take Photo
-                  </label>
-                  <label htmlFor="result-proof-upload" className="btn btn-secondary">
-                    Upload Screenshot
-                  </label>
+                  <div className="result-proof-native-button result-proof-camera">
+                    <span>Take Photo</span>
+                    <input
+                      ref={cameraInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      aria-label="Take Photo"
+                      onClick={(e) => { e.currentTarget.value = '' }}
+                      onChange={handleImageUpload}
+                      className="result-proof-input"
+                    />
+                  </div>
+                  <div className="result-proof-native-button result-proof-upload">
+                    <span>Upload Screenshot</span>
+                    <input
+                      ref={uploadInputRef}
+                      type="file"
+                      accept="image/*"
+                      aria-label="Upload Screenshot"
+                      onClick={(e) => { e.currentTarget.value = '' }}
+                      onChange={handleImageUpload}
+                      className="result-proof-input"
+                    />
+                  </div>
                 </div>
               </div>
             ) : (
