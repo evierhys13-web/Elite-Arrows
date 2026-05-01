@@ -11,7 +11,7 @@ export default function Rewards() {
   const [predictedWinner, setPredictedWinner] = useState('')
   const [predictedScore1, setPredictedScore1] = useState('')
   const [predictedScore2, setPredictedScore2] = useState('')
-  const [selectedDivision, setSelectedDivision] = useState(user.division || 'All')
+  const [selectedDivision, setSelectedDivision] = useState(user?.division || 'All')
   const [showWheel, setShowWheel] = useState(false)
   const [wheelSpinning, setWheelSpinning] = useState(false)
   const [wheelWinner, setWheelWinner] = useState(null)
@@ -19,6 +19,8 @@ export default function Rewards() {
 
   const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
   const isAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase()) || user?.isAdmin || user?.isTournamentAdmin
+  const userDivision = user?.division || 'Unassigned'
+  const canViewAllBettingDivisions = Boolean(isAdmin)
 
   const allUsers = getAllUsers()
   const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
@@ -34,6 +36,12 @@ export default function Rewards() {
     const storedBets = JSON.parse(localStorage.getItem('eliteArrowsBets') || '[]')
     setBets(storedBets.filter(b => b.userId === user.id))
   }, [user.id])
+
+  useEffect(() => {
+    if (!canViewAllBettingDivisions && selectedDivision !== userDivision) {
+      setSelectedDivision(userDivision)
+    }
+  }, [canViewAllBettingDivisions, selectedDivision, userDivision])
 
   const fixtures = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
   const acceptedFixtures = fixtures.filter(f => 
@@ -53,8 +61,10 @@ export default function Rewards() {
     return Math.max(0, playersInDiv.length - 1)
   }
 
+  const visibleBettingDivision = canViewAllBettingDivisions ? selectedDivision : userDivision
+
   const getPotentialMatches = () => {
-    const divisionsToCheck = selectedDivision === 'All' ? DIVISIONS : [selectedDivision]
+    const divisionsToCheck = visibleBettingDivision === 'All' ? DIVISIONS : [visibleBettingDivision].filter(Boolean)
     const matches = []
 
     divisionsToCheck.forEach(division => {
@@ -227,15 +237,11 @@ export default function Rewards() {
   }
 
   const getUserStats = () => {
-    let totalGames = 0
-    let gamesPlayed = 0
-    DIVISIONS.forEach(div => {
-      const playersInDiv = allUsers.filter(u => u.division === div)
-      playersInDiv.forEach(p => {
-        totalGames += Math.min(8, 8)
-        gamesPlayed += getPlayerGameCount(p.id, div)
-      })
-    })
+    if (!userDivision || userDivision === 'Unassigned') return { totalGames: 0, gamesPlayed: 0 }
+
+    const maxGames = getDivisionMaxGames(userDivision)
+    const gamesPlayed = getPlayerGameCount(user.id, userDivision)
+    const totalGames = maxGames
     return { totalGames, gamesPlayed }
   }
 
@@ -337,32 +343,29 @@ export default function Rewards() {
       <div className="card" style={{ marginBottom: '20px' }}>
         <h3 className="card-title">Your Games Progress</h3>
         <div style={{ marginBottom: '15px' }}>
-          {DIVISIONS.map(div => {
-            const userGames = getPlayerGameCount(user.id, div)
-            const maxGames = getDivisionMaxGames(div)
-            const playersInDiv = allUsers.filter(u => u.division === div).length
-            return (
-              <div key={div} style={{ marginBottom: '10px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                  <span>{div} ({playersInDiv} players)</span>
-                  <span>{userGames}/{maxGames} games</span>
-                </div>
-                <div style={{ 
-                  height: '8px', 
-                  background: 'var(--bg-secondary)', 
-                  borderRadius: '4px',
-                  overflow: 'hidden'
-                }}>
-                  <div style={{ 
-                    width: maxGames > 0 ? `${Math.min(100, (userGames / maxGames) * 100)}%` : '0%',
-                    height: '100%',
-                    background: userGames >= maxGames && maxGames > 0 ? 'var(--success)' : 'var(--accent-cyan)',
-                    transition: 'width 0.3s'
-                  }} />
-                </div>
+          {userDivision === 'Unassigned' ? (
+            <p style={{ color: 'var(--text-muted)' }}>You have not been assigned to a division yet.</p>
+          ) : (
+            <div style={{ marginBottom: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                <span>{userDivision} ({allUsers.filter(u => u.division === userDivision).length} players)</span>
+                <span>{userStats.gamesPlayed}/{userStats.totalGames} games</span>
               </div>
-            )
-          })}
+              <div style={{
+                height: '8px',
+                background: 'var(--bg-secondary)',
+                borderRadius: '4px',
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  width: userStats.totalGames > 0 ? `${Math.min(100, (userStats.gamesPlayed / userStats.totalGames) * 100)}%` : '0%',
+                  height: '100%',
+                  background: userStats.gamesPlayed >= userStats.totalGames && userStats.totalGames > 0 ? 'var(--success)' : 'var(--accent-cyan)',
+                  transition: 'width 0.3s'
+                }} />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -438,18 +441,31 @@ export default function Rewards() {
 
       <div className="card" style={{ marginBottom: '20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
-          <h3 className="card-title" style={{ margin: 0 }}>Available to Bet</h3>
+          <h3 className="card-title" style={{ margin: 0 }}>Available to Bet ({potentialMatches.length})</h3>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-            <select 
-              value={selectedDivision} 
-              onChange={(e) => setSelectedDivision(e.target.value)}
-              style={{ padding: '8px', borderRadius: '6px' }}
-            >
-              <option value="All">All Divisions</option>
-              {DIVISIONS.map(div => (
-                <option key={div} value={div}>{div}</option>
-              ))}
-            </select>
+            {canViewAllBettingDivisions ? (
+              <select
+                value={selectedDivision}
+                onChange={(e) => setSelectedDivision(e.target.value)}
+                style={{ padding: '8px', borderRadius: '6px' }}
+              >
+                <option value="All">All Divisions</option>
+                {DIVISIONS.map(div => (
+                  <option key={div} value={div}>{div}</option>
+                ))}
+              </select>
+            ) : (
+              <span style={{
+                padding: '8px 10px',
+                background: 'var(--bg-secondary)',
+                borderRadius: '6px',
+                color: 'var(--accent-cyan)',
+                fontSize: '0.85rem',
+                fontWeight: 700
+              }}>
+                {userDivision}
+              </span>
+            )}
             {user.isAdmin && (
               <button className="btn btn-secondary btn-sm" onClick={checkWinners}>
                 Check Winners (Admin)
@@ -459,9 +475,9 @@ export default function Rewards() {
         </div>
         
         {potentialMatches.length === 0 ? (
-          <p style={{ color: 'var(--text-muted)' }}>No fixtures available to bet on. All matches in your divisions have been played!</p>
+          <p style={{ color: 'var(--text-muted)' }}>No fixtures available to bet on. All matches in {canViewAllBettingDivisions && visibleBettingDivision === 'All' ? 'these divisions' : 'your division'} have been played!</p>
         ) : (
-          selectedDivision === 'All' ? (
+          visibleBettingDivision === 'All' ? (
             Object.entries(matchesByDivision).map(([division, matches]) => (
               <div key={division} style={{ marginBottom: '20px' }}>
                 <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>{division}</h4>
@@ -486,7 +502,7 @@ export default function Rewards() {
               </div>
             ))
           ) : (
-            matchesByDivision[selectedDivision]?.map(match => (
+            (matchesByDivision[visibleBettingDivision] || []).map(match => (
               <MatchCard 
                 key={match.id} 
                 match={match} 
