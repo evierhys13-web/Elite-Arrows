@@ -5,7 +5,7 @@ import { db, doc, setDoc, deleteDoc, getDocs, collection } from '../firebase'
 import UserSearchSelect from '../components/UserSearchSelect'
 
 export default function Fixtures() {
-  const { user, getAllUsers, getFixtures, updateFixtures, triggerDataRefresh, notifyUser, notifyAdmins } = useAuth()
+  const { user, getAllUsers, getFixtures, updateFixtures, triggerDataRefresh, notifyUser, notifyAdmins, useTokens } = useAuth()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('upcoming')
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -23,6 +23,12 @@ export default function Fixtures() {
   const [counterDate, setCounterDate] = useState('')
   const [counterTime, setCounterTime] = useState('')
   const [refreshKey, setRefreshKey] = useState(0)
+  const [bets, setBets] = useState([])
+  const [showBetForm, setShowBetForm] = useState(null)
+  const [betAmount, setBetAmount] = useState(10)
+  const [predictedWinner, setPredictedWinner] = useState('')
+  const [predictedScore1, setPredictedScore1] = useState('')
+  const [predictedScore2, setPredictedScore2] = useState('')
 
   const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
   const isEmailAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
@@ -41,6 +47,11 @@ export default function Fixtures() {
       setActiveTab('pending')
     }
   }, [])
+
+  useEffect(() => {
+    const storedBets = JSON.parse(localStorage.getItem('eliteArrowsBets') || '[]')
+    setBets(storedBets.filter(bet => String(bet.userId) === String(user.id)))
+  }, [user.id])
 
   const fixtures = getFixtures()
   const allResults = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
@@ -111,7 +122,7 @@ export default function Fixtures() {
   const cupAccepted = cupFixturesData.filter(f => f.status === 'accepted')
   const upcomingCount = upcomingFixtures.length + cupAccepted.length
   
-  const getPlayerName = (id) => allUsers.find(u => u.id === id)?.username || 'Unknown'
+  const getPlayerName = (id) => allUsers.find(u => String(u.id) === String(id))?.username || 'Unknown'
 
   const getFixtureDate = (fixture) => (
     fixture.fixtureDate || fixture.date || fixture.proposedDate || ''
@@ -135,6 +146,48 @@ export default function Fixtures() {
   const isPublicFixture = (fixture) => (
     ['accepted', 'result_submitted'].includes(fixture.status)
   )
+
+  const getFixtureBetId = (fixture) => {
+    const { player1Id, player2Id } = getFixturePlayerIds(fixture)
+    return `fixture_${player1Id}_${player2Id}`
+  }
+
+  const getBetForFixture = (fixture) => (
+    bets.find(bet => (
+      bet.fixtureId && String(bet.fixtureId) === String(fixture.id)
+    ) || String(bet.gameId) === String(getFixtureBetId(fixture)))
+  )
+
+  const hasApprovedResultForFixture = (fixture) => {
+    const { player1Id, player2Id } = getFixturePlayerIds(fixture)
+    return allResults.some(result => (
+      result.status === 'approved' &&
+      (
+        String(result.fixtureId || '') === String(fixture.id) ||
+        (
+          result.gameType === fixture.gameType &&
+          result.division === fixture.division &&
+          (
+            (String(result.player1Id) === String(player1Id) && String(result.player2Id) === String(player2Id)) ||
+            (String(result.player1Id) === String(player2Id) && String(result.player2Id) === String(player1Id))
+          )
+        )
+      )
+    ))
+  }
+
+  const canBetOnFixture = (fixture) => {
+    const { player1Id, player2Id } = getFixturePlayerIds(fixture)
+    return (
+      fixture.status === 'accepted' &&
+      !fixture.cupId &&
+      fixture.gameType === 'League' &&
+      fixture.division === user.division &&
+      String(player1Id) !== String(user.id) &&
+      String(player2Id) !== String(user.id) &&
+      !hasApprovedResultForFixture(fixture)
+    )
+  }
 
   const publicFixtures = fixtures
     .filter(isPublicFixture)
@@ -741,6 +794,66 @@ export default function Fixtures() {
     }
   }
 
+  const resetBetForm = () => {
+    setShowBetForm(null)
+    setBetAmount(10)
+    setPredictedWinner('')
+    setPredictedScore1('')
+    setPredictedScore2('')
+  }
+
+  const handlePlaceFixtureBet = async (fixture) => {
+    if (!canBetOnFixture(fixture)) {
+      alert('This fixture is not available to bet on.')
+      return
+    }
+    if (getBetForFixture(fixture)) {
+      alert('You have already bet on this game.')
+      return
+    }
+    if ((user?.eliteTokens || 0) < betAmount) {
+      alert('Not enough elite tokens!')
+      return
+    }
+    if (!predictedWinner || !predictedScore1 || !predictedScore2) {
+      alert('Please fill in all prediction fields')
+      return
+    }
+
+    const tokenSpendSucceeded = await useTokens(betAmount)
+    if (!tokenSpendSucceeded) {
+      alert('Not enough elite tokens!')
+      return
+    }
+
+    const { player1Id, player2Id } = getFixturePlayerIds(fixture)
+    const player1Name = getPublicFixtureName(fixture, player1Id, 'player1Name')
+    const player2Name = getPublicFixtureName(fixture, player2Id, 'player2Name')
+    const predictedWinnerName = String(predictedWinner) === String(player1Id) ? player1Name : player2Name
+    const newBet = {
+      id: Date.now(),
+      userId: user.id,
+      gameId: getFixtureBetId(fixture),
+      fixtureId: fixture.id,
+      fixturePlayer1Id: player1Id,
+      fixturePlayer2Id: player2Id,
+      amount: betAmount,
+      predictedWinner: predictedWinnerName,
+      predictedWinnerId: predictedWinner,
+      predictedScore1: parseInt(predictedScore1),
+      predictedScore2: parseInt(predictedScore2),
+      won: null,
+      createdAt: new Date().toISOString()
+    }
+
+    const allBets = JSON.parse(localStorage.getItem('eliteArrowsBets') || '[]')
+    const updatedBets = [...allBets, newBet]
+    localStorage.setItem('eliteArrowsBets', JSON.stringify(updatedBets))
+    setBets(updatedBets.filter(bet => String(bet.userId) === String(user.id)))
+    resetBetForm()
+    alert('Bet placed! Good luck!')
+  }
+
   if (!isSubscribed && !isAdmin) {
     return (
       <div className="page">
@@ -1214,9 +1327,11 @@ export default function Fixtures() {
               const player2Name = fixture.cupId
                 ? getPlayerName(player2Id)
                 : getPublicFixtureName(fixture, player2Id, 'player2Name')
-              const isMyFixture = player1Id === user.id || player2Id === user.id
+              const isMyFixture = String(player1Id) === String(user.id) || String(player2Id) === String(user.id)
               const fixtureDate = getFixtureDate(fixture)
               const fixtureTime = getFixtureTime(fixture)
+              const fixtureBet = getBetForFixture(fixture)
+              const betIsAvailable = canBetOnFixture(fixture) && !fixtureBet
 
               return (
                 <div key={fixture.id} style={{
@@ -1266,7 +1381,7 @@ export default function Fixtures() {
                       <div style={{ fontWeight: '600' }}>{fixtureTime || 'TBC'}</div>
                     </div>
                   </div>
-                  {(isMyFixture && fixture.status === 'accepted') || (isAdmin && !fixture.cupId) ? (
+                  {(isMyFixture && fixture.status === 'accepted') || (isAdmin && !fixture.cupId) || fixtureBet || betIsAvailable ? (
                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '12px' }}>
                       {isMyFixture && fixture.status === 'accepted' && (
                         <button
@@ -1284,8 +1399,94 @@ export default function Fixtures() {
                           Remove Fixture/Result
                         </button>
                       )}
+                      {fixtureBet ? (
+                        <div style={{
+                          padding: '10px 12px',
+                          background: 'rgba(34, 197, 94, 0.1)',
+                          border: '1px solid var(--success)',
+                          borderRadius: '8px',
+                          color: 'var(--text-primary)',
+                          fontSize: '0.85rem'
+                        }}>
+                          Your bet: {fixtureBet.predictedWinner} {fixtureBet.predictedScore1}-{fixtureBet.predictedScore2}
+                        </div>
+                      ) : betIsAvailable ? (
+                        <button
+                          className="btn btn-primary"
+                          onClick={() => {
+                            setShowBetForm(String(fixture.id))
+                            setPredictedWinner('')
+                            setPredictedScore1('')
+                            setPredictedScore2('')
+                            setBetAmount(10)
+                          }}
+                        >
+                          Bet on Game
+                        </button>
+                      ) : null}
                     </div>
                   ) : null}
+                  {showBetForm === String(fixture.id) && (
+                    <div style={{
+                      marginTop: '15px',
+                      padding: '15px',
+                      background: 'var(--bg-primary)',
+                      borderRadius: '8px',
+                      border: '1px solid var(--border)'
+                    }}>
+                      <h4 style={{ marginBottom: '10px', color: 'var(--accent-cyan)' }}>Place Bet</h4>
+                      <div className="form-group">
+                        <label>Bet Amount (Tokens)</label>
+                        <select value={betAmount} onChange={(e) => setBetAmount(parseInt(e.target.value))}>
+                          <option value="10">10 tokens</option>
+                          <option value="20">20 tokens</option>
+                          <option value="50">50 tokens</option>
+                          <option value="100">100 tokens</option>
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label>Predict Winner</label>
+                        <select value={predictedWinner} onChange={(e) => setPredictedWinner(e.target.value)}>
+                          <option value="">Select winner</option>
+                          <option value={player1Id}>{player1Name}</option>
+                          <option value={player2Id}>{player2Name}</option>
+                        </select>
+                      </div>
+                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                        <div className="form-group" style={{ flex: '1 1 140px' }}>
+                          <label>{player1Name} Score</label>
+                          <input
+                            type="number"
+                            value={predictedScore1}
+                            onChange={(e) => setPredictedScore1(e.target.value)}
+                            min="0"
+                            max="5"
+                          />
+                        </div>
+                        <div className="form-group" style={{ flex: '1 1 140px' }}>
+                          <label>{player2Name} Score</label>
+                          <input
+                            type="number"
+                            value={predictedScore2}
+                            onChange={(e) => setPredictedScore2(e.target.value)}
+                            min="0"
+                            max="5"
+                          />
+                        </div>
+                      </div>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
+                        Correctly predict the winner and exact score to enter the promotion draw.
+                      </p>
+                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                        <button className="btn btn-primary" onClick={() => handlePlaceFixtureBet(fixture)}>
+                          Place Bet
+                        </button>
+                        <button className="btn btn-secondary" onClick={resetBetForm}>
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )
             })

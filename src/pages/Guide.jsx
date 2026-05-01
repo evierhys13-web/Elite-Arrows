@@ -164,7 +164,7 @@ export default function Guide() {
                   <li>✗ Cannot create fixtures</li>
                   <li>✗ Cannot submit results</li>
                   <li>✗ Cannot join cups/tournaments</li>
-                  <li>✗ Cannot access rewards shop</li>
+                  <li>✗ Cannot access rewards and token betting</li>
                 </ul>
               </div>
 
@@ -214,6 +214,7 @@ export default function Guide() {
                   <li><strong>My Fixtures</strong> - All your fixtures in one place</li>
                   <li><strong>Upcoming</strong> - Accepted fixtures ready to play</li>
                   <li><strong>All Fixtures</strong> - Confirmed fixtures across all players, including fixtures with a submitted result</li>
+                  <li><strong>Bet on Game</strong> - From All Fixtures, bet tokens on confirmed League games in your division that you are not playing</li>
                   <li><strong>Pending</strong> - Incoming challenges awaiting your response</li>
                   <li><strong>Sent</strong> - Challenges you've sent to others</li>
                   <li><strong>Cup Fixtures</strong> - Your cup tournament matches</li>
@@ -449,8 +450,8 @@ export default function Guide() {
               <div style={{ marginTop: '20px' }}>
                 <h4 style={{ color: 'var(--accent-cyan)' }}>What are Tokens?</h4>
                 <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                  Tokens are earned by winning games and can be spent in the Rewards shop 
-                  on various perks and prizes.
+                  Tokens are earned by winning games and can be used for League game bets
+                  from Fixtures &gt; All Fixtures.
                 </p>
               </div>
 
@@ -465,16 +466,16 @@ export default function Guide() {
               </div>
 
               <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Rewards Shop</h4>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>Betting and Draws</h4>
                 <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                  Visit the <Link to="/rewards" style={{ color: 'var(--accent-cyan)' }}>Rewards</Link> page 
-                  to spend your tokens on:
+                  Visit <Link to="/fixtures" style={{ color: 'var(--accent-cyan)' }}>Fixtures</Link> &gt; <strong>All Fixtures</strong>
+                  to bet tokens on eligible confirmed League games. The <Link to="/rewards" style={{ color: 'var(--accent-cyan)' }}>Rewards</Link> page
+                  shows your token balance and the promotion draw wheel.
                 </p>
                 <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
-                  <li>Custom profile badges</li>
-                  <li>Profile customizations</li>
-                  <li>Special achievements</li>
-                  <li>Premium features (coming soon)</li>
+                  <li><strong>Eligible bets</strong> - Confirmed League fixtures in your own division where you are not one of the players</li>
+                  <li><strong>Correct predictions</strong> - Predict the winner and exact score to enter the promotion draw</li>
+                  <li><strong>Rewards page</strong> - View Elite Tokens and the promotion wheel without the betting list clutter</li>
                 </ul>
               </div>
             </div>
