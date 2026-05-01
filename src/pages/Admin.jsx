@@ -2178,7 +2178,7 @@ export default function Admin() {
             </div>
             <button 
               className="btn btn-primary"
-              onClick={() => {
+              onClick={async () => {
                 const playerId = document.getElementById('tokenPlayerSelect').value
                 const amount = parseInt(document.getElementById('tokenAmount').value) || 0
                 const action = document.getElementById('tokenAction').value
@@ -2192,8 +2192,11 @@ export default function Admin() {
                   if (action === 'remove' && (users[index].eliteTokens || 0) < amount) {
                     return alert('Player does not have enough tokens')
                   }
-                  users[index].eliteTokens = (users[index].eliteTokens || 0) + (action === 'add' ? amount : -amount)
+                  const nextTokenBalance = (users[index].eliteTokens || 0) + (action === 'add' ? amount : -amount)
+                  users[index].eliteTokens = nextTokenBalance
                   localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+                  await updateOtherUser(playerId, { eliteTokens: nextTokenBalance })
+                  triggerDataRefresh('users')
                   alert(`${action === 'add' ? 'Added' : 'Removed'} ${amount} tokens ${action === 'add' ? 'to' : 'from'} ${users[index].username}`)
                   document.getElementById('tokenPlayerSelect').value = ''
                   document.getElementById('tokenAmount').value = 0
@@ -2202,6 +2205,53 @@ export default function Admin() {
             >
               Update Tokens
             </button>
+            <div style={{ marginTop: '20px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+              <h4 style={{ marginBottom: '10px', color: 'var(--accent-cyan)' }}>Add Tokens to All Players</h4>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '12px' }}>
+                Adds the same amount to every player account.
+              </p>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                <div className="form-group" style={{ flex: '1 1 180px', marginBottom: 0 }}>
+                  <label>Amount per player</label>
+                  <input
+                    type="number"
+                    id="bulkTokenAmount"
+                    defaultValue={0}
+                    min="0"
+                  />
+                </div>
+                <button
+                  className="btn btn-primary"
+                  onClick={async () => {
+                    const amount = parseInt(document.getElementById('bulkTokenAmount').value) || 0
+                    if (amount <= 0) return alert('Please enter an amount')
+
+                    const users = getAllUsers()
+                    if (users.length === 0) return alert('No players found')
+                    if (!confirm(`Add ${amount} tokens to all ${users.length} players?`)) return
+
+                    const updatedUsers = users.map(player => ({
+                      ...player,
+                      eliteTokens: (player.eliteTokens || 0) + amount
+                    }))
+
+                    localStorage.setItem('eliteArrowsUsers', JSON.stringify(updatedUsers))
+                    try {
+                      await Promise.all(updatedUsers.map(player =>
+                        updateOtherUser(player.id, { eliteTokens: player.eliteTokens })
+                      ))
+                      triggerDataRefresh('users')
+                      document.getElementById('bulkTokenAmount').value = 0
+                      alert(`Added ${amount} tokens to ${updatedUsers.length} players`)
+                    } catch (error) {
+                      alert('Some token updates may not have saved: ' + error.message)
+                    }
+                  }}
+                >
+                  Add to All
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className="card">
