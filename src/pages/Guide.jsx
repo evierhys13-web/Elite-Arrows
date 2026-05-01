@@ -15,6 +15,7 @@ export default function Guide() {
     { id: 'leaderboards', label: 'Leaderboards', icon: '📈' },
     { id: 'chat', label: 'Chat', icon: '💬' },
     { id: 'tokens', label: 'Tokens & Rewards', icon: '💰' },
+    { id: 'admin', label: 'Admin Tools', icon: 'Admin' },
     { id: 'profile', label: 'Profile & Stats', icon: '📋' },
     { id: 'search', label: 'Finding Players', icon: '🔍' },
     { id: 'divisions', label: 'Divisions', icon: '🏅' }
@@ -191,7 +192,7 @@ export default function Guide() {
                 <h4 style={{ color: 'var(--accent-cyan)' }}>What are Fixtures?</h4>
                 <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
                   Fixtures are scheduled matches between you and other players. You can create 
-                  Friendly or League fixtures and invite opponents to play.
+                  Friendly or League fixture proposals and invite opponents to play.
                 </p>
               </div>
 
@@ -203,7 +204,7 @@ export default function Guide() {
                   <li>Select game type (Friendly or League)</li>
                   <li>Use the <strong>search bar</strong> to find and select your opponent</li>
                   <li>Pick a date and time</li>
-                  <li>Click <strong>Send Challenge</strong></li>
+                  <li>Click <strong>Send Challenge</strong> to send the proposal</li>
                 </ol>
               </div>
 
@@ -212,6 +213,7 @@ export default function Guide() {
                 <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
                   <li><strong>My Fixtures</strong> - All your fixtures in one place</li>
                   <li><strong>Upcoming</strong> - Accepted fixtures ready to play</li>
+                  <li><strong>All Fixtures</strong> - Confirmed fixtures across all players, including fixtures with a submitted result</li>
                   <li><strong>Pending</strong> - Incoming challenges awaiting your response</li>
                   <li><strong>Sent</strong> - Challenges you've sent to others</li>
                   <li><strong>Cup Fixtures</strong> - Your cup tournament matches</li>
@@ -223,8 +225,18 @@ export default function Guide() {
                 <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
                   <li><strong>Accept</strong> - Confirm you can play at the proposed time</li>
                   <li><strong>Counter</strong> - Suggest an alternative date/time</li>
-                  <li><strong>Decline</strong> - Reject the challenge (provide a reason)</li>
+                  <li><strong>Decline</strong> - Reject the challenge</li>
+                  <li><strong>Cancel Proposal</strong> - Withdraw a proposal you sent before it is accepted</li>
                 </ul>
+              </div>
+
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>What Other Players Can See</h4>
+                <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
+                  Subscribers can view confirmed fixtures in <strong>All Fixtures</strong>. Other players can see the match,
+                  date, time, division or cup, and whether a result has been sent, but they cannot edit or submit results
+                  for fixtures they are not part of.
+                </p>
               </div>
 
               <div style={{ marginTop: '20px', padding: '15px', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '8px', borderLeft: '4px solid var(--success)' }}>
@@ -258,16 +270,25 @@ export default function Guide() {
                   <li>Add optional stats (180s, checkout %, high score)</li>
                   <li>For League games: upload proof screenshot</li>
                   <li>Click <strong>Submit for Approval</strong></li>
+                  <li>The submit button turns green once the result is saved, then the form resets for the next result</li>
                 </ol>
               </div>
 
               <div style={{ marginTop: '20px' }}>
                 <h4 style={{ color: 'var(--accent-cyan)' }}>Result Status</h4>
                 <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
-                  <li><strong>Pending</strong> - Awaiting admin approval</li>
+                  <li><strong>Pending</strong> - Awaiting admin approval; the linked fixture shows as Result Sent</li>
                   <li><strong>Approved</strong> - Added to records and stats</li>
-                  <li><strong>Rejected</strong> - Admin denied (you'll be notified)</li>
+                  <li><strong>Rejected</strong> - Admin denied the result; the fixture returns to confirmed so a corrected result can be submitted</li>
                 </ul>
+              </div>
+
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>If a Result is Wrong</h4>
+                <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
+                  Contact an admin. Admins can reject an incorrect pending result, reset an approved or rejected result,
+                  or remove a linked League/Friendly fixture and result from <strong>Fixtures &gt; All Fixtures</strong>.
+                </p>
               </div>
             </div>
           )}
@@ -313,6 +334,14 @@ export default function Guide() {
                   <li>Once accepted, <strong>Submit Result</strong> after playing</li>
                   <li>Winner advances to the next round</li>
                 </ol>
+              </div>
+
+              <div style={{ marginTop: '20px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>Cup Visibility</h4>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                  Confirmed cup fixtures also appear in <strong>All Fixtures</strong>, so other players can follow the schedule.
+                  Cup bracket management stays with admins and cup admins.
+                </p>
               </div>
             </div>
           )}
@@ -428,10 +457,10 @@ export default function Guide() {
               <div style={{ marginTop: '20px' }}>
                 <h4 style={{ color: 'var(--accent-cyan)' }}>Earning Tokens</h4>
                 <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
-                  <li><strong>+50 tokens</strong> - Win any game</li>
-                  <li><strong>+100 tokens</strong> - Win a League match</li>
-                  <li><strong>+200 tokens</strong> - Win a Cup tournament</li>
-                  <li><strong>Bonus tokens</strong> - Achievements and milestones</li>
+                  <li><strong>Win rewards</strong> - Winning submitted games can award tokens</li>
+                  <li><strong>Admin rewards</strong> - Admins can add or remove tokens for a player</li>
+                  <li><strong>Bulk rewards</strong> - Admins can add the same token amount to all players for events or bonuses</li>
+                  <li><strong>Bonus tokens</strong> - Special promotions, achievements, and milestones</li>
                 </ul>
               </div>
 
@@ -446,6 +475,50 @@ export default function Guide() {
                   <li>Profile customizations</li>
                   <li>Special achievements</li>
                   <li>Premium features (coming soon)</li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'admin' && (
+            <div className="card">
+              <h2 className="card-title">Admin Tools</h2>
+
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>Result Management</h4>
+                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
+                  <li><strong>Pending Results</strong> - Review proof, then approve or reject submitted results</li>
+                  <li><strong>Approved Results</strong> - Filter by all, pending, approved, or rejected</li>
+                  <li><strong>Delete/Reset</strong> - Reset a result status if it should stop counting or be corrected</li>
+                  <li><strong>Fixture cleanup</strong> - Use <strong>Fixtures &gt; All Fixtures &gt; Remove Fixture/Result</strong> to remove a stuck League/Friendly fixture and its linked submitted result</li>
+                </ul>
+              </div>
+
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>Fixture Admin Notes</h4>
+                <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
+                  When a result is approved, the fixture leaves the public confirmed list. When a result is rejected or reset,
+                  the fixture goes back to confirmed so players can submit the corrected result.
+                </p>
+              </div>
+
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>Tokens</h4>
+                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
+                  <li><strong>Single player</strong> - Add or remove tokens from one player in Admin &gt; Elite Tokens</li>
+                  <li><strong>All players</strong> - Add the same amount to everyone with Add Tokens to All Players</li>
+                  <li><strong>Balances sync</strong> - Token changes save to Firestore so users see them after refresh</li>
+                </ul>
+              </div>
+
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>Other Admin Areas</h4>
+                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
+                  <li><strong>Subscriptions</strong> - Approve payments and remove subscriptions</li>
+                  <li><strong>Players</strong> - Manage divisions and member status</li>
+                  <li><strong>Cups</strong> - Create cups, manage brackets, and clean up cup fixtures</li>
+                  <li><strong>News</strong> - Post and pin announcements</li>
+                  <li><strong>Seasons</strong> - Create seasons, archive seasons, and reset league points</li>
                 </ul>
               </div>
             </div>
