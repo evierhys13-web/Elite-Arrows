@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import { db, doc, setDoc, deleteDoc } from '../firebase'
+import { db, doc, setDoc, deleteDoc, getDocs, collection } from '../firebase'
 import UserSearchSelect from '../components/UserSearchSelect'
 
 export default function Fixtures() {
@@ -692,6 +692,55 @@ export default function Fixtures() {
     }
   }
 
+  const removeFixtureAndSubmittedResult = async (fixture) => {
+    if (!isAdmin || fixture.cupId) return
+
+    const { player1Id, player2Id } = getFixturePlayerIds(fixture)
+    const fixtureName = `${getPublicFixtureName(fixture, player1Id, 'player1Name')} vs ${getPublicFixtureName(fixture, player2Id, 'player2Name')}`
+    if (!confirm(`Remove ${fixtureName}? This deletes the fixture and any submitted result linked to it.`)) return
+
+    const fixtureId = String(fixture.id)
+    const resultMatchesFixture = (result) => String(result.fixtureId || '') === fixtureId
+    const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+    const matchingResults = results.filter(resultMatchesFixture)
+    const remainingResults = results.filter(result => !resultMatchesFixture(result))
+    const remainingFixtures = getFixtures().filter(item => String(item.id) !== fixtureId)
+
+    localStorage.setItem('eliteArrowsResults', JSON.stringify(remainingResults))
+    saveFixtures(remainingFixtures)
+
+    try {
+      await deleteDoc(doc(db, 'fixtures', fixtureId))
+
+      const resultDocIds = new Set(
+        matchingResults
+          .map(result => result.firestoreId || result.id)
+          .filter(Boolean)
+          .map(String)
+      )
+      const snapshot = await getDocs(collection(db, 'results'))
+      snapshot.docs.forEach(docSnap => {
+        const data = docSnap.data()
+        if (String(data.fixtureId || '') === fixtureId) {
+          resultDocIds.add(docSnap.id)
+        }
+      })
+
+      await Promise.all(Array.from(resultDocIds).map(resultDocId =>
+        deleteDoc(doc(db, 'results', resultDocId)).catch(error => {
+          console.log('Error deleting result from Firebase:', error)
+        })
+      ))
+
+      triggerDataRefresh('results')
+      triggerDataRefresh('fixtures')
+      alert('Fixture and linked result removed')
+    } catch (error) {
+      console.log('Error removing fixture/result:', error)
+      alert('Removed locally, but there was a problem syncing the deletion: ' + error.message)
+    }
+  }
+
   if (!isSubscribed && !isAdmin) {
     return (
       <div className="page">
@@ -1217,15 +1266,26 @@ export default function Fixtures() {
                       <div style={{ fontWeight: '600' }}>{fixtureTime || 'TBC'}</div>
                     </div>
                   </div>
-                  {isMyFixture && fixture.status === 'accepted' && (
-                    <button
-                      className="btn btn-primary"
-                      style={{ marginTop: '12px' }}
-                      onClick={() => navigate(`/submit-result?fixtureId=${fixture.id}`)}
-                    >
-                      Submit Result
-                    </button>
-                  )}
+                  {(isMyFixture && fixture.status === 'accepted') || (isAdmin && !fixture.cupId) ? (
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '12px' }}>
+                      {isMyFixture && fixture.status === 'accepted' && (
+                        <button
+                          className="btn btn-primary"
+                          onClick={() => navigate(`/submit-result?fixtureId=${fixture.id}`)}
+                        >
+                          Submit Result
+                        </button>
+                      )}
+                      {isAdmin && !fixture.cupId && (
+                        <button
+                          className="btn btn-danger"
+                          onClick={() => removeFixtureAndSubmittedResult(fixture)}
+                        >
+                          Remove Fixture/Result
+                        </button>
+                      )}
+                    </div>
+                  ) : null}
                 </div>
               )
             })

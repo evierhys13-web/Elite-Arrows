@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { db, setDoc, getDoc, getDocs, deleteDoc, doc, collection, query, where } from '../firebase'
 
 export default function Results() {
-  const { user, getResults, triggerDataRefresh, dataRefreshTrigger, adminData, updateAdminData, notifyUser, notifyAllSubscribers } = useAuth()
+  const { user, getResults, getFixtures, updateFixtures, triggerDataRefresh, dataRefreshTrigger, adminData, updateAdminData, notifyUser, notifyAllSubscribers } = useAuth()
   const [activeTab, setActiveTab] = useState('approved')
   const [refreshKey, setRefreshKey] = useState(0)
   const [successMessage, setSuccessMessage] = useState('')
@@ -95,6 +95,37 @@ export default function Results() {
     localStorage.setItem('eliteArrowsResultStatusOverrides', JSON.stringify(nextOverrides))
     await updateAdminData({ resultStatusOverrides: nextOverrides })
   }
+
+  const syncFixtureAfterResultReview = async (result, reviewStatus) => {
+    const fixtures = getFixtures()
+    const fixtureIndex = fixtures.findIndex(fixture => (
+      String(fixture.id) === String(result.fixtureId || '') ||
+      (
+        result.cupId &&
+        result.matchId &&
+        String(fixture.cupId || '') === String(result.cupId) &&
+        String(fixture.matchId || '') === String(result.matchId)
+      )
+    ))
+    if (fixtureIndex === -1) return
+
+    const isApproved = reviewStatus === 'approved'
+    const updatedFixture = {
+      ...fixtures[fixtureIndex],
+      status: isApproved ? 'approved' : 'accepted',
+      updatedAt: new Date().toISOString(),
+      resultId: isApproved ? result.id : null,
+      submittedResultId: isApproved ? result.id : null,
+      score1: isApproved ? Number(result.score1) : null,
+      score2: isApproved ? Number(result.score2) : null
+    }
+
+    const updatedFixtures = [...fixtures]
+    updatedFixtures[fixtureIndex] = updatedFixture
+    updateFixtures(updatedFixtures)
+    await setDoc(doc(db, 'fixtures', String(updatedFixture.id)), updatedFixture, { merge: true })
+    triggerDataRefresh('fixtures')
+  }
   
   const handleApprove = async (resultId) => {
     if (!confirm('Approve this result?')) return
@@ -115,6 +146,7 @@ export default function Results() {
     await Promise.all(resultDocIds.map(resultDocId =>
       setDoc(doc(db, 'results', resultDocId), { ...updatedResult, firestoreId: resultDocId }, { merge: true })
     ))
+    await syncFixtureAfterResultReview(updatedResult, 'approved')
     await persistResultStatusOverride(updatedResult, 'approved')
     
     triggerDataRefresh('results')
@@ -143,6 +175,7 @@ export default function Results() {
     await Promise.all(resultDocIds.map(resultDocId =>
       setDoc(doc(db, 'results', resultDocId), { ...updatedResult, firestoreId: resultDocId }, { merge: true })
     ))
+    await syncFixtureAfterResultReview(updatedResult, 'rejected')
     await persistResultStatusOverride(updatedResult, 'rejected')
     
     triggerDataRefresh('results')

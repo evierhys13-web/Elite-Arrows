@@ -239,6 +239,38 @@ export default function Admin() {
     return Array.from(docIds.size ? docIds : fallbackIds)
   }
 
+  const syncFixtureAfterResultReview = async (result, reviewStatus) => {
+    const fixtures = getFixtures()
+    const fixtureIndex = fixtures.findIndex(fixture => (
+      String(fixture.id) === String(result.fixtureId || '') ||
+      (
+        result.cupId &&
+        result.matchId &&
+        String(fixture.cupId || '') === String(result.cupId) &&
+        String(fixture.matchId || '') === String(result.matchId)
+      )
+    ))
+    if (fixtureIndex === -1) return
+
+    const isApproved = reviewStatus === 'approved'
+    const now = new Date().toISOString()
+    const updatedFixture = {
+      ...fixtures[fixtureIndex],
+      status: isApproved ? 'approved' : 'accepted',
+      updatedAt: now,
+      resultId: isApproved ? result.id : null,
+      submittedResultId: isApproved ? result.id : null,
+      score1: isApproved ? Number(result.score1) : null,
+      score2: isApproved ? Number(result.score2) : null
+    }
+
+    const updatedFixtures = [...fixtures]
+    updatedFixtures[fixtureIndex] = updatedFixture
+    updateFixtures(updatedFixtures)
+    await setDoc(doc(db, 'fixtures', String(updatedFixture.id)), updatedFixture, { merge: true })
+    triggerDataRefresh('fixtures')
+  }
+
   const syncCupApproval = async (result) => {
     if (result.gameType !== 'Cup' || !result.cupId || !result.matchId) return
 
@@ -447,6 +479,7 @@ export default function Admin() {
       await Promise.all(resultDocIds.map(resultDocId =>
         setDoc(doc(db, 'results', resultDocId), { ...updatedResult, firestoreId: resultDocId }, { merge: true })
       ))
+      await syncFixtureAfterResultReview(updatedResult, 'approved')
       await syncCupApproval(updatedResult)
       await persistResultStatusOverride(updatedResult, 'approved')
       console.log('Successfully approved in Firebase!')
@@ -485,6 +518,7 @@ export default function Admin() {
       await Promise.all(resultDocIds.map(resultDocId =>
         setDoc(doc(db, 'results', resultDocId), { ...updatedResult, firestoreId: resultDocId }, { merge: true })
       ))
+      await syncFixtureAfterResultReview(updatedResult, 'rejected')
       await persistResultStatusOverride(updatedResult, 'rejected')
       console.log('Successfully updated Firebase!')
     } catch (e) {
@@ -518,6 +552,7 @@ export default function Admin() {
       await Promise.all(resultDocIds.map(resultDocId =>
         setDoc(doc(db, 'results', resultDocId), { ...updatedResult, firestoreId: resultDocId }, { merge: true })
       ))
+      await syncFixtureAfterResultReview(updatedResult, null)
       await persistResultStatusOverride(updatedResult, null)
       triggerDataRefresh('results')
       showToast('Result status reset')
