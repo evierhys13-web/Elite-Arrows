@@ -30,6 +30,7 @@ export default function Admin() {
   const [pendingResults, setPendingResults] = useState([])
   const [resultFilter, setResultFilter] = useState('pending')
   const [approvedResults, setApprovedResults] = useState([])
+  const [isApprovingAllResults, setIsApprovingAllResults] = useState(false)
   const [toast, setToast] = useState(null)
   const [successMessage, setSuccessMessage] = useState('')
   const [activeTab, setActiveTab] = useState('results')
@@ -167,7 +168,7 @@ export default function Admin() {
     )
   }
 
-  const persistResultStatusOverride = async (result, status) => {
+  const getMergedResultStatusOverrides = () => {
     let storedOverrides = {}
     try {
       storedOverrides = JSON.parse(localStorage.getItem('eliteArrowsResultStatusOverrides') || '{}')
@@ -175,24 +176,42 @@ export default function Admin() {
       storedOverrides = {}
     }
 
-    const nextOverrides = {
+    return {
       ...(adminData.resultStatusOverrides || {}),
       ...storedOverrides
     }
-    const override = {
-      status,
-      resultId: result.id ? String(result.id) : String(result.firestoreId || ''),
-      firestoreId: result.firestoreId || null,
-      signature: getResultSignature(result),
-      normalizedSignature: getNormalizedResultSignature(result),
-      updatedAt: new Date().toISOString()
-    }
+  }
 
-    getResultOverrideKeys(result).forEach(key => {
-      nextOverrides[key] = override
+  const buildResultStatusOverrides = (resultsToUpdate, status) => {
+    const nextOverrides = getMergedResultStatusOverrides()
+    const updatedAt = new Date().toISOString()
+
+    resultsToUpdate.forEach(result => {
+      const override = {
+        status,
+        resultId: result.id ? String(result.id) : String(result.firestoreId || ''),
+        firestoreId: result.firestoreId || null,
+        signature: getResultSignature(result),
+        normalizedSignature: getNormalizedResultSignature(result),
+        updatedAt
+      }
+
+      getResultOverrideKeys(result).forEach(key => {
+        nextOverrides[key] = override
+      })
     })
+
+    return nextOverrides
+  }
+
+  const persistResultStatusOverrides = async (resultsToUpdate, status) => {
+    const nextOverrides = buildResultStatusOverrides(resultsToUpdate, status)
     localStorage.setItem('eliteArrowsResultStatusOverrides', JSON.stringify(nextOverrides))
     await updateAdminData({ resultStatusOverrides: nextOverrides })
+  }
+
+  const persistResultStatusOverride = async (result, status) => {
+    await persistResultStatusOverrides([result], status)
   }
 
   const getResultDocIds = async (result) => {
@@ -533,6 +552,8 @@ export default function Admin() {
   }
 
   const approveAllPendingResults = async () => {
+    if (isApprovingAllResults) return
+
     const pendingToApprove = pendingResults.filter(result => !(
       result.gameType === 'Cup' &&
       Number(result.score1) === Number(result.score2)
@@ -546,6 +567,7 @@ export default function Admin() {
 
     if (!confirm(`Approve ${pendingToApprove.length} pending result${pendingToApprove.length === 1 ? '' : 's'} now?`)) return
 
+    setIsApprovingAllResults(true)
     const reviewedAt = new Date().toISOString()
     const approveIds = new Set(pendingToApprove.map(result => String(result.id)))
     const approvedById = new Map()
@@ -570,30 +592,39 @@ export default function Admin() {
       }
     ))
 
-    updateResults(results)
-    setPendingResults(prev => prev.filter(result => !approveIds.has(String(result.id))))
-    setApprovedResults(prev => {
-      const withoutApproved = prev.filter(result => !approveIds.has(String(result.id)))
-      return [...approvedResultsNow, ...withoutApproved]
-    })
-
     try {
-      for (const updatedResult of approvedResultsNow) {
-        const resultDocIds = await getResultDocIds(updatedResult)
-        await Promise.all(resultDocIds.map(resultDocId =>
+      const docIdsByResult = await Promise.all(approvedResultsNow.map(async updatedResult => ({
+        updatedResult,
+        resultDocIds: await getResultDocIds(updatedResult)
+      })))
+
+      await Promise.all(docIdsByResult.flatMap(({ updatedResult, resultDocIds }) => (
+        resultDocIds.map(resultDocId =>
           setDoc(doc(db, 'results', resultDocId), { ...updatedResult, firestoreId: resultDocId }, { merge: true })
-        ))
+        )
+      )))
+
+      for (const updatedResult of approvedResultsNow) {
         await syncFixtureAfterResultReview(updatedResult, 'approved')
         await syncCupApproval(updatedResult)
-        await persistResultStatusOverride(updatedResult, 'approved')
       }
 
+      await persistResultStatusOverrides(approvedResultsNow, 'approved')
+
+      updateResults(results)
+      setPendingResults(prev => prev.filter(result => !approveIds.has(String(result.id))))
+      setApprovedResults(prev => {
+        const withoutApproved = prev.filter(result => !approveIds.has(String(result.id)))
+        return [...approvedResultsNow, ...withoutApproved]
+      })
       triggerDataRefresh('results')
       triggerDataRefresh('fixtures')
       showSuccessMessage(`Approved ${approvedResultsNow.length} pending result${approvedResultsNow.length === 1 ? '' : 's'}${skippedCount ? ` (${skippedCount} tied cup result skipped)` : ''}`)
     } catch (e) {
       alert('ERROR: ' + (e.code ? `${e.code} - ` : '') + e.message)
       console.error('FATAL Firebase error:', e.code, e.message)
+    } finally {
+      setIsApprovingAllResults(false)
     }
   }
 
@@ -1021,8 +1052,12 @@ export default function Admin() {
               <h3 className="card-title" style={{ margin: 0 }}>Approved Results</h3>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {pendingResults.length > 0 && (
-                  <button className="btn btn-success btn-sm" onClick={approveAllPendingResults}>
-                    Approve All Pending
+                  <button
+                    className="btn btn-success btn-sm"
+                    onClick={approveAllPendingResults}
+                    disabled={isApprovingAllResults}
+                  >
+                    {isApprovingAllResults ? 'Saving Approved Results...' : 'Approve All Pending'}
                   </button>
                 )}
                 {['pending', 'approved', 'rejected'].map(filter => (
