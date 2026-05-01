@@ -992,49 +992,15 @@ export default function Admin() {
 
       {activeTab === 'results' && (
         <div>
-          <div className="card" style={{ marginBottom: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '15px' }}>
-              <h3 className="card-title" style={{ margin: 0 }}>Pending Results</h3>
-              {pendingResults.length > 0 && (
-                <button className="btn btn-success" onClick={approveAllPendingResults}>
-                  Approve All Pending
-                </button>
-              )}
-            </div>
-            {pendingResults.length === 0 ? (
-              <div className="empty-state">
-                <p>No pending results to approve</p>
-              </div>
-            ) : (
-              pendingResults.map(result => (
-                <div key={result.id} className="result-item" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
-                  <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                    <div>
-                      <strong>{result.player1}</strong> vs <strong>{result.player2}</strong>
-                    </div>
-                    <span style={{ color: 'var(--text-muted)' }}>{result.date}</span>
-                  </div>
-                  <div style={{ marginBottom: '12px' }}>
-                    Score: {result.score1} - {result.score2} | Division: {result.division}
-                  </div>
-                  {renderResultProof(result, true)}
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button className="btn btn-primary" onClick={() => setShowConfirmModal({ type: 'approve', result })}>
-                      Approve
-                    </button>
-                    <button className="btn btn-danger" onClick={() => setShowConfirmModal({ type: 'reject', result })}>
-                      Reject
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
           <div className="card">
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '15px' }}>
-              <h3 className="card-title" style={{ margin: 0 }}>Approved Results</h3>
+              <h3 className="card-title" style={{ margin: 0 }}>Results</h3>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {pendingResults.length > 0 && (
+                  <button className="btn btn-success btn-sm" onClick={approveAllPendingResults}>
+                    Approve All Pending
+                  </button>
+                )}
                 {['all', 'pending', 'approved', 'rejected'].map(filter => (
                   <button
                     key={filter}
