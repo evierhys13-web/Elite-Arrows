@@ -167,9 +167,13 @@ export default function Admin() {
   }
 
   const getResultSignature = (result) => {
-    const playerKey = result.player1Id && result.player2Id
+    const hasPlayerIds = result.player1Id && result.player2Id
+    const hasPlayerNames = result.player1 && result.player2
+    if (!hasPlayerIds && !hasPlayerNames) return ''
+
+    const playerKey = hasPlayerIds
       ? `${result.player1Id}|${result.player2Id}`
-      : `${result.player1 || ''}|${result.player2 || ''}`
+      : `${result.player1}|${result.player2}`
     return `${playerKey}|${result.score1 ?? ''}|${result.score2 ?? ''}|${result.date || ''}|${result.gameType || ''}`
   }
 
@@ -179,32 +183,45 @@ export default function Admin() {
     }
     const override = {
       status,
-      resultId: String(result.id),
+      resultId: result.id ? String(result.id) : String(result.firestoreId || ''),
       firestoreId: result.firestoreId || null,
       signature: getResultSignature(result),
       updatedAt: new Date().toISOString()
     }
 
-    nextOverrides[String(result.id)] = override
+    if (result.id) nextOverrides[String(result.id)] = override
     if (result.firestoreId) nextOverrides[result.firestoreId] = override
-    nextOverrides[getResultSignature(result)] = override
+    if (result.fixtureId) nextOverrides[`fixture:${result.fixtureId}`] = override
+    if (result.cupId && result.matchId) nextOverrides[`cup:${result.cupId}:${result.matchId}`] = override
+    const signature = getResultSignature(result)
+    if (signature) nextOverrides[signature] = override
     localStorage.setItem('eliteArrowsResultStatusOverrides', JSON.stringify(nextOverrides))
     await updateAdminData({ resultStatusOverrides: nextOverrides })
   }
 
   const getResultDocIds = async (result) => {
-    const logicalId = String(result.id)
+    const logicalId = result.id ? String(result.id) : null
     const preferredId = result.firestoreId ? String(result.firestoreId) : logicalId
-    const docIds = new Set([logicalId, preferredId])
+    const fallbackIds = new Set([logicalId, preferredId].filter(Boolean))
+    const docIds = new Set()
 
     const snapshot = await getDocs(collection(db, 'results'))
     snapshot.docs.forEach(docSnap => {
       const data = docSnap.data()
-      const sameLogicalId = String(data.id || docSnap.id) === logicalId
+      const dataIds = [data.id, data.firestoreId, docSnap.id].filter(Boolean).map(String)
+      const sameLogicalId = [logicalId, preferredId].filter(Boolean).some(id => dataIds.includes(id))
+      const sameFixture = result.fixtureId && String(data.fixtureId || '') === String(result.fixtureId)
+      const sameCupMatch = result.cupId && result.matchId &&
+        String(data.cupId || '') === String(result.cupId) &&
+        String(data.matchId || '') === String(result.matchId)
       const samePlayersById =
+        result.player1Id &&
+        result.player2Id &&
         data.player1Id === result.player1Id &&
         data.player2Id === result.player2Id
       const samePlayersByName =
+        result.player1 &&
+        result.player2 &&
         data.player1 === result.player1 &&
         data.player2 === result.player2
       const sameGame =
@@ -214,12 +231,12 @@ export default function Admin() {
         data.date === result.date &&
         data.gameType === result.gameType
 
-      if (sameLogicalId || sameGame) {
+      if (sameLogicalId || sameFixture || sameCupMatch || sameGame) {
         docIds.add(docSnap.id)
       }
     })
 
-    return Array.from(docIds)
+    return Array.from(docIds.size ? docIds : fallbackIds)
   }
 
   const syncCupApproval = async (result) => {
@@ -414,7 +431,7 @@ export default function Admin() {
       return
     }
 
-    const updatedResult = { ...results[resultsIndex], status: 'approved' }
+    const updatedResult = { ...results[resultsIndex], status: 'approved', updatedAt: new Date().toISOString() }
     const resultDocIds = await getResultDocIds(updatedResult)
     results[resultsIndex] = updatedResult
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
@@ -428,7 +445,7 @@ export default function Admin() {
     
     try {
       await Promise.all(resultDocIds.map(resultDocId =>
-        setDoc(doc(db, 'results', resultDocId), { status: 'approved', firestoreId: resultDocId }, { merge: true })
+        setDoc(doc(db, 'results', resultDocId), { ...updatedResult, firestoreId: resultDocId }, { merge: true })
       ))
       await syncCupApproval(updatedResult)
       await persistResultStatusOverride(updatedResult, 'approved')
@@ -453,7 +470,7 @@ export default function Admin() {
       return
     }
     
-    const updatedResult = { ...results[resultsIndex], status: 'rejected' }
+    const updatedResult = { ...results[resultsIndex], status: 'rejected', updatedAt: new Date().toISOString() }
     const resultDocIds = await getResultDocIds(updatedResult)
     results[resultsIndex] = updatedResult
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
@@ -466,7 +483,7 @@ export default function Admin() {
     
     try {
       await Promise.all(resultDocIds.map(resultDocId =>
-        setDoc(doc(db, 'results', resultDocId), { status: 'rejected', firestoreId: resultDocId }, { merge: true })
+        setDoc(doc(db, 'results', resultDocId), { ...updatedResult, firestoreId: resultDocId }, { merge: true })
       ))
       await persistResultStatusOverride(updatedResult, 'rejected')
       console.log('Successfully updated Firebase!')
@@ -489,7 +506,7 @@ export default function Admin() {
       return
     }
     
-    const updatedResult = { ...results[resultsIndex], status: null }
+    const updatedResult = { ...results[resultsIndex], status: null, updatedAt: new Date().toISOString() }
     const resultDocIds = await getResultDocIds(updatedResult)
     results[resultsIndex] = updatedResult
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
@@ -499,7 +516,7 @@ export default function Admin() {
     
     try {
       await Promise.all(resultDocIds.map(resultDocId =>
-        setDoc(doc(db, 'results', resultDocId), { status: null, firestoreId: resultDocId }, { merge: true })
+        setDoc(doc(db, 'results', resultDocId), { ...updatedResult, firestoreId: resultDocId }, { merge: true })
       ))
       await persistResultStatusOverride(updatedResult, null)
       triggerDataRefresh('results')

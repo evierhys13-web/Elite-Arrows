@@ -62,6 +62,10 @@ export default function SubmitResult() {
 
   const opponentUser = availablePlayers.find(p => p.id === formData.opponent)
   const currentSeason = new Date().getFullYear().toString()
+  const getDisplayName = (profile, fallback = 'Unknown player') => (
+    profile?.username || profile?.name || profile?.displayName || profile?.email || fallback
+  )
+  const currentUserName = getDisplayName(user, 'You')
   const selectedFixture = fixtureIdParam
     ? allFixtures.find((fixture) => fixture.id.toString() === fixtureIdParam)
     : null
@@ -192,9 +196,10 @@ const handleSubmit = async (e) => {
     
     const allUsers = getAllUsers()
     const opponentUser = allUsers.find(u => u.id === formData.opponent)
-    const opponentName = opponentUser?.name || opponentUser?.username || formData.opponent
+    const submitterName = getDisplayName(user, 'You')
+    const opponentName = getDisplayName(opponentUser, formData.opponent || 'Selected opponent')
     
-    if (!window.confirm(`Submit result: ${user.username} ${formData.yourScore} - ${formData.opponentScore} ${opponentName}?`)) {
+    if (!window.confirm(`Submit result: ${submitterName} ${formData.yourScore} - ${formData.opponentScore} ${opponentName}?`)) {
       return
     }
     
@@ -206,7 +211,7 @@ const handleSubmit = async (e) => {
 
       const existingMatch = checkExistingLeagueMatch(opponentUser.id)
       if (existingMatch) {
-        setError(`You've already played ${formData.opponent} in a league match this season. Only one league match per opponent is allowed.`)
+        setError(`You've already played ${opponentName} in a league match this season. Only one league match per opponent is allowed.`)
         return
       }
     }
@@ -261,9 +266,9 @@ const handleSubmit = async (e) => {
       const newResult = {
         id: resultId,
         firestoreId: resultId,
-        player1: user.username,
+        player1: submitterName,
         player1Id: user.id,
-        player2: opponentUser?.username || allUsers.find(u => u.id === formData.opponent)?.username || formData.opponent,
+        player2: opponentName,
         player2Id: opponentUser?.id || formData.opponent,
         score1: parseInt(formData.yourScore),
         score2: parseInt(formData.opponentScore),
@@ -332,7 +337,7 @@ const handleSubmit = async (e) => {
     try {
       await notifyAdmins(
         'New Result Pending',
-        `${user.username} submitted a result: ${newResult.player1} ${newResult.score1}-${newResult.score2} ${newResult.player2} (${newResult.gameType})`,
+        `${submitterName} submitted a result: ${newResult.player1} ${newResult.score1}-${newResult.score2} ${newResult.player2} (${newResult.gameType})`,
         { type: 'result_submitted', resultId: newResult.id, url: '/admin?tab=results' }
       )
     } catch (notificationError) {
@@ -441,7 +446,7 @@ const handleSubmit = async (e) => {
                 borderRadius: '8px',
                 textAlign: 'center'
               }}>
-                {user.username}
+                {currentUserName}
               </div>
             </div>
 
@@ -463,7 +468,7 @@ const handleSubmit = async (e) => {
                     const opponent = allUsers.find(u => u.id === opponentId)
                     return (
                       <option key={f.id} value={opponentId}>
-                        {cup?.name || 'Cup'} - vs {opponent?.username || 'Unknown'} (Round {f.round})
+                        {cup?.name || 'Cup'} - vs {getDisplayName(opponent, 'Unknown')} (Round {f.round})
                       </option>
                     )
                   })}
@@ -477,10 +482,10 @@ const handleSubmit = async (e) => {
                 >
                   <option value="">Select opponent</option>
                   {opponentOptions.map(p => {
-                    const status = getOpponentStatus(p.id, p.username)
+                    const status = getOpponentStatus(p.id, getDisplayName(p))
                     return (
                       <option key={p.id} value={p.id}>
-                        {p.username} ({p.division}){formData.gameType === 'League' && status?.played ? ' - Played' : ''}
+                        {getDisplayName(p)} ({p.division}){formData.gameType === 'League' && status?.played ? ' - Played' : ''}
                       </option>
                     )
                   })}

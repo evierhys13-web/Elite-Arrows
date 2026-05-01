@@ -222,22 +222,42 @@ export function AuthProvider({ children }) {
   }, [])
 
   const getResultSignature = (row) => {
-    const playerKey = row.player1Id && row.player2Id
+    const hasPlayerIds = row.player1Id && row.player2Id
+    const hasPlayerNames = row.player1 && row.player2
+    if (!hasPlayerIds && !hasPlayerNames) return ''
+
+    const playerKey = hasPlayerIds
       ? `${row.player1Id}|${row.player2Id}`
-      : `${row.player1 || ''}|${row.player2 || ''}`
+      : `${row.player1}|${row.player2}`
     return `${playerKey}|${row.score1 ?? ''}|${row.score2 ?? ''}|${row.date || ''}|${row.gameType || ''}`
   }
+
+  const getResultIdentityKey = (row) => {
+    if (row.fixtureId) return `fixture:${row.fixtureId}`
+    if (row.cupId && row.matchId) return `cup:${row.cupId}:${row.matchId}`
+    return getResultSignature(row) || String(row.id || row.firestoreId || '')
+  }
+
+  const getResultOverrideKeys = (row) => [
+    row.id ? String(row.id) : null,
+    row.firestoreId ? String(row.firestoreId) : null,
+    row.fixtureId ? `fixture:${row.fixtureId}` : null,
+    row.cupId && row.matchId ? `cup:${row.cupId}:${row.matchId}` : null,
+    getResultSignature(row)
+  ].filter(Boolean)
 
   const publishResults = useCallback(() => {
     const statusRank = { approved: 3, rejected: 3, pending: 2 }
     const overrides = resultStatusOverridesRef.current || {}
     const resultRows = resultRowsRef.current.map(row => {
-      const override = overrides[String(row.id)] || overrides[row.firestoreId] || overrides[getResultSignature(row)]
+      const override = getResultOverrideKeys(row)
+        .map(key => overrides[key])
+        .find(Boolean)
       return override ? { ...row, status: override.status } : row
     })
 
     const resultsData = Array.from(resultRows.reduce((byId, row) => {
-      const logicalId = getResultSignature(row) || String(row.id)
+      const logicalId = getResultIdentityKey(row)
       const existing = byId.get(logicalId)
       if (!existing) {
         byId.set(logicalId, row)
