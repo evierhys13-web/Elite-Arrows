@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { db, doc, setDoc } from '../firebase'
 
 const INITIAL_RESULT_FORM = {
@@ -21,7 +21,6 @@ const INITIAL_RESULT_FORM = {
 
 export default function SubmitResult() {
   const { user, getAllUsers, getFixtures, getResults, updateResults, updateFixtures, addTokens, triggerDataRefresh, notifyAdmins } = useAuth()
-  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const cameraInputRef = useRef(null)
   const uploadInputRef = useRef(null)
@@ -30,6 +29,7 @@ export default function SubmitResult() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
+  const [submittedFixtureId, setSubmittedFixtureId] = useState(null)
 
   const allUsers = getAllUsers()
   const availablePlayers = allUsers.filter(u => u.id !== user.id)
@@ -66,7 +66,7 @@ export default function SubmitResult() {
     profile?.username || profile?.name || profile?.displayName || profile?.email || fallback
   )
   const currentUserName = getDisplayName(user, 'You')
-  const selectedFixture = fixtureIdParam
+  const selectedFixture = fixtureIdParam && String(fixtureIdParam) !== String(submittedFixtureId)
     ? allFixtures.find((fixture) => String(fixture.id) === String(fixtureIdParam))
     : null
 
@@ -103,6 +103,8 @@ export default function SubmitResult() {
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
+    setSubmitted(false)
+    setSuccessMessage('')
     if (name === 'opponent' || name === 'gameType') {
       setError('')
     }
@@ -164,8 +166,7 @@ export default function SubmitResult() {
     }
   }
 
-  const removeImage = () => {
-    setFormData(prev => ({ ...prev, proofImage: '' }))
+  const clearProofInputs = () => {
     if (cameraInputRef.current) {
       cameraInputRef.current.value = ''
     }
@@ -174,7 +175,20 @@ export default function SubmitResult() {
     }
   }
 
-const handleSubmit = async (e) => {
+  const removeImage = () => {
+    setFormData(prev => ({ ...prev, proofImage: '' }))
+    clearProofInputs()
+  }
+
+  const resetFormAfterSuccessfulSubmit = (fixtureId = null) => {
+    if (fixtureId) {
+      setSubmittedFixtureId(String(fixtureId))
+    }
+    setFormData({ ...INITIAL_RESULT_FORM })
+    clearProofInputs()
+  }
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setSuccessMessage('')
@@ -198,10 +212,6 @@ const handleSubmit = async (e) => {
     const opponentUser = allUsers.find(u => u.id === formData.opponent)
     const submitterName = getDisplayName(user, 'You')
     const opponentName = getDisplayName(opponentUser, formData.opponent || 'Selected opponent')
-    
-    if (!window.confirm(`Submit result: ${submitterName} ${formData.yourScore} - ${formData.opponentScore} ${opponentName}?`)) {
-      return
-    }
     
     if (formData.gameType === 'League' && opponentUser) {
       if (opponentUser.division !== user.division) {
@@ -334,25 +344,7 @@ const handleSubmit = async (e) => {
       }
     }
 
-    try {
-      await notifyAdmins(
-        'New Result Pending',
-        `${submitterName} submitted a result: ${newResult.player1} ${newResult.score1}-${newResult.score2} ${newResult.player2} (${newResult.gameType})`,
-        { type: 'result_submitted', resultId: newResult.id, url: '/admin?tab=results' }
-      )
-    } catch (notificationError) {
-      console.log('Result saved, but admin notification failed:', notificationError)
-    }
-
     const isWin = parseInt(formData.yourScore) > parseInt(formData.opponentScore)
-    if (isWin) {
-      const tokensToAdd = 50
-      try {
-        await addTokens(tokensToAdd)
-      } catch (tokenError) {
-        console.log('Result saved, but token award failed:', tokenError)
-      }
-    }
 
     if (typeof triggerDataRefresh === 'function') {
       triggerDataRefresh('results')
@@ -362,13 +354,25 @@ const handleSubmit = async (e) => {
     setSubmitted(true)
     setError('')
     setSuccessMessage('Result submitted for admin approval.')
+    resetFormAfterSuccessfulSubmit(fixtureToUpdate?.id)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
     setTimeout(() => {
       setSubmitted(false)
-      setSuccessMessage('')
-      setFormData(INITIAL_RESULT_FORM)
-      removeImage()
-      navigate('/submit-result', { replace: true })
     }, 1400)
+
+    Promise.resolve().then(() => notifyAdmins(
+      'New Result Pending',
+      `${submitterName} submitted a result: ${newResult.player1} ${newResult.score1}-${newResult.score2} ${newResult.player2} (${newResult.gameType})`,
+      { type: 'result_submitted', resultId: newResult.id, url: '/admin?tab=results' }
+    )).catch((notificationError) => {
+      console.log('Result saved, but admin notification failed:', notificationError)
+    })
+
+    if (isWin) {
+      Promise.resolve().then(() => addTokens(50)).catch((tokenError) => {
+        console.log('Result saved, but token award failed:', tokenError)
+      })
+    }
     } catch (e) {
       console.error('FATAL: Error submitting result:', e.code, e.message)
       setError('Error submitting result: ' + (e.message || 'Please try again.'))
