@@ -1064,6 +1064,7 @@ const cleanUserData = (users) => {
       fcmToken,
       unreadCount,
       news,
+      triggerDataRefresh,
       requestNotificationPermission,
       registerFCMToken,
       showLocalNotification,

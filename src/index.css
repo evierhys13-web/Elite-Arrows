@@ -481,6 +481,17 @@ body {
   cursor: not-allowed;
 }
 
+.btn-success {
+  background: var(--success);
+  color: #07130b;
+}
+
+.btn-success:hover,
+.btn-success:disabled {
+  background: var(--success);
+  color: #07130b;
+}
+
 .btn-secondary {
   background: var(--bg-secondary);
   color: var(--text-primary);

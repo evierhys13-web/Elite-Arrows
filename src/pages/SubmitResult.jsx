@@ -3,27 +3,29 @@ import { useAuth } from '../context/AuthContext'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { db, doc, setDoc } from '../firebase'
 
+const INITIAL_RESULT_FORM = {
+  gameType: 'Friendly',
+  opponent: '',
+  yourScore: '',
+  opponentScore: '',
+  bestOf: '3',
+  firstTo: '3',
+  your180s: '',
+  opponent180s: '',
+  yourHighestCheckout: '',
+  opponentHighestCheckout: '',
+  yourDoubleSuccess: '',
+  opponentDoubleSuccess: '',
+  proofImage: ''
+}
+
 export default function SubmitResult() {
   const { user, getAllUsers, getFixtures, getResults, addTokens, triggerDataRefresh, notifyAdmins } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const cameraInputRef = useRef(null)
   const uploadInputRef = useRef(null)
-  const [formData, setFormData] = useState({
-    gameType: 'Friendly',
-    opponent: '',
-    yourScore: '',
-    opponentScore: '',
-    bestOf: '3',
-    firstTo: '3',
-    your180s: '',
-    opponent180s: '',
-    yourHighestCheckout: '',
-    opponentHighestCheckout: '',
-    yourDoubleSuccess: '',
-    opponentDoubleSuccess: '',
-    proofImage: ''
-  })
+  const [formData, setFormData] = useState(INITIAL_RESULT_FORM)
   const [submitted, setSubmitted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -60,8 +62,6 @@ export default function SubmitResult() {
 
   const opponentUser = availablePlayers.find(p => p.id === formData.opponent)
   const currentSeason = new Date().getFullYear().toString()
-  const adminEmails = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
-  const isAdminUser = user?.isAdmin || user?.isTournamentAdmin || adminEmails.includes(user?.email?.toLowerCase())
   const selectedFixture = fixtureIdParam
     ? allFixtures.find((fixture) => fixture.id.toString() === fixtureIdParam)
     : null
@@ -194,7 +194,7 @@ const handleSubmit = async (e) => {
     const opponentUser = allUsers.find(u => u.id === formData.opponent)
     const opponentName = opponentUser?.name || opponentUser?.username || formData.opponent
     
-    if (!window.confirm(`Submit result: ${user.name} ${formData.yourScore} - ${formData.opponentScore} ${opponentName}?`)) {
+    if (!window.confirm(`Submit result: ${user.username} ${formData.yourScore} - ${formData.opponentScore} ${opponentName}?`)) {
       return
     }
     
@@ -329,34 +329,41 @@ const handleSubmit = async (e) => {
       }
     }
 
-    notifyAdmins(
-      'New Result Pending',
-      `${user.username} submitted a result: ${newResult.player1} ${newResult.score1}-${newResult.score2} ${newResult.player2} (${newResult.gameType})`,
-      { type: 'result_submitted', resultId: newResult.id, url: '/admin?tab=results' }
-    )
+    try {
+      await notifyAdmins(
+        'New Result Pending',
+        `${user.username} submitted a result: ${newResult.player1} ${newResult.score1}-${newResult.score2} ${newResult.player2} (${newResult.gameType})`,
+        { type: 'result_submitted', resultId: newResult.id, url: '/admin?tab=results' }
+      )
+    } catch (notificationError) {
+      console.log('Result saved, but admin notification failed:', notificationError)
+    }
 
     const isWin = parseInt(formData.yourScore) > parseInt(formData.opponentScore)
     if (isWin) {
       const tokensToAdd = 50
-      addTokens(tokensToAdd)
+      try {
+        await addTokens(tokensToAdd)
+      } catch (tokenError) {
+        console.log('Result saved, but token award failed:', tokenError)
+      }
     }
 
-    triggerDataRefresh('results')
-    triggerDataRefresh('fixtures')
+    if (typeof triggerDataRefresh === 'function') {
+      triggerDataRefresh('results')
+      triggerDataRefresh('fixtures')
+    }
     
     setSubmitted(true)
     setError('')
-    setSuccessMessage(
-      isAdminUser
-        ? 'Result submitted for approval. Opening the admin pending results now.'
-        : 'Result submitted for admin approval. Admins can now see it in Pending Results.'
-    )
+    setSuccessMessage('Result submitted for admin approval.')
     setTimeout(() => {
+      setSubmitted(false)
       setSuccessMessage('')
-    }, 4500)
-    if (isAdminUser) {
-      setTimeout(() => navigate('/admin?tab=results'), 1200)
-    }
+      setFormData(INITIAL_RESULT_FORM)
+      removeImage()
+      navigate('/submit-result', { replace: true })
+    }, 1400)
     } catch (e) {
       console.error('FATAL: Error submitting result:', e.code, e.message)
       setError('Error submitting result: ' + (e.message || 'Please try again.'))
@@ -376,33 +383,6 @@ const handleSubmit = async (e) => {
 
   return (
     <div className="page">
-      {successMessage && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 10000,
-          background: 'rgba(0,0,0,0.65)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '20px'
-        }}>
-          <div style={{
-            width: 'min(420px, 100%)',
-            background: 'var(--bg-secondary)',
-            border: '2px solid var(--success)',
-            borderRadius: '12px',
-            padding: '28px',
-            textAlign: 'center',
-            boxShadow: '0 12px 40px rgba(0,0,0,0.45)'
-          }}>
-            <div style={{ fontSize: '2rem', color: 'var(--success)', fontWeight: 800, marginBottom: '10px' }}>Success</div>
-            <p style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.05rem', fontWeight: 600 }}>
-              {successMessage}
-            </p>
-          </div>
-        </div>
-      )}
       <div className="page-header">
         <h1 className="page-title">Submit Result</h1>
       </div>
@@ -433,6 +413,22 @@ const handleSubmit = async (e) => {
               fontSize: '0.9rem'
             }}>
               {error}
+            </div>
+          )}
+
+          {successMessage && (
+            <div style={{
+              padding: '12px',
+              background: 'rgba(34, 197, 94, 0.12)',
+              border: '1px solid var(--success)',
+              borderRadius: '8px',
+              color: 'var(--success)',
+              marginBottom: '20px',
+              fontSize: '0.9rem',
+              fontWeight: 700,
+              textAlign: 'center'
+            }}>
+              {successMessage}
             </div>
           )}
 
@@ -716,7 +712,7 @@ const handleSubmit = async (e) => {
 
           <button 
             type="submit"
-            className="btn btn-primary btn-block"
+            className={`btn ${submitted ? 'btn-success' : 'btn-primary'} btn-block`}
             disabled={submitted || isSubmitting}
           >
             {isSubmitting ? 'Submitting...' : submitted ? 'Submitted for Approval!' : 'Submit Result (Awaiting Approval)'}
