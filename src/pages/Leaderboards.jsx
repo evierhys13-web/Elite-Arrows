@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { getLeaguePoints } from '../utils/leagueScoring'
+import { getResultEffectiveTime, getResultPlayerId, isLeagueResult } from '../utils/leagueResults'
 
 const DEFAULT_LEAGUE_TABLE_RESET_AT = '2026-04-29T16:14:21.338+01:00'
 
 export default function Leaderboards() {
-  const { user, getAllUsers, getResults, dataRefreshTrigger, adminData } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, dataRefreshTrigger, adminData } = useAuth()
   const [selectedDivision, setSelectedDivision] = useState('all')
   const [timeFilter, setTimeFilter] = useState('week')
   const [refreshKey, setRefreshKey] = useState(0)
@@ -15,19 +16,17 @@ export default function Leaderboards() {
   }, [dataRefreshTrigger])
 
   const allUsers = getAllUsers()
+  const fixtures = getFixtures()
   const results = getResults()
+  const fixturesById = Object.fromEntries(fixtures.map(fixture => [String(fixture.id), fixture]))
   const resetTimes = [DEFAULT_LEAGUE_TABLE_RESET_AT, adminData?.leagueTableResetAt]
     .map(value => value ? new Date(value).getTime() : 0)
     .filter(value => Number.isFinite(value) && value > 0)
   const leagueTableResetTime = resetTimes.length ? Math.max(...resetTimes) : 0
-  const getResultTime = (result) => {
-    const time = new Date(result.submittedAt || result.createdAt || result.date || 0).getTime()
-    return Number.isFinite(time) ? time : 0
-  }
   const approvedResults = results.filter(r => (
-    r.status === 'approved' &&
-    r.gameType === 'League' &&
-    (!leagueTableResetTime || getResultTime(r) > leagueTableResetTime)
+    String(r.status).toLowerCase() === 'approved' &&
+    isLeagueResult(r, fixturesById) &&
+    (!leagueTableResetTime || getResultEffectiveTime(r) > leagueTableResetTime)
   ))
 
   const now = new Date()
@@ -44,7 +43,7 @@ export default function Leaderboards() {
   const playerStats = {}
 
   allUsers.forEach(player => {
-    playerStats[player.id] = {
+    playerStats[String(player.id)] = {
       id: player.id,
       username: player.username,
       nickname: player.nickname,
@@ -65,41 +64,46 @@ export default function Leaderboards() {
   })
 
   filteredResults.forEach(r => {
-    if (playerStats[r.player1Id]) {
-      const stats = playerStats[r.player1Id]
+    const player1Id = getResultPlayerId(r, 1, allUsers)
+    const player2Id = getResultPlayerId(r, 2, allUsers)
+    const score1 = Number(r.score1) || 0
+    const score2 = Number(r.score2) || 0
+
+    if (player1Id && playerStats[player1Id]) {
+      const stats = playerStats[player1Id]
       stats.played++
-      stats.legsWon += r.score1
-      stats.legsLost += r.score2
+      stats.legsWon += score1
+      stats.legsLost += score2
       stats['180s'] += r.player1Stats?.['180s'] || 0
       if (r.player1Stats?.highestCheckout > stats.highestCheckout) {
         stats.highestCheckout = r.player1Stats.highestCheckout
       }
-      if (r.score1 > r.score2) {
+      if (score1 > score2) {
         stats.wins++
-      } else if (r.score1 < r.score2) {
+      } else if (score1 < score2) {
         stats.losses++
       } else {
         stats.draws++
       }
-      stats.points += getLeaguePoints(r.score1, r.score2)
+      stats.points += getLeaguePoints(score1, score2)
     }
-    if (playerStats[r.player2Id]) {
-      const stats = playerStats[r.player2Id]
+    if (player2Id && playerStats[player2Id]) {
+      const stats = playerStats[player2Id]
       stats.played++
-      stats.legsWon += r.score2
-      stats.legsLost += r.score1
+      stats.legsWon += score2
+      stats.legsLost += score1
       stats['180s'] += r.player2Stats?.['180s'] || 0
       if (r.player2Stats?.highestCheckout > stats.highestCheckout) {
         stats.highestCheckout = r.player2Stats.highestCheckout
       }
-      if (r.score2 > r.score1) {
+      if (score2 > score1) {
         stats.wins++
-      } else if (r.score2 < r.score1) {
+      } else if (score2 < score1) {
         stats.losses++
       } else {
         stats.draws++
       }
-      stats.points += getLeaguePoints(r.score2, r.score1)
+      stats.points += getLeaguePoints(score2, score1)
     }
   })
 

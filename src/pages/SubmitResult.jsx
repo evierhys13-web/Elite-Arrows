@@ -20,7 +20,7 @@ const INITIAL_RESULT_FORM = {
 }
 
 export default function SubmitResult() {
-  const { user, getAllUsers, getFixtures, getResults, addTokens, triggerDataRefresh, notifyAdmins } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, updateFixtures, addTokens, triggerDataRefresh, notifyAdmins } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const cameraInputRef = useRef(null)
@@ -48,15 +48,15 @@ export default function SubmitResult() {
 
   const getFixtureOpponentId = (fixture) => {
     const { player1Id, player2Id } = getFixturePlayerIds(fixture)
-    if (player1Id === user.id) return player2Id
-    if (player2Id === user.id) return player1Id
+    if (String(player1Id) === String(user.id)) return player2Id
+    if (String(player2Id) === String(user.id)) return player1Id
     return null
   }
 
   const cupFixtures = allFixtures.filter((fixture) => {
     if (!fixture.cupId || fixture.status !== 'accepted') return false
     const { player1Id, player2Id } = getFixturePlayerIds(fixture)
-    return player1Id === user.id || player2Id === user.id
+    return String(player1Id) === String(user.id) || String(player2Id) === String(user.id)
   })
   const cups = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
 
@@ -67,7 +67,7 @@ export default function SubmitResult() {
   )
   const currentUserName = getDisplayName(user, 'You')
   const selectedFixture = fixtureIdParam
-    ? allFixtures.find((fixture) => fixture.id.toString() === fixtureIdParam)
+    ? allFixtures.find((fixture) => String(fixture.id) === String(fixtureIdParam))
     : null
 
   useEffect(() => {
@@ -86,14 +86,14 @@ export default function SubmitResult() {
   }, [selectedFixture, user.id])
 
   const checkExistingLeagueMatch = (opponentId) => {
-    const approvedResults = allResults.filter(r => r.status === 'approved')
+    const approvedResults = allResults.filter(r => String(r.status).toLowerCase() === 'approved')
     
     const existingMatch = approvedResults.find(r => {
       const isSameSeason = r.season === currentSeason
       const isLeagueGame = r.gameType === 'League'
       const sameDivision = r.division === user.division
-      const isBetweenPlayers = (r.player1Id === user.id && r.player2Id === opponentId) || 
-                                 (r.player2Id === user.id && r.player1Id === opponentId)
+      const isBetweenPlayers = (String(r.player1Id) === String(user.id) && String(r.player2Id) === String(opponentId)) ||
+                                 (String(r.player2Id) === String(user.id) && String(r.player1Id) === String(opponentId))
       return isSameSeason && isLeagueGame && sameDivision && isBetweenPlayers
     })
     
@@ -243,11 +243,11 @@ const handleSubmit = async (e) => {
 
     const duplicateResult = allResults.find((result) => {
       if (formData.gameType === 'Cup' && cupId && matchId) {
-        return result.cupId === cupId && result.matchId === matchId && result.status !== 'rejected'
+        return result.cupId === cupId && result.matchId === matchId && String(result.status).toLowerCase() !== 'rejected'
       }
 
       if (selectedFixture?.id) {
-        return String(result.fixtureId || '') === String(selectedFixture.id) && result.status !== 'rejected'
+        return String(result.fixtureId || '') === String(selectedFixture.id) && String(result.status).toLowerCase() !== 'rejected'
       }
 
       return false
@@ -311,8 +311,8 @@ const handleSubmit = async (e) => {
 
     const fixtureToUpdate = cupFixture || selectedFixture
     if (fixtureToUpdate) {
-      const updatedFixtures = [...allFixtures]
-      const fixtureIndex = updatedFixtures.findIndex((fixture) => fixture.id === fixtureToUpdate.id)
+      const updatedFixtures = [...getFixtures()]
+      const fixtureIndex = updatedFixtures.findIndex((fixture) => String(fixture.id) === String(fixtureToUpdate.id))
       if (fixtureIndex !== -1) {
         updatedFixtures[fixtureIndex] = {
           ...updatedFixtures[fixtureIndex],
@@ -321,7 +321,7 @@ const handleSubmit = async (e) => {
           submittedResultId: resultId,
           updatedAt: new Date().toISOString()
         }
-        localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
+        updateFixtures(updatedFixtures)
         try {
           await setDoc(
             doc(db, 'fixtures', updatedFixtures[fixtureIndex].id.toString()),

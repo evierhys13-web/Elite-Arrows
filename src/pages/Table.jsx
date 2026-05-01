@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { getLeaguePoints } from '../utils/leagueScoring'
+import { getResultEffectiveTime, getResultPlayerId, isLeagueResult } from '../utils/leagueResults'
 
 const DIVISION_EMOJIS = {
   'Elite': '👑',
@@ -16,7 +17,7 @@ const DEFAULT_LEAGUE_TABLE_RESET_AT = '2026-04-29T16:14:21.338+01:00'
 
 export default function Table() {
   const [activeDivision, setActiveDivision] = useState('Overall')
-  const { user, getAllUsers, getResults, dataRefreshTrigger, adminData } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, dataRefreshTrigger, adminData } = useAuth()
   const [refreshKey, setRefreshKey] = useState(0)
 
   const divisions = ['Overall', 'Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Development', 'Unassigned']
@@ -26,26 +27,24 @@ export default function Table() {
   }, [dataRefreshTrigger])
 
   const allUsers = getAllUsers()
+  const fixtures = getFixtures()
   const results = getResults()
+  const fixturesById = Object.fromEntries(fixtures.map(fixture => [String(fixture.id), fixture]))
   const resetTimes = [DEFAULT_LEAGUE_TABLE_RESET_AT, adminData?.leagueTableResetAt]
     .map(value => value ? new Date(value).getTime() : 0)
     .filter(value => Number.isFinite(value) && value > 0)
   const leagueTableResetTime = resetTimes.length ? Math.max(...resetTimes) : 0
-  const getResultTime = (result) => {
-    const time = new Date(result.submittedAt || result.createdAt || result.date || 0).getTime()
-    return Number.isFinite(time) ? time : 0
-  }
   const leagueResults = results.filter(r => (
-    r.status === 'approved' &&
-    r.gameType === 'League' &&
-    (!leagueTableResetTime || getResultTime(r) > leagueTableResetTime)
+    String(r.status).toLowerCase() === 'approved' &&
+    isLeagueResult(r, fixturesById) &&
+    (!leagueTableResetTime || getResultEffectiveTime(r) > leagueTableResetTime)
   ))
 
   const playerStats = useMemo(() => {
     const stats = {}
     
     allUsers.forEach(u => {
-      stats[u.id] = {
+      stats[String(u.id)] = {
         played: 0,
         wins: 0,
         draws: 0,
@@ -57,34 +56,39 @@ export default function Table() {
     })
 
     leagueResults.forEach(r => {
-      if (stats[r.player1Id]) {
-        stats[r.player1Id].played++
-        stats[r.player1Id].legsWon += r.score1
-        stats[r.player1Id].legsLost += r.score2
+      const player1Id = getResultPlayerId(r, 1, allUsers)
+      const player2Id = getResultPlayerId(r, 2, allUsers)
+      const score1 = Number(r.score1) || 0
+      const score2 = Number(r.score2) || 0
+
+      if (player1Id && stats[player1Id]) {
+        stats[player1Id].played++
+        stats[player1Id].legsWon += score1
+        stats[player1Id].legsLost += score2
         
-        if (r.score1 > r.score2) {
-          stats[r.player1Id].wins++
-        } else if (r.score1 === r.score2) {
-          stats[r.player1Id].draws++
+        if (score1 > score2) {
+          stats[player1Id].wins++
+        } else if (score1 === score2) {
+          stats[player1Id].draws++
         } else {
-          stats[r.player1Id].losses++
+          stats[player1Id].losses++
         }
-        stats[r.player1Id].points += getLeaguePoints(r.score1, r.score2)
+        stats[player1Id].points += getLeaguePoints(score1, score2)
       }
       
-      if (stats[r.player2Id]) {
-        stats[r.player2Id].played++
-        stats[r.player2Id].legsWon += r.score2
-        stats[r.player2Id].legsLost += r.score1
+      if (player2Id && stats[player2Id]) {
+        stats[player2Id].played++
+        stats[player2Id].legsWon += score2
+        stats[player2Id].legsLost += score1
         
-        if (r.score2 > r.score1) {
-          stats[r.player2Id].wins++
-        } else if (r.score2 === r.score1) {
-          stats[r.player2Id].draws++
+        if (score2 > score1) {
+          stats[player2Id].wins++
+        } else if (score2 === score1) {
+          stats[player2Id].draws++
         } else {
-          stats[r.player2Id].losses++
+          stats[player2Id].losses++
         }
-        stats[r.player2Id].points += getLeaguePoints(r.score2, r.score1)
+        stats[player2Id].points += getLeaguePoints(score2, score1)
       }
     })
 
@@ -96,7 +100,7 @@ export default function Table() {
         .map(p => ({
           ...p,
           displayDivision: p.division || 'Unassigned',
-          stats: playerStats[p.id] || { played: 0, wins: 0, draws: 0, losses: 0, legsWon: 0, legsLost: 0, points: 0 }
+          stats: playerStats[String(p.id)] || { played: 0, wins: 0, draws: 0, losses: 0, legsWon: 0, legsLost: 0, points: 0 }
         }))
         .sort((a, b) => {
           const aPoints = a.stats.points || 0
@@ -116,7 +120,7 @@ export default function Table() {
         .map(p => ({
           ...p,
           displayDivision: p.division || 'Unassigned',
-          stats: playerStats[p.id] || { played: 0, wins: 0, draws: 0, losses: 0, legsWon: 0, legsLost: 0, points: 0 }
+          stats: playerStats[String(p.id)] || { played: 0, wins: 0, draws: 0, losses: 0, legsWon: 0, legsLost: 0, points: 0 }
         }))
         .sort((a, b) => {
           const aPoints = a.stats.points || 0

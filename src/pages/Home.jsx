@@ -6,6 +6,7 @@ import { SkeletonList } from '../components/Skeleton'
 import Tooltip from '../components/Tooltip'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { getLeaguePoints } from '../utils/leagueScoring'
+import { getResultEffectiveTime, getResultPlayerId, isLeagueResult } from '../utils/leagueResults'
 
 const DEFAULT_LEAGUE_TABLE_RESET_AT = '2026-04-29T16:14:21.338+01:00'
 const SEASON_START = new Date('2026-05-01T00:00:00+01:00')
@@ -14,7 +15,7 @@ const SEASON_START_LABEL = '01/05/2026 00:00'
 const SEASON_END_LABEL = '01/06/2026 00:00'
 
 export default function Home() {
-  const { user, getAllUsers, getResults, dataRefreshTrigger, loading, adminData } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, dataRefreshTrigger, loading, adminData } = useAuth()
   
   const [refreshKey, setRefreshKey] = useState(0)
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
@@ -58,35 +59,38 @@ export default function Home() {
   const allUsers = getAllUsers()
   const isSeasonActive = seasonPhase === 'active'
   const seasonTimerTitle = seasonPhase === 'active' ? 'Season Ends In' : seasonPhase === 'ended' ? 'Season Ended' : 'Season Starts In'
+  const fixtures = getFixtures()
+  const fixturesById = Object.fromEntries(fixtures.map(fixture => [String(fixture.id), fixture]))
   const allResults = getResults()
-  const approvedResults = allResults.filter(r => r.status === 'approved')
-  const userResults = approvedResults.filter(r => r.player1Id === user.id || r.player2Id === user.id)
+  const approvedResults = allResults.filter(r => String(r.status).toLowerCase() === 'approved')
+  const userResults = approvedResults.filter(r => (
+    String(getResultPlayerId(r, 1, allUsers)) === String(user.id) ||
+    String(getResultPlayerId(r, 2, allUsers)) === String(user.id)
+  ))
   const tournaments = JSON.parse(localStorage.getItem('eliteArrowsTournaments') || '[]')
   const resetTimes = [DEFAULT_LEAGUE_TABLE_RESET_AT, adminData?.leagueTableResetAt]
     .map(value => value ? new Date(value).getTime() : 0)
     .filter(value => Number.isFinite(value) && value > 0)
   const leagueTableResetTime = resetTimes.length ? Math.max(...resetTimes) : 0
-  const getResultTime = (result) => {
-    const time = new Date(result.submittedAt || result.createdAt || result.date || 0).getTime()
-    return Number.isFinite(time) ? time : 0
-  }
   
   const stats = userResults.reduce((acc, r) => {
     acc.played++
-    const isPlayer1 = r.player1Id === user.id
+    const isPlayer1 = String(getResultPlayerId(r, 1, allUsers)) === String(user.id)
+    const score1 = Number(r.score1) || 0
+    const score2 = Number(r.score2) || 0
     if (isPlayer1) {
-      if (r.score1 > r.score2) acc.wins++
-      else if (r.score1 < r.score2) acc.losses++
+      if (score1 > score2) acc.wins++
+      else if (score1 < score2) acc.losses++
       else acc.draws++
     } else {
-      if (r.score2 > r.score1) acc.wins++
-      else if (r.score2 < r.score1) acc.losses++
+      if (score2 > score1) acc.wins++
+      else if (score2 < score1) acc.losses++
       else acc.draws++
     }
-    const countsForLeaguePoints = r.gameType === 'League' && (!leagueTableResetTime || getResultTime(r) > leagueTableResetTime)
+    const countsForLeaguePoints = isLeagueResult(r, fixturesById) && (!leagueTableResetTime || getResultEffectiveTime(r) > leagueTableResetTime)
     if (countsForLeaguePoints) {
-      const myScore = isPlayer1 ? r.score1 : r.score2
-      const opponentScore = isPlayer1 ? r.score2 : r.score1
+      const myScore = isPlayer1 ? score1 : score2
+      const opponentScore = isPlayer1 ? score2 : score1
       acc.points += getLeaguePoints(myScore, opponentScore)
     }
     return acc
@@ -224,9 +228,11 @@ export default function Home() {
         ) : (
           <div>
             {userResults.slice(-5).reverse().map(r => {
-              const isPlayer1 = r.player1Id === user.id
-              const result = isPlayer1 ? (r.score1 > r.score2 ? 'Win' : r.score1 < r.score2 ? 'Loss' : 'Draw') : (r.score2 > r.score1 ? 'Win' : r.score2 < r.score1 ? 'Loss' : 'Draw')
-              const score = isPlayer1 ? `${r.score1}-${r.score2}` : `${r.score2}-${r.score1}`
+              const isPlayer1 = String(getResultPlayerId(r, 1, allUsers)) === String(user.id)
+              const score1 = Number(r.score1) || 0
+              const score2 = Number(r.score2) || 0
+              const result = isPlayer1 ? (score1 > score2 ? 'Win' : score1 < score2 ? 'Loss' : 'Draw') : (score2 > score1 ? 'Win' : score2 < score1 ? 'Loss' : 'Draw')
+              const score = isPlayer1 ? `${score1}-${score2}` : `${score2}-${score1}`
               const opponent = isPlayer1 ? r.player2 : r.player1
               return (
                 <div key={r.id} style={{ padding: '12px', borderBottom: '1px solid var(--border)' }}>

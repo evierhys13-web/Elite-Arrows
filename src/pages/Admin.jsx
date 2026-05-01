@@ -466,7 +466,13 @@ export default function Admin() {
       return
     }
 
-    const updatedResult = { ...results[resultsIndex], status: 'approved', updatedAt: new Date().toISOString() }
+    const reviewedAt = new Date().toISOString()
+    const updatedResult = {
+      ...results[resultsIndex],
+      status: 'approved',
+      approvedAt: reviewedAt,
+      updatedAt: reviewedAt
+    }
     const resultDocIds = await getResultDocIds(updatedResult)
     results[resultsIndex] = updatedResult
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
@@ -668,6 +674,7 @@ export default function Admin() {
 
     const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
     const resultId = Date.now().toString()
+    const approvedAt = new Date().toISOString()
     const newResult = {
       id: resultId,
       firestoreId: resultId,
@@ -681,7 +688,9 @@ export default function Admin() {
       gameType: gameForm.gameType,
       season: new Date().getFullYear().toString(),
       date: new Date().toISOString().split('T')[0],
-      submittedAt: new Date().toISOString(),
+      submittedAt: approvedAt,
+      approvedAt,
+      updatedAt: approvedAt,
       bestOf: '3',
       firstTo: '3',
       proofImage: '',

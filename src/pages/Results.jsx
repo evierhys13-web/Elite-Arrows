@@ -141,7 +141,13 @@ export default function Results() {
       return
     }
     const result = results[index]
-    const updatedResult = { ...result, status: 'approved', updatedAt: new Date().toISOString() }
+    const reviewedAt = new Date().toISOString()
+    const updatedResult = {
+      ...result,
+      status: 'approved',
+      approvedAt: reviewedAt,
+      updatedAt: reviewedAt
+    }
     const resultDocIds = await getResultDocIds(updatedResult)
     results[index] = updatedResult
     localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
