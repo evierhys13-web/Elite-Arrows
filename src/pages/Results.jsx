@@ -123,7 +123,7 @@ export default function Results() {
     const isApproved = reviewStatus === 'approved'
     const updatedFixture = {
       ...fixtures[fixtureIndex],
-      status: isApproved ? 'approved' : 'accepted',
+      status: isApproved ? 'completed' : 'accepted',
       updatedAt: new Date().toISOString(),
       resultId: isApproved ? result.id : null,
       submittedResultId: isApproved ? result.id : null,

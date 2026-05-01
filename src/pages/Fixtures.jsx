@@ -177,8 +177,33 @@ export default function Fixtures() {
     return Number.isNaN(timestamp) ? Number.MAX_SAFE_INTEGER : timestamp
   }
 
+  const getApprovedResultForFixture = (fixture) => {
+    const { player1Id, player2Id } = getFixturePlayerIds(fixture)
+    return allResults.find(result => (
+      getStatus(result) === 'approved' &&
+      (
+        resultMatchesFixture(result, fixture) ||
+        (
+          result.gameType === fixture.gameType &&
+          result.division === fixture.division &&
+          (
+            (String(result.player1Id) === String(player1Id) && String(result.player2Id) === String(player2Id)) ||
+            (String(result.player1Id) === String(player2Id) && String(result.player2Id) === String(player1Id))
+          )
+        )
+      )
+    ))
+  }
+
+  const hasApprovedResultForFixture = (fixture) => Boolean(getApprovedResultForFixture(fixture))
+
+  const isCompletedFixture = (fixture) => (
+    ['completed', 'approved'].includes(getStatus(fixture)) || hasApprovedResultForFixture(fixture)
+  )
+
   const isPublicFixture = (fixture) => (
-    getStatus(fixture) === 'accepted' && !fixtureHasSubmittedResult(fixture)
+    (getStatus(fixture) === 'accepted' && !fixtureHasSubmittedResult(fixture)) ||
+    isCompletedFixture(fixture)
   )
 
   const getLegacyFixtureBetId = (fixture) => {
@@ -196,24 +221,6 @@ export default function Fixtures() {
       return String(bet.gameId) === String(getLegacyFixtureBetId(fixture))
     })
   )
-
-  const hasApprovedResultForFixture = (fixture) => {
-    const { player1Id, player2Id } = getFixturePlayerIds(fixture)
-    return allResults.some(result => (
-      getStatus(result) === 'approved' &&
-      (
-        resultMatchesFixture(result, fixture) ||
-        (
-          result.gameType === fixture.gameType &&
-          result.division === fixture.division &&
-          (
-            (String(result.player1Id) === String(player1Id) && String(result.player2Id) === String(player2Id)) ||
-            (String(result.player1Id) === String(player2Id) && String(result.player2Id) === String(player1Id))
-          )
-        )
-      )
-    ))
-  }
 
   const canBetOnFixture = (fixture) => {
     const { player1Id, player2Id } = getFixturePlayerIds(fixture)
@@ -1393,6 +1400,15 @@ export default function Fixtures() {
               const fixtureTime = getFixtureTime(fixture)
               const fixtureBet = getBetForFixture(fixture)
               const betIsAvailable = canBetOnFixture(fixture) && !fixtureBet
+              const approvedResult = getApprovedResultForFixture(fixture)
+              const fixtureIsCompleted = isCompletedFixture(fixture)
+              const canSubmitFixtureResult = isMyFixture && getStatus(fixture) === 'accepted' && !fixtureIsCompleted && !fixtureHasSubmittedResult(fixture)
+              const player1Score = approvedResult
+                ? (isSameId(approvedResult.player1Id, player1Id) ? approvedResult.score1 : isSameId(approvedResult.player2Id, player1Id) ? approvedResult.score2 : fixture.score1)
+                : fixture.score1
+              const player2Score = approvedResult
+                ? (isSameId(approvedResult.player1Id, player2Id) ? approvedResult.score1 : isSameId(approvedResult.player2Id, player2Id) ? approvedResult.score2 : fixture.score2)
+                : fixture.score2
 
               return (
                 <div key={fixture.id} style={{
@@ -1423,7 +1439,7 @@ export default function Fixtures() {
                       fontSize: '0.8rem',
                       fontWeight: 'bold'
                     }}>
-                      CONFIRMED
+                      {fixtureIsCompleted ? 'COMPLETED' : 'CONFIRMED'}
                     </span>
                   </div>
                   <div style={{
@@ -1441,10 +1457,16 @@ export default function Fixtures() {
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '3px' }}>TIME</div>
                       <div style={{ fontWeight: '600' }}>{fixtureTime || 'TBC'}</div>
                     </div>
+                    {fixtureIsCompleted && (player1Score !== undefined || player2Score !== undefined) && (
+                      <div style={{ flex: 1, textAlign: 'right' }}>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '3px' }}>SCORE</div>
+                        <div style={{ fontWeight: '700' }}>{player1Score ?? '-'} - {player2Score ?? '-'}</div>
+                      </div>
+                    )}
                   </div>
-                  {(isMyFixture && getStatus(fixture) === 'accepted') || (isAdmin && !fixture.cupId) || fixtureBet || betIsAvailable ? (
+                  {canSubmitFixtureResult || (isAdmin && !fixture.cupId) || fixtureBet || betIsAvailable ? (
                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '12px' }}>
-                      {isMyFixture && getStatus(fixture) === 'accepted' && (
+                      {canSubmitFixtureResult && (
                         <button
                           className="btn btn-primary"
                           onClick={() => navigate(`/submit-result?fixtureId=${fixture.id}`)}

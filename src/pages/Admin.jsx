@@ -305,7 +305,7 @@ export default function Admin() {
     const now = new Date().toISOString()
     const updatedFixture = {
       ...fixture,
-      status: isApproved ? 'approved' : 'accepted',
+      status: isApproved ? 'completed' : 'accepted',
       updatedAt: now,
       resultId: isApproved ? result.id : null,
       submittedResultId: isApproved ? result.id : null,
@@ -396,11 +396,12 @@ export default function Admin() {
       const fixtureScores = getScoresForPlayerOrder(result, fixture.player1Id || fixture.player1, fixture.player2Id || fixture.player2)
       updatedFixtures[currentFixtureIndex] = {
         ...fixture,
-        status: 'approved',
+        status: 'completed',
         score1: fixtureScores.score1,
         score2: fixtureScores.score2,
         winnerId,
         resultId: result.id,
+        submittedResultId: result.id,
         updatedAt: now
       }
       await setDoc(doc(db, 'fixtures', String(updatedFixtures[currentFixtureIndex].id)), updatedFixtures[currentFixtureIndex], { merge: true })
