@@ -181,15 +181,20 @@ export default function Fixtures() {
     getStatus(fixture) === 'accepted' && !fixtureHasSubmittedResult(fixture)
   )
 
-  const getFixtureBetId = (fixture) => {
+  const getLegacyFixtureBetId = (fixture) => {
     const { player1Id, player2Id } = getFixturePlayerIds(fixture)
     return `fixture_${player1Id}_${player2Id}`
   }
 
+  const getFixtureBetId = (fixture) => (
+    fixture.id ? `fixture_${fixture.id}` : getLegacyFixtureBetId(fixture)
+  )
+
   const getBetForFixture = (fixture) => (
-    bets.find(bet => (
-      bet.fixtureId && String(bet.fixtureId) === String(fixture.id)
-    ) || String(bet.gameId) === String(getFixtureBetId(fixture)))
+    bets.find(bet => {
+      if (bet.fixtureId) return String(bet.fixtureId) === String(fixture.id)
+      return String(bet.gameId) === String(getLegacyFixtureBetId(fixture))
+    })
   )
 
   const hasApprovedResultForFixture = (fixture) => {
@@ -212,11 +217,12 @@ export default function Fixtures() {
 
   const canBetOnFixture = (fixture) => {
     const { player1Id, player2Id } = getFixturePlayerIds(fixture)
+    const fixtureType = String(fixture.gameType || '').toLowerCase()
+    const isBettableFixture = fixture.cupId || fixtureType === 'league'
+
     return (
       getStatus(fixture) === 'accepted' &&
-      !fixture.cupId &&
-      fixture.gameType === 'League' &&
-      fixture.division === user.division &&
+      isBettableFixture &&
       String(player1Id) !== String(user.id) &&
       String(player2Id) !== String(user.id) &&
       !fixtureHasSubmittedResult(fixture) &&
@@ -876,8 +882,15 @@ export default function Fixtures() {
       userId: user.id,
       gameId: getFixtureBetId(fixture),
       fixtureId: fixture.id,
+      fixtureType: fixture.cupId ? 'Cup' : (fixture.gameType || 'League'),
       fixturePlayer1Id: player1Id,
       fixturePlayer2Id: player2Id,
+      ...(fixture.cupId && {
+        cupId: fixture.cupId,
+        matchId: fixture.matchId,
+        cupName: fixture.cupName || getCupName(fixture.cupId),
+        round: fixture.round
+      }),
       amount: betAmount,
       predictedWinner: predictedWinnerName,
       predictedWinnerId: predictedWinner,

@@ -60,6 +60,12 @@ export default function Rewards() {
         (bet.fixtureId
           ? approvedResults.find(r => String(r.fixtureId || '') === String(bet.fixtureId))
           : null) ||
+        (bet.cupId && bet.matchId
+          ? approvedResults.find(r =>
+              String(r.cupId || '') === String(bet.cupId) &&
+              String(r.matchId || '') === String(bet.matchId)
+            )
+          : null) ||
         approvedResults.find(r => String(r.id) === String(bet.gameId)) ||
         (player1Id && player2Id
           ? approvedResults.find(r =>
@@ -185,14 +191,14 @@ export default function Rewards() {
           Win league games to earn 50 tokens per win.
         </p>
         <p style={{ color: (user?.eliteTokens || 0) >= 100 ? 'var(--success)' : 'var(--warning)', marginTop: '5px', fontSize: '0.85rem' }}>
-          Bet on confirmed league games from Fixtures &gt; All Fixtures.
+          Bet on confirmed league and cup games from Fixtures &gt; All Fixtures.
         </p>
       </div>
 
       <div className="card" style={{ marginBottom: '20px' }}>
         <h3 className="card-title">Promotion Draw</h3>
         <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
-          Correct bets on league games enter you into the season-end promotion draw.
+          Correct bets on league and cup games enter you into the season-end promotion draw.
         </p>
 
         {userInDraw ? (
