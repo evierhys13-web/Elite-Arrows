@@ -808,7 +808,7 @@ export default function Admin() {
 
   const isFullAdmin = user?.isAdmin || ADMIN_EMAILS.includes(user?.email?.toLowerCase())
   const filteredManagedResults = approvedResults.filter(result => (
-    resultFilter === 'all' ? true : String(result.status).toLowerCase() === resultFilter
+    String(result.status).toLowerCase() === resultFilter
   ))
 
   return (
@@ -888,7 +888,7 @@ export default function Admin() {
               className={`division-tab ${activeTab === 'results' ? 'active' : ''}`}
               onClick={() => setActiveTab('results')}
             >
-              Pending Results ({pendingResults.length})
+              Approved Results
             </button>
             <button
               className={`division-tab ${activeTab === 'submit-game' ? 'active' : ''}`}
@@ -994,14 +994,14 @@ export default function Admin() {
         <div>
           <div className="card">
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '15px' }}>
-              <h3 className="card-title" style={{ margin: 0 }}>Results</h3>
+              <h3 className="card-title" style={{ margin: 0 }}>Approved Results</h3>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {pendingResults.length > 0 && (
                   <button className="btn btn-success btn-sm" onClick={approveAllPendingResults}>
                     Approve All Pending
                   </button>
                 )}
-                {['all', 'pending', 'approved', 'rejected'].map(filter => (
+                {['pending', 'approved', 'rejected'].map(filter => (
                   <button
                     key={filter}
                     className={`btn btn-sm ${resultFilter === filter ? 'btn-primary' : 'btn-secondary'}`}
@@ -1014,7 +1014,7 @@ export default function Admin() {
             </div>
             {filteredManagedResults.length === 0 ? (
               <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '30px 10px' }}>
-                No {resultFilter === 'all' ? '' : resultFilter} results found
+                No {resultFilter} results found
               </p>
             ) : (
               filteredManagedResults.map(result => (
