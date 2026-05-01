@@ -112,6 +112,33 @@ export default function Fixtures() {
   const upcomingCount = upcomingFixtures.length + cupAccepted.length
   
   const getPlayerName = (id) => allUsers.find(u => u.id === id)?.username || 'Unknown'
+
+  const getFixtureDate = (fixture) => (
+    fixture.fixtureDate || fixture.date || fixture.proposedDate || ''
+  )
+
+  const getFixtureTime = (fixture) => (
+    fixture.fixtureTime || fixture.time || fixture.proposedTime || ''
+  )
+
+  const getPublicFixtureName = (fixture, playerId, playerNameKey) => (
+    fixture[playerNameKey] || getPlayerName(playerId)
+  )
+
+  const getFixtureSortTime = (fixture) => {
+    const date = getFixtureDate(fixture)
+    if (!date) return Number.MAX_SAFE_INTEGER
+    const timestamp = new Date(`${date}T${getFixtureTime(fixture) || '00:00'}`).getTime()
+    return Number.isNaN(timestamp) ? Number.MAX_SAFE_INTEGER : timestamp
+  }
+
+  const isPublicFixture = (fixture) => (
+    ['accepted', 'result_submitted'].includes(fixture.status)
+  )
+
+  const publicFixtures = fixtures
+    .filter(isPublicFixture)
+    .sort((a, b) => getFixtureSortTime(a) - getFixtureSortTime(b))
   
   const getCupName = (cupId) => {
     const cups = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
@@ -703,6 +730,12 @@ export default function Fixtures() {
           Upcoming ({upcomingCount})
         </button>
         <button
+          className={`btn ${activeTab === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setActiveTab('all')}
+        >
+          All Fixtures ({publicFixtures.length})
+        </button>
+        <button
           className={`btn ${activeTab === 'completed' ? 'btn-primary' : 'btn-secondary'}`}
           onClick={() => setActiveTab('completed')}
         >
@@ -1112,6 +1145,90 @@ export default function Fixtures() {
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'all' && (
+        <div className="card">
+          <h3 className="card-title">All Fixtures</h3>
+          {publicFixtures.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '40px 20px' }}>
+              No confirmed fixtures yet
+            </p>
+          ) : (
+            publicFixtures.map(fixture => {
+              const { player1Id, player2Id } = getFixturePlayerIds(fixture)
+              const player1Name = fixture.cupId
+                ? getPlayerName(player1Id)
+                : getPublicFixtureName(fixture, player1Id, 'player1Name')
+              const player2Name = fixture.cupId
+                ? getPlayerName(player2Id)
+                : getPublicFixtureName(fixture, player2Id, 'player2Name')
+              const isMyFixture = player1Id === user.id || player2Id === user.id
+              const fixtureDate = getFixtureDate(fixture)
+              const fixtureTime = getFixtureTime(fixture)
+
+              return (
+                <div key={fixture.id} style={{
+                  padding: '20px',
+                  background: 'var(--bg-secondary)',
+                  border: `1px solid ${isMyFixture ? 'var(--accent-cyan)' : 'var(--border)'}`,
+                  borderRadius: '12px',
+                  marginBottom: '15px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '15px' }}>
+                    <div>
+                      <div style={{ fontSize: '1.1rem', marginBottom: '5px' }}>
+                        <strong>{player1Name}</strong>
+                        <span style={{ margin: '0 10px', color: 'var(--text-muted)' }}>vs</span>
+                        <strong>{player2Name}</strong>
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--accent-cyan)' }}>
+                        {fixture.cupId
+                          ? `${getCupName(fixture.cupId)} | ${getRoundName(fixture.round, fixture.cupId)}`
+                          : `${fixture.division || 'Open'} | ${fixture.gameType || 'Fixture'}`}
+                      </div>
+                    </div>
+                    <span style={{
+                      padding: '5px 12px',
+                      background: fixture.status === 'result_submitted' ? 'var(--warning)' : 'var(--success)',
+                      color: '#000',
+                      borderRadius: '20px',
+                      fontSize: '0.8rem',
+                      fontWeight: 'bold'
+                    }}>
+                      {fixture.status === 'result_submitted' ? 'RESULT SENT' : 'CONFIRMED'}
+                    </span>
+                  </div>
+                  <div style={{
+                    display: 'flex',
+                    gap: '20px',
+                    padding: '15px',
+                    background: 'var(--bg-primary)',
+                    borderRadius: '8px'
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '3px' }}>DATE</div>
+                      <div style={{ fontWeight: '600' }}>{fixtureDate || 'TBC'}</div>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '3px' }}>TIME</div>
+                      <div style={{ fontWeight: '600' }}>{fixtureTime || 'TBC'}</div>
+                    </div>
+                  </div>
+                  {isMyFixture && fixture.status === 'accepted' && (
+                    <button
+                      className="btn btn-primary"
+                      style={{ marginTop: '12px' }}
+                      onClick={() => navigate(`/submit-result?fixtureId=${fixture.id}`)}
+                    >
+                      Submit Result
+                    </button>
+                  )}
+                </div>
+              )
+            })
           )}
         </div>
       )}
