@@ -10,6 +10,82 @@ const SEASON_ONE_WELCOME_START = new Date('2026-05-01T00:00:00+01:00').getTime()
 
 export const DIVISIONS = ['Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Development']
 
+const RESULT_CACHE_KEY = 'eliteArrowsResults'
+const RESULT_PROOF_FIELDS = ['proofImage', 'proof', 'proofUrl', 'proofImageUrl', 'proofFile']
+const MINIMAL_RESULT_CACHE_FIELDS = [
+  'id',
+  'firestoreId',
+  'fixtureId',
+  'cupId',
+  'matchId',
+  'player1',
+  'player1Id',
+  'player2',
+  'player2Id',
+  'score1',
+  'score2',
+  'division',
+  'gameType',
+  'season',
+  'date',
+  'submittedAt',
+  'approvedAt',
+  'updatedAt',
+  'status',
+  'submittedBy',
+  'bestOf',
+  'firstTo',
+  'player1Stats',
+  'player2Stats'
+]
+
+const stripResultProofForCache = (result) => {
+  const cached = { ...result }
+  let hasProofImage = Boolean(cached.hasProofImage)
+  RESULT_PROOF_FIELDS.forEach(field => {
+    if (cached[field]) hasProofImage = true
+    delete cached[field]
+  })
+  if (hasProofImage) cached.hasProofImage = true
+  return cached
+}
+
+const minimizeResultForCache = (result) => {
+  const cached = {}
+  MINIMAL_RESULT_CACHE_FIELDS.forEach(field => {
+    if (result[field] !== undefined) cached[field] = result[field]
+  })
+  if (RESULT_PROOF_FIELDS.some(field => result[field])) cached.hasProofImage = true
+  return cached
+}
+
+const getCachedResults = () => {
+  try {
+    return JSON.parse(localStorage.getItem(RESULT_CACHE_KEY) || '[]')
+  } catch (error) {
+    console.warn('Could not read cached results:', error)
+    localStorage.removeItem(RESULT_CACHE_KEY)
+    return []
+  }
+}
+
+const saveResultsCache = (results) => {
+  const resultList = Array.isArray(results) ? results : []
+  try {
+    localStorage.setItem(RESULT_CACHE_KEY, JSON.stringify(resultList.map(stripResultProofForCache)))
+    return
+  } catch (error) {
+    console.warn('Could not cache full result metadata:', error)
+  }
+
+  try {
+    localStorage.setItem(RESULT_CACHE_KEY, JSON.stringify(resultList.map(minimizeResultForCache)))
+  } catch (error) {
+    console.warn('Could not cache results locally:', error)
+    localStorage.removeItem(RESULT_CACHE_KEY)
+  }
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -266,7 +342,7 @@ export function AuthProvider({ children }) {
     }, new Map()).values())
 
     setResults(resultsData)
-    localStorage.setItem('eliteArrowsResults', JSON.stringify(resultsData))
+    saveResultsCache(resultsData)
     triggerDataRefresh('results')
   }, [triggerDataRefresh])
 
@@ -787,15 +863,14 @@ const cleanUserData = (users) => {
 
   const getResults = () => {
     if (results.length > 0) return results
-    const local = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
-    return local
+    return getCachedResults()
   }
 
   const updateResults = (updatedResults) => {
     const nextResults = Array.isArray(updatedResults) ? updatedResults : []
     resultRowsRef.current = nextResults
     setResults(nextResults)
-    localStorage.setItem('eliteArrowsResults', JSON.stringify(nextResults))
+    saveResultsCache(nextResults)
     triggerDataRefresh('results')
   }
 
