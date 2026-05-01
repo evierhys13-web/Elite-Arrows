@@ -366,7 +366,7 @@ export default function Guide() {
                   <li>You can only play each opponent once per season</li>
                   <li>Proof screenshot required when submitting</li>
                   <li>Results affect your league table position</li>
-                  <li><strong>Points system:</strong> 3 points for a win, 1 point for a draw, 0 points for a loss</li>
+                  <li><strong>Points system:</strong> Legs won plus match bonus: win +3, draw +1, loss +0. A 5-3 win is 8 points.</li>
                 </ul>
               </div>
 

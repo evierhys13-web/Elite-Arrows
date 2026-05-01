@@ -5,6 +5,7 @@ import NewsFeed from '../components/NewsFeed'
 import { SkeletonList } from '../components/Skeleton'
 import Tooltip from '../components/Tooltip'
 import Breadcrumbs from '../components/Breadcrumbs'
+import { getLeaguePoints } from '../utils/leagueScoring'
 
 const DEFAULT_LEAGUE_TABLE_RESET_AT = '2026-04-29T16:14:21.338+01:00'
 const SEASON_START = new Date('2026-05-01T00:00:00+01:00')
@@ -84,7 +85,9 @@ export default function Home() {
     }
     const countsForLeaguePoints = r.gameType === 'League' && (!leagueTableResetTime || getResultTime(r) > leagueTableResetTime)
     if (countsForLeaguePoints) {
-      acc.points += (isPlayer1 ? (r.score1 > r.score2 ? 3 : r.score1 === r.score2 ? 1 : 0) : (r.score2 > r.score1 ? 3 : r.score2 === r.score1 ? 1 : 0))
+      const myScore = isPlayer1 ? r.score1 : r.score2
+      const opponentScore = isPlayer1 ? r.score2 : r.score1
+      acc.points += getLeaguePoints(myScore, opponentScore)
     }
     return acc
   }, { played: 0, wins: 0, losses: 0, draws: 0, points: 0 })
@@ -164,10 +167,10 @@ export default function Home() {
               <span style={{ fontWeight: 'bold', color: 'var(--success)', textAlign: 'right' }}>+100 for win</span>
             </div>
           </Tooltip>
-          <Tooltip content="League table scoring: win = 3 points, draw = 1 point, loss = 0 points">
+          <Tooltip content="League table scoring: legs won plus win/draw/loss bonus. A 5-3 win is 5 legs + 3 win points = 8.">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px', cursor: 'help', gap: '16px' }}>
               <span>Points</span>
-              <span style={{ fontWeight: 'bold', textAlign: 'right' }}>W 3 / D 1 / L 0</span>
+              <span style={{ fontWeight: 'bold', textAlign: 'right' }}>Legs + W/D/L</span>
             </div>
           </Tooltip>
         </div>

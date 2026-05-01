@@ -6,6 +6,7 @@ import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   ScatterChart, Scatter, ComposedChart
 } from 'recharts'
+import { getLeaguePoints } from '../utils/leagueScoring'
 
 const COLORS = ['#4da8da', '#ef4444', '#f59e0b', '#22c55e']
 const RADAR_COLORS = ['#4da8da', '#ef4444']
@@ -105,9 +106,10 @@ export default function Analytics() {
       stats.played++
       stats.legsWon += myScore
       stats.legsLost += theirScore
-      if (myScore > theirScore) { stats.wins++; stats.points += 3 }
+      if (myScore > theirScore) stats.wins++
       else if (myScore < theirScore) stats.losses++
-      else { stats.draws++; stats.points += 1 }
+      else stats.draws++
+      stats.points += getLeaguePoints(myScore, theirScore)
 
       stats.total180s += myStats?.['180s'] || 0
       if ((myStats?.highestCheckout || 0) > stats.highestCheckout) stats.highestCheckout = myStats.highestCheckout
@@ -296,12 +298,14 @@ export default function Analytics() {
         p.legsWon += score
         const oppScore = id === r.player1Id ? r.score2 : r.score1
         p.legsLost += oppScore
-        if (score > oppScore) { p.wins++; p.points += 3; divisionStats[r.division].totalWins++ }
+        const matchPoints = getLeaguePoints(score, oppScore)
+        if (score > oppScore) { p.wins++; divisionStats[r.division].totalWins++ }
         else if (score < oppScore) p.losses++
-        else { p.draws++; p.points += 1 }
+        else p.draws++
+        p.points += matchPoints
         p['180s'] += stats?.['180s'] || 0
         if ((stats?.highestCheckout || 0) > p.highestCheckout) p.highestCheckout = stats.highestCheckout
-        divisionStats[r.division].totalPoints += score > oppScore ? 3 : score === oppScore ? 1 : 0
+        divisionStats[r.division].totalPoints += matchPoints
       })
 
       const month = r.date.substring(0, 7)
@@ -375,9 +379,10 @@ export default function Analytics() {
         played++
         legsWon += score
         legsLost += oppScore
-        if (score > oppScore) { wins++; points += 3 }
+        if (score > oppScore) wins++
         else if (score < oppScore) losses++
         else draws++
+        points += getLeaguePoints(score, oppScore)
         total180s += stats?.['180s'] || 0
         if ((stats?.highestCheckout || 0) > highestCheckout) highestCheckout = stats.highestCheckout
       })

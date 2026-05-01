@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { getLeaguePoints } from '../utils/leagueScoring'
 
 const DEFAULT_LEAGUE_TABLE_RESET_AT = '2026-04-29T16:14:21.338+01:00'
 
@@ -53,7 +54,7 @@ export default function Leaderboards() {
       wins: player.stats?.wins || 0,
       losses: player.stats?.losses || 0,
       draws: 0,
-      points: (player.stats?.wins || 0) * 3,
+      points: player.stats?.points || 0,
       legsWon: player.stats?.legsWon || 0,
       legsLost: player.stats?.legsLost || 0,
       '180s': player.stats?.['180s'] || 0,
@@ -75,13 +76,12 @@ export default function Leaderboards() {
       }
       if (r.score1 > r.score2) {
         stats.wins++
-        stats.points += 3
       } else if (r.score1 < r.score2) {
         stats.losses++
       } else {
         stats.draws++
-        stats.points += 1
       }
+      stats.points += getLeaguePoints(r.score1, r.score2)
     }
     if (playerStats[r.player2Id]) {
       const stats = playerStats[r.player2Id]
@@ -94,13 +94,12 @@ export default function Leaderboards() {
       }
       if (r.score2 > r.score1) {
         stats.wins++
-        stats.points += 3
       } else if (r.score2 < r.score1) {
         stats.losses++
       } else {
         stats.draws++
-        stats.points += 1
       }
+      stats.points += getLeaguePoints(r.score2, r.score1)
     }
   })
 

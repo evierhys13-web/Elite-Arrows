@@ -1,0 +1,1 @@
+var e=(e,t)=>{let n=Number(e)||0,r=Number(t)||0;return n>r?3:+(n===r)},t=(t,n)=>(Number(t)||0)+e(t,n);export{t};

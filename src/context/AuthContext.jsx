@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { db, auth, usersCollection, adminDataCollection, fcmTokensCollection, doc, setDoc, getDoc, getDocs, query, where, collection, orderBy, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, updateDoc, deleteDoc, FieldValue, getMessagingInstance, getToken, onMessage, isSupported } from '../firebase'
 import SeasonOneWelcomeModal from '../components/SeasonOneWelcomeModal'
+import { getResultIdentityKey, getResultOverrideKeys } from '../utils/resultIdentity'
 
 const AuthContext = createContext(null)
 
@@ -221,34 +222,16 @@ export function AuthProvider({ children }) {
     console.log(`Data refresh triggered: ${dataType}`)
   }, [])
 
-  const getResultSignature = (row) => {
-    const hasPlayerIds = row.player1Id && row.player2Id
-    const hasPlayerNames = row.player1 && row.player2
-    if (!hasPlayerIds && !hasPlayerNames) return ''
-
-    const playerKey = hasPlayerIds
-      ? `${row.player1Id}|${row.player2Id}`
-      : `${row.player1}|${row.player2}`
-    return `${playerKey}|${row.score1 ?? ''}|${row.score2 ?? ''}|${row.date || ''}|${row.gameType || ''}`
-  }
-
-  const getResultIdentityKey = (row) => {
-    if (row.fixtureId) return `fixture:${row.fixtureId}`
-    if (row.cupId && row.matchId) return `cup:${row.cupId}:${row.matchId}`
-    return getResultSignature(row) || String(row.id || row.firestoreId || '')
-  }
-
-  const getResultOverrideKeys = (row) => [
-    row.id ? String(row.id) : null,
-    row.firestoreId ? String(row.firestoreId) : null,
-    row.fixtureId ? `fixture:${row.fixtureId}` : null,
-    row.cupId && row.matchId ? `cup:${row.cupId}:${row.matchId}` : null,
-    getResultSignature(row)
-  ].filter(Boolean)
-
   const publishResults = useCallback(() => {
     const statusRank = { approved: 3, rejected: 3, pending: 2 }
-    const overrides = resultStatusOverridesRef.current || {}
+    let storedOverrides = {}
+    try {
+      storedOverrides = JSON.parse(localStorage.getItem('eliteArrowsResultStatusOverrides') || '{}')
+    } catch (error) {
+      storedOverrides = {}
+    }
+    const overrides = { ...(resultStatusOverridesRef.current || {}), ...storedOverrides }
+    resultStatusOverridesRef.current = overrides
     const resultRows = resultRowsRef.current.map(row => {
       const override = getResultOverrideKeys(row)
         .map(key => overrides[key])
@@ -948,6 +931,23 @@ const cleanUserData = (users) => {
   const updateAdminData = async (newData) => {
     try {
       await setDoc(doc(db, 'adminData', 'main'), newData, { merge: true })
+      setAdminData(prev => {
+        const next = { ...prev, ...newData }
+        if (Object.prototype.hasOwnProperty.call(newData, 'resultStatusOverrides')) {
+          resultStatusOverridesRef.current = newData.resultStatusOverrides || {}
+          localStorage.setItem('eliteArrowsResultStatusOverrides', JSON.stringify(newData.resultStatusOverrides || {}))
+        }
+        if (Object.prototype.hasOwnProperty.call(newData, 'subscriptionPot')) {
+          localStorage.setItem('eliteArrowsSubscriptionPot', String(newData.subscriptionPot || 0))
+        }
+        if (Object.prototype.hasOwnProperty.call(newData, 'subscriptionPot10')) {
+          localStorage.setItem('eliteArrowsSubscriptionPot10', String(newData.subscriptionPot10 || 0))
+        }
+        if (Object.prototype.hasOwnProperty.call(newData, 'moneyHistory')) {
+          localStorage.setItem('eliteArrowsMoneyHistory', JSON.stringify(newData.moneyHistory || []))
+        }
+        return next
+      })
       console.log('Admin data updated:', newData)
     } catch (e) {
       console.error('Error updating admin data:', e)

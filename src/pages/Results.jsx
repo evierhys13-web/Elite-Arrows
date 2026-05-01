@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { db, setDoc, getDoc, getDocs, deleteDoc, doc, collection, query, where } from '../firebase'
+import { getNormalizedResultSignature, getResultOverrideKeys, getResultSignature } from '../utils/resultIdentity'
 
 export default function Results() {
   const { user, getResults, getFixtures, updateFixtures, triggerDataRefresh, dataRefreshTrigger, adminData, updateAdminData, notifyUser, notifyAllSubscribers } = useAuth()
@@ -41,17 +42,32 @@ export default function Results() {
       const samePlayersById =
         result.player1Id &&
         result.player2Id &&
-        data.player1Id === result.player1Id &&
-        data.player2Id === result.player2Id
+        String(data.player1Id) === String(result.player1Id) &&
+        String(data.player2Id) === String(result.player2Id)
+      const samePlayersByIdReversed =
+        result.player1Id &&
+        result.player2Id &&
+        String(data.player1Id) === String(result.player2Id) &&
+        String(data.player2Id) === String(result.player1Id)
       const samePlayersByName =
         result.player1 &&
         result.player2 &&
-        data.player1 === result.player1 &&
-        data.player2 === result.player2
+        String(data.player1 || '').trim().toLowerCase() === String(result.player1).trim().toLowerCase() &&
+        String(data.player2 || '').trim().toLowerCase() === String(result.player2).trim().toLowerCase()
+      const samePlayersByNameReversed =
+        result.player1 &&
+        result.player2 &&
+        String(data.player1 || '').trim().toLowerCase() === String(result.player2).trim().toLowerCase() &&
+        String(data.player2 || '').trim().toLowerCase() === String(result.player1).trim().toLowerCase()
       const sameGame =
-        (samePlayersById || samePlayersByName) &&
-        String(data.score1) === String(result.score1) &&
-        String(data.score2) === String(result.score2) &&
+        (
+          ((samePlayersById || samePlayersByName) &&
+            String(data.score1) === String(result.score1) &&
+            String(data.score2) === String(result.score2)) ||
+          ((samePlayersByIdReversed || samePlayersByNameReversed) &&
+            String(data.score1) === String(result.score2) &&
+            String(data.score2) === String(result.score1))
+        ) &&
         data.date === result.date &&
         data.gameType === result.gameType
 
@@ -63,17 +79,6 @@ export default function Results() {
     return Array.from(docIds.size ? docIds : fallbackIds)
   }
 
-  const getResultSignature = (result) => {
-    const hasPlayerIds = result.player1Id && result.player2Id
-    const hasPlayerNames = result.player1 && result.player2
-    if (!hasPlayerIds && !hasPlayerNames) return ''
-
-    const playerKey = hasPlayerIds
-      ? `${result.player1Id}|${result.player2Id}`
-      : `${result.player1}|${result.player2}`
-    return `${playerKey}|${result.score1 ?? ''}|${result.score2 ?? ''}|${result.date || ''}|${result.gameType || ''}`
-  }
-
   const persistResultStatusOverride = async (result, status) => {
     const nextOverrides = {
       ...(adminData.resultStatusOverrides || {})
@@ -83,15 +88,13 @@ export default function Results() {
       resultId: result.id ? String(result.id) : String(result.firestoreId || ''),
       firestoreId: result.firestoreId || null,
       signature: getResultSignature(result),
+      normalizedSignature: getNormalizedResultSignature(result),
       updatedAt: new Date().toISOString()
     }
 
-    if (result.id) nextOverrides[String(result.id)] = override
-    if (result.firestoreId) nextOverrides[result.firestoreId] = override
-    if (result.fixtureId) nextOverrides[`fixture:${result.fixtureId}`] = override
-    if (result.cupId && result.matchId) nextOverrides[`cup:${result.cupId}:${result.matchId}`] = override
-    const signature = getResultSignature(result)
-    if (signature) nextOverrides[signature] = override
+    getResultOverrideKeys(result).forEach(key => {
+      nextOverrides[key] = override
+    })
     localStorage.setItem('eliteArrowsResultStatusOverrides', JSON.stringify(nextOverrides))
     await updateAdminData({ resultStatusOverrides: nextOverrides })
   }
