@@ -1,4 +1,4 @@
-const CACHE_NAME = 'elite-arrows-v35';
+const CACHE_NAME = 'elite-arrows-v36';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

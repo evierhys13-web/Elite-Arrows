@@ -13,13 +13,13 @@ export default function CupBracket() {
 
   useEffect(() => {
     const cups = getCups()
-    const foundCup = cups.find(c => c.id === parseInt(cupId))
+    const foundCup = cups.find(c => String(c.id) === String(cupId))
     if (foundCup) {
       setCup(foundCup)
     }
     
     const allFixtures = getFixtures()
-    setFixtures(allFixtures.filter(f => f.cupId === parseInt(cupId)))
+    setFixtures(allFixtures.filter(f => String(f.cupId) === String(cupId)))
     setResults(getResults())
   }, [cupId, refreshKey, dataRefreshTrigger])
 
@@ -51,6 +51,8 @@ export default function CupBracket() {
     return `ROUND ${round}`
   }
 
+  const hasScore = (score) => score !== undefined && score !== null && score !== ''
+
   const getScoreForPlayer = (source, playerId, fallbackScore) => {
     const sourcePlayer1Id = source.player1Id || source.player1
     const sourcePlayer2Id = source.player2Id || source.player2
@@ -59,31 +61,38 @@ export default function CupBracket() {
     return fallbackScore
   }
 
+  const getScoresFromSource = (source, match) => {
+    if (!source || !hasScore(source.score1) || !hasScore(source.score2)) return null
+    return {
+      score1: getScoreForPlayer(source, match.player1, source.score1),
+      score2: getScoreForPlayer(source, match.player2, source.score2)
+    }
+  }
+
   const getMatchResult = (match) => {
+    const fixture = fixtures.find(f => String(f.matchId) === String(match.id))
     const approvedResult = results.find(result => (
-      String(result.cupId || '') === String(cup.id) &&
-      String(result.matchId || '') === String(match.id) &&
+      (
+        (
+          String(result.cupId || '') === String(cup.id) &&
+          String(result.matchId || '') === String(match.id)
+        ) ||
+        (fixture?.id && String(result.fixtureId || '') === String(fixture.id))
+      ) &&
       String(result.status).toLowerCase() === 'approved'
     ))
 
-    if (approvedResult) {
-      return {
-        score1: getScoreForPlayer(approvedResult, match.player1, approvedResult.score1),
-        score2: getScoreForPlayer(approvedResult, match.player2, approvedResult.score2)
-      }
-    }
+    const approvedResultScores = getScoresFromSource(approvedResult, match)
+    if (approvedResultScores) return approvedResultScores
 
-    if (match.score1 !== undefined && match.score1 !== null && match.score2 !== undefined && match.score2 !== null) {
-      return { score1: match.score1, score2: match.score2 }
-    }
+    const matchScores = getScoresFromSource(match, match)
+    if (matchScores) return matchScores
 
-    const fixture = fixtures.find(f => String(f.matchId) === String(match.id) && f.status === 'approved')
-    return fixture
-      ? {
-        score1: getScoreForPlayer(fixture, match.player1, fixture.score1),
-        score2: getScoreForPlayer(fixture, match.player2, fixture.score2)
-      }
+    const fixtureScores = ['approved', 'completed'].includes(String(fixture?.status).toLowerCase())
+      ? getScoresFromSource(fixture, match)
       : null
+
+    return fixtureScores
   }
 
   const rounds = []
@@ -93,7 +102,7 @@ export default function CupBracket() {
 
   const getPlayerName = (id) => {
     if (!id) return null
-    return allUsers.find(u => u.id === id)?.username || 'Unknown'
+    return allUsers.find(u => String(u.id) === String(id))?.username || 'Unknown'
   }
 
   const roundsData = rounds.map(round => {
@@ -205,8 +214,8 @@ export default function CupBracket() {
                       const hasPlayers = match.player1 && match.player2
                       const p1Name = getPlayerName(match.player1)
                       const p2Name = getPlayerName(match.player2)
-                      const p1Won = match.winner === match.player1
-                      const p2Won = match.winner === match.player2
+                      const p1Won = String(match.winner) === String(match.player1)
+                      const p2Won = String(match.winner) === String(match.player2)
                       
                       const containerHeight = roundData.round === 1 ? 75 : Math.pow(2, roundData.round - 1) * 75
                       const halfHeight = containerHeight / 2

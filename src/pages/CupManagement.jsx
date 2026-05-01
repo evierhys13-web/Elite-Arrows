@@ -3,15 +3,17 @@ import { useAuth } from '../context/AuthContext'
 import { db, doc, setDoc, deleteDoc } from '../firebase'
 
 function CupManagement() {
-  const { getAllUsers, getCups, getFixtures, triggerDataRefresh, dataRefreshTrigger } = useAuth()
+  const { getAllUsers, getCups, getFixtures, getResults, triggerDataRefresh, dataRefreshTrigger } = useAuth()
   const [refreshKey, setRefreshKey] = useState(0)
   const [cups, setCups] = useState([])
   const [allCupFixtures, setAllCupFixtures] = useState([])
+  const [allCupResults, setAllCupResults] = useState([])
   const allUsers = getAllUsers()
 
   useEffect(() => {
     setCups(getCups())
     setAllCupFixtures(getFixtures())
+    setAllCupResults(getResults())
   }, [refreshKey, dataRefreshTrigger])
 
   useEffect(() => {
@@ -20,7 +22,7 @@ function CupManagement() {
 
   const getPlayerName = (id) => {
     if (!id) return 'TBD'
-    return allUsers.find(u => u.id === id)?.username || 'Unknown'
+    return allUsers.find(u => String(u.id) === String(id))?.username || 'Unknown'
   }
 
   const getRoundName = (round, totalRounds) => {
@@ -28,6 +30,47 @@ function CupManagement() {
     if (round === totalRounds - 1) return 'Semi-Final'
     if (round === totalRounds - 2) return 'Quarter-Final'
     return `Round ${round}`
+  }
+
+  const hasScore = (score) => score !== undefined && score !== null && score !== ''
+
+  const getScoreForPlayer = (source, playerId, fallbackScore) => {
+    const sourcePlayer1Id = source.player1Id || source.player1
+    const sourcePlayer2Id = source.player2Id || source.player2
+    if (String(playerId) === String(sourcePlayer1Id)) return source.score1
+    if (String(playerId) === String(sourcePlayer2Id)) return source.score2
+    return fallbackScore
+  }
+
+  const getScoresFromSource = (source, match) => {
+    if (!source || !hasScore(source.score1) || !hasScore(source.score2)) return null
+    return {
+      score1: getScoreForPlayer(source, match.player1, source.score1),
+      score2: getScoreForPlayer(source, match.player2, source.score2)
+    }
+  }
+
+  const getMatchScores = (cup, match) => {
+    const fixture = allCupFixtures.find(f => (
+      String(f.cupId || '') === String(cup.id) &&
+      String(f.matchId || '') === String(match.id)
+    ))
+    const approvedResult = allCupResults.find(result => (
+      (
+        (
+          String(result.cupId || '') === String(cup.id) &&
+          String(result.matchId || '') === String(match.id)
+        ) ||
+        (fixture?.id && String(result.fixtureId || '') === String(fixture.id))
+      ) &&
+      String(result.status).toLowerCase() === 'approved'
+    ))
+
+    return (
+      getScoresFromSource(approvedResult, match) ||
+      getScoresFromSource(match, match) ||
+      (['approved', 'completed'].includes(String(fixture?.status).toLowerCase()) ? getScoresFromSource(fixture, match) : null)
+    )
   }
 
   const enterResult = async (cup, match) => {
@@ -192,9 +235,12 @@ function CupManagement() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {cups.map(cup => {
         const totalRounds = Math.max(...(cup.matches?.map(m => m.round) || [1]))
-        const activeMatches = cup.matches?.filter(m => m.player1 && m.player2 && !m.winner) || []
-        const completedMatches = cup.matches?.filter(m => m.winner) || []
-        const cupFixtures = allCupFixtures.filter(f => f.cupId === cup.id)
+        const sortedMatches = [...(cup.matches || [])].sort((a, b) => (
+          Number(a.round || 0) - Number(b.round || 0) ||
+          Number(a.matchNum || a.id || 0) - Number(b.matchNum || b.id || 0)
+        ))
+        const visibleMatches = sortedMatches.filter(m => m.player1 || m.player2 || m.winner)
+        const cupFixtures = allCupFixtures.filter(f => String(f.cupId) === String(cup.id))
         
         return (
           <div key={cup.id} style={{ 
@@ -241,11 +287,12 @@ function CupManagement() {
 
             <div style={{ marginTop: '15px' }}>
               <h4 style={{ marginBottom: '10px' }}>Bracket Results</h4>
-              {cup.matches?.filter(m => m.round === 1).map(match => {
+              {visibleMatches.map(match => {
                 const p1Name = getPlayerName(match.player1)
                 const p2Name = getPlayerName(match.player2)
                 const winnerName = match.winner ? getPlayerName(match.winner) : null
                 const roundName = getRoundName(match.round, totalRounds)
+                const scores = getMatchScores(cup, match)
                 
                 return (
                   <div key={match.id} style={{ 
@@ -271,7 +318,7 @@ function CupManagement() {
                           Winner: {winnerName}
                         </span>
                         <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                          Score: {match.score1}-{match.score2}
+                          Score: {scores ? `${scores.score1}-${scores.score2}` : 'Not recorded'}
                         </div>
                       </div>
                     ) : (
@@ -287,44 +334,6 @@ function CupManagement() {
                 )
               })}
             </div>
-
-            {cup.status !== 'completed' && completedMatches.length > 0 && (
-              <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px solid var(--border)' }}>
-                <h4 style={{ marginBottom: '10px' }}>Next Round Matches</h4>
-                {cup.matches?.filter(m => m.round > 1 && m.player1 && m.player2 && !m.winner).map(match => {
-                  const p1Name = getPlayerName(match.player1)
-                  const p2Name = getPlayerName(match.player2)
-                  const roundName = getRoundName(match.round, totalRounds)
-                  
-                  return (
-                    <div key={match.id} style={{ 
-                      display: 'flex', 
-                      justifyContent: 'space-between', 
-                      alignItems: 'center',
-                      padding: '12px',
-                      background: 'var(--bg-primary)',
-                      borderRadius: '8px',
-                      marginBottom: '8px'
-                    }}>
-                      <div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)' }}>{roundName}</span>
-                        <div style={{ fontSize: '0.95rem', marginTop: '3px' }}>
-                          <strong>{p1Name}</strong>
-                          <span style={{ color: 'var(--text-muted)', margin: '0 10px' }}>vs</span>
-                          <strong>{p2Name}</strong>
-                        </div>
-                      </div>
-                      <button 
-                        className="btn btn-primary btn-sm"
-                        onClick={() => enterResult(cup, match)}
-                      >
-                        Enter Result
-                      </button>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
 
             <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px solid var(--border)' }}>
               <h4 style={{ marginBottom: '10px' }}>Cup Fixtures ({cupFixtures.length})</h4>
