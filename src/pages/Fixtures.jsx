@@ -5,7 +5,7 @@ import { db, doc, setDoc, deleteDoc, getDocs, collection } from '../firebase'
 import UserSearchSelect from '../components/UserSearchSelect'
 
 export default function Fixtures() {
-  const { user, getAllUsers, getFixtures, getResults, updateFixtures, triggerDataRefresh, notifyUser, notifyAdmins, useTokens } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, updateResults, updateFixtures, triggerDataRefresh, notifyUser, notifyAdmins, useTokens } = useAuth()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('upcoming')
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -468,7 +468,7 @@ export default function Fixtures() {
     const score2 = prompt('Enter opponent\'s score (legs won):')
     if (score2 === null) return
     
-    const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+    const results = [...getResults()]
     const resultId = Date.now().toString()
     const newResult = {
       id: resultId,
@@ -492,7 +492,7 @@ export default function Fixtures() {
     }
     
     results.push(newResult)
-    localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
+    updateResults(results)
     
     try {
       await setDoc(doc(db, 'results', resultId), newResult, { merge: true })
@@ -801,12 +801,12 @@ export default function Fixtures() {
 
     const fixtureId = String(fixture.id)
     const resultMatchesFixture = (result) => String(result.fixtureId || '') === fixtureId
-    const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+    const results = [...getResults()]
     const matchingResults = results.filter(resultMatchesFixture)
     const remainingResults = results.filter(result => !resultMatchesFixture(result))
     const remainingFixtures = getFixtures().filter(item => String(item.id) !== fixtureId)
 
-    localStorage.setItem('eliteArrowsResults', JSON.stringify(remainingResults))
+    updateResults(remainingResults)
     saveFixtures(remainingFixtures)
 
     try {

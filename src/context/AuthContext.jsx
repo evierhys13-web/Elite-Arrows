@@ -791,6 +791,14 @@ const cleanUserData = (users) => {
     return local
   }
 
+  const updateResults = (updatedResults) => {
+    const nextResults = Array.isArray(updatedResults) ? updatedResults : []
+    resultRowsRef.current = nextResults
+    setResults(nextResults)
+    localStorage.setItem('eliteArrowsResults', JSON.stringify(nextResults))
+    triggerDataRefresh('results')
+  }
+
   const getFixtures = () => {
     if (fixtures.length > 0) return fixtures
     const local = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
@@ -1109,6 +1117,7 @@ const cleanUserData = (users) => {
       getAllUsers,
       getFriends,
       getResults,
+      updateResults,
       getFixtures,
       updateFixtures,
       getCups,

@@ -4,7 +4,7 @@ import { db, setDoc, getDoc, getDocs, deleteDoc, doc, collection, query, where }
 import { getNormalizedResultSignature, getResultOverrideKeys, getResultSignature } from '../utils/resultIdentity'
 
 export default function Results() {
-  const { user, getResults, getFixtures, updateFixtures, triggerDataRefresh, dataRefreshTrigger, adminData, updateAdminData, notifyUser, notifyAllSubscribers } = useAuth()
+  const { user, getResults, updateResults, getFixtures, updateFixtures, triggerDataRefresh, dataRefreshTrigger, adminData, updateAdminData, notifyUser, notifyAllSubscribers } = useAuth()
   const [activeTab, setActiveTab] = useState('approved')
   const [refreshKey, setRefreshKey] = useState(0)
   const [successMessage, setSuccessMessage] = useState('')
@@ -21,8 +21,8 @@ export default function Results() {
   const isSubscribed = user?.isSubscribed === true
   
   const allResults = getResults()
-  const approvedResults = allResults.filter(r => r.status === 'approved')
-  const pendingResults = allResults.filter(r => r.status === 'pending')
+  const approvedResults = allResults.filter(r => String(r.status).toLowerCase() === 'approved')
+  const pendingResults = allResults.filter(r => String(r.status).toLowerCase() === 'pending')
 
   const getResultDocIds = async (result) => {
     const logicalId = result.id ? String(result.id) : null
@@ -80,8 +80,16 @@ export default function Results() {
   }
 
   const persistResultStatusOverride = async (result, status) => {
+    let storedOverrides = {}
+    try {
+      storedOverrides = JSON.parse(localStorage.getItem('eliteArrowsResultStatusOverrides') || '{}')
+    } catch (error) {
+      storedOverrides = {}
+    }
+
     const nextOverrides = {
-      ...(adminData.resultStatusOverrides || {})
+      ...(adminData.resultStatusOverrides || {}),
+      ...storedOverrides
     }
     const override = {
       status,
@@ -134,7 +142,7 @@ export default function Results() {
     if (!confirm('Approve this result?')) return
     
     const resultIdStr = String(resultId)
-    const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+    const results = [...getResults()]
     const index = results.findIndex(r => String(r.id) === resultIdStr)
     if (index === -1) {
       alert('Result not found')
@@ -150,7 +158,7 @@ export default function Results() {
     }
     const resultDocIds = await getResultDocIds(updatedResult)
     results[index] = updatedResult
-    localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
+    updateResults(results)
     
     await Promise.all(resultDocIds.map(resultDocId =>
       setDoc(doc(db, 'results', resultDocId), { ...updatedResult, firestoreId: resultDocId }, { merge: true })
@@ -169,7 +177,7 @@ export default function Results() {
     if (!confirm('Reject this result?')) return
     
     const resultIdStr = String(resultId)
-    const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+    const results = [...getResults()]
     const index = results.findIndex(r => String(r.id) === resultIdStr)
     if (index === -1) {
       alert('Result not found')
@@ -179,7 +187,7 @@ export default function Results() {
     const updatedResult = { ...result, status: 'rejected', updatedAt: new Date().toISOString() }
     const resultDocIds = await getResultDocIds(updatedResult)
     results[index] = updatedResult
-    localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
+    updateResults(results)
     
     await Promise.all(resultDocIds.map(resultDocId =>
       setDoc(doc(db, 'results', resultDocId), { ...updatedResult, firestoreId: resultDocId }, { merge: true })

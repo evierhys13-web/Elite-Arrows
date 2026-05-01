@@ -7,7 +7,7 @@ import UserSearchSelect from '../components/UserSearchSelect'
 import { getNormalizedResultSignature, getResultOverrideKeys, getResultSignature } from '../utils/resultIdentity'
 
 export default function Admin() {
-  const { user, notifications, getAllUsers, updateUser, updateOtherUser, getResults, getFixtures, updateFixtures, getCups, getSupportRequests, getSeasons, getNews, postNews, deleteNews, togglePinNews, adminData, updateAdminData, addToMoneyHistory, triggerDataRefresh, dataRefreshTrigger, notifyUser, notifyAllSubscribers } = useAuth()
+  const { user, notifications, getAllUsers, updateUser, updateOtherUser, getResults, updateResults, getFixtures, updateFixtures, getCups, getSupportRequests, getSeasons, getNews, postNews, deleteNews, togglePinNews, adminData, updateAdminData, addToMoneyHistory, triggerDataRefresh, dataRefreshTrigger, notifyUser, notifyAllSubscribers } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const subscriptionPot = adminData.subscriptionPot || 0
@@ -168,8 +168,16 @@ export default function Admin() {
   }
 
   const persistResultStatusOverride = async (result, status) => {
+    let storedOverrides = {}
+    try {
+      storedOverrides = JSON.parse(localStorage.getItem('eliteArrowsResultStatusOverrides') || '{}')
+    } catch (error) {
+      storedOverrides = {}
+    }
+
     const nextOverrides = {
-      ...(adminData.resultStatusOverrides || {})
+      ...(adminData.resultStatusOverrides || {}),
+      ...storedOverrides
     }
     const override = {
       status,
@@ -418,8 +426,8 @@ export default function Admin() {
 
   useEffect(() => {
     const results = getResults();
-    const pending = results.filter(r => r.status === 'pending');
-    const managed = results.filter(r => ['pending', 'approved', 'rejected'].includes(r.status));
+    const pending = results.filter(r => String(r.status).toLowerCase() === 'pending');
+    const managed = results.filter(r => ['pending', 'approved', 'rejected'].includes(String(r.status).toLowerCase()));
     if (user.isTournamentAdmin && !user.isAdmin) {
       setPendingResults(pending.filter(r => r.gameType === 'Tournament'));
       setApprovedResults(managed.filter(r => r.gameType === 'Tournament'));
@@ -453,7 +461,7 @@ export default function Admin() {
     const resultIdStr = String(resultId)
     console.log('Approve called with ID:', resultIdStr)
     
-    const results = getResults()
+    const results = [...getResults()]
     const resultsIndex = results.findIndex(r => String(r.id) === resultIdStr)
     
     if (resultsIndex === -1) {
@@ -475,8 +483,8 @@ export default function Admin() {
     }
     const resultDocIds = await getResultDocIds(updatedResult)
     results[resultsIndex] = updatedResult
-    localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
-    console.log('Updated localStorage')
+    updateResults(results)
+    console.log('Updated results cache')
     
     setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
     setApprovedResults(prev => {
@@ -500,11 +508,76 @@ export default function Admin() {
     }
   }
 
+  const approveAllPendingResults = async () => {
+    const pendingToApprove = pendingResults.filter(result => !(
+      result.gameType === 'Cup' &&
+      Number(result.score1) === Number(result.score2)
+    ))
+    const skippedCount = pendingResults.length - pendingToApprove.length
+
+    if (pendingToApprove.length === 0) {
+      alert(skippedCount > 0 ? 'Cup matches with tied scores cannot be approved.' : 'No pending results to approve.')
+      return
+    }
+
+    if (!confirm(`Approve ${pendingToApprove.length} pending result${pendingToApprove.length === 1 ? '' : 's'} now?`)) return
+
+    const reviewedAt = new Date().toISOString()
+    const approveIds = new Set(pendingToApprove.map(result => String(result.id)))
+    const approvedById = new Map()
+    const results = [...getResults()].map(result => {
+      if (!approveIds.has(String(result.id))) return result
+
+      const updatedResult = {
+        ...result,
+        status: 'approved',
+        approvedAt: reviewedAt,
+        updatedAt: reviewedAt
+      }
+      approvedById.set(String(updatedResult.id), updatedResult)
+      return updatedResult
+    })
+    const approvedResultsNow = pendingToApprove.map(result => (
+      approvedById.get(String(result.id)) || {
+        ...result,
+        status: 'approved',
+        approvedAt: reviewedAt,
+        updatedAt: reviewedAt
+      }
+    ))
+
+    updateResults(results)
+    setPendingResults(prev => prev.filter(result => !approveIds.has(String(result.id))))
+    setApprovedResults(prev => {
+      const withoutApproved = prev.filter(result => !approveIds.has(String(result.id)))
+      return [...approvedResultsNow, ...withoutApproved]
+    })
+
+    try {
+      for (const updatedResult of approvedResultsNow) {
+        const resultDocIds = await getResultDocIds(updatedResult)
+        await Promise.all(resultDocIds.map(resultDocId =>
+          setDoc(doc(db, 'results', resultDocId), { ...updatedResult, firestoreId: resultDocId }, { merge: true })
+        ))
+        await syncFixtureAfterResultReview(updatedResult, 'approved')
+        await syncCupApproval(updatedResult)
+        await persistResultStatusOverride(updatedResult, 'approved')
+      }
+
+      triggerDataRefresh('results')
+      triggerDataRefresh('fixtures')
+      showSuccessMessage(`Approved ${approvedResultsNow.length} pending result${approvedResultsNow.length === 1 ? '' : 's'}${skippedCount ? ` (${skippedCount} tied cup result skipped)` : ''}`)
+    } catch (e) {
+      alert('ERROR: ' + (e.code ? `${e.code} - ` : '') + e.message)
+      console.error('FATAL Firebase error:', e.code, e.message)
+    }
+  }
+
   const rejectResult = async (resultId) => {
     const resultIdStr = String(resultId)
     console.log('Reject called with ID:', resultIdStr)
     
-    const results = getResults()
+    const results = [...getResults()]
     const resultsIndex = results.findIndex(r => String(r.id) === resultIdStr)
     
     if (resultsIndex === -1) {
@@ -515,8 +588,8 @@ export default function Admin() {
     const updatedResult = { ...results[resultsIndex], status: 'rejected', updatedAt: new Date().toISOString() }
     const resultDocIds = await getResultDocIds(updatedResult)
     results[resultsIndex] = updatedResult
-    localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
-    console.log('Updated localStorage')
+    updateResults(results)
+    console.log('Updated results cache')
     setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
     setApprovedResults(prev => {
       const withoutResult = prev.filter(r => String(r.id) !== resultIdStr)
@@ -541,7 +614,7 @@ export default function Admin() {
     const resultIdStr = String(resultId)
     if (!confirm('Reset this result status? It will be removed from approved result management.')) return
     
-    const results = getResults()
+    const results = [...getResults()]
     const resultsIndex = results.findIndex(r => String(r.id) === resultIdStr)
     
     if (resultsIndex === -1) {
@@ -552,7 +625,7 @@ export default function Admin() {
     const updatedResult = { ...results[resultsIndex], status: null, updatedAt: new Date().toISOString() }
     const resultDocIds = await getResultDocIds(updatedResult)
     results[resultsIndex] = updatedResult
-    localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
+    updateResults(results)
     
     setApprovedResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
     setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
@@ -672,7 +745,7 @@ export default function Admin() {
     const player1User = getAllUsers().find(u => u.id === gameForm.player1)
     const player2User = getAllUsers().find(u => u.id === gameForm.player2)
 
-    const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+    const results = [...getResults()]
     const resultId = Date.now().toString()
     const approvedAt = new Date().toISOString()
     const newResult = {
@@ -698,7 +771,7 @@ export default function Admin() {
       status: 'approved'
     }
     results.push(newResult)
-    localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
+    updateResults(results)
     await setDoc(doc(db, 'results', resultId), newResult, { merge: true })
 
     alert('Game submitted and approved!')
@@ -735,7 +808,7 @@ export default function Admin() {
 
   const isFullAdmin = user?.isAdmin || ADMIN_EMAILS.includes(user?.email?.toLowerCase())
   const filteredManagedResults = approvedResults.filter(result => (
-    resultFilter === 'all' ? true : result.status === resultFilter
+    resultFilter === 'all' ? true : String(result.status).toLowerCase() === resultFilter
   ))
 
   return (
@@ -920,7 +993,14 @@ export default function Admin() {
       {activeTab === 'results' && (
         <div>
           <div className="card" style={{ marginBottom: '20px' }}>
-            <h3 className="card-title">Pending Results</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '15px' }}>
+              <h3 className="card-title" style={{ margin: 0 }}>Pending Results</h3>
+              {pendingResults.length > 0 && (
+                <button className="btn btn-success" onClick={approveAllPendingResults}>
+                  Approve All Pending
+                </button>
+              )}
+            </div>
             {pendingResults.length === 0 ? (
               <div className="empty-state">
                 <p>No pending results to approve</p>
@@ -978,7 +1058,7 @@ export default function Admin() {
                       <strong>{result.player1}</strong> vs <strong>{result.player2}</strong>
                     </div>
                     <span style={{
-                      color: result.status === 'approved' ? 'var(--success)' : result.status === 'rejected' ? 'var(--error)' : 'var(--warning)',
+                      color: String(result.status).toLowerCase() === 'approved' ? 'var(--success)' : String(result.status).toLowerCase() === 'rejected' ? 'var(--error)' : 'var(--warning)',
                       fontWeight: 700
                     }}>
                       {(result.status || 'No Status').toUpperCase()}
@@ -988,7 +1068,7 @@ export default function Admin() {
                     {result.score1} - {result.score2} | {result.division} | {result.gameType} | {result.date}
                   </div>
                   {renderResultProof(result)}
-                  {result.status === 'pending' ? (
+                  {String(result.status).toLowerCase() === 'pending' ? (
                     <div style={{ display: 'flex', gap: '10px' }}>
                       <button className="btn btn-primary" onClick={() => setShowConfirmModal({ type: 'approve', result })}>
                         Approve
@@ -2097,10 +2177,10 @@ export default function Admin() {
             <button className="btn btn-danger" onClick={async () => {
               const currentSeason = localStorage.getItem('eliteArrowsCurrentSeason') || new Date().getFullYear().toString()
               if (confirm(`Reset all results for "${currentSeason}" season?`)) {
-                const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+                const results = [...getResults()]
                 const currentSeasonResults = results.filter(r => r.season === currentSeason)
                 const filtered = results.filter(r => r.season !== currentSeason)
-                localStorage.setItem('eliteArrowsResults', JSON.stringify(filtered))
+                updateResults(filtered)
                 await Promise.all(currentSeasonResults.map(result => 
                   deleteDoc(doc(db, 'results', String(result.firestoreId || result.id))).catch(e => {
                     console.log('Error deleting result from Firebase:', e)

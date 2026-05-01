@@ -20,7 +20,7 @@ const INITIAL_RESULT_FORM = {
 }
 
 export default function SubmitResult() {
-  const { user, getAllUsers, getFixtures, getResults, updateFixtures, addTokens, triggerDataRefresh, notifyAdmins } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, updateResults, updateFixtures, addTokens, triggerDataRefresh, notifyAdmins } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const cameraInputRef = useRef(null)
@@ -304,7 +304,7 @@ const handleSubmit = async (e) => {
 
       results.push(newResult)
       try {
-        localStorage.setItem('eliteArrowsResults', JSON.stringify(results))
+        updateResults(results)
       } catch (storageError) {
         console.log('Result saved to Firestore but local cache update failed:', storageError)
       }
