@@ -250,6 +250,21 @@ export default function Admin() {
     return Array.from(docIds.size ? docIds : fallbackIds)
   }
 
+  const getScoresForPlayerOrder = (source, player1Id, player2Id) => {
+    const sourcePlayer1Id = source.player1Id || source.player1
+    const sourcePlayer2Id = source.player2Id || source.player2
+    const scoreForPlayer = (playerId, fallbackScore) => {
+      if (String(playerId) === String(sourcePlayer1Id)) return Number(source.score1)
+      if (String(playerId) === String(sourcePlayer2Id)) return Number(source.score2)
+      return Number(fallbackScore)
+    }
+
+    return {
+      score1: scoreForPlayer(player1Id, source.score1),
+      score2: scoreForPlayer(player2Id, source.score2)
+    }
+  }
+
   const syncFixtureAfterResultReview = async (result, reviewStatus) => {
     const fixtures = getFixtures()
     const fixtureIndex = fixtures.findIndex(fixture => (
@@ -264,15 +279,19 @@ export default function Admin() {
     if (fixtureIndex === -1) return
 
     const isApproved = reviewStatus === 'approved'
+    const fixture = fixtures[fixtureIndex]
+    const fixtureScores = isApproved
+      ? getScoresForPlayerOrder(result, fixture.player1Id || fixture.player1, fixture.player2Id || fixture.player2)
+      : { score1: null, score2: null }
     const now = new Date().toISOString()
     const updatedFixture = {
-      ...fixtures[fixtureIndex],
+      ...fixture,
       status: isApproved ? 'approved' : 'accepted',
       updatedAt: now,
       resultId: isApproved ? result.id : null,
       submittedResultId: isApproved ? result.id : null,
-      score1: isApproved ? Number(result.score1) : null,
-      score2: isApproved ? Number(result.score2) : null
+      score1: fixtureScores.score1,
+      score2: fixtureScores.score2
     }
 
     const updatedFixtures = [...fixtures]
@@ -293,17 +312,20 @@ export default function Admin() {
     const match = cup.matches?.find(item => String(item.id) === String(result.matchId))
     if (!match) return
 
-    const score1 = Number(result.score1)
-    const score2 = Number(result.score2)
-    const winnerId = score1 > score2 ? result.player1Id : result.player2Id
+    const matchPlayer1 = match.player1 || result.player1Id
+    const matchPlayer2 = match.player2 || result.player2Id
+    const matchScores = getScoresForPlayerOrder(result, matchPlayer1, matchPlayer2)
+    const score1 = matchScores.score1
+    const score2 = matchScores.score2
+    const winnerId = score1 > score2 ? matchPlayer1 : matchPlayer2
     const now = new Date().toISOString()
 
     let updatedMatches = cup.matches.map(item => (
       String(item.id) === String(match.id)
         ? {
           ...item,
-          player1: item.player1 || result.player1Id,
-          player2: item.player2 || result.player2Id,
+          player1: item.player1 || matchPlayer1,
+          player2: item.player2 || matchPlayer2,
           winner: winnerId,
           score1,
           score2,
@@ -351,11 +373,13 @@ export default function Admin() {
     ))
 
     if (currentFixtureIndex !== -1) {
+      const fixture = updatedFixtures[currentFixtureIndex]
+      const fixtureScores = getScoresForPlayerOrder(result, fixture.player1Id || fixture.player1, fixture.player2Id || fixture.player2)
       updatedFixtures[currentFixtureIndex] = {
-        ...updatedFixtures[currentFixtureIndex],
+        ...fixture,
         status: 'approved',
-        score1,
-        score2,
+        score1: fixtureScores.score1,
+        score2: fixtureScores.score2,
         winnerId,
         resultId: result.id,
         updatedAt: now

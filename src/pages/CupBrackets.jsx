@@ -4,9 +4,10 @@ import { useAuth } from '../context/AuthContext'
 
 export default function CupBracket() {
   const { cupId } = useParams()
-  const { getAllUsers, getCups, getFixtures, dataRefreshTrigger } = useAuth()
+  const { getAllUsers, getCups, getFixtures, getResults, dataRefreshTrigger } = useAuth()
   const [cup, setCup] = useState(null)
   const [fixtures, setFixtures] = useState([])
+  const [results, setResults] = useState([])
   const [refreshKey, setRefreshKey] = useState(0)
   const allUsers = getAllUsers()
 
@@ -19,6 +20,7 @@ export default function CupBracket() {
     
     const allFixtures = getFixtures()
     setFixtures(allFixtures.filter(f => f.cupId === parseInt(cupId)))
+    setResults(getResults())
   }, [cupId, refreshKey, dataRefreshTrigger])
 
   useEffect(() => {
@@ -49,9 +51,39 @@ export default function CupBracket() {
     return `ROUND ${round}`
   }
 
+  const getScoreForPlayer = (source, playerId, fallbackScore) => {
+    const sourcePlayer1Id = source.player1Id || source.player1
+    const sourcePlayer2Id = source.player2Id || source.player2
+    if (String(playerId) === String(sourcePlayer1Id)) return source.score1
+    if (String(playerId) === String(sourcePlayer2Id)) return source.score2
+    return fallbackScore
+  }
+
   const getMatchResult = (match) => {
-    const fixture = fixtures.find(f => f.matchId === match.id && f.status === 'approved')
-    return fixture ? { score1: fixture.score1, score2: fixture.score2 } : null
+    const approvedResult = results.find(result => (
+      String(result.cupId || '') === String(cup.id) &&
+      String(result.matchId || '') === String(match.id) &&
+      String(result.status).toLowerCase() === 'approved'
+    ))
+
+    if (approvedResult) {
+      return {
+        score1: getScoreForPlayer(approvedResult, match.player1, approvedResult.score1),
+        score2: getScoreForPlayer(approvedResult, match.player2, approvedResult.score2)
+      }
+    }
+
+    if (match.score1 !== undefined && match.score1 !== null && match.score2 !== undefined && match.score2 !== null) {
+      return { score1: match.score1, score2: match.score2 }
+    }
+
+    const fixture = fixtures.find(f => String(f.matchId) === String(match.id) && f.status === 'approved')
+    return fixture
+      ? {
+        score1: getScoreForPlayer(fixture, match.player1, fixture.score1),
+        score2: getScoreForPlayer(fixture, match.player2, fixture.score2)
+      }
+      : null
   }
 
   const rounds = []
