@@ -7,7 +7,8 @@ import UserSearchSelect from '../components/UserSearchSelect'
 export default function Fixtures() {
   const { user, getAllUsers, getFixtures, getResults, updateResults, updateFixtures, triggerDataRefresh, notifyUser, notifyAdmins, useTokens } = useAuth()
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState('upcoming')
+  const [activeTab, setActiveTab] = useState('my')
+  const [allFixtureFilter, setAllFixtureFilter] = useState('confirmed')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [createForm, setCreateForm] = useState({
     opponent: '',
@@ -43,7 +44,7 @@ export default function Fixtures() {
   useEffect(() => {
     const pendingFixtures = getFixtures()
       .filter(f => String(f.player2Id) === String(user.id) && String(f.status).toLowerCase() === 'pending')
-    if (pendingFixtures.length > 0 && activeTab === 'upcoming') {
+    if (pendingFixtures.length > 0 && activeTab === 'my') {
       setActiveTab('pending')
     }
   }, [])
@@ -103,6 +104,35 @@ export default function Fixtures() {
       : fixture.proposedTime
   )
 
+  const getPlayerName = (id) => allUsers.find(u => String(u.id) === String(id))?.username || 'Unknown'
+
+  const getFixtureDate = (fixture) => (
+    fixture.fixtureDate || fixture.date || fixture.proposedDate || ''
+  )
+
+  const getFixtureTime = (fixture) => (
+    fixture.fixtureTime || fixture.time || fixture.proposedTime || ''
+  )
+
+  const getPublicFixtureName = (fixture, playerId, playerNameKey) => (
+    fixture[playerNameKey] || getPlayerName(playerId)
+  )
+
+  const getFixtureStartTime = (fixture) => {
+    const date = getFixtureDate(fixture)
+    if (!date) return null
+    const timestamp = new Date(`${date}T${getFixtureTime(fixture) || '00:00'}`).getTime()
+    return Number.isNaN(timestamp) ? null : timestamp
+  }
+
+  const getFixtureSortTime = (fixture) => getFixtureStartTime(fixture) ?? Number.MAX_SAFE_INTEGER
+
+  const isWithinUpcomingWindow = (fixture) => {
+    const startTime = getFixtureStartTime(fixture)
+    if (!startTime) return false
+    return startTime - Date.now() <= 60 * 60 * 1000
+  }
+
   const pendingFixtures = regularFixtures.filter(f => {
     if (getStatus(f) === 'pending' && (f.proposalStatus || 'sent') === 'sent') {
       return isSameId(f.player2Id, user.id) && !isSameId(f.createdBy, user.id)
@@ -121,7 +151,7 @@ export default function Fixtures() {
     }
     return false
   })
-  const upcomingFixtures = regularFixtures.filter(f => {
+  const myConfirmedFixtures = regularFixtures.filter(f => {
     const { player1Id, player2Id } = getFixturePlayerIds(f)
     return (
       (isSameId(player1Id, user.id) || isSameId(player2Id, user.id)) &&
@@ -129,6 +159,7 @@ export default function Fixtures() {
       !fixtureHasSubmittedResult(f)
     )
   })
+  const upcomingFixtures = myConfirmedFixtures.filter(isWithinUpcomingWindow)
   const completedResults = allResults.filter(r =>
     getStatus(r) === 'approved' &&
     (isSameId(r.player1Id, user.id) || isSameId(r.player2Id, user.id))
@@ -154,28 +185,9 @@ export default function Fixtures() {
   })
   
   const cupAccepted = cupFixturesData.filter(f => getStatus(f) === 'accepted' && !fixtureHasSubmittedResult(f))
-  const upcomingCount = upcomingFixtures.length + cupAccepted.length
-  
-  const getPlayerName = (id) => allUsers.find(u => String(u.id) === String(id))?.username || 'Unknown'
-
-  const getFixtureDate = (fixture) => (
-    fixture.fixtureDate || fixture.date || fixture.proposedDate || ''
-  )
-
-  const getFixtureTime = (fixture) => (
-    fixture.fixtureTime || fixture.time || fixture.proposedTime || ''
-  )
-
-  const getPublicFixtureName = (fixture, playerId, playerNameKey) => (
-    fixture[playerNameKey] || getPlayerName(playerId)
-  )
-
-  const getFixtureSortTime = (fixture) => {
-    const date = getFixtureDate(fixture)
-    if (!date) return Number.MAX_SAFE_INTEGER
-    const timestamp = new Date(`${date}T${getFixtureTime(fixture) || '00:00'}`).getTime()
-    return Number.isNaN(timestamp) ? Number.MAX_SAFE_INTEGER : timestamp
-  }
+  const cupUpcoming = cupAccepted.filter(isWithinUpcomingWindow)
+  const myFixturesCount = myConfirmedFixtures.length + cupAccepted.length
+  const upcomingCount = upcomingFixtures.length + cupUpcoming.length
 
   const getApprovedResultForFixture = (fixture) => {
     const { player1Id, player2Id } = getFixturePlayerIds(fixture)
@@ -201,9 +213,25 @@ export default function Fixtures() {
     ['completed', 'approved'].includes(getStatus(fixture)) || hasApprovedResultForFixture(fixture)
   )
 
+  const isConfirmedFixture = (fixture) => (
+    getStatus(fixture) === 'accepted' &&
+    !isCompletedFixture(fixture) &&
+    !fixtureHasSubmittedResult(fixture)
+  )
+
+  const isUnarrangedFixture = (fixture) => (
+    ['pending', 'countered'].includes(getStatus(fixture)) &&
+    !isCompletedFixture(fixture) &&
+    !fixtureHasSubmittedResult(fixture)
+  )
+
   const isPublicFixture = (fixture) => (
-    (getStatus(fixture) === 'accepted' && !fixtureHasSubmittedResult(fixture)) ||
+    Boolean(getFixturePlayerIds(fixture).player1Id && getFixturePlayerIds(fixture).player2Id) &&
+    (
+    isConfirmedFixture(fixture) ||
+    isUnarrangedFixture(fixture) ||
     isCompletedFixture(fixture)
+    )
   )
 
   const getLegacyFixtureBetId = (fixture) => {
@@ -222,14 +250,47 @@ export default function Fixtures() {
     })
   )
 
+  const getFixtureScoreForPlayer = (result, playerId, fallbackScore = null) => {
+    if (!result) return fallbackScore
+    if (isSameId(result.player1Id, playerId)) return Number(result.score1)
+    if (isSameId(result.player2Id, playerId)) return Number(result.score2)
+    return fallbackScore
+  }
+
+  const getBetOutcomeForFixture = (fixture, bet) => {
+    const approvedResult = getApprovedResultForFixture(fixture)
+    if (!approvedResult || !bet) {
+      return { status: 'pending', label: 'Waiting for approved result' }
+    }
+
+    const { player1Id, player2Id } = getFixturePlayerIds(fixture)
+    const player1Score = getFixtureScoreForPlayer(approvedResult, player1Id, Number(fixture.score1))
+    const player2Score = getFixtureScoreForPlayer(approvedResult, player2Id, Number(fixture.score2))
+    const actualWinnerId = player1Score > player2Score ? player1Id : player2Score > player1Score ? player2Id : null
+    const predictedWinnerId = bet.predictedWinnerId || (bet.predictedWinner === getPublicFixtureName(fixture, player1Id, 'player1Name') ? player1Id : player2Id)
+    const predictedScore1 = Number(bet.predictedScore1)
+    const predictedScore2 = Number(bet.predictedScore2)
+    const exactScore = predictedScore1 === player1Score && predictedScore2 === player2Score
+    const won = Boolean(actualWinnerId && isSameId(actualWinnerId, predictedWinnerId) && exactScore)
+
+    return {
+      status: won ? 'won' : 'lost',
+      label: won ? 'Bet won' : 'Bet lost',
+      actualScore: `${player1Score}-${player2Score}`
+    }
+  }
+
   const canBetOnFixture = (fixture) => {
     const { player1Id, player2Id } = getFixturePlayerIds(fixture)
     const fixtureType = String(fixture.gameType || '').toLowerCase()
     const isBettableFixture = fixture.cupId || fixtureType === 'league'
+    const status = getStatus(fixture)
 
     return (
-      getStatus(fixture) === 'accepted' &&
+      ['pending', 'countered', 'accepted'].includes(status) &&
       isBettableFixture &&
+      player1Id &&
+      player2Id &&
       String(player1Id) !== String(user.id) &&
       String(player2Id) !== String(user.id) &&
       !fixtureHasSubmittedResult(fixture) &&
@@ -240,6 +301,22 @@ export default function Fixtures() {
   const publicFixtures = fixtures
     .filter(isPublicFixture)
     .sort((a, b) => getFixtureSortTime(a) - getFixtureSortTime(b))
+
+  const allFixtureFilterOptions = [
+    { id: 'confirmed', label: 'Confirmed' },
+    { id: 'completed', label: 'Completed' },
+    { id: 'unarranged', label: 'Unarranged' },
+    { id: 'all', label: 'All' }
+  ]
+
+  const fixtureMatchesAllFilter = (fixture, filter) => {
+    if (filter === 'confirmed') return isConfirmedFixture(fixture)
+    if (filter === 'completed') return isCompletedFixture(fixture)
+    if (filter === 'unarranged') return isUnarrangedFixture(fixture)
+    return true
+  }
+
+  const filteredPublicFixtures = publicFixtures.filter(fixture => fixtureMatchesAllFilter(fixture, allFixtureFilter))
   
   const getCupName = (cupId) => {
     const cups = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
@@ -944,7 +1021,7 @@ export default function Fixtures() {
           className={`btn ${activeTab === 'my' ? 'btn-primary' : 'btn-secondary'}`}
           onClick={() => setActiveTab('my')}
         >
-          My Fixtures
+          My Fixtures ({myFixturesCount})
         </button>
         <button
           className={`btn ${activeTab === 'upcoming' ? 'btn-primary' : 'btn-secondary'}`}
@@ -1210,48 +1287,63 @@ export default function Fixtures() {
       {activeTab === 'my' && (
         <div className="card">
           <h3 className="card-title">My Fixtures</h3>
-          {regularFixtures.length === 0 ? (
+          {myFixturesCount === 0 ? (
             <div className="empty-state">
-              <p>No fixtures yet</p>
+              <p>No confirmed fixtures yet</p>
             </div>
           ) : (
-            regularFixtures
-              .filter(f => {
-                const { player1Id, player2Id } = getFixturePlayerIds(f)
-                return (
-                  (isSameId(player1Id, user.id) || isSameId(player2Id, user.id)) &&
-                  getStatus(f) !== 'result_submitted' &&
-                  !fixtureHasSubmittedResult(f)
-                )
-              })
-              .sort((a, b) => new Date(a.fixtureDate) - new Date(b.fixtureDate))
+            <>
+              {[...myConfirmedFixtures]
+              .sort((a, b) => getFixtureSortTime(a) - getFixtureSortTime(b))
               .map(fixture => (
                 <div key={fixture.id} style={{ 
                   padding: '15px', 
                   background: 'var(--bg-secondary)', 
                   borderRadius: '8px',
                   marginBottom: '10px',
-                  borderLeft: `3px solid ${getStatus(fixture) === 'accepted' ? 'var(--success)' : 'var(--warning)'}`
+                  borderLeft: '3px solid var(--success)'
                 }}>
                   <div style={{ fontWeight: '600', marginBottom: '5px' }}>
                     {isSameId(fixture.player1Id, user.id) ? 'You' : fixture.player1Name} vs {isSameId(fixture.player2Id, user.id) ? 'You' : fixture.player2Name}
                   </div>
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                    {fixture.gameType} • {fixture.fixtureDate} at {fixture.fixtureTime}
+                    {fixture.gameType} | {getFixtureDate(fixture) || 'TBC'} at {getFixtureTime(fixture) || 'TBC'}
                   </div>
                   <div style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)', marginTop: '5px' }}>
-                    Status: {fixture.status}
+                    Status: confirmed
                   </div>
                 </div>
-              ))
+              ))}
+              {[...cupAccepted]
+                .sort((a, b) => getFixtureSortTime(a) - getFixtureSortTime(b))
+                .map(fixture => (
+                  <div key={`cup-${fixture.id}`} style={{
+                    padding: '15px',
+                    background: 'var(--bg-secondary)',
+                    borderRadius: '8px',
+                    marginBottom: '10px',
+                    borderLeft: '3px solid var(--success)'
+                  }}>
+                    <div style={{ fontWeight: '600', marginBottom: '5px' }}>
+                      {isSameId(fixture.player1Id, user.id) ? 'You' : getPlayerName(fixture.player1Id)} vs {isSameId(fixture.player2Id, user.id) ? 'You' : getPlayerName(fixture.player2Id)}
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                      {getCupName(fixture.cupId)} | {getRoundName(fixture.round, fixture.cupId)} | {getFixtureDate(fixture) || 'TBC'} at {getFixtureTime(fixture) || 'TBC'}
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)', marginTop: '5px' }}>
+                      Status: confirmed
+                    </div>
+                  </div>
+                ))}
+            </>
           )}
         </div>
       )}
 
       {activeTab === 'upcoming' && (
         <div className="card">
-          <h3 className="card-title">Upcoming Fixtures</h3>
-          {upcomingFixtures.length === 0 && cupAccepted.length === 0 ? (
+          <h3 className="card-title">Upcoming Matches</h3>
+          {upcomingFixtures.length === 0 && cupUpcoming.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 20px' }}>
               <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
                 No upcoming fixtures
@@ -1314,12 +1406,12 @@ export default function Fixtures() {
               </div>
             ))
           )}
-          {cupAccepted.length > 0 && (
+          {cupUpcoming.length > 0 && (
             <div style={{ marginTop: upcomingFixtures.length > 0 ? '20px' : 0 }}>
               {upcomingFixtures.length > 0 && (
                 <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '12px' }}>Cup Fixtures</h4>
               )}
-              {cupAccepted.map(fixture => (
+              {cupUpcoming.map(fixture => (
                 <div key={fixture.id} style={{
                   padding: '20px',
                   background: 'rgba(34, 197, 94, 0.1)',
@@ -1382,12 +1474,27 @@ export default function Fixtures() {
       {activeTab === 'all' && (
         <div className="card">
           <h3 className="card-title">All Fixtures</h3>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '15px' }}>
+            {allFixtureFilterOptions.map(filter => (
+              <button
+                key={filter.id}
+                className={`btn btn-sm ${allFixtureFilter === filter.id ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setAllFixtureFilter(filter.id)}
+              >
+                {filter.label} ({publicFixtures.filter(fixture => fixtureMatchesAllFilter(fixture, filter.id)).length})
+              </button>
+            ))}
+          </div>
           {publicFixtures.length === 0 ? (
             <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '40px 20px' }}>
-              No confirmed fixtures yet
+              No fixtures yet
+            </p>
+          ) : filteredPublicFixtures.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '40px 20px' }}>
+              No {allFixtureFilter} fixtures found
             </p>
           ) : (
-            publicFixtures.map(fixture => {
+            filteredPublicFixtures.map(fixture => {
               const { player1Id, player2Id } = getFixturePlayerIds(fixture)
               const player1Name = fixture.cupId
                 ? getPlayerName(player1Id)
@@ -1400,6 +1507,7 @@ export default function Fixtures() {
               const fixtureTime = getFixtureTime(fixture)
               const fixtureBet = getBetForFixture(fixture)
               const betIsAvailable = canBetOnFixture(fixture) && !fixtureBet
+              const fixtureBetOutcome = fixtureBet ? getBetOutcomeForFixture(fixture, fixtureBet) : null
               const approvedResult = getApprovedResultForFixture(fixture)
               const fixtureIsCompleted = isCompletedFixture(fixture)
               const canSubmitFixtureResult = isMyFixture && getStatus(fixture) === 'accepted' && !fixtureIsCompleted && !fixtureHasSubmittedResult(fixture)
@@ -1409,6 +1517,18 @@ export default function Fixtures() {
               const player2Score = approvedResult
                 ? (isSameId(approvedResult.player1Id, player2Id) ? approvedResult.score1 : isSameId(approvedResult.player2Id, player2Id) ? approvedResult.score2 : fixture.score2)
                 : fixture.score2
+              const fixtureStatusLabel = fixtureIsCompleted
+                ? 'COMPLETED'
+                : getStatus(fixture) === 'accepted'
+                  ? 'CONFIRMED'
+                  : getStatus(fixture) === 'countered'
+                    ? 'COUNTERED'
+                    : 'UNARRANGED'
+              const fixtureStatusColor = fixtureIsCompleted
+                ? 'var(--accent-cyan)'
+                : getStatus(fixture) === 'accepted'
+                  ? 'var(--success)'
+                  : 'var(--warning)'
 
               return (
                 <div key={fixture.id} style={{
@@ -1433,13 +1553,13 @@ export default function Fixtures() {
                     </div>
                     <span style={{
                       padding: '5px 12px',
-                      background: 'var(--success)',
+                      background: fixtureStatusColor,
                       color: '#000',
                       borderRadius: '20px',
                       fontSize: '0.8rem',
                       fontWeight: 'bold'
                     }}>
-                      {fixtureIsCompleted ? 'COMPLETED' : 'CONFIRMED'}
+                      {fixtureStatusLabel}
                     </span>
                   </div>
                   <div style={{
@@ -1485,13 +1605,35 @@ export default function Fixtures() {
                       {fixtureBet ? (
                         <div style={{
                           padding: '10px 12px',
-                          background: 'rgba(34, 197, 94, 0.1)',
-                          border: '1px solid var(--success)',
+                          background: fixtureBetOutcome?.status === 'won'
+                            ? 'rgba(34, 197, 94, 0.1)'
+                            : fixtureBetOutcome?.status === 'lost'
+                              ? 'rgba(239, 68, 68, 0.1)'
+                              : 'rgba(168, 85, 247, 0.12)',
+                          border: `1px solid ${fixtureBetOutcome?.status === 'won'
+                            ? 'var(--success)'
+                            : fixtureBetOutcome?.status === 'lost'
+                              ? 'var(--error)'
+                              : 'var(--accent-primary)'}`,
                           borderRadius: '8px',
                           color: 'var(--text-primary)',
                           fontSize: '0.85rem'
                         }}>
-                          Your bet: {fixtureBet.predictedWinner} {fixtureBet.predictedScore1}-{fixtureBet.predictedScore2}
+                          <div style={{ fontWeight: 700 }}>
+                            Your bet: {fixtureBet.predictedWinner} {fixtureBet.predictedScore1}-{fixtureBet.predictedScore2}
+                          </div>
+                          <div style={{
+                            marginTop: '4px',
+                            color: fixtureBetOutcome?.status === 'won'
+                              ? 'var(--success)'
+                              : fixtureBetOutcome?.status === 'lost'
+                                ? 'var(--error)'
+                                : 'var(--text-muted)',
+                            fontWeight: 600
+                          }}>
+                            {fixtureBetOutcome?.label}
+                            {fixtureBetOutcome?.actualScore ? ` | Actual: ${fixtureBetOutcome.actualScore}` : ''}
+                          </div>
                         </div>
                       ) : betIsAvailable ? (
                         <button

@@ -186,6 +186,9 @@ export default function SubmitResult() {
     }
     setFormData({ ...INITIAL_RESULT_FORM })
     clearProofInputs()
+    if (typeof window !== 'undefined' && window.location.pathname.includes('submit-result')) {
+      window.history.replaceState(null, '', '/submit-result')
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -358,7 +361,8 @@ export default function SubmitResult() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
     setTimeout(() => {
       setSubmitted(false)
-    }, 1400)
+      setSuccessMessage('')
+    }, 1800)
 
     Promise.resolve().then(() => notifyAdmins(
       'New Result Pending',

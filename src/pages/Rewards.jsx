@@ -191,7 +191,7 @@ export default function Rewards() {
           Win league games to earn 50 tokens per win.
         </p>
         <p style={{ color: (user?.eliteTokens || 0) >= 100 ? 'var(--success)' : 'var(--warning)', marginTop: '5px', fontSize: '0.85rem' }}>
-          Bet on confirmed league and cup games from Fixtures &gt; All Fixtures.
+          Bet on league and cup games from Fixtures &gt; All Fixtures, including unarranged games.
         </p>
       </div>
 

@@ -468,18 +468,19 @@ export default function Admin() {
     return `Round ${round}`
   }
 
-useEffect(() => {
+  const getManagedResultStatus = (result) => String(result?.status || '').trim().toLowerCase()
+
+  useEffect(() => {
     async function loadResults() {
       const results = await getResults();
-      const pending = results.filter(r => r.status === 'pending');
-      const approved = results.filter(r => r.status === 'approved' || r.status === 'rejected');
-      if (user.isTournamentAdmin && !user.isAdmin) {
-        setPendingResults(pending.filter(r => r.gameType === 'Tournament'));
-        setApprovedResults(approved.filter(r => r.gameType === 'Tournament'));
-      } else {
-        setPendingResults(pending);
-        setApprovedResults(approved);
-      }
+      const managedStatuses = new Set(['pending', 'approved', 'rejected']);
+      const managed = results.filter(r => managedStatuses.has(getManagedResultStatus(r)));
+      const visibleResults = user.isTournamentAdmin && !user.isAdmin
+        ? managed.filter(r => r.gameType === 'Tournament')
+        : managed;
+      const pending = visibleResults.filter(r => getManagedResultStatus(r) === 'pending');
+      setPendingResults(pending);
+      setApprovedResults(visibleResults);
     }
     loadResults()
   }, [user.isAdmin, user.isTournamentAdmin, dataRefreshTrigger])
@@ -869,7 +870,7 @@ useEffect(() => {
 
   const isFullAdmin = user?.isAdmin || ADMIN_EMAILS.includes(user?.email?.toLowerCase())
   const filteredManagedResults = approvedResults.filter(result => (
-    String(result.status).toLowerCase() === resultFilter
+    getManagedResultStatus(result) === resultFilter
   ))
 
   return (
@@ -1055,7 +1056,7 @@ useEffect(() => {
         <div>
           <div className="card">
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '15px' }}>
-              <h3 className="card-title" style={{ margin: 0 }}>Approved Results</h3>
+              <h3 className="card-title" style={{ margin: 0 }}>Results</h3>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {pendingResults.length > 0 && (
                   <button
@@ -1072,7 +1073,7 @@ useEffect(() => {
                     className={`btn btn-sm ${resultFilter === filter ? 'btn-primary' : 'btn-secondary'}`}
                     onClick={() => setResultFilter(filter)}
                   >
-                    {filter.charAt(0).toUpperCase() + filter.slice(1)}
+                    {filter.charAt(0).toUpperCase() + filter.slice(1)} ({approvedResults.filter(result => getManagedResultStatus(result) === filter).length})
                   </button>
                 ))}
               </div>
@@ -1089,7 +1090,7 @@ useEffect(() => {
                       <strong>{result.player1}</strong> vs <strong>{result.player2}</strong>
                     </div>
                     <span style={{
-                      color: String(result.status).toLowerCase() === 'approved' ? 'var(--success)' : String(result.status).toLowerCase() === 'rejected' ? 'var(--error)' : 'var(--warning)',
+                      color: getManagedResultStatus(result) === 'approved' ? 'var(--success)' : getManagedResultStatus(result) === 'rejected' ? 'var(--error)' : 'var(--warning)',
                       fontWeight: 700
                     }}>
                       {(result.status || 'No Status').toUpperCase()}
@@ -1099,7 +1100,7 @@ useEffect(() => {
                     {result.score1} - {result.score2} | {result.division} | {result.gameType} | {result.date}
                   </div>
                   {renderResultProof(result)}
-                  {String(result.status).toLowerCase() === 'pending' ? (
+                  {getManagedResultStatus(result) === 'pending' ? (
                     <div style={{ display: 'flex', gap: '10px' }}>
                       <button className="btn btn-primary" onClick={() => setShowConfirmModal({ type: 'approve', result })}>
                         Approve
