@@ -468,18 +468,23 @@ export default function Admin() {
     return `Round ${round}`
   }
 
-  useEffect(() => {
-    const results = getResults();
-    const pending = results.filter(r => String(r.status).toLowerCase() === 'pending');
-    const managed = results.filter(r => ['pending', 'approved', 'rejected'].includes(String(r.status).toLowerCase()));
-    if (user.isTournamentAdmin && !user.isAdmin) {
-      setPendingResults(pending.filter(r => r.gameType === 'Tournament'));
-      setApprovedResults(managed.filter(r => r.gameType === 'Tournament'));
-    } else {
-      setPendingResults(pending);
-      setApprovedResults(managed);
+useEffect(() => {
+    async function loadResults() {
+      const results = await getResults();
+      const pending = results.filter(r => r.status === 'pending');
+      const approved = results.filter(r => r.status === 'approved' || r.status === 'rejected');
+      if (user.isTournamentAdmin && !user.isAdmin) {
+        setPendingResults(pending.filter(r => r.gameType === 'Tournament'));
+        setApprovedResults(approved.filter(r => r.gameType === 'Tournament'));
+      } else {
+        setPendingResults(pending);
+        setApprovedResults(approved);
+      }
     }
+    loadResults()
+  }, [user.isAdmin, user.isTournamentAdmin, dataRefreshTrigger])
 
+  useEffect(() => {
     if (user?.isAdmin) {
       let seasons = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
       if (seasons.length === 0) {

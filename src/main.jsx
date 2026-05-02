@@ -3,6 +3,13 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import './index.css'
 
+// Initialize Capacitor for mobile (only runs when Capacitor is available)
+if (typeof window !== 'undefined' && window.Capacitor) {
+  import('@capacitor/core').then(({ Capacitor }) => {
+    console.log('Capacitor initialized:', Capacitor.getPlatform())
+  })
+}
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
