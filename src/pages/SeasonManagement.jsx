@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { db, doc, setDoc, deleteDoc } from '../firebase'
 
 export default function SeasonManagement() {
-  const { user, getAllUsers } = useAuth()
+  const { user, getAllUsers, getResults, updateResults } = useAuth()
   const [seasons, setSeasons] = useState([])
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
@@ -72,11 +72,11 @@ export default function SeasonManagement() {
   const resetTable = async () => {
     if (!confirm('Are you sure you want to reset all tables? This will clear all results for the current season but keep player data.')) return
     
-    const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+    const results = getResults()
     const currentSeason = localStorage.getItem('eliteArrowsCurrentSeason') || new Date().getFullYear().toString()
     const filteredResults = results.filter(r => r.season !== currentSeason)
     const currentSeasonResults = results.filter(r => r.season === currentSeason)
-    localStorage.setItem('eliteArrowsResults', JSON.stringify(filteredResults))
+    updateResults(filteredResults)
     await Promise.all(currentSeasonResults.map(result => (
       deleteDoc(doc(db, 'results', String(result.firestoreId || result.id))).catch(e => {
         console.log('Error deleting result from Firebase:', e)

@@ -64,7 +64,7 @@ function calcWinProbability(playerStats, oppStats) {
 }
 
 export default function Analytics() {
-  const { user, getAllUsers } = useAuth()
+  const { user, getAllUsers, getResults } = useAuth()
   const [activeSection, setActiveSection] = useState('personal')
   const [timePeriod, setTimePeriod] = useState('all')
   const [h2hOpponent, setH2hOpponent] = useState('')
@@ -72,8 +72,8 @@ export default function Analytics() {
   const [comparePlayer2, setComparePlayer2] = useState('')
 
   const allUsers = getAllUsers()
-  const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
-  const approvedResults = results.filter(r => r.status === 'approved')
+  const results = getResults()
+  const approvedResults = results.filter(r => String(r.status || '').toLowerCase() === 'approved')
 
   const filteredResults = useMemo(() => timeFilter(approvedResults, timePeriod), [approvedResults, timePeriod])
   const userResults = useMemo(() => filteredResults.filter(r => r.player1Id === user.id || r.player2Id === user.id), [filteredResults, user.id])

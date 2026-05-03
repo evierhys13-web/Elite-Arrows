@@ -1,9 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { getLeaguePoints } from '../utils/leagueScoring'
-import { getResultEffectiveTime, getResultPlayerId, isLeagueResult } from '../utils/leagueResults'
-
-const DEFAULT_LEAGUE_TABLE_RESET_AT = '2026-04-29T16:14:21.338+01:00'
+import { derivePlayerStatsFromResults } from '../utils/playerStats'
 
 export default function Leaderboards() {
   const { user, getAllUsers, getFixtures, getResults, dataRefreshTrigger, adminData } = useAuth()
@@ -18,110 +15,25 @@ export default function Leaderboards() {
   const allUsers = getAllUsers()
   const fixtures = getFixtures()
   const results = getResults()
-  const fixturesById = Object.fromEntries(fixtures.map(fixture => [String(fixture.id), fixture]))
-  const resetTimes = [DEFAULT_LEAGUE_TABLE_RESET_AT, adminData?.leagueTableResetAt]
-    .map(value => value ? new Date(value).getTime() : 0)
-    .filter(value => Number.isFinite(value) && value > 0)
-  const leagueTableResetTime = resetTimes.length ? Math.max(...resetTimes) : 0
-  const approvedResults = results.filter(r => (
-    String(r.status).toLowerCase() === 'approved' &&
-    isLeagueResult(r, fixturesById) &&
-    (!leagueTableResetTime || getResultEffectiveTime(r) > leagueTableResetTime)
-  ))
-
-  const now = new Date()
-  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-  const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-
-  const filteredResults = approvedResults.filter(r => {
-    const resultDate = new Date(r.date)
-    if (timeFilter === 'week') return resultDate >= weekAgo
-    if (timeFilter === 'month') return resultDate >= monthAgo
-    return true
-  })
-
-  const playerStats = {}
-
-  allUsers.forEach(player => {
-    playerStats[String(player.id)] = {
-      id: player.id,
-      username: player.username,
-      nickname: player.nickname,
-      division: player.division || 'Unassigned',
-      profilePicture: player.profilePicture,
-      played: player.stats?.played || 0,
-      wins: player.stats?.wins || 0,
-      losses: player.stats?.losses || 0,
-      draws: 0,
-      points: player.stats?.points || 0,
-      legsWon: player.stats?.legsWon || 0,
-      legsLost: player.stats?.legsLost || 0,
-      '180s': player.stats?.['180s'] || 0,
-      '170s': player.stats?.['170s'] || 0,
-      highestCheckout: player.stats?.highestCheckout || 0,
-      average: 0
-    }
-  })
-
-  filteredResults.forEach(r => {
-    const player1Id = getResultPlayerId(r, 1, allUsers)
-    const player2Id = getResultPlayerId(r, 2, allUsers)
-    const score1 = Number(r.score1) || 0
-    const score2 = Number(r.score2) || 0
-
-    if (player1Id && playerStats[player1Id]) {
-      const stats = playerStats[player1Id]
-      stats.played++
-      stats.legsWon += score1
-      stats.legsLost += score2
-      stats['180s'] += r.player1Stats?.['180s'] || 0
-      if (r.player1Stats?.highestCheckout > stats.highestCheckout) {
-        stats.highestCheckout = r.player1Stats.highestCheckout
-      }
-      if (score1 > score2) {
-        stats.wins++
-      } else if (score1 < score2) {
-        stats.losses++
-      } else {
-        stats.draws++
-      }
-      stats.points += getLeaguePoints(score1, score2)
-    }
-    if (player2Id && playerStats[player2Id]) {
-      const stats = playerStats[player2Id]
-      stats.played++
-      stats.legsWon += score2
-      stats.legsLost += score1
-      stats['180s'] += r.player2Stats?.['180s'] || 0
-      if (r.player2Stats?.highestCheckout > stats.highestCheckout) {
-        stats.highestCheckout = r.player2Stats.highestCheckout
-      }
-      if (score2 > score1) {
-        stats.wins++
-      } else if (score2 < score1) {
-        stats.losses++
-      } else {
-        stats.draws++
-      }
-      stats.points += getLeaguePoints(score2, score1)
-    }
-  })
-
-  Object.values(playerStats).forEach(stats => {
-    if (stats.played > 0) {
-      stats.average = ((stats.legsWon / stats.played) * 100).toFixed(1)
-    }
-  })
+  const playerStats = useMemo(() => derivePlayerStatsFromResults(allUsers, results, {
+    fixtures,
+    adminData,
+    leagueOnly: true,
+    timePeriod: timeFilter
+  }), [allUsers, results, fixtures, adminData, timeFilter, refreshKey])
 
   let leaderboard = Object.values(playerStats)
     .filter(p => p.played > 0)
-    .sort((a, b) => b.points - a.points || b.wins - a.wins)
+    .sort((a, b) => b.points - a.points || b.wins - a.wins || b.legDiff - a.legDiff)
 
   if (selectedDivision !== 'all') {
     leaderboard = leaderboard.filter(p => p.division === selectedDivision)
   }
 
   const divisions = ['all', 'Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Development']
+  const top180s = leaderboard.reduce((max, player) => !max || player['180s'] > max['180s'] ? player : max, null)
+  const top170s = leaderboard.reduce((max, player) => !max || player['170s'] > max['170s'] ? player : max, null)
+  const topCheckout = leaderboard.reduce((max, player) => !max || player.highestCheckout > max.highestCheckout ? player : max, null)
 
   return (
     <div className="page">
@@ -259,29 +171,29 @@ export default function Leaderboards() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
           <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
             <div style={{ fontSize: '2rem', marginBottom: '5px' }}>🎯</div>
-            <div style={{ fontWeight: 'bold', color: 'var(--accent-cyan)' }}>
-              {leaderboard.reduce((max, p) => p['180s'] > max['180s'] ? p : max, { '180s': 0 }).username}
+              <div style={{ fontWeight: 'bold', color: 'var(--accent-cyan)' }}>
+              {top180s?.username || 'No results yet'}
             </div>
             <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              Most 180s ({leaderboard.reduce((max, p) => p['180s'] > max['180s'] ? p : max, { '180s': 0 })['180s']})
+              Most 180s ({top180s?.['180s'] || 0})
             </div>
           </div>
           <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
             <div style={{ fontSize: '2rem', marginBottom: '5px' }}>🐟</div>
             <div style={{ fontWeight: 'bold', color: 'var(--accent-cyan)' }}>
-              {leaderboard.reduce((max, p) => p['170s'] > max['170s'] ? p : max, { '170s': 0 }).username}
+              {top170s?.username || 'No results yet'}
             </div>
             <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              Big Fishes 170+ ({leaderboard.reduce((max, p) => p['170s'] > max['170s'] ? p : max, { '170s': 0 })['170s']})
+              Big Fishes 170+ ({top170s?.['170s'] || 0})
             </div>
           </div>
           <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
             <div style={{ fontSize: '2rem', marginBottom: '5px' }}>🏆</div>
             <div style={{ fontWeight: 'bold', color: 'var(--accent-cyan)' }}>
-              {leaderboard.reduce((max, p) => p.highestCheckout > max.highestCheckout ? p : max, { highestCheckout: 0 }).username}
+              {topCheckout?.username || 'No results yet'}
             </div>
             <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              Highest Checkout ({leaderboard.reduce((max, p) => p.highestCheckout > max.highestCheckout ? p : max, { highestCheckout: 0 }).highestCheckout})
+              Highest Checkout ({topCheckout?.highestCheckout || 0})
             </div>
           </div>
         </div>

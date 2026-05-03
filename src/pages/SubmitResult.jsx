@@ -39,6 +39,15 @@ export default function SubmitResult() {
   const fixtureIdParam = searchParams.get('fixtureId')
   const allFixtures = getFixtures()
   const allResults = getResults()
+  const userSubmittedResults = allResults
+    .filter(result => (
+      String(result.submittedBy || '') === String(user.id) ||
+      String(result.player1Id || '') === String(user.id) ||
+      String(result.player2Id || '') === String(user.id)
+    ))
+    .filter(result => ['pending', 'approved', 'rejected'].includes(String(result.status || '').toLowerCase()))
+    .sort((a, b) => new Date(b.submittedAt || b.updatedAt || b.approvedAt || b.date || 0) - new Date(a.submittedAt || a.updatedAt || a.approvedAt || a.date || 0))
+    .slice(0, 5)
 
   const getFixturePlayerIds = (fixture) => {
     const player1Id = fixture.player1Id || fixture.player1
@@ -362,7 +371,7 @@ export default function SubmitResult() {
     setTimeout(() => {
       setSubmitted(false)
       setSuccessMessage('')
-    }, 1800)
+    }, 5000)
 
     Promise.resolve().then(() => notifyAdmins(
       'New Result Pending',
@@ -392,6 +401,13 @@ export default function SubmitResult() {
       return { played: true, result: existingMatch }
     }
     return { played: false }
+  }
+
+  const getResultStatusDisplay = (status) => {
+    const normalized = String(status || 'pending').toLowerCase()
+    if (normalized === 'approved') return { label: 'Approved', color: 'var(--success)' }
+    if (normalized === 'rejected') return { label: 'Rejected', color: 'var(--error)' }
+    return { label: 'Pending admin approval', color: 'var(--warning)' }
   }
 
   return (
@@ -736,6 +752,35 @@ export default function SubmitResult() {
           </p>
         </form>
       </div>
+
+      {userSubmittedResults.length > 0 && (
+        <div className="card" style={{ marginTop: '20px' }}>
+          <h3 className="card-title">Your Submitted Results</h3>
+          {userSubmittedResults.map(result => {
+            const statusDisplay = getResultStatusDisplay(result.status)
+            const proofUploaded = Boolean(result.proofImage || result.hasProofImage)
+            return (
+              <div
+                key={result.id || result.firestoreId}
+                style={{
+                  padding: '12px 0',
+                  borderBottom: '1px solid var(--border)',
+                  display: 'grid',
+                  gap: '6px'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+                  <strong>{result.player1} {result.score1} - {result.score2} {result.player2}</strong>
+                  <span style={{ color: statusDisplay.color, fontWeight: 700 }}>{statusDisplay.label}</span>
+                </div>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                  {result.gameType} | {result.division || 'No division'} | {result.date || 'No date'} | {proofUploaded ? 'Proof uploaded' : 'No proof uploaded'}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

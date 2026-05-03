@@ -5,6 +5,7 @@ import { db, doc, setDoc, getDoc, getDocs, deleteDoc, updateDoc, collection, que
 import CupManagement from './CupManagement'
 import UserSearchSelect from '../components/UserSearchSelect'
 import { getNormalizedResultSignature, getResultOverrideKeys, getResultSignature } from '../utils/resultIdentity'
+import { derivePlayerStatsFromResults, getPersistedPlayerStats } from '../utils/playerStats'
 
 export default function Admin() {
   const { user, notifications, getAllUsers, updateUser, updateOtherUser, getResults, updateResults, getFixtures, updateFixtures, getCups, getSupportRequests, getSeasons, getNews, postNews, deleteNews, togglePinNews, adminData, updateAdminData, addToMoneyHistory, triggerDataRefresh, dataRefreshTrigger, notifyUser, notifyAllSubscribers } = useAuth()
@@ -470,6 +471,53 @@ export default function Admin() {
 
   const getManagedResultStatus = (result) => String(result?.status || '').trim().toLowerCase()
 
+  const notifyResultReviewParticipants = async (result, reviewStatus) => {
+    const isApproved = reviewStatus === 'approved'
+    const recipientIds = Array.from(new Set([
+      result.submittedBy,
+      result.player1Id,
+      result.player2Id
+    ].filter(Boolean).map(String)))
+
+    await Promise.all(recipientIds.map(playerId =>
+      notifyUser(
+        playerId,
+        isApproved ? 'Result Approved' : 'Result Rejected',
+        `${result.player1} ${result.score1}-${result.score2} ${result.player2} has been ${isApproved ? 'approved' : 'rejected'}.`,
+        isApproved ? 'result_approved' : 'result_rejected',
+        { resultId: result.id, url: '/results' }
+      )
+    ))
+  }
+
+  const syncApprovedStatsForResultPlayers = async (sourceResults, reviewedResults) => {
+    const affectedPlayerIds = Array.from(new Set(
+      reviewedResults
+        .flatMap(result => [result.player1Id, result.player2Id])
+        .filter(Boolean)
+        .map(String)
+    ))
+    if (affectedPlayerIds.length === 0) return
+
+    const allPlayers = getAllUsers()
+    const statsByPlayerId = derivePlayerStatsFromResults(allPlayers, sourceResults, {
+      fixtures: getFixtures(),
+      adminData,
+      leagueOnly: false
+    })
+    const syncedAt = new Date().toISOString()
+
+    await Promise.all(affectedPlayerIds.map(playerId => {
+      const stats = statsByPlayerId[playerId]
+      if (!stats) return Promise.resolve()
+      return updateOtherUser(playerId, {
+        stats: getPersistedPlayerStats(stats),
+        statsUpdatedAt: syncedAt
+      })
+    }))
+    triggerDataRefresh('users')
+  }
+
   useEffect(() => {
     async function loadResults() {
       const results = await getResults();
@@ -549,6 +597,8 @@ export default function Admin() {
       await syncFixtureAfterResultReview(updatedResult, 'approved')
       await syncCupApproval(updatedResult)
       await persistResultStatusOverride(updatedResult, 'approved')
+      await syncApprovedStatsForResultPlayers(results, [updatedResult])
+      await notifyResultReviewParticipants(updatedResult, 'approved')
       console.log('Successfully approved in Firebase!')
       triggerDataRefresh('results')
       showSuccessMessage('You have successfully approved a result')
@@ -617,6 +667,10 @@ export default function Admin() {
       }
 
       await persistResultStatusOverrides(approvedResultsNow, 'approved')
+      await syncApprovedStatsForResultPlayers(results, approvedResultsNow)
+      await Promise.all(approvedResultsNow.map(updatedResult =>
+        notifyResultReviewParticipants(updatedResult, 'approved')
+      ))
 
       updateResults(results)
       setPendingResults(prev => prev.filter(result => !approveIds.has(String(result.id))))
@@ -664,6 +718,8 @@ export default function Admin() {
       ))
       await syncFixtureAfterResultReview(updatedResult, 'rejected')
       await persistResultStatusOverride(updatedResult, 'rejected')
+      await syncApprovedStatsForResultPlayers(results, [updatedResult])
+      await notifyResultReviewParticipants(updatedResult, 'rejected')
       console.log('Successfully updated Firebase!')
     } catch (e) {
       console.error('FATAL Firebase error:', e.code, e.message)
@@ -698,6 +754,7 @@ export default function Admin() {
       ))
       await syncFixtureAfterResultReview(updatedResult, null)
       await persistResultStatusOverride(updatedResult, null)
+      await syncApprovedStatsForResultPlayers(results, [updatedResult])
       triggerDataRefresh('results')
       showToast('Result status reset')
     } catch (e) {
@@ -1932,8 +1989,8 @@ export default function Admin() {
           <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>View and manage all games played in the league.</p>
           
           {(() => {
-            const games = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
-            const allUsers = JSON.parse(localStorage.getItem('eliteArrowsUsers') || '[]')
+            const games = getResults()
+            const allUsers = getAllUsers()
             
             return (
               <div>

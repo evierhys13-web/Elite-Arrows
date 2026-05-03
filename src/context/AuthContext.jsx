@@ -298,7 +298,8 @@ export function AuthProvider({ children }) {
     console.log(`Data refresh triggered: ${dataType}`)
   }, [])
 
-  const publishResults = useCallback(() => {
+  const publishResults = useCallback((options = {}) => {
+    const { announce = true } = options
     const statusRank = { approved: 3, rejected: 3, pending: 2 }
     let storedOverrides = {}
     try {
@@ -343,10 +344,24 @@ export function AuthProvider({ children }) {
 
     setResults(resultsData)
     saveResultsCache(resultsData)
-    triggerDataRefresh('results')
+    if (announce) {
+      triggerDataRefresh('results')
+    }
   }, [triggerDataRefresh])
 
   useEffect(() => {
+    if (!user?.id) return
+
+    const hydratedCollections = new Set()
+    const announceAfterHydration = (collectionName) => {
+      if (!hydratedCollections.has(collectionName)) {
+        hydratedCollections.add(collectionName)
+        return false
+      }
+      triggerDataRefresh(collectionName)
+      return true
+    }
+
     const unsubscribeUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
       const users = snapshot.docs.map(doc => {
         const data = doc.data()
@@ -355,6 +370,18 @@ export function AuthProvider({ children }) {
       })
       setAllUsers(users)
       localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+      const currentUser = users.find(item => String(item.id) === String(user.id))
+      if (currentUser) {
+        setUser(prev => {
+          if (!prev || String(prev.id) !== String(currentUser.id)) return prev
+          const nextUser = { ...prev, ...currentUser }
+          localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(nextUser))
+          return nextUser
+        })
+      }
+      announceAfterHydration('users')
+    }, (error) => {
+      console.log('Users listener error:', error)
     })
     
     const unsubscribeResults = onSnapshot(collection(db, 'results'), (snapshot) => {
@@ -366,7 +393,11 @@ export function AuthProvider({ children }) {
           firestoreId: docSnap.id
         }
       })
-      publishResults()
+      const shouldAnnounce = hydratedCollections.has('results')
+      hydratedCollections.add('results')
+      publishResults({ announce: shouldAnnounce })
+    }, (error) => {
+      console.log('Results listener error:', error)
     })
     
     const unsubscribeFixtures = onSnapshot(collection(db, 'fixtures'), (snapshot) => {
@@ -375,7 +406,9 @@ export function AuthProvider({ children }) {
         .filter(item => !item._deleted)
       setFixtures(fixturesData)
       localStorage.setItem('eliteArrowsFixtures', JSON.stringify(fixturesData))
-      triggerDataRefresh('fixtures')
+      announceAfterHydration('fixtures')
+    }, (error) => {
+      console.log('Fixtures listener error:', error)
     })
     
     const unsubscribeCups = onSnapshot(collection(db, 'cups'), (snapshot) => {
@@ -384,7 +417,9 @@ export function AuthProvider({ children }) {
         .filter(item => !item._deleted)
       setCups(cupsData)
       localStorage.setItem('eliteArrowsCups', JSON.stringify(cupsData))
-      triggerDataRefresh('cups')
+      announceAfterHydration('cups')
+    }, (error) => {
+      console.log('Cups listener error:', error)
     })
     
     const unsubscribeSupport = onSnapshot(collection(db, 'supportRequests'), (snapshot) => {
@@ -393,7 +428,9 @@ export function AuthProvider({ children }) {
         .filter(item => !item._deleted)
       setSupportRequests(supportData)
       localStorage.setItem('eliteArrowsSupportRequests', JSON.stringify(supportData))
-      triggerDataRefresh('supportRequests')
+      announceAfterHydration('supportRequests')
+    }, (error) => {
+      console.log('Support listener error:', error)
     })
     
     const unsubscribeSeasons = onSnapshot(collection(db, 'seasons'), (snapshot) => {
@@ -408,7 +445,9 @@ export function AuthProvider({ children }) {
           localStorage.setItem('eliteArrowsCurrentSeason', activeSeason.name)
         }
       }
-      triggerDataRefresh('seasons')
+      announceAfterHydration('seasons')
+    }, (error) => {
+      console.log('Seasons listener error:', error)
     })
     
     const unsubscribeNews = onSnapshot(query(collection(db, 'news'), orderBy('createdAt', 'desc')), (snapshot) => {
@@ -417,6 +456,7 @@ export function AuthProvider({ children }) {
         .filter(item => !item._deleted)
       setNews(newsData)
       localStorage.setItem('eliteArrowsNews', JSON.stringify(newsData))
+      announceAfterHydration('news')
     }, (error) => {
       console.log('News listener error:', error)
       setNews([])
@@ -437,8 +477,11 @@ export function AuthProvider({ children }) {
         localStorage.setItem('eliteArrowsSubscriptionPot', String(data.subscriptionPot || 0))
         localStorage.setItem('eliteArrowsSubscriptionPot10', String(data.subscriptionPot10 || 0))
         localStorage.setItem('eliteArrowsMoneyHistory', JSON.stringify(data.moneyHistory || []))
-        publishResults()
+        publishResults({ announce: hydratedCollections.has('adminData') })
       }
+      hydratedCollections.add('adminData')
+    }, (error) => {
+      console.log('Admin data listener error:', error)
     })
     
     return () => {
@@ -451,7 +494,7 @@ export function AuthProvider({ children }) {
       unsubscribeNews()
       unsubscribeAdmin()
     }
-  }, [triggerDataRefresh, publishResults])
+  }, [user?.id, triggerDataRefresh, publishResults])
   
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {

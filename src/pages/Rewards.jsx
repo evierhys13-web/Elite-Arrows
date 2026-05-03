@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 const DIVISIONS = ['Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Development']
 
 export default function Rewards() {
-  const { user, getAllUsers } = useAuth()
+  const { user, getAllUsers, getResults } = useAuth()
   const [showWheel, setShowWheel] = useState(false)
   const [wheelSpinning, setWheelSpinning] = useState(false)
   const [wheelWinner, setWheelWinner] = useState(null)
@@ -14,8 +14,8 @@ export default function Rewards() {
   const isAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase()) || user?.isAdmin || user?.isTournamentAdmin
 
   const allUsers = getAllUsers()
-  const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
-  const approvedResults = results.filter(r => r.status === 'approved')
+  const results = getResults()
+  const approvedResults = results.filter(r => String(r.status || '').toLowerCase() === 'approved')
   const currentSeason = localStorage.getItem('eliteArrowsCurrentSeason') || 'Season 1'
   const promotionDraw = JSON.parse(localStorage.getItem('eliteArrowsPromotionDraw') || '[]')
   const userInDraw = promotionDraw.includes(user?.id)

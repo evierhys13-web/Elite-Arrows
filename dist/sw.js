@@ -1,4 +1,4 @@
-const CACHE_NAME = 'elite-arrows-v41';
+const CACHE_NAME = 'elite-arrows-v42';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -34,16 +34,40 @@ self.addEventListener('fetch', (event) => {
 
   if (request.method !== 'GET') return;
 
-  // Always fetch fresh for API and HTML pages
-  if (url.pathname.includes('/api/') || url.pathname.endsWith('.html')) {
-    event.respondWith(fetch(request));
+  // Keep Firebase and other external services out of the app shell cache.
+  if (url.origin !== self.location.origin) {
     return;
   }
 
-  // Cache-first for static assets
-  if (url.pathname.endsWith('.js') || 
-      url.pathname.endsWith('.css') || 
-      url.pathname.endsWith('.jpg') ||
+  // Network-first for navigations and app assets so deployed fixes arrive without a hard refresh.
+  if (request.mode === 'navigate' ||
+      url.pathname.endsWith('.html') ||
+      url.pathname.endsWith('.js') ||
+      url.pathname.endsWith('.css')) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.status === 200) {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, responseClone);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          return caches.match(request).then((cachedResponse) => {
+            if (cachedResponse) return cachedResponse;
+            if (request.mode === 'navigate') return caches.match('/index.html');
+            return new Response('Offline', { status: 503 });
+          });
+        })
+    );
+    return;
+  }
+
+  // Cache-first for media assets.
+  if (url.pathname.endsWith('.jpg') ||
       url.pathname.endsWith('.png') ||
       url.pathname.endsWith('.svg') ||
       url.pathname.endsWith('.ico')) {
@@ -66,7 +90,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Network-first for everything else (HTML, JSON, etc)
+  // Network-first for everything else.
   event.respondWith(
     fetch(request)
       .then((response) => {

@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { db, setDoc, getDoc, getDocs, deleteDoc, doc, collection, query, where } from '../firebase'
 import { getNormalizedResultSignature, getResultOverrideKeys, getResultSignature } from '../utils/resultIdentity'
+import { derivePlayerStatsFromResults, getPersistedPlayerStats } from '../utils/playerStats'
 
 export default function Results() {
-  const { user, getResults, updateResults, getFixtures, updateFixtures, triggerDataRefresh, dataRefreshTrigger, adminData, updateAdminData, notifyUser, notifyAllSubscribers } = useAuth()
+  const { user, getAllUsers, getResults, updateResults, getFixtures, updateFixtures, updateOtherUser, triggerDataRefresh, dataRefreshTrigger, adminData, updateAdminData, notifyUser, notifyAllSubscribers } = useAuth()
   const [activeTab, setActiveTab] = useState('approved')
   const [refreshKey, setRefreshKey] = useState(0)
   const [successMessage, setSuccessMessage] = useState('')
@@ -137,6 +138,51 @@ export default function Results() {
     await setDoc(doc(db, 'fixtures', String(updatedFixture.id)), updatedFixture, { merge: true })
     triggerDataRefresh('fixtures')
   }
+
+  const notifyResultReviewParticipants = async (result, reviewStatus) => {
+    const isApproved = reviewStatus === 'approved'
+    const recipientIds = Array.from(new Set([
+      result.submittedBy,
+      result.player1Id,
+      result.player2Id
+    ].filter(Boolean).map(String)))
+
+    await Promise.all(recipientIds.map(playerId =>
+      notifyUser(
+        playerId,
+        isApproved ? 'Result Approved' : 'Result Rejected',
+        `${result.player1} ${result.score1}-${result.score2} ${result.player2} has been ${isApproved ? 'approved' : 'rejected'}.`,
+        isApproved ? 'result_approved' : 'result_rejected',
+        { resultId: result.id, url: '/results' }
+      )
+    ))
+  }
+
+  const syncApprovedStatsForResultPlayers = async (sourceResults, reviewedResult) => {
+    const affectedPlayerIds = Array.from(new Set([
+      reviewedResult.player1Id,
+      reviewedResult.player2Id
+    ].filter(Boolean).map(String)))
+    if (affectedPlayerIds.length === 0) return
+
+    const allPlayers = getAllUsers()
+    const statsByPlayerId = derivePlayerStatsFromResults(allPlayers, sourceResults, {
+      fixtures: getFixtures(),
+      adminData,
+      leagueOnly: false
+    })
+    const syncedAt = new Date().toISOString()
+
+    await Promise.all(affectedPlayerIds.map(playerId => {
+      const stats = statsByPlayerId[playerId]
+      if (!stats) return Promise.resolve()
+      return updateOtherUser(playerId, {
+        stats: getPersistedPlayerStats(stats),
+        statsUpdatedAt: syncedAt
+      })
+    }))
+    triggerDataRefresh('users')
+  }
   
   const handleApprove = async (resultId) => {
     if (!confirm('Approve this result?')) return
@@ -165,6 +211,8 @@ export default function Results() {
     ))
     await syncFixtureAfterResultReview(updatedResult, 'approved')
     await persistResultStatusOverride(updatedResult, 'approved')
+    await syncApprovedStatsForResultPlayers(results, updatedResult)
+    await notifyResultReviewParticipants(updatedResult, 'approved')
     
     triggerDataRefresh('results')
     setSuccessMessage('You have successfully approved a result')
@@ -194,6 +242,8 @@ export default function Results() {
     ))
     await syncFixtureAfterResultReview(updatedResult, 'rejected')
     await persistResultStatusOverride(updatedResult, 'rejected')
+    await syncApprovedStatsForResultPlayers(results, updatedResult)
+    await notifyResultReviewParticipants(updatedResult, 'rejected')
     
     triggerDataRefresh('results')
     setSuccessMessage('You have successfully rejected a result')

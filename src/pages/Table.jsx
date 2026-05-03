@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { getLeaguePoints } from '../utils/leagueScoring'
-import { getResultEffectiveTime, getResultPlayerId, isLeagueResult } from '../utils/leagueResults'
+import { derivePlayerStatsFromResults } from '../utils/playerStats'
 
 const DIVISION_EMOJIS = {
   'Elite': '👑',
@@ -13,7 +12,6 @@ const DIVISION_EMOJIS = {
   'Development': '🌱',
   'Overall': '🏆'
 }
-const DEFAULT_LEAGUE_TABLE_RESET_AT = '2026-04-29T16:14:21.338+01:00'
 
 export default function Table() {
   const [activeDivision, setActiveDivision] = useState('Overall')
@@ -29,71 +27,14 @@ export default function Table() {
   const allUsers = getAllUsers()
   const fixtures = getFixtures()
   const results = getResults()
-  const fixturesById = Object.fromEntries(fixtures.map(fixture => [String(fixture.id), fixture]))
-  const resetTimes = [DEFAULT_LEAGUE_TABLE_RESET_AT, adminData?.leagueTableResetAt]
-    .map(value => value ? new Date(value).getTime() : 0)
-    .filter(value => Number.isFinite(value) && value > 0)
-  const leagueTableResetTime = resetTimes.length ? Math.max(...resetTimes) : 0
-  const leagueResults = results.filter(r => (
-    String(r.status).toLowerCase() === 'approved' &&
-    isLeagueResult(r, fixturesById) &&
-    (!leagueTableResetTime || getResultEffectiveTime(r) > leagueTableResetTime)
-  ))
 
   const playerStats = useMemo(() => {
-    const stats = {}
-    
-    allUsers.forEach(u => {
-      stats[String(u.id)] = {
-        played: 0,
-        wins: 0,
-        draws: 0,
-        losses: 0,
-        legsWon: 0,
-        legsLost: 0,
-        points: 0
-      }
+    return derivePlayerStatsFromResults(allUsers, results, {
+      fixtures,
+      adminData,
+      leagueOnly: true
     })
-
-    leagueResults.forEach(r => {
-      const player1Id = getResultPlayerId(r, 1, allUsers)
-      const player2Id = getResultPlayerId(r, 2, allUsers)
-      const score1 = Number(r.score1) || 0
-      const score2 = Number(r.score2) || 0
-
-      if (player1Id && stats[player1Id]) {
-        stats[player1Id].played++
-        stats[player1Id].legsWon += score1
-        stats[player1Id].legsLost += score2
-        
-        if (score1 > score2) {
-          stats[player1Id].wins++
-        } else if (score1 === score2) {
-          stats[player1Id].draws++
-        } else {
-          stats[player1Id].losses++
-        }
-        stats[player1Id].points += getLeaguePoints(score1, score2)
-      }
-      
-      if (player2Id && stats[player2Id]) {
-        stats[player2Id].played++
-        stats[player2Id].legsWon += score2
-        stats[player2Id].legsLost += score1
-        
-        if (score2 > score1) {
-          stats[player2Id].wins++
-        } else if (score2 === score1) {
-          stats[player2Id].draws++
-        } else {
-          stats[player2Id].losses++
-        }
-        stats[player2Id].points += getLeaguePoints(score2, score1)
-      }
-    })
-
-    return stats
-  }, [allUsers, leagueResults, refreshKey])
+  }, [allUsers, results, fixtures, adminData, refreshKey])
 
   const playersInDivision = activeDivision === 'Overall' 
     ? allUsers

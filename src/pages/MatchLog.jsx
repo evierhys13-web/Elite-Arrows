@@ -1,22 +1,36 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { getResultPlayerId, isLeagueResult } from '../utils/leagueResults'
 
 export default function MatchLog() {
-  const { user, getAllUsers } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults } = useAuth()
   const [activeTab, setActiveTab] = useState('played')
   
-  const allResults = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
+  const allResults = getResults()
   const allUsers = getAllUsers()
+  const fixtures = getFixtures()
+  const fixturesById = Object.fromEntries(fixtures.map(fixture => [String(fixture.id), fixture]))
   
   const leagueResults = allResults
-    .filter(r => r.status === 'approved' && r.gameType === 'League' && (r.player1Id === user.id || r.player2Id === user.id))
+    .filter(r => {
+      const player1Id = getResultPlayerId(r, 1, allUsers)
+      const player2Id = getResultPlayerId(r, 2, allUsers)
+      return (
+        String(r.status || '').toLowerCase() === 'approved' &&
+        isLeagueResult(r, fixturesById) &&
+        (String(player1Id) === String(user.id) || String(player2Id) === String(user.id))
+      )
+    })
     .map(r => {
-      const isPlayer1 = r.player1Id === user.id
-      const opponentUser = isPlayer1 ? allUsers.find(u => u.id === r.player2Id) : allUsers.find(u => u.id === r.player1Id)
+      const player1Id = getResultPlayerId(r, 1, allUsers)
+      const player2Id = getResultPlayerId(r, 2, allUsers)
+      const isPlayer1 = String(player1Id) === String(user.id)
+      const opponentId = isPlayer1 ? player2Id : player1Id
+      const opponentUser = allUsers.find(u => String(u.id) === String(opponentId))
       const win = isPlayer1 ? r.score1 > r.score2 : r.score2 > r.score1
       return {
         id: r.id,
-        opponentId: isPlayer1 ? r.player2Id : r.player1Id,
+        opponentId,
         opponent: opponentUser?.username || 'Unknown',
         opponentDivision: opponentUser?.division || '',
         result: win ? 'Win' : (r.score1 === r.score2 ? 'Draw' : 'Loss'),

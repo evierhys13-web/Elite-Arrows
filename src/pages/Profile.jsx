@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Tooltip from '../components/Tooltip'
 import { compressImage } from '../components/ImageUtils'
+import { getResultPlayerId } from '../utils/leagueResults'
+import { derivePlayerStatsFromResults } from '../utils/playerStats'
 
 const AVAILABLE_BADGES = [
   { id: 'competitive', label: 'Competitive', icon: '🏆', color: '#FFD700' },
@@ -16,7 +18,7 @@ const AVAILABLE_BADGES = [
 ]
 
 export default function Profile() {
-  const { user, updateUser, requestAdminRole, getAllUsers, addFriend, removeFriend } = useAuth()
+  const { user, updateUser, requestAdminRole, getAllUsers, getResults, getFixtures, adminData, addFriend, removeFriend } = useAuth()
   const navigate = useNavigate()
   const { id } = useParams()
   
@@ -86,21 +88,33 @@ export default function Profile() {
     }
   }
 
-  const results = JSON.parse(localStorage.getItem('eliteArrowsResults') || '[]')
-  const approvedResults = results.filter(r => r.status === 'approved')
+  const allUsers = getAllUsers()
+  const allResults = getResults()
+  const fixtures = getFixtures()
+  const approvedResults = allResults.filter(r => String(r.status || '').toLowerCase() === 'approved')
+  const statsByUserId = derivePlayerStatsFromResults(allUsers, allResults, {
+    fixtures,
+    adminData,
+    leagueOnly: false
+  })
+  const displayStats = displayUser?.id ? statsByUserId[String(displayUser.id)] : null
   
   const getHeadToHead = (otherUserId) => {
-    const matches = approvedResults.filter(r => 
-      (r.player1Id === user.id && r.player2Id === otherUserId) || 
-      (r.player2Id === user.id && r.player1Id === otherUserId)
-    )
+    const matches = approvedResults.filter(r => {
+      const player1Id = getResultPlayerId(r, 1, allUsers)
+      const player2Id = getResultPlayerId(r, 2, allUsers)
+      return (
+        (String(player1Id) === String(user.id) && String(player2Id) === String(otherUserId)) ||
+        (String(player2Id) === String(user.id) && String(player1Id) === String(otherUserId))
+      )
+    })
     
     let wins = 0, losses = 0, draws = 0
     let player180s = 0
     let opponent180s = 0
     
     matches.forEach(m => {
-      const isPlayer1 = m.player1Id === user.id
+      const isPlayer1 = String(getResultPlayerId(m, 1, allUsers)) === String(user.id)
       if (isPlayer1) {
         player180s += m.player1Stats?.['180s'] || 0
         opponent180s += m.player2Stats?.['180s'] || 0
@@ -119,7 +133,6 @@ export default function Profile() {
     return { wins, losses, draws, total: matches.length, player180s, opponent180s }
   }
 
-  const allUsers = getAllUsers()
   const displayUserFriends = displayUser?.friends 
     ? allUsers.filter(u => displayUser.friends.includes(u.id))
     : []
@@ -246,22 +259,22 @@ export default function Profile() {
               <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>{viewedUser.threeDartAverage?.toFixed(2) || 0}</div>
               <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>3-Dart Avg</div>
             </div>
-            {viewedUser.stats && (
+            {displayStats && (
               <>
                 <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>{viewedUser.stats.played || 0}</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>{displayStats.played || 0}</div>
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Played</div>
                 </div>
                 <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--success)' }}>{viewedUser.stats.wins || 0}</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--success)' }}>{displayStats.wins || 0}</div>
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Wins</div>
                 </div>
                 <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>{viewedUser.stats['180s'] || 0}</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>{displayStats['180s'] || 0}</div>
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>180s</div>
                 </div>
                 <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>{viewedUser.stats.highestCheckout || 0}</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>{displayStats.highestCheckout || 0}</div>
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Hi Checkout</div>
                 </div>
               </>
