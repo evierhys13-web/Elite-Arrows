@@ -1059,18 +1059,27 @@ const cleanUserData = (users) => {
       await setDoc(doc(db, 'adminData', 'main'), newData, { merge: true })
       setAdminData(prev => {
         const next = { ...prev, ...newData }
-        if (Object.prototype.hasOwnProperty.call(newData, 'resultStatusOverrides')) {
-          resultStatusOverridesRef.current = newData.resultStatusOverrides || {}
-          localStorage.setItem('eliteArrowsResultStatusOverrides', JSON.stringify(newData.resultStatusOverrides || {}))
-        }
-        if (Object.prototype.hasOwnProperty.call(newData, 'subscriptionPot')) {
-          localStorage.setItem('eliteArrowsSubscriptionPot', String(newData.subscriptionPot || 0))
-        }
-        if (Object.prototype.hasOwnProperty.call(newData, 'subscriptionPot10')) {
-          localStorage.setItem('eliteArrowsSubscriptionPot10', String(newData.subscriptionPot10 || 0))
-        }
-        if (Object.prototype.hasOwnProperty.call(newData, 'moneyHistory')) {
-          localStorage.setItem('eliteArrowsMoneyHistory', JSON.stringify(newData.moneyHistory || []))
+        try {
+          if (Object.prototype.hasOwnProperty.call(newData, 'resultStatusOverrides')) {
+            resultStatusOverridesRef.current = newData.resultStatusOverrides || {}
+            localStorage.setItem('eliteArrowsResultStatusOverrides', JSON.stringify(newData.resultStatusOverrides || {}))
+          }
+          if (Object.prototype.hasOwnProperty.call(newData, 'subscriptionPot')) {
+            localStorage.setItem('eliteArrowsSubscriptionPot', String(newData.subscriptionPot || 0))
+          }
+          if (Object.prototype.hasOwnProperty.call(newData, 'subscriptionPot10')) {
+            localStorage.setItem('eliteArrowsSubscriptionPot10', String(newData.subscriptionPot10 || 0))
+          }
+          if (Object.prototype.hasOwnProperty.call(newData, 'moneyHistory')) {
+            localStorage.setItem('eliteArrowsMoneyHistory', JSON.stringify(newData.moneyHistory || []))
+          }
+        } catch (e) {
+          console.error('localStorage error (quota exceeded?):', e)
+          // Clear problematic keys if quota exceeded
+          if (e.name === 'QuotaExceededError' || e.code === 22) {
+            localStorage.removeItem('eliteArrowsResultStatusOverrides')
+            localStorage.removeItem('eliteArrowsMoneyHistory')
+          }
         }
         return next
       })

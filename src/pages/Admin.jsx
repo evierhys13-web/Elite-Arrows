@@ -184,31 +184,35 @@ export default function Admin() {
   }
 
   const buildResultStatusOverrides = (resultsToUpdate, status) => {
-    const nextOverrides = getMergedResultStatusOverrides()
-    const updatedAt = new Date().toISOString()
-
+    const nextOverrides = {}
+    
     resultsToUpdate.forEach(result => {
-      const override = {
-        status,
-        resultId: result.id ? String(result.id) : String(result.firestoreId || ''),
-        firestoreId: result.firestoreId || null,
-        signature: getResultSignature(result),
-        normalizedSignature: getNormalizedResultSignature(result),
-        updatedAt
-      }
-
+      const override = { status }
+      
       getResultOverrideKeys(result).forEach(key => {
         nextOverrides[key] = override
       })
     })
-
+    
     return nextOverrides
   }
 
   const persistResultStatusOverrides = async (resultsToUpdate, status) => {
-    const nextOverrides = buildResultStatusOverrides(resultsToUpdate, status)
-    localStorage.setItem('eliteArrowsResultStatusOverrides', JSON.stringify(nextOverrides))
-    await updateAdminData({ resultStatusOverrides: nextOverrides })
+    try {
+      const existingOverrides = JSON.parse(localStorage.getItem('eliteArrowsResultStatusOverrides') || '{}')
+      const nextOverrides = buildResultStatusOverrides(resultsToUpdate, status)
+      const merged = { ...existingOverrides, ...nextOverrides }
+      localStorage.setItem('eliteArrowsResultStatusOverrides', JSON.stringify(merged))
+      await updateAdminData({ resultStatusOverrides: merged })
+    } catch (e) {
+      console.error('Error saving result status overrides:', e)
+      // If quota exceeded, clear old data and try again
+      if (e.name === 'QuotaExceededError' || e.code === 22) {
+        localStorage.removeItem('eliteArrowsResultStatusOverrides')
+        const nextOverrides = buildResultStatusOverrides(resultsToUpdate, status)
+        localStorage.setItem('eliteArrowsResultStatusOverrides', JSON.stringify(nextOverrides))
+      }
+    }
   }
 
   const persistResultStatusOverride = async (result, status) => {
