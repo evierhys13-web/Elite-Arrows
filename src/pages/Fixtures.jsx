@@ -20,9 +20,12 @@ export default function Fixtures() {
   const [cupScheduleMode, setCupScheduleMode] = useState('propose')
   const [scheduleDate, setScheduleDate] = useState('')
   const [scheduleTime, setScheduleTime] = useState('')
-  const [counterFixture, setCounterFixture] = useState(null)
+const [counterFixture, setCounterFixture] = useState(null)
   const [counterDate, setCounterDate] = useState('')
   const [counterTime, setCounterTime] = useState('')
+  const [rescheduleFixture, setRescheduleFixture] = useState(null)
+  const [rescheduleDate, setRescheduleDate] = useState('')
+  const [rescheduleTime, setRescheduleTime] = useState('')
   const [refreshKey, setRefreshKey] = useState(0)
   const [bets, setBets] = useState([])
   const [showBetForm, setShowBetForm] = useState(null)
@@ -1284,6 +1287,101 @@ export default function Fixtures() {
         </div>
       )}
 
+      {rescheduleFixture && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.75)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }} onClick={() => setRescheduleFixture(null)}>
+          <div style={{
+            background: 'var(--bg-secondary)',
+            borderRadius: '16px',
+            padding: '25px',
+            maxWidth: '420px',
+            width: '100%',
+            border: '1px solid var(--border)'
+          }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ marginBottom: '16px', color: 'var(--accent-cyan)', textAlign: 'center' }}>
+              Reschedule Fixture
+            </h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '16px' }}>
+              Change the date and time for {isSameId(rescheduleFixture.player1Id, user.id) ? 'You' : getPlayerName(rescheduleFixture.player1Id)} vs {isSameId(rescheduleFixture.player2Id, user.id) ? 'You' : getPlayerName(rescheduleFixture.player2Id)}.
+            </p>
+            <div className="form-group">
+              <label>New Date</label>
+              <input
+                type="date"
+                value={rescheduleDate}
+                onChange={e => setRescheduleDate(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+            <div className="form-group">
+              <label>New Time</label>
+              <input
+                type="time"
+                value={rescheduleTime}
+                onChange={e => setRescheduleTime(e.target.value)}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '18px' }}>
+              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setRescheduleFixture(null)}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={async () => {
+                if (!rescheduleDate || !rescheduleTime) {
+                  alert('Please select a date and time')
+                  return
+                }
+                const allFixtures = getFixtures()
+                const index = findFixtureIndexById(allFixtures, rescheduleFixture.id)
+                if (index === -1) {
+                  alert('Could not find fixture. Please refresh and try again.')
+                  return
+                }
+                allFixtures[index] = {
+                  ...allFixtures[index],
+                  fixtureDate: rescheduleDate,
+                  fixtureTime: rescheduleTime,
+                  date: rescheduleDate,
+                  time: rescheduleTime,
+                  updatedAt: new Date().toISOString()
+                }
+                saveFixtures(allFixtures)
+                try {
+                  await persistFixture(allFixtures[index])
+                  const otherPlayerId = getOtherPlayerId(rescheduleFixture)
+                  if (otherPlayerId) {
+                    await notifyUser(
+                      otherPlayerId,
+                      'Fixture Rescheduled',
+                      `${user.username} changed the fixture to ${rescheduleDate} at ${rescheduleTime}.`,
+                      'fixture_rescheduled',
+                      { fixtureKind: rescheduleFixture.cupId ? 'cup' : (rescheduleFixture.gameType || 'league').toLowerCase(), fixtureId: rescheduleFixture.id }
+                    )
+                  }
+                  await sendFixtureActivityToAdmins('rescheduled', allFixtures[index], { newDate: rescheduleDate, newTime: rescheduleTime })
+                } catch (e) {
+                  console.log('Error rescheduling fixture:', e)
+                }
+                setRescheduleFixture(null)
+                setRescheduleDate('')
+                setRescheduleTime('')
+                triggerDataRefresh('fixtures')
+                alert('Fixture rescheduled!')
+              }}>
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {activeTab === 'my' && (
         <div className="card">
           <h3 className="card-title">My Fixtures</h3>
@@ -1309,12 +1407,23 @@ export default function Fixtures() {
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                     {fixture.gameType} | {getFixtureDate(fixture) || 'TBC'} at {getFixtureTime(fixture) || 'TBC'}
                   </div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)', marginTop: '5px' }}>
-                    Status: confirmed
-                  </div>
-                </div>
-              ))}
-              {[...cupAccepted]
+                     <div style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)', marginTop: '5px' }}>
+                       Status: confirmed
+                     </div>
+                     <button
+                       className="btn btn-secondary btn-sm"
+                       style={{ marginTop: '8px' }}
+                       onClick={() => {
+                         setRescheduleFixture(fixture)
+                         setRescheduleDate(getFixtureDate(fixture) || '')
+                         setRescheduleTime(getFixtureTime(fixture) || '')
+                       }}
+                     >
+                       📅 Reschedule
+                     </button>
+                   </div>
+               ))}
+               {[...cupAccepted]
                 .sort((a, b) => getFixtureSortTime(a) - getFixtureSortTime(b))
                 .map(fixture => (
                   <div key={`cup-${fixture.id}`} style={{
@@ -1396,17 +1505,28 @@ export default function Fixtures() {
                     <div style={{ fontWeight: '600' }}>⏰ {fixture.fixtureTime}</div>
                   </div>
                 </div>
-                <button
-                  className="btn btn-primary"
-                  style={{ marginTop: '12px' }}
-                  onClick={() => navigate(`/submit-result?fixtureId=${fixture.id}`)}
-                >
-                  Submit Result
-                </button>
-              </div>
-            ))
-          )}
-          {cupUpcoming.length > 0 && (
+                 <button
+                   className="btn btn-primary"
+                   style={{ marginTop: '12px' }}
+                   onClick={() => navigate(`/submit-result?fixtureId=${fixture.id}`)}
+                 >
+                   Submit Result
+                 </button>
+                 <button
+                   className="btn btn-secondary"
+                   style={{ marginTop: '12px', marginLeft: '8px' }}
+                   onClick={() => {
+                     setRescheduleFixture(fixture)
+                     setRescheduleDate(fixture.fixtureDate || fixture.date || '')
+                     setRescheduleTime(fixture.fixtureTime || fixture.time || '')
+                   }}
+                 >
+                   📅 Reschedule
+                 </button>
+               </div>
+             ))
+           )}
+           {cupUpcoming.length > 0 && (
             <div style={{ marginTop: upcomingFixtures.length > 0 ? '20px' : 0 }}>
               {upcomingFixtures.length > 0 && (
                 <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '12px' }}>Cup Fixtures</h4>
@@ -1457,19 +1577,30 @@ export default function Fixtures() {
                       <div style={{ fontWeight: '600' }}>{fixture.time || fixture.proposedTime || 'TBC'}</div>
                     </div>
                   </div>
-                  <button
-                    className="btn btn-primary"
-                    style={{ marginTop: '12px' }}
-                    onClick={() => navigate(`/submit-result?fixtureId=${fixture.id}`)}
-                  >
-                    Submit Result
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+                   <button
+                     className="btn btn-primary"
+                     style={{ marginTop: '12px' }}
+                     onClick={() => navigate(`/submit-result?fixtureId=${fixture.id}`)}
+                   >
+                     Submit Result
+                   </button>
+                   <button
+                     className="btn btn-secondary"
+                     style={{ marginTop: '12px', marginLeft: '8px' }}
+                     onClick={() => {
+                       setRescheduleFixture(fixture)
+                       setRescheduleDate(fixture.date || fixture.fixtureDate || '')
+                       setRescheduleTime(fixture.time || fixture.fixtureTime || '')
+                     }}
+                   >
+                     📅 Reschedule
+                   </button>
+                 </div>
+               ))}
+             </div>
+           )}
+         </div>
+       )}
 
       {activeTab === 'all' && (
         <div className="card">
@@ -1584,17 +1715,29 @@ export default function Fixtures() {
                       </div>
                     )}
                   </div>
-                  {canSubmitFixtureResult || (isAdmin && !fixture.cupId) || fixtureBet || betIsAvailable ? (
-                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '12px' }}>
-                      {canSubmitFixtureResult && (
-                        <button
-                          className="btn btn-primary"
-                          onClick={() => navigate(`/submit-result?fixtureId=${fixture.id}`)}
-                        >
-                          Submit Result
-                        </button>
-                      )}
-                      {isAdmin && !fixture.cupId && (
+                   {canSubmitFixtureResult || (isAdmin && !fixture.cupId) || fixtureBet || betIsAvailable ? (
+                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '12px' }}>
+                       {canSubmitFixtureResult && (
+                         <button
+                           className="btn btn-primary"
+                           onClick={() => navigate(`/submit-result?fixtureId=${fixture.id}`)}
+                         >
+                           Submit Result
+                         </button>
+                       )}
+                       {isMyFixture && getStatus(fixture) === 'accepted' && (
+                         <button
+                           className="btn btn-secondary"
+                           onClick={() => {
+                             setRescheduleFixture(fixture)
+                             setRescheduleDate(getFixtureDate(fixture) || '')
+                             setRescheduleTime(getFixtureTime(fixture) || '')
+                           }}
+                         >
+                           📅 Reschedule
+                         </button>
+                       )}
+                       {isAdmin && !fixture.cupId && (
                         <button
                           className="btn btn-danger"
                           onClick={() => removeFixtureAndSubmittedResult(fixture)}

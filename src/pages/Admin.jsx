@@ -555,178 +555,166 @@ export default function Admin() {
     }
   }, [user.isAdmin, user.isTournamentAdmin, dataRefreshTrigger]);
 
-  const approveResult = async (resultId) => {
+const approveResult = async (resultId) => {
     const resultIdStr = String(resultId)
     console.log('Approve called with ID:', resultIdStr)
     
-    const results = [...getResults()]
-    const resultsIndex = results.findIndex(r => String(r.id) === resultIdStr)
-    
-    if (resultsIndex === -1) {
-      alert('Result not found')
-      return
-    }
-    
-    if (results[resultsIndex].gameType === 'Cup' && Number(results[resultsIndex].score1) === Number(results[resultsIndex].score2)) {
-      alert('Cup matches cannot be approved with a tied score.')
-      return
-    }
-
-    const reviewedAt = new Date().toISOString()
-    const updatedResult = {
-      ...results[resultsIndex],
-      status: 'approved',
-      approvedAt: reviewedAt,
-      updatedAt: reviewedAt
-    }
-    const resultDocIds = await getResultDocIds(updatedResult)
-    results[resultsIndex] = updatedResult
-    updateResults(results)
-    console.log('Updated results cache')
-    
-    setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
-    setApprovedResults(prev => {
-      const withoutResult = prev.filter(r => String(r.id) !== resultIdStr)
-      return [updatedResult, ...withoutResult]
-    })
-    
     try {
-      await Promise.all(resultDocIds.map(resultDocId =>
-        setDoc(doc(db, 'results', resultDocId), { ...updatedResult, firestoreId: resultDocId }, { merge: true })
-      ))
-      await syncFixtureAfterResultReview(updatedResult, 'approved')
-      await syncCupApproval(updatedResult)
-      await persistResultStatusOverride(updatedResult, 'approved')
-      await syncApprovedStatsForResultPlayers(results, [updatedResult])
-      await notifyResultReviewParticipants(updatedResult, 'approved')
-      console.log('Successfully approved in Firebase!')
-      triggerDataRefresh('results')
-      showSuccessMessage('You have successfully approved a result')
-    } catch (e) {
-      alert('ERROR: ' + e.code + ' - ' + e.message)
-      console.error('FATAL Firebase error:', e.code, e.message)
-    }
-  }
-
-  const approveAllPendingResults = async () => {
-    if (isApprovingAllResults) return
-
-    const pendingToApprove = pendingResults.filter(result => !(
-      result.gameType === 'Cup' &&
-      Number(result.score1) === Number(result.score2)
-    ))
-    const skippedCount = pendingResults.length - pendingToApprove.length
-
-    if (pendingToApprove.length === 0) {
-      alert(skippedCount > 0 ? 'Cup matches with tied scores cannot be approved.' : 'No pending results to approve.')
-      return
-    }
-
-    if (!confirm(`Approve ${pendingToApprove.length} pending result${pendingToApprove.length === 1 ? '' : 's'} now?`)) return
-
-    setIsApprovingAllResults(true)
-    const reviewedAt = new Date().toISOString()
-    const approveIds = new Set(pendingToApprove.map(result => String(result.id)))
-    const approvedById = new Map()
-    const results = [...getResults()].map(result => {
-      if (!approveIds.has(String(result.id))) return result
-
+      // Get fresh results from Firestore directly
+      const snapshot = await getDocs(collection(db, 'results'))
+      const results = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      
+      const resultsIndex = results.findIndex(r => String(r.id) === resultIdStr)
+      
+      if (resultsIndex === -1) {
+        alert('Result not found in Firestore!')
+        return
+      }
+      
+      const result = results[resultsIndex]
+      
+      if (result.gameType === 'Cup' && Number(result.score1) === Number(result.score2)) {
+        alert('Cup matches cannot be approved with a tied score.')
+        return
+      }
+      
+      const reviewedAt = new Date().toISOString()
       const updatedResult = {
         ...result,
         status: 'approved',
         approvedAt: reviewedAt,
         updatedAt: reviewedAt
       }
-      approvedById.set(String(updatedResult.id), updatedResult)
-      return updatedResult
-    })
-    const approvedResultsNow = pendingToApprove.map(result => (
-      approvedById.get(String(result.id)) || {
-        ...result,
-        status: 'approved',
-        approvedAt: reviewedAt,
-        updatedAt: reviewedAt
-      }
-    ))
-
-    try {
-      const docIdsByResult = await Promise.all(approvedResultsNow.map(async updatedResult => ({
-        updatedResult,
-        resultDocIds: await getResultDocIds(updatedResult)
-      })))
-
-      await Promise.all(docIdsByResult.flatMap(({ updatedResult, resultDocIds }) => (
-        resultDocIds.map(resultDocId =>
-          setDoc(doc(db, 'results', resultDocId), { ...updatedResult, firestoreId: resultDocId }, { merge: true })
-        )
-      )))
-
-      for (const updatedResult of approvedResultsNow) {
-        await syncFixtureAfterResultReview(updatedResult, 'approved')
-        await syncCupApproval(updatedResult)
-      }
-
-      await persistResultStatusOverrides(approvedResultsNow, 'approved')
-      await syncApprovedStatsForResultPlayers(results, approvedResultsNow)
-      await Promise.all(approvedResultsNow.map(updatedResult =>
-        notifyResultReviewParticipants(updatedResult, 'approved')
-      ))
-
-      updateResults(results)
-      setPendingResults(prev => prev.filter(result => !approveIds.has(String(result.id))))
-      setApprovedResults(prev => {
-        const withoutApproved = prev.filter(result => !approveIds.has(String(result.id)))
-        return [...approvedResultsNow, ...withoutApproved]
-      })
+      
+      // Write to Firebase
+      await setDoc(doc(db, 'results', resultIdStr), updatedResult, { merge: true })
+      console.log('✅ Successfully approved in Firebase!')
+      
+      // Update local state immediately
+      setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
+      setApprovedResults(prev => [updatedResult, ...prev])
+      
+      // Update localStorage
+      const updatedResults = results.map(r => r.id === resultIdStr ? updatedResult : r)
+      localStorage.setItem('eliteArrowsResults', JSON.stringify(updatedResults))
+      
+      showSuccessMessage('Result approved successfully!')
       triggerDataRefresh('results')
-      triggerDataRefresh('fixtures')
-      showSuccessMessage(`Approved ${approvedResultsNow.length} pending result${approvedResultsNow.length === 1 ? '' : 's'}${skippedCount ? ` (${skippedCount} tied cup result skipped)` : ''}`)
+      
     } catch (e) {
-      alert('ERROR: ' + (e.code ? `${e.code} - ` : '') + e.message)
-      console.error('FATAL Firebase error:', e.code, e.message)
+      console.error('❌ Firebase error:', e.code, e.message)
+      alert('ERROR approving result: ' + e.message)
+    }
+  }
+
+const approveAllPendingResults = async () => {
+    if (isApprovingAllResults) return
+    
+    const pendingToApprove = pendingResults.filter(result => !(
+      result.gameType === 'Cup' &&
+      Number(result.score1) === Number(result.score2)
+    ))
+    const skippedCount = pendingResults.length - pendingToApprove.length
+    
+    if (pendingToApprove.length === 0) {
+      alert(skippedCount > 0 ? 'Cup matches with tied scores cannot be approved.' : 'No pending results to approve.')
+      return
+    }
+    
+    if (!confirm(`Approve ${pendingToApprove.length} pending result${pendingToApprove.length === 1 ? '' : 's'} now?`)) return
+    
+    setIsApprovingAllResults(true)
+    const reviewedAt = new Date().toISOString()
+    
+    try {
+      // Get fresh results from Firestore
+      const snapshot = await getDocs(collection(db, 'results'))
+      const allResults = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      
+      const approvedIds = new Set(pendingToApprove.map(r => String(r.id)))
+      const updatedResults = allResults.map(result => {
+        if (!approvedIds.has(String(result.id))) return result
+        
+        const updatedResult = {
+          ...result,
+          status: 'approved',
+          approvedAt: reviewedAt,
+          updatedAt: reviewedAt
+        }
+        
+        // Write to Firebase
+        setDoc(doc(db, 'results', String(result.id)), updatedResult, { merge: true })
+          .then(() => console.log('✅ Approved:', result.id))
+          .catch(e => console.error('❌ Error:', e))
+        
+        return updatedResult
+      })
+      
+      // Update localStorage
+      localStorage.setItem('eliteArrowsResults', JSON.stringify(updatedResults))
+      
+      // Update state
+      setPendingResults(prev => prev.filter(r => !approvedIds.has(String(r.id))))
+      setApprovedResults(prev => [...pendingToApprove.map(r => updatedResults.find(ur => String(ur.id) === String(r.id))), ...prev])
+      
+      triggerDataRefresh('results')
+      showSuccessMessage(`Approved ${pendingToApprove.length} pending results${skippedCount ? ` (${skippedCount} tied cup results skipped)` : ''}`)
+      
+    } catch (e) {
+      console.error('❌ Firebase error:', e.code, e.message)
+      alert('ERROR approving results: ' + e.message)
     } finally {
       setIsApprovingAllResults(false)
     }
   }
 
-  const rejectResult = async (resultId) => {
+
+
+const rejectResult = async (resultId) => {
     const resultIdStr = String(resultId)
     console.log('Reject called with ID:', resultIdStr)
     
-    const results = [...getResults()]
-    const resultsIndex = results.findIndex(r => String(r.id) === resultIdStr)
-    
-    if (resultsIndex === -1) {
-      alert('Result not found')
-      return
-    }
-    
-    const updatedResult = { ...results[resultsIndex], status: 'rejected', updatedAt: new Date().toISOString() }
-    const resultDocIds = await getResultDocIds(updatedResult)
-    results[resultsIndex] = updatedResult
-    updateResults(results)
-    console.log('Updated results cache')
-    setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
-    setApprovedResults(prev => {
-      const withoutResult = prev.filter(r => String(r.id) !== resultIdStr)
-      return [updatedResult, ...withoutResult]
-    })
-    
     try {
-      await Promise.all(resultDocIds.map(resultDocId =>
-        setDoc(doc(db, 'results', resultDocId), { ...updatedResult, firestoreId: resultDocId }, { merge: true })
-      ))
-      await syncFixtureAfterResultReview(updatedResult, 'rejected')
-      await persistResultStatusOverride(updatedResult, 'rejected')
-      await syncApprovedStatsForResultPlayers(results, [updatedResult])
-      await notifyResultReviewParticipants(updatedResult, 'rejected')
-      console.log('Successfully updated Firebase!')
+      // Get fresh results from Firestore directly
+      const snapshot = await getDocs(collection(db, 'results'))
+      const results = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      
+      const resultsIndex = results.findIndex(r => String(r.id) === resultIdStr)
+      
+      if (resultsIndex === -1) {
+        alert('Result not found in Firestore!')
+        return
+      }
+      
+      const result = results[resultsIndex]
+      const updatedResult = { 
+        ...result, 
+        status: 'rejected', 
+        updatedAt: new Date().toISOString() 
+      }
+      
+      // Write to Firebase
+      await setDoc(doc(db, 'results', resultIdStr), updatedResult, { merge: true })
+      console.log('✅ Successfully rejected in Firebase!')
+      
+      // Update local state immediately
+      setPendingResults(prev => prev.filter(r => String(r.id) !== resultIdStr))
+      setApprovedResults(prev => [updatedResult, ...prev])
+      
+      // Update localStorage
+      const updatedResults = results.map(r => r.id === resultIdStr ? updatedResult : r)
+      localStorage.setItem('eliteArrowsResults', JSON.stringify(updatedResults))
+      
+      showToast('Result rejected')
+      triggerDataRefresh('results')
+      
     } catch (e) {
-      console.error('FATAL Firebase error:', e.code, e.message)
+      console.error('❌ Firebase error:', e.code, e.message)
+      alert('ERROR rejecting result: ' + e.message)
     }
+   }
 
-    showToast('Result rejected')
-  }
+
 
   const resetResultStatus = async (resultId) => {
     const resultIdStr = String(resultId)

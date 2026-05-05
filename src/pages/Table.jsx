@@ -79,11 +79,21 @@ export default function Table() {
 
   const headerEmoji = DIVISION_EMOJIS[activeDivision] || DIVISION_EMOJIS['Overall']
 
+  const handleRefresh = () => {
+    setRefreshKey(prev => prev + 1)
+    triggerDataRefresh('results')
+    triggerDataRefresh('fixtures')
+    triggerDataRefresh('users')
+  }
+
   return (
     <div className="page" key={refreshKey}>
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <h1 className="page-title">League Table</h1>
+          <button className="btn btn-secondary btn-sm" onClick={handleRefresh} title="Refresh data from server">
+            🔄 Refresh
+          </button>
         </div>
       </div>
 
