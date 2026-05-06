@@ -2154,12 +2154,7 @@ const rejectResult = async (resultId) => {
             <label>Maintenance Message</label>
             <textarea
               placeholder="e.g. Planned maintenance on Saturday at 2pm. The site may be unstable during this time."
-              value={adminData.maintenanceMessage || ''}
-              onChange={async (e) => {
-                // We update local state first for responsiveness if possible,
-                // but AuthContext handles adminData via listener.
-                // For now, let's just provide a Save button to avoid too many writes.
-              }}
+              defaultValue={adminData.maintenanceMessage || ''}
               id="maintenanceMessageInput"
               rows={3}
               style={{ width: '100%', padding: '12px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)' }}

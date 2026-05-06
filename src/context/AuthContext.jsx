@@ -97,7 +97,14 @@ export function AuthProvider({ children }) {
   const [supportRequests, setSupportRequests] = useState([])
   const [seasons, setSeasons] = useState([])
   const [dataRefreshTrigger, setDataRefreshTrigger] = useState(0)
-  const [adminData, setAdminData] = useState({ subscriptionPot: 0, subscriptionPot10: 0, moneyHistory: [], leagueTableResetAt: null })
+  const [adminData, setAdminData] = useState({
+    subscriptionPot: 0,
+    subscriptionPot10: 0,
+    moneyHistory: [],
+    leagueTableResetAt: null,
+    isMaintenanceMode: false,
+    maintenanceMessage: ''
+  })
   const [notificationPermission, setNotificationPermission] = useState('default')
   const [fcmToken, setFcmToken] = useState(null)
   const [unreadCount, setUnreadCount] = useState(0)

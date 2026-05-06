@@ -186,7 +186,7 @@ function AdminRoute({ children }) {
 }
 
 function AppLayout({ children }) {
-  const { dataRefreshTrigger } = useAuth()
+  const { dataRefreshTrigger, adminData } = useAuth()
   const { showOnboarding, completeOnboarding } = useOnboarding()
   const { showWhatsNew } = useWhatsNew()
   const [whatsNewOpen, setWhatsNewOpen] = useState(showWhatsNew)
@@ -194,6 +194,23 @@ function AppLayout({ children }) {
   return (
     <>
       <a href="#main-content" className="skip-link">Skip to main content</a>
+      {adminData?.isMaintenanceMode && adminData?.maintenanceMessage && (
+        <div style={{
+          background: 'var(--warning)',
+          color: '#000',
+          padding: '10px 20px',
+          textAlign: 'center',
+          fontSize: '0.9rem',
+          fontWeight: 'bold',
+          position: 'sticky',
+          top: 0,
+          zIndex: 2000,
+          boxShadow: '0 2px 10px rgba(0,0,0,0.2)'
+        }}>
+          <span style={{ marginRight: '8px' }}>⚠️</span>
+          {adminData.maintenanceMessage}
+        </div>
+      )}
       <div className="app-layout">
         <Sidebar />
         <main id="main-content" className="main-content" tabIndex={-1}>
