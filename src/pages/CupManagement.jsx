@@ -8,6 +8,8 @@ function CupManagement() {
   const [cups, setCups] = useState([])
   const [allCupFixtures, setAllCupFixtures] = useState([])
   const [allCupResults, setAllCupResults] = useState([])
+  const [showResultModal, setShowResultModal] = useState(false)
+  const [resultForm, setResultForm] = useState({ cup: null, match: null, score1: '', score2: '' })
   const allUsers = getAllUsers()
 
   useEffect(() => {
@@ -73,21 +75,15 @@ function CupManagement() {
     )
   }
 
-  const enterResult = async (cup, match) => {
+  const enterResult = (cup, match) => {
+    setResultForm({ cup, match, score1: '', score2: '' })
+    setShowResultModal(true)
+  }
+
+  const submitResult = async () => {
+    const { cup, match, score1, score2 } = resultForm
     const p1Name = getPlayerName(match.player1)
     const p2Name = getPlayerName(match.player2)
-    
-    const roundFormats = cup.roundFormats || {}
-    const roundFormat = roundFormats[match.round] || {}
-    const startScore = roundFormat.startScore || 501
-    const bestOf = roundFormat.bestOf || 3
-    const firstTo = Math.ceil(bestOf / 2)
-    
-    const score1 = prompt(`Enter legs won for ${p1Name} (${getRoundName(match.round, Math.max(...(cup.matches?.map(m => m.round) || [1])))}, ${startScore}, First to ${firstTo}):`)
-    if (score1 === null) return
-    
-    const score2 = prompt(`Enter legs won for ${p2Name} (${getRoundName(match.round, Math.max(...(cup.matches?.map(m => m.round) || [1])))}, ${startScore}, First to ${firstTo}):`)
-    if (score2 === null) return
     
     const legs1 = parseInt(score1)
     const legs2 = parseInt(score2)
@@ -140,6 +136,7 @@ function CupManagement() {
       console.log('Error saving cup to Firebase:', e)
     }
 
+    setShowResultModal(false)
     const winnerName = winnerId === match.player1 ? p1Name : p2Name
     alert(`${winnerName} wins ${legs1}-${legs2}!`)
     triggerDataRefresh('cups')
@@ -230,6 +227,14 @@ function CupManagement() {
       </div>
     )
   }
+
+  const p1Name = resultForm.match ? getPlayerName(resultForm.match.player1) : ''
+  const p2Name = resultForm.match ? getPlayerName(resultForm.match.player2) : ''
+  const roundFormats = resultForm.cup?.roundFormats || {}
+  const roundFormat = roundFormats[resultForm.match?.round] || {}
+  const startScore = roundFormat.startScore || 501
+  const bestOf = roundFormat.bestOf || 3
+  const firstTo = Math.ceil(bestOf / 2)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -382,6 +387,43 @@ function CupManagement() {
           </div>
         )
       })}
+
+      {showResultModal && (
+        <div className="modal-overlay" onClick={() => setShowResultModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <h3>Enter Result: {p1Name} vs {p2Name}</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+              {getRoundName(resultForm.match?.round, Math.max(...(resultForm.cup?.matches?.map(m => m.round) || [1])))} | {startScore} | First to {firstTo}
+            </p>
+            <div style={{ display: 'flex', gap: '15px', margin: '20px 0' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', marginBottom: '5px', color: 'var(--text)', fontSize: '0.9rem' }}>{p1Name} legs won</label>
+                <input
+                  type="number"
+                  value={resultForm.score1}
+                  onChange={e => setResultForm({ ...resultForm, score1: e.target.value })}
+                  style={{ width: '100%', padding: '10px', background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)' }}
+                  min="0"
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', marginBottom: '5px', color: 'var(--text)', fontSize: '0.9rem' }}>{p2Name} legs won</label>
+                <input
+                  type="number"
+                  value={resultForm.score2}
+                  onChange={e => setResultForm({ ...resultForm, score2: e.target.value })}
+                  style={{ width: '100%', padding: '10px', background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)' }}
+                  min="0"
+                />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button className="btn btn-secondary" onClick={() => setShowResultModal(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={submitResult}>Submit Result</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
