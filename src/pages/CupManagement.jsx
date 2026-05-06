@@ -9,7 +9,19 @@ function CupManagement() {
   const [allCupFixtures, setAllCupFixtures] = useState([])
   const [allCupResults, setAllCupResults] = useState([])
   const [showResultModal, setShowResultModal] = useState(false)
-  const [resultForm, setResultForm] = useState({ cup: null, match: null, score1: '', score2: '' })
+  const [resultForm, setResultForm] = useState({
+    cup: null,
+    match: null,
+    score1: '',
+    score2: '',
+    p1_180s: '0',
+    p2_180s: '0',
+    p1_checkout: '0',
+    p2_checkout: '0',
+    p1_doubles: '0',
+    p2_doubles: '0',
+    proofImage: ''
+  })
   const allUsers = getAllUsers()
 
   useEffect(() => {
@@ -76,12 +88,41 @@ function CupManagement() {
   }
 
   const enterResult = (cup, match) => {
-    setResultForm({ cup, match, score1: '', score2: '' })
+    setResultForm({
+      cup,
+      match,
+      score1: '',
+      score2: '',
+      p1_180s: '0',
+      p2_180s: '0',
+      p1_checkout: '0',
+      p2_checkout: '0',
+      p1_doubles: '0',
+      p2_doubles: '0',
+      proofImage: ''
+    })
     setShowResultModal(true)
   }
 
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert('Image too large. Max 2MB.')
+        return
+      }
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setResultForm(prev => ({ ...prev, proofImage: reader.result }))
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
   const submitResult = async () => {
-    const { cup, match, score1, score2 } = resultForm
+    const { cup, match, score1, score2, p1_180s, p2_180s, p1_checkout, p2_checkout, p1_doubles, p2_doubles, proofImage } = resultForm
+    if (!cup || !match) return
+
     const p1Name = getPlayerName(match.player1)
     const p2Name = getPlayerName(match.player2)
     
@@ -92,55 +133,102 @@ function CupManagement() {
       alert('Please enter valid numbers')
       return
     }
-    
-    if (legs1 < 0 || legs2 < 0) {
-      alert('Scores cannot be negative')
+
+    if (legs1 === legs2) {
+      alert('Cup matches cannot end in a draw')
       return
     }
     
     const winnerId = legs1 > legs2 ? match.player1 : match.player2
+    const resultId = `admin_cup_${Date.now()}`
 
-    const cupsData = getCups()
-    const cupIndex = cupsData.findIndex(c => c.id === cup.id)
-    if (cupIndex === -1) return
-
-    const cupData = { ...cupsData[cupIndex] }
-
-    const updatedMatches = cupData.matches.map(m => 
-      m.id === match.id ? { ...m, winner: winnerId, score1: legs1, score2: legs2 } : m
-    )
-
-    if (match.nextMatchId) {
-      const nextMatchIndex = updatedMatches.findIndex(m => m.id === match.nextMatchId)
-      if (nextMatchIndex !== -1) {
-        if (updatedMatches[nextMatchIndex].player1 === null) {
-          updatedMatches[nextMatchIndex].player1 = winnerId
-        } else if (updatedMatches[nextMatchIndex].player2 === null) {
-          updatedMatches[nextMatchIndex].player2 = winnerId
+    try {
+      // 1. Create Result Record
+      const newResult = {
+        id: resultId,
+        firestoreId: resultId,
+        player1: p1Name,
+        player1Id: match.player1,
+        player2: p2Name,
+        player2Id: match.player2,
+        score1: legs1,
+        score2: legs2,
+        gameType: 'Cup',
+        cupId: cup.id,
+        matchId: match.id,
+        cupName: cup.name,
+        status: 'approved',
+        date: new Date().toISOString().split('T')[0],
+        submittedAt: new Date().toISOString(),
+        approvedAt: new Date().toISOString(),
+        submittedBy: 'admin',
+        proofImage,
+        player1Stats: {
+          '180s': parseInt(p1_180s) || 0,
+          highestCheckout: parseInt(p1_checkout) || 0,
+          doubleSuccess: parseFloat(p1_doubles) || 0
+        },
+        player2Stats: {
+          '180s': parseInt(p2_180s) || 0,
+          highestCheckout: parseInt(p2_checkout) || 0,
+          doubleSuccess: parseFloat(p2_doubles) || 0
         }
       }
-    }
+      await setDoc(doc(db, 'results', resultId), newResult)
 
-    const allComplete = updatedMatches.every(m => {
-      if (!m.player1 || !m.player2) return true
-      return m.winner !== null
-    })
+      // 2. Update Cup Bracket
+      const cupsData = [...getCups()]
+      const cupIndex = cupsData.findIndex(c => String(c.id) === String(cup.id))
+      if (cupIndex !== -1) {
+        const cupData = { ...cupsData[cupIndex] }
+        let updatedMatches = cupData.matches.map(m =>
+          String(m.id) === String(match.id) ? { ...m, winner: winnerId, score1: legs1, score2: legs2, resultId } : { ...m }
+        )
 
-    const updatedCup = { ...cupData, matches: updatedMatches, status: allComplete ? 'completed' : 'active' }
-    cupsData[cupIndex] = updatedCup
-    localStorage.setItem('eliteArrowsCups', JSON.stringify(cupsData))
-    
-    try {
-      await setDoc(doc(db, 'cups', cup.id.toString()), updatedCup, { merge: true })
+        if (match.nextMatchId) {
+          const nextMatchIndex = updatedMatches.findIndex(m => String(m.id) === String(match.nextMatchId))
+          if (nextMatchIndex !== -1) {
+            const nextMatch = { ...updatedMatches[nextMatchIndex] }
+            const currentRoundMatches = updatedMatches.filter(m => m.round === match.round)
+            const matchIdxInRound = currentRoundMatches.findIndex(m => String(m.id) === String(match.id))
+
+            if (matchIdxInRound !== -1) {
+              if (matchIdxInRound % 2 === 0) {
+                nextMatch.player1 = winnerId
+              } else {
+                nextMatch.player2 = winnerId
+              }
+              updatedMatches[nextMatchIndex] = nextMatch
+            }
+          }
+        }
+
+        const allComplete = updatedMatches.every(m => {
+          if (!m.player1 || !m.player2) return true
+          return m.winner !== null && m.winner !== undefined
+        })
+
+        const updatedCup = { ...cupData, matches: updatedMatches, status: allComplete ? 'completed' : 'active' }
+        await setDoc(doc(db, 'cups', cup.id.toString()), updatedCup, { merge: true })
+      }
+
+      // 3. Update Fixture if it exists
+      const allFixtures = getFixtures()
+      const fixture = allFixtures.find(f => String(f.cupId) === String(cup.id) && String(f.matchId) === String(match.id))
+      if (fixture) {
+        const updatedFixture = { ...fixture, status: 'completed', score1: legs1, score2: legs2, winnerId, resultId }
+        await setDoc(doc(db, 'fixtures', fixture.id.toString()), updatedFixture, { merge: true })
+      }
+
+      setShowResultModal(false)
+      const winnerName = winnerId === match.player1 ? p1Name : p2Name
+      alert(`${winnerName} wins ${legs1}-${legs2}!`)
+      triggerDataRefresh('all')
+      setRefreshKey(prev => prev + 1)
     } catch (e) {
-      console.log('Error saving cup to Firebase:', e)
+      console.error('Error submitting result:', e)
+      alert('Error saving result: ' + e.message)
     }
-
-    setShowResultModal(false)
-    const winnerName = winnerId === match.player1 ? p1Name : p2Name
-    alert(`${winnerName} wins ${legs1}-${legs2}!`)
-    triggerDataRefresh('cups')
-    setRefreshKey(prev => prev + 1)
   }
 
   const deleteCup = async (cup) => {
@@ -390,33 +478,121 @@ function CupManagement() {
 
       {showResultModal && (
         <div className="modal-overlay" onClick={() => setShowResultModal(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', width: '95%' }}>
             <h3>Enter Result: {p1Name} vs {p2Name}</h3>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
               {getRoundName(resultForm.match?.round, Math.max(...(resultForm.cup?.matches?.map(m => m.round) || [1])))} | {startScore} | First to {firstTo}
             </p>
-            <div style={{ display: 'flex', gap: '15px', margin: '20px 0' }}>
-              <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', marginBottom: '5px', color: 'var(--text)', fontSize: '0.9rem' }}>{p1Name} legs won</label>
-                <input
-                  type="number"
-                  value={resultForm.score1}
-                  onChange={e => setResultForm({ ...resultForm, score1: e.target.value })}
-                  style={{ width: '100%', padding: '10px', background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)' }}
-                  min="0"
-                />
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', margin: '15px 0' }}>
+              <div style={{ background: 'var(--bg-primary)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '10px', fontSize: '0.9rem' }}>{p1Name}</h4>
+                <div className="form-group">
+                  <label style={{ fontSize: '0.8rem' }}>Legs Won</label>
+                  <input
+                    type="number"
+                    value={resultForm.score1}
+                    onChange={e => setResultForm({ ...resultForm, score1: e.target.value })}
+                    style={{ width: '100%', padding: '8px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)' }}
+                    min="0"
+                  />
+                </div>
+                <div className="form-group" style={{ marginTop: '8px' }}>
+                  <label style={{ fontSize: '0.8rem' }}>180s</label>
+                  <input
+                    type="number"
+                    value={resultForm.p1_180s}
+                    onChange={e => setResultForm({ ...resultForm, p1_180s: e.target.value })}
+                    style={{ width: '100%', padding: '6px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)' }}
+                  />
+                </div>
+                <div className="form-group" style={{ marginTop: '8px' }}>
+                  <label style={{ fontSize: '0.8rem' }}>Highest Checkout</label>
+                  <input
+                    type="number"
+                    value={resultForm.p1_checkout}
+                    onChange={e => setResultForm({ ...resultForm, p1_checkout: e.target.value })}
+                    style={{ width: '100%', padding: '6px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)' }}
+                  />
+                </div>
+                <div className="form-group" style={{ marginTop: '8px' }}>
+                  <label style={{ fontSize: '0.8rem' }}>Double %</label>
+                  <input
+                    type="number"
+                    value={resultForm.p1_doubles}
+                    onChange={e => setResultForm({ ...resultForm, p1_doubles: e.target.value })}
+                    style={{ width: '100%', padding: '6px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)' }}
+                    step="0.1"
+                  />
+                </div>
               </div>
-              <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', marginBottom: '5px', color: 'var(--text)', fontSize: '0.9rem' }}>{p2Name} legs won</label>
-                <input
-                  type="number"
-                  value={resultForm.score2}
-                  onChange={e => setResultForm({ ...resultForm, score2: e.target.value })}
-                  style={{ width: '100%', padding: '10px', background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)' }}
-                  min="0"
-                />
+
+              <div style={{ background: 'var(--bg-primary)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                <h4 style={{ color: 'var(--text-muted)', marginBottom: '10px', fontSize: '0.9rem' }}>{p2Name}</h4>
+                <div className="form-group">
+                  <label style={{ fontSize: '0.8rem' }}>Legs Won</label>
+                  <input
+                    type="number"
+                    value={resultForm.score2}
+                    onChange={e => setResultForm({ ...resultForm, score2: e.target.value })}
+                    style={{ width: '100%', padding: '8px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)' }}
+                    min="0"
+                  />
+                </div>
+                <div className="form-group" style={{ marginTop: '8px' }}>
+                  <label style={{ fontSize: '0.8rem' }}>180s</label>
+                  <input
+                    type="number"
+                    value={resultForm.p2_180s}
+                    onChange={e => setResultForm({ ...resultForm, p2_180s: e.target.value })}
+                    style={{ width: '100%', padding: '6px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)' }}
+                  />
+                </div>
+                <div className="form-group" style={{ marginTop: '8px' }}>
+                  <label style={{ fontSize: '0.8rem' }}>Highest Checkout</label>
+                  <input
+                    type="number"
+                    value={resultForm.p2_checkout}
+                    onChange={e => setResultForm({ ...resultForm, p2_checkout: e.target.value })}
+                    style={{ width: '100%', padding: '6px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)' }}
+                  />
+                </div>
+                <div className="form-group" style={{ marginTop: '8px' }}>
+                  <label style={{ fontSize: '0.8rem' }}>Double %</label>
+                  <input
+                    type="number"
+                    value={resultForm.p2_doubles}
+                    onChange={e => setResultForm({ ...resultForm, p2_doubles: e.target.value })}
+                    style={{ width: '100%', padding: '6px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)' }}
+                    step="0.1"
+                  />
+                </div>
               </div>
             </div>
+
+            <div className="form-group" style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.85rem' }}>Proof of Result (Photo/Screenshot)</label>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  style={{ display: 'none' }}
+                  id="modal-image-upload"
+                />
+                <label
+                  htmlFor="modal-image-upload"
+                  className="btn btn-secondary btn-sm"
+                  style={{ cursor: 'pointer' }}
+                >
+                  Upload Image
+                </label>
+                {resultForm.proofImage && (
+                  <span style={{ color: 'var(--success)', fontSize: '0.8rem' }}>✓ Image added</span>
+                )}
+              </div>
+            </div>
+
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
               <button className="btn btn-secondary" onClick={() => setShowResultModal(false)}>Cancel</button>
               <button className="btn btn-primary" onClick={submitResult}>Submit Result</button>
