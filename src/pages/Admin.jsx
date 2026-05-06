@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { db, doc, setDoc, getDoc, getDocs, deleteDoc, updateDoc, collection, query, where } from '../firebase'
-import CupManagement from './CupManagement'
 import UserSearchSelect from '../components/UserSearchSelect'
 import { getNormalizedResultSignature, getResultOverrideKeys, getResultSignature } from '../utils/resultIdentity'
 import { derivePlayerStatsFromResults, getPersistedPlayerStats } from '../utils/playerStats'
@@ -2656,8 +2655,13 @@ const rejectResult = async (resultId) => {
         </div>
       )}
 
-      {activeTab === 'cups' && (
-        <CupManagement />
+      {activeTab === 'cups' && isFullAdmin && (
+        <div className="card">
+          <h3 className="card-title">Cup Management</h3>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
+            Cup management is available on the <a href="/cup-fixtures" style={{ color: 'var(--accent-cyan)' }}>Cup Fixtures</a> page.
+          </p>
+        </div>
       )}
 
       {activeTab === 'moneypot' && (
