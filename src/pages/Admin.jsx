@@ -66,7 +66,8 @@ export default function Admin() {
       'seasons',
       'tokens',
       'games',
-      'appearance'
+      'appearance',
+      'maintenance'
     ])
     if (tab && allowedTabs.has(tab)) {
       setActiveTab(tab)
@@ -1108,6 +1109,14 @@ const rejectResult = async (resultId) => {
             Appearance
           </button>
         )}
+        {user?.email?.toLowerCase() === 'rhyshowe2023@outlook.com' && (
+          <button
+            className={`division-tab ${activeTab === 'maintenance' ? 'active' : ''}`}
+            onClick={() => setActiveTab('maintenance')}
+          >
+            Maintenance
+          </button>
+        )}
       </div>
 
       {activeTab === 'results' && (
@@ -2118,6 +2127,55 @@ const rejectResult = async (resultId) => {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {activeTab === 'maintenance' && user?.email?.toLowerCase() === 'rhyshowe2023@outlook.com' && (
+        <div className="card">
+          <h3 className="card-title">Maintenance Notice</h3>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>
+            Post a notice to inform users about planned or current maintenance. This will appear as a banner for all users.
+          </p>
+
+          <div className="form-group">
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={adminData.isMaintenanceMode || false}
+                onChange={async (e) => {
+                  await updateAdminData({ isMaintenanceMode: e.target.checked })
+                }}
+              />
+              <span>Enable Maintenance Banner</span>
+            </label>
+          </div>
+
+          <div className="form-group">
+            <label>Maintenance Message</label>
+            <textarea
+              placeholder="e.g. Planned maintenance on Saturday at 2pm. The site may be unstable during this time."
+              value={adminData.maintenanceMessage || ''}
+              onChange={async (e) => {
+                // We update local state first for responsiveness if possible,
+                // but AuthContext handles adminData via listener.
+                // For now, let's just provide a Save button to avoid too many writes.
+              }}
+              id="maintenanceMessageInput"
+              rows={3}
+              style={{ width: '100%', padding: '12px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)' }}
+            />
+          </div>
+
+          <button
+            className="btn btn-primary btn-block"
+            onClick={async () => {
+              const msg = document.getElementById('maintenanceMessageInput').value
+              await updateAdminData({ maintenanceMessage: msg })
+              alert('Maintenance notice updated!')
+            }}
+          >
+            Save Maintenance Notice
+          </button>
         </div>
       )}
 
