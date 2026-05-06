@@ -14,6 +14,10 @@ import android.provider.MediaStore;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
+import android.util.Log;
+import android.webkit.ConsoleMessage;
+import android.webkit.CookieManager;
+import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
@@ -24,14 +28,14 @@ import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.Toast;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
-
-import com.google.firebase.FirebaseApp;
 
 import java.io.File;
 import java.io.IOException;
@@ -47,18 +51,38 @@ public class MainActivity extends AppCompatActivity {
     private ValueCallback<Uri[]> filePathCallback;
     private WebChromeClient.FileChooserParams pendingFileChooserParams;
     private Uri cameraPhotoUri;
+    private ActivityResultLauncher<Intent> fileChooserLauncher;
     private static final String BASE_URL = "https://elite-arrows.co.uk";
-    private static final int FILE_CHOOSER_REQUEST_CODE = 1001;
     private static final int CAMERA_PERMISSION_REQUEST_CODE = 1002;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
-        // 1. Initialize Firebase
-        try {
-            FirebaseApp.initializeApp(this);
-        } catch (Exception ignored) {}
+        // 0. Initialize Activity Result Launcher
+        fileChooserLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (filePathCallback == null) return;
+
+                    Uri[] results = null;
+                    if (result.getResultCode() == Activity.RESULT_OK) {
+                        Intent data = result.getData();
+                        if (data == null || (data.getData() == null && data.getClipData() == null)) {
+                            if (cameraPhotoUri != null) {
+                                results = new Uri[] { cameraPhotoUri };
+                            }
+                        } else {
+                            results = WebChromeClient.FileChooserParams.parseResult(result.getResultCode(), data);
+                        }
+                    }
+
+                    filePathCallback.onReceiveValue(results);
+                    filePathCallback = null;
+                    pendingFileChooserParams = null;
+                    cameraPhotoUri = null;
+                }
+        );
 
         // 2. Setup UI
         FrameLayout layout = new FrameLayout(this);
@@ -74,7 +98,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(layout);
         hideSystemBars();
 
-        // 3. Configure Back Button for Android 16
+        // 3. Configure Back Button
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
@@ -87,6 +111,11 @@ public class MainActivity extends AppCompatActivity {
         });
 
         // 4. Configure WebView
+        CookieManager.getInstance().setAcceptCookie(true);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            CookieManager.getInstance().setAcceptThirdPartyCookies(mWebView, true);
+        }
+
         WebSettings settings = mWebView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
@@ -96,9 +125,9 @@ public class MainActivity extends AppCompatActivity {
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
-        }
+        settings.setJavaScriptCanOpenWindowsAutomatically(true);
+        settings.setMediaPlaybackRequiresUserGesture(false);
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
 
         mWebView.setWebViewClient(new WebViewClient() {
             @Override
@@ -117,7 +146,7 @@ public class MainActivity extends AppCompatActivity {
                     WebResourceError error
             ) {
                 super.onReceivedError(view, request, error);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && request.isForMainFrame()) {
+                if (request.isForMainFrame()) {
                     mProgressBar.setVisibility(View.GONE);
                     Toast.makeText(
                             MainActivity.this,
@@ -129,6 +158,21 @@ public class MainActivity extends AppCompatActivity {
         });
 
         mWebView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onPermissionRequest(final PermissionRequest request) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    request.grant(request.getResources());
+                }
+            }
+
+            @Override
+            public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
+                Log.d("WebViewConsole", consoleMessage.message() + " -- From line "
+                        + consoleMessage.lineNumber() + " of "
+                        + consoleMessage.sourceId());
+                return true;
+            }
+
             @Override
             public boolean onShowFileChooser(
                     WebView webView,
@@ -155,34 +199,30 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // Load URL with cache-busting query param
-        long timestamp = System.currentTimeMillis();
-        mWebView.loadUrl(BASE_URL + "?v=" + timestamp);
+        if (savedInstanceState != null) {
+            mWebView.restoreState(savedInstanceState);
+        } else {
+            // Load URL with cache-busting query param
+            long timestamp = System.currentTimeMillis();
+            mWebView.loadUrl(BASE_URL + "?v=" + timestamp);
+        }
+
+        // 5. Request Notification Permission for Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) 
+                    != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, 
+                        new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1003);
+            }
+        }
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-
-        if (requestCode != FILE_CHOOSER_REQUEST_CODE || filePathCallback == null) {
-            return;
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        if (mWebView != null) {
+            mWebView.saveState(outState);
         }
-
-        Uri[] results = null;
-        if (resultCode == Activity.RESULT_OK) {
-            if (data == null || (data.getData() == null && data.getClipData() == null)) {
-                if (cameraPhotoUri != null) {
-                    results = new Uri[] { cameraPhotoUri };
-                }
-            } else {
-                results = WebChromeClient.FileChooserParams.parseResult(resultCode, data);
-            }
-        }
-
-        filePathCallback.onReceiveValue(results);
-        filePathCallback = null;
-        pendingFileChooserParams = null;
-        cameraPhotoUri = null;
     }
 
     @Override
@@ -231,7 +271,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         try {
-            startActivityForResult(launchIntent, FILE_CHOOSER_REQUEST_CODE);
+            fileChooserLauncher.launch(launchIntent);
         } catch (ActivityNotFoundException e) {
             Toast.makeText(this, "No app found to choose a result image.", Toast.LENGTH_LONG).show();
             cancelFileChooser();

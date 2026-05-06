@@ -11,8 +11,8 @@ android {
         applicationId "com.elitearrows.app"
         minSdk 23
         targetSdk 35
-        versionCode 2203
-        versionName "22.0.3"
+        versionCode 2204
+        versionName "22.0.4"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }

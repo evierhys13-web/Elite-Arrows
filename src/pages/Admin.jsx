@@ -362,13 +362,19 @@ export default function Admin() {
     ))
 
     if (match.nextMatchId) {
-      updatedMatches = updatedMatches.map(item => {
-        if (String(item.id) !== String(match.nextMatchId)) return item
-        if (item.player1 === winnerId || item.player2 === winnerId) return item
-        if (!item.player1) return { ...item, player1: winnerId }
-        if (!item.player2) return { ...item, player2: winnerId }
-        return item
-      })
+      const nextMatchIndex = updatedMatches.findIndex(item => String(item.id) === String(match.nextMatchId))
+      if (nextMatchIndex !== -1) {
+        const currentRoundMatches = updatedMatches.filter(m => m.round === match.round)
+        const matchIdxInRound = currentRoundMatches.findIndex(m => String(m.id) === String(match.id))
+
+        if (matchIdxInRound !== -1) {
+          if (matchIdxInRound % 2 === 0) {
+            updatedMatches[nextMatchIndex].player1 = winnerId
+          } else {
+            updatedMatches[nextMatchIndex].player2 = winnerId
+          }
+        }
+      }
     }
 
     const allComplete = updatedMatches.every(item => {
