@@ -120,8 +120,12 @@ function CupManagement() {
   }
 
   const submitResult = async () => {
+    console.log('submitResult called');
     const { cup, match, score1, score2, p1_180s, p2_180s, p1_checkout, p2_checkout, p1_doubles, p2_doubles, proofImage } = resultForm
-    if (!cup || !match) return
+    if (!cup || !match) {
+      console.error('Missing cup or match', { cup, match });
+      return;
+    }
 
     const p1Name = getPlayerName(match.player1)
     const p2Name = getPlayerName(match.player2)
@@ -130,7 +134,7 @@ function CupManagement() {
     const legs2 = parseInt(score2)
     
     if (isNaN(legs1) || isNaN(legs2)) {
-      alert('Please enter valid numbers')
+      alert('Please enter valid numbers for legs won')
       return
     }
 
@@ -162,7 +166,7 @@ function CupManagement() {
         submittedAt: new Date().toISOString(),
         approvedAt: new Date().toISOString(),
         submittedBy: 'admin',
-        proofImage,
+        proofImage: proofImage || '',
         player1Stats: {
           '180s': parseInt(p1_180s) || 0,
           highestCheckout: parseInt(p1_checkout) || 0,
@@ -174,14 +178,15 @@ function CupManagement() {
           doubleSuccess: parseFloat(p2_doubles) || 0
         }
       }
+      console.log('Saving result record...', newResult);
       await setDoc(doc(db, 'results', resultId), newResult)
 
       // 2. Update Cup Bracket
-      const cupsData = [...getCups()]
-      const cupIndex = cupsData.findIndex(c => String(c.id) === String(cup.id))
+      const allCups = getCups()
+      const cupIndex = allCups.findIndex(c => String(c.id) === String(cup.id))
       if (cupIndex !== -1) {
-        const cupData = { ...cupsData[cupIndex] }
-        let updatedMatches = cupData.matches.map(m =>
+        const cupData = { ...allCups[cupIndex] }
+        let updatedMatches = (cupData.matches || []).map(m =>
           String(m.id) === String(match.id) ? { ...m, winner: winnerId, score1: legs1, score2: legs2, resultId } : { ...m }
         )
 
@@ -189,7 +194,10 @@ function CupManagement() {
           const nextMatchIndex = updatedMatches.findIndex(m => String(m.id) === String(match.nextMatchId))
           if (nextMatchIndex !== -1) {
             const nextMatch = { ...updatedMatches[nextMatchIndex] }
-            const currentRoundMatches = updatedMatches.filter(m => m.round === match.round)
+            const currentRoundMatches = updatedMatches
+              .filter(m => m.round === match.round)
+              .sort((a, b) => (a.matchNum || 0) - (b.matchNum || 0))
+
             const matchIdxInRound = currentRoundMatches.findIndex(m => String(m.id) === String(match.id))
 
             if (matchIdxInRound !== -1) {
@@ -209,7 +217,8 @@ function CupManagement() {
         })
 
         const updatedCup = { ...cupData, matches: updatedMatches, status: allComplete ? 'completed' : 'active' }
-        await setDoc(doc(db, 'cups', cup.id.toString()), updatedCup, { merge: true })
+        console.log('Updating Cup Bracket in Firebase...', updatedCup)
+        await setDoc(doc(db, 'cups', String(cup.id)), updatedCup, { merge: true })
       }
 
       // 3. Update Fixture if it exists
@@ -217,17 +226,18 @@ function CupManagement() {
       const fixture = allFixtures.find(f => String(f.cupId) === String(cup.id) && String(f.matchId) === String(match.id))
       if (fixture) {
         const updatedFixture = { ...fixture, status: 'completed', score1: legs1, score2: legs2, winnerId, resultId }
+        console.log('Updating associated fixture...', updatedFixture);
         await setDoc(doc(db, 'fixtures', fixture.id.toString()), updatedFixture, { merge: true })
       }
 
       setShowResultModal(false)
       const winnerName = winnerId === match.player1 ? p1Name : p2Name
-      alert(`${winnerName} wins ${legs1}-${legs2}!`)
+      alert(`SUCCESS: ${winnerName} wins ${legs1}-${legs2}!`)
       triggerDataRefresh('all')
       setRefreshKey(prev => prev + 1)
     } catch (e) {
-      console.error('Error submitting result:', e)
-      alert('Error saving result: ' + e.message)
+      console.error('FATAL Error submitting result:', e)
+      alert('ERROR submitting result: ' + e.message)
     }
   }
 

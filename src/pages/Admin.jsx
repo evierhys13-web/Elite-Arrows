@@ -365,7 +365,10 @@ export default function Admin() {
     if (match.nextMatchId) {
       const nextMatchIndex = updatedMatches.findIndex(item => String(item.id) === String(match.nextMatchId))
       if (nextMatchIndex !== -1) {
-        const currentRoundMatches = updatedMatches.filter(m => m.round === match.round)
+        const currentRoundMatches = updatedMatches
+          .filter(m => m.round === match.round)
+          .sort((a, b) => (a.matchNum || 0) - (b.matchNum || 0))
+
         const matchIdxInRound = currentRoundMatches.findIndex(m => String(m.id) === String(match.id))
 
         if (matchIdxInRound !== -1) {
