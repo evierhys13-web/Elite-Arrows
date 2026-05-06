@@ -44,6 +44,9 @@ export default function Admin() {
   })
   const [selectedAssignUser, setSelectedAssignUser] = useState('')
   const [selectedRemoveSubUser, setSelectedRemoveSubUser] = useState('')
+  const [showSeasonModal, setShowSeasonModal] = useState(false)
+  const [seasonForm, setSeasonForm] = useState({ name: '', startDate: '2025-05-01', endDate: '2025-06-01' })
+  const [showDivisionModal, setShowDivisionModal] = useState(false)
 
   useEffect(() => {
     const tab = searchParams.get('tab')
@@ -2136,26 +2139,8 @@ const rejectResult = async (resultId) => {
           <div className="card" style={{ marginBottom: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
               <h3 className="card-title" style={{ margin: 0 }}>Seasons</h3>
-              <button className="btn btn-primary" onClick={async () => {
-                const name = prompt('Enter season name:')
-                if (name) {
-                  const startDate = prompt('Enter start date (YYYY-MM-DD):', '2025-05-01')
-                  const endDate = prompt('Enter end date (YYYY-MM-DD):', '2025-06-01')
-                  if (startDate && endDate) {
-                    const seasons = getSeasons()
-                    const newSeason = { id: Date.now(), name, createdAt: new Date().toISOString(), status: 'active', isArchived: false, startDate, endDate }
-                    seasons.push(newSeason)
-                    localStorage.setItem('eliteArrowsSeasons', JSON.stringify(seasons))
-                    localStorage.setItem('eliteArrowsCurrentSeason', name)
-                    try {
-                      await setDoc(doc(db, 'seasons', newSeason.id.toString()), newSeason)
-                    } catch (e) {
-                      console.log('Error saving season to Firebase:', e)
-                    }
-                    triggerDataRefresh('seasons')
-                    alert(`Season "${name}" created! (${startDate} - ${endDate})`)
-                  }
-                }
+              <button className="btn btn-primary" onClick={() => {
+                setShowSeasonModal(true)
               }}>Create New Season</button>
             </div>
 
@@ -2324,16 +2309,11 @@ const rejectResult = async (resultId) => {
               <select 
                 id="movePlayerDivision"
                 style={{ flex: 1, minWidth: '150px' }}
-                onChange={async (e) => {
+                onChange={(e) => {
                   if (!e.target.value) return
-                  const division = prompt('Enter new division (Elite, Diamond, Platinum, Gold, Silver, Bronze, Development):')
-                  if (division && ['Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Development'].includes(division)) {
-                    await updateOtherUser(e.target.value, { division })
-                    const users = getAllUsers()
-                    const user = users.find(u => u.id === e.target.value)
-                    alert(`${user?.username} moved to ${division}`)
-                    e.target.value = ''
-                  }
+                  setSelectedAssignUser(e.target.value)
+                  setShowDivisionModal(true)
+                  e.target.value = ''
                 }}
               >
                 <option value="">Select Player</option>
