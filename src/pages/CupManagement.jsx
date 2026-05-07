@@ -95,7 +95,7 @@ function CupManagement() {
   }
 
   const enterResult = (cup, match) => {
-    console.log('Opening result modal for match:', match.id)
+    console.log('Opening result modal for cup:', cup.name, 'match:', match.id)
     setResultForm({
       cup,
       match,
@@ -109,14 +109,17 @@ function CupManagement() {
       p2_doubles: '0',
       proofImage: ''
     })
-    setShowResultModal(true)
+    // Force a tiny delay to ensure state is set before showing
+    setTimeout(() => {
+      setShowResultModal(true)
+    }, 50)
   }
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0]
     if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        alert('Image too large. Max 2MB.')
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Image too large. Max 5MB.')
         return
       }
       const reader = new FileReader()
@@ -128,44 +131,37 @@ function CupManagement() {
   }
 
   const submitResult = async () => {
-    console.log('submitResult triggered');
+    console.log('submitResult execution started');
     if (isSubmitting) return
 
     const { cup, match, score1, score2, p1_180s, p2_180s, p1_checkout, p2_checkout, p1_doubles, p2_doubles, proofImage } = resultForm
 
     if (!cup || !match) {
-      alert('Error: Missing cup or match data. Please refresh.');
+      alert('Error: Data sync issue. Please try again.');
       return;
     }
 
-    const legs1 = parseInt(score1)
-    const legs2 = parseInt(score2)
+    const s1 = parseInt(score1)
+    const s2 = parseInt(score2)
     
-    if (isNaN(legs1) || isNaN(legs2)) {
-      alert('Please enter legs won for both players.')
+    if (isNaN(s1) || isNaN(s2)) {
+      alert('Please enter valid numeric scores for both players.')
       return
     }
 
-    if (legs1 === legs2) {
-      alert('Cup matches cannot end in a draw.')
+    if (s1 === s2) {
+      alert('Draws are not permitted in Cup knockout matches.')
       return
     }
     
     setIsSubmitting(true)
     const p1Name = getPlayerName(match.player1)
     const p2Name = getPlayerName(match.player2)
-    const winnerId = legs1 > legs2 ? match.player1 : match.player2
+    const winnerId = s1 > s2 ? match.player1 : match.player2
     const resultId = `admin_cup_${Date.now()}`
 
     try {
-      const safeInt = (val) => {
-        const p = parseInt(val); return isNaN(p) ? 0 : p
-      }
-      const safeFloat = (val) => {
-        const p = parseFloat(val); return isNaN(p) ? 0 : p
-      }
-
-      // 1. Create Result Record
+      // 1. Create Result Document
       const newResult = {
         id: resultId,
         firestoreId: resultId,
@@ -173,8 +169,8 @@ function CupManagement() {
         player1Id: match.player1,
         player2: p2Name,
         player2Id: match.player2,
-        score1: legs1,
-        score2: legs2,
+        score1: s1,
+        score2: s2,
         gameType: 'Cup',
         cupId: cup.id,
         matchId: match.id,
@@ -185,36 +181,26 @@ function CupManagement() {
         approvedAt: new Date().toISOString(),
         submittedBy: 'admin',
         proofImage: proofImage || '',
-        player1Stats: {
-          '180s': safeInt(p1_180s),
-          highestCheckout: safeInt(p1_checkout),
-          doubleSuccess: safeFloat(p1_doubles)
-        },
-        player2Stats: {
-          '180s': safeInt(p2_180s),
-          highestCheckout: safeInt(p2_checkout),
-          doubleSuccess: safeFloat(p2_doubles)
-        }
+        player1Stats: { '180s': parseInt(p1_180s) || 0, highestCheckout: parseInt(p1_checkout) || 0, doubleSuccess: parseFloat(p1_doubles) || 0 },
+        player2Stats: { '180s': parseInt(p2_180s) || 0, highestCheckout: parseInt(p2_checkout) || 0, doubleSuccess: parseFloat(p2_doubles) || 0 }
       }
 
-      console.log('1. Saving result record...', resultId);
+      console.log('Syncing result to Firestore...');
       await setDoc(doc(db, 'results', resultId), newResult)
 
-      // 2. Update Cup Bracket
-      console.log('2. Updating cup bracket...');
-      const allCupsData = getCups()
-      const cupIdx = allCupsData.findIndex(c => String(c.id) === String(cup.id))
+      // 2. Update Cup Bracket Structure
+      const allCupsData = getCups() || []
+      const currentCup = allCupsData.find(c => String(c.id) === String(cup.id))
 
-      if (cupIdx !== -1) {
-        const cupData = { ...allCupsData[cupIdx] }
-        let updatedMatches = (cupData.matches || []).map(m =>
-          String(m.id) === String(match.id) ? { ...m, winner: winnerId, score1: legs1, score2: legs2, resultId } : { ...m }
+      if (currentCup) {
+        let updatedMatches = (currentCup.matches || []).map(m =>
+          String(m.id) === String(match.id) ? { ...m, winner: winnerId, score1: s1, score2: s2, resultId } : { ...m }
         )
 
+        // Handle Advancement
         if (match.nextMatchId) {
           const nextMatchIndex = updatedMatches.findIndex(m => String(m.id) === String(match.nextMatchId))
           if (nextMatchIndex !== -1) {
-            const nextMatch = { ...updatedMatches[nextMatchIndex] }
             const currentRoundMatches = updatedMatches
               .filter(m => Number(m.round) === Number(match.round))
               .sort((a, b) => (Number(a.matchNum) || 0) - (Number(b.matchNum) || 0))
@@ -223,45 +209,29 @@ function CupManagement() {
 
             if (matchIdxInRound !== -1) {
               if (matchIdxInRound % 2 === 0) {
-                nextMatch.player1 = winnerId
+                updatedMatches[nextMatchIndex].player1 = winnerId
               } else {
-                nextMatch.player2 = winnerId
+                updatedMatches[nextMatchIndex].player2 = winnerId
               }
-              updatedMatches[nextMatchIndex] = nextMatch
             }
           }
         }
 
-        const allComplete = updatedMatches.every(m => {
-          if (!m.player1 || !m.player2) return true
-          return m.winner !== null && m.winner !== undefined
-        })
+        const allComplete = updatedMatches.every(m => (m.player1 && m.player2) ? (m.winner !== null && m.winner !== undefined) : true)
+        const updatedCupData = { ...currentCup, matches: updatedMatches, status: allComplete ? 'completed' : 'active' }
 
-        const updatedCup = { ...cupData, matches: updatedMatches, status: allComplete ? 'completed' : 'active' }
-        console.log('Updating Cup Bracket in Firebase...', String(cup.id))
-        await setDoc(doc(db, 'cups', String(cup.id)), updatedCup, { merge: true })
+        await setDoc(doc(db, 'cups', String(cup.id)), updatedCupData, { merge: true })
       }
 
-      // 3. Update Fixture if it exists
-      console.log('3. Updating fixture...');
-      const allFixtures = getFixtures()
-      const fixture = allFixtures.find(f => String(f.cupId) === String(cup.id) && String(f.matchId) === String(match.id))
-      if (fixture) {
-        const updatedFixture = { ...fixture, status: 'completed', score1: legs1, score2: legs2, winnerId, resultId }
-        await setDoc(doc(db, 'fixtures', fixture.id.toString()), updatedFixture, { merge: true })
-      }
-
-      console.log('Finalizing...');
+      // 3. Close & Refresh
       setShowResultModal(false)
-      const winnerName = winnerId === match.player1 ? p1Name : p2Name
-      alert(`SUCCESS: ${winnerName} wins ${legs1}-${legs2}!`)
-
+      alert(`Result saved! ${winnerId === match.player1 ? p1Name : p2Name} advances.`)
       triggerDataRefresh('all')
       setRefreshKey(prev => prev + 1)
 
-    } catch (e) {
-      console.error('FATAL Error submitting result:', e)
-      alert('ERROR saving result: ' + e.message)
+    } catch (err) {
+      console.error('Cup Result Error:', err)
+      alert('Critical: Failed to save result to cloud. Check internet connection.')
     } finally {
       setIsSubmitting(false)
     }
