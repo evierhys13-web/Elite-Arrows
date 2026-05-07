@@ -95,7 +95,6 @@ function CupManagement() {
   }
 
   const enterResult = (cup, match) => {
-    alert('Debug: Submit button clicked for ' + (match.id || 'unknown match'));
     console.log('Opening result modal for match:', match.id)
     setResultForm({
       cup,

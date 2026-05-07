@@ -38,10 +38,18 @@ export default function Admin() {
   const [showConfirmModal, setShowConfirmModal] = useState(null)
   const [proofPreviewResult, setProofPreviewResult] = useState(null)
   const [showColorsForm, setShowColorsForm] = useState(false)
-  const [colors, setColors] = useState({
-    primary: localStorage.getItem('eliteArrowsColors') ? JSON.parse(localStorage.getItem('eliteArrowsColors')).primary : '#00d4ff',
-    background: localStorage.getItem('eliteArrowsColors') ? JSON.parse(localStorage.getItem('eliteArrowsColors')).background : '#0a0a1a',
-    button: localStorage.getItem('eliteArrowsColors') ? JSON.parse(localStorage.getItem('eliteArrowsColors')).button : '#00d4ff'
+  const [colors, setColors] = useState(() => {
+    try {
+      const stored = localStorage.getItem('eliteArrowsColors')
+      const parsed = stored ? JSON.parse(stored) : null
+      return {
+        primary: parsed?.primary || '#00d4ff',
+        background: parsed?.background || '#0a0a1a',
+        button: parsed?.button || '#00d4ff'
+      }
+    } catch (e) {
+      return { primary: '#00d4ff', background: '#0a0a1a', button: '#00d4ff' }
+    }
   })
   const [selectedAssignUser, setSelectedAssignUser] = useState('')
   const [selectedRemoveSubUser, setSelectedRemoveSubUser] = useState('')
@@ -537,6 +545,7 @@ export default function Admin() {
 
   useEffect(() => {
     async function loadResults() {
+      if (!user) return;
       const results = await getResults();
       const managedStatuses = new Set(['pending', 'approved', 'rejected']);
       const managed = results.filter(r => managedStatuses.has(getManagedResultStatus(r)));
@@ -548,11 +557,16 @@ export default function Admin() {
       setApprovedResults(visibleResults);
     }
     loadResults()
-  }, [user.isAdmin, user.isTournamentAdmin, dataRefreshTrigger])
+  }, [user?.isAdmin, user?.isTournamentAdmin, dataRefreshTrigger])
 
   useEffect(() => {
     if (user?.isAdmin) {
-      let seasons = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
+      let seasons = []
+      try {
+        seasons = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
+      } catch (e) {
+        seasons = []
+      }
       if (seasons.length === 0) {
         seasons.push({ id: Date.now(), name: 'Season 1', createdAt: new Date().toISOString(), status: 'active', isArchived: false, startDate: '2026-05-01', endDate: '2026-06-01' })
         localStorage.setItem('eliteArrowsSeasons', JSON.stringify(seasons))
@@ -570,7 +584,7 @@ export default function Admin() {
         }
       }
     }
-  }, [user.isAdmin, user.isTournamentAdmin, dataRefreshTrigger]);
+  }, [user?.isAdmin, user?.isTournamentAdmin, dataRefreshTrigger]);
 
 const approveResult = async (resultId) => {
     const resultIdStr = String(resultId)

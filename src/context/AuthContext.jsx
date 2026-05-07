@@ -113,7 +113,13 @@ export function AuthProvider({ children }) {
   const unsubscribeRef = useRef(null)
   const seenNotificationIdsRef = useRef(new Set())
   const resultRowsRef = useRef([])
-  const resultStatusOverridesRef = useRef(JSON.parse(localStorage.getItem('eliteArrowsResultStatusOverrides') || '{}'))
+  const resultStatusOverridesRef = useRef((() => {
+    try {
+      return JSON.parse(localStorage.getItem('eliteArrowsResultStatusOverrides') || '{}')
+    } catch (e) {
+      return {}
+    }
+  })())
   
   const SENSITIVE_FIELDS = ['password', 'passwordString', 'passwordHash', 'passwordKey', 'passwordStringValue', 'password', 'firebaseId', 'pwd', 'pass', 'passwd']
 

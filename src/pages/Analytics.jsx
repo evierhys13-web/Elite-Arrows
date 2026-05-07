@@ -473,10 +473,6 @@ export default function Analytics() {
               <div className="stat-label">Win Rate</div>
             </div>
             <div className="stat-card">
-              <div className="stat-value">{personalStats.avgLegsPerMatch}</div>
-              <div className="stat-label">Avg Legs/Match</div>
-            </div>
-            <div className="stat-card">
               <div className="stat-value">{personalStats.total180s}</div>
               <div className="stat-label">Total 180s</div>
             </div>
@@ -606,21 +602,6 @@ export default function Analytics() {
               </ResponsiveContainer>
             </div>
 
-            {personalStats.threeDartAvgTrend.length > 0 && (
-              <div className="card">
-                <h3 className="card-title">3-Dart Average Trend</h3>
-                <ResponsiveContainer width="100%" height={250}>
-                  <LineChart data={personalStats.threeDartAvgTrend}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                    <XAxis dataKey="date" stroke="var(--text-muted)" tick={{ fontSize: 11 }} />
-                    <YAxis stroke="var(--text-muted)" domain={['auto', 'auto']} />
-                    <Tooltip contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '8px' }} />
-                    <Line type="monotone" dataKey="average" stroke="#a855f7" strokeWidth={2} dot={{ r: 3 }} name="3-Dart Avg" />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-
             {personalStats.checkoutTrend.length > 0 && (
               <div className="card">
                 <h3 className="card-title">Checkout Success Rate</h3>
@@ -637,27 +618,14 @@ export default function Analytics() {
             )}
 
             <div className="card">
-              <h3 className="card-title">Performance Scatter (Avg vs Legs)</h3>
-              <ResponsiveContainer width="100%" height={250}>
-                <ScatterChart>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                  <XAxis type="number" dataKey="average" name="3-Dart Avg" stroke="var(--text-muted)" />
-                  <YAxis type="number" dataKey="legs" name="Legs Won" stroke="var(--text-muted)" />
-                  <Tooltip contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '8px' }} />
-                  <Scatter name="Matches" data={personalStats.scatterData} fill="#4da8da" />
-                </ScatterChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className="card">
               <h3 className="card-title">Consistency (Legs per Match)</h3>
               <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={personalStats.threeDartAvgTrend}>
+                <LineChart data={personalStats.monthlyData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                  <XAxis dataKey="date" stroke="var(--text-muted)" tick={{ fontSize: 11 }} />
+                  <XAxis dataKey="month" stroke="var(--text-muted)" tick={{ fontSize: 11 }} />
                   <YAxis stroke="var(--text-muted)" />
                   <Tooltip contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '8px' }} />
-                  <Line type="monotone" dataKey="legs" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} name="Legs Won" />
+                  <Line type="monotone" dataKey="legsWon" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} name="Legs Won" />
                 </LineChart>
               </ResponsiveContainer>
               <div style={{ padding: '8px 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>

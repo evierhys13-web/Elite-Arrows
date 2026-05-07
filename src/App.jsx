@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-route
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { ThemeProvider, useTheme } from './context/ThemeContext'
 import Sidebar from './components/Sidebar'
+import BottomNav from './components/BottomNav'
 import InstallPrompt from './components/InstallPrompt'
 import DataRefreshToast from './components/DataRefreshToast'
 import BackgroundDecor from './components/BackgroundDecor'
@@ -218,6 +219,7 @@ function AppLayout({ children }) {
             {children}
           </Suspense>
         </main>
+        <BottomNav />
         <InstallPrompt />
         <DataRefreshToast refreshTrigger={dataRefreshTrigger} />
         <NotificationPermissionPrompt />

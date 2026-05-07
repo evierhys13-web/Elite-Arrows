@@ -131,7 +131,6 @@ export default function Table() {
                     <th>+/-</th>
                     <th>LW</th>
                     <th>Pts</th>
-                    <th>Avg</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -181,7 +180,6 @@ export default function Table() {
                         </td>
                         <td>{player.stats.legsWon}</td>
                         <td style={{ fontWeight: '600' }}>{player.stats.points}</td>
-                        <td>{player.threeDartAverage?.toFixed(2) || 0}</td>
                       </tr>
                     )
                   })}
