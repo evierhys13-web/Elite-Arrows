@@ -9,6 +9,7 @@ function CupManagement() {
   const [allCupFixtures, setAllCupFixtures] = useState([])
   const [allCupResults, setAllCupResults] = useState([])
   const [showResultModal, setShowResultModal] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [resultForm, setResultForm] = useState({
     cup: null,
     match: null,
@@ -25,9 +26,14 @@ function CupManagement() {
   const allUsers = getAllUsers()
 
   useEffect(() => {
-    setCups(getCups())
-    setAllCupFixtures(getFixtures())
-    setAllCupResults(getResults())
+    try {
+      const cupsData = getCups()
+      setCups(Array.isArray(cupsData) ? cupsData : [])
+      setAllCupFixtures(getFixtures())
+      setAllCupResults(getResults())
+    } catch (err) {
+      console.error('Error loading data in CupManagement:', err)
+    }
   }, [refreshKey, dataRefreshTrigger])
 
   useEffect(() => {
@@ -36,13 +42,14 @@ function CupManagement() {
 
   const getPlayerName = (id) => {
     if (!id) return 'TBD'
-    return allUsers.find(u => String(u.id) === String(id))?.username || 'Unknown'
+    const user = allUsers.find(u => String(u.id) === String(id))
+    return user?.username || 'Unknown'
   }
 
   const getRoundName = (round, totalRounds) => {
-    if (round === totalRounds) return 'Final'
-    if (round === totalRounds - 1) return 'Semi-Final'
-    if (round === totalRounds - 2) return 'Quarter-Final'
+    if (Number(round) === Number(totalRounds)) return 'Final'
+    if (Number(round) === Number(totalRounds) - 1) return 'Semi-Final'
+    if (Number(round) === Number(totalRounds) - 2) return 'Quarter-Final'
     return `Round ${round}`
   }
 
@@ -120,40 +127,41 @@ function CupManagement() {
   }
 
   const submitResult = async () => {
-    console.log('submitResult called');
+    console.log('submitResult triggered');
+    if (isSubmitting) return
+
     const { cup, match, score1, score2, p1_180s, p2_180s, p1_checkout, p2_checkout, p1_doubles, p2_doubles, proofImage } = resultForm
+
     if (!cup || !match) {
-      alert('Error: Missing cup or match data. Please refresh and try again.')
-      return
+      alert('Error: Missing cup or match data. Please refresh.');
+      return;
     }
 
-    const p1Name = getPlayerName(match.player1)
-    const p2Name = getPlayerName(match.player2)
-    
     const legs1 = parseInt(score1)
     const legs2 = parseInt(score2)
     
     if (isNaN(legs1) || isNaN(legs2)) {
-      alert('Please enter valid numbers for legs won')
+      alert('Please enter legs won for both players.')
       return
     }
 
     if (legs1 === legs2) {
-      alert('Cup matches cannot end in a draw')
+      alert('Cup matches cannot end in a draw.')
       return
     }
     
+    setIsSubmitting(true)
+    const p1Name = getPlayerName(match.player1)
+    const p2Name = getPlayerName(match.player2)
     const winnerId = legs1 > legs2 ? match.player1 : match.player2
     const resultId = `admin_cup_${Date.now()}`
 
     try {
       const safeInt = (val) => {
-        const parsed = parseInt(val)
-        return isNaN(parsed) ? 0 : parsed
+        const p = parseInt(val); return isNaN(p) ? 0 : p
       }
       const safeFloat = (val) => {
-        const parsed = parseFloat(val)
-        return isNaN(parsed) ? 0 : parsed
+        const p = parseFloat(val); return isNaN(p) ? 0 : p
       }
 
       // 1. Create Result Record
@@ -188,16 +196,16 @@ function CupManagement() {
         }
       }
 
-      console.log('1. Saving result record...');
+      console.log('1. Saving result record...', resultId);
       await setDoc(doc(db, 'results', resultId), newResult)
 
       // 2. Update Cup Bracket
       console.log('2. Updating cup bracket...');
-      const allCups = getCups()
-      const cupIndex = allCups.findIndex(c => String(c.id) === String(cup.id))
+      const allCupsData = getCups()
+      const cupIdx = allCupsData.findIndex(c => String(c.id) === String(cup.id))
 
-      if (cupIndex !== -1) {
-        const cupData = { ...allCups[cupIndex] }
+      if (cupIdx !== -1) {
+        const cupData = { ...allCupsData[cupIdx] }
         let updatedMatches = (cupData.matches || []).map(m =>
           String(m.id) === String(match.id) ? { ...m, winner: winnerId, score1: legs1, score2: legs2, resultId } : { ...m }
         )
@@ -206,9 +214,8 @@ function CupManagement() {
           const nextMatchIndex = updatedMatches.findIndex(m => String(m.id) === String(match.nextMatchId))
           if (nextMatchIndex !== -1) {
             const nextMatch = { ...updatedMatches[nextMatchIndex] }
-            // Important: sort by matchNum to ensure correct p1/p2 mapping
             const currentRoundMatches = updatedMatches
-              .filter(m => m.round === match.round)
+              .filter(m => Number(m.round) === Number(match.round))
               .sort((a, b) => (Number(a.matchNum) || 0) - (Number(b.matchNum) || 0))
 
             const matchIdxInRound = currentRoundMatches.findIndex(m => String(m.id) === String(match.id))
@@ -230,6 +237,7 @@ function CupManagement() {
         })
 
         const updatedCup = { ...cupData, matches: updatedMatches, status: allComplete ? 'completed' : 'active' }
+        console.log('Updating Cup Bracket in Firebase...', String(cup.id))
         await setDoc(doc(db, 'cups', String(cup.id)), updatedCup, { merge: true })
       }
 
@@ -242,14 +250,19 @@ function CupManagement() {
         await setDoc(doc(db, 'fixtures', fixture.id.toString()), updatedFixture, { merge: true })
       }
 
+      console.log('Finalizing...');
       setShowResultModal(false)
       const winnerName = winnerId === match.player1 ? p1Name : p2Name
       alert(`SUCCESS: ${winnerName} wins ${legs1}-${legs2}!`)
+
       triggerDataRefresh('all')
       setRefreshKey(prev => prev + 1)
+
     } catch (e) {
       console.error('FATAL Error submitting result:', e)
-      alert('ERROR submitting result: ' + e.message)
+      alert('ERROR saving result: ' + e.message)
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -712,8 +725,10 @@ function CupManagement() {
             </div>
 
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-              <button className="btn btn-secondary" onClick={() => setShowResultModal(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={submitResult}>Submit Result</button>
+              <button className="btn btn-secondary" onClick={() => setShowResultModal(false)} disabled={isSubmitting}>Cancel</button>
+              <button className="btn btn-primary" onClick={submitResult} disabled={isSubmitting}>
+                {isSubmitting ? 'Saving...' : 'Submit Result'}
+              </button>
             </div>
           </div>
         </div>
