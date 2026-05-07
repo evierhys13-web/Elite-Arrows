@@ -50,6 +50,7 @@ export default function Admin() {
   const [seasonForm, setSeasonForm] = useState({ name: '', startDate: new Date().toISOString().split('T')[0], endDate: '' })
   const [grantSubForm, setGrantSubForm] = useState({ player: '', tier: 'standard' })
   const [potAdjust, setPotAdjust] = useState({ standard: 0, premium: 0 })
+  const [trophyForm, setTrophyForm] = useState({ player: '', name: '', icon: '🏆', season: '' })
 
   // Guard: wait for auth
   if (authLoading) return <div className="page glass"><div style={{ padding: '60px', textAlign: 'center', color: 'var(--accent-cyan)', fontWeight: 800 }}>Validating Admin Access...</div></div>
@@ -231,6 +232,28 @@ export default function Admin() {
     } catch (e) { alert(e.message) }
   }
 
+  const handleAwardTrophy = async () => {
+    if (!trophyForm.player || !trophyForm.name) return alert('Player and Trophy Name required')
+    try {
+      const target = allPlayers.find(p => p.id === trophyForm.player)
+      const currentTrophies = target.trophies || []
+      const newTrophy = {
+        name: trophyForm.name,
+        icon: trophyForm.icon,
+        season: trophyForm.season || localStorage.getItem('eliteArrowsCurrentSeason') || 'Season 1',
+        awardedAt: new Date().toISOString()
+      }
+
+      await setDoc(doc(db, 'users', target.id), {
+        trophies: [...currentTrophies, newTrophy]
+      }, { merge: true })
+
+      triggerDataRefresh('users')
+      alert(`Awarded "${trophyForm.name}" to ${target.username}`)
+      setTrophyForm({ ...trophyForm, name: '', icon: '🏆' })
+    } catch (e) { alert(e.message) }
+  }
+
   const tabs = [
     { id: 'results', label: 'Scores', count: pendingResults.length },
     { id: 'payments', label: 'Payments', count: pendingPayments.length },
@@ -239,6 +262,7 @@ export default function Admin() {
     { id: 'cups', label: 'Cups' },
     { id: 'players', label: 'Members' },
     { id: 'seasons', label: 'Seasons' },
+    { id: 'trophies', label: 'Trophies' },
     { id: 'tokens', label: 'Tokens' },
     { id: 'maintenance', label: 'System' }
   ]
@@ -508,6 +532,49 @@ export default function Admin() {
                   <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/profile/${p.id}`)}>View</button>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* TAB: TROPHIES */}
+        {activeTab === 'trophies' && (
+          <div className="card glass">
+            <h3>Trophy Room Management</h3>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '24px' }}>Award digital trophies to players for their achievements.</p>
+
+            <div className="glass" style={{ padding: '24px', borderRadius: '16px' }}>
+              <div className="form-group">
+                <label>Select Player</label>
+                <UserSearchSelect users={allPlayers} selectedId={trophyForm.player} onSelect={id => setTrophyForm({...trophyForm, player: id})} label="Recipient" />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 3fr', gap: '16px' }}>
+                <div className="form-group">
+                  <label>Icon</label>
+                  <select className="glass" value={trophyForm.icon} onChange={e => setTrophyForm({...trophyForm, icon: e.target.value})}>
+                    <option value="🏆">🏆 Trophy</option>
+                    <option value="🥇">🥇 Gold</option>
+                    <option value="🥈">🥈 Silver</option>
+                    <option value="🥉">🥉 Bronze</option>
+                    <option value="🎯">🎯 Bullseye</option>
+                    <option value="🔥">🔥 Hot Streak</option>
+                    <option value="👑">👑 Champion</option>
+                    <option value="🎖️">🎖️ Medal</option>
+                    <option value="🚀">🚀 Rising Star</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Trophy Name</label>
+                  <input className="glass" placeholder="e.g. League Champion, Most 180s" value={trophyForm.name} onChange={e => setTrophyForm({...trophyForm, name: e.target.value})} />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Season</label>
+                <input className="glass" placeholder="e.g. Season 1" value={trophyForm.season} onChange={e => setTrophyForm({...trophyForm, season: e.target.value})} />
+              </div>
+
+              <button className="btn btn-primary btn-block" onClick={handleAwardTrophy}>Award Trophy to Player</button>
             </div>
           </div>
         )}

@@ -81,7 +81,9 @@ export const createEmptyPlayerStats = (player = {}) => ({
   doubleSuccessTotal: 0,
   doubleSuccessCount: 0,
   doubleSuccess: 0,
-  average: 0
+  average: 0,
+  form: [],
+  history: []
 })
 
 const addResultToPlayer = (stats, result, playerNumber, opponentScore, score, countsForPoints) => {
@@ -92,9 +94,24 @@ const addResultToPlayer = (stats, result, playerNumber, opponentScore, score, co
   stats.legDiff = stats.legsWon - stats.legsLost
   stats.points += countsForPoints ? getLeaguePoints(score, opponentScore) : 0
 
-  if (score > opponentScore) stats.wins += 1
-  else if (score < opponentScore) stats.losses += 1
-  else stats.draws += 1
+  if (score > opponentScore) {
+    stats.wins += 1
+    stats.form.push('W')
+  } else if (score < opponentScore) {
+    stats.losses += 1
+    stats.form.push('L')
+  } else {
+    stats.draws += 1
+    stats.form.push('D')
+  }
+
+  stats.history.push({
+    date: result.date || result.submittedAt,
+    score,
+    opponentScore,
+    '180s': toNumber(submittedStats['180s'] ?? submittedStats._180s),
+    highestCheckout: toNumber(submittedStats.highestCheckout)
+  })
 
   stats['180s'] += toNumber(submittedStats['180s'] ?? submittedStats._180s)
   stats['170s'] += toNumber(submittedStats['170s'] ?? submittedStats._170s)
@@ -134,7 +151,14 @@ export const derivePlayerStatsFromResults = (users = [], results = [], options =
     requireProof
   })
 
-  approvedResults.forEach(result => {
+  // Sort results by date ascending to get form in correct order
+  const sortedResults = [...approvedResults].sort((a, b) => {
+    const timeA = new Date(a.date || a.submittedAt || 0).getTime()
+    const timeB = new Date(b.date || b.submittedAt || 0).getTime()
+    return timeA - timeB
+  })
+
+  sortedResults.forEach(result => {
     const player1Id = getResultPlayerId(result, 1, users)
     const player2Id = getResultPlayerId(result, 2, users)
     const score1 = toNumber(result.score1)

@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Tooltip from '../components/Tooltip'
 import { compressImage } from '../components/ImageUtils'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
 import Breadcrumbs from '../components/Breadcrumbs'
+import { XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
 
 const AVAILABLE_BADGES = [
   { id: 'competitive', label: 'Competitive', icon: '🏆', color: '#FFD700' },
@@ -18,8 +19,7 @@ const AVAILABLE_BADGES = [
 ]
 
 export default function Profile() {
-  const { user, updateUser, requestAdminRole, getAllUsers, getResults, getFixtures, adminData, addFriend, removeFriend } = useAuth()
-  const navigate = useNavigate()
+  const { user, updateUser, getAllUsers, getResults, getFixtures, adminData, addFriend } = useAuth()
   const { id } = useParams()
   
   const isViewingOther = id && id !== user.id
@@ -31,10 +31,12 @@ export default function Profile() {
     nickname: '',
     bio: '',
     country: '',
-    dartCounterUsername: ''
+    dartCounterUsername: '',
+    walkOnSong: ''
   })
   
   const [profilePicture, setProfilePicture] = useState('')
+  const [gearPhoto, setGearPhoto] = useState('')
   const [saving, setSaving] = useState(false)
   const [tags, setTags] = useState([])
   const [newTag, setNewTag] = useState('')
@@ -48,9 +50,11 @@ export default function Profile() {
         nickname: displayUser.nickname || '',
         bio: displayUser.bio || '',
         country: displayUser.country || '',
-        dartCounterUsername: displayUser.dartCounterUsername || ''
+        dartCounterUsername: displayUser.dartCounterUsername || '',
+        walkOnSong: displayUser.walkOnSong || ''
       })
       setProfilePicture(displayUser.profilePicture || '')
+      setGearPhoto(displayUser.gearPhoto || '')
       setTags(displayUser.tags || [])
       setSelectedBadges(displayUser.badges || [])
     }
@@ -85,11 +89,33 @@ export default function Profile() {
   })
   const displayStats = displayUser?.id ? statsByUserId[String(displayUser.id)] : null
 
+  const chartData = useMemo(() => {
+    if (!displayStats?.history) return []
+    return displayStats.history.slice(-10).map((h, i) => ({
+      name: `M${i + 1}`,
+      legs: h.score,
+      co: h.highestCheckout
+    }))
+  }, [displayStats])
+
+  const formGuide = useMemo(() => {
+    if (!displayStats?.form) return []
+    return displayStats.form.slice(-5)
+  }, [displayStats])
+
   const handlePictureChange = async (e) => {
     const file = e.target.files[0]
     if (file) {
       const compressed = await compressImage(file, 300, 300, 0.8)
       setProfilePicture(compressed)
+    }
+  }
+
+  const handleGearPhotoChange = async (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      const compressed = await compressImage(file, 800, 600, 0.7)
+      setGearPhoto(compressed)
     }
   }
 
@@ -101,7 +127,9 @@ export default function Profile() {
       bio: formData.bio?.trim(),
       country: formData.country?.trim(),
       dartCounterUsername: formData.dartCounterUsername?.trim(),
+      walkOnSong: formData.walkOnSong?.trim(),
       profilePicture,
+      gearPhoto,
       tags,
       badges: selectedBadges
     }
@@ -190,10 +218,62 @@ export default function Profile() {
         ))}
       </div>
 
+      {/* Form & Trend Section */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '32px', marginBottom: '32px' }}>
+        <div className="card glass" style={{ padding: '24px' }}>
+          <h3 className="card-title" style={{ fontSize: '1.1rem', marginBottom: '20px' }}>📉 Performance Trend</h3>
+          <div style={{ height: '200px', width: '100%' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="colorAvg" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--accent-cyan)" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="var(--accent-cyan)" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={10} tickLine={false} axisLine={false} />
+                <YAxis hide />
+                <ChartTooltip
+                  contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                  itemStyle={{ color: 'var(--accent-cyan)' }}
+                />
+                <Area type="monotone" dataKey="legs" stroke="var(--accent-cyan)" fillOpacity={1} fill="url(#colorAvg)" strokeWidth={2} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="card glass" style={{ padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <h3 className="card-title" style={{ fontSize: '1.1rem', marginBottom: '16px' }}>🏃 Recent Form</h3>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
+            {formGuide.length > 0 ? formGuide.map((res, i) => (
+              <div key={i} style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 900,
+                fontSize: '1.1rem',
+                background: res === 'W' ? 'var(--success-bg)' : res === 'L' ? 'var(--error-bg)' : 'rgba(255,255,255,0.05)',
+                color: res === 'W' ? 'var(--success)' : res === 'L' ? 'var(--error)' : 'var(--text-muted)',
+                border: `1px solid ${res === 'W' ? 'var(--success)' : res === 'L' ? 'var(--error)' : 'var(--border)'}`,
+                boxShadow: res === 'W' ? '0 0 15px rgba(16, 185, 129, 0.2)' : 'none'
+              }}>
+                {res}
+              </div>
+            )) : <p style={{ color: 'var(--text-muted)' }}>No matches played yet.</p>}
+          </div>
+          <p style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Last {formGuide.length} matches</p>
+        </div>
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '32px', marginBottom: '40px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
           {/* Bio Section */}
-          <div className="card glass" style={{ height: '100%' }}>
+          <div className="card glass">
             <h3 className="card-title">📖 Player Bio</h3>
             {!isViewingOther ? (
               <div className="profile-form">
@@ -209,6 +289,23 @@ export default function Profile() {
                   <label>About You</label>
                   <textarea name="bio" value={formData.bio} onChange={e => setFormData({...formData, bio: e.target.value})} rows={5} placeholder="Tell us about your setup..." />
                 </div>
+
+                <div className="form-group">
+                  <label>Walk-on Song (Link)</label>
+                  <input name="walkOnSong" value={formData.walkOnSong} onChange={e => setFormData({...formData, walkOnSong: e.target.value})} placeholder="Spotify or YouTube URL" />
+                </div>
+
+                <div className="form-group">
+                  <label>Gear Setup Photo</label>
+                  <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                    {gearPhoto && <img src={gearPhoto} alt="Gear" style={{ width: '80px', height: '60px', borderRadius: '8px', objectFit: 'cover' }} />}
+                    <label className="btn btn-secondary btn-sm" style={{ flex: 1 }}>
+                      {gearPhoto ? 'Change Photo' : 'Upload Setup Photo'}
+                      <input type="file" accept="image/*" onChange={handleGearPhotoChange} style={{ display: 'none' }} />
+                    </label>
+                  </div>
+                </div>
+
                 <button className="btn btn-primary btn-block" onClick={handleSave} disabled={saving}>
                   {saving ? 'Syncing...' : 'Save Profile Details'}
                 </button>
@@ -218,6 +315,23 @@ export default function Profile() {
                 <p style={{ marginBottom: '24px', lineHeight: '1.8', fontSize: '1.05rem', opacity: 0.9 }}>
                   {displayUser.bio || "No biography provided."}
                 </p>
+
+                {displayUser.walkOnSong && (
+                  <div style={{ marginBottom: '24px' }}>
+                    <h4 style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>Walk-on Song</h4>
+                    <a href={displayUser.walkOnSong} target="_blank" rel="noreferrer" style={{ color: 'var(--accent-cyan)', textDecoration: 'none', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      🎵 Listen to Theme
+                    </a>
+                  </div>
+                )}
+
+                {displayUser.gearPhoto && (
+                  <div style={{ marginBottom: '24px' }}>
+                    <h4 style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '12px' }}>Darts Setup</h4>
+                    <img src={displayUser.gearPhoto} alt="Darts Gear" style={{ width: '100%', borderRadius: '16px', border: '1px solid var(--border)' }} />
+                  </div>
+                )}
+
                 <div style={{ padding: '24px', background: 'rgba(0,0,0,0.2)', borderRadius: '20px', display: 'grid', gap: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: 'var(--text-muted)' }}>Location</span>
@@ -255,7 +369,7 @@ export default function Profile() {
             )}
           </div>
 
-          {/* Connected Apps Section */}
+          {/* Connectivity Section */}
           <div className="card glass" style={{ borderLeft: '4px solid var(--accent-cyan)' }}>
             <h3 className="card-title">🚀 Connectivity</h3>
             <div style={{ display: 'grid', gap: '16px' }}>
@@ -292,7 +406,7 @@ export default function Profile() {
             </div>
           </div>
 
-          {/* Badge Selector (Hidden by default) */}
+          {/* Badge Selector */}
           {!isViewingOther && (
             <div className="card glass">
               <h3 className="card-title">🎖️ My Badges</h3>
@@ -326,6 +440,30 @@ export default function Profile() {
                   ))}
                 </div>
               )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Trophy Cabinet Section */}
+      <div className="card glass" style={{ marginBottom: '60px' }}>
+        <h3 className="card-title">🏆 Trophy Cabinet</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '20px' }}>
+          {(displayUser.trophies || []).length > 0 ? displayUser.trophies.map((trophy, i) => (
+            <div key={i} style={{
+              textAlign: 'center',
+              padding: '20px',
+              background: 'rgba(255,255,255,0.03)',
+              borderRadius: '16px',
+              border: '1px solid var(--border)'
+            }}>
+              <div style={{ fontSize: '2.5rem', marginBottom: '12px' }}>{trophy.icon || '🏆'}</div>
+              <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-primary)' }}>{trophy.name}</div>
+              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '4px' }}>{trophy.season || 'Season 1'}</div>
+            </div>
+          )) : (
+            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px', color: 'var(--text-muted)', border: '2px dashed var(--border)', borderRadius: '20px' }}>
+              <p>No trophies in the cabinet yet. Start winning to earn them!</p>
             </div>
           )}
         </div>
