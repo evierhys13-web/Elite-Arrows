@@ -271,25 +271,41 @@ input:focus, select:focus, textarea:focus {
   color: rgba(255, 255, 255, 0.4);
 }
 
-/* Mobile Header */
+/* Mobile Header - Sleek & Transparent */
 .mobile-header {
   display: none;
-  position: sticky;
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
   height: var(--header-height);
-  background: rgba(5, 8, 22, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--border);
+  background: transparent; /* No boxy background */
   z-index: 1001;
   padding: var(--safe-top) 16px 0;
   align-items: center;
   justify-content: space-between;
+  pointer-events: none; /* Let background show through */
 }
 
-@media (max-width: 1024px) {
+.mobile-header > * {
+  pointer-events: auto; /* Re-enable for buttons */
+}
+
+.mobile-menu-trigger {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(13, 20, 46, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-cyan);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+@media (max-width: 1100px) {
   .mobile-header { display: flex; height: calc(var(--header-height) + var(--safe-top)); }
   .sidebar { transform: translateX(-100%); width: 85%; max-width: 300px; box-shadow: 20px 0 60px rgba(0, 0, 0, 0.8); border-right: 1px solid var(--accent-primary); }
   .sidebar.open { transform: translateX(0); }
@@ -297,7 +313,7 @@ input:focus, select:focus, textarea:focus {
   .mobile-sidebar-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.7);
+    background: rgba(2, 6, 23, 0.8);
     backdrop-filter: blur(4px);
     z-index: 999;
     opacity: 0;

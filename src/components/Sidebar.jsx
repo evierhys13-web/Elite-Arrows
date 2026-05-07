@@ -99,13 +99,12 @@ export default function Sidebar() {
   return (
     <>
       <div className="mobile-header">
-        <button className="btn btn-secondary btn-sm" style={{ padding: '8px', minWidth: '44px' }} onClick={() => setIsOpen(true)}>
+        <button className="mobile-menu-trigger" onClick={() => setIsOpen(true)}>
           <MenuIcon />
         </button>
-        <span className="sidebar-logo text-gradient" style={{ fontSize: '1.25rem', fontWeight: 900 }}>Elite Arrows</span>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <NotificationBell />
-          <RefreshButton size={20} />
+          <RefreshButton size={22} />
         </div>
       </div>
 

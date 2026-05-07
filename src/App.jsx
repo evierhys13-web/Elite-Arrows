@@ -197,45 +197,45 @@ function AppLayout({ children }) {
   return (
     <>
       <a href="#main-content" className="skip-link">Skip to main content</a>
-      <div className="app-layout" style={{ flexDirection: 'column' }}>
+      <div className="app-layout">
+        <Sidebar />
+        <main id="main-content" className="main-content" tabIndex={-1}>
+          <Suspense fallback={<PageLoader />}>
+            {children}
+          </Suspense>
+        </main>
+
         {hasMaintenance && (
           <div style={{
             background: 'var(--warning)',
             color: '#000',
-            padding: '12px 20px',
+            padding: '10px 16px',
             textAlign: 'center',
-            fontSize: '0.85rem',
-            fontWeight: 800,
-            width: '100%',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+            fontSize: '0.75rem',
+            fontWeight: 900,
+            position: 'fixed',
+            bottom: 'calc(var(--bottom-nav-height) + var(--safe-bottom))',
+            left: 0,
+            right: 0,
+            zIndex: 1003,
+            boxShadow: '0 -4px 15px rgba(0,0,0,0.3)',
             textTransform: 'uppercase',
-            letterSpacing: '0.05em',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '10px',
-            zIndex: 1100 // Above sidebar (1000) and header (1001)
+            gap: '8px'
           }}>
-            <span style={{ fontSize: '1.2rem' }}>⚠️</span>
+            <span>⚠️</span>
             {adminData.maintenanceMessage}
           </div>
         )}
-        <div style={{ display: 'flex', flex: 1, width: '100%', position: 'relative' }}>
-          <Sidebar />
-          <main id="main-content" className="main-content" style={{
-            paddingTop: hasMaintenance ? 'calc(var(--header-height) + 60px)' : undefined
-          }} tabIndex={-1}>
-            <Suspense fallback={<PageLoader />}>
-              {children}
-            </Suspense>
-          </main>
-          <BottomNav />
-          <InstallPrompt />
-          <DataRefreshToast refreshTrigger={dataRefreshTrigger} />
-          <NotificationPermissionPrompt />
-          {showOnboarding && <OnboardingTour onComplete={completeOnboarding} />}
-          <WhatsNewPopup isOpen={whatsNewOpen} onClose={() => setWhatsNewOpen(false)} />
-        </div>
+
+        <BottomNav />
+        <InstallPrompt />
+        <DataRefreshToast refreshTrigger={dataRefreshTrigger} />
+        <NotificationPermissionPrompt />
+        {showOnboarding && <OnboardingTour onComplete={completeOnboarding} />}
+        <WhatsNewPopup isOpen={whatsNewOpen} onClose={() => setWhatsNewOpen(false)} />
       </div>
     </>
   )
