@@ -196,7 +196,6 @@ function AppLayout({ children }) {
 
   return (
     <>
-      <a href="#main-content" className="skip-link">Skip to main content</a>
       <div className="app-layout">
         <Sidebar />
         <main id="main-content" className="main-content" tabIndex={-1}>

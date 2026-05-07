@@ -4,14 +4,14 @@ import { derivePlayerStatsFromResults } from '../utils/playerStats'
 import Breadcrumbs from '../components/Breadcrumbs'
 
 const DIVISION_COLORS = {
-  'Elite': '#f59e0b',
-  'Diamond': '#0ea5e9',
+  'Elite': '#fbbf24',
+  'Diamond': '#38bdf8',
   'Platinum': '#818cf8',
-  'Gold': '#fbbf24',
-  'Silver': '#94a3b8',
-  'Bronze': '#b45309',
-  'Development': '#10b981',
-  'Overall': '#7c3aed'
+  'Gold': '#fcd34d',
+  'Silver': '#cbd5e1',
+  'Bronze': '#d97706',
+  'Development': '#4ade80',
+  'Overall': '#d946ef'
 }
 
 export default function Table() {
@@ -63,15 +63,15 @@ export default function Table() {
   }
 
   return (
-    <div className="page animate-fade-in" style={{ maxWidth: '1100px', margin: '0 auto' }}>
+    <div className="page animate-fade-in" style={{ maxWidth: '1200px', margin: '0 auto' }}>
       <Breadcrumbs items={[{ label: 'Home', path: '/home' }, { label: 'League Table', path: '/table' }]} />
 
       <div className="page-header" style={{ marginBottom: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <h1 className="page-title text-gradient" style={{ fontSize: '2.5rem' }}>League Standings</h1>
+            <h1 className="page-title text-gradient" style={{ fontSize: '2.2rem' }}>League Standings</h1>
           </div>
-          <button className="btn btn-secondary btn-sm glass" onClick={handleRefresh}>
+          <button className="btn btn-secondary btn-sm glass" onClick={handleRefresh} style={{ padding: '8px 12px' }}>
             🔄 Sync
           </button>
         </div>
@@ -83,7 +83,8 @@ export default function Table() {
         gap: '8px',
         marginBottom: '20px',
         paddingBottom: '8px',
-        scrollbarWidth: 'none'
+        scrollbarWidth: 'none',
+        msOverflowStyle: 'none'
       }}>
         {divisions.map(div => (
           <button
@@ -92,8 +93,11 @@ export default function Table() {
             onClick={() => setActiveDivision(div)}
             style={{
               whiteSpace: 'nowrap',
+              padding: '10px 16px',
+              fontSize: '0.85rem',
               borderBottom: activeDivision === div ? `3px solid ${DIVISION_COLORS[div]}` : '3px solid transparent',
-              color: activeDivision === div ? DIVISION_COLORS[div] : 'var(--text-muted)'
+              color: activeDivision === div ? 'white' : 'rgba(255,255,255,0.6)',
+              background: activeDivision === div ? 'rgba(255,255,255,0.1)' : 'transparent'
             }}
           >
             {div}
@@ -102,25 +106,24 @@ export default function Table() {
       </div>
 
       <div className="card glass" style={{ padding: '0', borderRadius: '12px', overflow: 'hidden' }}>
-        <div className="table-responsive">
-          <table className="table" style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '340px' }}>
             <thead>
-              <tr style={{ background: 'rgba(0,0,0,0.3)', color: 'var(--text-muted)', fontSize: '0.65rem', textTransform: 'uppercase' }}>
-                <th style={{ width: '35px', padding: '12px 4px', textAlign: 'center' }}>#</th>
+              <tr style={{ background: 'rgba(0,0,0,0.3)', color: 'rgba(255,255,255,0.7)', fontSize: '0.65rem', textTransform: 'uppercase' }}>
+                <th style={{ width: '30px', padding: '12px 4px', textAlign: 'center' }}>#</th>
                 <th style={{ textAlign: 'left', padding: '12px 8px' }}>Player</th>
-                {activeDivision === 'Overall' && <th className="hide-mobile" style={{ width: '80px', textAlign: 'left' }}>Div</th>}
-                <th style={{ width: '30px', padding: '12px 2px', textAlign: 'center' }}>P</th>
-                <th className="hide-mobile" style={{ width: '30px', textAlign: 'center' }}>W</th>
-                <th className="hide-mobile" style={{ width: '30px', textAlign: 'center' }}>D</th>
-                <th className="hide-mobile" style={{ width: '30px', textAlign: 'center' }}>L</th>
-                <th style={{ width: '40px', padding: '12px 2px', textAlign: 'center' }}>+/-</th>
-                <th style={{ width: '45px', padding: '12px 2px', textAlign: 'center', color: 'var(--accent-cyan)' }}>Pts</th>
+                <th style={{ width: '25px', padding: '12px 2px', textAlign: 'center' }}>P</th>
+                <th style={{ width: '25px', padding: '12px 2px', textAlign: 'center' }}>W</th>
+                <th style={{ width: '25px', padding: '12px 2px', textAlign: 'center' }}>D</th>
+                <th style={{ width: '25px', padding: '12px 2px', textAlign: 'center' }}>L</th>
+                <th style={{ width: '35px', padding: '12px 2px', textAlign: 'center' }}>+/-</th>
+                <th style={{ width: '40px', padding: '12px 2px', textAlign: 'center', color: 'var(--accent-cyan)' }}>Pts</th>
               </tr>
             </thead>
             <tbody>
               {playersInDivision.length === 0 ? (
                 <tr>
-                  <td colSpan={10} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No data</td>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No data</td>
                 </tr>
               ) : (
                 playersInDivision.map((player, index) => {
@@ -131,42 +134,38 @@ export default function Table() {
 
                   return (
                     <tr key={player.id} style={{
-                      background: isMe ? 'rgba(124, 92, 252, 0.1)' : 'transparent',
+                      background: isMe ? 'rgba(217, 70, 239, 0.15)' : 'transparent',
                       borderBottom: '1px solid rgba(255,255,255,0.05)',
-                      fontSize: '0.85rem'
+                      fontSize: '0.8rem'
                     }}>
-                      <td style={{ textAlign: 'center', fontWeight: '800', color: index === 0 ? '#fbbf24' : 'var(--text-muted)' }}>
+                      <td style={{ textAlign: 'center', fontWeight: '800', color: index === 0 ? '#fbbf24' : 'rgba(255,255,255,0.5)' }}>
                         {index + 1}
                       </td>
                       <td style={{ padding: '10px 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ fontWeight: isMe ? '800' : '600', color: isMe ? 'white' : 'var(--text-primary)' }}>
+                          <span style={{ fontWeight: isMe ? '800' : '600', color: isMe ? 'white' : 'rgba(255,255,255,0.9)' }}>
                             {player.username}
                           </span>
                           {(isPromotion || isRelegation) && (
-                            <span style={{ fontSize: '0.55rem', fontWeight: '900', color: isPromotion ? '#10b981' : '#ef4444' }}>
-                              {isPromotion ? 'PRO' : 'REL'}
+                            <span style={{ fontSize: '0.5rem', fontWeight: '900', color: isPromotion ? '#10b981' : '#ef4444', letterSpacing: '0.05em' }}>
+                              {isPromotion ? 'PROMOTION' : 'RELEGATION'}
                             </span>
                           )}
                         </div>
                       </td>
-                      {activeDivision === 'Overall' && (
-                        <td className="hide-mobile" style={{ padding: '10px 4px' }}>
-                          <span style={{ fontSize: '0.65rem', color: DIVISION_COLORS[player.displayDivision] }}>{player.displayDivision}</span>
-                        </td>
-                      )}
-                      <td style={{ textAlign: 'center' }}>{player.stats.played}</td>
-                      <td className="hide-mobile" style={{ textAlign: 'center' }}>{player.stats.wins}</td>
-                      <td className="hide-mobile" style={{ textAlign: 'center' }}>{player.stats.draws}</td>
-                      <td className="hide-mobile" style={{ textAlign: 'center' }}>{player.stats.losses}</td>
+                      <td style={{ textAlign: 'center', padding: '10px 2px' }}>{player.stats.played}</td>
+                      <td style={{ textAlign: 'center', padding: '10px 2px', color: 'rgba(255,255,255,0.6)' }}>{player.stats.wins}</td>
+                      <td style={{ textAlign: 'center', padding: '10px 2px', color: 'rgba(255,255,255,0.6)' }}>{player.stats.draws}</td>
+                      <td style={{ textAlign: 'center', padding: '10px 2px', color: 'rgba(255,255,255,0.6)' }}>{player.stats.losses}</td>
                       <td style={{
                         textAlign: 'center',
+                        padding: '10px 2px',
                         fontWeight: '700',
-                        color: legDiff > 0 ? '#10b981' : legDiff < 0 ? '#ef4444' : 'var(--text-muted)'
+                        color: legDiff > 0 ? '#10b981' : legDiff < 0 ? '#ef4444' : 'rgba(255,255,255,0.4)'
                       }}>
                         {legDiff > 0 ? `+${legDiff}` : legDiff}
                       </td>
-                      <td style={{ textAlign: 'center', fontWeight: '900', color: 'var(--accent-cyan)' }}>
+                      <td style={{ textAlign: 'center', padding: '10px 2px', fontWeight: '900', color: 'var(--accent-cyan)', fontSize: '0.9rem' }}>
                         {player.stats.points}
                       </td>
                     </tr>
@@ -178,21 +177,14 @@ export default function Table() {
         </div>
       </div>
 
-      <style>{`
-        @media (max-width: 600px) {
-          .hide-mobile { display: none !important; }
-          .table { font-size: 0.8rem !important; }
-        }
-      `}</style>
-
       <div style={{ marginTop: '20px', display: 'flex', gap: '15px', flexWrap: 'wrap', padding: '0 5px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
           <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#10b981' }} />
-          <span>Promotion</span>
+          <span>Automatic Promotion</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
           <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#ef4444' }} />
-          <span>Relegation</span>
+          <span>Relegation Zone</span>
         </div>
       </div>
     </div>
