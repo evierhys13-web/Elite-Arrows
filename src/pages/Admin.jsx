@@ -5,7 +5,6 @@ import { db, doc, setDoc, getDoc, getDocs, collection, deleteDoc, updateDoc, wri
 import UserSearchSelect from '../components/UserSearchSelect'
 import CupManagement from './CupManagement'
 import { useToast } from '../context/ToastContext'
-import { SkeletonList } from '../components/Skeleton'
 
 const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
 
@@ -13,18 +12,12 @@ export default function Admin() {
   const {
     user,
     loading: authLoading,
-    notifications,
     getAllUsers,
     getResults,
-    getFixtures,
     getSeasons,
-    getNews,
-    postNews,
-    deleteNews,
     adminData,
     updateAdminData,
     addToMoneyHistory,
-    updateOtherUser,
     triggerDataRefresh,
     dataRefreshTrigger
   } = useAuth()
@@ -88,7 +81,7 @@ export default function Admin() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    const allowed = ['dashboard', 'results', 'payments', 'moneypot', 'cups', 'players', 'news', 'admins', 'seasons', 'trophies', 'tokens', 'maintenance']
+    const allowed = ['dashboard', 'results', 'payments', 'moneypot', 'cups', 'players', 'admins', 'seasons', 'trophies', 'tokens', 'maintenance']
     if (tab && allowed.includes(tab)) setActiveTab(tab)
   }, [searchParams])
 
@@ -220,6 +213,78 @@ export default function Admin() {
 
       triggerDataRefresh('users')
       showToast('Subscription Approved!', 'success')
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
+  const handleGrantSubscription = async () => {
+    if (!grantSubForm.player) return showToast('Select a player', 'error')
+    try {
+      const target = allPlayers.find(p => p.id === grantSubForm.player)
+      await setDoc(doc(db, 'users', target.id), {
+        isSubscribed: true,
+        subscriptionDate: new Date().toISOString(),
+        subscriptionTier: grantSubForm.tier
+      }, { merge: true })
+      await logAudit('GRANT_SUBSCRIPTION', `Manually granted ${grantSubForm.tier} sub to ${target.username}`)
+      triggerDataRefresh('users')
+      showToast(`Granted ${grantSubForm.tier} subscription to ${target.username}`, 'success')
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
+  const handleUpdateAdminRole = async (targetId, role, value) => {
+    try {
+      const target = allPlayers.find(p => p.id === targetId)
+      await setDoc(doc(db, 'users', targetId), { [role]: value }, { merge: true })
+      await logAudit('UPDATE_ROLE', `Updated ${role} to ${value} for ${target?.username}`)
+      triggerDataRefresh('users')
+      showToast('Permissions updated', 'success')
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
+  const handleCreateSeason = async () => {
+    if (!seasonForm.name) return showToast('Name required', 'error')
+    try {
+      const id = Date.now().toString()
+      await setDoc(doc(db, 'seasons', id), { ...seasonForm, id, createdAt: new Date().toISOString(), status: 'active' })
+      await logAudit('CREATE_SEASON', `Created season: ${seasonForm.name}`)
+      triggerDataRefresh('seasons')
+      showToast('Season Created!', 'success')
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
+  const handleAdjustPot = async (tier) => {
+    const amount = tier === 'standard' ? potAdjust.standard : potAdjust.premium
+    const key = tier === 'standard' ? 'subscriptionPot' : 'subscriptionPot10'
+    const current = tier === 'standard' ? subscriptionPot : subscriptionPot10
+    try {
+      await updateAdminData({ [key]: current + amount })
+      addToMoneyHistory('adjustment', amount, `Manual pot adjustment (${tier})`)
+      await logAudit('ADJUST_POT', `Adjusted ${tier} pot by £${amount}`)
+      showToast('Pot adjusted', 'success')
+      setPotAdjust({ ...potAdjust, [tier]: 0 })
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
+  const handleAwardTrophy = async () => {
+    if (!trophyForm.player || !trophyForm.name) return showToast('Player and Trophy Name required', 'error')
+    try {
+      const target = allPlayers.find(p => p.id === trophyForm.player)
+      const currentTrophies = target.trophies || []
+      const newTrophy = {
+        name: trophyForm.name,
+        icon: trophyForm.icon,
+        season: trophyForm.season || localStorage.getItem('eliteArrowsCurrentSeason') || 'Season 1',
+        awardedAt: new Date().toISOString()
+      }
+
+      await setDoc(doc(db, 'users', target.id), {
+        trophies: [...currentTrophies, newTrophy]
+      }, { merge: true })
+
+      await logAudit('AWARD_TROPHY', `Awarded "${trophyForm.name}" to ${target.username}`)
+      triggerDataRefresh('users')
+      showToast(`Awarded "${trophyForm.name}" to ${target.username}`, 'success')
+      setTrophyForm({ ...trophyForm, name: '', icon: '🏆' })
     } catch (e) { showToast(e.message, 'error') }
   }
 
@@ -361,7 +426,35 @@ export default function Admin() {
                     </select>
                   </div>
                 </div>
-                {/* ... other form fields ... */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>Score 1</label>
+                    <input type="number" placeholder="0" value={adminGameForm.score1} onChange={e => setAdminGameForm({...adminGameForm, score1: e.target.value})} />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>Score 2</label>
+                    <input type="number" placeholder="0" value={adminGameForm.score2} onChange={e => setAdminGameForm({...adminGameForm, score2: e.target.value})} />
+                  </div>
+                </div>
+                <div className="form-group" style={{ marginBottom: '16px' }}>
+                  <label>Game Type</label>
+                  <select value={adminGameForm.gameType} onChange={e => setAdminGameForm({...adminGameForm, gameType: e.target.value})}>
+                    <option value="Friendly">Friendly</option>
+                    <option value="League">League</option>
+                    <option value="Cup">Cup</option>
+                  </select>
+                </div>
+                <details style={{ marginBottom: '16px', cursor: 'pointer' }}>
+                  <summary style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Stats (optional)</summary>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '12px' }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}><label style={{ fontSize: '0.75rem' }}>P1 180s</label><input type="number" value={adminGameForm.p1_180s} onChange={e => setAdminGameForm({...adminGameForm, p1_180s: e.target.value})} /></div>
+                    <div className="form-group" style={{ marginBottom: 0 }}><label style={{ fontSize: '0.75rem' }}>P2 180s</label><input type="number" value={adminGameForm.p2_180s} onChange={e => setAdminGameForm({...adminGameForm, p2_180s: e.target.value})} /></div>
+                    <div className="form-group" style={{ marginBottom: 0 }}><label style={{ fontSize: '0.75rem' }}>P1 Checkout</label><input type="number" value={adminGameForm.p1_checkout} onChange={e => setAdminGameForm({...adminGameForm, p1_checkout: e.target.value})} /></div>
+                    <div className="form-group" style={{ marginBottom: 0 }}><label style={{ fontSize: '0.75rem' }}>P2 Checkout</label><input type="number" value={adminGameForm.p2_checkout} onChange={e => setAdminGameForm({...adminGameForm, p2_checkout: e.target.value})} /></div>
+                    <div className="form-group" style={{ marginBottom: 0 }}><label style={{ fontSize: '0.75rem' }}>P1 Doubles %</label><input type="number" step="0.1" value={adminGameForm.p1_doubles} onChange={e => setAdminGameForm({...adminGameForm, p1_doubles: e.target.value})} /></div>
+                    <div className="form-group" style={{ marginBottom: 0 }}><label style={{ fontSize: '0.75rem' }}>P2 Doubles %</label><input type="number" step="0.1" value={adminGameForm.p2_doubles} onChange={e => setAdminGameForm({...adminGameForm, p2_doubles: e.target.value})} /></div>
+                  </div>
+                </details>
                 <button className="btn btn-success" onClick={handleAdminSubmitGame} style={{ width: '100%' }}>Submit Game (Approved)</button>
               </div>
             )}
@@ -389,11 +482,11 @@ export default function Admin() {
                   </div>
                 </div>
               ))}
+              {((resultFilter === 'pending' ? pendingResults : resultFilter === 'approved' ? approvedResults : rejectedResults).length === 0) && <p style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No results found in this category.</p>}
             </div>
           </div>
         )}
 
-        {/* ... Rest of the tabs (Payments, Pot, Staff, etc.) remain as before but with showToast replaces ... */}
         {/* TAB: PAYMENTS */}
         {activeTab === 'payments' && (
           <div className="card glass">
@@ -408,8 +501,162 @@ export default function Admin() {
                    </div>
                    <button className="btn btn-primary btn-sm" onClick={() => handleApprovePayment(u)}>Approve Access</button>
                 </div>
+                {u.paymentProof && (
+                  <div style={{ marginTop: '10px' }}>
+                    <p style={{ fontSize: '0.75rem', marginBottom: '8px', color: 'var(--text-muted)' }}>Payment Receipt:</p>
+                    <img src={u.paymentProof} alt="Proof" style={{ width: '100%', maxWidth: '300px', borderRadius: '8px', border: '1px solid var(--border)' }} />
+                  </div>
+                )}
               </div>
             ))}
+            {pendingPayments.length === 0 && <p style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No payments awaiting approval.</p>}
+          </div>
+        )}
+
+        {/* TAB: MONEY POT */}
+        {activeTab === 'moneypot' && (
+          <div className="card glass">
+            <h3>League Financials</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginTop: '20px' }}>
+               <div className="glass" style={{ padding: '20px', borderRadius: '12px' }}>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Standard Pot (£5)</div>
+                  <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>£{subscriptionPot.toFixed(2)}</div>
+                  <div style={{ marginTop: '15px', display: 'flex', gap: '8px' }}>
+                     <input type="number" className="glass" style={{ flex: 1, padding: '8px' }} placeholder="+/- Amount" onChange={e => setPotAdjust({...potAdjust, standard: parseFloat(e.target.value) || 0})} />
+                     <button className="btn btn-secondary btn-sm" onClick={() => handleAdjustPot('standard')}>Adjust</button>
+                  </div>
+               </div>
+               <div className="glass" style={{ padding: '20px', borderRadius: '12px' }}>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Premium Pot (£10)</div>
+                  <div style={{ fontSize: '2.5rem', fontWeight: 900, color: '#fbbf24' }}>£{subscriptionPot10.toFixed(2)}</div>
+                  <div style={{ marginTop: '15px', display: 'flex', gap: '8px' }}>
+                     <input type="number" className="glass" style={{ flex: 1, padding: '8px' }} placeholder="+/- Amount" onChange={e => setPotAdjust({...potAdjust, premium: parseFloat(e.target.value) || 0})} />
+                     <button className="btn btn-secondary btn-sm" onClick={() => handleAdjustPot('premium')}>Adjust</button>
+                  </div>
+               </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: STAFF */}
+        {activeTab === 'admins' && (
+          <div className="card glass">
+            <h3>Staff & Permissions</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '20px' }}>
+               {allPlayers.filter(p => p.isAdmin || p.isTournamentAdmin || p.isCupAdmin).map(p => (
+                 <div key={p.id} className="glass" style={{ padding: '16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                       <div style={{ fontWeight: 700 }}>{p.username}</div>
+                       <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)' }}>{p.email}</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                       <label style={{ fontSize: '0.7rem', textAlign: 'center' }}>
+                          <input type="checkbox" checked={p.isAdmin || false} onChange={e => handleUpdateAdminRole(p.id, 'isAdmin', e.target.checked)} /><br/>Super
+                       </label>
+                       <label style={{ fontSize: '0.7rem', textAlign: 'center' }}>
+                          <input type="checkbox" checked={p.isTournamentAdmin || false} onChange={e => handleUpdateAdminRole(p.id, 'isTournamentAdmin', e.target.checked)} /><br/>Tourny
+                       </label>
+                       <label style={{ fontSize: '0.7rem', textAlign: 'center' }}>
+                          <input type="checkbox" checked={p.isCupAdmin || false} onChange={e => handleUpdateAdminRole(p.id, 'isCupAdmin', e.target.checked)} /><br/>Cup
+                       </label>
+                    </div>
+                 </div>
+               ))}
+            </div>
+
+            <div style={{ marginTop: '30px', paddingTop: '20px', borderTop: '1px solid var(--border)' }}>
+               <h4>Add New Staff Member</h4>
+               <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                  <UserSearchSelect users={allPlayers.filter(p => !p.isAdmin)} selectedId={''} onSelect={id => handleUpdateAdminRole(id, 'isTournamentAdmin', true)} label="Select User to Promote" />
+               </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: SEASONS */}
+        {activeTab === 'seasons' && (
+          <div className="card glass">
+            <h3>Season Management</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
+               <div className="glass" style={{ padding: '15px', borderRadius: '12px', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid var(--accent-cyan)' }}>
+                  <strong>ACTIVE SEASON:</strong> {localStorage.getItem('eliteArrowsCurrentSeason') || 'Not Set'}
+               </div>
+               {getSeasons().map(s => (
+                 <div key={s.id} className="glass" style={{ padding: '12px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>{s.name} ({s.status})</span>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                       <button className="btn btn-secondary btn-sm" onClick={() => { localStorage.setItem('eliteArrowsCurrentSeason', s.name); window.location.reload(); }}>Set Active</button>
+                       <button className="btn btn-danger btn-sm" onClick={async () => { await deleteDoc(doc(db, 'seasons', s.id)); triggerDataRefresh('seasons'); }}>🗑️</button>
+                    </div>
+                 </div>
+               ))}
+
+               <div style={{ marginTop: '20px' }}>
+                  <h4>Create New Season</h4>
+                  <input type="text" className="glass" placeholder="Season Name (e.g. Summer 2025)" style={{ width: '100%', padding: '12px', marginBottom: '10px' }} onChange={e => setSeasonForm({...seasonForm, name: e.target.value})} />
+                  <button className="btn btn-primary btn-block" onClick={handleCreateSeason}>Launch Season</button>
+               </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: CUPS */}
+        {activeTab === 'cups' && <CupManagement />}
+
+        {/* TAB: MEMBERS */}
+        {activeTab === 'players' && (
+          <div className="card glass">
+            <h3 style={{ marginBottom: '20px' }}>Global Membership List</h3>
+
+            <div style={{ marginBottom: '30px', padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '15px' }}>
+               <h4>Manually Grant Elite Pass</h4>
+               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginTop: '12px' }}>
+                  <UserSearchSelect users={allPlayers} selectedId={grantSubForm.player} onSelect={id => setGrantSubForm({...grantSubForm, player: id})} label="Target Player" />
+                  <select className="glass" style={{ padding: '10px' }} value={grantSubForm.tier} onChange={e => setGrantSubForm({...grantSubForm, tier: e.target.value})}>
+                     <option value="standard">Standard (£5)</option>
+                     <option value="premium">Premium (£10)</option>
+                  </select>
+                  <button className="btn btn-primary" onClick={handleGrantSubscription}>Activate Pass</button>
+               </div>
+            </div>
+
+            <div style={{ maxHeight: '500px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {allPlayers.map(p => (
+                <div key={p.id} className="player-card glass" style={{ padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontWeight: 600 }}>{p.username} {p.isSubscribed && <span style={{ color: 'var(--success)', fontSize: '0.6rem', border: '1px solid var(--success)', padding: '1px 4px', borderRadius: '4px', marginLeft: '5px' }}>PASSED</span>}</div>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{p.email} | Div: {p.division || 'Unassigned'}</div>
+                  </div>
+                  <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/profile/${p.id}`)}>View</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* TAB: TOKENS */}
+        {activeTab === 'tokens' && (
+          <div className="card glass">
+            <h3>Elite Token Disbursement</h3>
+            <div style={{ marginTop: '20px' }}>
+               <UserSearchSelect users={allPlayers} selectedId={tokenForm.player} onSelect={id => setTokenForm({...tokenForm, player: id})} label="Recipient" />
+               <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+                  <input type="number" className="glass" style={{ flex: 1, padding: '12px' }} placeholder="Amount" onChange={e => setTokenForm({...tokenForm, amount: parseInt(e.target.value) || 0})} />
+                  <select className="glass" style={{ padding: '10px' }} value={tokenForm.action} onChange={e => setTokenForm({...tokenForm, action: e.target.value})}>
+                     <option value="add">Add</option>
+                     <option value="remove">Remove</option>
+                  </select>
+               </div>
+               <button className="btn btn-primary btn-block" style={{ marginTop: '15px' }} onClick={async () => {
+                  const target = allPlayers.find(u => u.id === tokenForm.player)
+                  const current = target?.eliteTokens || 0
+                  const next = tokenForm.action === 'add' ? current + tokenForm.amount : Math.max(0, current - tokenForm.amount)
+                  await setDoc(doc(db, 'users', tokenForm.player), { eliteTokens: next }, { merge: true })
+                  await logAudit('ADJUST_TOKENS', `${tokenForm.action} ${tokenForm.amount} tokens to ${target?.username}`)
+                  triggerDataRefresh('users')
+                  showToast('Tokens updated', 'success')
+               }}>Update Token Balance</button>
+            </div>
           </div>
         )}
 
@@ -417,9 +664,41 @@ export default function Admin() {
         {activeTab === 'trophies' && (
           <div className="card glass">
             <h3>Trophy Room Management</h3>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '24px' }}>Award digital trophies to players for their achievements.</p>
+
             <div className="glass" style={{ padding: '24px', borderRadius: '16px' }}>
-              <UserSearchSelect users={allPlayers} selectedId={trophyForm.player} onSelect={id => setTrophyForm({...trophyForm, player: id})} label="Recipient" />
-              <button className="btn btn-primary btn-block" style={{marginTop:'16px'}} onClick={handleAwardTrophy}>Award Trophy</button>
+              <div className="form-group">
+                <label>Select Player</label>
+                <UserSearchSelect users={allPlayers} selectedId={trophyForm.player} onSelect={id => setTrophyForm({...trophyForm, player: id})} label="Recipient" />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 3fr', gap: '16px' }}>
+                <div className="form-group">
+                  <label>Icon</label>
+                  <select className="glass" value={trophyForm.icon} onChange={e => setTrophyForm({...trophyForm, icon: e.target.value})}>
+                    <option value="🏆">🏆 Trophy</option>
+                    <option value="🥇">🥇 Gold</option>
+                    <option value="🥈">🥈 Silver</option>
+                    <option value="🥉">🥉 Bronze</option>
+                    <option value="🎯">🎯 Bullseye</option>
+                    <option value="🔥">🔥 Hot Streak</option>
+                    <option value="👑">👑 Champion</option>
+                    <option value="🎖️">🎖️ Medal</option>
+                    <option value="🚀">🚀 Rising Star</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Trophy Name</label>
+                  <input className="glass" placeholder="e.g. League Champion, Most 180s" value={trophyForm.name} onChange={e => setTrophyForm({...trophyForm, name: e.target.value})} />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Season</label>
+                <input className="glass" placeholder="e.g. Season 1" value={trophyForm.season} onChange={e => setTrophyForm({...trophyForm, season: e.target.value})} />
+              </div>
+
+              <button className="btn btn-primary btn-block" onClick={handleAwardTrophy}>Award Trophy to Player</button>
             </div>
           </div>
         )}
