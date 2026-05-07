@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { db, doc, setDoc, getDocs, collection, deleteDoc } from '../firebase'
+import { db, doc, setDoc, getDocs, collection, deleteDoc, updateDoc } from '../firebase'
 import UserSearchSelect from '../components/UserSearchSelect'
 import CupManagement from './CupManagement'
 
@@ -19,7 +19,6 @@ export default function Admin() {
     getNews,
     postNews,
     deleteNews,
-    togglePinNews,
     adminData,
     updateAdminData,
     addToMoneyHistory,
@@ -34,11 +33,14 @@ export default function Admin() {
   const [refreshKey, setRefreshKey] = useState(0)
   const [isApproving, setIsApproving] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
+  const [resultFilter, setResultFilter] = useState('pending')
 
   // Form states
   const [gameForm, setGameForm] = useState({ player1: '', player2: '', score1: '', score2: '', gameType: 'Friendly', division: '' })
   const [tokenForm, setTokenForm] = useState({ player: '', amount: 0, action: 'add' })
-  const [seasonForm, setSeasonForm] = useState({ name: '', startDate: '2025-05-01', endDate: '2025-06-01' })
+  const [seasonForm, setSeasonForm] = useState({ name: '', startDate: new Date().toISOString().split('T')[0], endDate: '' })
+  const [grantSubForm, setGrantSubForm] = useState({ player: '', tier: 'standard' })
+  const [potAdjust, setPotAdjust] = useState({ standard: 0, premium: 0 })
 
   // Guard: wait for auth
   if (authLoading) return <div className="page glass"><div style={{ padding: '60px', textAlign: 'center', color: 'var(--accent-cyan)', fontWeight: 800 }}>Validating Admin Access...</div></div>
@@ -63,7 +65,11 @@ export default function Admin() {
   const allPlayers = getAllUsers() || []
   const allResults = getResults() || []
   const pendingResults = allResults.filter(r => String(r.status).toLowerCase() === 'pending')
+  const approvedResults = allResults.filter(r => String(r.status).toLowerCase() === 'approved')
+  const rejectedResults = allResults.filter(r => String(r.status).toLowerCase() === 'rejected')
+
   const pendingPayments = allPlayers.filter(u => u?.paymentPending && !u?.isSubscribed)
+  const subscribers = allPlayers.filter(u => u?.isSubscribed)
 
   const subscriptionPot = adminData?.subscriptionPot || 0
   const subscriptionPot10 = adminData?.subscriptionPot10 || 0
@@ -83,7 +89,9 @@ export default function Admin() {
     setTimeout(() => setSuccessMessage(''), 1800)
   }
 
-  const approveResult = async (resultId) => {
+  // --- Handlers ---
+
+  const handleApproveResult = async (resultId) => {
     if (isApproving) return
     setIsApproving(true)
     try {
@@ -96,7 +104,7 @@ export default function Admin() {
     setIsApproving(false)
   }
 
-  const rejectResult = async (resultId) => {
+  const handleRejectResult = async (resultId) => {
     try {
       const res = allResults.find(r => String(r.id) === String(resultId))
       if (!res) throw new Error('Result not found')
@@ -106,18 +114,77 @@ export default function Admin() {
     } catch (e) { alert(e.message) }
   }
 
-  const approvePayment = async (userId) => {
+  const handleDeleteResult = async (resultId) => {
+    if (!window.confirm('Permanently delete this result?')) return
     try {
-      const target = allPlayers.find(u => u.id === userId)
-      if (!target) return
-      await setDoc(doc(db, 'users', userId), { isSubscribed: true, paymentPending: false, subscriptionDate: new Date().toISOString() }, { merge: true })
+      await deleteDoc(doc(db, 'results', String(resultId)))
+      triggerDataRefresh('results')
+      alert('Result Deleted')
+    } catch (e) { alert(e.message) }
+  }
 
-      const amount = 5
-      await updateAdminData({ subscriptionPot: subscriptionPot + amount })
-      addToMoneyHistory('subscription', amount, `Payment from ${target.username}`)
+  const handleApprovePayment = async (u) => {
+    try {
+      const tier = u.paymentMethod === 'paypal10' ? 10 : 5
+      const updates = {
+        isSubscribed: true,
+        paymentPending: false,
+        subscriptionDate: new Date().toISOString(),
+        subscriptionTier: tier === 10 ? 'premium' : 'standard'
+      }
+      await setDoc(doc(db, 'users', u.id), updates, { merge: true })
+
+      const potKey = tier === 10 ? 'subscriptionPot10' : 'subscriptionPot'
+      const currentPot = tier === 10 ? subscriptionPot10 : subscriptionPot
+      await updateAdminData({ [potKey]: currentPot + tier })
+      addToMoneyHistory('subscription', tier, `Approved payment: ${u.username}`)
 
       triggerDataRefresh('users')
-      alert('Payment Approved!')
+      showSuccess('Subscription Approved!')
+    } catch (e) { alert(e.message) }
+  }
+
+  const handleGrantSubscription = async () => {
+    if (!grantSubForm.player) return alert('Select a player')
+    try {
+      const target = allPlayers.find(p => p.id === grantSubForm.player)
+      await setDoc(doc(db, 'users', target.id), {
+        isSubscribed: true,
+        subscriptionDate: new Date().toISOString(),
+        subscriptionTier: grantSubForm.tier
+      }, { merge: true })
+      triggerDataRefresh('users')
+      alert(`Granted ${grantSubForm.tier} subscription to ${target.username}`)
+    } catch (e) { alert(e.message) }
+  }
+
+  const handleUpdateAdminRole = async (targetId, role, value) => {
+    try {
+      await setDoc(doc(db, 'users', targetId), { [role]: value }, { merge: true })
+      triggerDataRefresh('users')
+      alert('Permissions updated')
+    } catch (e) { alert(e.message) }
+  }
+
+  const handleCreateSeason = async () => {
+    if (!seasonForm.name) return alert('Name required')
+    try {
+      const id = Date.now().toString()
+      await setDoc(doc(db, 'seasons', id), { ...seasonForm, id, createdAt: new Date().toISOString(), status: 'active' })
+      triggerDataRefresh('seasons')
+      alert('Season Created!')
+    } catch (e) { alert(e.message) }
+  }
+
+  const handleAdjustPot = async (tier) => {
+    const amount = tier === 'standard' ? potAdjust.standard : potAdjust.premium
+    const key = tier === 'standard' ? 'subscriptionPot' : 'subscriptionPot10'
+    const current = tier === 'standard' ? subscriptionPot : subscriptionPot10
+    try {
+      await updateAdminData({ [key]: current + amount })
+      addToMoneyHistory('adjustment', amount, `Manual pot adjustment (${tier})`)
+      alert('Pot adjusted')
+      setPotAdjust({ ...potAdjust, [tier]: 0 })
     } catch (e) { alert(e.message) }
   }
 
@@ -125,10 +192,9 @@ export default function Admin() {
     { id: 'results', label: 'Scores', count: pendingResults.length },
     { id: 'payments', label: 'Payments', count: pendingPayments.length },
     { id: 'moneypot', label: 'Finances' },
-    { id: 'cups', label: 'Cups' },
-    { id: 'players', label: 'Players' },
-    { id: 'news', label: 'News' },
     { id: 'admins', label: 'Staff' },
+    { id: 'cups', label: 'Cups' },
+    { id: 'players', label: 'Members' },
     { id: 'seasons', label: 'Seasons' },
     { id: 'tokens', label: 'Tokens' },
     { id: 'maintenance', label: 'System' }
@@ -146,8 +212,8 @@ export default function Admin() {
       )}
 
       <div className="page-header" style={{ marginBottom: '20px' }}>
-        <h1 className="page-title text-gradient" style={{ fontSize: '2rem' }}>Admin Dashboard</h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Welcome, {user.username}</p>
+        <h1 className="page-title text-gradient" style={{ fontSize: '2rem' }}>Admin Control Room</h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Comprehensive League Management</p>
       </div>
 
       <div style={{ display: 'flex', overflowX: 'auto', gap: '10px', marginBottom: '24px', paddingBottom: '10px', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
@@ -165,73 +231,181 @@ export default function Admin() {
       </div>
 
       <div className="admin-body">
+
+        {/* TAB: RESULTS */}
         {activeTab === 'results' && (
           <div className="card glass">
-            <h3 style={{ marginBottom: '20px' }}>Pending Score Approvals</h3>
-            {pendingResults.length === 0 ? <p style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No scores pending review.</p> :
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {pendingResults.map(r => (
-                  <div key={r.id} className="glass" style={{ padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                      <span style={{ fontWeight: 700 }}>{r.player1} <span style={{ color: 'var(--accent-cyan)' }}>vs</span> {r.player2}</span>
-                      <span style={{ fontWeight: 900, color: 'var(--accent-cyan)' }}>{r.score1}-{r.score2}</span>
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '10px' }}>{r.gameType} | {r.date}</div>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <button className="btn btn-primary btn-sm btn-block" onClick={() => approveResult(r.id)} disabled={isApproving}>Approve</button>
-                      <button className="btn btn-danger btn-sm btn-block" onClick={() => rejectResult(r.id)}>Reject</button>
-                    </div>
-                  </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', alignItems: 'center' }}>
+              <h3>Match History & Review</h3>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {['pending', 'approved', 'rejected'].map(f => (
+                  <button key={f} className={`btn btn-sm ${resultFilter === f ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setResultFilter(f)}>{f.toUpperCase()}</button>
                 ))}
               </div>
-            }
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {(resultFilter === 'pending' ? pendingResults : resultFilter === 'approved' ? approvedResults : rejectedResults).map(r => (
+                <div key={r.id} className="result-item glass" style={{ padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                    <span style={{ fontWeight: 700 }}>{r.player1} <span style={{ color: 'var(--accent-cyan)' }}>vs</span> {r.player2}</span>
+                    <span style={{ fontWeight: 900, color: 'var(--accent-cyan)' }}>{r.score1}-{r.score2}</span>
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '10px' }}>
+                    {r.gameType} | {r.date} | Sub: {r.submittedBy || 'Player'}
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {resultFilter === 'pending' && <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => handleApproveResult(r.id)}>Approve</button>}
+                    {resultFilter === 'pending' && <button className="btn btn-danger btn-sm" style={{ flex: 1 }} onClick={() => handleRejectResult(r.id)}>Reject</button>}
+                    {resultFilter !== 'pending' && <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => handleApproveResult(r.id)}>Restore/Reset</button>}
+                    <button className="btn btn-danger btn-sm" style={{ padding: '8px' }} onClick={() => handleDeleteResult(r.id)}>🗑️</button>
+                  </div>
+                </div>
+              ))}
+              {allResults.length === 0 && <p style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No results found in this category.</p>}
+            </div>
           </div>
         )}
 
+        {/* TAB: PAYMENTS */}
         {activeTab === 'payments' && (
           <div className="card glass">
-            <h3 style={{ marginBottom: '20px' }}>Subscription Approvals</h3>
-            {pendingPayments.length === 0 ? <p style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No payments to review.</p> :
-              pendingPayments.map(u => (
-                <div key={u.id} className="player-card glass" style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                  <div>
-                    <div style={{ fontWeight: 700 }}>{u.username}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{u.email}</div>
-                  </div>
-                  <button className="btn btn-primary btn-sm" onClick={() => approvePayment(u.id)}>Approve £5</button>
+            <h3 style={{ marginBottom: '20px' }}>Pending Subscriptions</h3>
+            {pendingPayments.map(u => (
+              <div key={u.id} className="glass" style={{ padding: '20px', borderRadius: '12px', marginBottom: '15px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
+                   <div>
+                      <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>{u.username}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{u.email}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)', marginTop: '4px' }}>Method: {u.paymentMethod || 'Unknown'}</div>
+                   </div>
+                   <button className="btn btn-primary btn-sm" onClick={() => handleApprovePayment(u)}>Approve Access</button>
                 </div>
-              ))
-            }
+                {u.paymentProof && (
+                  <div style={{ marginTop: '10px' }}>
+                    <p style={{ fontSize: '0.75rem', marginBottom: '8px', color: 'var(--text-muted)' }}>Payment Receipt:</p>
+                    <img src={u.paymentProof} alt="Proof" style={{ width: '100%', maxWidth: '300px', borderRadius: '8px', border: '1px solid var(--border)' }} />
+                  </div>
+                )}
+              </div>
+            ))}
+            {pendingPayments.length === 0 && <p style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No payments awaiting approval.</p>}
           </div>
         )}
 
+        {/* TAB: MONEY POT */}
         {activeTab === 'moneypot' && (
           <div className="card glass">
-            <h3>League Pot Control</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '20px' }}>
-               <div style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '5px' }}>Standard (£5)</div>
-                  <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>£{subscriptionPot.toFixed(2)}</div>
+            <h3>League Financials</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginTop: '20px' }}>
+               <div className="glass" style={{ padding: '20px', borderRadius: '12px' }}>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Standard Pot (£5)</div>
+                  <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>£{subscriptionPot.toFixed(2)}</div>
+                  <div style={{ marginTop: '15px', display: 'flex', gap: '8px' }}>
+                     <input type="number" className="glass" style={{ flex: 1, padding: '8px' }} placeholder="+/- Amount" onChange={e => setPotAdjust({...potAdjust, standard: parseFloat(e.target.value) || 0})} />
+                     <button className="btn btn-secondary btn-sm" onClick={() => handleAdjustPot('standard')}>Adjust</button>
+                  </div>
                </div>
-               <div style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '5px' }}>Premium (£10)</div>
-                  <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#fbbf24' }}>£{subscriptionPot10.toFixed(2)}</div>
+               <div className="glass" style={{ padding: '20px', borderRadius: '12px' }}>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Premium Pot (£10)</div>
+                  <div style={{ fontSize: '2.5rem', fontWeight: 900, color: '#fbbf24' }}>£{subscriptionPot10.toFixed(2)}</div>
+                  <div style={{ marginTop: '15px', display: 'flex', gap: '8px' }}>
+                     <input type="number" className="glass" style={{ flex: 1, padding: '8px' }} placeholder="+/- Amount" onChange={e => setPotAdjust({...potAdjust, premium: parseFloat(e.target.value) || 0})} />
+                     <button className="btn btn-secondary btn-sm" onClick={() => handleAdjustPot('premium')}>Adjust</button>
+                  </div>
                </div>
             </div>
           </div>
         )}
 
+        {/* TAB: STAFF */}
+        {activeTab === 'admins' && (
+          <div className="card glass">
+            <h3>Staff & Permissions</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '20px' }}>
+               {allPlayers.filter(p => p.isAdmin || p.isTournamentAdmin || p.isCupAdmin).map(p => (
+                 <div key={p.id} className="glass" style={{ padding: '16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                       <div style={{ fontWeight: 700 }}>{p.username}</div>
+                       <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)' }}>{p.email}</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                       <label style={{ fontSize: '0.7rem', textAlign: 'center' }}>
+                          <input type="checkbox" checked={p.isAdmin || false} onChange={e => handleUpdateAdminRole(p.id, 'isAdmin', e.target.checked)} /><br/>Super
+                       </label>
+                       <label style={{ fontSize: '0.7rem', textAlign: 'center' }}>
+                          <input type="checkbox" checked={p.isTournamentAdmin || false} onChange={e => handleUpdateAdminRole(p.id, 'isTournamentAdmin', e.target.checked)} /><br/>Tourny
+                       </label>
+                       <label style={{ fontSize: '0.7rem', textAlign: 'center' }}>
+                          <input type="checkbox" checked={p.isCupAdmin || false} onChange={e => handleUpdateAdminRole(p.id, 'isCupAdmin', e.target.checked)} /><br/>Cup
+                       </label>
+                    </div>
+                 </div>
+               ))}
+            </div>
+
+            <div style={{ marginTop: '30px', paddingTop: '20px', borderTop: '1px solid var(--border)' }}>
+               <h4>Add New Staff Member</h4>
+               <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                  <UserSearchSelect users={allPlayers.filter(p => !p.isAdmin)} selectedId={''} onSelect={id => handleUpdateAdminRole(id, 'isTournamentAdmin', true)} label="Select User to Promote" />
+               </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: SEASONS */}
+        {activeTab === 'seasons' && (
+          <div className="card glass">
+            <h3>Season Management</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
+               <div className="glass" style={{ padding: '15px', borderRadius: '12px', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid var(--accent-cyan)' }}>
+                  <strong>ACTIVE SEASON:</strong> {localStorage.getItem('eliteArrowsCurrentSeason') || 'Not Set'}
+               </div>
+               {getSeasons().map(s => (
+                 <div key={s.id} className="glass" style={{ padding: '12px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>{s.name} ({s.status})</span>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                       <button className="btn btn-secondary btn-sm" onClick={() => { localStorage.setItem('eliteArrowsCurrentSeason', s.name); window.location.reload(); }}>Set Active</button>
+                       <button className="btn btn-danger btn-sm" onClick={async () => { await deleteDoc(doc(db, 'seasons', s.id)); triggerDataRefresh('seasons'); }}>🗑️</button>
+                    </div>
+                 </div>
+               ))}
+
+               <div style={{ marginTop: '20px' }}>
+                  <h4>Create New Season</h4>
+                  <input type="text" className="glass" placeholder="Season Name (e.g. Summer 2025)" style={{ width: '100%', padding: '12px', marginBottom: '10px' }} onChange={e => setSeasonForm({...seasonForm, name: e.target.value})} />
+                  <button className="btn btn-primary btn-block" onClick={handleCreateSeason}>Launch Season</button>
+               </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: CUPS */}
         {activeTab === 'cups' && <CupManagement />}
 
+        {/* TAB: MEMBERS */}
         {activeTab === 'players' && (
           <div className="card glass">
-            <h3 style={{ marginBottom: '20px' }}>League Members ({allPlayers.length})</h3>
+            <h3 style={{ marginBottom: '20px' }}>Global Membership List</h3>
+
+            <div style={{ marginBottom: '30px', padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '15px' }}>
+               <h4>Manually Grant Elite Pass</h4>
+               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginTop: '12px' }}>
+                  <UserSearchSelect users={allPlayers} selectedId={grantSubForm.player} onSelect={id => setGrantSubForm({...grantSubForm, player: id})} label="Target Player" />
+                  <select className="glass" style={{ padding: '10px' }} value={grantSubForm.tier} onChange={e => setGrantSubForm({...grantSubForm, tier: e.target.value})}>
+                     <option value="standard">Standard (£5)</option>
+                     <option value="premium">Premium (£10)</option>
+                  </select>
+                  <button className="btn btn-primary" onClick={handleGrantSubscription}>Activate Pass</button>
+               </div>
+            </div>
+
             <div style={{ maxHeight: '500px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {allPlayers.map(p => (
                 <div key={p.id} className="player-card glass" style={{ padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <div style={{ fontWeight: 600 }}>{p.username}</div>
-                    <div style={{ fontSize: '0.65rem', color: 'var(--accent-cyan)', textTransform: 'uppercase', fontWeight: 800 }}>{p.division || 'Unassigned'}</div>
+                    <div style={{ fontWeight: 600 }}>{p.username} {p.isSubscribed && <span style={{ color: 'var(--success)', fontSize: '0.6rem', border: '1px solid var(--success)', padding: '1px 4px', borderRadius: '4px', marginLeft: '5px' }}>PASSED</span>}</div>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{p.email} | Div: {p.division || 'Unassigned'}</div>
                   </div>
                   <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/profile/${p.id}`)}>View</button>
                 </div>
@@ -240,92 +414,43 @@ export default function Admin() {
           </div>
         )}
 
-        {activeTab === 'news' && (
-          <div className="card glass">
-            <h3 style={{ marginBottom: '20px' }}>Global Announcements</h3>
-            <textarea id="newsContent" className="glass" placeholder="Write message..." rows={4} style={{ width: '100%', padding: '15px', borderRadius: '12px', marginBottom: '12px' }} />
-            <button className="btn btn-primary btn-block" onClick={async () => {
-              const msg = document.getElementById('newsContent').value
-              if (msg) {
-                await postNews("Notice", msg, true)
-                document.getElementById('newsContent').value = ''
-                alert('Published to everyone!')
-              }
-            }}>Publish Notice</button>
-
-            <div style={{ marginTop: '30px' }}>
-               <h4>Past Posts</h4>
-               {getNews().map(item => (
-                 <div key={item.id} style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', marginTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: '0.85rem' }}>{item.title} - {new Date(item.createdAt).toLocaleDateString()}</div>
-                    <button className="btn btn-danger btn-sm" style={{ padding: '2px 8px' }} onClick={() => deleteNews(item.id)}>Del</button>
-                 </div>
-               ))}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'admins' && (
-          <div className="card glass">
-            <h3>Staff & Admins</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' }}>
-               {allPlayers.filter(u => u.isAdmin || u.isTournamentAdmin || u.isCupAdmin).map(u => (
-                 <div key={u.id} className="glass" style={{ padding: '12px', borderRadius: '10px' }}>
-                    <div style={{ fontWeight: 700 }}>{u.username}</div>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)' }}>
-                       {u.isAdmin && '[SUPER ADMIN] '}
-                       {u.isTournamentAdmin && '[TOURNAMENT] '}
-                       {u.isCupAdmin && '[CUP ADMIN] '}
-                    </div>
-                 </div>
-               ))}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'seasons' && (
-          <div className="card glass">
-            <h3>Season Management</h3>
-            <div style={{ marginBottom: '20px', padding: '15px', background: 'var(--accent-cyan)', color: 'black', borderRadius: '8px', fontWeight: 800, textAlign: 'center' }}>
-               CURRENT: {localStorage.getItem('eliteArrowsCurrentSeason') || 'Season 1'}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-               {getSeasons().map(s => (
-                 <div key={s.id} className="glass" style={{ padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>{s.name}</span>
-                    <button className="btn btn-secondary btn-sm" onClick={() => { localStorage.setItem('eliteArrowsCurrentSeason', s.name); alert('Active season changed'); window.location.reload(); }}>Set Active</button>
-                 </div>
-               ))}
-            </div>
-          </div>
-        )}
-
+        {/* TAB: TOKENS */}
         {activeTab === 'tokens' && (
           <div className="card glass">
-            <h3>Elite Token Control</h3>
-            <UserSearchSelect users={allPlayers} selectedId={tokenForm.player} onSelect={id => setTokenForm({...tokenForm, player: id})} label="Select Player" />
-            <input type="number" className="glass" style={{ width: '100%', marginTop: '15px', padding: '12px' }} placeholder="Amount" onChange={e => setTokenForm({...tokenForm, amount: parseInt(e.target.value)})} />
-            <button className="btn btn-primary btn-block" style={{ marginTop: '15px' }} onClick={async () => {
-               if (!tokenForm.player || !tokenForm.amount) return alert('Fill fields')
-               const target = allPlayers.find(u => u.id === tokenForm.player)
-               const next = (target.eliteTokens || 0) + tokenForm.amount
-               await updateOtherUser(tokenForm.player, { eliteTokens: next })
-               alert('Tokens added!')
-            }}>Grant Tokens</button>
+            <h3>Elite Token Disbursement</h3>
+            <div style={{ marginTop: '20px' }}>
+               <UserSearchSelect users={allPlayers} selectedId={tokenForm.player} onSelect={id => setTokenForm({...tokenForm, player: id})} label="Recipient" />
+               <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+                  <input type="number" className="glass" style={{ flex: 1, padding: '12px' }} placeholder="Amount" onChange={e => setTokenForm({...tokenForm, amount: parseInt(e.target.value) || 0})} />
+                  <select className="glass" style={{ padding: '10px' }} value={tokenForm.action} onChange={e => setTokenForm({...tokenForm, action: e.target.value})}>
+                     <option value="add">Add</option>
+                     <option value="remove">Remove</option>
+                  </select>
+               </div>
+               <button className="btn btn-primary btn-block" style={{ marginTop: '15px' }} onClick={async () => {
+                  const target = allPlayers.find(u => u.id === tokenForm.player)
+                  const current = target.eliteTokens || 0
+                  const next = tokenForm.action === 'add' ? current + tokenForm.amount : Math.max(0, current - tokenForm.amount)
+                  await setDoc(doc(db, 'users', tokenForm.player), { eliteTokens: next }, { merge: true })
+                  triggerDataRefresh('users')
+                  alert('Tokens updated')
+               }}>Update Token Balance</button>
+            </div>
           </div>
         )}
 
         {activeTab === 'maintenance' && (
           <div className="card glass">
-            <h3>System Status</h3>
+            <h3>System Status & Broadcast</h3>
             <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px', cursor: 'pointer' }}>
               <input type="checkbox" checked={adminData?.isMaintenanceMode || false} onChange={e => updateAdminData({ isMaintenanceMode: e.target.checked })} />
-              <span style={{ fontWeight: 600 }}>Enable Maintenance Banner</span>
+              <span style={{ fontWeight: 600 }}>Global Maintenance Lock</span>
             </label>
-            <textarea className="glass" style={{ width: '100%', padding: '15px', borderRadius: '12px', marginBottom: '10px' }} rows={3} placeholder="Message..." defaultValue={adminData?.maintenanceMessage || ''} id="maintInput" />
-            <button className="btn btn-primary btn-block" onClick={() => updateAdminData({ maintenanceMessage: document.getElementById('maintInput').value })}>Update Global Message</button>
+            <textarea className="glass" style={{ width: '100%', padding: '15px', borderRadius: '12px', marginBottom: '10px' }} rows={3} placeholder="Banner message..." defaultValue={adminData?.maintenanceMessage || ''} id="maintMsgInput" />
+            <button className="btn btn-primary btn-block" onClick={() => updateAdminData({ maintenanceMessage: document.getElementById('maintMsgInput').value })}>Broadcast Update</button>
           </div>
         )}
+
       </div>
     </div>
   )
