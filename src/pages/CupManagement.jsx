@@ -318,6 +318,103 @@ function CupManagement() {
     }
   }
 
+  const reactivateCup = async (cup) => {
+    const confirmed = window.confirm(`Reactivate cup "${cup.name}"?`)
+    if (!confirmed) return
+
+    const cupsData = getCups()
+    const cupIndex = cupsData.findIndex(c => String(c.id) === String(cup.id))
+    if (cupIndex !== -1) {
+      const updatedCup = { ...cupsData[cupIndex], status: 'active' }
+
+      try {
+        await setDoc(doc(db, 'cups', String(cup.id)), updatedCup, { merge: true })
+        alert('Cup reactivated!')
+        triggerDataRefresh('cups')
+        setRefreshKey(prev => prev + 1)
+      } catch (e) {
+        console.log('Error saving to Firebase:', e)
+        alert('Failed to reactivate cup: ' + e.message)
+      }
+    }
+  }
+
+  const deleteMatchResult = async (cup, match) => {
+    const confirmed = window.confirm('Delete this result? This will clear the winner and any advancement in the bracket.')
+    if (!confirmed) return
+
+    try {
+      const allCups = getCups()
+      const cupIndex = allCups.findIndex(c => String(c.id) === String(cup.id))
+      if (cupIndex === -1) return
+
+      const cupData = { ...allCups[cupIndex] }
+      let updatedMatches = [...(cupData.matches || [])]
+
+      const matchIndex = updatedMatches.findIndex(m => String(m.id) === String(match.id))
+      if (matchIndex === -1) return
+
+      const targetMatch = updatedMatches[matchIndex]
+      const oldWinnerId = targetMatch.winner
+      const resultIdToDelete = targetMatch.resultId
+
+      // 1. Clear this match
+      updatedMatches[matchIndex] = {
+        ...targetMatch,
+        winner: null,
+        score1: null,
+        score2: null,
+        resultId: null
+      }
+
+      // 2. Clear advancement in next match if applicable
+      if (targetMatch.nextMatchId && oldWinnerId) {
+        const nextMatchIndex = updatedMatches.findIndex(m => String(m.id) === String(targetMatch.nextMatchId))
+        if (nextMatchIndex !== -1) {
+          const nextMatch = { ...updatedMatches[nextMatchIndex] }
+          if (String(nextMatch.player1) === String(oldWinnerId)) {
+            nextMatch.player1 = null
+          } else if (String(nextMatch.player2) === String(oldWinnerId)) {
+            nextMatch.player2 = null
+          }
+          updatedMatches[nextMatchIndex] = nextMatch
+        }
+      }
+
+      const updatedCup = { ...cupData, matches: updatedMatches, status: 'active' }
+      await setDoc(doc(db, 'cups', String(cup.id)), updatedCup, { merge: true })
+
+      // 3. Delete result record if it exists
+      if (resultIdToDelete) {
+        try {
+          await deleteDoc(doc(db, 'results', resultIdToDelete))
+        } catch (err) {
+          console.warn('Result record might already be deleted or missing:', err)
+        }
+      }
+
+      // 4. Reset fixture if it exists
+      const allFixtures = getFixtures()
+      const fixture = allFixtures.find(f => String(f.cupId) === String(cup.id) && String(f.matchId) === String(match.id))
+      if (fixture) {
+        await setDoc(doc(db, 'fixtures', fixture.id.toString()), {
+          status: 'accepted',
+          score1: null,
+          score2: null,
+          winnerId: null,
+          resultId: null
+        }, { merge: true })
+      }
+
+      alert('Match result cleared successfully.')
+      triggerDataRefresh('all')
+      setRefreshKey(prev => prev + 1)
+    } catch (e) {
+      console.error('Error deleting match result:', e)
+      alert('Error deleting result: ' + e.message)
+    }
+  }
+
   if (cups.length === 0) {
     return (
       <div className="card">
@@ -377,9 +474,13 @@ function CupManagement() {
                 }}>
                   {cup.status === 'completed' ? 'Completed' : 'Active'}
                 </span>
-                {cup.status !== 'completed' && (
+                {cup.status !== 'completed' ? (
                   <button className="btn btn-success btn-sm" onClick={() => completeCup(cup)}>
                     Complete Cup
+                  </button>
+                ) : (
+                  <button className="btn btn-warning btn-sm" onClick={() => reactivateCup(cup)}>
+                    Reactivate Cup
                   </button>
                 )}
                 <button className="btn btn-danger btn-sm" onClick={() => deleteCup(cup)}>
@@ -416,13 +517,21 @@ function CupManagement() {
                       </div>
                     </div>
                     {match.winner ? (
-                      <div style={{ textAlign: 'right' }}>
-                        <span style={{ color: 'var(--success)', fontWeight: 'bold' }}>
-                          Winner: {winnerName}
-                        </span>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                          Score: {scores ? `${scores.score1}-${scores.score2}` : 'Not recorded'}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                        <div style={{ textAlign: 'right' }}>
+                          <span style={{ color: 'var(--success)', fontWeight: 'bold' }}>
+                            Winner: {winnerName}
+                          </span>
+                          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                            Score: {scores ? `${scores.score1}-${scores.score2}` : 'Not recorded'}
+                          </div>
                         </div>
+                        <button
+                          className="btn btn-danger btn-sm"
+                          onClick={() => deleteMatchResult(cup, match)}
+                        >
+                          Delete Result
+                        </button>
                       </div>
                     ) : (
                       <button 
