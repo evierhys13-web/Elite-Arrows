@@ -147,6 +147,15 @@ function CupManagement() {
     const resultId = `admin_cup_${Date.now()}`
 
     try {
+      const safeInt = (val) => {
+        const parsed = parseInt(val)
+        return isNaN(parsed) ? 0 : parsed
+      }
+      const safeFloat = (val) => {
+        const parsed = parseFloat(val)
+        return isNaN(parsed) ? 0 : parsed
+      }
+
       // 1. Create Result Record
       const newResult = {
         id: resultId,
@@ -168,14 +177,14 @@ function CupManagement() {
         submittedBy: 'admin',
         proofImage: proofImage || '',
         player1Stats: {
-          '180s': parseInt(p1_180s) || 0,
-          highestCheckout: parseInt(p1_checkout) || 0,
-          doubleSuccess: parseFloat(p1_doubles) || 0
+          '180s': safeInt(p1_180s),
+          highestCheckout: safeInt(p1_checkout),
+          doubleSuccess: safeFloat(p1_doubles)
         },
         player2Stats: {
-          '180s': parseInt(p2_180s) || 0,
-          highestCheckout: parseInt(p2_checkout) || 0,
-          doubleSuccess: parseFloat(p2_doubles) || 0
+          '180s': safeInt(p2_180s),
+          highestCheckout: safeInt(p2_checkout),
+          doubleSuccess: safeFloat(p2_doubles)
         }
       }
 
