@@ -7,6 +7,8 @@ import CupManagement from './CupManagement'
 import { getNormalizedResultSignature, getResultOverrideKeys, getResultSignature } from '../utils/resultIdentity'
 import { derivePlayerStatsFromResults, getPersistedPlayerStats } from '../utils/playerStats'
 
+const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
+
 export default function Admin() {
   const { user, loading: authLoading, notifications, getAllUsers, updateUser, updateOtherUser, getResults, updateResults, getFixtures, updateFixtures, getCups, getSupportRequests, getSeasons, getNews, postNews, deleteNews, togglePinNews, adminData, updateAdminData, addToMoneyHistory, triggerDataRefresh, dataRefreshTrigger, notifyUser, notifyAllSubscribers } = useAuth()
   const navigate = useNavigate()
@@ -917,50 +919,12 @@ const rejectResult = async (resultId) => {
     setGameForm({ player1: '', player2: '', score1: '', score2: '', gameType: 'Friendly', division: '' })
   }
 
-  const pendingAdmins = getAllUsers().filter(u => u.adminRequestPending && !u.isAdmin && !u.isTournamentAdmin)
-  const pendingPayments = getAllUsers().filter(u => u.paymentPending && !u.isSubscribed)
-  const subscribers = getAllUsers().filter(u => u.isSubscribed)
-  const freeUsers = getAllUsers().filter(u => !u.isSubscribed && !u.paymentPending)
-  const tournamentAdmins = getAllUsers().filter(u => u.isTournamentAdmin)
-  const fixtureActivity = notifications.filter(n => n.type === 'fixture_activity').slice(0, 50)
-
-  const isDbAdmin = user?.isAdmin === true
-  const canAccess = isEmailAdmin || isDbAdmin || user?.isTournamentAdmin || user?.isCupAdmin
-  
-  if (!canAccess) {
-    return (
-      <div className="page">
-        <div className="page-header">
-          <h1 className="page-title">Access Denied</h1>
-        </div>
-        <div className="card">
-          <p style={{ color: 'var(--text-muted)', textAlign: 'center' }}>
-            You do not have access to this page.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const isFullAdmin = user?.isAdmin || ADMIN_EMAILS.includes(user?.email?.toLowerCase())
-
-  if (authLoading) return <div className="page"><div className="card glass">Loading profile...</div></div>
-  if (!user) return <div className="page"><div className="card glass">Please log in to access this page.</div></div>
-
-  const filteredManagedResults = approvedResults.filter(result => (
-    getManagedResultStatus(result) === resultFilter
-  ))
-
-  const pendingAdmins = getAllUsers().filter(u => u?.adminRequestPending && !u?.isAdmin && !u?.isTournamentAdmin)
-  const pendingPayments = getAllUsers().filter(u => u?.paymentPending && !u?.isSubscribed)
-  const subscribers = getAllUsers().filter(u => u?.isSubscribed)
-  const freeUsers = getAllUsers().filter(u => !u?.isSubscribed && !u?.paymentPending)
-  const tournamentAdmins = getAllUsers().filter(u => u?.isTournamentAdmin)
-  const fixtureActivity = (notifications || []).filter(n => n?.type === 'fixture_activity').slice(0, 50)
-
   const isEmailAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
   const isDbAdmin = user?.isAdmin === true
   const canAccess = isEmailAdmin || isDbAdmin || user?.isTournamentAdmin || user?.isCupAdmin
+
+  if (authLoading) return <div className="page"><div className="card glass">Loading profile...</div></div>
+  if (!user) return <div className="page"><div className="card glass">Please log in to access this page.</div></div>
 
   if (!canAccess) {
     return (
@@ -976,6 +940,18 @@ const rejectResult = async (resultId) => {
       </div>
     );
   }
+
+  const isFullAdmin = user?.isAdmin || ADMIN_EMAILS.includes(user?.email?.toLowerCase())
+  const filteredManagedResults = approvedResults.filter(result => (
+    getManagedResultStatus(result) === resultFilter
+  ))
+
+  const pendingAdmins = getAllUsers().filter(u => u?.adminRequestPending && !u?.isAdmin && !u?.isTournamentAdmin)
+  const pendingPayments = getAllUsers().filter(u => u?.paymentPending && !u?.isSubscribed)
+  const subscribers = getAllUsers().filter(u => u?.isSubscribed)
+  const freeUsers = getAllUsers().filter(u => !u?.isSubscribed && !u?.paymentPending)
+  const tournamentAdmins = getAllUsers().filter(u => u?.isTournamentAdmin)
+  const fixtureActivity = (notifications || []).filter(n => n?.type === 'fixture_activity').slice(0, 50)
 
   return (
     <div className="page animate-fade-in">

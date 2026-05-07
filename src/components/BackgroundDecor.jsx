@@ -28,64 +28,59 @@ export default function BackgroundDecor() {
       pointerEvents: 'none',
       zIndex: -1,
       overflow: 'hidden',
-      background: '#0a0a2e'
+      background: '#0f172a'
     }}>
-      {/* Brighter Launch Sensation - Radiant Purple/Blue Gradient */}
+      {/* High-Contrast Vibrant Launch Gradient */}
       <div style={{
         position: 'absolute',
         inset: 0,
         background: `
-          linear-gradient(135deg, #0a0a2e 0%, #312e81 30%, #5b21b6 60%, #4338ca 100%)
+          linear-gradient(135deg,
+            #0f172a 0%,
+            #312e81 25%,
+            #5b21b6 50%,
+            #7c3aed 75%,
+            #4338ca 100%
+          )
         `
       }} />
 
-      {/* Radiant Glowing Orbs - Brighter Sensation */}
+      {/* Radiant Atmospheric Glows */}
       <div style={{
         position: 'absolute',
-        top: '10%',
+        top: '5%',
         left: '5%',
-        width: '80%',
-        height: '80%',
+        width: '90%',
+        height: '90%',
         background: `
-          radial-gradient(circle at 20% 30%, rgba(139, 92, 246, 0.4) 0%, transparent 50%),
-          radial-gradient(circle at 80% 70%, rgba(0, 212, 255, 0.3) 0%, transparent 50%)
+          radial-gradient(circle at 15% 25%, rgba(139, 92, 246, 0.45) 0%, transparent 45%),
+          radial-gradient(circle at 85% 75%, rgba(0, 212, 255, 0.35) 0%, transparent 45%),
+          radial-gradient(circle at 50% 50%, rgba(124, 92, 252, 0.2) 0%, transparent 60%)
         `,
-        filter: 'blur(80px)'
+        filter: 'blur(70px)'
       }} />
 
-      {/* Vivid Violet Streak */}
-      <div style={{
-        position: 'absolute',
-        top: '-15%',
-        right: '-5%',
-        width: '70%',
-        height: '70%',
-        background: 'radial-gradient(circle, rgba(167, 139, 250, 0.2) 0%, transparent 70%)',
-        filter: 'blur(90px)',
-        transform: 'rotate(-10deg)'
-      }} />
-
-      {/* Modern Grid Overlay - Slightly more visible */}
+      {/* Modern Tech Grid */}
       <div style={{
         position: 'absolute',
         inset: 0,
         backgroundImage: `
-          linear-gradient(rgba(124, 92, 252, 0.08) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(124, 92, 252, 0.08) 1px, transparent 1px)
+          linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px)
         `,
-        backgroundSize: '120px 120px',
-        maskImage: 'radial-gradient(ellipse at 50% 50%, black 20%, transparent 95%)'
+        backgroundSize: '100px 100px',
+        maskImage: 'radial-gradient(ellipse at 50% 50%, black 10%, transparent 90%)'
       }} />
 
-      {/* Subtle Ghost Dartboard Pattern */}
+      {/* Subtle Dynamic Darts Pattern */}
       <div style={{
         position: 'absolute',
         top: '50%',
         left: '50%',
-        transform: 'translate(-50%, -50%) rotate(15deg)',
-        width: '1100px',
-        height: '1100px',
-        opacity: 0.05
+        transform: 'translate(-50%, -50%) rotate(-10deg)',
+        width: '1200px',
+        height: '1200px',
+        opacity: 0.06
       }}>
         <svg viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
           {segments.map((num, i) => {
@@ -94,11 +89,12 @@ export default function BackgroundDecor() {
             return (
               <path
                 key={`wedge-${i}`}
-                d={wedgePath(startAngle, endAngle, 140, 245)}
-                fill={i % 2 === 0 ? 'rgba(255,255,255,0.1)' : 'transparent'}
+                d={wedgePath(startAngle, endAngle, 150, 250)}
+                fill={i % 2 === 0 ? 'rgba(255,255,255,0.15)' : 'transparent'}
               />
             )
           })}
+          <circle cx="250" cy="250" r="248" stroke="rgba(255,255,255,0.1)" strokeWidth="1" fill="none" />
         </svg>
       </div>
     </div>
