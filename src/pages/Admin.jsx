@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { db, doc, setDoc, getDocs, collection, deleteDoc, updateDoc } from '../firebase'
+import { db, doc, setDoc, getDoc, getDocs, collection, deleteDoc, updateDoc } from '../firebase'
 import UserSearchSelect from '../components/UserSearchSelect'
 import CupManagement from './CupManagement'
 
@@ -37,6 +37,15 @@ export default function Admin() {
 
   // Form states
   const [gameForm, setGameForm] = useState({ player1: '', player2: '', score1: '', score2: '', gameType: 'Friendly', division: '' })
+  const [showSubmitGame, setShowSubmitGame] = useState(false)
+  const [adminGameForm, setAdminGameForm] = useState({
+    player1: '', player2: '',
+    score1: '', score2: '',
+    gameType: 'Friendly',
+    p1_180s: '', p2_180s: '',
+    p1_checkout: '', p2_checkout: '',
+    p1_doubles: '', p2_doubles: ''
+  })
   const [tokenForm, setTokenForm] = useState({ player: '', amount: 0, action: 'add' })
   const [seasonForm, setSeasonForm] = useState({ name: '', startDate: new Date().toISOString().split('T')[0], endDate: '' })
   const [grantSubForm, setGrantSubForm] = useState({ player: '', tier: 'standard' })
@@ -121,6 +130,40 @@ export default function Admin() {
       triggerDataRefresh('results')
       alert('Result Deleted')
     } catch (e) { alert(e.message) }
+  }
+
+  const handleAdminSubmitGame = async () => {
+    const f = adminGameForm
+    if (!f.player1 || !f.player2) return alert('Select both players.')
+    if (!f.score1 || !f.score2) return alert('Enter both scores.')
+    const s1 = parseInt(f.score1); const s2 = parseInt(f.score2)
+    if (isNaN(s1) || isNaN(s2)) return alert('Invalid scores.')
+
+    const p1 = allPlayers.find(u => String(u.id) === String(f.player1))
+    const p2 = allPlayers.find(u => String(u.id) === String(f.player2))
+    if (!p1 || !p2) return alert('Players not found.')
+
+    const resultId = `admin_${Date.now()}`
+    try {
+      await setDoc(doc(db, 'results', resultId), {
+        id: resultId,
+        player1: p1.username,
+        player1Id: p1.id,
+        player2: p2.username,
+        player2Id: p2.id,
+        score1: s1, score2: s2,
+        gameType: f.gameType,
+        status: 'approved',
+        date: new Date().toISOString().split('T')[0],
+        submittedAt: new Date().toISOString(),
+        submittedBy: 'admin',
+        player1Stats: { '180s': parseInt(f.p1_180s) || 0, highestCheckout: parseInt(f.p1_checkout) || 0, doubleSuccess: parseFloat(f.p1_doubles) || 0 },
+        player2Stats: { '180s': parseInt(f.p2_180s) || 0, highestCheckout: parseInt(f.p2_checkout) || 0, doubleSuccess: parseFloat(f.p2_doubles) || 0 }
+      })
+      setAdminGameForm({ player1: '', player2: '', score1: '', score2: '', gameType: 'Friendly', p1_180s: '', p2_180s: '', p1_checkout: '', p2_checkout: '', p1_doubles: '', p2_doubles: '' })
+      triggerDataRefresh('results')
+      showSuccess('Game submitted!')
+    } catch (e) { alert('Error: ' + e.message) }
   }
 
   const handleApprovePayment = async (u) => {
