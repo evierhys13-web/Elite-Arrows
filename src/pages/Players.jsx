@@ -141,6 +141,7 @@ export default function Players() {
                     💬 Chat
                   </button>
                 )}
+                {(user.friends || []).includes(player.id) ? (
                   <button
                     className="btn btn-secondary"
                     style={{ padding: '8px 16px' }}

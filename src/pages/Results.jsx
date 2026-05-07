@@ -49,7 +49,7 @@ export default function Results() {
   }
 
   const handleDispute = async (result) => {
-    const reason = prompt('Please enter the reason for your dispute (e.g. "Wrong score", "I didn't play this"):')
+    const reason = prompt("Please enter the reason for your dispute (e.g. 'Wrong score', 'I didn't play this'):")
     if (!reason) return
 
     try {
