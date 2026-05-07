@@ -95,7 +95,6 @@ function CupManagement() {
   }
 
   const enterResult = (cup, match) => {
-    console.log('Opening result modal for cup:', cup.name, 'match:', match.id)
     setResultForm({
       cup,
       match,
@@ -109,50 +108,23 @@ function CupManagement() {
       p2_doubles: '0',
       proofImage: ''
     })
-    // Force a tiny delay to ensure state is set before showing
-    setTimeout(() => {
-      setShowResultModal(true)
-    }, 50)
-  }
-
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0]
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Image too large. Max 5MB.')
-        return
-      }
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setResultForm(prev => ({ ...prev, proofImage: reader.result }))
-      }
-      reader.readAsDataURL(file)
-    }
+    setShowResultModal(true)
   }
 
   const submitResult = async () => {
-    console.log('submitResult execution started');
     if (isSubmitting) return
-
     const { cup, match, score1, score2, p1_180s, p2_180s, p1_checkout, p2_checkout, p1_doubles, p2_doubles, proofImage } = resultForm
 
-    if (!cup || !match) {
-      alert('Error: Data sync issue. Please try again.');
-      return;
+    if (!cup || !match || !match.player1 || !match.player2) {
+      alert('Error: Bracket data is incomplete. Please refresh and try again.')
+      return
     }
 
     const s1 = parseInt(score1)
     const s2 = parseInt(score2)
     
-    if (isNaN(s1) || isNaN(s2)) {
-      alert('Please enter valid numeric scores for both players.')
-      return
-    }
-
-    if (s1 === s2) {
-      alert('Draws are not permitted in Cup knockout matches.')
-      return
-    }
+    if (isNaN(s1) || isNaN(s2)) return alert('Please enter scores for both players.')
+    if (s1 === s2) return alert('Draws are not permitted in Cup matches.')
     
     setIsSubmitting(true)
     const p1Name = getPlayerName(match.player1)
@@ -161,10 +133,9 @@ function CupManagement() {
     const resultId = `admin_cup_${Date.now()}`
 
     try {
-      // 1. Create Result Document
-      const newResult = {
+      // 1. Save Result Record
+      await setDoc(doc(db, 'results', resultId), {
         id: resultId,
-        firestoreId: resultId,
         player1: p1Name,
         player1Id: match.player1,
         player2: p2Name,
@@ -178,532 +149,110 @@ function CupManagement() {
         status: 'approved',
         date: new Date().toISOString().split('T')[0],
         submittedAt: new Date().toISOString(),
-        approvedAt: new Date().toISOString(),
         submittedBy: 'admin',
-        proofImage: proofImage || '',
         player1Stats: { '180s': parseInt(p1_180s) || 0, highestCheckout: parseInt(p1_checkout) || 0, doubleSuccess: parseFloat(p1_doubles) || 0 },
         player2Stats: { '180s': parseInt(p2_180s) || 0, highestCheckout: parseInt(p2_checkout) || 0, doubleSuccess: parseFloat(p2_doubles) || 0 }
-      }
+      })
 
-      console.log('Syncing result to Firestore...');
-      await setDoc(doc(db, 'results', resultId), newResult)
-
-      // 2. Update Cup Bracket Structure
-      const allCupsData = getCups() || []
-      const currentCup = allCupsData.find(c => String(c.id) === String(cup.id))
-
+      // 2. Update Cup Data (Bracket)
+      const freshCups = getCups()
+      const currentCup = freshCups.find(c => String(c.id) === String(cup.id))
       if (currentCup) {
-        let updatedMatches = (currentCup.matches || []).map(m =>
+        let updatedMatches = currentCup.matches.map(m =>
           String(m.id) === String(match.id) ? { ...m, winner: winnerId, score1: s1, score2: s2, resultId } : { ...m }
         )
 
-        // Handle Advancement
+        // Propagate to next round
         if (match.nextMatchId) {
-          const nextMatchIndex = updatedMatches.findIndex(m => String(m.id) === String(match.nextMatchId))
-          if (nextMatchIndex !== -1) {
+          const nextIdx = updatedMatches.findIndex(m => String(m.id) === String(match.nextMatchId))
+          if (nextIdx !== -1) {
             const currentRoundMatches = updatedMatches
               .filter(m => Number(m.round) === Number(match.round))
               .sort((a, b) => (Number(a.matchNum) || 0) - (Number(b.matchNum) || 0))
-
-            const matchIdxInRound = currentRoundMatches.findIndex(m => String(m.id) === String(match.id))
-
-            if (matchIdxInRound !== -1) {
-              if (matchIdxInRound % 2 === 0) {
-                updatedMatches[nextMatchIndex].player1 = winnerId
-              } else {
-                updatedMatches[nextMatchIndex].player2 = winnerId
-              }
+            const matchPos = currentRoundMatches.findIndex(m => String(m.id) === String(match.id))
+            if (matchPos !== -1) {
+              if (matchPos % 2 === 0) updatedMatches[nextIdx].player1 = winnerId
+              else updatedMatches[nextIdx].player2 = winnerId
             }
           }
         }
 
-        const allComplete = updatedMatches.every(m => (m.player1 && m.player2) ? (m.winner !== null && m.winner !== undefined) : true)
-        const updatedCupData = { ...currentCup, matches: updatedMatches, status: allComplete ? 'completed' : 'active' }
-
-        await setDoc(doc(db, 'cups', String(cup.id)), updatedCupData, { merge: true })
+        await setDoc(doc(db, 'cups', String(cup.id)), { ...currentCup, matches: updatedMatches }, { merge: true })
       }
 
-      // 3. Close & Refresh
       setShowResultModal(false)
-      alert(`Result saved! ${winnerId === match.player1 ? p1Name : p2Name} advances.`)
+      alert('Result saved successfully!')
       triggerDataRefresh('all')
       setRefreshKey(prev => prev + 1)
-
     } catch (err) {
-      console.error('Cup Result Error:', err)
-      alert('Critical: Failed to save result to cloud. Check internet connection.')
+      alert('Cloud error: ' + err.message)
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const deleteCup = async (cup) => {
-    const confirmed = window.confirm(`Delete cup "${cup.name}"?`)
-    if (!confirmed) return
-    
-    try {
-      await deleteDoc(doc(db, 'cups', cup.id.toString()))
-      const fixtures = getFixtures().filter(f => f.cupId === cup.id)
-      for (const fixture of fixtures) {
-        await deleteDoc(doc(db, 'fixtures', fixture.id.toString()))
-      }
-      alert('Cup deleted from Firebase!')
-    } catch (e) {
-      console.log('Error deleting from Firebase:', e)
-      alert('Cup deleted locally')
-    }
-    
-    const cupsData = getCups()
-    const updatedCups = cupsData.filter(c => c.id !== cup.id)
-    localStorage.setItem('eliteArrowsCups', JSON.stringify(updatedCups))
-    
-    const fixturesData = getFixtures()
-    const updatedFixtures = fixturesData.filter(f => f.cupId !== cup.id)
-    localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
-    
-    setCups(updatedCups)
-    setAllCupFixtures(updatedFixtures)
-    
-    setTimeout(() => {
-      window.location.reload()
-    }, 500)
-    setRefreshKey(prev => prev + 1)
-    
-    triggerDataRefresh('cups')
-    triggerDataRefresh('fixtures')
-    alert('Cup deleted!')
-  }
-
-  const deleteFixture = async (fixture) => {
-    const confirmed = window.confirm('Delete this fixture?')
-    if (!confirmed) return
-    
-    try {
-      await deleteDoc(doc(db, 'fixtures', fixture.id.toString()))
-    } catch (e) {
-      console.log('Error deleting from Firebase:', e)
-    }
-    
-    const fixturesData = getFixtures()
-    const updatedFixtures = fixturesData.filter(f => f.id !== fixture.id)
-    localStorage.setItem('eliteArrowsFixtures', JSON.stringify(updatedFixtures))
-    setAllCupFixtures(updatedFixtures)
-    setRefreshKey(prev => prev + 1)
-    
-    triggerDataRefresh('fixtures')
-    alert('Fixture deleted!')
-  }
-
-  const completeCup = async (cup) => {
-    try {
-      const updatedCup = { ...cup, status: 'completed' }
-      await setDoc(doc(db, 'cups', String(cup.id)), updatedCup, { merge: true })
-      alert('Cup marked as completed!')
-      triggerDataRefresh('cups')
-      setRefreshKey(prev => prev + 1)
-    } catch (e) {
-      console.error('Error completing cup:', e)
-    }
-  }
-
-  const reactivateCup = async (cup) => {
-    const confirmed = window.confirm(`Reactivate cup "${cup.name}"?`)
-    if (!confirmed) return
-
-    try {
-      const updatedCup = { ...cup, status: 'active' }
-      await setDoc(doc(db, 'cups', String(cup.id)), updatedCup, { merge: true })
-      alert('Cup reactivated!')
-      triggerDataRefresh('cups')
-      setRefreshKey(prev => prev + 1)
-    } catch (e) {
-      console.error('Error reactivating cup:', e)
-      alert('Failed to reactivate cup: ' + e.message)
-    }
-  }
-
-  const deleteMatchResult = async (cup, match) => {
-    const confirmed = window.confirm('Delete this result? This will clear the winner and any advancement in the bracket.')
-    if (!confirmed) return
-
-    try {
-      const allCups = getCups()
-      const cupIndex = allCups.findIndex(c => String(c.id) === String(cup.id))
-      if (cupIndex === -1) return
-
-      const cupData = { ...allCups[cupIndex] }
-      let updatedMatches = [...(cupData.matches || [])]
-
-      const matchIndex = updatedMatches.findIndex(m => String(m.id) === String(match.id))
-      if (matchIndex === -1) return
-
-      const targetMatch = updatedMatches[matchIndex]
-      const oldWinnerId = targetMatch.winner
-      const resultIdToDelete = targetMatch.resultId
-
-      // 1. Clear this match
-      updatedMatches[matchIndex] = {
-        ...targetMatch,
-        winner: null,
-        score1: null,
-        score2: null,
-        resultId: null
-      }
-
-      // 2. Clear advancement in next match if applicable
-      if (targetMatch.nextMatchId && oldWinnerId) {
-        const nextMatchIndex = updatedMatches.findIndex(m => String(m.id) === String(targetMatch.nextMatchId))
-        if (nextMatchIndex !== -1) {
-          const nextMatch = { ...updatedMatches[nextMatchIndex] }
-          if (String(nextMatch.player1) === String(oldWinnerId)) {
-            nextMatch.player1 = null
-          } else if (String(nextMatch.player2) === String(oldWinnerId)) {
-            nextMatch.player2 = null
-          }
-          updatedMatches[nextMatchIndex] = nextMatch
-        }
-      }
-
-      const updatedCup = { ...cupData, matches: updatedMatches, status: 'active' }
-      await setDoc(doc(db, 'cups', String(cup.id)), updatedCup, { merge: true })
-
-      // 3. Delete result record if it exists
-      if (resultIdToDelete) {
-        try {
-          await deleteDoc(doc(db, 'results', resultIdToDelete))
-        } catch (err) {
-          console.warn('Result record might already be deleted or missing:', err)
-        }
-      }
-
-      // 4. Reset fixture if it exists
-      const allFixtures = getFixtures()
-      const fixture = allFixtures.find(f => String(f.cupId) === String(cup.id) && String(f.matchId) === String(match.id))
-      if (fixture) {
-        await setDoc(doc(db, 'fixtures', fixture.id.toString()), {
-          status: 'accepted',
-          score1: null,
-          score2: null,
-          winnerId: null,
-          resultId: null
-        }, { merge: true })
-      }
-
-      alert('Match result cleared successfully.')
-      triggerDataRefresh('all')
-      setRefreshKey(prev => prev + 1)
-    } catch (e) {
-      console.error('Error deleting match result:', e)
-      alert('Error deleting result: ' + e.message)
-    }
-  }
-
-  if (cups.length === 0) {
-    return (
-      <div className="card">
-        <p style={{ color: 'var(--text-muted)', textAlign: 'center' }}>No cups created yet</p>
-      </div>
-    )
-  }
-
-  const p1Name = resultForm.match ? getPlayerName(resultForm.match.player1) : ''
-  const p2Name = resultForm.match ? getPlayerName(resultForm.match.player2) : ''
-  const roundFormats = resultForm.cup?.roundFormats || {}
-  const roundFormat = roundFormats[resultForm.match?.round] || {}
-  const startScore = roundFormat.startScore || 501
-  const bestOf = roundFormat.bestOf || 3
-  const firstTo = Math.ceil(bestOf / 2)
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {cups.map(cup => {
         const totalRounds = Math.max(...(cup.matches?.map(m => m.round) || [1]))
-        const sortedMatches = [...(cup.matches || [])].sort((a, b) => (
-          Number(a.round || 0) - Number(b.round || 0) ||
-          Number(a.matchNum || a.id || 0) - Number(b.matchNum || b.id || 0)
-        ))
-        const visibleMatches = sortedMatches.filter(m => m.player1 || m.player2 || m.winner)
-        const cupFixtures = allCupFixtures.filter(f => String(f.cupId) === String(cup.id))
+        const visibleMatches = (cup.matches || []).filter(m => m.player1 || m.player2 || m.winner)
         
         return (
-          <div key={cup.id} style={{ 
-            padding: '20px', 
-            background: 'var(--bg-secondary)', 
-            borderRadius: '12px',
-            border: cup.status === 'completed' ? '2px solid var(--success)' : '2px solid var(--accent-cyan)'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+          <div key={cup.id} className="card glass animate-fade-in">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <div>
-                <h3 style={{ margin: 0, color: 'var(--accent-cyan)' }}>{cup.name}</h3>
-                <p style={{ margin: '5px 0 0 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                  Entry: £{cup.entryFee} | Prize Pot: £{cup.entryFee * cup.players.length} | Players: {cup.players.length}
-                </p>
-                {cup.roundFormats && (
-                  <p style={{ margin: '5px 0 0 0', fontSize: '0.75rem', color: 'var(--accent-cyan)' }}>
-                    {Object.entries(cup.roundFormats).map(([round, format]) => 
-                      `R${round}: ${format.startScore}/Bo${format.bestOf}`
-                    ).join(' | ')}
-                  </p>
-                )}
+                <h3 className="text-gradient">{cup.name}</h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Status: {cup.status}</p>
               </div>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <span style={{ 
-                  padding: '5px 15px', 
-                  borderRadius: '20px',
-                  background: cup.status === 'completed' ? 'var(--success)' : 'var(--warning)',
-                  color: 'white',
-                  fontWeight: 'bold',
-                  fontSize: '0.85rem'
-                }}>
-                  {cup.status === 'completed' ? 'Completed' : 'Active'}
-                </span>
-                {cup.status !== 'completed' ? (
-                  <button className="btn btn-success btn-sm" onClick={() => completeCup(cup)}>
-                    Complete Cup
-                  </button>
-                ) : (
-                  <button className="btn btn-warning btn-sm" onClick={() => reactivateCup(cup)}>
-                    Reactivate Cup
-                  </button>
-                )}
-                <button className="btn btn-danger btn-sm" onClick={() => deleteCup(cup)}>
-                  Delete Cup
-                </button>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button className="btn btn-danger btn-sm" onClick={async () => { if(confirm('Delete?')) { await deleteDoc(doc(db, 'cups', String(cup.id))); triggerDataRefresh('cups'); }}}>Delete</button>
               </div>
             </div>
 
-            <div style={{ marginTop: '15px' }}>
-              <h4 style={{ marginBottom: '10px' }}>Bracket Results</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {visibleMatches.map(match => {
-                const p1Name = getPlayerName(match.player1)
-                const p2Name = getPlayerName(match.player2)
-                const winnerName = match.winner ? getPlayerName(match.winner) : null
-                const roundName = getRoundName(match.round, totalRounds)
-                const scores = getMatchScores(cup, match)
-                
+                const s = getMatchScores(cup, match)
                 return (
-                  <div key={match.id} style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center',
-                    padding: '12px',
-                    background: match.winner ? 'rgba(34, 197, 94, 0.1)' : 'var(--bg-primary)',
-                    borderRadius: '8px',
-                    marginBottom: '8px'
-                  }}>
-                    <div>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{roundName}</span>
-                      <div style={{ fontSize: '0.95rem', marginTop: '3px' }}>
-                        <strong>{p1Name}</strong>
-                        <span style={{ color: 'var(--text-muted)', margin: '0 10px' }}>vs</span>
-                        <strong>{p2Name}</strong>
+                  <div key={match.id} className="glass" style={{ padding: '15px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)' }}>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', fontWeight: 800, marginBottom: '5px' }}>{getRoundName(match.round, totalRounds)}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ fontSize: '0.9rem' }}>
+                        <strong>{getPlayerName(match.player1)}</strong> vs <strong>{getPlayerName(match.player2)}</strong>
                       </div>
+                      {match.winner ? (
+                         <div style={{ textAlign: 'right' }}>
+                            <div style={{ color: 'var(--success)', fontWeight: 800 }}>{getPlayerName(match.winner)} wins</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{s?.score1}-{s?.score2}</div>
+                         </div>
+                      ) : (
+                        <button className="btn btn-primary btn-sm" onClick={() => enterResult(cup, match)} disabled={!match.player1 || !match.player2}>Enter Score</button>
+                      )}
                     </div>
-                    {match.winner ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                        <div style={{ textAlign: 'right' }}>
-                          <span style={{ color: 'var(--success)', fontWeight: 'bold' }}>
-                            Winner: {winnerName}
-                          </span>
-                          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                            Score: {scores ? `${scores.score1}-${scores.score2}` : 'Not recorded'}
-                          </div>
-                        </div>
-                        <button
-                          className="btn btn-danger btn-sm"
-                          onClick={() => deleteMatchResult(cup, match)}
-                        >
-                          Delete Result
-                        </button>
-                      </div>
-                    ) : (
-                      <button 
-                        className="btn btn-primary btn-sm"
-                        onClick={() => {
-                          console.log('Submit Result button clicked', match.id);
-                          enterResult(cup, match);
-                        }}
-                        disabled={!match.player1 || !match.player2}
-                        style={{ position: 'relative', zIndex: 50 }}
-                      >
-                        Submit Result
-                      </button>
-                    )}
                   </div>
                 )
               })}
-            </div>
-
-            <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px solid var(--border)' }}>
-              <h4 style={{ marginBottom: '10px' }}>Cup Fixtures ({cupFixtures.length})</h4>
-              {cupFixtures.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No fixtures</p>
-              ) : (
-                cupFixtures.map(fixture => {
-                  const p1Name = getPlayerName(fixture.player1)
-                  const p2Name = getPlayerName(fixture.player2)
-                  const roundName = getRoundName(fixture.round, totalRounds)
-                  
-                  return (
-                    <div key={fixture.id} style={{ 
-                      display: 'flex', 
-                      justifyContent: 'space-between', 
-                      alignItems: 'center',
-                      padding: '10px',
-                      background: 'var(--bg-primary)',
-                      borderRadius: '6px',
-                      marginBottom: '6px'
-                    }}>
-                      <div style={{ fontSize: '0.85rem' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>{roundName}</span>
-                        <div>
-                          {p1Name} vs {p2Name}
-                        </div>
-                        <span style={{ 
-                          fontSize: '0.75rem',
-                          color: fixture.status === 'accepted' ? 'var(--success)' : 
-                                 fixture.status === 'pending' ? 'var(--warning)' : 'var(--text-muted)'
-                        }}>
-                          {fixture.status}
-                        </span>
-                      </div>
-                      <button 
-                        className="btn btn-danger btn-sm"
-                        onClick={() => deleteFixture(fixture)}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  )
-                })
-              )}
             </div>
           </div>
         )
       })}
 
       {showResultModal && (
-        <div className="modal-overlay" onClick={() => setShowResultModal(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', width: '95%' }}>
-            <h3>Enter Result: {p1Name} vs {p2Name}</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-              {getRoundName(resultForm.match?.round, Math.max(...(resultForm.cup?.matches?.map(m => m.round) || [1])))} | {startScore} | First to {firstTo}
-            </p>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', margin: '15px 0' }}>
-              <div style={{ background: 'var(--bg-primary)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '10px', fontSize: '0.9rem' }}>{p1Name}</h4>
-                <div className="form-group">
-                  <label style={{ fontSize: '0.8rem' }}>Legs Won</label>
-                  <input
-                    type="number"
-                    value={resultForm.score1}
-                    onChange={e => setResultForm({ ...resultForm, score1: e.target.value })}
-                    style={{ width: '100%', padding: '8px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)' }}
-                    min="0"
-                  />
-                </div>
-                <div className="form-group" style={{ marginTop: '8px' }}>
-                  <label style={{ fontSize: '0.8rem' }}>180s</label>
-                  <input
-                    type="number"
-                    value={resultForm.p1_180s}
-                    onChange={e => setResultForm({ ...resultForm, p1_180s: e.target.value })}
-                    style={{ width: '100%', padding: '6px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)' }}
-                  />
-                </div>
-                <div className="form-group" style={{ marginTop: '8px' }}>
-                  <label style={{ fontSize: '0.8rem' }}>Highest Checkout</label>
-                  <input
-                    type="number"
-                    value={resultForm.p1_checkout}
-                    onChange={e => setResultForm({ ...resultForm, p1_checkout: e.target.value })}
-                    style={{ width: '100%', padding: '6px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)' }}
-                  />
-                </div>
-                <div className="form-group" style={{ marginTop: '8px' }}>
-                  <label style={{ fontSize: '0.8rem' }}>Checkout Success %</label>
-                  <input
-                    type="number"
-                    value={resultForm.p1_doubles}
-                    onChange={e => setResultForm({ ...resultForm, p1_doubles: e.target.value })}
-                    style={{ width: '100%', padding: '6px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)' }}
-                    step="0.1"
-                  />
-                </div>
-              </div>
-
-              <div style={{ background: 'var(--bg-primary)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                <h4 style={{ color: 'var(--text-muted)', marginBottom: '10px', fontSize: '0.9rem' }}>{p2Name}</h4>
-                <div className="form-group">
-                  <label style={{ fontSize: '0.8rem' }}>Legs Won</label>
-                  <input
-                    type="number"
-                    value={resultForm.score2}
-                    onChange={e => setResultForm({ ...resultForm, score2: e.target.value })}
-                    style={{ width: '100%', padding: '8px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)' }}
-                    min="0"
-                  />
-                </div>
-                <div className="form-group" style={{ marginTop: '8px' }}>
-                  <label style={{ fontSize: '0.8rem' }}>180s</label>
-                  <input
-                    type="number"
-                    value={resultForm.p2_180s}
-                    onChange={e => setResultForm({ ...resultForm, p2_180s: e.target.value })}
-                    style={{ width: '100%', padding: '6px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)' }}
-                  />
-                </div>
-                <div className="form-group" style={{ marginTop: '8px' }}>
-                  <label style={{ fontSize: '0.8rem' }}>Highest Checkout</label>
-                  <input
-                    type="number"
-                    value={resultForm.p2_checkout}
-                    onChange={e => setResultForm({ ...resultForm, p2_checkout: e.target.value })}
-                    style={{ width: '100%', padding: '6px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)' }}
-                  />
-                </div>
-                <div className="form-group" style={{ marginTop: '8px' }}>
-                  <label style={{ fontSize: '0.8rem' }}>Checkout Success %</label>
-                  <input
-                    type="number"
-                    value={resultForm.p2_doubles}
-                    onChange={e => setResultForm({ ...resultForm, p2_doubles: e.target.value })}
-                    style={{ width: '100%', padding: '6px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)' }}
-                    step="0.1"
-                  />
-                </div>
-              </div>
+        <div className="modal-overlay" style={{ zIndex: 11000 }}>
+          <div className="card glass" style={{ maxWidth: '500px', width: '90%' }}>
+            <h3 style={{ marginBottom: '20px' }}>Enter Score</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+               <div>
+                  <label style={{ fontSize: '0.8rem' }}>{getPlayerName(resultForm.match?.player1)}</label>
+                  <input type="number" placeholder="Legs" value={resultForm.score1} onChange={e => setResultForm({...resultForm, score1: e.target.value})} className="glass" style={{ width: '100%', marginTop: '5px' }} />
+               </div>
+               <div>
+                  <label style={{ fontSize: '0.8rem' }}>{getPlayerName(resultForm.match?.player2)}</label>
+                  <input type="number" placeholder="Legs" value={resultForm.score2} onChange={e => setResultForm({...resultForm, score2: e.target.value})} className="glass" style={{ width: '100%', marginTop: '5px' }} />
+               </div>
             </div>
-
-            <div className="form-group" style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.85rem' }}>Proof of Result (Photo/Screenshot)</label>
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  style={{ display: 'none' }}
-                  id="modal-image-upload"
-                />
-                <label
-                  htmlFor="modal-image-upload"
-                  className="btn btn-secondary btn-sm"
-                  style={{ cursor: 'pointer' }}
-                >
-                  Upload Image
-                </label>
-                {resultForm.proofImage && (
-                  <span style={{ color: 'var(--success)', fontSize: '0.8rem' }}>✓ Image added</span>
-                )}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-              <button className="btn btn-secondary" onClick={() => setShowResultModal(false)} disabled={isSubmitting}>Cancel</button>
-              <button className="btn btn-primary" onClick={submitResult} disabled={isSubmitting}>
-                {isSubmitting ? 'Saving...' : 'Submit Result'}
-              </button>
+            <div style={{ display: 'flex', gap: '10px' }}>
+               <button className="btn btn-secondary btn-block" onClick={() => setShowResultModal(false)}>Cancel</button>
+               <button className="btn btn-primary btn-block" onClick={submitResult} disabled={isSubmitting}>{isSubmitting ? 'Saving...' : 'Submit Result'}</button>
             </div>
           </div>
         </div>

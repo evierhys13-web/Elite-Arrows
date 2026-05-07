@@ -1,64 +1,41 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 
-// Maximum size for the proof image stored in Firestore (800KB as base64 ≈ ~600KB binary)
+// Maximum size for the proof image
 const MAX_IMAGE_BYTES = 800 * 1024;
 
-/**
- * Resize + compress an image File to a JPEG data-URL that fits within
- * MAX_IMAGE_BYTES.  Falls back to the original data-URL if it already fits.
- */
 function compressImage(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onerror = () =>
-      reject(new Error("Failed to read the selected file."));
+    reader.onerror = () => reject(new Error("Failed to read the selected file."));
     reader.onloadend = () => {
       const originalDataUrl = reader.result;
-
-      // If already small enough, use as-is
       if (originalDataUrl.length <= MAX_IMAGE_BYTES) {
         resolve(originalDataUrl);
         return;
       }
-
       const img = new Image();
-      img.onerror = () =>
-        reject(new Error("Failed to load the image for compression."));
+      img.onerror = () => reject(new Error("Failed to load the image."));
       img.onload = () => {
         const canvas = document.createElement("canvas");
-        let { width, height } = img;
-
-        // Scale down proportionally so the longest edge is at most 1200px
         const MAX_DIM = 1200;
+        let { width, height } = img;
         if (width > MAX_DIM || height > MAX_DIM) {
           const ratio = Math.min(MAX_DIM / width, MAX_DIM / height);
           width = Math.round(width * ratio);
           height = Math.round(height * ratio);
         }
-
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, width, height);
-
-        // Iteratively reduce quality until it fits
         let quality = 0.8;
         let dataUrl = canvas.toDataURL("image/jpeg", quality);
         while (dataUrl.length > MAX_IMAGE_BYTES && quality > 0.2) {
           quality -= 0.1;
           dataUrl = canvas.toDataURL("image/jpeg", quality);
         }
-
-        if (dataUrl.length > MAX_IMAGE_BYTES) {
-          reject(
-            new Error(
-              "Image is too large even after compression. Please use a smaller screenshot.",
-            ),
-          );
-        } else {
-          resolve(dataUrl);
-        }
+        resolve(dataUrl);
       };
       img.src = originalDataUrl;
     };
@@ -67,558 +44,164 @@ function compressImage(file) {
 }
 
 export default function Subscription() {
-  const { user, subscribe, getAllUsers, updateUser } = useAuth();
-  const [showPayment, setShowPayment] = useState(false);
-  const [step, setStep] = useState(1);
+  const { user, updateUser } = useAuth();
   const [paymentMethod, setPaymentMethod] = useState("");
   const [proofImage, setProofImage] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [uploadError, setUploadError] = useState("");
   const [uploading, setUploading] = useState(false);
 
-  const ADMIN_EMAILS = ["rhyshowe2023@outlook.com", "dhineberry@yahoo.com"];
-  const isAdminEmail = ADMIN_EMAILS.includes(user?.email?.toLowerCase());
-  const isDbAdmin = user?.isAdmin === true;
-  const isAdmin = isAdminEmail || isDbAdmin;
-
-  const currentSeason = new Date().getFullYear().toString();
-  const hasActiveSubscription = user?.isSubscribed && !isAdmin;
-  const subscriptionEndDate = user?.subscriptionDate
-    ? new Date(user.subscriptionDate)
-    : null;
-  const daysUntilEnd = subscriptionEndDate
-    ? Math.ceil((subscriptionEndDate - new Date()) / (1000 * 60 * 60 * 24))
-    : 0;
-  const hasSubscriptionThisSeason =
-    user?.subscriptionDate &&
-    new Date(user.subscriptionDate).getFullYear() === parseInt(currentSeason);
-
-  const handleMethodSelect = (method) => {
-    setPaymentMethod(method);
-    setStep(2);
-  };
+  const plans = [
+    {
+      id: 'free',
+      name: 'Rookie Pass',
+      price: 'Free',
+      description: 'The starting point for every dart player.',
+      features: ['League Standings', 'Global Chat', 'Basic Analytics', 'User Profile'],
+      color: 'var(--text-muted)',
+      buttonText: 'Current Plan',
+      active: !user?.isSubscribed && (!user?.division || user?.division === 'Unassigned')
+    },
+    {
+      id: 'standard',
+      name: 'Standard Pass',
+      price: '£5',
+      description: 'Gold, Silver, Bronze & Development divisions.',
+      features: ['Official League Entry', 'Tournament Access', 'Match Submissions', 'Advanced Stats'],
+      color: 'var(--accent-cyan)',
+      buttonText: 'Get Standard',
+      active: user?.isSubscribed && ['Gold', 'Silver', 'Bronze', 'Development'].includes(user?.division)
+    },
+    {
+      id: 'elite',
+      name: 'Elite Pass',
+      price: '£5',
+      description: 'For Elite, Diamond & Platinum challengers.',
+      features: ['Official League Entry', 'Cash Prize Tournaments', 'Priority Support', 'Full Dashboard'],
+      color: '#fbbf24',
+      buttonText: 'Get Elite',
+      premium: true,
+      active: user?.isSubscribed && ['Elite', 'Diamond', 'Platinum'].includes(user?.division)
+    }
+  ];
 
   const handleProofUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
-    setUploadError("");
-    setProofImage("");
     setUploading(true);
-
     try {
       const dataUrl = await compressImage(file);
       setProofImage(dataUrl);
     } catch (err) {
-      setUploadError(err.message);
-      // Clear the input so the user can try again
-      e.target.value = "";
+      alert(err.message);
     } finally {
       setUploading(false);
     }
   };
 
   const handleSubmitPayment = async () => {
-    if (hasActiveSubscription) {
-      alert(
-        `You already have an active subscription. It will end on ${subscriptionEndDate?.toLocaleDateString()}. You can renew after it expires.`,
-      );
-      return;
-    }
-
-    if (hasSubscriptionThisSeason) {
-      alert(
-        `You already have a subscription this season (${currentSeason}). You can renew for the next season.`,
-      );
-      return;
-    }
-
-    if (!proofImage) {
-      alert("Please upload proof of payment before submitting.");
-      return;
-    }
-
+    if (!proofImage) return alert("Please upload proof of payment.");
     setSubmitting(true);
     try {
-      await updateUser(
-        {
-          paymentPending: true,
-          paymentMethod: paymentMethod,
-          paymentProof: proofImage,
-          paymentDate: new Date().toISOString(),
-          subscriptionSeason: currentSeason,
-        },
-        false,
-      );
-
-      setShowPayment(false);
-      setStep(1);
+      await updateUser({
+        paymentPending: true,
+        paymentMethod,
+        paymentProof: proofImage,
+        paymentDate: new Date().toISOString()
+      }, false);
+      alert("Payment submitted! Awaiting admin approval.");
       setPaymentMethod("");
       setProofImage("");
-      setUploadError("");
-      alert("Payment submitted! Awaiting admin approval.");
     } catch (err) {
-      alert("Failed to submit payment: " + err.message + "\nPlease try again.");
+      alert("Submission failed: " + err.message);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const allUsers = getAllUsers();
-  const pendingPayments = allUsers.filter(
-    (u) => u.paymentPending && !u.isSubscribed,
-  );
-
-  const getSubscriptionPrice = () => {
-    if (!user?.division || user?.division === "Unassigned") {
-      return 0;
-    }
-    return 5;
-  };
-
-  const price = getSubscriptionPrice();
-  const isFreeTier = !user?.division || user?.division === "Unassigned";
-
   return (
-    <div className="page">
-      <div className="page-header">
-        <h1 className="page-title">Subscription</h1>
+    <div className="page animate-fade-in" style={{ maxWidth: '1000px', margin: '0 auto' }}>
+      <div className="page-header" style={{ textAlign: 'center', marginBottom: '40px' }}>
+        <h1 className="page-title text-gradient" style={{ fontSize: '2.5rem' }}>Elite Arrows Pass</h1>
+        <p style={{ color: 'var(--text-muted)' }}>Unlock full league participation and cash prize tournaments.</p>
       </div>
 
-      {user?.isSubscribed && !isAdmin ? (
-        <div className="subscription-card">
-          <h2>Elite Arrows Pass</h2>
-          <div className="subscription-price">
-            £{price}
-            <span>/month</span>
-          </div>
-          <div
-            style={{
-              marginTop: "20px",
-              padding: "15px",
-              background: "var(--bg-secondary)",
-              borderRadius: "8px",
-            }}
-          >
-            <p style={{ color: "var(--success)", fontWeight: "600" }}>
-              Active Subscriber
-            </p>
-            {subscriptionEndDate && (
-              <p
-                style={{
-                  color: "var(--text-muted)",
-                  fontSize: "0.85rem",
-                  marginTop: "8px",
-                }}
-              >
-                Expires: {subscriptionEndDate.toLocaleDateString()}
-              </p>
-            )}
-          </div>
-        </div>
-      ) : user?.paymentPending ? (
-        <div className="subscription-card">
-          <h2>Elite Arrows Pass</h2>
-          <div className="subscription-price">
-            £{price}
-            <span>/month</span>
-          </div>
-          <div
-            style={{
-              marginTop: "20px",
-              padding: "15px",
-              background: "var(--bg-secondary)",
-              borderRadius: "8px",
-            }}
-          >
-            <p style={{ color: "var(--warning)", fontWeight: "600" }}>
-              Payment Pending Approval
-            </p>
-            <p
-              style={{
-                color: "var(--text-muted)",
-                fontSize: "0.85rem",
-                marginTop: "8px",
-              }}
-            >
-              Your payment is awaiting admin approval.
-            </p>
-          </div>
-        </div>
-      ) : (
-        <div style={{ display: "flex", gap: "15px", flexWrap: "wrap" }}>
-          <div
-            className="subscription-card"
-            style={{ flex: "1 1 200px", minWidth: "200px" }}
-          >
-            <h2 style={{ color: "#888" }}>Free Tier</h2>
-            <div className="subscription-price">
-              Free<span>/month</span>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+        gap: '24px',
+        marginBottom: '40px'
+      }}>
+        {plans.map(plan => (
+          <div key={plan.id} className="card glass" style={{
+            display: 'flex',
+            flexDirection: 'column',
+            padding: '30px',
+            border: plan.premium ? '2px solid #fbbf24' : '1px solid var(--border)',
+            position: 'relative',
+            transform: plan.active ? 'scale(1.02)' : 'none',
+            background: plan.active ? 'rgba(124, 92, 252, 0.1)' : 'var(--bg-card)'
+          }}>
+            {plan.active && <div style={{ position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)', background: plan.color, color: 'black', padding: '2px 12px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 900 }}>CURRENT PLAN</div>}
+
+            <h2 style={{ fontSize: '1.5rem', marginBottom: '8px', color: plan.color }}>{plan.name}</h2>
+            <div style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '12px' }}>{plan.price}<span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>/season</span></div>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '24px', minHeight: '40px' }}>{plan.description}</p>
+
+            <div style={{ flex: 1 }}>
+              {plan.features.map(feat => (
+                <div key={feat} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', fontSize: '0.9rem' }}>
+                  <span style={{ color: plan.color }}>✓</span> {feat}
+                </div>
+              ))}
             </div>
-            <p style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>
-              Unassigned
-            </p>
-            <ul className="subscription-features">
-              <li>Home</li>
-              <li>Table</li>
-              <li>Players</li>
-              <li>Leaderboards</li>
-              <li>Profile</li>
-              <li>Settings</li>
-              <li>Contact</li>
-              <li>Support</li>
-            </ul>
-          </div>
 
-          <div
-            className="subscription-card"
-            style={{ flex: "1 1 200px", minWidth: "200px" }}
-          >
-            <h2>Standard Pass</h2>
-            <div className="subscription-price">
-              £5<span>/month</span>
-            </div>
-            <p style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>
-              Gold/Silver/Bronze/Development
-            </p>
-            <ul className="subscription-features">
-              <li>Match submissions</li>
-              <li>Tournaments</li>
-              <li>Full access</li>
-            </ul>
-            <div
-              style={{
-                background: "var(--warning)",
-                color: "#000",
-                padding: "8px",
-                borderRadius: "6px",
-                fontSize: "0.75rem",
-                marginBottom: "10px",
-                fontWeight: "bold",
-              }}
+            <button
+              className={`btn btn-block ${plan.active ? 'btn-secondary' : 'btn-primary'}`}
+              disabled={plan.active || user?.paymentPending}
+              onClick={() => setPaymentMethod(plan.id)}
+              style={{ marginTop: '24px', background: plan.premium && !plan.active ? 'linear-gradient(135deg, #fbbf24, #f59e0b)' : '' }}
             >
-              ⚠️ Do NOT buy until assigned a division!
+              {user?.paymentPending ? 'Pending Approval' : plan.buttonText}
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {paymentMethod && (
+        <div className="card glass animate-fade-in" style={{ border: '1px solid var(--accent-cyan)', padding: '40px' }}>
+          <h3 style={{ marginBottom: '20px' }}>Finalize Your {paymentMethod === 'elite' ? 'Elite' : 'Standard'} Pass</h3>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '30px' }}>
+            <div style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
+              <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '12px' }}>Option 1: PayPal</h4>
+              <p style={{ fontSize: '0.9rem', marginBottom: '10px' }}>Send £5.00 to:</p>
+              <a href="https://paypal.me/DanielHineBerry" target="_blank" rel="noreferrer" style={{ display: 'block', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', color: 'white', textAlign: 'center', textDecoration: 'none', fontWeight: 700 }}>paypal.me/DanielHineBerry</a>
             </div>
-            {hasActiveSubscription || hasSubscriptionThisSeason ? (
-              <button className="btn btn-secondary btn-block" disabled>
-                {hasActiveSubscription ? "Already Subscribed" : "This Season"}
-              </button>
-            ) : (
-              <button
-                className="btn btn-primary btn-block"
-                onClick={() => {
-                  setPaymentMethod("paypal5");
-                  setShowPayment(true);
-                }}
-              >
-                Entry Fee
-              </button>
-            )}
-          </div>
 
-          <div
-            className="subscription-card"
-            style={{
-              flex: "1 1 200px",
-              minWidth: "200px",
-              border: "2px solid #ffd700",
-            }}
-          >
-            <h2 style={{ color: "#ffd700" }}>Elite Pass</h2>
-            <div className="subscription-price">
-              £5<span>/month</span>
+            <div style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
+              <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '12px' }}>Option 2: Bank Transfer</h4>
+              <div style={{ fontSize: '0.85rem' }}>
+                <div><strong>Acc:</strong> Rhys Howe</div>
+                <div><strong>Sort:</strong> 60-09-09</div>
+                <div><strong>No:</strong> 80249442</div>
+                <div style={{ marginTop: '8px', color: 'var(--warning)' }}>Ref: {user.username}</div>
+              </div>
             </div>
-            <p style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>
-              Elite/Diamond/Platinum
-            </p>
-            <ul className="subscription-features">
-              <li>Full access</li>
-              <li>Tournaments</li>
-              <li>Match submissions</li>
-            </ul>
-            <div
-              style={{
-                background: "var(--warning)",
-                color: "#000",
-                padding: "8px",
-                borderRadius: "6px",
-                fontSize: "0.75rem",
-                marginBottom: "10px",
-                fontWeight: "bold",
-              }}
-            >
-              ⚠️ Do NOT buy until assigned a division!
-            </div>
-            {hasActiveSubscription || hasSubscriptionThisSeason ? (
-              <button
-                className="btn btn-secondary btn-block"
-                disabled
-                style={{
-                  background: "linear-gradient(135deg, #888, #666)",
-                  border: "none",
-                }}
-              >
-                {hasActiveSubscription ? "Already Subscribed" : "This Season"}
-              </button>
-            ) : (
-              <button
-                className="btn btn-primary btn-block"
-                style={{
-                  background: "linear-gradient(135deg, #ffd700, #ff8c00)",
-                  border: "none",
-                }}
-                onClick={() => {
-                  setPaymentMethod("paypal10");
-                  setShowPayment(true);
-                }}
-              >
-                Entry Fee
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {showPayment && paymentMethod === "paypal10" && (
-        <div
-          className="card"
-          style={{ marginTop: "20px", border: "1px solid #ffd700" }}
-        >
-          <h3 className="card-title" style={{ color: "#ffd700" }}>
-            Premium Payment
-          </h3>
-          <p style={{ color: "var(--text-muted)", marginBottom: "15px" }}>
-            For Elite/Diamond/Platinum members.
-          </p>
-
-          <div
-            style={{
-              padding: "15px",
-              background: "var(--bg-secondary)",
-              borderRadius: "8px",
-              marginBottom: "15px",
-            }}
-          >
-            <p>
-              <strong>PayPal Email:</strong>{" "}
-              <a
-                href="https://paypal.me/DanielHineBerry"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: "var(--accent-cyan)" }}
-              >
-                paypal.me/DanielHineBerry
-              </a>
-            </p>
-            <p>
-              <strong>Reference:</strong> Elite Arrows Subscription
-            </p>
           </div>
 
-          <div style={{ marginTop: "15px" }}>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "8px",
-                fontWeight: "500",
-              }}
-            >
-              Upload Proof of Payment (screenshot/photo)
-            </label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleProofUpload}
-              disabled={uploading}
-              style={{ marginBottom: "8px" }}
-            />
-            {uploading && (
-              <p
-                style={{
-                  color: "var(--text-muted)",
-                  fontSize: "0.85rem",
-                  marginBottom: "8px",
-                }}
-              >
-                Processing image…
-              </p>
-            )}
-            {uploadError && (
-              <p
-                style={{
-                  color: "var(--error, #e74c3c)",
-                  fontSize: "0.85rem",
-                  marginBottom: "8px",
-                }}
-              >
-                ⚠️ {uploadError}
-              </p>
-            )}
-            {proofImage && !uploadError && (
-              <p
-                style={{
-                  color: "var(--success)",
-                  fontSize: "0.85rem",
-                  marginBottom: "8px",
-                }}
-              >
-                ✓ Image ready
-              </p>
-            )}
-          </div>
-          <button
-            className="btn btn-primary btn-block"
-            onClick={handleSubmitPayment}
-            disabled={submitting || uploading || !proofImage || !!uploadError}
-          >
-            {submitting ? "Submitting…" : "Submit Payment"}
-          </button>
-          <button
-            className="btn btn-secondary btn-block"
-            style={{ marginTop: "12px" }}
-            onClick={() => {
-              setShowPayment(false);
-              setStep(1);
-              setPaymentMethod("");
-              setProofImage("");
-              setUploadError("");
-            }}
-          >
-            Cancel
-          </button>
-        </div>
-      )}
-
-      {showPayment && paymentMethod === "paypal5" && (
-        <div className="card" style={{ marginTop: "20px" }}>
-          <h3 className="card-title">Standard Payment</h3>
-          <p style={{ color: "var(--text-muted)", marginBottom: "15px" }}>
-            For Gold/Silver/Bronze members.
-          </p>
-
-          <div
-            style={{
-              padding: "15px",
-              background: "var(--bg-secondary)",
-              borderRadius: "8px",
-              marginBottom: "15px",
-            }}
-          >
-            <p style={{ fontWeight: "bold", marginBottom: "10px" }}>
-              Option 1: PayPal
-            </p>
-            <p>
-              <strong>PayPal Email:</strong>{" "}
-              <a
-                href="https://paypal.me/DanielHineBerry"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: "var(--accent-cyan)" }}
-              >
-                paypal.me/DanielHineBerry
-              </a>
-            </p>
-            <p>
-              <strong>Reference:</strong> Elite Arrows Subscription
-            </p>
+          <div className="form-group" style={{ maxWidth: '500px', margin: '0 auto 20px' }}>
+            <label>Upload Proof of Payment (Screenshot)</label>
+            <input type="file" accept="image/*" onChange={handleProofUpload} className="glass" style={{ padding: '12px' }} />
+            {uploading && <p style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>Processing receipt...</p>}
+            {proofImage && <p style={{ fontSize: '0.8rem', color: 'var(--success)' }}>✓ Receipt Attached</p>}
           </div>
 
-          <div
-            style={{
-              padding: "15px",
-              background: "var(--bg-secondary)",
-              borderRadius: "8px",
-              marginBottom: "15px",
-            }}
-          >
-            <p style={{ fontWeight: "bold", marginBottom: "10px" }}>
-              Option 2: Bank Transfer
-            </p>
-            <p>
-              <strong>Account Name:</strong> Rhys Howe
-            </p>
-            <p>
-              <strong>Sort Code:</strong> 60-09-09
-            </p>
-            <p>
-              <strong>Account Number:</strong> 80249442
-            </p>
-            <p>
-              <strong>Reference:</strong> Your Username
-            </p>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+            <button className="btn btn-secondary" onClick={() => setPaymentMethod("")}>Cancel</button>
+            <button className="btn btn-primary" onClick={handleSubmitPayment} disabled={submitting || !proofImage}>
+              {submitting ? 'Submitting...' : 'Confirm Payment Submission'}
+            </button>
           </div>
-
-          <div style={{ marginTop: "15px" }}>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "8px",
-                fontWeight: "500",
-              }}
-            >
-              Upload Proof of Payment (screenshot/photo)
-            </label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleProofUpload}
-              disabled={uploading}
-              style={{ marginBottom: "8px" }}
-            />
-            {uploading && (
-              <p
-                style={{
-                  color: "var(--text-muted)",
-                  fontSize: "0.85rem",
-                  marginBottom: "8px",
-                }}
-              >
-                Processing image…
-              </p>
-            )}
-            {uploadError && (
-              <p
-                style={{
-                  color: "var(--error, #e74c3c)",
-                  fontSize: "0.85rem",
-                  marginBottom: "8px",
-                }}
-              >
-                ⚠️ {uploadError}
-              </p>
-            )}
-            {proofImage && !uploadError && (
-              <p
-                style={{
-                  color: "var(--success)",
-                  fontSize: "0.85rem",
-                  marginBottom: "8px",
-                }}
-              >
-                ✓ Image ready
-              </p>
-            )}
-          </div>
-          <button
-            className="btn btn-primary btn-block"
-            onClick={handleSubmitPayment}
-            disabled={submitting || uploading || !proofImage || !!uploadError}
-          >
-            {submitting ? "Submitting…" : "Submit Payment"}
-          </button>
-          <button
-            className="btn btn-secondary btn-block"
-            style={{ marginTop: "12px" }}
-            onClick={() => {
-              setShowPayment(false);
-              setStep(1);
-              setPaymentMethod("");
-              setProofImage("");
-              setUploadError("");
-            }}
-          >
-            Cancel
-          </button>
         </div>
       )}
     </div>

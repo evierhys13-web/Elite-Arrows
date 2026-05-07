@@ -70,21 +70,28 @@ export default function Table() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h1 className="page-title text-gradient" style={{ fontSize: '2.5rem' }}>League Standings</h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Professional Darts League Division Rankings</p>
           </div>
           <button className="btn btn-secondary btn-sm glass" onClick={handleRefresh}>
-            🔄 Sync Live Data
+            🔄 Sync
           </button>
         </div>
       </div>
 
-      <div className="division-tabs" style={{ marginBottom: '30px' }}>
+      <div className="division-tabs" style={{
+        display: 'flex',
+        overflowX: 'auto',
+        gap: '8px',
+        marginBottom: '20px',
+        paddingBottom: '8px',
+        scrollbarWidth: 'none'
+      }}>
         {divisions.map(div => (
           <button
             key={div}
             className={`division-tab ${activeDivision === div ? 'active' : ''}`}
             onClick={() => setActiveDivision(div)}
             style={{
+              whiteSpace: 'nowrap',
               borderBottom: activeDivision === div ? `3px solid ${DIVISION_COLORS[div]}` : '3px solid transparent',
               color: activeDivision === div ? DIVISION_COLORS[div] : 'var(--text-muted)'
             }}
@@ -94,28 +101,26 @@ export default function Table() {
         ))}
       </div>
 
-      <div className="card glass" style={{ padding: '0', borderRadius: '16px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
-        <div className="table-container" style={{ overflowX: 'auto' }}>
-          <table className="table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <div className="card glass" style={{ padding: '0', borderRadius: '12px', overflow: 'hidden' }}>
+        <div className="table-responsive">
+          <table className="table" style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
             <thead>
-              <tr style={{ background: 'rgba(0,0,0,0.3)', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                <th style={{ padding: '16px 12px', width: '60px', textAlign: 'center' }}>Pos</th>
-                <th style={{ padding: '16px 12px', textAlign: 'left' }}>Player</th>
-                {activeDivision === 'Overall' && <th style={{ padding: '16px 12px', textAlign: 'left' }}>Div</th>}
-                <th style={{ padding: '16px 12px', textAlign: 'center', width: '50px' }}>P</th>
-                <th style={{ padding: '16px 12px', textAlign: 'center', width: '50px' }}>W</th>
-                <th style={{ padding: '16px 12px', textAlign: 'center', width: '50px' }}>D</th>
-                <th style={{ padding: '16px 12px', textAlign: 'center', width: '50px' }}>L</th>
-                <th style={{ padding: '16px 12px', textAlign: 'center', width: '60px' }}>+/-</th>
-                <th style={{ padding: '16px 12px', textAlign: 'center', width: '80px', color: 'var(--accent-cyan)' }}>Pts</th>
+              <tr style={{ background: 'rgba(0,0,0,0.3)', color: 'var(--text-muted)', fontSize: '0.65rem', textTransform: 'uppercase' }}>
+                <th style={{ width: '35px', padding: '12px 4px', textAlign: 'center' }}>#</th>
+                <th style={{ textAlign: 'left', padding: '12px 8px' }}>Player</th>
+                {activeDivision === 'Overall' && <th className="hide-mobile" style={{ width: '80px', textAlign: 'left' }}>Div</th>}
+                <th style={{ width: '30px', padding: '12px 2px', textAlign: 'center' }}>P</th>
+                <th className="hide-mobile" style={{ width: '30px', textAlign: 'center' }}>W</th>
+                <th className="hide-mobile" style={{ width: '30px', textAlign: 'center' }}>D</th>
+                <th className="hide-mobile" style={{ width: '30px', textAlign: 'center' }}>L</th>
+                <th style={{ width: '40px', padding: '12px 2px', textAlign: 'center' }}>+/-</th>
+                <th style={{ width: '45px', padding: '12px 2px', textAlign: 'center', color: 'var(--accent-cyan)' }}>Pts</th>
               </tr>
             </thead>
-            <tbody style={{ fontSize: '0.95rem' }}>
+            <tbody>
               {playersInDivision.length === 0 ? (
                 <tr>
-                  <td colSpan={activeDivision === 'Overall' ? 9 : 8} style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>
-                    No data available for this division
-                  </td>
+                  <td colSpan={10} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No data</td>
                 </tr>
               ) : (
                 playersInDivision.map((player, index) => {
@@ -128,75 +133,40 @@ export default function Table() {
                     <tr key={player.id} style={{
                       background: isMe ? 'rgba(124, 92, 252, 0.1)' : 'transparent',
                       borderBottom: '1px solid rgba(255,255,255,0.05)',
-                      transition: 'background 0.2s ease'
+                      fontSize: '0.85rem'
                     }}>
-                      <td style={{
-                        padding: '16px 12px',
-                        textAlign: 'center',
-                        fontWeight: '800',
-                        color: index === 0 ? '#fbbf24' : index === 1 ? '#94a3b8' : index === 2 ? '#b45309' : 'var(--text-muted)'
-                      }}>
+                      <td style={{ textAlign: 'center', fontWeight: '800', color: index === 0 ? '#fbbf24' : 'var(--text-muted)' }}>
                         {index + 1}
                       </td>
-                      <td style={{ padding: '16px 12px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          {isMe && <div style={{ width: '4px', height: '24px', background: 'var(--accent-primary)', borderRadius: '2px' }} />}
-                          <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontWeight: isMe ? '800' : '600', color: isMe ? 'white' : 'var(--text-primary)' }}>
-                              {player.username}
+                      <td style={{ padding: '10px 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontWeight: isMe ? '800' : '600', color: isMe ? 'white' : 'var(--text-primary)' }}>
+                            {player.username}
+                          </span>
+                          {(isPromotion || isRelegation) && (
+                            <span style={{ fontSize: '0.55rem', fontWeight: '900', color: isPromotion ? '#10b981' : '#ef4444' }}>
+                              {isPromotion ? 'PRO' : 'REL'}
                             </span>
-                            {(isPromotion || isRelegation) && (
-                              <span style={{
-                                fontSize: '0.6rem',
-                                fontWeight: '900',
-                                letterSpacing: '0.05em',
-                                color: isPromotion ? '#10b981' : '#ef4444',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                marginTop: '2px'
-                              }}>
-                                {isPromotion ? '↑ PROMOTION ZONE' : '↓ RELEGATION ZONE'}
-                              </span>
-                            )}
-                          </div>
+                          )}
                         </div>
                       </td>
                       {activeDivision === 'Overall' && (
-                        <td style={{ padding: '16px 12px' }}>
-                          <span style={{
-                            fontSize: '0.7rem',
-                            fontWeight: '800',
-                            padding: '4px 8px',
-                            borderRadius: '4px',
-                            background: `${DIVISION_COLORS[player.displayDivision]}22`,
-                            color: DIVISION_COLORS[player.displayDivision],
-                            border: `1px solid ${DIVISION_COLORS[player.displayDivision]}44`
-                          }}>
-                            {player.displayDivision}
-                          </span>
+                        <td className="hide-mobile" style={{ padding: '10px 4px' }}>
+                          <span style={{ fontSize: '0.65rem', color: DIVISION_COLORS[player.displayDivision] }}>{player.displayDivision}</span>
                         </td>
                       )}
-                      <td style={{ padding: '16px 12px', textAlign: 'center', fontWeight: '500' }}>{player.stats.played}</td>
-                      <td style={{ padding: '16px 12px', textAlign: 'center', color: 'var(--success)' }}>{player.stats.wins}</td>
-                      <td style={{ padding: '16px 12px', textAlign: 'center', color: 'var(--text-muted)' }}>{player.stats.draws}</td>
-                      <td style={{ padding: '16px 12px', textAlign: 'center', color: 'var(--error)' }}>{player.stats.losses}</td>
+                      <td style={{ textAlign: 'center' }}>{player.stats.played}</td>
+                      <td className="hide-mobile" style={{ textAlign: 'center' }}>{player.stats.wins}</td>
+                      <td className="hide-mobile" style={{ textAlign: 'center' }}>{player.stats.draws}</td>
+                      <td className="hide-mobile" style={{ textAlign: 'center' }}>{player.stats.losses}</td>
                       <td style={{
-                        padding: '16px 12px',
                         textAlign: 'center',
                         fontWeight: '700',
                         color: legDiff > 0 ? '#10b981' : legDiff < 0 ? '#ef4444' : 'var(--text-muted)'
                       }}>
                         {legDiff > 0 ? `+${legDiff}` : legDiff}
                       </td>
-                      <td style={{
-                        padding: '16px 12px',
-                        textAlign: 'center',
-                        fontWeight: '900',
-                        fontSize: '1.1rem',
-                        color: 'var(--accent-cyan)',
-                        textShadow: '0 0 10px rgba(0, 212, 255, 0.3)'
-                      }}>
+                      <td style={{ textAlign: 'center', fontWeight: '900', color: 'var(--accent-cyan)' }}>
                         {player.stats.points}
                       </td>
                     </tr>
@@ -208,14 +178,21 @@ export default function Table() {
         </div>
       </div>
 
-      <div style={{ marginTop: '24px', display: 'flex', gap: '20px', flexWrap: 'wrap', padding: '0 10px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-          <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: 'rgba(16, 185, 129, 0.2)', border: '1px solid #10b981' }} />
-          <span>Top 2: Automatic Promotion</span>
+      <style>{`
+        @media (max-width: 600px) {
+          .hide-mobile { display: none !important; }
+          .table { font-size: 0.8rem !important; }
+        }
+      `}</style>
+
+      <div style={{ marginTop: '20px', display: 'flex', gap: '15px', flexWrap: 'wrap', padding: '0 5px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+          <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#10b981' }} />
+          <span>Promotion</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-          <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: 'rgba(239, 68, 68, 0.2)', border: '1px solid #ef4444' }} />
-          <span>Bottom 2: Relegation Playoff</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+          <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#ef4444' }} />
+          <span>Relegation</span>
         </div>
       </div>
     </div>

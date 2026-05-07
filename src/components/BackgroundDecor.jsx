@@ -1,5 +1,3 @@
-import { useEffect, useRef } from 'react'
-
 export default function BackgroundDecor() {
   const segments = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5]
 
@@ -21,7 +19,7 @@ export default function BackgroundDecor() {
   const segmentAngle = 360 / 20
 
   return (
-    <div className="background-decor-root" style={{
+    <div style={{
       position: 'fixed',
       top: 0,
       left: 0,
@@ -30,56 +28,37 @@ export default function BackgroundDecor() {
       pointerEvents: 'none',
       zIndex: -1,
       overflow: 'hidden',
-      background: '#040614'
+      background: '#2e1065' // Brighter deep violet base
     }}>
-      {/* Ultra-Vibrant Launch Sensation Gradient */}
+      {/* Ultra-Vibrant Neon Purple/Blue Gradient */}
       <div style={{
         position: 'absolute',
         inset: 0,
         background: `
           linear-gradient(135deg,
-            #050816 0%,
-            #1e1b4b 20%,
-            #4338ca 45%,
-            #7c3aed 70%,
-            #1e40af 100%
+            #4338ca 0%,
+            #6366f1 25%,
+            #a855f7 50%,
+            #7c3aed 75%,
+            #3b82f6 100%
           )
         `,
-        opacity: 1
+        opacity: 0.9
       }} />
 
-      {/* Animated Pulsing Orbs - Brighter Sensation */}
-      <div className="glow-orb orb-1" style={{
-        position: 'absolute',
-        top: '10%',
-        left: '10%',
-        width: '600px',
-        height: '600px',
-        background: 'radial-gradient(circle, rgba(124, 92, 252, 0.4) 0%, transparent 70%)',
-        filter: 'blur(80px)',
-        animation: 'pulse 12s infinite alternate'
-      }} />
-
-      <div className="glow-orb orb-2" style={{
-        position: 'absolute',
-        bottom: '5%',
-        right: '5%',
-        width: '700px',
-        height: '700px',
-        background: 'radial-gradient(circle, rgba(0, 212, 255, 0.3) 0%, transparent 70%)',
-        filter: 'blur(100px)',
-        animation: 'pulse 15s infinite alternate-reverse'
-      }} />
-
-      {/* Deep Violet Highlight */}
+      {/* Radiant Glowing Atmosphere */}
       <div style={{
         position: 'absolute',
-        top: '40%',
-        left: '30%',
-        width: '800px',
-        height: '800px',
-        background: 'radial-gradient(circle, rgba(91, 33, 182, 0.25) 0%, transparent 65%)',
-        filter: 'blur(120px)'
+        top: '5%',
+        left: '10%',
+        width: '80%',
+        height: '80%',
+        background: `
+          radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.4) 0%, transparent 50%),
+          radial-gradient(circle at 80% 70%, rgba(0, 212, 255, 0.4) 0%, transparent 50%),
+          radial-gradient(circle at 50% 50%, rgba(192, 132, 252, 0.3) 0%, transparent 60%)
+        `,
+        filter: 'blur(80px)'
       }} />
 
       {/* Modern Tech Grid - High Contrast */}
@@ -87,22 +66,22 @@ export default function BackgroundDecor() {
         position: 'absolute',
         inset: 0,
         backgroundImage: `
-          linear-gradient(rgba(255, 255, 255, 0.05) 1.5px, transparent 1.5px),
-          linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1.5px, transparent 1.5px)
+          linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px)
         `,
-        backgroundSize: '80px 80px',
-        maskImage: 'radial-gradient(ellipse at 50% 50%, black 30%, transparent 95%)'
+        backgroundSize: '60px 60px',
+        maskImage: 'radial-gradient(ellipse at 50% 50%, black 20%, transparent 95%)'
       }} />
 
-      {/* Dynamic Dartboard Sensation */}
+      {/* Dynamic Ghost Dartboard Pattern */}
       <div style={{
         position: 'absolute',
         top: '50%',
         left: '50%',
-        transform: 'translate(-50%, -50%) rotate(10deg)',
-        width: '1300px',
-        height: '1300px',
-        opacity: 0.08
+        transform: 'translate(-50%, -50%) rotate(15deg)',
+        width: '1200px',
+        height: '1200px',
+        opacity: 0.1
       }}>
         <svg viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
           {segments.map((num, i) => {
@@ -111,25 +90,17 @@ export default function BackgroundDecor() {
             return (
               <path
                 key={`wedge-${i}`}
-                d={wedgePath(startAngle, endAngle, 160, 248)}
-                fill={i % 2 === 0 ? 'rgba(255,255,255,0.2)' : 'transparent'}
-                stroke="rgba(255,255,255,0.1)"
+                d={wedgePath(startAngle, endAngle, 140, 245)}
+                fill={i % 2 === 0 ? 'rgba(255,255,255,0.3)' : 'transparent'}
+                stroke="white"
                 strokeWidth="0.5"
               />
             )
           })}
-          <circle cx="250" cy="250" r="248" stroke="rgba(255,255,255,0.2)" strokeWidth="2" fill="none" />
-          <circle cx="250" cy="250" r="160" stroke="rgba(255,255,255,0.2)" strokeWidth="2" fill="none" />
+          <circle cx="250" cy="250" r="248" stroke="white" strokeWidth="2" fill="none" />
+          <circle cx="250" cy="250" r="140" stroke="white" strokeWidth="1" fill="none" />
         </svg>
       </div>
-
-      <style>{`
-        @keyframes pulse {
-          0% { transform: scale(1) translate(0, 0); opacity: 0.6; }
-          50% { transform: scale(1.1) translate(20px, -20px); opacity: 0.8; }
-          100% { transform: scale(0.9) translate(-10px, 10px); opacity: 0.6; }
-        }
-      `}</style>
     </div>
   )
 }
