@@ -95,6 +95,7 @@ function CupManagement() {
   }
 
   const enterResult = (cup, match) => {
+    console.log('Opening result modal for match:', match.id)
     setResultForm({
       cup,
       match,
@@ -109,6 +110,8 @@ function CupManagement() {
       proofImage: ''
     })
     setShowResultModal(true)
+    // Ensure user sees the modal if they are scrolled down
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handleImageUpload = (e) => {
@@ -551,7 +554,7 @@ function CupManagement() {
                         onClick={() => enterResult(cup, match)}
                         disabled={!match.player1 || !match.player2}
                       >
-                        Enter Result
+                        Submit Result
                       </button>
                     )}
                   </div>
@@ -647,7 +650,7 @@ function CupManagement() {
                   />
                 </div>
                 <div className="form-group" style={{ marginTop: '8px' }}>
-                  <label style={{ fontSize: '0.8rem' }}>Double %</label>
+                  <label style={{ fontSize: '0.8rem' }}>Checkout Success %</label>
                   <input
                     type="number"
                     value={resultForm.p1_doubles}
@@ -689,7 +692,7 @@ function CupManagement() {
                   />
                 </div>
                 <div className="form-group" style={{ marginTop: '8px' }}>
-                  <label style={{ fontSize: '0.8rem' }}>Double %</label>
+                  <label style={{ fontSize: '0.8rem' }}>Checkout Success %</label>
                   <input
                     type="number"
                     value={resultForm.p2_doubles}

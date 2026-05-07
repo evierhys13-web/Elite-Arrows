@@ -411,24 +411,29 @@ export default function SubmitResult() {
   }
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <h1 className="page-title">Submit Result</h1>
+    <div className="page" style={{ maxWidth: '800px', margin: '0 auto', padding: '15px' }}>
+      <div className="page-header" style={{ marginBottom: '25px', textAlign: 'center' }}>
+        <h1 className="page-title" style={{ fontSize: '1.8rem', color: 'var(--accent-cyan)' }}>Submit Match Result</h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Enter the details of your recent match for league or friendly play.</p>
       </div>
 
-      <div className="card">
-        <form className="submit-result-form" onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Game Type</label>
-              <select 
-                name="gameType" 
-                value={formData.gameType} 
-                onChange={handleChange}
-              >
-                <option value="Friendly">Friendly</option>
-                <option value="League">League</option>
-                <option value="Cup">Cup Match</option>
-              </select>
+      <div className="card" style={{ padding: '25px', borderRadius: '16px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
+        <form className="submit-result-form" onSubmit={handleSubmit} style={{ maxWidth: 'none' }}>
+          <div className="form-group" style={{ marginBottom: '25px' }}>
+            <label style={{ fontWeight: '600', marginBottom: '10px', display: 'block' }}>Match Type</label>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              {['Friendly', 'League', 'Cup'].map(type => (
+                <button
+                  key={type}
+                  type="button"
+                  className={`btn ${formData.gameType === (type === 'Cup' ? 'Cup' : type) ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => handleChange({ target: { name: 'gameType', value: type === 'Cup' ? 'Cup' : type } })}
+                  style={{ flex: 1, minWidth: '100px' }}
+                >
+                  {type === 'Cup' ? 'Cup Match' : type}
+                </button>
+              ))}
+            </div>
           </div>
 
           {error && (
@@ -461,66 +466,87 @@ export default function SubmitResult() {
             </div>
           )}
 
-          <div className="match-setup">
-            <div className="player-select">
-              <label>You ({user.division})</label>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr auto 1fr',
+            alignItems: 'center',
+            gap: '15px',
+            marginBottom: '30px',
+            background: 'var(--bg-secondary)',
+            padding: '20px',
+            borderRadius: '12px',
+            border: '1px solid var(--border)'
+          }} className="match-players-grid">
+            <div style={{ textAlign: 'center' }}>
+              <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>You</label>
               <div style={{ 
                 padding: '12px', 
-                background: 'var(--bg-secondary)', 
+                background: 'var(--bg-primary)',
                 borderRadius: '8px',
-                textAlign: 'center'
+                fontWeight: 'bold',
+                border: '1px solid var(--border)',
+                color: 'var(--accent-cyan)'
               }}>
                 {currentUserName}
               </div>
             </div>
 
-            <span className="vs-text">vs</span>
+            <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>VS</div>
 
-            <div className="player-select">
-              <label>Opponent</label>
-              {formData.gameType === 'Cup' ? (
-                <select 
-                  name="opponent" 
-                  value={formData.opponent} 
-                  onChange={handleChange}
-                  required
-                >
-                  <option value="">Select cup match</option>
-                  {cupFixtures.map(f => {
-                    const cup = cups.find(c => c.id === f.cupId)
-                    const opponentId = getFixtureOpponentId(f)
-                    const opponent = allUsers.find(u => u.id === opponentId)
-                    return (
-                      <option key={f.id} value={opponentId}>
-                        {cup?.name || 'Cup'} - vs {getDisplayName(opponent, 'Unknown')} (Round {f.round})
-                      </option>
-                    )
-                  })}
-                </select>
-              ) : (
-                <select 
-                  name="opponent" 
-                  value={formData.opponent} 
-                  onChange={handleChange}
-                  required
-                >
-                  <option value="">Select opponent</option>
-                  {opponentOptions.map(p => {
-                    const status = getOpponentStatus(p.id, getDisplayName(p))
-                    return (
-                      <option key={p.id} value={p.id}>
-                        {getDisplayName(p)} ({p.division}){formData.gameType === 'League' && status?.played ? ' - Played' : ''}
-                      </option>
-                    )
-                  })}
-                </select>
-              )}
+            <div style={{ textAlign: 'center' }}>
+              <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Opponent</label>
+              <div>
+                {formData.gameType === 'Cup' ? (
+                  <select
+                    name="opponent"
+                    value={formData.opponent}
+                    onChange={handleChange}
+                    required
+                    style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                  >
+                    <option value="">Select match</option>
+                    {cupFixtures.map(f => {
+                      const cup = cups.find(c => c.id === f.cupId)
+                      const opponentId = getFixtureOpponentId(f)
+                      const opponent = allUsers.find(u => u.id === opponentId)
+                      return (
+                        <option key={f.id} value={opponentId}>
+                          {cup?.name || 'Cup'} - vs {getDisplayName(opponent, 'Unknown')}
+                        </option>
+                      )
+                    })}
+                  </select>
+                ) : (
+                  <select
+                    name="opponent"
+                    value={formData.opponent}
+                    onChange={handleChange}
+                    required
+                    style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                  >
+                    <option value="">Select opponent</option>
+                    {opponentOptions.map(p => {
+                      const status = getOpponentStatus(p.id, getDisplayName(p))
+                      return (
+                        <option key={p.id} value={p.id}>
+                          {getDisplayName(p)} ({p.division}){formData.gameType === 'League' && status?.played ? ' - Played' : ''}
+                        </option>
+                      )
+                    })}
+                  </select>
+                )}
+              </div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
-            <div className="form-group" style={{ flex: 1 }}>
-              <label>Your Legs Won</label>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '20px',
+            marginBottom: '30px'
+          }}>
+            <div className="form-group">
+              <label style={{ fontWeight: '600', marginBottom: '8px', display: 'block' }}>Your Legs Won</label>
               <input
                 type="number"
                 name="yourScore"
@@ -528,10 +554,12 @@ export default function SubmitResult() {
                 onChange={handleChange}
                 min="0"
                 required
+                style={{ fontSize: '1.2rem', textAlign: 'center', padding: '15px' }}
+                placeholder="0"
               />
             </div>
-            <div className="form-group" style={{ flex: 1 }}>
-              <label>Opponent Legs Won</label>
+            <div className="form-group">
+              <label style={{ fontWeight: '600', marginBottom: '8px', display: 'block' }}>Opponent Legs Won</label>
               <input
                 type="number"
                 name="opponentScore"
@@ -539,14 +567,24 @@ export default function SubmitResult() {
                 onChange={handleChange}
                 min="0"
                 required
+                style={{ fontSize: '1.2rem', textAlign: 'center', padding: '15px' }}
+                placeholder="0"
               />
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
-            <div className="form-group" style={{ flex: 1 }}>
-              <label>Best of (legs)</label>
-              <select name="bestOf" value={formData.bestOf} onChange={handleChange}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '20px',
+            marginBottom: '30px',
+            padding: '20px',
+            background: 'var(--bg-secondary)',
+            borderRadius: '12px'
+          }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label style={{ fontSize: '0.85rem' }}>Best of (legs)</label>
+              <select name="bestOf" value={formData.bestOf} onChange={handleChange} style={{ background: 'var(--bg-primary)' }}>
                 <option value="1">Best of 1</option>
                 <option value="3">Best of 3</option>
                 <option value="5">Best of 5</option>
@@ -557,119 +595,128 @@ export default function SubmitResult() {
                 <option value="13">Best of 13</option>
               </select>
             </div>
-            <div className="form-group" style={{ flex: 1 }}>
-              <label>First to (legs)</label>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label style={{ fontSize: '0.85rem' }}>First to (legs)</label>
               <input
                 type="number"
                 name="firstTo"
                 value={formData.firstTo}
                 onChange={handleChange}
                 min="1"
+                style={{ background: 'var(--bg-primary)' }}
               />
             </div>
           </div>
 
-          <div style={{ 
-            padding: '15px', 
-            background: 'var(--bg-secondary)', 
-            borderRadius: '8px',
-            marginBottom: '20px'
-          }}>
-            <h4 style={{ marginBottom: '15px', color: 'var(--accent-cyan)' }}>Your Stats</h4>
-            <div style={{ display: 'flex', gap: '15px' }}>
-              <div className="form-group" style={{ flex: 1 }}>
-                <label>180s</label>
-                <input
-                  type="number"
-                  name="your180s"
-                  value={formData.your180s}
-                  onChange={handleChange}
-                  min="0"
-                  placeholder="0"
-                />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '30px' }}>
+            <div style={{
+              padding: '20px',
+              background: 'rgba(77, 168, 218, 0.05)',
+              borderRadius: '12px',
+              border: '1px solid rgba(77, 168, 218, 0.2)'
+            }}>
+              <h4 style={{ marginBottom: '15px', color: 'var(--accent-cyan)', fontSize: '0.9rem', textTransform: 'uppercase' }}>Your Stats</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontSize: '0.8rem' }}>180s</label>
+                  <input
+                    type="number"
+                    name="your180s"
+                    value={formData.your180s}
+                    onChange={handleChange}
+                    min="0"
+                    placeholder="0"
+                    style={{ background: 'var(--bg-primary)' }}
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontSize: '0.8rem' }}>Highest Checkout</label>
+                  <input
+                    type="number"
+                    name="yourHighestCheckout"
+                    value={formData.yourHighestCheckout}
+                    onChange={handleChange}
+                    min="0"
+                    placeholder="0"
+                    style={{ background: 'var(--bg-primary)' }}
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontSize: '0.8rem' }}>Checkout Success %</label>
+                  <input
+                    type="number"
+                    name="yourDoubleSuccess"
+                    value={formData.yourDoubleSuccess}
+                    onChange={handleChange}
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    placeholder="0"
+                    style={{ background: 'var(--bg-primary)' }}
+                  />
+                </div>
               </div>
-              <div className="form-group" style={{ flex: 1 }}>
-                <label>Highest Checkout</label>
-                <input
-                  type="number"
-                  name="yourHighestCheckout"
-                  value={formData.yourHighestCheckout}
-                  onChange={handleChange}
-                  min="0"
-                  placeholder="0"
-                />
-              </div>
-              <div className="form-group" style={{ flex: 1 }}>
-                <label>Double %</label>
-                <input
-                  type="number"
-                  name="yourDoubleSuccess"
-                  value={formData.yourDoubleSuccess}
-                  onChange={handleChange}
-                  min="0"
-                  max="100"
-                  step="0.1"
-                  placeholder="0"
-                />
+            </div>
+
+            <div style={{
+              padding: '20px',
+              background: 'rgba(255, 255, 255, 0.03)',
+              borderRadius: '12px',
+              border: '1px solid var(--border)'
+            }}>
+              <h4 style={{ marginBottom: '15px', color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase' }}>Opponent Stats</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontSize: '0.8rem' }}>180s</label>
+                  <input
+                    type="number"
+                    name="opponent180s"
+                    value={formData.opponent180s}
+                    onChange={handleChange}
+                    min="0"
+                    placeholder="0"
+                    style={{ background: 'var(--bg-primary)' }}
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontSize: '0.8rem' }}>Highest Checkout</label>
+                  <input
+                    type="number"
+                    name="opponentHighestCheckout"
+                    value={formData.opponentHighestCheckout}
+                    onChange={handleChange}
+                    min="0"
+                    placeholder="0"
+                    style={{ background: 'var(--bg-primary)' }}
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontSize: '0.8rem' }}>Checkout Success %</label>
+                  <input
+                    type="number"
+                    name="opponentDoubleSuccess"
+                    value={formData.opponentDoubleSuccess}
+                    onChange={handleChange}
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    placeholder="0"
+                    style={{ background: 'var(--bg-primary)' }}
+                  />
+                </div>
               </div>
             </div>
           </div>
 
-          <div style={{ 
-            padding: '15px', 
-            background: 'var(--bg-secondary)', 
-            borderRadius: '8px',
-            marginBottom: '20px'
-          }}>
-            <h4 style={{ marginBottom: '15px', color: 'var(--text-muted)' }}>Opponent Stats</h4>
-            <div style={{ display: 'flex', gap: '15px' }}>
-              <div className="form-group" style={{ flex: 1 }}>
-                <label>180s</label>
-                <input
-                  type="number"
-                  name="opponent180s"
-                  value={formData.opponent180s}
-                  onChange={handleChange}
-                  min="0"
-                  placeholder="0"
-                />
-              </div>
-              <div className="form-group" style={{ flex: 1 }}>
-                <label>Highest Checkout</label>
-                <input
-                  type="number"
-                  name="opponentHighestCheckout"
-                  value={formData.opponentHighestCheckout}
-                  onChange={handleChange}
-                  min="0"
-                  placeholder="0"
-                />
-              </div>
-              <div className="form-group" style={{ flex: 1 }}>
-                <label>Double %</label>
-                <input
-                  type="number"
-                  name="opponentDoubleSuccess"
-                  value={formData.opponentDoubleSuccess}
-                  onChange={handleChange}
-                  min="0"
-                  max="100"
-                  step="0.1"
-                  placeholder="0"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label style={{ fontSize: '0.9rem', display: 'block', marginBottom: '8px' }}>Proof of Result (Photo/Screenshot) - Required for League</label>
+          <div className="form-group" style={{ marginBottom: '30px' }}>
+            <label style={{ fontSize: '0.9rem', fontWeight: '600', display: 'block', marginBottom: '12px' }}>Proof of Result (Photo/Screenshot)</label>
             
             {!formData.proofImage ? (
               <div
                 className="result-proof-picker"
                 style={{ 
                   border: '2px dashed var(--border)', 
-                  borderRadius: '8px', 
+                  borderRadius: '12px',
                   padding: '30px 20px',
                   textAlign: 'center',
                   cursor: 'pointer',
@@ -678,12 +725,9 @@ export default function SubmitResult() {
                   color: 'var(--text)'
                 }}
               >
-                <p style={{ color: 'var(--text-muted)', marginBottom: '10px' }}>
-                  Add proof of your result
-                </p>
-                <div className="result-proof-actions">
-                  <div className="result-proof-native-button result-proof-camera">
-                    <span>Take Photo</span>
+                <div className="result-proof-actions" style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                  <div className="result-proof-native-button result-proof-camera" style={{ flex: 1, maxWidth: '150px' }}>
+                    <span style={{ fontSize: '0.85rem' }}>📷 Take Photo</span>
                     <input
                       ref={cameraInputRef}
                       type="file"
@@ -695,8 +739,8 @@ export default function SubmitResult() {
                       className="result-proof-input"
                     />
                   </div>
-                  <div className="result-proof-native-button result-proof-upload">
-                    <span>Upload Screenshot</span>
+                  <div className="result-proof-native-button result-proof-upload" style={{ flex: 1, maxWidth: '150px' }}>
+                    <span style={{ fontSize: '0.85rem' }}>📁 Upload</span>
                     <input
                       ref={uploadInputRef}
                       type="file"
@@ -710,27 +754,31 @@ export default function SubmitResult() {
                 </div>
               </div>
             ) : (
-              <div style={{ position: 'relative' }}>
+              <div style={{ position: 'relative', textAlign: 'center' }}>
                 <img 
                   src={formData.proofImage} 
                   alt="Proof" 
-                  style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px' }}
+                  style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '12px', border: '1px solid var(--border)' }}
                 />
                 <button
                   type="button"
                   onClick={() => removeImage()}
                   style={{
                     position: 'absolute',
-                    top: '-10px',
-                    right: '-10px',
+                    top: '10px',
+                    right: '10px',
                     background: '#ef4444',
                     color: 'white',
                     border: 'none',
                     borderRadius: '50%',
-                    width: '28px',
-                    height: '28px',
+                    width: '32px',
+                    height: '32px',
                     cursor: 'pointer',
-                    fontSize: '18px'
+                    fontSize: '20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.3)'
                   }}
                 >
                   ×
@@ -743,42 +791,60 @@ export default function SubmitResult() {
             type="submit"
             className={`btn ${submitted ? 'btn-success' : 'btn-primary'} btn-block`}
             disabled={submitted || isSubmitting}
+            style={{ padding: '18px', fontSize: '1.1rem', fontWeight: '700', borderRadius: '12px' }}
           >
-            {isSubmitting ? 'Submitting...' : submitted ? 'Submitted for Approval!' : 'Submit Result (Awaiting Approval)'}
+            {isSubmitting ? '🔄 Submitting...' : submitted ? '✅ Submitted Successfully!' : '🚀 Submit for Approval'}
           </button>
 
-          <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '10px' }}>
+          <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '15px' }}>
             Results are sent to admins for approval
           </p>
         </form>
       </div>
 
       {userSubmittedResults.length > 0 && (
-        <div className="card" style={{ marginTop: '20px' }}>
-          <h3 className="card-title">Your Submitted Results</h3>
-          {userSubmittedResults.map(result => {
-            const statusDisplay = getResultStatusDisplay(result.status)
-            const proofUploaded = Boolean(result.proofImage || result.hasProofImage)
-            return (
-              <div
-                key={result.id || result.firestoreId}
-                style={{
-                  padding: '12px 0',
-                  borderBottom: '1px solid var(--border)',
-                  display: 'grid',
-                  gap: '6px'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-                  <strong>{result.player1} {result.score1} - {result.score2} {result.player2}</strong>
-                  <span style={{ color: statusDisplay.color, fontWeight: 700 }}>{statusDisplay.label}</span>
+        <div className="card" style={{ marginTop: '30px', padding: '20px' }}>
+          <h3 className="card-title" style={{ fontSize: '1.1rem', marginBottom: '20px' }}>Your Recent Submissions</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {userSubmittedResults.map(result => {
+              const statusDisplay = getResultStatusDisplay(result.status)
+              const proofUploaded = Boolean(result.proofImage || result.hasProofImage)
+              return (
+                <div
+                  key={result.id || result.firestoreId}
+                  style={{
+                    padding: '15px',
+                    background: 'var(--bg-secondary)',
+                    borderRadius: '10px',
+                    border: '1px solid var(--border)',
+                    display: 'grid',
+                    gap: '8px'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>
+                    <span style={{ fontWeight: '700', fontSize: '0.95rem' }}>
+                      {result.player1} <span style={{ color: 'var(--accent-cyan)' }}>{result.score1}-{result.score2}</span> {result.player2}
+                    </span>
+                    <span style={{
+                      color: statusDisplay.color,
+                      fontSize: '0.75rem',
+                      fontWeight: 800,
+                      textTransform: 'uppercase',
+                      padding: '4px 8px',
+                      background: 'rgba(0,0,0,0.2)',
+                      borderRadius: '4px'
+                    }}>
+                      {statusDisplay.label}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                    <span>{result.gameType} • {result.date}</span>
+                    <span>{proofUploaded ? '🖼️ Proof Attached' : '❌ No Proof'}</span>
+                  </div>
                 </div>
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                  {result.gameType} | {result.division || 'No division'} | {result.date || 'No date'} | {proofUploaded ? 'Proof uploaded' : 'No proof uploaded'}
-                </div>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </div>
       )}
     </div>
