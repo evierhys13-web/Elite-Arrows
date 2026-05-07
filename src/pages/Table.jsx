@@ -11,7 +11,7 @@ const DIVISION_COLORS = {
   'Silver': '#cbd5e1',
   'Bronze': '#d97706',
   'Development': '#4ade80',
-  'Overall': '#d946ef'
+  'Overall': '#818cf8'
 }
 
 export default function Table() {

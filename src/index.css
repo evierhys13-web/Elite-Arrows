@@ -1,21 +1,21 @@
 :root {
-  /* Brand Palette - Even Brighter Vibrant Purple */
-  --bg-primary: #312e81; /* Brighter Royal Indigo */
-  --bg-secondary: #4338ca; /* Brighter Indigo */
-  --bg-card: rgba(88, 28, 135, 0.75); /* Vibrant Purple Glass */
-  --bg-hover: rgba(168, 85, 247, 0.25);
-  --bg-active: rgba(168, 85, 247, 0.4);
+  /* Brand Palette - Light Purple & Blue Mix (Vibrant Launch) */
+  --bg-primary: #1e293b; /* Deep Indigo-Slate */
+  --bg-secondary: #334155;
+  --bg-card: rgba(30, 41, 59, 0.7);
+  --bg-hover: rgba(139, 92, 246, 0.2);
+  --bg-active: rgba(139, 92, 246, 0.3);
 
-  --text-primary: #ffffff;
-  --text: #ffffff;
-  --text-secondary: #f1f5f9;
-  --text-muted: #cbd5e1;
+  --text-primary: #f8fafc;
+  --text: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
 
-  --accent-primary: #d946ef; /* Bright Fuchsia/Purple */
-  --accent-hover: #e879f9;
-  --accent-cyan: #22d3ee;
-  --accent-cyan-glow: rgba(34, 211, 238, 0.6);
-  --accent-purple-glow: rgba(217, 70, 239, 0.6);
+  --accent-primary: #818cf8; /* Light Indigo-Purple */
+  --accent-hover: #a5b4fc;
+  --accent-cyan: #38bdf8; /* Light Sky Blue */
+  --accent-cyan-glow: rgba(56, 189, 248, 0.4);
+  --accent-purple-glow: rgba(129, 140, 248, 0.4);
 
   --success: #10b981;
   --success-bg: rgba(16, 185, 129, 0.12);

@@ -28,48 +28,47 @@ export default function BackgroundDecor() {
       pointerEvents: 'none',
       zIndex: -1,
       overflow: 'hidden',
-      background: '#2e1065' // Brighter deep violet base
+      background: '#0f172a'
     }}>
-      {/* Ultra-Vibrant Neon Purple/Blue Gradient */}
+      {/* Light Purple/Blue Mixed Gradient */}
       <div style={{
         position: 'absolute',
         inset: 0,
         background: `
           linear-gradient(135deg,
-            #4338ca 0%,
-            #6366f1 25%,
-            #a855f7 50%,
-            #7c3aed 75%,
-            #3b82f6 100%
+            #1e293b 0%,
+            #312e81 30%,
+            #818cf8 60%,
+            #38bdf8 100%
           )
         `,
-        opacity: 0.9
+        opacity: 0.8
       }} />
 
-      {/* Radiant Glowing Atmosphere */}
+      {/* Atmospheric Glows - Light Purple & Sky Blue */}
       <div style={{
         position: 'absolute',
-        top: '5%',
+        top: '10%',
         left: '10%',
         width: '80%',
         height: '80%',
         background: `
-          radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.4) 0%, transparent 50%),
-          radial-gradient(circle at 80% 70%, rgba(0, 212, 255, 0.4) 0%, transparent 50%),
-          radial-gradient(circle at 50% 50%, rgba(192, 132, 252, 0.3) 0%, transparent 60%)
+          radial-gradient(circle at 20% 30%, rgba(165, 180, 252, 0.4) 0%, transparent 50%),
+          radial-gradient(circle at 80% 70%, rgba(56, 189, 248, 0.35) 0%, transparent 50%),
+          radial-gradient(circle at 50% 50%, rgba(129, 140, 248, 0.2) 0%, transparent 60%)
         `,
         filter: 'blur(80px)'
       }} />
 
-      {/* Modern Tech Grid - High Contrast */}
+      {/* Modern Grid Overlay */}
       <div style={{
         position: 'absolute',
         inset: 0,
         backgroundImage: `
-          linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px)
+          linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px)
         `,
-        backgroundSize: '60px 60px',
+        backgroundSize: '100px 100px',
         maskImage: 'radial-gradient(ellipse at 50% 50%, black 20%, transparent 95%)'
       }} />
 
@@ -81,7 +80,7 @@ export default function BackgroundDecor() {
         transform: 'translate(-50%, -50%) rotate(15deg)',
         width: '1200px',
         height: '1200px',
-        opacity: 0.1
+        opacity: 0.07
       }}>
         <svg viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
           {segments.map((num, i) => {
@@ -91,14 +90,13 @@ export default function BackgroundDecor() {
               <path
                 key={`wedge-${i}`}
                 d={wedgePath(startAngle, endAngle, 140, 245)}
-                fill={i % 2 === 0 ? 'rgba(255,255,255,0.3)' : 'transparent'}
+                fill={i % 2 === 0 ? 'rgba(255,255,255,0.2)' : 'transparent'}
                 stroke="white"
                 strokeWidth="0.5"
               />
             )
           })}
           <circle cx="250" cy="250" r="248" stroke="white" strokeWidth="2" fill="none" />
-          <circle cx="250" cy="250" r="140" stroke="white" strokeWidth="1" fill="none" />
         </svg>
       </div>
     </div>
