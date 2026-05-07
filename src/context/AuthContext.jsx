@@ -483,7 +483,9 @@ export function AuthProvider({ children }) {
           subscriptionPot10: data.subscriptionPot10 || 0,
           moneyHistory: data.moneyHistory || [],
           resultStatusOverrides: data.resultStatusOverrides || {},
-          leagueTableResetAt: data.leagueTableResetAt || null
+          leagueTableResetAt: data.leagueTableResetAt || null,
+          isMaintenanceMode: data.isMaintenanceMode || false,
+          maintenanceMessage: data.maintenanceMessage || ''
         })
         resultStatusOverridesRef.current = data.resultStatusOverrides || {}
         localStorage.setItem('eliteArrowsResultStatusOverrides', JSON.stringify(data.resultStatusOverrides || {}))

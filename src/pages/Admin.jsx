@@ -2772,6 +2772,56 @@ const rejectResult = async (resultId) => {
             })()}
           </div>
       )}
+
+      {activeTab === 'maintenance' && user?.email?.toLowerCase() === 'rhyshowe2023@outlook.com' && (
+        <div className="card">
+          <h3 className="card-title">Site Maintenance Control</h3>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>
+            Toggle global maintenance banner and message. This will appear for all users.
+          </p>
+
+          <div className="form-group">
+            <label>Maintenance Banner Enabled</label>
+            <div className="checkbox-group">
+              <input
+                type="checkbox"
+                id="maintenanceToggle"
+                defaultChecked={adminData.isMaintenanceMode}
+              />
+              <label htmlFor="maintenanceToggle">Activate Banner</label>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label>Maintenance Message</label>
+            <textarea
+              id="maintenanceMsg"
+              defaultValue={adminData.maintenanceMessage}
+              placeholder="e.g. System under maintenance for Season 1 preparation..."
+              rows={3}
+            />
+          </div>
+
+          <button
+            className="btn btn-primary btn-block"
+            onClick={async () => {
+              const isMode = document.getElementById('maintenanceToggle').checked
+              const msg = document.getElementById('maintenanceMsg').value
+              try {
+                await updateAdminData({
+                  isMaintenanceMode: isMode,
+                  maintenanceMessage: msg
+                })
+                alert('Maintenance settings saved and synced!')
+              } catch (e) {
+                alert('Error saving: ' + e.message)
+              }
+            }}
+          >
+            Save Maintenance Notice
+          </button>
+        </div>
+      )}
       
       {/* Result Proof Preview */}
       {proofPreviewResult && hasResultProof(proofPreviewResult) && (

@@ -199,16 +199,22 @@ function AppLayout({ children }) {
         <div style={{
           background: 'var(--warning)',
           color: '#000',
-          padding: '10px 20px',
+          padding: '12px 20px',
           textAlign: 'center',
-          fontSize: '0.9rem',
-          fontWeight: 'bold',
+          fontSize: '0.85rem',
+          fontWeight: 800,
           position: 'sticky',
           top: 0,
-          zIndex: 2000,
-          boxShadow: '0 2px 10px rgba(0,0,0,0.2)'
+          zIndex: 5000,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '10px'
         }}>
-          <span style={{ marginRight: '8px' }}>⚠️</span>
+          <span style={{ fontSize: '1.2rem' }}>⚠️</span>
           {adminData.maintenanceMessage}
         </div>
       )}
