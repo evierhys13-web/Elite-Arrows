@@ -626,7 +626,6 @@ export default function SubmitResult() {
                     onChange={handleChange}
                     min="0"
                     placeholder="0"
-                    style={{ background: 'var(--bg-primary)' }}
                   />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
@@ -638,7 +637,6 @@ export default function SubmitResult() {
                     onChange={handleChange}
                     min="0"
                     placeholder="0"
-                    style={{ background: 'var(--bg-primary)' }}
                   />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
@@ -652,7 +650,6 @@ export default function SubmitResult() {
                     max="100"
                     step="0.1"
                     placeholder="0"
-                    style={{ background: 'var(--bg-primary)' }}
                   />
                 </div>
               </div>
@@ -675,7 +672,6 @@ export default function SubmitResult() {
                     onChange={handleChange}
                     min="0"
                     placeholder="0"
-                    style={{ background: 'var(--bg-primary)' }}
                   />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
@@ -687,7 +683,6 @@ export default function SubmitResult() {
                     onChange={handleChange}
                     min="0"
                     placeholder="0"
-                    style={{ background: 'var(--bg-primary)' }}
                   />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
@@ -701,7 +696,6 @@ export default function SubmitResult() {
                     max="100"
                     step="0.1"
                     placeholder="0"
-                    style={{ background: 'var(--bg-primary)' }}
                   />
                 </div>
               </div>

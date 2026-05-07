@@ -3,18 +3,18 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Tooltip from '../components/Tooltip'
 import { compressImage } from '../components/ImageUtils'
-import { getResultPlayerId } from '../utils/leagueResults'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
+import Breadcrumbs from '../components/Breadcrumbs'
 
 const AVAILABLE_BADGES = [
   { id: 'competitive', label: 'Competitive', icon: '🏆', color: '#FFD700' },
-  { id: 'friendly', label: 'Friendly', icon: '🤝', color: '#22C55E' },
+  { id: 'friendly', label: 'Friendly', icon: '🤝', color: '#10B981' },
   { id: 'practice', label: 'Practice', icon: '🎯', color: '#7C5CFC' },
   { id: 'tournament', label: 'Tournament Pro', icon: '🥇', color: '#F59E0B' },
   { id: 'social', label: 'Social Player', icon: '💬', color: '#00D4FF' },
   { id: 'improver', label: 'Always Improving', icon: '📈', color: '#EC4899' },
   { id: 'veteran', label: 'League Veteran', icon: '⭐', color: '#6366F1' },
-  { id: ' newcomer', label: 'Newcomer', icon: '🌟', color: '#10B981' },
+  { id: 'newcomer', label: 'Newcomer', icon: '🌟', color: '#10B981' },
 ]
 
 export default function Profile() {
@@ -31,11 +31,16 @@ export default function Profile() {
     nickname: '',
     bio: '',
     country: '',
-    dartCounterUsername: '',
-    dartCounterLink: '',
-    threeDartAverage: ''
+    dartCounterUsername: ''
   })
   
+  const [profilePicture, setProfilePicture] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [tags, setTags] = useState([])
+  const [newTag, setNewTag] = useState('')
+  const [selectedBadges, setSelectedBadges] = useState([])
+  const [showBadgeSelector, setShowBadgeSelector] = useState(false)
+
   useEffect(() => {
     if (displayUser) {
       setFormData({
@@ -43,24 +48,13 @@ export default function Profile() {
         nickname: displayUser.nickname || '',
         bio: displayUser.bio || '',
         country: displayUser.country || '',
-        dartCounterUsername: displayUser.dartCounterUsername || '',
-        dartCounterLink: displayUser.dartCounterLink || '',
-        threeDartAverage: displayUser.threeDartAverage !== undefined && displayUser.threeDartAverage !== null 
-          ? String(displayUser.threeDartAverage) 
-          : ''
+        dartCounterUsername: displayUser.dartCounterUsername || ''
       })
       setProfilePicture(displayUser.profilePicture || '')
       setTags(displayUser.tags || [])
       setSelectedBadges(displayUser.badges || [])
     }
-  }, [displayUser?.id, displayUser?.bio, displayUser?.nickname, displayUser?.threeDartAverage])
-  const [profilePicture, setProfilePicture] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState('')
-  const [tags, setTags] = useState([])
-  const [newTag, setNewTag] = useState('')
-  const [selectedBadges, setSelectedBadges] = useState([])
-  const [showBadgeSelector, setShowBadgeSelector] = useState(false)
+  }, [displayUser])
 
   const handleAddTag = () => {
     if (newTag.trim() && !tags.includes(newTag.trim()) && tags.length < 10) {
@@ -81,674 +75,259 @@ export default function Profile() {
     }
   }
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      handleAddTag()
-    }
-  }
-
   const allUsers = getAllUsers()
   const allResults = getResults()
   const fixtures = getFixtures()
-  const approvedResults = allResults.filter(r => String(r.status || '').toLowerCase() === 'approved')
   const statsByUserId = derivePlayerStatsFromResults(allUsers, allResults, {
     fixtures,
     adminData,
     leagueOnly: false
   })
   const displayStats = displayUser?.id ? statsByUserId[String(displayUser.id)] : null
-  
-  const getHeadToHead = (otherUserId) => {
-    const matches = approvedResults.filter(r => {
-      const player1Id = getResultPlayerId(r, 1, allUsers)
-      const player2Id = getResultPlayerId(r, 2, allUsers)
-      return (
-        (String(player1Id) === String(user.id) && String(player2Id) === String(otherUserId)) ||
-        (String(player2Id) === String(user.id) && String(player1Id) === String(otherUserId))
-      )
-    })
-    
-    let wins = 0, losses = 0, draws = 0
-    let player180s = 0
-    let opponent180s = 0
-    
-    matches.forEach(m => {
-      const isPlayer1 = String(getResultPlayerId(m, 1, allUsers)) === String(user.id)
-      if (isPlayer1) {
-        player180s += m.player1Stats?.['180s'] || 0
-        opponent180s += m.player2Stats?.['180s'] || 0
-        if (m.score1 > m.score2) wins++
-        else if (m.score1 < m.score2) losses++
-        else draws++
-      } else {
-        player180s += m.player2Stats?.['180s'] || 0
-        opponent180s += m.player1Stats?.['180s'] || 0
-        if (m.score2 > m.score1) wins++
-        else if (m.score2 < m.score1) losses++
-        else draws++
-      }
-    })
-    
-    return { wins, losses, draws, total: matches.length, player180s, opponent180s }
-  }
-
-  const displayUserFriends = displayUser?.friends 
-    ? allUsers.filter(u => displayUser.friends.includes(u.id))
-    : []
-
-  const headToHead = isViewingOther ? getHeadToHead(id) : null
-
-  const handleChange = (e) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === 'threeDartAverage' ? parseFloat(value) || 0 : value
-    }))
-  }
 
   const handlePictureChange = async (e) => {
     const file = e.target.files[0]
     if (file) {
-      const compressed = await compressImage(file, 200, 200, 0.7)
+      const compressed = await compressImage(file, 300, 300, 0.8)
       setProfilePicture(compressed)
     }
   }
 
   const handleSave = async () => {
     setSaving(true)
-    const avgValue = parseFloat(formData.threeDartAverage) || 0
-    
     const updates = {
-      username: formData.username?.trim() || '',
-      nickname: formData.nickname?.trim() || '',
-      bio: formData.bio?.trim() || '',
-      country: formData.country?.trim() || '',
-      dartCounterUsername: formData.dartCounterUsername?.trim() || '',
-      threeDartAverage: formData.threeDartAverage ? avgValue : 0,
-      profilePicture: profilePicture || '',
-      tags: tags || [],
-      badges: selectedBadges || []
+      username: formData.username?.trim(),
+      nickname: formData.nickname?.trim(),
+      bio: formData.bio?.trim(),
+      country: formData.country?.trim(),
+      dartCounterUsername: formData.dartCounterUsername?.trim(),
+      profilePicture,
+      tags,
+      badges: selectedBadges
     }
-    
-    if (updates.dartCounterUsername) {
-      updates.dartCounterLink = `https://dartcounter.app/profile/${updates.dartCounterUsername}`
-    }
-    
-    Object.keys(updates).forEach(key => {
-      if (updates[key] === '') delete updates[key]
-    })
-    
-    console.log('Saving updates:', updates)
-    
+
     try {
       await updateUser(updates, false)
-      alert('Profile updated!')
-      navigate(0) // Force page reload
+      alert('Profile successfully updated!')
     } catch (e) {
-      console.error('Save error:', e)
-      alert('Error saving: ' + e.message)
+      alert('Error: ' + e.message)
     }
     setSaving(false)
   }
 
-  const handleRequestAdmin = () => {
-    requestAdminRole()
-    setMessage('Admin request submitted!')
-    setTimeout(() => setMessage(''), 3000)
-  }
-
-  if (isViewingOther && viewedUser) {
-    return (
-      <div className="page">
-        <div className="page-header">
-          <h1 className="page-title">{viewedUser.username}'s Profile</h1>
-        </div>
-
-        <div className="card" style={{ marginBottom: '20px' }}>
-          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-            <div style={{
-              width: '100px',
-              height: '100px',
-              borderRadius: '50%',
-              background: 'var(--accent-primary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '3rem',
-              margin: '0 auto 15px',
-              overflow: 'hidden'
-            }}>
-              {viewedUser.profilePicture ? (
-                <img src={viewedUser.profilePicture} alt={viewedUser.username} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : (
-                viewedUser.username.charAt(0).toUpperCase()
-              )}
-            </div>
-            <h2 style={{ color: 'var(--accent-cyan)' }}>{viewedUser.username}</h2>
-            {viewedUser.nickname && <p style={{ color: 'var(--text-muted)' }}>"{viewedUser.nickname}"</p>}
-            {viewedUser.isAdmin && <span className="admin-badge">Admin</span>}
-            {viewedUser.badges && viewedUser.badges.length > 0 && (
-              <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', marginTop: '8px', flexWrap: 'wrap' }}>
-                {viewedUser.badges.map(badgeId => {
-                  const badge = AVAILABLE_BADGES.find(b => b.id === badgeId)
-                  return badge ? (
-                    <Tooltip key={badgeId} content={badge.label}>
-                      <span style={{ 
-                        padding: '4px 8px', 
-                        background: badge.color + '20',
-                        border: `2px solid ${badge.color}`,
-                        borderRadius: '12px',
-                        fontSize: '0.9rem'
-                      }}>
-                        {badge.icon}
-                      </span>
-                    </Tooltip>
-                  ) : null
-                })}
-              </div>
-            )}
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px', marginBottom: '20px' }}>
-            <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
-              <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>{viewedUser.division || 'Unassigned'}</div>
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Division</div>
-            </div>
-            <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
-              <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>{viewedUser.threeDartAverage?.toFixed(2) || 0}</div>
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>3-Dart Avg</div>
-            </div>
-            {displayStats && (
-              <>
-                <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>{displayStats.played || 0}</div>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Played</div>
-                </div>
-                <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--success)' }}>{displayStats.wins || 0}</div>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Wins</div>
-                </div>
-                <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>{displayStats['180s'] || 0}</div>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>180s</div>
-                </div>
-                <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>{displayStats.highestCheckout || 0}</div>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Hi Checkout</div>
-                </div>
-              </>
-            )}
-            {viewedUser.country && (
-              <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
-                <div style={{ fontSize: '1.2rem' }}>{viewedUser.country}</div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Country</div>
-              </div>
-            )}
-            <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
-              <div style={{ fontSize: '1rem' }}>{viewedUser.createdAt ? new Date(viewedUser.createdAt).toLocaleDateString() : 'N/A'}</div>
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Member Since</div>
-            </div>
-          </div>
-
-          {viewedUser.dart && (
-            <div style={{ marginBottom: '15px' }}>
-              <h4 style={{ marginBottom: '8px' }}>Darts</h4>
-              <p style={{ color: 'var(--text-muted)' }}>{viewedUser.dart}</p>
-            </div>
-          )}
-
-          {(viewedUser.dartCounterLink || viewedUser.dartCounterUsername) && (
-            <div style={{ marginBottom: '15px' }}>
-              <a 
-                href={viewedUser.dartCounterLink || `https://dartcounter.app/profile/${viewedUser.dartCounterUsername}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn-primary btn-block"
-                style={{ display: 'inline-block', textDecoration: 'none' }}
-              >
-                📊 View DartCounter Profile
-              </a>
-            </div>
-          )}
-
-          {viewedUser.socialLinks && (
-            <div style={{ marginBottom: '15px', display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
-              {viewedUser.socialLinks.whatsapp && (
-                <a href={`https://wa.me/${viewedUser.socialLinks.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" style={{ color: '#25D366', fontSize: '1.5rem' }}>💬</a>
-              )}
-              {viewedUser.socialLinks.messenger && (
-                <a href={`https://m.me/${viewedUser.socialLinks.messenger}`} target="_blank" rel="noopener noreferrer" style={{ color: '#0084FF', fontSize: '1.5rem' }}>💬</a>
-              )}
-              {viewedUser.socialLinks.facebook && (
-                <a href={viewedUser.socialLinks.facebook} target="_blank" rel="noopener noreferrer" style={{ color: '#1877F2', fontSize: '1.5rem' }}>📘</a>
-              )}
-              {viewedUser.socialLinks.instagram && (
-                <a href={`https://instagram.com/${viewedUser.socialLinks.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" style={{ color: '#E4405F', fontSize: '1.5rem' }}>📷</a>
-              )}
-              {viewedUser.socialLinks.tiktok && (
-                <a href={`https://tiktok.com/@${viewedUser.socialLinks.tiktok.replace('@', '')}`} target="_blank" rel="noopener noreferrer" style={{ color: '#fff', fontSize: '1.5rem' }}>🎵</a>
-              )}
-              {viewedUser.socialLinks.twitter && (
-                <a href={`https://twitter.com/${viewedUser.socialLinks.twitter.replace('@', '')}`} target="_blank" rel="noopener noreferrer" style={{ color: '#1DA1F2', fontSize: '1.5rem' }}>🐦</a>
-              )}
-            </div>
-          )}
-
-          {viewedUser.bio && (
-            <div style={{ marginBottom: '15px' }}>
-              <h4 style={{ marginBottom: '8px' }}>About</h4>
-              <p style={{ color: 'var(--text-muted)' }}>{viewedUser.bio}</p>
-            </div>
-          )}
-
-          {viewedUser.tags && viewedUser.tags.length > 0 && (
-            <div style={{ marginBottom: '15px' }}>
-              <h4 style={{ marginBottom: '8px' }}>Tags</h4>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {viewedUser.tags.map((tag, index) => (
-                  <span 
-                    key={index} 
-                    style={{ 
-                      padding: '4px 12px',
-                      background: 'var(--accent-primary)',
-                      borderRadius: '15px',
-                      fontSize: '0.85rem'
-                    }}
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {headToHead && headToHead.total > 0 && (
-            <div style={{ marginBottom: '15px' }}>
-              <h4 style={{ marginBottom: '8px' }}>Head to Head (vs You)</h4>
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-                <div style={{ padding: '10px', background: 'var(--success)', borderRadius: '8px', textAlign: 'center', flex: 1 }}>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{headToHead.wins}</div>
-                  <div style={{ fontSize: '0.75rem' }}>Wins</div>
-                </div>
-                <div style={{ padding: '10px', background: 'var(--warning)', borderRadius: '8px', textAlign: 'center', flex: 1 }}>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{headToHead.draws}</div>
-                  <div style={{ fontSize: '0.75rem' }}>Draws</div>
-                </div>
-                <div style={{ padding: '10px', background: 'var(--error)', borderRadius: '8px', textAlign: 'center', flex: 1 }}>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{headToHead.losses}</div>
-                  <div style={{ fontSize: '0.75rem' }}>Losses</div>
-                </div>
-              </div>
-              <p style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: '8px', fontSize: '0.85rem' }}>
-                Total games: {headToHead.total} | Their 180s vs you: {headToHead.opponent180s}
-              </p>
-            </div>
-          )}
-
-          {displayUserFriends.length > 0 && (
-            <div style={{ marginBottom: '15px' }}>
-              <h4 style={{ marginBottom: '8px' }}>Friends ({displayUserFriends.length})</h4>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {displayUserFriends.slice(0, 10).map(friend => (
-                  <span key={friend.id} style={{ 
-                    padding: '4px 10px', 
-                    background: 'var(--bg-secondary)', 
-                    borderRadius: '15px',
-                    fontSize: '0.85rem'
-                  }}>
-                    {friend.username}
-                  </span>
-                ))}
-                {displayUserFriends.length > 10 && (
-                  <span style={{ padding: '4px 10px', color: 'var(--text-muted)' }}>+{displayUserFriends.length - 10} more</span>
-                )}
-              </div>
-            </div>
-          )}
-
-          <div style={{ display: 'flex', gap: '10px', marginTop: '15px', flexWrap: 'wrap' }}>
-            {isViewingOther && (
-              <>
-                {(user.friends || []).includes(viewedUser.id) ? (
-                  <>
-                    <button 
-                      className="btn btn-secondary"
-                      onClick={() => removeFriend(viewedUser.id)}
-                    >
-                      Remove Friend
-                    </button>
-                    {(user.isSubscribed || user.isAdmin) && (
-                      <button 
-                        className="btn btn-secondary"
-                        onClick={() => navigate('/chat', { state: { openChat: `friend_${viewedUser.id}` } })}
-                      >
-                        Chat
-                      </button>
-                    )}
-                  </>
-                ) : (
-                  <button 
-                    className="btn btn-primary"
-                    onClick={async () => {
-                      try {
-                        await addFriend(viewedUser.id)
-                      } catch (error) {
-                        console.error('Add friend failed:', error)
-                      }
-                    }}
-                  >
-                    Add Friend
-                  </button>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-    )
-  }
+  if (!displayUser) return <div className="page"><div className="card glass">User not found</div></div>
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <h1 className="page-title">Profile</h1>
+    <div className="page animate-fade-in">
+      <Breadcrumbs items={[{ label: 'Home', path: '/home' }, { label: 'Profile', path: `/profile/${displayUser.id}` }]} />
+
+      {/* Hero Header Section */}
+      <div className="card glass" style={{
+        padding: 0,
+        overflow: 'hidden',
+        marginBottom: '32px',
+        border: 'none',
+        background: 'linear-gradient(to bottom, rgba(124, 92, 252, 0.15), rgba(5, 8, 22, 0.5))'
+      }}>
+        <div style={{ height: '140px', background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)', opacity: 0.8 }} />
+
+        <div style={{ padding: '0 24px 40px', marginTop: '-70px', textAlign: 'center' }}>
+          <div style={{ position: 'relative', display: 'inline-block', marginBottom: '20px' }}>
+            <div className="avatar-ring" style={{ width: '140px', height: '140px', padding: '4px', background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-cyan))', boxShadow: '0 12px 40px rgba(0,0,0,0.6)' }}>
+              <div className="avatar-inner" style={{ background: '#050816' }}>
+                {profilePicture ? (
+                  <img src={profilePicture} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <span style={{ fontSize: '3.5rem', fontWeight: 900, color: 'white' }}>{(displayUser.username || '?').charAt(0).toUpperCase()}</span>
+                )}
+              </div>
+            </div>
+            {!isViewingOther && (
+              <label style={{ position: 'absolute', bottom: '8px', right: '8px', background: 'var(--accent-primary)', width: '42px', height: '42px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '4px solid #050816', boxShadow: '0 4px 12px rgba(0,0,0,0.4)' }}>
+                <input type="file" accept="image/*" onChange={handlePictureChange} style={{ display: 'none' }} />
+                <span style={{ fontSize: '1.2rem' }}>📸</span>
+              </label>
+            )}
+          </div>
+
+          <h1 className="text-gradient" style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '6px' }}>{displayUser.username}</h1>
+          {displayUser.nickname && <p style={{ color: 'var(--accent-cyan)', fontWeight: 800, fontSize: '1.2rem', marginBottom: '20px', letterSpacing: '0.02em' }}>"{displayUser.nickname}"</p>}
+
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <span className="admin-badge" style={{ padding: '8px 20px', background: 'rgba(0, 212, 255, 0.1)', border: '1px solid rgba(0, 212, 255, 0.3)', color: 'var(--accent-cyan)', fontSize: '0.8rem', borderRadius: '99px' }}>
+              {displayUser.division || 'League Member'}
+            </span>
+            {displayUser.isAdmin && <span className="admin-badge" style={{ padding: '8px 20px', borderRadius: '99px' }}>Official Admin</span>}
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '32px', flexWrap: 'wrap' }}>
+            {selectedBadges.map(badgeId => {
+              const badge = AVAILABLE_BADGES.find(b => b.id === badgeId)
+              return badge ? (
+                <Tooltip key={badgeId} content={badge.label}>
+                  <div style={{ width: '54px', height: '54px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: '16px', border: `1px solid ${badge.color}`, fontSize: '1.8rem', boxShadow: `0 8px 20px ${badge.color}22`, transition: 'transform 0.2s' }}>
+                    {badge.icon}
+                  </div>
+                </Tooltip>
+              ) : null
+            })}
+          </div>
+        </div>
       </div>
 
-      <div className="card">
-        <div className="profile-header">
-          <label className="profile-avatar-large">
-            {profilePicture ? (
-              <img src={profilePicture} alt={user.username} />
+      {/* Integrated Stats Grid */}
+      <div className="home-stats-grid" style={{ marginBottom: '32px' }}>
+        {[
+          { label: 'Played', value: displayStats?.played || 0 },
+          { label: 'Wins', value: displayStats?.wins || 0, color: 'var(--success)' },
+          { label: 'Total 180s', value: displayStats?.['180s'] || 0, color: 'var(--warning)' },
+          { label: 'Best CO', value: displayStats?.highestCheckout || 0, color: 'var(--accent-cyan)' }
+        ].map(stat => (
+          <div key={stat.label} className="stat-card glass" style={{ background: 'rgba(15, 23, 42, 0.3)', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div className="stat-value" style={{ color: stat.color }}>{stat.value}</div>
+            <div className="stat-label" style={{ opacity: 0.8 }}>{stat.label}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '32px', marginBottom: '40px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+          {/* Bio Section */}
+          <div className="card glass" style={{ height: '100%' }}>
+            <h3 className="card-title">📖 Player Bio</h3>
+            {!isViewingOther ? (
+              <div className="profile-form">
+                <div className="form-group">
+                  <label>Display Name</label>
+                  <input name="username" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} />
+                </div>
+                <div className="form-group">
+                  <label>Nickname</label>
+                  <input name="nickname" value={formData.nickname} onChange={e => setFormData({...formData, nickname: e.target.value})} placeholder="Optional" />
+                </div>
+                <div className="form-group">
+                  <label>About You</label>
+                  <textarea name="bio" value={formData.bio} onChange={e => setFormData({...formData, bio: e.target.value})} rows={5} placeholder="Tell us about your setup..." />
+                </div>
+                <button className="btn btn-primary btn-block" onClick={handleSave} disabled={saving}>
+                  {saving ? 'Syncing...' : 'Save Profile Details'}
+                </button>
+              </div>
             ) : (
-              <span className="home-avatar-placeholder" style={{ fontSize: '3rem' }}>
-                {user.username.charAt(0).toUpperCase()}
-              </span>
+              <div style={{ color: 'var(--text-secondary)' }}>
+                <p style={{ marginBottom: '24px', lineHeight: '1.8', fontSize: '1.05rem', opacity: 0.9 }}>
+                  {displayUser.bio || "No biography provided."}
+                </p>
+                <div style={{ padding: '24px', background: 'rgba(0,0,0,0.2)', borderRadius: '20px', display: 'grid', gap: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Location</span>
+                    <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{displayUser.country || 'Unknown'}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Joined</span>
+                    <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{displayUser.createdAt ? new Date(displayUser.createdAt).toLocaleDateString() : 'N/A'}</span>
+                  </div>
+                </div>
+              </div>
             )}
-            <input type="file" accept="image/*" onChange={handlePictureChange} />
-          </label>
-          {user.badges && user.badges.length > 0 && (
-            <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', marginTop: '12px', flexWrap: 'wrap' }}>
-              {user.badges.map(badgeId => {
-                const badge = AVAILABLE_BADGES.find(b => b.id === badgeId)
-                return badge ? (
-                  <Tooltip key={badgeId} content={badge.label}>
-                    <span style={{ 
-                      padding: '4px 8px', 
-                      background: badge.color + '20',
-                      border: `2px solid ${badge.color}`,
-                      borderRadius: '12px',
-                      fontSize: '0.9rem'
-                    }}>
-                      {badge.icon}
-                    </span>
-                  </Tooltip>
-                ) : null
-              })}
-            </div>
-          )}
+          </div>
         </div>
 
-        <div className="profile-form">
-          <div className="form-group">
-            <label htmlFor="username">Username</label>
-            <input
-              type="text"
-              id="username"
-              name="username"
-              value={formData.username}
-              onChange={handleChange}
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="nickname">Nickname</label>
-            <input
-              type="text"
-              id="nickname"
-              name="nickname"
-              value={formData.nickname}
-              onChange={handleChange}
-              placeholder="Your darts nickname"
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="bio">Bio</label>
-            <textarea
-              id="bio"
-              name="bio"
-              value={formData.bio}
-              onChange={handleChange}
-              rows={3}
-              placeholder="Tell us about yourself..."
-            />
-
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="country">Country</label>
-            <input
-              type="text"
-              id="country"
-              name="country"
-              value={formData.country}
-              onChange={handleChange}
-              placeholder="e.g., England, Scotland, Wales..."
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Tags (up to 10)</label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
-              {tags.map((tag, index) => (
-                <span 
-                  key={index} 
-                  style={{ 
-                    padding: '4px 10px',
-                    background: 'var(--accent-primary)',
-                    borderRadius: '15px',
-                    fontSize: '0.85rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}
-                >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+          {/* Tags & Reputation Section */}
+          <div className="card glass">
+            <h3 className="card-title">✨ Tags & Reputation</h3>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '24px' }}>
+              {tags.map((tag, i) => (
+                <span key={i} style={{ padding: '8px 18px', background: 'var(--accent-primary)', borderRadius: '99px', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
                   {tag}
-                  <button 
-                    type="button"
-                    onClick={() => handleRemoveTag(tag)}
-                    style={{ 
-                      background: 'none', 
-                      border: 'none', 
-                      color: 'var(--text-primary)', 
-                      cursor: 'pointer',
-                      padding: '0',
-                      fontSize: '1rem',
-                      lineHeight: '1'
-                    }}
-                  >
-                    ×
-                  </button>
+                  {!isViewingOther && (
+                    <button onClick={() => handleRemoveTag(tag)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '1.2rem', padding: 0, lineScale: 1 }}>×</button>
+                  )}
                 </span>
               ))}
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <input
-                type="text"
-                value={newTag}
-                onChange={(e) => setNewTag(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Add a tag..."
-                style={{ flex: 1 }}
-                disabled={tags.length >= 10}
-              />
-              <button 
-                type="button"
-                className="btn btn-secondary"
-                onClick={handleAddTag}
-                disabled={tags.length >= 10 || !newTag.trim()}
-              >
-                Add
-              </button>
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label>Profile Badges (select up to 4)</label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
-              {selectedBadges.map(badgeId => {
-                const badge = AVAILABLE_BADGES.find(b => b.id === badgeId)
-                return badge ? (
-                  <span 
-                    key={badgeId}
-                    style={{ 
-                      padding: '4px 10px',
-                      background: badge.color + '20',
-                      border: `2px solid ${badge.color}`,
-                      borderRadius: '12px',
-                      fontSize: '0.85rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}
-                  >
-                    {badge.icon} {badge.label}
-                    <button 
-                      type="button"
-                      onClick={() => handleToggleBadge(badgeId)}
-                      style={{ 
-                        background: 'none', 
-                        border: 'none', 
-                        color: 'var(--text-primary)', 
-                        cursor: 'pointer',
-                        padding: '0',
-                        fontSize: '1rem',
-                        lineHeight: '1'
-                      }}
-                    >
-                      ×
-                    </button>
-                  </span>
-                ) : null
-              })}
-            </div>
-            <button 
-              type="button"
-              className="btn btn-secondary btn-block"
-              onClick={() => setShowBadgeSelector(!showBadgeSelector)}
-            >
-              {showBadgeSelector ? 'Hide Badges' : 'Choose Badges'}
-            </button>
-            {showBadgeSelector && (
-              <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(2, 1fr)', 
-                gap: '8px', 
-                marginTop: '12px',
-                padding: '12px',
-                background: 'var(--bg-primary)',
-                borderRadius: '8px'
-              }}>
-                {AVAILABLE_BADGES.map(badge => (
-                  <button
-                    key={badge.id}
-                    type="button"
-                    onClick={() => handleToggleBadge(badge.id)}
-                    style={{
-                      padding: '8px 12px',
-                      background: selectedBadges.includes(badge.id) ? badge.color + '30' : 'var(--bg-secondary)',
-                      border: selectedBadges.includes(badge.id) ? `2px solid ${badge.color}` : '1px solid var(--border)',
-                      borderRadius: '8px',
-                      color: 'var(--text-primary)',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      fontSize: '0.85rem',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    <span>{badge.icon}</span>
-                    <span>{badge.label}</span>
-                    {selectedBadges.includes(badge.id) && (
-                      <span style={{ marginLeft: 'auto', fontSize: '0.75rem' }}>✓</span>
-                    )}
-                  </button>
-                ))}
+            {!isViewingOther && tags.length < 10 && (
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <input placeholder="Add skill/style tag..." value={newTag} onChange={e => setNewTag(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleAddTag()} />
+                <button className="btn btn-secondary btn-sm" onClick={handleAddTag}>Add</button>
               </div>
             )}
           </div>
 
-          <div className="form-group">
-            <label htmlFor="dartCounterUsername">DartCounter Username</label>
-            <input
-              type="text"
-              id="dartCounterUsername"
-              name="dartCounterUsername"
-              value={formData.dartCounterUsername}
-              onChange={handleChange}
-              placeholder="Your DartCounter username"
-            />
+          {/* Connected Apps Section */}
+          <div className="card glass" style={{ borderLeft: '4px solid var(--accent-cyan)' }}>
+            <h3 className="card-title">🚀 Connectivity</h3>
+            <div style={{ display: 'grid', gap: '16px' }}>
+              {(displayUser.dartCounterUsername || displayUser.dartCounterLink) ? (
+                <a
+                  href={displayUser.dartCounterLink || `https://dartcounter.app/profile/${displayUser.dartCounterUsername}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-secondary btn-block"
+                  style={{ background: 'rgba(0, 212, 255, 0.05)', borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)' }}
+                >
+                  🎯 DartCounter Statistics
+                </a>
+              ) : (
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textAlign: 'center' }}>No external apps connected.</p>
+              )}
+
+              {!isViewingOther && (
+                <div style={{ marginTop: '8px' }}>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '8px', display: 'block' }}>DartCounter Username</label>
+                  <input
+                    placeholder="Enter username"
+                    value={formData.dartCounterUsername}
+                    onChange={e => setFormData({...formData, dartCounterUsername: e.target.value})}
+                  />
+                </div>
+              )}
+
+              {isViewingOther && (
+                <button className="btn btn-primary btn-block" onClick={() => addFriend(displayUser.id)}>
+                  ➕ Add to Friends
+                </button>
+              )}
+            </div>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="dartCounterLink">DartCounter Link</label>
-            <input
-              type="url"
-              id="dartCounterLink"
-              name="dartCounterLink"
-              value={formData.dartCounterLink}
-              onChange={handleChange}
-              placeholder="https://dartcounter.net/player/..."
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="threeDartAverage">3-Dart Average</label>
-            <input
-              type="number"
-              id="threeDartAverage"
-              name="threeDartAverage"
-              value={formData.threeDartAverage}
-              onChange={handleChange}
-              step="0.1"
-              min="0"
-            />
-          </div>
-
-          <button 
-            className="btn btn-primary btn-block" 
-            onClick={handleSave}
-            disabled={saving}
-          >
-            {saving ? 'Saving...' : 'Save Changes'}
-          </button>
-
-          {message && <p className="form-error" style={{ color: 'var(--success)' }}>{message}</p>}
-
-          <div className="profile-actions">
-            {!user.isAdmin && !user.adminRequestPending && (
-              <button 
-                className="btn btn-secondary btn-block"
-                onClick={handleRequestAdmin}
-              >
-                Apply for Admin Role
+          {/* Badge Selector (Hidden by default) */}
+          {!isViewingOther && (
+            <div className="card glass">
+              <h3 className="card-title">🎖️ My Badges</h3>
+              <button className="btn btn-secondary btn-block" onClick={() => setShowBadgeSelector(!showBadgeSelector)}>
+                {showBadgeSelector ? 'Close Badge Shop' : 'Select Profile Badges'}
               </button>
-            )}
-            {user.adminRequestPending && (
-              <p style={{ color: 'var(--warning)', textAlign: 'center', marginBottom: '10px' }}>
-                Admin request pending approval
-              </p>
-            )}
-            
-            <button 
-              className="btn btn-secondary btn-block"
-              onClick={() => navigate('/settings')}
-            >
-              Go to Settings
-            </button>
-          </div>
+
+              {showBadgeSelector && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px', marginTop: '24px' }}>
+                  {AVAILABLE_BADGES.map(badge => (
+                    <button
+                      key={badge.id}
+                      onClick={() => handleToggleBadge(badge.id)}
+                      style={{
+                        padding: '16px 12px',
+                        background: selectedBadges.includes(badge.id) ? badge.color + '20' : 'rgba(255,255,255,0.02)',
+                        border: `1px solid ${selectedBadges.includes(badge.id) ? badge.color : 'rgba(255,255,255,0.1)'}`,
+                        borderRadius: '16px',
+                        color: 'white',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '8px',
+                        fontSize: '0.8rem'
+                      }}
+                    >
+                      <span style={{ fontSize: '1.6rem' }}>{badge.icon}</span>
+                      <span style={{ fontWeight: 600 }}>{badge.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

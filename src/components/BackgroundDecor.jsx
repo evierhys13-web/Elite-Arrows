@@ -30,50 +30,70 @@ export default function BackgroundDecor() {
       overflow: 'hidden',
       background: '#050816'
     }}>
-      {/* Primary Vibrant Background Gradients */}
+      {/* Deep Vibrant Gradient Base */}
       <div style={{
         position: 'absolute',
         inset: 0,
         background: `
-          linear-gradient(135deg, #050816 0%, #0d122b 40%, #1e1b4b 100%),
-          radial-gradient(circle at 10% 10%, rgba(124, 92, 252, 0.15) 0%, transparent 40%),
-          radial-gradient(circle at 90% 90%, rgba(0, 212, 255, 0.15) 0%, transparent 40%),
-          radial-gradient(circle at 50% 50%, rgba(124, 92, 252, 0.05) 0%, transparent 60%)
+          linear-gradient(135deg, #050816 0%, #1e1b4b 30%, #4c1d95 70%, #1e1b4b 100%)
         `
       }} />
 
-      {/* Atmospheric Glows */}
+      {/* Floating Light Blobs (The "Sensation") */}
       <div style={{
         position: 'absolute',
-        top: '-10%',
-        left: '20%',
-        width: '60%',
-        height: '60%',
-        background: 'radial-gradient(circle, rgba(124, 92, 252, 0.08) 0%, transparent 70%)',
-        filter: 'blur(80px)',
-        borderRadius: '50%'
+        top: '10%',
+        left: '10%',
+        width: '80%',
+        height: '80%',
+        background: 'radial-gradient(circle at 20% 30%, rgba(124, 92, 252, 0.25) 0%, transparent 50%), radial-gradient(circle at 80% 70%, rgba(0, 212, 255, 0.2) 0%, transparent 50%)',
+        filter: 'blur(80px)'
       }} />
 
+      {/* Dynamic Animated-style Glowing Gradients */}
       <div style={{
         position: 'absolute',
-        bottom: '-10%',
-        right: '10%',
-        width: '50%',
-        height: '50%',
-        background: 'radial-gradient(circle, rgba(0, 212, 255, 0.08) 0%, transparent 70%)',
+        top: '-20%',
+        right: '-10%',
+        width: '70%',
+        height: '70%',
+        background: 'radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%)',
         filter: 'blur(100px)',
         borderRadius: '50%'
       }} />
 
-      {/* Subtle Darts Pattern */}
+      <div style={{
+        position: 'absolute',
+        bottom: '-20%',
+        left: '-10%',
+        width: '60%',
+        height: '60%',
+        background: 'radial-gradient(circle, rgba(124, 92, 252, 0.15) 0%, transparent 70%)',
+        filter: 'blur(120px)',
+        borderRadius: '50%'
+      }} />
+
+      {/* Modern Grid Overlay */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        backgroundImage: `
+          linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px)
+        `,
+        backgroundSize: '80px 80px',
+        maskImage: 'radial-gradient(ellipse at 50% 50%, black 10%, transparent 100%)'
+      }} />
+
+      {/* Large Subtle Dartboard Motif */}
       <div style={{
         position: 'absolute',
         top: '50%',
         left: '50%',
         transform: 'translate(-50%, -50%)',
-        width: '800px',
-        height: '800px',
-        opacity: 0.04
+        width: '900px',
+        height: '900px',
+        opacity: 0.05
       }}>
         <svg viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
           <circle cx="250" cy="250" r="245" fill="rgba(255,255,255,0.05)" />
@@ -83,27 +103,13 @@ export default function BackgroundDecor() {
             return (
               <path
                 key={`wedge-${i}`}
-                d={wedgePath(startAngle, endAngle, 160, 190)}
+                d={wedgePath(startAngle, endAngle, 160, 210)}
                 fill={i % 2 === 0 ? 'rgba(255,255,255,0.1)' : 'transparent'}
               />
             )
           })}
-          <circle cx="250" cy="250" r="200" stroke="rgba(255,255,255,0.1)" strokeWidth="1" fill="none" />
-          <circle cx="250" cy="250" r="190" stroke="rgba(255,255,255,0.1)" strokeWidth="1" fill="none" />
         </svg>
       </div>
-
-      {/* Grid Overlay for Modern Feel */}
-      <div style={{
-        position: 'absolute',
-        inset: 0,
-        backgroundImage: `
-          linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px)
-        `,
-        backgroundSize: '100px 100px',
-        maskImage: 'radial-gradient(ellipse at 50% 50%, black 20%, transparent 90%)'
-      }} />
     </div>
   )
 }

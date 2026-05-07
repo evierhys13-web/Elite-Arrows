@@ -192,45 +192,50 @@ function AppLayout({ children }) {
   const { showWhatsNew } = useWhatsNew()
   const [whatsNewOpen, setWhatsNewOpen] = useState(showWhatsNew)
 
+  const hasMaintenance = adminData?.isMaintenanceMode && adminData?.maintenanceMessage
+
   return (
     <>
       <a href="#main-content" className="skip-link">Skip to main content</a>
-      {adminData?.isMaintenanceMode && adminData?.maintenanceMessage && (
-        <div style={{
-          background: 'var(--warning)',
-          color: '#000',
-          padding: '12px 20px',
-          textAlign: 'center',
-          fontSize: '0.85rem',
-          fontWeight: 800,
-          position: 'sticky',
-          top: 0,
-          zIndex: 5000,
-          boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.05em',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '10px'
-        }}>
-          <span style={{ fontSize: '1.2rem' }}>⚠️</span>
-          {adminData.maintenanceMessage}
+      <div className="app-layout" style={{ flexDirection: 'column' }}>
+        {hasMaintenance && (
+          <div style={{
+            background: 'var(--warning)',
+            color: '#000',
+            padding: '12px 20px',
+            textAlign: 'center',
+            fontSize: '0.85rem',
+            fontWeight: 800,
+            width: '100%',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '10px',
+            zIndex: 1100 // Above sidebar (1000) and header (1001)
+          }}>
+            <span style={{ fontSize: '1.2rem' }}>⚠️</span>
+            {adminData.maintenanceMessage}
+          </div>
+        )}
+        <div style={{ display: 'flex', flex: 1, width: '100%', position: 'relative' }}>
+          <Sidebar />
+          <main id="main-content" className="main-content" style={{
+            paddingTop: hasMaintenance ? 'calc(var(--header-height) + 60px)' : undefined
+          }} tabIndex={-1}>
+            <Suspense fallback={<PageLoader />}>
+              {children}
+            </Suspense>
+          </main>
+          <BottomNav />
+          <InstallPrompt />
+          <DataRefreshToast refreshTrigger={dataRefreshTrigger} />
+          <NotificationPermissionPrompt />
+          {showOnboarding && <OnboardingTour onComplete={completeOnboarding} />}
+          <WhatsNewPopup isOpen={whatsNewOpen} onClose={() => setWhatsNewOpen(false)} />
         </div>
-      )}
-      <div className="app-layout">
-        <Sidebar />
-        <main id="main-content" className="main-content" tabIndex={-1}>
-          <Suspense fallback={<PageLoader />}>
-            {children}
-          </Suspense>
-        </main>
-        <BottomNav />
-        <InstallPrompt />
-        <DataRefreshToast refreshTrigger={dataRefreshTrigger} />
-        <NotificationPermissionPrompt />
-        {showOnboarding && <OnboardingTour onComplete={completeOnboarding} />}
-        <WhatsNewPopup isOpen={whatsNewOpen} onClose={() => setWhatsNewOpen(false)} />
       </div>
     </>
   )

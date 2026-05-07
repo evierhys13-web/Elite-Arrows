@@ -65,13 +65,12 @@ export default function Table() {
     <div className="page animate-fade-in">
       <Breadcrumbs items={[{ label: 'Home', path: '/home' }, { label: 'League Table', path: '/table' }]} />
 
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h1 className="page-title text-gradient">League Table</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Current standings for Season 1</p>
         </div>
         <button className="btn btn-secondary btn-sm" onClick={handleRefresh}>
-          🔄 Sync Standings
+          🔄 Sync Data
         </button>
       </div>
 
@@ -88,29 +87,31 @@ export default function Table() {
         ))}
       </div>
 
-      <div className="card glass" style={{ padding: 0, overflow: 'hidden' }}>
-        {playersInDivision.length === 0 ? (
-          <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
-            No players registered in this division yet.
-          </div>
-        ) : (
-          <div className="table-container" style={{ border: 'none' }}>
-            <table className="table">
-              <thead>
+      <div className="card glass" style={{ padding: '0' }}>
+        <div className="table-container">
+          <table className="table">
+            <thead>
+              <tr>
+                <th style={{ width: '50px', textAlign: 'center' }}>#</th>
+                <th>Player</th>
+                {activeDivision === 'Overall' && <th>Div</th>}
+                <th style={{ textAlign: 'center' }}>P</th>
+                <th style={{ textAlign: 'center' }}>W</th>
+                <th style={{ textAlign: 'center' }}>D</th>
+                <th style={{ textAlign: 'center' }}>L</th>
+                <th style={{ textAlign: 'center' }}>+/-</th>
+                <th style={{ textAlign: 'center' }}>Pts</th>
+              </tr>
+            </thead>
+            <tbody>
+              {playersInDivision.length === 0 ? (
                 <tr>
-                  <th style={{ width: '50px', textAlign: 'center' }}>#</th>
-                  <th>Player</th>
-                  {activeDivision === 'Overall' && <th>Div</th>}
-                  <th style={{ textAlign: 'center' }}>P</th>
-                  <th style={{ textAlign: 'center' }}>W</th>
-                  <th style={{ textAlign: 'center' }}>D</th>
-                  <th style={{ textAlign: 'center' }}>L</th>
-                  <th style={{ textAlign: 'center' }}>+/-</th>
-                  <th style={{ textAlign: 'center' }}>Pts</th>
+                  <td colSpan={activeDivision === 'Overall' ? 9 : 8} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                    No players in this division yet
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {playersInDivision.map((player, index) => {
+              ) : (
+                playersInDivision.map((player, index) => {
                   const legDiff = player.stats.legsWon - player.stats.legsLost
                   const isPromotion = index < 2 && activeDivision !== 'Overall'
                   const isRelegation = index >= playersInDivision.length - 2 && playersInDivision.length > 4 && activeDivision !== 'Overall'
@@ -119,59 +120,36 @@ export default function Table() {
                     <tr key={player.id} style={{
                       background: player.id === user.id ? 'var(--bg-hover)' : 'transparent',
                     }}>
-                      <td style={{ textAlign: 'center', fontWeight: 800, color: index < 3 ? 'var(--accent-cyan)' : 'var(--text-muted)' }}>
-                        {index + 1}
-                      </td>
+                      <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{index + 1}</td>
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 900, color: 'white', overflow: 'hidden' }}>
-                            {player.profilePicture ? (
-                              <img src={player.profilePicture} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            ) : (
-                              (player.username || '?').charAt(0).toUpperCase()
-                            )}
-                          </div>
-                          <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{player.username}</span>
-                            {isPromotion && <span style={{ fontSize: '0.65rem', color: 'var(--success)', fontWeight: 800 }}>PROMOTION ZONE ↑</span>}
-                            {isRelegation && <span style={{ fontSize: '0.65rem', color: 'var(--error)', fontWeight: 800 }}>RELEGATION ZONE ↓</span>}
-                          </div>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontWeight: '600' }}>{player.username}</span>
+                          {(isPromotion || isRelegation) && (
+                            <span style={{ fontSize: '0.65rem', fontWeight: 'bold', color: isPromotion ? 'var(--success)' : 'var(--error)' }}>
+                              {isPromotion ? 'PROMOTION ↑' : 'RELEGATION ↓'}
+                            </span>
+                          )}
                         </div>
                       </td>
                       {activeDivision === 'Overall' && (
-                        <td style={{ fontSize: '1.1rem', textAlign: 'center' }}>
-                          {DIVISION_EMOJIS[player.displayDivision] || '❓'}
-                        </td>
+                        <td style={{ textAlign: 'center' }}>{DIVISION_EMOJIS[player.displayDivision]}</td>
                       )}
                       <td style={{ textAlign: 'center' }}>{player.stats.played}</td>
-                      <td style={{ textAlign: 'center', color: 'var(--success)', fontWeight: 600 }}>{player.stats.wins}</td>
-                      <td style={{ textAlign: 'center', color: 'var(--warning)', fontWeight: 600 }}>{player.stats.draws}</td>
-                      <td style={{ textAlign: 'center', color: 'var(--error)', fontWeight: 600 }}>{player.stats.losses}</td>
-                      <td style={{ textAlign: 'center', fontWeight: 700, color: legDiff > 0 ? 'var(--success)' : legDiff < 0 ? 'var(--error)' : 'var(--text-muted)' }}>
+                      <td style={{ textAlign: 'center' }}>{player.stats.wins}</td>
+                      <td style={{ textAlign: 'center' }}>{player.stats.draws}</td>
+                      <td style={{ textAlign: 'center' }}>{player.stats.losses}</td>
+                      <td style={{ textAlign: 'center', color: legDiff >= 0 ? 'var(--success)' : 'var(--error)', fontWeight: 'bold' }}>
                         {legDiff > 0 ? `+${legDiff}` : legDiff}
                       </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <span style={{ background: 'var(--bg-secondary)', padding: '4px 10px', borderRadius: '8px', fontWeight: 800, color: 'var(--accent-cyan)', border: '1px solid var(--border)' }}>
-                          {player.stats.points}
-                        </span>
+                      <td style={{ textAlign: 'center', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>
+                        {player.stats.points}
                       </td>
                     </tr>
                   )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      <div style={{ marginTop: '24px', display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-          <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: 'var(--success)' }}></div>
-          Promotion Zone
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-          <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: 'var(--error)' }}></div>
-          Relegation Zone
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
