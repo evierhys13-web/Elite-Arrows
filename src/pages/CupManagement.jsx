@@ -95,6 +95,7 @@ function CupManagement() {
   }
 
   const enterResult = (cup, match) => {
+    alert('Debug: Submit button clicked for ' + (match.id || 'unknown match'));
     console.log('Opening result modal for match:', match.id)
     setResultForm({
       cup,
@@ -110,8 +111,6 @@ function CupManagement() {
       proofImage: ''
     })
     setShowResultModal(true)
-    // Ensure user sees the modal if they are scrolled down
-    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handleImageUpload = (e) => {
@@ -551,8 +550,12 @@ function CupManagement() {
                     ) : (
                       <button 
                         className="btn btn-primary btn-sm"
-                        onClick={() => enterResult(cup, match)}
+                        onClick={() => {
+                          console.log('Submit Result button clicked', match.id);
+                          enterResult(cup, match);
+                        }}
                         disabled={!match.player1 || !match.player2}
+                        style={{ position: 'relative', zIndex: 50 }}
                       >
                         Submit Result
                       </button>
