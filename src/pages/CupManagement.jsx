@@ -299,22 +299,14 @@ function CupManagement() {
   }
 
   const completeCup = async (cup) => {
-    const cupsData = getCups()
-    const cupIndex = cupsData.findIndex(c => c.id === cup.id)
-    if (cupIndex !== -1) {
-      const updatedCup = { ...cupsData[cupIndex], status: 'completed' }
-      cupsData[cupIndex] = updatedCup
-      localStorage.setItem('eliteArrowsCups', JSON.stringify(cupsData))
-      
-      try {
-        await setDoc(doc(db, 'cups', cup.id.toString()), updatedCup, { merge: true })
-      } catch (e) {
-        console.log('Error saving to Firebase:', e)
-      }
-      
+    try {
+      const updatedCup = { ...cup, status: 'completed' }
+      await setDoc(doc(db, 'cups', String(cup.id)), updatedCup, { merge: true })
       alert('Cup marked as completed!')
       triggerDataRefresh('cups')
       setRefreshKey(prev => prev + 1)
+    } catch (e) {
+      console.error('Error completing cup:', e)
     }
   }
 
@@ -322,20 +314,15 @@ function CupManagement() {
     const confirmed = window.confirm(`Reactivate cup "${cup.name}"?`)
     if (!confirmed) return
 
-    const cupsData = getCups()
-    const cupIndex = cupsData.findIndex(c => String(c.id) === String(cup.id))
-    if (cupIndex !== -1) {
-      const updatedCup = { ...cupsData[cupIndex], status: 'active' }
-
-      try {
-        await setDoc(doc(db, 'cups', String(cup.id)), updatedCup, { merge: true })
-        alert('Cup reactivated!')
-        triggerDataRefresh('cups')
-        setRefreshKey(prev => prev + 1)
-      } catch (e) {
-        console.log('Error saving to Firebase:', e)
-        alert('Failed to reactivate cup: ' + e.message)
-      }
+    try {
+      const updatedCup = { ...cup, status: 'active' }
+      await setDoc(doc(db, 'cups', String(cup.id)), updatedCup, { merge: true })
+      alert('Cup reactivated!')
+      triggerDataRefresh('cups')
+      setRefreshKey(prev => prev + 1)
+    } catch (e) {
+      console.error('Error reactivating cup:', e)
+      alert('Failed to reactivate cup: ' + e.message)
     }
   }
 
