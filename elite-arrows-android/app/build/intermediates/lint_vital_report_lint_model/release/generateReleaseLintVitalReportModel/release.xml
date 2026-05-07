@@ -26,6 +26,6 @@
       applicationId="com.elitearrows.app"
       generatedSourceFolders="build\generated\ap_generated_sources\release\out"
       generatedResourceFolders="build\generated\res\processReleaseGoogleServices"
-      desugaredMethodsFiles="C:\Users\XJ21c\.gradle\caches\9.4.1\transforms\dfd47ef7eee1b6b9dace3d81caf0c7ff\transformed\D8BackportedDesugaredMethods.txt">
+      desugaredMethodsFiles="C:\Users\XJ21c\.gradle\caches\9.5.0\transforms\7e910c1baed22f3420c0a93d5d8310d8\transformed\D8BackportedDesugaredMethods.txt">
   </artifact>
 </variant>

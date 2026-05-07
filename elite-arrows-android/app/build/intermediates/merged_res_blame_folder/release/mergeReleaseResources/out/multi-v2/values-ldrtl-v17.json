@@ -4,7 +4,7 @@
             "outputFile": "com.elitearrows.app-mergeReleaseResources-2:/values-ldrtl-v17/values-ldrtl-v17.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\XJ21c\\.gradle\\caches\\9.4.1\\transforms\\a0acc3d5100b4ef3eeddc07ddfde7dc5\\transformed\\material-1.13.0\\res\\values-ldrtl-v17\\values-ldrtl-v17.xml",
+                    "source": "C:\\Users\\XJ21c\\.gradle\\caches\\9.5.0\\transforms\\fbc69710d62bf9717d08abca0c7ea271\\transformed\\material-1.13.0\\res\\values-ldrtl-v17\\values-ldrtl-v17.xml",
                     "from": {
                         "startLines": "2,3",
                         "startColumns": "4,4",

@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.elitearrows.app-mergeDebugResources-2:/values-v18/values-v18.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\XJ21c\\.gradle\\caches\\9.5.0\\transforms\\f08edef661ff955882ec39f85e6f2013\\transformed\\appcompat-1.7.1\\res\\values-v18\\values-v18.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "48",
+                        "endOffsets": "99"
+                    }
+                }
+            ]
+        }
+    ]
+}

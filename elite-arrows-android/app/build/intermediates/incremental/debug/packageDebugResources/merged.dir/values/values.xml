@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#00d4ff</color>
+    <color name="ic_launcher_background">#00d4ff</color>
+    <color name="navigationBarColor">#0f0f23</color>
+    <color name="navigationBarColorDark">#0f0f23</color>
+    <color name="splashBackground">#0f0f23</color>
+    <string name="app_name">Elite Arrows</string>
+    <string name="asset_statements">
+        [{
+            "relation": ["delegate_permission/common.handle_all_urls"],
+            "target": {
+                "namespace": "android_app",
+                "package_name": "com.elitearrows.app",
+                "sha256_cert_fingerprints": [
+                  "D1:D0:B2:E8:2E:F5:09:45:C1:7A:AB:94:49:A6:EC:7C:A3:44:EA:B3:1D:2B:68:57:6F:A3:3C:27:A9:D9:B1:D5",
+                  "36:E7:15:69:72:EE:5A:1B:58:E6:11:29:4A:B4:A4:F5:BA:9D:C5:A1:4B:32:54:A5:05:FF:BE:3F:1C:84:4A:03"
+                ]
+            }
+        }]
+    </string>
+    <string name="default_web_client_id" translatable="false">848326452210-1sm2m9gb7k3l2bl40ioa5j2cn8d2pt5c.apps.googleusercontent.com</string>
+    <string name="gcm_defaultSenderId" translatable="false">848326452210</string>
+    <string name="google_api_key" translatable="false">AIzaSyBRAM_91550mH8OUGiVlaL1ewWjrCWhgkY</string>
+    <string name="google_app_id" translatable="false">1:848326452210:android:323c2e18292ac05f1ec16b</string>
+    <string name="google_crash_reporting_api_key" translatable="false">AIzaSyBRAM_91550mH8OUGiVlaL1ewWjrCWhgkY</string>
+    <string name="google_storage_bucket" translatable="false">elitearrowsapp.firebasestorage.app</string>
+    <string name="project_id" translatable="false">elitearrowsapp</string>
+    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        
+        <item name="colorPrimary">@color/colorPrimary</item>
+    </style>
+</resources>

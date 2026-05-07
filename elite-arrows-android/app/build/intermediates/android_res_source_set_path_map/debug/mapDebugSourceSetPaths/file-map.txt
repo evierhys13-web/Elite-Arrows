@@ -1,0 +1,9 @@
+com.elitearrows.app-pngs-0 C:\Developer\Elite-Arrows\elite-arrows-android\app\build\generated\res\pngs\debug
+com.elitearrows.app-res-1 C:\Developer\Elite-Arrows\elite-arrows-android\app\build\generated\res\processDebugGoogleServices
+com.elitearrows.app-updated_navigation_xml-2 C:\Developer\Elite-Arrows\elite-arrows-android\app\build\generated\updated_navigation_xml\debug
+com.elitearrows.app-packageDebugResources-3 C:\Developer\Elite-Arrows\elite-arrows-android\app\build\intermediates\incremental\debug\packageDebugResources\merged.dir
+com.elitearrows.app-packageDebugResources-4 C:\Developer\Elite-Arrows\elite-arrows-android\app\build\intermediates\incremental\debug\packageDebugResources\stripped.dir
+com.elitearrows.app-debug-5 C:\Developer\Elite-Arrows\elite-arrows-android\app\build\intermediates\merged_res\debug\mergeDebugResources
+com.elitearrows.app-debug-6 C:\Developer\Elite-Arrows\elite-arrows-android\app\src\debug\res
+com.elitearrows.app-main-7 C:\Developer\Elite-Arrows\elite-arrows-android\app\src\main\res
+gradleHome-0 C:\Users\XJ21c\.gradle
