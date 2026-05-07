@@ -123,8 +123,8 @@ function CupManagement() {
     console.log('submitResult called');
     const { cup, match, score1, score2, p1_180s, p2_180s, p1_checkout, p2_checkout, p1_doubles, p2_doubles, proofImage } = resultForm
     if (!cup || !match) {
-      console.error('Missing cup or match', { cup, match });
-      return;
+      alert('Error: Missing cup or match data. Please refresh and try again.')
+      return
     }
 
     const p1Name = getPlayerName(match.player1)
@@ -178,12 +178,15 @@ function CupManagement() {
           doubleSuccess: parseFloat(p2_doubles) || 0
         }
       }
-      console.log('Saving result record...', newResult);
+
+      console.log('1. Saving result record...');
       await setDoc(doc(db, 'results', resultId), newResult)
 
       // 2. Update Cup Bracket
+      console.log('2. Updating cup bracket...');
       const allCups = getCups()
       const cupIndex = allCups.findIndex(c => String(c.id) === String(cup.id))
+
       if (cupIndex !== -1) {
         const cupData = { ...allCups[cupIndex] }
         let updatedMatches = (cupData.matches || []).map(m =>
@@ -194,9 +197,10 @@ function CupManagement() {
           const nextMatchIndex = updatedMatches.findIndex(m => String(m.id) === String(match.nextMatchId))
           if (nextMatchIndex !== -1) {
             const nextMatch = { ...updatedMatches[nextMatchIndex] }
+            // Important: sort by matchNum to ensure correct p1/p2 mapping
             const currentRoundMatches = updatedMatches
               .filter(m => m.round === match.round)
-              .sort((a, b) => (a.matchNum || 0) - (b.matchNum || 0))
+              .sort((a, b) => (Number(a.matchNum) || 0) - (Number(b.matchNum) || 0))
 
             const matchIdxInRound = currentRoundMatches.findIndex(m => String(m.id) === String(match.id))
 
@@ -217,16 +221,15 @@ function CupManagement() {
         })
 
         const updatedCup = { ...cupData, matches: updatedMatches, status: allComplete ? 'completed' : 'active' }
-        console.log('Updating Cup Bracket in Firebase...', updatedCup)
         await setDoc(doc(db, 'cups', String(cup.id)), updatedCup, { merge: true })
       }
 
       // 3. Update Fixture if it exists
+      console.log('3. Updating fixture...');
       const allFixtures = getFixtures()
       const fixture = allFixtures.find(f => String(f.cupId) === String(cup.id) && String(f.matchId) === String(match.id))
       if (fixture) {
         const updatedFixture = { ...fixture, status: 'completed', score1: legs1, score2: legs2, winnerId, resultId }
-        console.log('Updating associated fixture...', updatedFixture);
         await setDoc(doc(db, 'fixtures', fixture.id.toString()), updatedFixture, { merge: true })
       }
 
