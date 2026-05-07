@@ -1,8 +1,8 @@
 :root {
   /* Brand Palette - Light Purple & Blue Mix (Vibrant Launch) */
-  --bg-primary: #1e293b; /* Deep Indigo-Slate */
-  --bg-secondary: #334155;
-  --bg-card: rgba(30, 41, 59, 0.7);
+  --bg-primary: #1e1b4b; /* Deep Indigo */
+  --bg-secondary: #312e81; /* Mixed Purple-Blue */
+  --bg-card: rgba(46, 56, 133, 0.65); /* Vibrant Mixed Glass */
   --bg-hover: rgba(139, 92, 246, 0.2);
   --bg-active: rgba(139, 92, 246, 0.3);
 
@@ -106,15 +106,17 @@ body {
   }
 }
 
-/* Professional Sidebar */
+/* Professional Sidebar - Mixing with Background */
 .sidebar {
   position: fixed;
   left: 0;
   top: 0;
   width: var(--sidebar-width);
   height: 100vh;
-  background: linear-gradient(to bottom, #0a0f24, #050816);
-  border-right: 1px solid var(--border);
+  background: rgba(15, 23, 42, 0.8); /* Dark Slate-Blue Tint */
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(129, 140, 248, 0.2);
   display: flex;
   flex-direction: column;
   z-index: 1000;
@@ -327,7 +329,7 @@ input:focus, select:focus, textarea:focus {
   }
 }
 
-/* Mobile Bottom Navigation */
+/* Mobile Bottom Navigation - Mixing with Background */
 .mobile-bottom-nav {
   display: none;
   position: fixed;
@@ -335,10 +337,10 @@ input:focus, select:focus, textarea:focus {
   left: 0;
   right: 0;
   height: calc(var(--bottom-nav-height) + var(--safe-bottom));
-  background: rgba(5, 8, 22, 0.95);
+  background: rgba(15, 23, 42, 0.85); /* Matches Sidebar */
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border-top: 1px solid var(--border);
+  border-top: 1px solid rgba(129, 140, 248, 0.2);
   z-index: 1002;
   padding: 0 16px var(--safe-bottom);
   align-items: center;

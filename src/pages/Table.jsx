@@ -106,18 +106,18 @@ export default function Table() {
       </div>
 
       <div className="card glass" style={{ padding: '0', borderRadius: '12px', overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '340px' }}>
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ background: 'rgba(0,0,0,0.3)', color: 'rgba(255,255,255,0.7)', fontSize: '0.65rem', textTransform: 'uppercase' }}>
-                <th style={{ width: '30px', padding: '12px 4px', textAlign: 'center' }}>#</th>
-                <th style={{ textAlign: 'left', padding: '12px 8px' }}>Player</th>
-                <th style={{ width: '25px', padding: '12px 2px', textAlign: 'center' }}>P</th>
-                <th style={{ width: '25px', padding: '12px 2px', textAlign: 'center' }}>W</th>
-                <th style={{ width: '25px', padding: '12px 2px', textAlign: 'center' }}>D</th>
-                <th style={{ width: '25px', padding: '12px 2px', textAlign: 'center' }}>L</th>
-                <th style={{ width: '35px', padding: '12px 2px', textAlign: 'center' }}>+/-</th>
-                <th style={{ width: '40px', padding: '12px 2px', textAlign: 'center', color: 'var(--accent-cyan)' }}>Pts</th>
+              <tr style={{ background: 'rgba(0,0,0,0.3)', color: 'rgba(255,255,255,0.7)', fontSize: '0.6rem', textTransform: 'uppercase' }}>
+                <th style={{ width: '28px', padding: '12px 2px', textAlign: 'center' }}>#</th>
+                <th style={{ textAlign: 'left', padding: '12px 4px' }}>Player</th>
+                <th style={{ width: '22px', padding: '12px 2px', textAlign: 'center' }}>P</th>
+                <th style={{ width: '22px', padding: '12px 2px', textAlign: 'center' }}>W</th>
+                <th style={{ width: '22px', padding: '12px 2px', textAlign: 'center' }}>D</th>
+                <th style={{ width: '22px', padding: '12px 2px', textAlign: 'center' }}>L</th>
+                <th style={{ width: '30px', padding: '12px 2px', textAlign: 'center' }}>+/-</th>
+                <th style={{ width: '35px', padding: '12px 2px', textAlign: 'center', color: 'var(--accent-cyan)' }}>Pts</th>
               </tr>
             </thead>
             <tbody>

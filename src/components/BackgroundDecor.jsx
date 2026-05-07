@@ -28,47 +28,47 @@ export default function BackgroundDecor() {
       pointerEvents: 'none',
       zIndex: -1,
       overflow: 'hidden',
-      background: '#0f172a'
+      background: '#1e1b4b'
     }}>
-      {/* Light Purple/Blue Mixed Gradient */}
+      {/* Light Purple/Blue Mixed Gradient - Brighter Version */}
       <div style={{
         position: 'absolute',
         inset: 0,
         background: `
           linear-gradient(135deg,
-            #1e293b 0%,
-            #312e81 30%,
-            #818cf8 60%,
+            #312e81 0%,
+            #4338ca 30%,
+            #818cf8 70%,
             #38bdf8 100%
           )
         `,
-        opacity: 0.8
+        opacity: 0.85
       }} />
 
-      {/* Atmospheric Glows - Light Purple & Sky Blue */}
+      {/* Atmospheric Glows - Light Indigo & Sky Blue */}
       <div style={{
         position: 'absolute',
-        top: '10%',
-        left: '10%',
-        width: '80%',
-        height: '80%',
+        top: '5%',
+        left: '5%',
+        width: '90%',
+        height: '90%',
         background: `
-          radial-gradient(circle at 20% 30%, rgba(165, 180, 252, 0.4) 0%, transparent 50%),
-          radial-gradient(circle at 80% 70%, rgba(56, 189, 248, 0.35) 0%, transparent 50%),
-          radial-gradient(circle at 50% 50%, rgba(129, 140, 248, 0.2) 0%, transparent 60%)
+          radial-gradient(circle at 20% 30%, rgba(165, 180, 252, 0.45) 0%, transparent 50%),
+          radial-gradient(circle at 80% 70%, rgba(56, 189, 248, 0.4) 0%, transparent 50%),
+          radial-gradient(circle at 50% 50%, rgba(129, 140, 248, 0.25) 0%, transparent 60%)
         `,
         filter: 'blur(80px)'
       }} />
 
-      {/* Modern Grid Overlay */}
+      {/* Grid Overlay - Brighter/Subtle */}
       <div style={{
         position: 'absolute',
         inset: 0,
         backgroundImage: `
-          linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px)
+          linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px)
         `,
-        backgroundSize: '100px 100px',
+        backgroundSize: '80px 80px',
         maskImage: 'radial-gradient(ellipse at 50% 50%, black 20%, transparent 95%)'
       }} />
 
@@ -77,10 +77,10 @@ export default function BackgroundDecor() {
         position: 'absolute',
         top: '50%',
         left: '50%',
-        transform: 'translate(-50%, -50%) rotate(15deg)',
+        transform: 'translate(-50%, -50%) rotate(10deg)',
         width: '1200px',
         height: '1200px',
-        opacity: 0.07
+        opacity: 0.08
       }}>
         <svg viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
           {segments.map((num, i) => {
@@ -97,6 +97,7 @@ export default function BackgroundDecor() {
             )
           })}
           <circle cx="250" cy="250" r="248" stroke="white" strokeWidth="2" fill="none" />
+          <circle cx="250" cy="250" r="140" stroke="white" strokeWidth="1" fill="none" />
         </svg>
       </div>
     </div>
