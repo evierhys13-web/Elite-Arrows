@@ -2,9 +2,11 @@ import { useState, useRef, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { db, chatMessagesCollection, doc, setDoc, deleteDoc, query, where, onSnapshot } from '../firebase'
+import { useToast } from '../context/ToastContext'
 
 export default function Chat() {
   const { user, getAllUsers } = useAuth()
+  const { showToast } = useToast()
   const location = useLocation()
   
   if (!user) {
@@ -54,7 +56,7 @@ export default function Chat() {
     { id: 'announcements', name: 'Announcements', type: 'general' },
     ...(user?.isAdmin ? [{ id: 'admin', name: 'Admin Chat', type: 'admin' }] : []),
     ...divisions.map(d => ({ id: `division_${d}`, name: `${d} Division`, type: 'division' })),
-    ...friends.map(f => ({ id: `friend_${f.id}`, name: f.username, type: 'friend', isOnline: f.isOnline }))
+    ...friends.map(f => ({ id: `friend_${f.id}`, name: f.username, type: 'friend', isOnline: f.isOnline, lastSeen: f.lastSeen, showOnlineStatus: f.showOnlineStatus }))
   ]
 
   const getChatKey = (chatId) => {
@@ -109,7 +111,7 @@ export default function Chat() {
     if (!newMessage.trim()) return
 
     if (activeChat === 'announcements' && !user.isAdmin) {
-      alert('Only admins can post announcements')
+      showToast('Only admins can post announcements', 'error')
       return
     }
 
@@ -117,7 +119,7 @@ export default function Chat() {
       const friendId = activeChat.replace('friend_', '')
       const friend = allUsers.find(u => u.id === friendId)
       if (friend?.doNotDisturb && friend.dndEndTime && new Date(friend.dndEndTime) > new Date()) {
-        alert('This player has Do Not Disturb enabled. Your message will be sent but they won\'t receive a notification.')
+        showToast('This player has Do Not Disturb enabled.', 'info')
       }
     }
 
@@ -148,7 +150,7 @@ export default function Chat() {
     if (type === 'photo' || type === 'video') {
       fileInputRef.current?.click()
     } else if (type === 'voice') {
-      alert('Voice recording coming soon!')
+      showToast('Voice recording coming soon!', 'info')
     }
     setShowMediaOptions(false)
   }
@@ -183,8 +185,9 @@ export default function Chat() {
     if (!isOwner && !isAdmin) return
     try {
       await deleteDoc(doc(db, 'chatMessages', msg.id.toString()))
+      showToast('Message deleted', 'info')
     } catch (err) {
-      alert('Failed to delete message')
+      showToast('Failed to delete message', 'error')
     }
   }
 

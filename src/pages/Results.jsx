@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { db, setDoc, getDocs, doc, collection } from '../firebase'
+import { db, setDoc, getDocs, doc, collection, addDoc } from '../firebase'
 import { derivePlayerStatsFromResults, getPersistedPlayerStats } from '../utils/playerStats'
+import { useToast } from '../context/ToastContext'
+import { SkeletonList } from '../components/Skeleton'
+import PullToRefresh from '../components/PullToRefresh'
 
 export default function Results() {
-  const { user, getAllUsers, getResults, updateResults, getFixtures, updateFixtures, updateOtherUser, triggerDataRefresh, dataRefreshTrigger, adminData, notifyUser } = useAuth()
+  const { user, getAllUsers, getResults, triggerDataRefresh, dataRefreshTrigger, notifyAdmins, loading } = useAuth()
+  const { showToast } = useToast()
   const [activeTab, setActiveTab] = useState('approved')
   const [refreshKey, setRefreshKey] = useState(0)
-  const [successMessage, setSuccessMessage] = useState('')
 
   useEffect(() => {
     setRefreshKey(prev => prev + 1)
@@ -18,7 +21,7 @@ export default function Results() {
   const isSubscribed = user?.isSubscribed === true || isAdmin
   
   const allResults = getResults() || []
-  const approvedResults = allResults.filter(r => String(r.status).toLowerCase() === 'approved').sort((a, b) => new Date(b.date) - new Date(a.date))
+  const approvedResults = allResults.filter(r => String(r.status).toLowerCase() === 'approved').sort((a, b) => new Date(b.date || b.submittedAt) - new Date(a.date || a.submittedAt))
   const pendingResults = allResults.filter(r => String(r.status).toLowerCase() === 'pending').sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt))
 
   const handleApprove = async (resultId) => {
@@ -29,9 +32,8 @@ export default function Results() {
       const updated = { ...res, status: 'approved', approvedAt: new Date().toISOString() }
       await setDoc(doc(db, 'results', String(resultId)), updated, { merge: true })
       triggerDataRefresh('results')
-      setSuccessMessage('Result Approved')
-      setTimeout(() => setSuccessMessage(''), 1800)
-    } catch (e) { alert(e.message) }
+      showToast('Result Approved', 'success')
+    } catch (e) { showToast(e.message, 'error') }
   }
 
   const handleReject = async (resultId) => {
@@ -42,9 +44,31 @@ export default function Results() {
       const updated = { ...res, status: 'rejected', updatedAt: new Date().toISOString() }
       await setDoc(doc(db, 'results', String(resultId)), updated, { merge: true })
       triggerDataRefresh('results')
-      setSuccessMessage('Result Rejected')
-      setTimeout(() => setSuccessMessage(''), 1800)
-    } catch (e) { alert(e.message) }
+      showToast('Result Rejected', 'info')
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
+  const handleDispute = async (result) => {
+    const reason = prompt('Please enter the reason for your dispute (e.g. "Wrong score", "I didn't play this"):')
+    if (!reason) return
+
+    try {
+      await addDoc(collection(db, 'disputes'), {
+        resultId: result.id,
+        reporterId: user.id,
+        reporterName: user.username,
+        reason,
+        status: 'open',
+        timestamp: new Date().toISOString()
+      })
+
+      await notifyAdmins('Result Disputed', `${user.username} disputed a result: "${reason}"`, {
+        type: 'dispute',
+        resultId: result.id
+      })
+
+      showToast('Dispute submitted to admins.', 'success')
+    } catch (e) { showToast('Dispute failed: ' + e.message, 'error') }
   }
 
   const renderResultCard = (result, isPending = false) => {
@@ -64,7 +88,7 @@ export default function Results() {
             {result.gameType} • {result.division || 'Unassigned'}
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            {new Date(result.date).toLocaleDateString()}
+            {result.date ? new Date(result.date).toLocaleDateString() : 'Unknown date'}
           </div>
         </div>
 
@@ -113,14 +137,23 @@ export default function Results() {
           </div>
         )}
 
-        {isPending && isAdmin && (
-          <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-            <button className="btn btn-primary btn-sm btn-block" onClick={() => handleApprove(result.id)}>Approve</button>
-            <button className="btn btn-danger btn-sm btn-block" onClick={() => handleReject(result.id)}>Reject</button>
-          </div>
-        )}
+        <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+          {isMe && !isPending && (
+            <button className="btn btn-secondary btn-sm btn-block" style={{ color: 'var(--error)' }} onClick={() => handleDispute(result)}>Dispute Result</button>
+          )}
+          {isPending && isAdmin && (
+            <>
+              <button className="btn btn-primary btn-sm btn-block" onClick={() => handleApprove(result.id)}>Approve</button>
+              <button className="btn btn-danger btn-sm btn-block" onClick={() => handleReject(result.id)}>Reject</button>
+            </>
+          )}
+        </div>
       </div>
     )
+  }
+
+  const handleManualRefresh = async () => {
+    triggerDataRefresh('all')
   }
 
   if (!isSubscribed) {
@@ -139,38 +172,33 @@ export default function Results() {
 
   return (
     <div className="page animate-fade-in" style={{ maxWidth: '800px', margin: '0 auto' }}>
-      {successMessage && (
-        <div className="modal-overlay" style={{ zIndex: 11000 }}>
-          <div className="card glass" style={{ border: '2px solid var(--success)', padding: '40px', textAlign: 'center' }}>
-            <h2 style={{ color: 'var(--success)', marginBottom: '10px' }}>Success</h2>
-            <p>{successMessage}</p>
+      <PullToRefresh onRefresh={handleManualRefresh}>
+        <div className="page-header" style={{ marginBottom: '30px' }}>
+          <h1 className="page-title text-gradient" style={{ fontSize: '2.5rem' }}>League Results</h1>
+          <p style={{ color: 'var(--text-muted)' }}>Official scores and player statistics</p>
+        </div>
+
+        {isAdmin && (
+          <div className="division-tabs" style={{ marginBottom: '24px' }}>
+            <button className={`division-tab ${activeTab === 'approved' ? 'active' : ''}`} onClick={() => setActiveTab('approved')}>Approved</button>
+            <button className={`division-tab ${activeTab === 'pending' ? 'active' : ''}`} onClick={() => setActiveTab('pending')}>
+              Pending {pendingResults.length > 0 && <span style={{ marginLeft: '6px', background: 'white', color: 'black', padding: '1px 6px', borderRadius: '10px', fontSize: '0.7rem' }}>{pendingResults.length}</span>}
+            </button>
           </div>
-        </div>
-      )}
-
-      <div className="page-header" style={{ marginBottom: '30px' }}>
-        <h1 className="page-title text-gradient" style={{ fontSize: '2.5rem' }}>League Results</h1>
-        <p style={{ color: 'var(--text-muted)' }}>Official scores and player statistics</p>
-      </div>
-
-      {isAdmin && (
-        <div className="division-tabs" style={{ marginBottom: '24px' }}>
-          <button className={`division-tab ${activeTab === 'approved' ? 'active' : ''}`} onClick={() => setActiveTab('approved')}>Approved</button>
-          <button className={`division-tab ${activeTab === 'pending' ? 'active' : ''}`} onClick={() => setActiveTab('pending')}>
-            Pending {pendingResults.length > 0 && <span style={{ marginLeft: '6px', background: 'white', color: 'black', padding: '1px 6px', borderRadius: '10px', fontSize: '0.7rem' }}>{pendingResults.length}</span>}
-          </button>
-        </div>
-      )}
-
-      <div className="results-container">
-        {activeTab === 'pending' ? (
-          pendingResults.length === 0 ? <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>No results awaiting review.</p> :
-          pendingResults.map(r => renderResultCard(r, true))
-        ) : (
-          approvedResults.length === 0 ? <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>No match history found.</p> :
-          approvedResults.map(r => renderResultCard(r, false))
         )}
-      </div>
+
+        <div className="results-container">
+          {loading ? (
+            <SkeletonList items={5} />
+          ) : activeTab === 'pending' ? (
+            pendingResults.length === 0 ? <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>No results awaiting review.</p> :
+            pendingResults.map(r => renderResultCard(r, true))
+          ) : (
+            approvedResults.length === 0 ? <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>No match history found.</p> :
+            approvedResults.map(r => renderResultCard(r, false))
+          )}
+        </div>
+      </PullToRefresh>
     </div>
   )
 }

@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { ThemeProvider, useTheme } from './context/ThemeContext'
+import { ToastProvider } from './context/ToastContext'
 import Sidebar from './components/Sidebar'
 import BottomNav from './components/BottomNav'
 import InstallPrompt from './components/InstallPrompt'
@@ -299,9 +300,11 @@ function AppShell() {
 export default function App() {
   return (
     <ThemeProvider>
-      <BrowserRouter>
-        <AppShell />
-      </BrowserRouter>
+      <ToastProvider>
+        <BrowserRouter>
+          <AppShell />
+        </BrowserRouter>
+      </ToastProvider>
     </ThemeProvider>
   )
 }

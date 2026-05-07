@@ -83,7 +83,7 @@ export default function Leaderboards() {
           <>
             <div style={{ 
               display: 'grid', 
-              gridTemplateColumns: '60px 1fr 80px 80px 80px 60px',
+              gridTemplateColumns: '60px 1fr 80px 80px 80px',
               gap: '10px',
               padding: '12px 15px',
               borderBottom: '1px solid var(--border)',
@@ -96,7 +96,6 @@ export default function Leaderboards() {
               <div>Pts</div>
               <div>W-L</div>
               <div>Played</div>
-              <div>Avg</div>
             </div>
 
             {leaderboard.map((player, index) => (
@@ -104,7 +103,7 @@ export default function Leaderboards() {
                 key={player.id}
                 style={{ 
                   display: 'grid', 
-                  gridTemplateColumns: '60px 1fr 80px 80px 80px 60px',
+                  gridTemplateColumns: '60px 1fr 80px 80px 80px',
                   gap: '10px',
                   padding: '15px',
                   borderBottom: '1px solid var(--border)',
@@ -159,7 +158,6 @@ export default function Leaderboards() {
                   {player.draws > 0 && <span style={{ color: 'var(--warning)' }}> ({player.draws}d)</span>}
                 </div>
                 <div style={{ color: 'var(--text-muted)' }}>{player.played}</div>
-                <div style={{ fontWeight: '600' }}>{player.average}%</div>
               </div>
             ))}
           </>

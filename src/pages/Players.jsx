@@ -4,9 +4,11 @@ import { useAuth } from '../context/AuthContext'
 import { SkeletonList } from '../components/Skeleton'
 import Breadcrumbs from '../components/Breadcrumbs'
 import Tooltip from '../components/Tooltip'
+import { useToast } from '../context/ToastContext'
 
 export default function Players() {
   const { user, getAllUsers, addFriend, removeFriend, loading } = useAuth()
+  const { showToast } = useToast()
   const [showFriendsOnly, setShowFriendsOnly] = useState(false)
   const [visible, setVisible] = useState(false)
   const navigate = useNavigate()
@@ -139,11 +141,15 @@ export default function Players() {
                     💬 Chat
                   </button>
                 )}
-                {(user.friends || []).includes(player.id) ? (
-                  <button 
+                  <button
                     className="btn btn-secondary"
                     style={{ padding: '8px 16px' }}
-                    onClick={() => removeFriend(player.id)}
+                    onClick={async () => {
+                      if(window.confirm(`Remove ${player.username}?`)) {
+                        await removeFriend(player.id);
+                        showToast(`Removed ${player.username}`, 'info');
+                      }
+                    }}
                   >
                     Remove
                   </button>
@@ -154,8 +160,9 @@ export default function Players() {
                     onClick={async () => {
                       try {
                         await addFriend(player.id)
+                        showToast(`Added ${player.username}`, 'success')
                       } catch (error) {
-                        console.error('Add friend failed:', error)
+                        showToast('Add friend failed', 'error')
                       }
                     }}
                   >
