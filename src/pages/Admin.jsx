@@ -14,6 +14,8 @@ export default function Admin() {
     loading: authLoading,
     getAllUsers,
     getResults,
+    getCups,
+    bets,
     getSeasons,
     adminData,
     updateAdminData,
@@ -288,6 +290,60 @@ export default function Admin() {
     } catch (e) { showToast(e.message, 'error') }
   }
 
+  const handleCheckBetWinners = async () => {
+    if (isApproving) return
+    setIsApproving(true)
+    try {
+      const allResults = getResults().filter(r => String(r.status).toLowerCase() === 'approved')
+      const batch = writeBatch(db)
+      let winCount = 0
+
+      for (const bet of bets) {
+        if (bet.won !== null) continue
+
+        const game = allResults.find(r =>
+          (bet.fixtureId && String(r.fixtureId) === String(bet.fixtureId)) ||
+          (bet.cupId && bet.matchId && String(r.cupId) === String(bet.cupId) && String(r.matchId) === String(bet.matchId)) ||
+          (String(r.id) === String(bet.gameId))
+        )
+
+        if (!game) continue
+
+        const score1 = Number(game.score1)
+        const score2 = Number(game.score2)
+        const actualWinnerId = score1 > score2 ? game.player1Id : game.player2Id
+
+        const predictedScore1 = Number(bet.predictedScore1)
+        const predictedScore2 = Number(bet.predictedScore2)
+
+        // Exact score check
+        const isExactScore = (String(game.player1Id) === String(bet.fixturePlayer1Id))
+          ? (score1 === predictedScore1 && score2 === predictedScore2)
+          : (score2 === predictedScore1 && score1 === predictedScore2)
+
+        const won = String(actualWinnerId) === String(bet.predictedWinnerId) && isExactScore
+
+        batch.update(doc(db, 'bets', bet.id), { won })
+
+        if (won) {
+          winCount++
+          const userDoc = doc(db, 'users', bet.userId)
+          const userData = allPlayers.find(u => u.id === bet.userId)
+          const currentDraw = userData?.promotionDraw || []
+          if (!currentDraw.includes(true)) { // Just a flag that they won a bet
+             batch.update(userDoc, { promotionDraw: true })
+          }
+        }
+      }
+
+      await batch.commit()
+      await logAudit('CHECK_BETS', `Processed ${bets.length} bets, found ${winCount} new winners`)
+      triggerDataRefresh('bets')
+      showToast(`Checked bets! Found ${winCount} winners.`, 'success')
+    } catch (e) { showToast(e.message, 'error') }
+    setIsApproving(false)
+  }
+
   const stats = useMemo(() => {
     const lastWeek = new Date()
     lastWeek.setDate(lastWeek.getDate() - 7)
@@ -310,6 +366,7 @@ export default function Admin() {
     { id: 'players', label: 'Members' },
     { id: 'seasons', label: 'Seasons' },
     { id: 'trophies', label: 'Trophies' },
+    { id: 'bets', label: 'Bets' },
     { id: 'tokens', label: 'Tokens' },
     { id: 'maintenance', label: 'System' }
   ]
@@ -630,6 +687,52 @@ export default function Admin() {
                   <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/profile/${p.id}`)}>View</button>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* TAB: BETS */}
+        {activeTab === 'bets' && (
+          <div className="card glass">
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', alignItems: 'center' }}>
+              <h3>Betting Management</h3>
+              <button className="btn btn-primary" onClick={handleCheckBetWinners} disabled={isApproving}>
+                {isApproving ? 'Checking...' : 'Check Bet Winners'}
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {bets.length === 0 ? (
+                <p style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No bets placed yet.</p>
+              ) : (
+                [...bets].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).map(bet => (
+                  <div key={bet.id} className="glass" style={{ padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.02)', border: bet.won === true ? '1px solid var(--success)' : bet.won === false ? '1px solid var(--error)' : '1px solid var(--border)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span style={{ fontWeight: 700, color: 'var(--accent-cyan)' }}>{bet.username}</span>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{new Date(bet.createdAt).toLocaleDateString()}</span>
+                    </div>
+                    <div style={{ fontSize: '0.9rem', marginBottom: '8px' }}>
+                      Bet on: <strong>{bet.player1Name} vs {bet.player2Name}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ fontSize: '0.85rem' }}>
+                        Prediction: <span style={{ fontWeight: 600 }}>{bet.predictedWinner} ({bet.predictedScore1}-{bet.predictedScore2})</span>
+                      </div>
+                      <div style={{
+                        padding: '4px 10px',
+                        borderRadius: '20px',
+                        fontSize: '0.7rem',
+                        fontWeight: 800,
+                        background: bet.won === true ? 'var(--success-bg)' : bet.won === false ? 'var(--error-bg)' : 'rgba(255,255,255,0.1)',
+                        color: bet.won === true ? 'var(--success)' : bet.won === false ? 'var(--error)' : 'var(--text-muted)',
+                        textTransform: 'uppercase'
+                      }}>
+                        {bet.won === true ? 'Won' : bet.won === false ? 'Lost' : 'Pending'}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         )}

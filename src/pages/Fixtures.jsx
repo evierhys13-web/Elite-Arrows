@@ -5,7 +5,7 @@ import { db, doc, setDoc, deleteDoc, getDocs, collection } from '../firebase'
 import UserSearchSelect from '../components/UserSearchSelect'
 
 export default function Fixtures() {
-  const { user, getAllUsers, getFixtures, getResults, updateResults, updateFixtures, triggerDataRefresh, notifyUser, notifyAdmins, useTokens } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, updateResults, updateFixtures, triggerDataRefresh, notifyUser, notifyAdmins, useTokens, bets: allBetsData } = useAuth()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('my')
   const [allFixtureFilter, setAllFixtureFilter] = useState('confirmed')
@@ -27,7 +27,6 @@ const [counterFixture, setCounterFixture] = useState(null)
   const [rescheduleDate, setRescheduleDate] = useState('')
   const [rescheduleTime, setRescheduleTime] = useState('')
   const [refreshKey, setRefreshKey] = useState(0)
-  const [bets, setBets] = useState([])
   const [showBetForm, setShowBetForm] = useState(null)
   const [betAmount, setBetAmount] = useState(10)
   const [predictedWinner, setPredictedWinner] = useState('')
@@ -52,10 +51,7 @@ const [counterFixture, setCounterFixture] = useState(null)
     }
   }, [])
 
-  useEffect(() => {
-    const storedBets = JSON.parse(localStorage.getItem('eliteArrowsBets') || '[]')
-    setBets(storedBets.filter(bet => String(bet.userId) === String(user.id)))
-  }, [user.id])
+  const bets = allBetsData.filter(bet => String(bet.userId) === String(user.id))
 
   const fixtures = getFixtures()
   const allResults = getResults()
@@ -964,14 +960,18 @@ const [counterFixture, setCounterFixture] = useState(null)
     const player1Name = getPublicFixtureName(fixture, player1Id, 'player1Name')
     const player2Name = getPublicFixtureName(fixture, player2Id, 'player2Name')
     const predictedWinnerName = String(predictedWinner) === String(player1Id) ? player1Name : player2Name
+    const betId = `bet_${Date.now()}`
     const newBet = {
-      id: Date.now(),
+      id: betId,
       userId: user.id,
+      username: user.username,
       gameId: getFixtureBetId(fixture),
       fixtureId: fixture.id,
       fixtureType: fixture.cupId ? 'Cup' : (fixture.gameType || 'League'),
       fixturePlayer1Id: player1Id,
       fixturePlayer2Id: player2Id,
+      player1Name,
+      player2Name,
       ...(fixture.cupId && {
         cupId: fixture.cupId,
         matchId: fixture.matchId,
@@ -987,12 +987,13 @@ const [counterFixture, setCounterFixture] = useState(null)
       createdAt: new Date().toISOString()
     }
 
-    const allBets = JSON.parse(localStorage.getItem('eliteArrowsBets') || '[]')
-    const updatedBets = [...allBets, newBet]
-    localStorage.setItem('eliteArrowsBets', JSON.stringify(updatedBets))
-    setBets(updatedBets.filter(bet => String(bet.userId) === String(user.id)))
-    resetBetForm()
-    alert('Bet placed! Good luck!')
+    try {
+      await setDoc(doc(db, 'bets', betId), newBet)
+      resetBetForm()
+      alert('Bet placed! Good luck!')
+    } catch (e) {
+      alert('Error placing bet: ' + e.message)
+    }
   }
 
   if (!isSubscribed && !isAdmin) {

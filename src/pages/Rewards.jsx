@@ -1,10 +1,11 @@
 import { useState, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { db, doc, updateDoc, writeBatch } from '../firebase'
 
 const DIVISIONS = ['Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Development']
 
 export default function Rewards() {
-  const { user, getAllUsers, getResults } = useAuth()
+  const { user, getAllUsers, getResults, bets, triggerDataRefresh } = useAuth()
   const [showWheel, setShowWheel] = useState(false)
   const [wheelSpinning, setWheelSpinning] = useState(false)
   const [wheelWinner, setWheelWinner] = useState(null)
@@ -17,10 +18,13 @@ export default function Rewards() {
   const results = getResults()
   const approvedResults = results.filter(r => String(r.status || '').toLowerCase() === 'approved')
   const currentSeason = localStorage.getItem('eliteArrowsCurrentSeason') || 'Season 1'
-  const promotionDraw = JSON.parse(localStorage.getItem('eliteArrowsPromotionDraw') || '[]')
-  const userInDraw = promotionDraw.includes(user?.id)
-  const promotionDrawSpun = localStorage.getItem('eliteArrowsPromotionDrawSpun') === 'true'
-  const previousWinner = localStorage.getItem('eliteArrowsPromotionWinner')
+
+  // Promotion draw logic based on firebase bets/users
+  const promotionDraw = allUsers.filter(u => u.promotionDraw === true).map(u => u.id)
+  const userInDraw = user?.promotionDraw === true
+
+  const promotionDrawSpun = adminData?.promotionDrawSpun || localStorage.getItem('eliteArrowsPromotionDrawSpun') === 'true'
+  const previousWinner = adminData?.promotionWinner || localStorage.getItem('eliteArrowsPromotionWinner')
 
   const getPlayerGameCount = (playerId, division) => (
     approvedResults.filter(r =>
@@ -30,81 +34,64 @@ export default function Rewards() {
     ).length
   )
 
-  const checkWinners = () => {
-    const allBets = JSON.parse(localStorage.getItem('eliteArrowsBets') || '[]')
-    const drawEntries = JSON.parse(localStorage.getItem('eliteArrowsPromotionDraw') || '[]')
+  const checkWinners = async () => {
+    try {
+      const batch = writeBatch(db)
+      let winCount = 0
 
-    const getBetPlayerIds = (bet) => {
-      if (bet.fixturePlayer1Id && bet.fixturePlayer2Id) {
-        return {
-          player1Id: bet.fixturePlayer1Id,
-          player2Id: bet.fixturePlayer2Id
+      for (const bet of bets) {
+        if (bet.won !== null) continue
+
+        const game = approvedResults.find(r =>
+          (bet.fixtureId && String(r.fixtureId) === String(bet.fixtureId)) ||
+          (bet.cupId && bet.matchId && String(r.cupId) === String(bet.cupId) && String(r.matchId) === String(bet.matchId)) ||
+          (String(r.id) === String(bet.gameId))
+        )
+
+        if (!game) continue
+
+        const score1 = Number(game.score1)
+        const score2 = Number(game.score2)
+        const actualWinnerId = score1 > score2 ? game.player1Id : game.player2Id
+
+        const predictedScore1 = Number(bet.predictedScore1)
+        const predictedScore2 = Number(bet.predictedScore2)
+
+        const isExactScore = (String(game.player1Id) === String(bet.fixturePlayer1Id))
+          ? (score1 === predictedScore1 && score2 === predictedScore2)
+          : (score2 === predictedScore1 && score1 === predictedScore2)
+
+        const won = String(actualWinnerId) === String(bet.predictedWinnerId) && isExactScore
+
+        batch.update(doc(db, 'bets', bet.id), { won })
+
+        if (won) {
+          winCount++
+          const userDoc = doc(db, 'users', bet.userId)
+          const userData = allUsers.find(u => u.id === bet.userId)
+          if (userData?.promotionDraw !== true) {
+             batch.update(userDoc, { promotionDraw: true })
+          }
         }
       }
-      if (bet.gameId?.startsWith('fixture_')) {
-        const [player1Id, player2Id] = bet.gameId.replace('fixture_', '').split('_')
-        return { player1Id, player2Id }
-      }
-      return { player1Id: null, player2Id: null }
+
+      await batch.commit()
+      triggerDataRefresh('bets')
+      alert(`Bets checked! Found ${winCount} new winners.`)
+    } catch (e) {
+      alert('Error checking winners: ' + e.message)
     }
-
-    const scoreForPlayer = (game, playerId) => (
-      String(game.player1Id) === String(playerId) ? Number(game.score1) : Number(game.score2)
-    )
-
-    const updatedBets = allBets.map(bet => {
-      if (bet.won !== null) return bet
-
-      const { player1Id, player2Id } = getBetPlayerIds(bet)
-      const game = (
-        (bet.fixtureId
-          ? approvedResults.find(r => String(r.fixtureId || '') === String(bet.fixtureId))
-          : null) ||
-        (bet.cupId && bet.matchId
-          ? approvedResults.find(r =>
-              String(r.cupId || '') === String(bet.cupId) &&
-              String(r.matchId || '') === String(bet.matchId)
-            )
-          : null) ||
-        approvedResults.find(r => String(r.id) === String(bet.gameId)) ||
-        (player1Id && player2Id
-          ? approvedResults.find(r =>
-              r.season === currentSeason &&
-              (
-                (String(r.player1Id) === String(player1Id) && String(r.player2Id) === String(player2Id)) ||
-                (String(r.player1Id) === String(player2Id) && String(r.player2Id) === String(player1Id))
-              )
-            )
-          : null)
-      )
-
-      if (!game) return bet
-
-      const actualWinnerId = Number(game.score1) > Number(game.score2) ? game.player1Id : game.player2Id
-      const predictedWinnerId = bet.predictedWinnerId || (bet.predictedWinner === game.player1 ? game.player1Id : game.player2Id)
-      const expectedScore1 = player1Id ? scoreForPlayer(game, player1Id) : Number(game.score1)
-      const expectedScore2 = player2Id ? scoreForPlayer(game, player2Id) : Number(game.score2)
-      const wonByLegs = Number(bet.predictedScore1) === expectedScore1 && Number(bet.predictedScore2) === expectedScore2
-
-      if (String(actualWinnerId) === String(predictedWinnerId) && wonByLegs) {
-        if (!drawEntries.includes(bet.userId)) {
-          drawEntries.push(bet.userId)
-        }
-        return { ...bet, won: true }
-      }
-
-      return { ...bet, won: false }
-    })
-
-    localStorage.setItem('eliteArrowsBets', JSON.stringify(updatedBets))
-    localStorage.setItem('eliteArrowsPromotionDraw', JSON.stringify(drawEntries))
-    alert('Bets checked and winners updated!')
   }
 
-  const leaveDraw = () => {
-    const newDraw = promotionDraw.filter(id => id !== user?.id)
-    localStorage.setItem('eliteArrowsPromotionDraw', JSON.stringify(newDraw))
-    alert('You have left the promotion draw')
+  const leaveDraw = async () => {
+    if (!confirm('Are you sure you want to leave the promotion draw?')) return
+    try {
+      await updateDoc(doc(db, 'users', user.id), { promotionDraw: false })
+      triggerDataRefresh('users')
+      alert('You have left the promotion draw')
+    } catch (e) {
+      alert('Error: ' + e.message)
+    }
   }
 
   const checkAllGamesComplete = () => {
@@ -125,7 +112,7 @@ export default function Rewards() {
 
   const allGamesComplete = checkAllGamesComplete()
 
-  const spinWheel = () => {
+  const spinWheel = async () => {
     if (promotionDraw.length === 0) {
       alert('No participants in the promotion draw!')
       return
@@ -148,7 +135,7 @@ export default function Rewards() {
       wheelElement.style.transition = 'transform 4s ease-out'
       wheelElement.style.transform = `rotate(${totalRotation}deg)`
 
-      setTimeout(() => {
+      setTimeout(async () => {
         setWheelSpinning(false)
         const winnerId = promotionDraw[randomSegment]
         const winner = allUsers.find(u => String(u.id) === String(winnerId))
@@ -156,17 +143,31 @@ export default function Rewards() {
 
         localStorage.setItem('eliteArrowsPromotionWinner', winnerId)
         localStorage.setItem('eliteArrowsPromotionDrawSpun', 'true')
+
+        // Save winner to adminData or similar
+        try {
+          const docRef = doc(db, 'adminData', 'main')
+          await updateDoc(docRef, { promotionWinner: winnerId, promotionWinnerName: winner?.username, promotionDrawSpun: true })
+        } catch (e) {
+          console.error('Failed to save winner to database', e)
+        }
       }, 4000)
     }
   }
 
-  const resetWheel = () => {
+  const resetWheel = async () => {
+    if(!confirm('Reset the promotion draw? This will allow a re-spin.')) return
     setShowWheel(false)
     setWheelWinner(null)
     if (wheelRef.current) {
       wheelRef.current.style.transition = 'none'
       wheelRef.current.style.transform = 'rotate(0deg)'
     }
+    localStorage.removeItem('eliteArrowsPromotionDrawSpun')
+    try {
+      const docRef = doc(db, 'adminData', 'main')
+      await updateDoc(docRef, { promotionDrawSpun: false })
+    } catch (e) {}
   }
 
   return (

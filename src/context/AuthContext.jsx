@@ -94,6 +94,7 @@ export function AuthProvider({ children }) {
   const [results, setResults] = useState([])
   const [fixtures, setFixtures] = useState([])
   const [cups, setCups] = useState([])
+  const [bets, setBets] = useState([])
   const [supportRequests, setSupportRequests] = useState([])
   const [seasons, setSeasons] = useState([])
   const [dataRefreshTrigger, setDataRefreshTrigger] = useState(0)
@@ -434,6 +435,15 @@ export function AuthProvider({ children }) {
     }, (error) => {
       console.log('Cups listener error:', error)
     })
+
+    const unsubscribeBets = onSnapshot(collection(db, 'bets'), (snapshot) => {
+      const betsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      setBets(betsData)
+      localStorage.setItem('eliteArrowsBets', JSON.stringify(betsData))
+      announceAfterHydration('bets')
+    }, (error) => {
+      console.log('Bets listener error:', error)
+    })
     
     const unsubscribeSupport = onSnapshot(collection(db, 'supportRequests'), (snapshot) => {
       const supportData = snapshot.docs
@@ -504,6 +514,7 @@ export function AuthProvider({ children }) {
       unsubscribeResults()
       unsubscribeFixtures()
       unsubscribeCups()
+      unsubscribeBets()
       unsubscribeSupport()
       unsubscribeSeasons()
       unsubscribeNews()
@@ -1263,6 +1274,7 @@ const cleanUserData = (users) => {
       getFixtures,
       updateFixtures,
       getCups,
+      bets,
       getSupportRequests,
       getSeasons,
       getNews,
