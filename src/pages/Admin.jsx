@@ -874,10 +874,26 @@ export default function Admin() {
         {activeTab === 'maintenance' && (
           <div className="card glass">
             <h3>System Status</h3>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px', cursor: 'pointer' }}>
-              <input type="checkbox" checked={adminData?.isMaintenanceMode || false} onChange={e => updateAdminData({ isMaintenanceMode: e.target.checked })} />
-              <span style={{ fontWeight: 600 }}>Global Maintenance Lock</span>
-            </label>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '24px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+                <input type="checkbox" checked={adminData?.isMaintenanceMode || false} onChange={e => updateAdminData({ isMaintenanceMode: e.target.checked })} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600 }}>Global Maintenance Lock</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Blocks all users from using the app except admins.</div>
+                </div>
+              </label>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+                <input type="checkbox" checked={adminData?.registrationsEnabled !== false} onChange={e => updateAdminData({ registrationsEnabled: e.target.checked })} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600 }}>New Player Sign-ups</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Disable this when recruitment is closed to stop new accounts.</div>
+                </div>
+              </label>
+            </div>
+
+            <h4 style={{ marginBottom: '12px', fontSize: '0.9rem' }}>Maintenance Message</h4>
             <textarea className="glass" style={{ width: '100%', padding: '15px', borderRadius: '12px', marginBottom: '10px' }} rows={3} placeholder="Banner message..." defaultValue={adminData?.maintenanceMessage || ''} id="maintMsgInput" />
             <button className="btn btn-primary btn-block" onClick={() => { updateAdminData({ maintenanceMessage: document.getElementById('maintMsgInput').value }); showToast('Message updated', 'success'); }}>Broadcast Update</button>
           </div>

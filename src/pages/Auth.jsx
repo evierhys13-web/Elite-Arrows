@@ -22,8 +22,10 @@ export default function Auth() {
   const [resetSent, setResetSent] = useState(false)
   const [resetLoading, setResetLoading] = useState(false)
 
-  const { signUp, signIn, isAuthenticated, loading: authLoading, getAllUsers } = useAuth()
+  const { signUp, signIn, isAuthenticated, loading: authLoading, getAllUsers, adminData } = useAuth()
   const navigate = useNavigate()
+
+  const registrationsEnabled = adminData?.registrationsEnabled !== false
 
   if (authLoading) {
     return (
@@ -134,152 +136,175 @@ export default function Auth() {
             <button
               className={`auth-tab ${!isSignUp ? 'active' : ''}`}
               onClick={() => { setIsSignUp(false); setError(''); setShowForgotPassword(false); }}
+              style={{ flex: registrationsEnabled ? 1 : 'none', width: registrationsEnabled ? 'auto' : '100%' }}
             >
               Sign In
             </button>
-            <button
-              className={`auth-tab ${isSignUp ? 'active' : ''}`}
-              onClick={() => { setIsSignUp(true); setError(''); setShowForgotPassword(false); }}
-            >
-              Sign Up
-            </button>
+            {registrationsEnabled && (
+              <button
+                className={`auth-tab ${isSignUp ? 'active' : ''}`}
+                onClick={() => { setIsSignUp(true); setError(''); setShowForgotPassword(false); }}
+              >
+                Sign Up
+              </button>
+            )}
           </div>
 
           <form className="auth-form" onSubmit={handleSubmit}>
             {error && <div className="form-error">{error}</div>}
 
-            {isSignUp && (
-              <div className="form-group">
-                <label htmlFor="email">Email Address</label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="name@example.com"
-                  autoComplete="email"
-                  required
-                />
+            {isSignUp && !registrationsEnabled ? (
+              <div style={{ textAlign: 'center', padding: '20px' }}>
+                <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🔒</div>
+                <h3 style={{ marginBottom: '8px' }}>Recruitment Closed</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                  New player registrations are currently paused. Please check back later or contact an admin if you believe this is an error.
+                </p>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-block"
+                  style={{ marginTop: '24px' }}
+                  onClick={() => setIsSignUp(false)}
+                >
+                  Back to Sign In
+                </button>
               </div>
-            )}
-
-            {!isSignUp && (
-              <div className="form-group">
-                <label htmlFor="email">Email or DartCounter Username</label>
-                <input
-                  type="text"
-                  id="email"
-                  name="email"
-                  value={formData.email || ''}
-                  onChange={handleChange}
-                  placeholder="Enter your credentials"
-                  autoComplete="username"
-                  required
-                />
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '8px', display: 'block', paddingLeft: '4px' }}>
-                  Use either your email or DartCounter name to sign in
-                </span>
-              </div>
-            )}
-
-            <div className="form-group">
-              <label htmlFor="password">Password</label>
-              <input
-                type="password"
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="••••••••"
-                autoComplete={isSignUp ? 'new-password' : 'current-password'}
-                required
-              />
-            </div>
-
-            {isSignUp && (
+            ) : (
               <>
+                {isSignUp && (
+                  <div className="form-group">
+                    <label htmlFor="email">Email Address</label>
+                    <input
+                      type="email"
+                      id="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      placeholder="name@example.com"
+                      autoComplete="email"
+                      required
+                    />
+                  </div>
+                )}
+
+                {!isSignUp && (
+                  <div className="form-group">
+                    <label htmlFor="email">Email or DartCounter Username</label>
+                    <input
+                      type="text"
+                      id="email"
+                      name="email"
+                      value={formData.email || ''}
+                      onChange={handleChange}
+                      placeholder="Enter your credentials"
+                      autoComplete="username"
+                      required
+                    />
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '8px', display: 'block', paddingLeft: '4px' }}>
+                      Use either your email or DartCounter name to sign in
+                    </span>
+                  </div>
+                )}
+
                 <div className="form-group">
-                  <label htmlFor="confirmPassword">Confirm Password</label>
+                  <label htmlFor="password">Password</label>
                   <input
                     type="password"
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
+                    id="password"
+                    name="password"
+                    value={formData.password}
                     onChange={handleChange}
                     placeholder="••••••••"
-                    autoComplete="new-password"
+                    autoComplete={isSignUp ? 'new-password' : 'current-password'}
                     required
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <div className="form-group">
-                    <label htmlFor="dartCounterUsername">DC Username</label>
+                {isSignUp && (
+                  <>
+                    <div className="form-group">
+                      <label htmlFor="confirmPassword">Confirm Password</label>
+                      <input
+                        type="password"
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={handleChange}
+                        placeholder="••••••••"
+                        autoComplete="new-password"
+                        required
+                      />
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                      <div className="form-group">
+                        <label htmlFor="dartCounterUsername">DC Username</label>
+                        <input
+                          type="text"
+                          id="dartCounterUsername"
+                          name="dartCounterUsername"
+                          value={formData.dartCounterUsername || ''}
+                          onChange={handleChange}
+                          placeholder="Username"
+                          autoComplete="off"
+                          required
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label htmlFor="threeDartAverage">3-Dart Avg</label>
+                        <input
+                          type="number"
+                          id="threeDartAverage"
+                          name="threeDartAverage"
+                          value={formData.threeDartAverage}
+                          onChange={handleChange}
+                          placeholder="0.00"
+                          step="0.01"
+                          min="0"
+                          autoComplete="off"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                  <div className="checkbox-group" style={{ marginBottom: 0 }}>
                     <input
-                      type="text"
-                      id="dartCounterUsername"
-                      name="dartCounterUsername"
-                      value={formData.dartCounterUsername || ''}
+                      type="checkbox"
+                      id="rememberMe"
+                      name="rememberMe"
+                      checked={formData.rememberMe}
                       onChange={handleChange}
-                      placeholder="Username"
-                      autoComplete="off"
-                      required
                     />
+                    <label htmlFor="rememberMe">Remember me</label>
                   </div>
 
-                  <div className="form-group">
-                    <label htmlFor="threeDartAverage">3-Dart Avg</label>
-                    <input
-                      type="number"
-                      id="threeDartAverage"
-                      name="threeDartAverage"
-                      value={formData.threeDartAverage}
-                      onChange={handleChange}
-                      placeholder="0.00"
-                      step="0.01"
-                      min="0"
-                      autoComplete="off"
-                      required
-                    />
-                  </div>
+                  {!isSignUp && (
+                    <button
+                      type="button"
+                      onClick={() => { setShowForgotPassword(true); setError(''); setResetSent(false); setResetEmail(''); }}
+                      style={{ background: 'none', border: 'none', color: 'var(--accent-cyan)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}
+                    >
+                      Forgot Password?
+                    </button>
+                  )}
                 </div>
+
+                <button type="submit" className="btn btn-primary btn-block" disabled={loading} style={{ height: '52px', fontSize: '1rem' }}>
+                  {loading ? (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span className="spinner" style={{ width: '16px', height: '16px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }}></span>
+                      {isSignUp ? 'Creating Account...' : 'Signing In...'}
+                    </span>
+                  ) : (
+                    isSignUp ? 'Create Account' : 'Sign In'
+                  )}
+                </button>
               </>
             )}
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <div className="checkbox-group" style={{ marginBottom: 0 }}>
-                <input
-                  type="checkbox"
-                  id="rememberMe"
-                  name="rememberMe"
-                  checked={formData.rememberMe}
-                  onChange={handleChange}
-                />
-                <label htmlFor="rememberMe">Remember me</label>
-              </div>
-
-              {!isSignUp && (
-                <button 
-                  type="button"
-                  onClick={() => { setShowForgotPassword(true); setError(''); setResetSent(false); setResetEmail(''); }}
-                  style={{ background: 'none', border: 'none', color: 'var(--accent-cyan)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}
-                >
-                  Forgot Password?
-                </button>
-              )}
-            </div>
-
-            <button type="submit" className="btn btn-primary btn-block" disabled={loading} style={{ height: '52px', fontSize: '1rem' }}>
-              {loading ? (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span className="spinner" style={{ width: '16px', height: '16px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }}></span>
-                  {isSignUp ? 'Creating Account...' : 'Signing In...'}
-                </span>
-              ) : (
-                isSignUp ? 'Create Account' : 'Sign In'
-              )}
-            </button>
           </form>
         </div>
       </div>

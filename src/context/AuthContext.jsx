@@ -104,7 +104,8 @@ export function AuthProvider({ children }) {
     moneyHistory: [],
     leagueTableResetAt: null,
     isMaintenanceMode: false,
-    maintenanceMessage: ''
+    maintenanceMessage: '',
+    registrationsEnabled: true
   })
   const [notificationPermission, setNotificationPermission] = useState('default')
   const [fcmToken, setFcmToken] = useState(null)
@@ -502,7 +503,8 @@ export function AuthProvider({ children }) {
           resultStatusOverrides: data.resultStatusOverrides || {},
           leagueTableResetAt: data.leagueTableResetAt || null,
           isMaintenanceMode: data.isMaintenanceMode || false,
-          maintenanceMessage: data.maintenanceMessage || ''
+          maintenanceMessage: data.maintenanceMessage || '',
+          registrationsEnabled: data.registrationsEnabled !== undefined ? data.registrationsEnabled : true
         })
         resultStatusOverridesRef.current = data.resultStatusOverrides || {}
         localStorage.setItem('eliteArrowsResultStatusOverrides', JSON.stringify(data.resultStatusOverrides || {}))
