@@ -10,7 +10,6 @@ export default function Tournaments() {
   const [loading, setLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [expandedId, setExpandedId] = useState(null)
-  const [importUrl, setImportUrl] = useState('')
 
   const allUsers = getAllUsers()
 
@@ -35,94 +34,6 @@ export default function Tournaments() {
       console.error(err)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const findUserByNickname = (name) => {
-    if (!name) return ''
-    const cleanName = name.toLowerCase().trim()
-    // 1. Exact match username
-    let found = allUsers.find(u => u.username.toLowerCase() === cleanName)
-    if (found) return found.id
-
-    // 2. Contains match
-    found = allUsers.find(u => u.username.toLowerCase().includes(cleanName) || cleanName.includes(u.username.toLowerCase()))
-    if (found) return found.id
-
-    return ''
-  }
-
-  const handleImport = async () => {
-    if (!importUrl) return
-
-    // Standardize the input text: split by lines, remove empty ones
-    const lines = importUrl.split('\n').map(l => l.trim()).filter(l => l.length > 0)
-    const parsedGames = []
-
-    lines.forEach(line => {
-      // 1. Check for the most common Dartcounter patterns:
-      // Pattern A: "Player Name 3 - 1 Other Player" (most standard)
-      // Pattern B: "3-1" (compact)
-      // Pattern C: "Player vs Player 3 1" (no dash)
-
-      // This regex is much more aggressive:
-      // (.+?) -> Player 1 (greedy but stopped by numbers)
-      // (\d+) -> Score 1
-      // [^\d]+ -> Any non-digit separator (space, dash, "vs", etc)
-      // (\d+) -> Score 2
-      // (.+) -> Player 2
-      const match = line.match(/(.+?)\s*(\d+)\s*[^\d]+\s*(\d+)\s*(.+)/)
-
-      if (match) {
-        const p1Name = match[1].trim()
-        const s1 = match[2]
-        const s2 = match[3]
-        const p2Name = match[4].trim()
-
-        const p1Id = findUserByNickname(p1Name)
-        const p2Id = findUserByNickname(p2Name)
-
-        parsedGames.push({
-          p1: p1Id,
-          p1Name,
-          s1,
-          s2,
-          p2: p2Id,
-          p2Name
-        })
-      }
-    })
-
-    if (parsedGames.length > 0) {
-      const lastGame = parsedGames[parsedGames.length - 1]
-      const likelyWinnerId = Number(lastGame.s1) > Number(lastGame.s2) ? lastGame.p1 : lastGame.p2
-      const likelyRunnerUpId = Number(lastGame.s1) > Number(lastGame.s2) ? lastGame.p2 : lastGame.p1
-
-      setForm(prev => ({
-        ...prev,
-        games: parsedGames.map(g => ({ p1: g.p1, p2: g.p2, s1: g.s1, s2: g.s2 })),
-        winnerId: likelyWinnerId || prev.winnerId,
-        runnerUpId: likelyRunnerUpId || prev.runnerUpId
-      }))
-
-      // Feedback on matches found
-      const unmatchedNames = []
-      parsedGames.forEach(g => {
-        if (!g.p1) unmatchedNames.push(g.p1Name)
-        if (!g.p2) unmatchedNames.push(g.p2Name)
-      })
-
-      const uniqueUnmatched = [...new Set(unmatchedNames)]
-
-      if (uniqueUnmatched.length > 0) {
-        alert(`Success! Found ${parsedGames.length} matches.\n\nNote: I couldn't find Elite Arrows accounts for: ${uniqueUnmatched.join(', ')}. You'll need to select them manually in the dropdowns.`)
-      } else {
-        alert(`Successfully imported ${parsedGames.length} matches!`)
-      }
-    } else {
-      // If regex failed, let's try a simpler split as a last resort
-      // (Handle case where people just paste "Player1 Player2 3 1")
-      alert("Still couldn't find clear results. Please make sure each line looks like: 'PlayerName 3 - 1 PlayerName'")
     }
   }
 
@@ -194,23 +105,6 @@ export default function Tournaments() {
 
       {showAddForm && (
         <div className="card glass animate-slide-up" style={{ marginBottom: '30px', border: '1px solid var(--accent-cyan)', padding: '24px' }}>
-          <div style={{ background: 'rgba(56, 189, 248, 0.1)', padding: '15px', borderRadius: '12px', marginBottom: '25px', border: '1px dashed var(--accent-cyan)' }}>
-            <h4 style={{ fontSize: '0.8rem', marginBottom: '10px', textTransform: 'uppercase' }}>⚡ Smart Import</h4>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <input
-                type="text"
-                placeholder="Paste Dartcounter URL or Match Results here..."
-                value={importUrl}
-                onChange={e => setImportUrl(e.target.value)}
-                style={{ flex: 1 }}
-              />
-              <button className="btn btn-primary btn-sm" onClick={handleImport}>Import</button>
-            </div>
-            <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '8px' }}>
-              This will try to auto-fill the matches and names from Dartcounter patterns.
-            </p>
-          </div>
-
           <h3 style={{ marginBottom: '20px' }}>Record Tournament Result</h3>
           
           <div className="form-group">
