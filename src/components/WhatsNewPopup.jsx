@@ -20,33 +20,19 @@ const CHANGELOG = [
       { type: 'feature', title: 'Skeleton Loading States', description: 'Beautiful loading animations while data loads' },
       { type: 'feature', title: 'Entrance Animations', description: 'Smooth animations when navigating between pages' }
     ]
-  },
-  {
-    version: '2.0.0',
-    date: 'March 2026',
-    changes: [
-      { type: 'improvement', title: 'Redesigned UI', description: 'Fresh new look with dark mode by default' },
-      { type: 'feature', title: 'Push Notifications', description: 'Get notified about match updates and league news' },
-      { type: 'feature', title: 'Elite Tokens', description: 'New rewards currency system' }
-    ]
   }
 ];
 
 const ICONS = {
   feature: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
     </svg>
   ),
   improvement: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
       <circle cx="12" cy="12" r="10" />
       <path d="M12 16v-4M12 8h.01" />
-    </svg>
-  ),
-  bugfix: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
     </svg>
   )
 };
@@ -55,79 +41,68 @@ export function WhatsNewPopup({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const handleClose = () => {
-    // Always mark this version as seen once they close the popup
     localStorage.setItem('eliteArrowsLastVersionSeen', CHANGELOG[0].version);
     if (onClose) onClose();
   };
 
   return (
-    <>
-      <div className="onboarding-overlay" onClick={handleClose} />
-      <div className="whats-new-popup">
-        <button 
-          onClick={handleClose}
-          style={{
-            position: 'absolute',
-            top: '16px',
-            right: '16px',
-            background: 'none',
-            border: 'none',
-            color: 'var(--text-muted)',
-            cursor: 'pointer',
-            padding: '8px'
-          }}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M18 6L6 18M6 6l12 12" />
-          </svg>
-        </button>
-        
-        <h2>
-          What's New
-          <span className="whats-new-version">v{CHANGELOG[0].version}</span>
-        </h2>
-        
-        {CHANGELOG.map((release) => (
-          <div key={release.version} style={{ marginBottom: '24px' }}>
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '8px',
-              marginBottom: '12px',
-              color: 'var(--accent-primary)'
-            }}>
-              <span style={{ fontWeight: '600' }}>v{release.version}</span>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{release.date}</span>
-            </div>
-            
-            {release.changes.map((change, index) => (
-              <div key={index} className="whats-new-item">
-                <div className="whats-new-icon">
-                  {ICONS[change.type]}
-                </div>
-                <div className="whats-new-content">
-                  <h4>{change.title}</h4>
-                  <p>{change.description}</p>
-                </div>
-              </div>
-            ))}
+    <div className="modal-overlay" style={{ zIndex: 11000 }}>
+      <div className="modal-content glass animate-slide-up" style={{ maxWidth: '480px', padding: '32px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <div style={{
+            width: '64px',
+            height: '64px',
+            background: 'var(--success-bg)',
+            borderRadius: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 16px',
+            color: 'var(--success)'
+          }}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+            </svg>
           </div>
-        ))}
-        
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center',
-          marginTop: '20px',
-          paddingTop: '16px',
-          borderTop: '1px solid var(--border)'
-        }}>
-          <button className="btn btn-primary" style={{ minWidth: '160px' }} onClick={handleClose}>
-            Awesome!
-          </button>
+          <h2 className="text-gradient" style={{ fontSize: '1.8rem', fontWeight: 900, marginBottom: '8px' }}>What's New</h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>May 2026 Update • v{CHANGELOG[0].version}</p>
         </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '40px', maxHeight: '350px', overflowY: 'auto', paddingRight: '8px' }} className="custom-scrollbar">
+          {CHANGELOG[0].changes.map((change, index) => (
+            <div key={index} style={{ display: 'flex', gap: '16px' }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '12px',
+                background: 'rgba(255,255,255,0.03)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: change.type === 'feature' ? 'var(--accent-cyan)' : 'var(--accent-primary)',
+                flexShrink: 0
+              }}>
+                {ICONS[change.type]}
+              </div>
+              <div>
+                <h4 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '4px', color: 'white' }}>{change.title}</h4>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.5' }}>{change.description}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <button className="btn btn-primary btn-block" style={{ height: '54px', fontSize: '1rem' }} onClick={handleClose}>
+          Awesome, Let's Go!
+        </button>
       </div>
-    </>
+
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+      `}</style>
+    </div>
   );
 }
 
@@ -135,7 +110,6 @@ export function useWhatsNew() {
   const checkShouldShow = () => {
     const lastSeen = localStorage.getItem('eliteArrowsLastVersionSeen');
     const hasUser = localStorage.getItem('eliteArrowsCurrentUser');
-    // Show if the current version is different from the last seen version
     return hasUser && lastSeen !== CHANGELOG[0].version;
   };
   

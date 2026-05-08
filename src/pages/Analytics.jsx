@@ -226,65 +226,73 @@ export default function Analytics() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '24px' }}>
-            <div className="card glass">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: '20px' }}>
+            <div className="card glass" style={{ padding: '16px' }}>
               <h3 className="card-title">Performance Radar</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <RadarChart data={personalStats.radarData}>
-                  <PolarGrid stroke="var(--border)" />
-                  <PolarAngleAxis dataKey="metric" tick={{ fill: 'var(--text-muted)', fontSize: 12, fontWeight: 600 }} />
-                  <PolarRadiusAxis tick={false} axisLine={false} />
-                  <Radar name="You" dataKey="value" stroke="var(--accent-cyan)" fill="var(--accent-cyan)" fillOpacity={0.4} />
-                  <Tooltip />
-                </RadarChart>
-              </ResponsiveContainer>
+              <div style={{ height: '300px', width: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart data={personalStats.radarData}>
+                    <PolarGrid stroke="var(--border)" />
+                    <PolarAngleAxis dataKey="metric" tick={{ fill: 'var(--text-muted)', fontSize: 10, fontWeight: 600 }} />
+                    <PolarRadiusAxis tick={false} axisLine={false} />
+                    <Radar name="You" dataKey="value" stroke="var(--accent-cyan)" fill="var(--accent-cyan)" fillOpacity={0.4} />
+                    <Tooltip />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
 
-            <div className="card glass">
+            <div className="card glass" style={{ padding: '16px' }}>
               <h3 className="card-title">Monthly Progress (Wins)</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={personalStats.monthlyData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                  <XAxis dataKey="month" stroke="var(--text-muted)" tick={{ fontSize: 11 }} />
-                  <YAxis stroke="var(--text-muted)" tick={{ fontSize: 11 }} />
-                  <Tooltip cursor={{ fill: 'var(--bg-hover)' }} contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '12px' }} />
-                  <Bar dataKey="wins" fill="var(--success)" radius={[4, 4, 0, 0]} name="Wins" />
-                  <Bar dataKey="losses" fill="var(--error)" radius={[4, 4, 0, 0]} name="Losses" />
-                </BarChart>
-              </ResponsiveContainer>
+              <div style={{ height: '300px', width: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={personalStats.monthlyData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                    <XAxis dataKey="month" stroke="var(--text-muted)" tick={{ fontSize: 10 }} />
+                    <YAxis stroke="var(--text-muted)" tick={{ fontSize: 10 }} />
+                    <Tooltip cursor={{ fill: 'var(--bg-hover)' }} contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '12px' }} />
+                    <Bar dataKey="wins" fill="var(--success)" radius={[4, 4, 0, 0]} name="Wins" />
+                    <Bar dataKey="losses" fill="var(--error)" radius={[4, 4, 0, 0]} name="Losses" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
 
-            <div className="card glass">
+            <div className="card glass" style={{ padding: '16px' }}>
               <h3 className="card-title">Legs Comparison</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={personalStats.monthlyData}>
-                  <defs>
-                    <linearGradient id="colorWon" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--success)" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="var(--success)" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                  <XAxis dataKey="month" stroke="var(--text-muted)" />
-                  <YAxis stroke="var(--text-muted)" />
-                  <Tooltip contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '12px' }} />
-                  <Area type="monotone" dataKey="legsWon" stroke="var(--success)" fillOpacity={1} fill="url(#colorWon)" name="Legs Won" />
-                  <Area type="monotone" dataKey="legsLost" stroke="var(--error)" fill="transparent" name="Legs Lost" />
-                </AreaChart>
-              </ResponsiveContainer>
+              <div style={{ height: '300px', width: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={personalStats.monthlyData}>
+                    <defs>
+                      <linearGradient id="colorWon" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="var(--success)" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="var(--success)" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                    <XAxis dataKey="month" stroke="var(--text-muted)" tick={{ fontSize: 10 }} />
+                    <YAxis stroke="var(--text-muted)" tick={{ fontSize: 10 }} />
+                    <Tooltip contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '12px' }} />
+                    <Area type="monotone" dataKey="legsWon" stroke="var(--success)" fillOpacity={1} fill="url(#colorWon)" name="Legs Won" />
+                    <Area type="monotone" dataKey="legsLost" stroke="var(--error)" fill="transparent" name="Legs Lost" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             </div>
 
-            <div className="card glass">
+            <div className="card glass" style={{ padding: '16px' }}>
               <h3 className="card-title">Checkout Success Trend</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={personalStats.checkoutTrend}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                  <XAxis dataKey="date" stroke="var(--text-muted)" tick={{ fontSize: 10 }} />
-                  <YAxis stroke="var(--text-muted)" domain={[0, 100]} tick={{ fontSize: 11 }} />
-                  <Tooltip contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '12px' }} />
-                  <Line type="monotone" dataKey="doubleSuccess" stroke="var(--warning)" strokeWidth={3} dot={{ r: 4, fill: 'var(--warning)', strokeWidth: 2, stroke: 'var(--bg-primary)' }} name="Checkout %" />
-                </LineChart>
-              </ResponsiveContainer>
+              <div style={{ height: '300px', width: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={personalStats.checkoutTrend}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                    <XAxis dataKey="date" stroke="var(--text-muted)" tick={{ fontSize: 10 }} />
+                    <YAxis stroke="var(--text-muted)" domain={[0, 100]} tick={{ fontSize: 10 }} />
+                    <Tooltip contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '12px' }} />
+                    <Line type="monotone" dataKey="doubleSuccess" stroke="var(--warning)" strokeWidth={3} dot={{ r: 4, fill: 'var(--warning)', strokeWidth: 2, stroke: 'var(--bg-primary)' }} name="Checkout %" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
         </>
@@ -311,68 +319,75 @@ export default function Analytics() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '24px' }}>
-            <div className="card glass">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: '20px' }}>
+            <div className="card glass" style={{ padding: '16px' }}>
               <h3 className="card-title">Average Points per Match by Division</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={leagueStats}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                  <XAxis dataKey="name" stroke="var(--text-muted)" tick={{ fontSize: 11 }} />
-                  <YAxis stroke="var(--text-muted)" tick={{ fontSize: 11 }} />
-                  <Tooltip cursor={{ fill: 'var(--bg-hover)' }} contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '12px' }} />
-                  <Bar dataKey="avgPoints" fill="var(--accent-cyan)" radius={[4, 4, 0, 0]} name="Avg Points" />
-                </BarChart>
-              </ResponsiveContainer>
+              <div style={{ height: '300px', width: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={leagueStats}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                    <XAxis dataKey="name" stroke="var(--text-muted)" tick={{ fontSize: 10 }} />
+                    <YAxis stroke="var(--text-muted)" tick={{ fontSize: 10 }} />
+                    <Tooltip cursor={{ fill: 'var(--bg-hover)' }} contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '12px' }} />
+                    <Bar dataKey="avgPoints" fill="var(--accent-cyan)" radius={[4, 4, 0, 0]} name="Avg Points" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
 
-            <div className="card glass">
+            <div className="card glass" style={{ padding: '16px' }}>
               <h3 className="card-title">180s Distribution</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={leagueStats}
-                    dataKey="total180s"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {leagueStats.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
+              <div style={{ height: '300px', width: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={leagueStats}
+                      dataKey="total180s"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={70}
+                      label={({ name, percent }) => `${name.substring(0, 3)} ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {leagueStats.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend iconSize={10} wrapperStyle={{ fontSize: '11px' }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
             </div>
 
-            <div className="card glass" style={{ gridColumn: 'span 2' }}>
+            <div className="card glass" style={{ gridColumn: '1 / -1', padding: '16px' }}>
               <h3 className="card-title">Division Performance Summary</h3>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '16px' }}>
+              <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', margin: '0 -16px', padding: '0 16px' }}>
+                <table style={{ width: '100%', minWidth: '450px', borderCollapse: 'collapse', marginTop: '16px' }}>
                   <thead>
                     <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
-                      <th style={{ padding: '12px', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Division</th>
-                      <th style={{ padding: '12px', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Players</th>
-                      <th style={{ padding: '12px', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Avg Points</th>
-                      <th style={{ padding: '12px', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Avg 180s</th>
-                      <th style={{ padding: '12px', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Top CO</th>
+                      <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontSize: '0.65rem', textTransform: 'uppercase' }}>Division</th>
+                      <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontSize: '0.65rem', textTransform: 'uppercase', textAlign: 'center' }}>Players</th>
+                      <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontSize: '0.65rem', textTransform: 'uppercase', textAlign: 'center' }}>Avg Pts</th>
+                      <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontSize: '0.65rem', textTransform: 'uppercase', textAlign: 'center' }}>Avg 180s</th>
+                      <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontSize: '0.65rem', textTransform: 'uppercase', textAlign: 'right' }}>Top CO</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {leagueStats.sort((a, b) => b.avgPoints - a.avgPoints).map((div, i) => (
+                    {leagueStats.sort((a, b) => Number(b.avgPoints) - Number(a.avgPoints)).map((div, i) => (
                       <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                        <td style={{ padding: '16px 12px', fontWeight: 700, color: 'var(--accent-cyan)' }}>{div.name}</td>
-                        <td style={{ padding: '16px 12px' }}>{div.playerCount}</td>
-                        <td style={{ padding: '16px 12px', fontWeight: 600 }}>{div.avgPoints}</td>
-                        <td style={{ padding: '16px 12px' }}>{div.avg180s}</td>
-                        <td style={{ padding: '16px 12px', color: 'var(--success)', fontWeight: 700 }}>{div.topCheckout || '-'}</td>
+                        <td style={{ padding: '12px 8px', fontWeight: 700, color: 'var(--accent-cyan)', fontSize: '0.85rem' }}>{div.name}</td>
+                        <td style={{ padding: '12px 8px', textAlign: 'center', fontSize: '0.85rem' }}>{div.playerCount}</td>
+                        <td style={{ padding: '12px 8px', fontWeight: 600, textAlign: 'center', fontSize: '0.85rem' }}>{div.avgPoints}</td>
+                        <td style={{ padding: '12px 8px', textAlign: 'center', fontSize: '0.85rem' }}>{div.avg180s}</td>
+                        <td style={{ padding: '12px 8px', color: 'var(--success)', fontWeight: 700, textAlign: 'right', fontSize: '0.85rem' }}>{div.topCheckout || '-'}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+              </div>
+              <div style={{ marginTop: '12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.7rem' }}>
+                Scroll table horizontally to see more →
               </div>
             </div>
           </div>
