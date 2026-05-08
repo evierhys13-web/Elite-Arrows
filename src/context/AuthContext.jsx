@@ -106,7 +106,8 @@ export function AuthProvider({ children }) {
     leagueTableResetAt: null,
     isMaintenanceMode: false,
     maintenanceMessage: '',
-    registrationsEnabled: true
+    registrationsEnabled: true,
+    currentSeason: 'Season 1'
   })
   const [notificationPermission, setNotificationPermission] = useState('default')
   const [fcmToken, setFcmToken] = useState(null)

@@ -42,6 +42,7 @@ const Donations = lazy(() => import('./pages/Donations'))
 const Install = lazy(() => import('./pages/Install'))
 const Analytics = lazy(() => import('./pages/Analytics'))
 const SeedData = lazy(() => import('./pages/SeedData'))
+const SeasonManagement = lazy(() => import('./pages/SeasonManagement'))
 
 function PageLoader() {
   return (
@@ -272,7 +273,7 @@ function AppRoutes() {
       <Route path="/donations" element={<ProtectedRoute><AppLayout><Donations /></AppLayout></ProtectedRoute>} />
       <Route path="/install" element={<ProtectedRoute><AppLayout><Install /></AppLayout></ProtectedRoute>} />
       <Route path="/analytics" element={<SubscribedRoute><AppLayout><Analytics /></AppLayout></SubscribedRoute>} />
-      <Route path="/season-management" element={<AdminRoute><AppLayout><SeedData /></AppLayout></AdminRoute>} />
+      <Route path="/season-management" element={<AdminRoute><AppLayout><SeasonManagement /></AppLayout></AdminRoute>} />
       <Route path="/seed-data" element={<AdminRoute><AppLayout><SeedData /></AppLayout></AdminRoute>} />
       <Route path="/admin" element={<AdminRoute><AppLayout><Admin /></AppLayout></AdminRoute>} />
       <Route path="/" element={<Navigate to="/home" replace />} />

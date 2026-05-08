@@ -29,14 +29,20 @@ function calcStdDev(values) {
 }
 
 export default function Analytics() {
-  const { user, getAllUsers, getResults } = useAuth()
+  const { user, getAllUsers, getResults, adminData } = useAuth()
   const [activeSection, setActiveSection] = useState('personal')
   const [timePeriod, setTimePeriod] = useState('all')
   const [h2hOpponent, setH2hOpponent] = useState('')
 
   const allUsers = getAllUsers()
   const results = getResults()
-  const approvedResults = results.filter(r => String(r.status || '').toLowerCase() === 'approved')
+  const currentSeason = adminData?.currentSeason || 'Season 1'
+
+  const approvedResults = useMemo(() =>
+    results.filter(r =>
+      String(r.status || '').toLowerCase() === 'approved' &&
+      r.season === currentSeason
+    ), [results, currentSeason])
 
   const filteredResults = useMemo(() => timeFilter(approvedResults, timePeriod), [approvedResults, timePeriod])
   const userResults = useMemo(() => filteredResults.filter(r => String(r.player1Id) === String(user.id) || String(r.player2Id) === String(user.id)), [filteredResults, user.id])
