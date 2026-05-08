@@ -344,6 +344,16 @@ export default function Admin() {
     setIsApproving(false)
   }
 
+  const handleManualDrawEntry = async (targetId) => {
+    try {
+      const target = allPlayers.find(u => u.id === targetId)
+      await setDoc(doc(db, 'users', targetId), { promotionDraw: true }, { merge: true })
+      await logAudit('MANUAL_DRAW_ENTRY', `Manually added ${target?.username} to promotion draw`)
+      triggerDataRefresh('users')
+      showToast(`${target?.username} added to draw!`, 'success')
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
   const stats = useMemo(() => {
     const lastWeek = new Date()
     lastWeek.setDate(lastWeek.getDate() - 7)
@@ -699,6 +709,13 @@ export default function Admin() {
               <button className="btn btn-primary" onClick={handleCheckBetWinners} disabled={isApproving}>
                 {isApproving ? 'Checking...' : 'Check Bet Winners'}
               </button>
+            </div>
+
+            <div className="glass" style={{ padding: '20px', borderRadius: '12px', marginBottom: '24px', background: 'rgba(56, 189, 248, 0.05)' }}>
+              <h4 style={{ marginBottom: '12px' }}>Manually Add to Promotion Draw</h4>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <UserSearchSelect users={allPlayers.filter(u => u.promotionDraw !== true)} selectedId={''} onSelect={handleManualDrawEntry} label="Select Player" />
+              </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
