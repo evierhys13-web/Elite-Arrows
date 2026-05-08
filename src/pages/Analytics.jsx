@@ -108,6 +108,72 @@ export default function Analytics() {
     }
   }, [userResults, user.id])
 
+  const leagueStats = useMemo(() => {
+    const divisionData = {}
+
+    // Group users by division
+    allUsers.forEach(u => {
+      const div = u.division || 'Unassigned'
+      if (!divisionData[div]) {
+        divisionData[div] = {
+          name: div,
+          playerCount: 0,
+          total180s: 0,
+          totalPoints: 0,
+          matchesPlayed: 0,
+          avgPoints: 0,
+          topCheckout: 0
+        }
+      }
+      divisionData[div].playerCount++
+    })
+
+    // Process results to aggregate division stats
+    approvedResults.forEach(r => {
+      const p1 = allUsers.find(u => u.id === r.player1Id)
+      const p2 = allUsers.find(u => u.id === r.player2Id)
+
+      if (p1 && p1.division) {
+        const div = divisionData[p1.division]
+        if (div) {
+          div.matchesPlayed++
+          div.total180s += Number(r.player1Stats?.['180s'] || 0)
+          div.totalPoints += getLeaguePoints(r.score1, r.score2)
+          if (Number(r.player1Stats?.highestCheckout || 0) > div.topCheckout) {
+            div.topCheckout = Number(r.player1Stats.highestCheckout)
+          }
+        }
+      }
+
+      if (p2 && p2.division) {
+        const div = divisionData[p2.division]
+        if (div) {
+          // matchesPlayed is per division total, so we only count the match once per division
+          // but points and 180s are per player.
+          // If p1 and p2 are in same division, we don't want to double count the match but we want to count both players' 180s.
+          // Let's refine: matchesPlayed should be total appearances in matches for that division.
+          // Actually, let's just count stats.
+          div.total180s += Number(r.player2Stats?.['180s'] || 0)
+          div.totalPoints += getLeaguePoints(r.score2, r.score1)
+          if (Number(r.player2Stats?.highestCheckout || 0) > div.topCheckout) {
+            div.topCheckout = Number(r.player2Stats.highestCheckout)
+          }
+          if (p1?.division !== p2.division) {
+            div.matchesPlayed++
+          }
+        }
+      }
+    })
+
+    const finalData = Object.values(divisionData).map(div => ({
+      ...div,
+      avgPoints: div.matchesPlayed > 0 ? (div.totalPoints / div.matchesPlayed).toFixed(2) : 0,
+      avg180s: div.matchesPlayed > 0 ? (div.total180s / div.matchesPlayed).toFixed(2) : 0
+    })).filter(d => d.playerCount > 0)
+
+    return finalData
+  }, [allUsers, approvedResults])
+
   return (
     <div className="page animate-fade-in">
       <Breadcrumbs items={[{ label: 'Home', path: '/home' }, { label: 'Analytics', path: '/analytics' }]} />
@@ -219,10 +285,91 @@ export default function Analytics() {
       )}
 
       {activeSection === 'league' && (
-        <div className="card glass" style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '20px' }}>📊</div>
-          <h2>League Analytics Coming Soon</h2>
-          <p style={{ color: 'var(--text-secondary)' }}>We're gathering more data to provide division-wide insights and comparisons.</p>
+        <div className="animate-fade-in">
+          <div className="home-stats-grid" style={{ marginBottom: '32px' }}>
+            <div className="stat-card glass">
+              <div className="stat-value">{allUsers.length}</div>
+              <div className="stat-label">Total Players</div>
+            </div>
+            <div className="stat-card glass">
+              <div className="stat-value">{approvedResults.length}</div>
+              <div className="stat-label">Matches Played</div>
+            </div>
+            <div className="stat-card glass">
+              <div className="stat-value">{approvedResults.reduce((acc, r) => acc + Number(r.player1Stats?.['180s'] || 0) + Number(r.player2Stats?.['180s'] || 0), 0)}</div>
+              <div className="stat-label">Total 180s</div>
+            </div>
+            <div className="stat-card glass">
+              <div className="stat-value">{Math.max(...approvedResults.map(r => Math.max(Number(r.player1Stats?.highestCheckout || 0), Number(r.player2Stats?.highestCheckout || 0))), 0)}</div>
+              <div className="stat-label">Season High CO</div>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '24px' }}>
+            <div className="card glass">
+              <h3 className="card-title">Average Points per Match by Division</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={leagueStats}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis dataKey="name" stroke="var(--text-muted)" tick={{ fontSize: 11 }} />
+                  <YAxis stroke="var(--text-muted)" tick={{ fontSize: 11 }} />
+                  <Tooltip cursor={{ fill: 'var(--bg-hover)' }} contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '12px' }} />
+                  <Bar dataKey="avgPoints" fill="var(--accent-cyan)" radius={[4, 4, 0, 0]} name="Avg Points" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="card glass">
+              <h3 className="card-title">180s Distribution</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={leagueStats}
+                    dataKey="total180s"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  >
+                    {leagueStats.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="card glass" style={{ gridColumn: 'span 2' }}>
+              <h3 className="card-title">Division Performance Summary</h3>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '16px' }}>
+                  <thead>
+                    <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
+                      <th style={{ padding: '12px', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Division</th>
+                      <th style={{ padding: '12px', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Players</th>
+                      <th style={{ padding: '12px', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Avg Points</th>
+                      <th style={{ padding: '12px', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Avg 180s</th>
+                      <th style={{ padding: '12px', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Top CO</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {leagueStats.sort((a, b) => b.avgPoints - a.avgPoints).map((div, i) => (
+                      <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                        <td style={{ padding: '16px 12px', fontWeight: 700, color: 'var(--accent-cyan)' }}>{div.name}</td>
+                        <td style={{ padding: '16px 12px' }}>{div.playerCount}</td>
+                        <td style={{ padding: '16px 12px', fontWeight: 600 }}>{div.avgPoints}</td>
+                        <td style={{ padding: '16px 12px' }}>{div.avg180s}</td>
+                        <td style={{ padding: '16px 12px', color: 'var(--success)', fontWeight: 700 }}>{div.topCheckout || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
