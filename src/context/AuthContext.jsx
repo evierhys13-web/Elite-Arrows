@@ -71,18 +71,19 @@ const getCachedResults = () => {
 
 const saveResultsCache = (results) => {
   const resultList = Array.isArray(results) ? results : []
-  try {
-    localStorage.setItem(RESULT_CACHE_KEY, JSON.stringify(resultList.map(stripResultProofForCache)))
-    return
-  } catch (error) {
-    console.warn('Could not cache full result metadata:', error)
-  }
+  // Limit cache to 100 most recent results to save space
+  const limitedResults = resultList
+    .sort((a, b) => new Date(b.date || b.submittedAt || 0) - new Date(a.date || a.submittedAt || 0))
+    .slice(0, 100)
 
   try {
-    localStorage.setItem(RESULT_CACHE_KEY, JSON.stringify(resultList.map(minimizeResultForCache)))
+    localStorage.setItem(RESULT_CACHE_KEY, JSON.stringify(limitedResults.map(stripResultProofForCache)))
   } catch (error) {
-    console.warn('Could not cache results locally:', error)
+    console.warn('Could not cache results locally (quota exceeded):', error)
+    // If quota exceeded, clear some big ones
     localStorage.removeItem(RESULT_CACHE_KEY)
+    localStorage.removeItem('eliteArrowsFixtures')
+    localStorage.removeItem('eliteArrowsUsers')
   }
 }
 
@@ -365,6 +366,50 @@ export function AuthProvider({ children }) {
   }, [triggerDataRefresh])
 
   useEffect(() => {
+    // Admin data and News should be available even if not logged in
+    const unsubscribeAdmin = onSnapshot(doc(db, 'adminData', 'main'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data()
+        setAdminData({
+          subscriptionPot: data.subscriptionPot || 0,
+          subscriptionPot10: data.subscriptionPot10 || 0,
+          moneyHistory: data.moneyHistory || [],
+          resultStatusOverrides: data.resultStatusOverrides || {},
+          leagueTableResetAt: data.leagueTableResetAt || null,
+          isMaintenanceMode: data.isMaintenanceMode || false,
+          maintenanceMessage: data.maintenanceMessage || '',
+          registrationsEnabled: data.registrationsEnabled !== undefined ? data.registrationsEnabled : true
+        })
+        resultStatusOverridesRef.current = data.resultStatusOverrides || {}
+
+        try {
+          localStorage.setItem('eliteArrowsResultStatusOverrides', JSON.stringify(data.resultStatusOverrides || {}))
+          localStorage.setItem('eliteArrowsSubscriptionPot', String(data.subscriptionPot || 0))
+          localStorage.setItem('eliteArrowsSubscriptionPot10', String(data.subscriptionPot10 || 0))
+          localStorage.setItem('eliteArrowsMoneyHistory', JSON.stringify(data.moneyHistory || []))
+        } catch (e) {
+          console.warn('Admin cache failed', e)
+        }
+
+        publishResults({ announce: false })
+      }
+    }, (error) => {
+      console.log('Admin data listener error:', error)
+    })
+
+    const unsubscribeNews = onSnapshot(query(collection(db, 'news'), orderBy('createdAt', 'desc')), (snapshot) => {
+      const newsData = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(item => !item._deleted)
+      setNews(newsData)
+      try {
+        localStorage.setItem('eliteArrowsNews', JSON.stringify(newsData))
+      } catch (e) {}
+    }, (error) => {
+      console.log('News listener error:', error)
+      setNews([])
+    })
+
     if (!user?.id) return
 
     const hydratedCollections = new Set()
@@ -384,7 +429,14 @@ export function AuthProvider({ children }) {
         return { id: doc.id, ...data }
       })
       setAllUsers(users)
-      localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+
+      try {
+        localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
+      } catch (e) {
+        console.warn('Users cache failed', e)
+        localStorage.removeItem('eliteArrowsUsers')
+      }
+
       const currentUser = users.find(item => String(item.id) === String(user.id))
       if (currentUser) {
         if (currentUser.isBanned) {
@@ -427,7 +479,14 @@ export function AuthProvider({ children }) {
         .map(doc => ({ id: doc.id, ...doc.data() }))
         .filter(item => !item._deleted)
       setFixtures(fixturesData)
-      localStorage.setItem('eliteArrowsFixtures', JSON.stringify(fixturesData))
+
+      try {
+        localStorage.setItem('eliteArrowsFixtures', JSON.stringify(fixturesData))
+      } catch (e) {
+        console.warn('Fixtures cache failed', e)
+        localStorage.removeItem('eliteArrowsFixtures')
+      }
+
       announceAfterHydration('fixtures')
     }, (error) => {
       console.log('Fixtures listener error:', error)
@@ -438,7 +497,9 @@ export function AuthProvider({ children }) {
         .map(doc => ({ id: doc.id, ...doc.data() }))
         .filter(item => !item._deleted)
       setCups(cupsData)
-      localStorage.setItem('eliteArrowsCups', JSON.stringify(cupsData))
+      try {
+        localStorage.setItem('eliteArrowsCups', JSON.stringify(cupsData))
+      } catch (e) {}
       announceAfterHydration('cups')
     }, (error) => {
       console.log('Cups listener error:', error)
@@ -447,7 +508,9 @@ export function AuthProvider({ children }) {
     const unsubscribeBets = onSnapshot(collection(db, 'bets'), (snapshot) => {
       const betsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
       setBets(betsData)
-      localStorage.setItem('eliteArrowsBets', JSON.stringify(betsData))
+      try {
+        localStorage.setItem('eliteArrowsBets', JSON.stringify(betsData))
+      } catch (e) {}
       announceAfterHydration('bets')
     }, (error) => {
       console.log('Bets listener error:', error)
@@ -458,7 +521,9 @@ export function AuthProvider({ children }) {
         .map(doc => ({ id: doc.id, ...doc.data() }))
         .filter(item => !item._deleted)
       setSupportRequests(supportData)
-      localStorage.setItem('eliteArrowsSupportRequests', JSON.stringify(supportData))
+      try {
+        localStorage.setItem('eliteArrowsSupportRequests', JSON.stringify(supportData))
+      } catch (e) {}
       announceAfterHydration('supportRequests')
     }, (error) => {
       console.log('Support listener error:', error)
@@ -469,7 +534,9 @@ export function AuthProvider({ children }) {
         .map(doc => ({ id: doc.id, ...doc.data() }))
         .filter(item => !item._deleted)
       setSeasons(seasonsData)
-      localStorage.setItem('eliteArrowsSeasons', JSON.stringify(seasonsData))
+      try {
+        localStorage.setItem('eliteArrowsSeasons', JSON.stringify(seasonsData))
+      } catch (e) {}
       if (seasonsData.length > 0) {
         const activeSeason = seasonsData.find(s => s.isActive)
         if (activeSeason) {
@@ -479,43 +546,6 @@ export function AuthProvider({ children }) {
       announceAfterHydration('seasons')
     }, (error) => {
       console.log('Seasons listener error:', error)
-    })
-    
-    const unsubscribeNews = onSnapshot(query(collection(db, 'news'), orderBy('createdAt', 'desc')), (snapshot) => {
-      const newsData = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter(item => !item._deleted)
-      setNews(newsData)
-      localStorage.setItem('eliteArrowsNews', JSON.stringify(newsData))
-      announceAfterHydration('news')
-    }, (error) => {
-      console.log('News listener error:', error)
-      setNews([])
-    })
-    
-    const unsubscribeAdmin = onSnapshot(doc(db, 'adminData', 'main'), (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data()
-        setAdminData({
-          subscriptionPot: data.subscriptionPot || 0,
-          subscriptionPot10: data.subscriptionPot10 || 0,
-          moneyHistory: data.moneyHistory || [],
-          resultStatusOverrides: data.resultStatusOverrides || {},
-          leagueTableResetAt: data.leagueTableResetAt || null,
-          isMaintenanceMode: data.isMaintenanceMode || false,
-          maintenanceMessage: data.maintenanceMessage || '',
-          registrationsEnabled: data.registrationsEnabled !== undefined ? data.registrationsEnabled : true
-        })
-        resultStatusOverridesRef.current = data.resultStatusOverrides || {}
-        localStorage.setItem('eliteArrowsResultStatusOverrides', JSON.stringify(data.resultStatusOverrides || {}))
-        localStorage.setItem('eliteArrowsSubscriptionPot', String(data.subscriptionPot || 0))
-        localStorage.setItem('eliteArrowsSubscriptionPot10', String(data.subscriptionPot10 || 0))
-        localStorage.setItem('eliteArrowsMoneyHistory', JSON.stringify(data.moneyHistory || []))
-        publishResults({ announce: hydratedCollections.has('adminData') })
-      }
-      hydratedCollections.add('adminData')
-    }, (error) => {
-      console.log('Admin data listener error:', error)
     })
     
     return () => {
