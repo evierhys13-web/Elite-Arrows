@@ -1,5 +1,5 @@
 import { getLeaguePoints } from './leagueScoring'
-import { getResultEffectiveTime, getResultPlayerId, isLeagueResult } from './leagueResults'
+import { getResultEffectiveTime, getResultPlayerId, isLeagueResult, isSuperLeagueResult } from './leagueResults'
 
 export const DEFAULT_LEAGUE_TABLE_RESET_AT = '2026-04-29T16:14:21.338+01:00'
 
@@ -43,6 +43,7 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
     fixtures = [],
     adminData = null,
     leagueOnly = false,
+    superLeagueOnly = false,
     includeReset = true,
     timePeriod = 'all',
     requireProof = false
@@ -54,6 +55,11 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
   return results.filter(result => {
     if (String(result.status || '').toLowerCase() !== 'approved') return false
     if (requireProof && !resultHasProof(result)) return false
+
+    if (superLeagueOnly) {
+      return isSuperLeagueResult(result, fixturesById)
+    }
+
     const leagueResult = isLeagueResult(result, fixturesById)
     if (leagueOnly && !leagueResult) return false
     if (leagueResult && resetTime && getResultEffectiveTime(result) <= resetTime) return false
@@ -131,6 +137,7 @@ export const derivePlayerStatsFromResults = (users = [], results = [], options =
     fixtures = [],
     adminData = null,
     leagueOnly = false,
+    superLeagueOnly = false,
     includeReset = true,
     timePeriod = 'all',
     requireProof = false
@@ -146,6 +153,7 @@ export const derivePlayerStatsFromResults = (users = [], results = [], options =
     fixtures,
     adminData,
     leagueOnly,
+    superLeagueOnly,
     includeReset,
     timePeriod,
     requireProof

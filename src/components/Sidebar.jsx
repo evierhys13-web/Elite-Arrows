@@ -72,6 +72,7 @@ export default function Sidebar() {
       title: 'Admin',
       items: [
         { path: '/admin', label: 'Admin Panel', icon: ShieldIcon },
+        { path: '/super-league', label: 'Super League', icon: TrophyIcon },
         { path: '/season-management', label: 'Seasons', icon: CalendarIcon },
       ]
     }] : []),

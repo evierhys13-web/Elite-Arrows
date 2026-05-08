@@ -16,12 +16,22 @@ export const getResultEffectiveTime = (result) => Math.max(
 
 export const isLeagueResult = (result, fixturesById = {}) => {
   const gameType = normalizeText(result.gameType)
-  if (gameType.includes('league')) return true
+  if (gameType === 'league') return true
+  if (gameType === 'super league') return false // Specific check
   if (gameType.includes('friendly') || gameType.includes('cup') || gameType.includes('tournament')) return false
 
   const fixture = result.fixtureId ? fixturesById[String(result.fixtureId)] : null
   const fixtureGameType = normalizeText(fixture?.gameType)
-  return fixtureGameType.includes('league')
+  return fixtureGameType === 'league'
+}
+
+export const isSuperLeagueResult = (result, fixturesById = {}) => {
+  const gameType = normalizeText(result.gameType)
+  if (gameType === 'super league') return true
+
+  const fixture = result.fixtureId ? fixturesById[String(result.fixtureId)] : null
+  const fixtureGameType = normalizeText(fixture?.gameType)
+  return fixtureGameType === 'super league'
 }
 
 export const getResultPlayerId = (result, playerNumber, users = []) => {

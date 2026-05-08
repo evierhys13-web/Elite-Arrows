@@ -5,14 +5,19 @@ import Breadcrumbs from '../components/Breadcrumbs'
 import UserSearchSelect from '../components/UserSearchSelect'
 import { useToast } from '../context/ToastContext'
 
+const SUPER_LEAGUE_DIVISIONS = ['Premier', 'Pro', 'Amateur']
+
 export default function SeasonManagement() {
   const { user, getAllUsers, getResults, updateResults, getSeasons, adminData, updateAdminData, triggerDataRefresh } = useAuth()
   const { showToast } = useToast()
 
   const [showCreateForm, setShowCreateForm] = useState(false)
+  const [editingSeason, setEditingSeason] = useState(null)
   const [newSeasonName, setNewSeasonName] = useState('')
   const [selectedPlayer, setSelectedPlayer] = useState('')
   const [newDivision, setNewDivision] = useState('')
+  const [selectedSuperPlayer, setSelectedSuperPlayer] = useState('')
+  const [newSuperDivision, setNewSuperDivision] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
 
   const allPlayers = getAllUsers()
@@ -45,6 +50,25 @@ export default function SeasonManagement() {
     }
   }
 
+  const updateSeasonName = async () => {
+    if (!editingSeason || !newSeasonName.trim()) return
+    setIsProcessing(true)
+    try {
+      await setDoc(doc(db, 'seasons', editingSeason.id), { ...editingSeason, name: newSeasonName }, { merge: true })
+      if (currentSeason === editingSeason.name) {
+        await updateAdminData({ currentSeason: newSeasonName })
+      }
+      showToast('Season name updated!', 'success')
+      setEditingSeason(null)
+      setNewSeasonName('')
+      triggerDataRefresh('seasons')
+    } catch (e) {
+      showToast('Error: ' + e.message, 'error')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
   const setActiveSeason = async (seasonName) => {
     if (!confirm(`Set "${seasonName}" as the active season? All new results will be linked to this.`)) return
     setIsProcessing(true)
@@ -53,6 +77,21 @@ export default function SeasonManagement() {
       showToast(`Active season updated to ${seasonName}`, 'success')
     } catch (e) {
       showToast('Error updating active season', 'error')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const endSeason = async (season) => {
+    if (!confirm(`End "${season.name}"? This will archive the season and set the active season to "Off-Season".`)) return
+    setIsProcessing(true)
+    try {
+      await setDoc(doc(db, 'seasons', season.id), { ...season, isArchived: true, status: 'archived', endedAt: new Date().toISOString() }, { merge: true })
+      await updateAdminData({ currentSeason: 'Off-Season' })
+      showToast(`Season ${season.name} has ended!`, 'success')
+      triggerDataRefresh('seasons')
+    } catch (e) {
+      showToast('Error ending season', 'error')
     } finally {
       setIsProcessing(false)
     }
@@ -127,6 +166,23 @@ export default function SeasonManagement() {
     }
   }
 
+  const updateSuperLeagueDivision = async () => {
+    if (!selectedSuperPlayer || !newSuperDivision) return showToast('Select both player and division', 'error')
+    setIsProcessing(true)
+    try {
+      await setDoc(doc(db, 'users', selectedSuperPlayer), { superLeagueDivision: newSuperDivision === 'None' ? null : newSuperDivision }, { merge: true })
+      const p = allPlayers.find(u => u.id === selectedSuperPlayer)
+      showToast(`${p?.username} ${newSuperDivision === 'None' ? 'removed from' : 'added to'} Super League ${newSuperDivision}`, 'success')
+      setSelectedSuperPlayer('')
+      setNewSuperDivision('')
+      triggerDataRefresh('users')
+    } catch (e) {
+      showToast('Error: ' + e.message, 'error')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
   const clearAllDivisions = async () => {
     if (!confirm('This will set the division to "Unassigned" for EVERY player in the league. Proceed?')) return
 
@@ -182,7 +238,7 @@ export default function SeasonManagement() {
         <div className="card glass">
           <h3 className="card-title">Maintenance Tools</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
-            <button className="btn btn-secondary btn-block" onClick={() => setShowCreateForm(!showCreateForm)}>
+            <button className="btn btn-secondary btn-block" onClick={() => { setEditingSeason(null); setShowCreateForm(!showCreateForm); }}>
               {showCreateForm ? 'Close Form' : '+ New Season Entry'}
             </button>
             <button className="btn btn-danger btn-block" style={{ opacity: 0.8 }} onClick={clearAllDivisions} disabled={isProcessing}>
@@ -195,9 +251,9 @@ export default function SeasonManagement() {
         </div>
       </div>
 
-      {showCreateForm && (
+      {(showCreateForm || editingSeason) && (
         <div className="card glass animate-slide-up" style={{ marginBottom: '32px', border: '1px solid var(--accent-cyan)' }}>
-          <h3 className="card-title">Launch New Season</h3>
+          <h3 className="card-title">{editingSeason ? 'Edit Season Name' : 'Launch New Season'}</h3>
           <div className="form-group">
             <label>Season Identifier</label>
             <input
@@ -208,35 +264,49 @@ export default function SeasonManagement() {
               className="glass"
             />
           </div>
-          <button className="btn btn-primary btn-block" onClick={createSeason} disabled={isProcessing}>
-            {isProcessing ? 'Processing...' : 'Create Season Record'}
-          </button>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button className="btn btn-primary btn-block" onClick={editingSeason ? updateSeasonName : createSeason} disabled={isProcessing}>
+              {isProcessing ? 'Processing...' : editingSeason ? 'Update Name' : 'Create Season Record'}
+            </button>
+            {editingSeason && (
+              <button className="btn btn-secondary" onClick={() => { setEditingSeason(null); setNewSeasonName(''); }}>Cancel</button>
+            )}
+          </div>
         </div>
       )}
 
       {/* PLAYER SEEDING */}
-      <div className="card glass" style={{ marginBottom: '40px' }}>
-        <h3 className="card-title">Player Seeding & Transfers</h3>
-        <p style={{ color: 'var(--text-muted)', marginBottom: '24px', fontSize: '0.9rem' }}>Move players between divisions based on promotion/relegation or 3-dart average changes.</p>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px', alignItems: 'end' }}>
-          <UserSearchSelect
-            users={allPlayers}
-            selectedId={selectedPlayer}
-            onSelect={setSelectedPlayer}
-            label="Target Player"
-          />
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label>New Division</label>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '24px', marginBottom: '40px' }}>
+        <div className="card glass">
+          <h3 className="card-title">Standard Seeding</h3>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '20px', fontSize: '0.85rem' }}>Move players in the regular league.</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <UserSearchSelect users={allPlayers} selectedId={selectedPlayer} onSelect={setSelectedPlayer} label="Player" />
             <select value={newDivision} onChange={e => setNewDivision(e.target.value)} className="glass">
-              <option value="">Select...</option>
+              <option value="">Select Division...</option>
               {DIVISIONS.map(div => <option key={div} value={div}>{div}</option>)}
               <option value="Unassigned">Unassigned</option>
             </select>
+            <button className="btn btn-primary" onClick={movePlayerDivision} disabled={isProcessing || !selectedPlayer || !newDivision}>
+              Update Division
+            </button>
           </div>
-          <button className="btn btn-primary" onClick={movePlayerDivision} disabled={isProcessing || !selectedPlayer || !newDivision} style={{ height: '48px' }}>
-            Update Seeding
-          </button>
+        </div>
+
+        <div className="card glass" style={{ borderLeft: '4px solid var(--warning)' }}>
+          <h3 className="card-title">Super League Seeding</h3>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '20px', fontSize: '0.85rem' }}>Add/remove players from Super League.</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <UserSearchSelect users={allPlayers} selectedId={selectedSuperPlayer} onSelect={setSelectedSuperPlayer} label="Player" />
+            <select value={newSuperDivision} onChange={e => setNewSuperDivision(e.target.value)} className="glass">
+              <option value="">Select Super Division...</option>
+              {SUPER_LEAGUE_DIVISIONS.map(div => <option key={div} value={div}>{div}</option>)}
+              <option value="None">Remove from Super League</option>
+            </select>
+            <button className="btn btn-primary" onClick={updateSuperLeagueDivision} disabled={isProcessing || !selectedSuperPlayer || !newSuperDivision}>
+              Assign Super Rank
+            </button>
+          </div>
         </div>
       </div>
 
@@ -255,14 +325,20 @@ export default function SeasonManagement() {
                     {s.name === currentSeason && <span style={{ fontSize: '0.6rem', background: 'var(--success)', color: 'black', padding: '2px 6px', borderRadius: '4px' }}>LIVE</span>}
                     {s.isArchived && <span style={{ fontSize: '0.6rem', background: 'rgba(255,255,255,0.1)', color: 'var(--text-muted)', padding: '2px 6px', borderRadius: '4px' }}>ARCHIVED</span>}
                   </div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Created {new Date(s.createdAt).toLocaleDateString()}</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                    Created {new Date(s.createdAt).toLocaleDateString()}
+                    {s.endedAt && ` • Ended ${new Date(s.endedAt).toLocaleDateString()}`}
+                  </div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
+                  <button className="btn btn-secondary btn-sm" onClick={() => { setEditingSeason(s); setNewSeasonName(s.name); setShowCreateForm(false); }}>Edit</button>
                   {s.name !== currentSeason && (
                     <button className="btn btn-secondary btn-sm" onClick={() => setActiveSeason(s.name)}>Set Active</button>
                   )}
-                  {!s.isArchived && (
-                    <button className="btn btn-secondary btn-sm" onClick={() => archiveSeason(s)}>Archive</button>
+                  {!s.isArchived ? (
+                    <button className="btn btn-danger btn-sm" onClick={() => endSeason(s)}>End Season</button>
+                  ) : (
+                    <button className="btn btn-secondary btn-sm" onClick={() => archiveSeason({ ...s, isArchived: false, status: 'active' })}>Restore</button>
                   )}
                   <button className="btn btn-danger btn-sm" onClick={() => deleteSeason(s.id)}>🗑️</button>
                 </div>
