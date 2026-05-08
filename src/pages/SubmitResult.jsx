@@ -35,7 +35,9 @@ export default function SubmitResult() {
   const availablePlayers = allUsers.filter(u => u.id !== user.id)
   const opponentOptions = formData.gameType === 'League'
     ? availablePlayers.filter(u => u.division === user.division)
-    : availablePlayers
+    : formData.gameType === 'Super League'
+      ? availablePlayers.filter(u => u.superLeagueDivision && u.superLeagueDivision === user.superLeagueDivision)
+      : availablePlayers
   const fixtureIdParam = searchParams.get('fixtureId')
   const allFixtures = getFixtures()
   const allResults = getResults()
@@ -124,6 +126,13 @@ export default function SubmitResult() {
           opponent: availablePlayers.find(p => p.id === prev.opponent)?.division === user.division ? prev.opponent : '',
           bestOf: '8',
           firstTo: '5'
+        }))
+      } else if (value === 'Super League') {
+        setFormData(prev => ({
+          ...prev,
+          opponent: availablePlayers.find(p => p.id === prev.opponent)?.superLeagueDivision === user.superLeagueDivision ? prev.opponent : '',
+          bestOf: '11',
+          firstTo: '6'
         }))
       } else if (value === 'Cup') {
         setFormData(prev => ({ ...prev, opponent: '', bestOf: '3', firstTo: '2' }))
@@ -241,6 +250,17 @@ export default function SubmitResult() {
     if (formData.gameType === 'League' && (formData.bestOf !== '8' || formData.firstTo !== '5')) {
       setError('League games must be Best of 8 (First to 5 legs)')
       return
+    }
+
+    if (formData.gameType === 'Super League') {
+      if (formData.bestOf !== '11' || formData.firstTo !== '6') {
+        setError('Super League games must be First to 6 legs (Best of 11)')
+        return
+      }
+      if (parseInt(formData.yourScore) === parseInt(formData.opponentScore)) {
+        setError('Draws are not permitted in the Super League. A winner must be decided.')
+        return
+      }
     }
 
     let cupFixture = null
@@ -422,7 +442,7 @@ export default function SubmitResult() {
           <div className="form-group" style={{ marginBottom: '25px' }}>
             <label style={{ fontWeight: '600', marginBottom: '10px', display: 'block' }}>Match Type</label>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              {['Friendly', 'League', 'Cup'].map(type => (
+              {['Friendly', 'League', 'Super League', 'Cup'].map(type => (
                 <button
                   key={type}
                   type="button"

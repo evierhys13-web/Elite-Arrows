@@ -155,7 +155,7 @@ export default function SuperLeague() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <section>
               <h3 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>Match Format</h3>
-              <p style={{ color: 'var(--text-muted)' }}>All Super League matches are contested as <strong>First to 6 Legs</strong> (Best of 11). No draws are permitted in standard knockout phases, but 5-5 draws may occur in round-robin phases if applicable.</p>
+              <p style={{ color: 'var(--text-muted)' }}>All Super League matches are contested as <strong>First to 6 Legs</strong>. A player must reach 6 legs to win the match. No draws are permitted.</p>
             </section>
 
             <section>
