@@ -5,7 +5,7 @@ import { db, doc, updateDoc, writeBatch } from '../firebase'
 const DIVISIONS = ['Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Development']
 
 export default function Rewards() {
-  const { user, getAllUsers, getResults, bets, triggerDataRefresh } = useAuth()
+  const { user, getAllUsers, getResults, bets, triggerDataRefresh, adminData } = useAuth()
   const [showWheel, setShowWheel] = useState(false)
   const [wheelSpinning, setWheelSpinning] = useState(false)
   const [wheelWinner, setWheelWinner] = useState(null)
@@ -322,12 +322,14 @@ function SpinWheelModal({ isOpen, onClose, promotionDraw, allUsers, wheelSpinnin
             width: '100%',
             height: '100%',
             borderRadius: '50%',
-            background: `conic-gradient(${promotionDraw.map((id, i) => {
-              const color = colors[i % colors.length]
-              const startAngle = (i / promotionDraw.length) * 360
-              const endAngle = ((i + 1) / promotionDraw.length) * 360
-              return `${color} ${startAngle}deg ${endAngle}deg`
-            }).join(', ')})`,
+            background: promotionDraw.length > 0
+              ? `conic-gradient(${promotionDraw.map((id, i) => {
+                  const color = colors[i % colors.length]
+                  const startAngle = (i / promotionDraw.length) * 360
+                  const endAngle = ((i + 1) / promotionDraw.length) * 360
+                  return `${color} ${startAngle}deg ${endAngle}deg`
+                }).join(', ')})`
+              : 'rgba(255,255,255,0.05)',
             boxShadow: '0 0 20px rgba(0,0,0,0.5)',
             border: '5px solid #fff'
           }}
