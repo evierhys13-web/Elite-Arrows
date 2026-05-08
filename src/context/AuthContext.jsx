@@ -386,6 +386,13 @@ export function AuthProvider({ children }) {
       localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
       const currentUser = users.find(item => String(item.id) === String(user.id))
       if (currentUser) {
+        if (currentUser.isBanned) {
+          firebaseSignOut(auth)
+          setUser(null)
+          localStorage.removeItem('eliteArrowsCurrentUser')
+          window.location.href = '/auth'
+          return
+        }
         setUser(prev => {
           if (!prev || String(prev.id) !== String(currentUser.id)) return prev
           const nextUser = { ...prev, ...currentUser }

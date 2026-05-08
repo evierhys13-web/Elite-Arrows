@@ -243,6 +243,19 @@ export default function Admin() {
     } catch (e) { showToast(e.message, 'error') }
   }
 
+  const handleToggleBan = async (targetId, currentStatus) => {
+    try {
+      const target = allPlayers.find(p => p.id === targetId)
+      if (targetId === user.id) return showToast('You cannot ban yourself.', 'error')
+
+      const newStatus = !currentStatus
+      await setDoc(doc(db, 'users', targetId), { isBanned: newStatus }, { merge: true })
+      await logAudit(newStatus ? 'BAN_USER' : 'UNBAN_USER', `${newStatus ? 'Banned' : 'Unbanned'} user: ${target?.username}`)
+      triggerDataRefresh('users')
+      showToast(`User ${target?.username} ${newStatus ? 'banned' : 'unbanned'}.`, 'success')
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
   const handleCreateSeason = async () => {
     if (!seasonForm.name) return showToast('Name required', 'error')
     try {
@@ -716,7 +729,17 @@ export default function Admin() {
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/profile/${p.id}`)}>View</button>
                     {isFullAdmin && (
-                      <button className="btn btn-danger btn-sm" style={{ padding: '8px' }} onClick={() => handleDeleteUser(p.id)}>🗑️</button>
+                      <>
+                        <button
+                          className="btn btn-sm"
+                          style={{ background: p.isBanned ? 'var(--success)' : 'var(--error)', padding: '8px', color: 'white' }}
+                          onClick={() => handleToggleBan(p.id, p.isBanned)}
+                          title={p.isBanned ? 'Unban User' : 'Ban User'}
+                        >
+                          {p.isBanned ? '😇' : '🚫'}
+                        </button>
+                        <button className="btn btn-danger btn-sm" style={{ padding: '8px' }} onClick={() => handleDeleteUser(p.id)}>🗑️</button>
+                      </>
                     )}
                   </div>
                 </div>
