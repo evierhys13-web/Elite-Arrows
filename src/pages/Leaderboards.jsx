@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
 
 export default function Leaderboards() {
   const { user, getAllUsers, getFixtures, getResults, dataRefreshTrigger, adminData } = useAuth()
+  const navigate = useNavigate()
   const [selectedDivision, setSelectedDivision] = useState('all')
   const [timeFilter, setTimeFilter] = useState('week')
   const [refreshKey, setRefreshKey] = useState(0)
