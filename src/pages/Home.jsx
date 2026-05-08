@@ -147,7 +147,7 @@ export default function Home() {
       <div className="card" style={{ marginBottom: '20px', background: 'var(--bg-secondary)' }}>
         <h3 className="card-title" style={{ color: 'var(--accent-cyan)' }}>League Game Rules</h3>
         <div style={{ display: 'grid', gap: '10px' }}>
-          <Tooltip content="Standard league format: First to win 5 legs wins the match">
+          <Tooltip content="Standard league format: First to win 5 legs wins the match. If the score is 4-4, the match is a draw.">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px', cursor: 'help', gap: '16px' }}>
               <span>Format</span>
               <span style={{ fontWeight: 'bold', textAlign: 'right' }}>Best of 8 legs</span>
@@ -177,10 +177,10 @@ export default function Home() {
               <span style={{ fontWeight: 'bold', textAlign: 'right' }}>Legs + W/D/L</span>
             </div>
           </Tooltip>
-          <Tooltip content="Zero tolerance for cheating or toxic behavior. Breaking rules results in an immediate season ban without appeal.">
+          <Tooltip content="Zero tolerance for cheating or toxic behavior. Breaking rules results in a one-time final warning followed by an immediate season ban for any subsequent offense.">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', cursor: 'help', gap: '16px' }}>
               <span style={{ color: 'var(--error)', fontWeight: 'bold' }}>Strict Policy</span>
-              <span style={{ fontWeight: 'bold', color: 'var(--error)', textAlign: 'right' }}>Insta-Ban</span>
+              <span style={{ fontWeight: 'bold', color: 'var(--error)', textAlign: 'right' }}>Warning & Ban</span>
             </div>
           </Tooltip>
           <Tooltip content="Elite Pass subscriptions are eligible for a full refund within 14 days of purchase, provided no tournament prizes have been won.">
