@@ -104,6 +104,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /tournament_records/{recordId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
     match /adminData/{docId} {
       allow read: if request.auth != null;
       allow write: if isAdmin();
