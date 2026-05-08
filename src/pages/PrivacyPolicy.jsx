@@ -71,7 +71,15 @@ export default function PrivacyPolicy() {
             personal information from children under 13.
           </p>
 
-          <h3 style={{ color: 'var(--accent-cyan)', marginBottom: '10px', marginTop: '25px' }}>8. Changes to This Policy</h3>
+          <h3 style={{ color: 'var(--accent-cyan)', marginBottom: '10px', marginTop: '25px' }}>8. Terms of Participation & Refunds</h3>
+          <p style={{ marginBottom: '10px' }}>
+            <strong>Code of Conduct:</strong> Elite Arrows maintains a zero-tolerance policy for cheating, harassment, or toxic behavior. Breaking league rules or engaging in unsportsmanlike conduct results in an <strong>immediate season ban</strong> without appeal.
+          </p>
+          <p style={{ marginBottom: '15px' }}>
+            <strong>Refund Policy:</strong> Elite Pass subscriptions are eligible for a full refund within 14 days of purchase, provided that the user has not won any tournament prizes or financial rewards during that period. Refunds are processed manually via contact with the league administrator.
+          </p>
+
+          <h3 style={{ color: 'var(--accent-cyan)', marginBottom: '10px', marginTop: '25px' }}>9. Changes to This Policy</h3>
           <p style={{ marginBottom: '15px' }}>
             We may update this Privacy Policy from time to time. We will notify you of any changes 
             by posting the new policy on this page. You are advised to review this Privacy Policy periodically.

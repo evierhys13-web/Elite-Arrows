@@ -204,6 +204,9 @@ export default function Subscription() {
           </div>
         </div>
       )}
+      <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', padding: '20px' }}>
+        <p><strong>Refund Policy:</strong> Elite Pass subscriptions are eligible for a full refund within 14 days of purchase, provided no tournament prizes have been won. Contact support to initiate a refund.</p>
+      </div>
     </div>
   );
 }
