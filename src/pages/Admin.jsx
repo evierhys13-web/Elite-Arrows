@@ -290,6 +290,25 @@ export default function Admin() {
     } catch (e) { showToast(e.message, 'error') }
   }
 
+  const handleDeleteUser = async (targetId) => {
+    const target = allPlayers.find(p => p.id === targetId)
+    if (!target) return
+
+    if (targetId === user.id) return showToast('You cannot delete your own account.', 'error')
+    if (!isFullAdmin && (target.isAdmin || target.isTournamentAdmin)) {
+      return showToast('You do not have permission to delete another staff member.', 'error')
+    }
+
+    if (!window.confirm(`PERMANENTLY DELETE user "${target.username}"? This will remove their profile and league presence. This cannot be undone.`)) return
+
+    try {
+      await deleteDoc(doc(db, 'users', targetId))
+      await logAudit('DELETE_USER', `Permanently deleted user: ${target.username} (${target.email})`)
+      triggerDataRefresh('users')
+      showToast(`User ${target.username} deleted.`, 'success')
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
   const handleCheckBetWinners = async () => {
     if (isApproving) return
     setIsApproving(true)
@@ -694,7 +713,12 @@ export default function Admin() {
                     <div style={{ fontWeight: 600 }}>{p.username} {p.isSubscribed && <span style={{ color: 'var(--success)', fontSize: '0.6rem', border: '1px solid var(--success)', padding: '1px 4px', borderRadius: '4px', marginLeft: '5px' }}>PASSED</span>}</div>
                     <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{p.email} | Div: {p.division || 'Unassigned'}</div>
                   </div>
-                  <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/profile/${p.id}`)}>View</button>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/profile/${p.id}`)}>View</button>
+                    {isFullAdmin && (
+                      <button className="btn btn-danger btn-sm" style={{ padding: '8px' }} onClick={() => handleDeleteUser(p.id)}>🗑️</button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
