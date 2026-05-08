@@ -55,40 +55,54 @@ export default function Tournaments() {
   const handleImport = async () => {
     if (!importUrl) return
 
-    // For now, since CORS prevents direct browser scraping, we simulate a prompt
-    // or provide a placeholder for the logic.
-    // In a real app, you'd use a serverless function to fetch the HTML.
-
-    alert("Note: Direct link scraping is restricted by Dartcounter's security (CORS). I will now look for match patterns in the URL or you can paste the matches below.")
-
-    // Example: If user pasted content instead of just URL
-    const demoData = `Rhys H 3 - 1 John D
-      Mike S 0 - 3 Steve G
-      Rhys H 4 - 2 Steve G`
-
-    const lines = demoData.split('\n')
+    // We attempt to parse the actual content of the input box
+    // This could be a URL (where we'd eventually want a server-side fetch)
+    // or, more likely given CORS, the actual pasted match results.
+    const lines = importUrl.split('\n')
     const parsedGames = []
 
     lines.forEach(line => {
-      const match = line.match(/(.+)\s+(\d+)\s+-\s+(\d+)\s+(.+)/)
+      // Improved regex to handle:
+      // "Player Name 3 - 1 Other Player"
+      // "Player Name 3-1 Other Player"
+      // "Player Name 3:1 Other Player"
+      const match = line.match(/(.+?)\s+(\d+)\s*[-|:|v|vs]\s*(\d+)\s+(.+)/i)
       if (match) {
+        const p1Id = findUserByNickname(match[1])
+        const p2Id = findUserByNickname(match[4])
+
         parsedGames.push({
-          p1: findUserByNickname(match[1]),
+          p1: p1Id,
+          p1Name: match[1].trim(), // Keep original name for debugging/display if needed
           s1: match[2],
           s2: match[3],
-          p2: findUserByNickname(match[4])
+          p2: p2Id,
+          p2Name: match[4].trim()
         })
       }
     })
 
     if (parsedGames.length > 0) {
+      // Find the likely tournament winner (usually the winner of the final match in the list)
+      const lastGame = parsedGames[parsedGames.length - 1]
+      const likelyWinnerId = Number(lastGame.s1) > Number(lastGame.s2) ? lastGame.p1 : lastGame.p2
+      const likelyRunnerUpId = Number(lastGame.s1) > Number(lastGame.s2) ? lastGame.p2 : lastGame.p1
+
       setForm(prev => ({
         ...prev,
-        games: parsedGames,
-        winnerId: parsedGames[parsedGames.length - 1].s1 > parsedGames[parsedGames.length - 1].s2
-          ? parsedGames[parsedGames.length - 1].p1
-          : parsedGames[parsedGames.length - 1].p2
+        games: parsedGames.map(g => ({ p1: g.p1, p2: g.p2, s1: g.s1, s2: g.s2 })),
+        winnerId: likelyWinnerId || prev.winnerId,
+        runnerUpId: likelyRunnerUpId || prev.runnerUpId
       }))
+
+      const missingCount = parsedGames.filter(g => !g.p1 || !g.p2).length
+      if (missingCount > 0) {
+        alert(`Imported ${parsedGames.length} matches, but ${missingCount} players couldn't be automatically matched to your user list. Please check the dropdowns.`)
+      } else {
+        alert(`Successfully imported ${parsedGames.length} matches and identified the winners!`)
+      }
+    } else {
+      alert("No match results found. Please ensure the text is in a format like 'Player 3 - 1 Player'.")
     }
   }
 
