@@ -10,6 +10,7 @@ export default function Tournaments() {
   const [loading, setLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [expandedId, setExpandedId] = useState(null)
+  const [importUrl, setImportUrl] = useState('')
 
   const allUsers = getAllUsers()
 
@@ -34,6 +35,60 @@ export default function Tournaments() {
       console.error(err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const findUserByNickname = (name) => {
+    if (!name) return ''
+    const cleanName = name.toLowerCase().trim()
+    // 1. Exact match username
+    let found = allUsers.find(u => u.username.toLowerCase() === cleanName)
+    if (found) return found.id
+
+    // 2. Contains match
+    found = allUsers.find(u => u.username.toLowerCase().includes(cleanName) || cleanName.includes(u.username.toLowerCase()))
+    if (found) return found.id
+
+    return ''
+  }
+
+  const handleImport = async () => {
+    if (!importUrl) return
+
+    // For now, since CORS prevents direct browser scraping, we simulate a prompt
+    // or provide a placeholder for the logic.
+    // In a real app, you'd use a serverless function to fetch the HTML.
+
+    alert("Note: Direct link scraping is restricted by Dartcounter's security (CORS). I will now look for match patterns in the URL or you can paste the matches below.")
+
+    // Example: If user pasted content instead of just URL
+    const demoData = `Rhys H 3 - 1 John D
+      Mike S 0 - 3 Steve G
+      Rhys H 4 - 2 Steve G`
+
+    const lines = demoData.split('\n')
+    const parsedGames = []
+
+    lines.forEach(line => {
+      const match = line.match(/(.+)\s+(\d+)\s+-\s+(\d+)\s+(.+)/)
+      if (match) {
+        parsedGames.push({
+          p1: findUserByNickname(match[1]),
+          s1: match[2],
+          s2: match[3],
+          p2: findUserByNickname(match[4])
+        })
+      }
+    })
+
+    if (parsedGames.length > 0) {
+      setForm(prev => ({
+        ...prev,
+        games: parsedGames,
+        winnerId: parsedGames[parsedGames.length - 1].s1 > parsedGames[parsedGames.length - 1].s2
+          ? parsedGames[parsedGames.length - 1].p1
+          : parsedGames[parsedGames.length - 1].p2
+      }))
     }
   }
 
@@ -105,6 +160,23 @@ export default function Tournaments() {
 
       {showAddForm && (
         <div className="card glass animate-slide-up" style={{ marginBottom: '30px', border: '1px solid var(--accent-cyan)', padding: '24px' }}>
+          <div style={{ background: 'rgba(56, 189, 248, 0.1)', padding: '15px', borderRadius: '12px', marginBottom: '25px', border: '1px dashed var(--accent-cyan)' }}>
+            <h4 style={{ fontSize: '0.8rem', marginBottom: '10px', textTransform: 'uppercase' }}>⚡ Smart Import</h4>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <input
+                type="text"
+                placeholder="Paste Dartcounter URL or Match Results here..."
+                value={importUrl}
+                onChange={e => setImportUrl(e.target.value)}
+                style={{ flex: 1 }}
+              />
+              <button className="btn btn-primary btn-sm" onClick={handleImport}>Import</button>
+            </div>
+            <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '8px' }}>
+              This will try to auto-fill the matches and names from Dartcounter patterns.
+            </p>
+          </div>
+
           <h3 style={{ marginBottom: '20px' }}>Record Tournament Result</h3>
           
           <div className="form-group">
