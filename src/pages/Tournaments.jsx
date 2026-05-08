@@ -55,35 +55,45 @@ export default function Tournaments() {
   const handleImport = async () => {
     if (!importUrl) return
 
-    // We attempt to parse the actual content of the input box
-    // This could be a URL (where we'd eventually want a server-side fetch)
-    // or, more likely given CORS, the actual pasted match results.
-    const lines = importUrl.split('\n')
+    // Standardize the input text: split by lines, remove empty ones
+    const lines = importUrl.split('\n').map(l => l.trim()).filter(l => l.length > 0)
     const parsedGames = []
 
     lines.forEach(line => {
-      // Improved regex to handle:
-      // "Player Name 3 - 1 Other Player"
-      // "Player Name 3-1 Other Player"
-      // "Player Name 3:1 Other Player"
-      const match = line.match(/(.+?)\s+(\d+)\s*[-|:|v|vs]\s*(\d+)\s+(.+)/i)
+      // 1. Check for the most common Dartcounter patterns:
+      // Pattern A: "Player Name 3 - 1 Other Player" (most standard)
+      // Pattern B: "3-1" (compact)
+      // Pattern C: "Player vs Player 3 1" (no dash)
+
+      // This regex is much more aggressive:
+      // (.+?) -> Player 1 (greedy but stopped by numbers)
+      // (\d+) -> Score 1
+      // [^\d]+ -> Any non-digit separator (space, dash, "vs", etc)
+      // (\d+) -> Score 2
+      // (.+) -> Player 2
+      const match = line.match(/(.+?)\s*(\d+)\s*[^\d]+\s*(\d+)\s*(.+)/)
+
       if (match) {
-        const p1Id = findUserByNickname(match[1])
-        const p2Id = findUserByNickname(match[4])
+        const p1Name = match[1].trim()
+        const s1 = match[2]
+        const s2 = match[3]
+        const p2Name = match[4].trim()
+
+        const p1Id = findUserByNickname(p1Name)
+        const p2Id = findUserByNickname(p2Name)
 
         parsedGames.push({
           p1: p1Id,
-          p1Name: match[1].trim(), // Keep original name for debugging/display if needed
-          s1: match[2],
-          s2: match[3],
+          p1Name,
+          s1,
+          s2,
           p2: p2Id,
-          p2Name: match[4].trim()
+          p2Name
         })
       }
     })
 
     if (parsedGames.length > 0) {
-      // Find the likely tournament winner (usually the winner of the final match in the list)
       const lastGame = parsedGames[parsedGames.length - 1]
       const likelyWinnerId = Number(lastGame.s1) > Number(lastGame.s2) ? lastGame.p1 : lastGame.p2
       const likelyRunnerUpId = Number(lastGame.s1) > Number(lastGame.s2) ? lastGame.p2 : lastGame.p1
@@ -95,14 +105,24 @@ export default function Tournaments() {
         runnerUpId: likelyRunnerUpId || prev.runnerUpId
       }))
 
-      const missingCount = parsedGames.filter(g => !g.p1 || !g.p2).length
-      if (missingCount > 0) {
-        alert(`Imported ${parsedGames.length} matches, but ${missingCount} players couldn't be automatically matched to your user list. Please check the dropdowns.`)
+      // Feedback on matches found
+      const unmatchedNames = []
+      parsedGames.forEach(g => {
+        if (!g.p1) unmatchedNames.push(g.p1Name)
+        if (!g.p2) unmatchedNames.push(g.p2Name)
+      })
+
+      const uniqueUnmatched = [...new Set(unmatchedNames)]
+
+      if (uniqueUnmatched.length > 0) {
+        alert(`Success! Found ${parsedGames.length} matches.\n\nNote: I couldn't find Elite Arrows accounts for: ${uniqueUnmatched.join(', ')}. You'll need to select them manually in the dropdowns.`)
       } else {
-        alert(`Successfully imported ${parsedGames.length} matches and identified the winners!`)
+        alert(`Successfully imported ${parsedGames.length} matches!`)
       }
     } else {
-      alert("No match results found. Please ensure the text is in a format like 'Player 3 - 1 Player'.")
+      // If regex failed, let's try a simpler split as a last resort
+      // (Handle case where people just paste "Player1 Player2 3 1")
+      alert("Still couldn't find clear results. Please make sure each line looks like: 'PlayerName 3 - 1 PlayerName'")
     }
   }
 
