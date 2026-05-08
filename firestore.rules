@@ -8,15 +8,18 @@ service cloud.firestore {
 
     function isAdmin() {
       return signedIn() && (
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isTournamentAdmin == true ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isCupAdmin == true ||
         request.auth.token.email in [
           'rhyshowe2023@outlook.com',
           'Rhyshowe2023@outlook.com',
           'dhineberry@yahoo.com',
+          'Dhineberry@yahoo.com',
           'test@elitearrows.co.uk'
-        ]
+        ] ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isTournamentAdmin == true ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isCupAdmin == true
+        ))
       );
     }
 
