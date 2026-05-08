@@ -2,6 +2,16 @@ import React, { useState, useEffect } from 'react';
 
 const CHANGELOG = [
   {
+    version: '2.2.0',
+    date: 'May 2026',
+    changes: [
+      { type: 'feature', title: 'League Analytics', description: 'Deep dive into division performance with real-time scoring charts and distribution data.' },
+      { type: 'feature', title: 'Match Proposals', description: 'Challenge other players directly from their profiles with specific dates and times.' },
+      { type: 'feature', title: 'Division Filters', description: 'Easily find and connect with players in your own division or scout others.' },
+      { type: 'improvement', title: 'Season Management', description: 'Centralized active season control and better tools for league admins.' }
+    ]
+  },
+  {
     version: '2.1.0',
     date: 'April 2026',
     changes: [
@@ -42,14 +52,11 @@ const ICONS = {
 };
 
 export function WhatsNewPopup({ isOpen, onClose }) {
-  const [dontShowAgain, setDontShowAgain] = useState(false);
-
   if (!isOpen) return null;
 
   const handleClose = () => {
-    if (dontShowAgain) {
-      localStorage.setItem('eliteArrowsLastVersionSeen', CHANGELOG[0].version);
-    }
+    // Always mark this version as seen once they close the popup
+    localStorage.setItem('eliteArrowsLastVersionSeen', CHANGELOG[0].version);
     if (onClose) onClose();
   };
 
@@ -110,22 +117,13 @@ export function WhatsNewPopup({ isOpen, onClose }) {
         <div style={{ 
           display: 'flex', 
           alignItems: 'center', 
-          justifyContent: 'space-between',
+          justifyContent: 'center',
           marginTop: '20px',
           paddingTop: '16px',
           borderTop: '1px solid var(--border)'
         }}>
-          <label className="checkbox-group" style={{ fontSize: '0.9rem' }}>
-            <input 
-              type="checkbox" 
-              checked={dontShowAgain}
-              onChange={(e) => setDontShowAgain(e.target.checked)}
-            />
-            <span>Don't show again</span>
-          </label>
-          
-          <button className="btn btn-primary" onClick={handleClose}>
-            Got it!
+          <button className="btn btn-primary" style={{ minWidth: '160px' }} onClick={handleClose}>
+            Awesome!
           </button>
         </div>
       </div>
@@ -137,7 +135,8 @@ export function useWhatsNew() {
   const checkShouldShow = () => {
     const lastSeen = localStorage.getItem('eliteArrowsLastVersionSeen');
     const hasUser = localStorage.getItem('eliteArrowsCurrentUser');
-    return !lastSeen && hasUser;
+    // Show if the current version is different from the last seen version
+    return hasUser && lastSeen !== CHANGELOG[0].version;
   };
   
   const [showWhatsNew, setShowWhatsNew] = useState(checkShouldShow);
