@@ -23,6 +23,12 @@ export const isLeagueResult = (result, fixturesById = {}) => {
   // If it's explicitly 'league' or contains it (e.g. 'Elite League')
   if (gameType.includes('league')) return true
 
+  // If it's empty or unknown, check if it's NOT a different specific type
+  if (!gameType || gameType === 'unknown') {
+    if (result.cupId) return false
+    return true // Default to league for historical/unlabeled matches
+  }
+
   if (gameType.includes('friendly') || gameType.includes('cup') || gameType.includes('tournament')) return false
 
   const fixture = result.fixtureId ? fixturesById[String(result.fixtureId)] : null

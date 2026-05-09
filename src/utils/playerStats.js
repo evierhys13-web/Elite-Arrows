@@ -57,18 +57,21 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
     if (String(result.status || '').toLowerCase() !== 'approved') return false
     if (requireProof && !resultHasProof(result)) return false
 
-    // Season filtering logic
+    // Season filtering logic - robust matching
     if (currentSeason) {
-      const resSeason = String(result.season || '').trim()
-      const actSeason = String(currentSeason).trim()
+      const resSeason = String(result.season || '').trim().toLowerCase()
+      const actSeason = String(currentSeason).trim().toLowerCase()
 
-      // If no season on result, treat it as "Season 1" / "2026" legacy data
-      if (!resSeason) {
-        const isLegacySeason = actSeason === 'Season 1' || actSeason === '2026'
-        if (!isLegacySeason) return false
+      // If both have season labels, they must match
+      if (resSeason && actSeason && resSeason !== actSeason) {
+        // Special case: '2026' and 'season 1' are often the same in this app's data
+        const isLegacyMatch = (resSeason === '2026' && actSeason === 'season 1') ||
+                              (resSeason === 'season 1' && actSeason === '2026')
+        if (!isLegacyMatch) return false
       }
-      // If season exists, it must match active season exactly
-      else if (resSeason !== actSeason) {
+
+      // If result has NO season, we allow it if active season is 'Season 1' or '2026'
+      if (!resSeason && !(actSeason === 'season 1' || actSeason === '2026' || actSeason === '')) {
         return false
       }
     }
@@ -79,9 +82,6 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
 
     const leagueResult = isLeagueResult(result, fixturesById)
     if (leagueOnly && !leagueResult) return false
-
-    // Legacy Reset logic (Only apply if NOT using the new Season system)
-    if (!currentSeason && leagueResult && resetTime && getResultEffectiveTime(result) <= resetTime) return false
 
     return isWithinPeriod(result, timePeriod)
   })
