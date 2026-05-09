@@ -101,16 +101,27 @@ export default function Subscription() {
   };
 
   const handleSubmitPayment = async () => {
-    if (!proofImage) return alert("Please upload proof of payment.");
+    if (!isNativeApp && !proofImage) return alert("Please upload proof of payment.");
     setSubmitting(true);
     try {
-      await updateUser({
-        paymentPending: true,
-        paymentMethod,
-        paymentProof: proofImage,
-        paymentDate: new Date().toISOString()
-      }, false);
-      alert("Payment submitted! Awaiting admin approval.");
+      if (isNativeApp) {
+        // App logic: Simply notify admins of the request
+        await updateUser({
+          adminRequestPending: true,
+          requestedPlan: paymentMethod,
+          requestDate: new Date().toISOString()
+        }, false);
+        alert("Request sent! An admin will contact you to arrange payment and activate your pass.");
+      } else {
+        // Web logic: Usual flow with proof
+        await updateUser({
+          paymentPending: true,
+          paymentMethod,
+          paymentProof: proofImage,
+          paymentDate: new Date().toISOString()
+        }, false);
+        alert("Payment submitted! Awaiting admin approval.");
+      }
       setPaymentMethod("");
       setProofImage("");
     } catch (err) {
@@ -175,15 +186,17 @@ export default function Subscription() {
 
           {isNativeApp ? (
             <div style={{ textAlign: 'center', padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
-              <div style={{ fontSize: '3rem', marginBottom: '20px' }}>🌐</div>
-              <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '15px' }}>Purchase via Website</h4>
+              <div style={{ fontSize: '3rem', marginBottom: '20px' }}>🎯</div>
+              <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '15px' }}>Request League Entry</h4>
               <p style={{ color: 'var(--text-muted)', lineHeight: '1.6', marginBottom: '20px' }}>
-                To comply with Google Play policies, subscriptions cannot be processed directly within the app.
+                Registration for the new season is handled via manual league dues. Request your entry below and an official will contact you with payment instructions.
               </p>
-              <p style={{ fontWeight: 700, color: 'white', marginBottom: '24px' }}>
-                Please visit <strong>elitearrows.co.uk</strong> in your mobile or desktop browser to upgrade your account.
-              </p>
-              <button className="btn btn-secondary btn-block" onClick={() => setPaymentMethod("")}>Back to Plans</button>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                <button className="btn btn-secondary" onClick={() => setPaymentMethod("")}>Cancel</button>
+                <button className="btn btn-primary" onClick={handleSubmitPayment} disabled={submitting}>
+                  {submitting ? 'Sending Request...' : 'Send Entry Request'}
+                </button>
+              </div>
             </div>
           ) : (
             <>

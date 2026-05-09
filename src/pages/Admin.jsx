@@ -76,6 +76,7 @@ export default function Admin() {
   const rejectedResults = allResults.filter(r => String(r.status).toLowerCase() === 'rejected')
 
   const pendingPayments = allPlayers.filter(u => u?.paymentPending && !u?.isSubscribed)
+  const entryRequests = allPlayers.filter(u => u?.adminRequestPending && !u?.isSubscribed)
   const subscribers = allPlayers.filter(u => u?.isSubscribed)
 
   const subscriptionPot = adminData?.subscriptionPot || 0
@@ -393,15 +394,15 @@ export default function Admin() {
     return {
       newUsers: allPlayers.filter(u => new Date(u.createdAt) > lastWeek).length,
       pendingResults: pendingResults.length,
-      pendingPayments: pendingPayments.length,
+      pendingPayments: pendingPayments.length + entryRequests.length,
       totalPot: subscriptionPot + subscriptionPot10
     }
-  }, [allPlayers, pendingResults, pendingPayments, subscriptionPot, subscriptionPot10])
+  }, [allPlayers, pendingResults, pendingPayments, entryRequests, subscriptionPot, subscriptionPot10])
 
   const tabs = [
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'results', label: 'Scores', count: pendingResults.length },
-    { id: 'payments', label: 'Payments', count: pendingPayments.length },
+    { id: 'payments', label: 'Payments', count: pendingPayments.length + entryRequests.length },
     { id: 'moneypot', label: 'Finances' },
     { id: 'admins', label: 'Staff' },
     { id: 'cups', label: 'Cups' },

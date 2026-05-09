@@ -379,7 +379,8 @@ export function AuthProvider({ children }) {
           leagueTableResetAt: data.leagueTableResetAt || null,
           isMaintenanceMode: data.isMaintenanceMode || false,
           maintenanceMessage: data.maintenanceMessage || '',
-          registrationsEnabled: data.registrationsEnabled !== undefined ? data.registrationsEnabled : true
+          registrationsEnabled: data.registrationsEnabled !== undefined ? data.registrationsEnabled : true,
+          currentSeason: data.currentSeason || 'Season 1'
         })
         resultStatusOverridesRef.current = data.resultStatusOverrides || {}
 

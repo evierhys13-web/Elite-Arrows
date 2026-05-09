@@ -20,7 +20,7 @@ const INITIAL_RESULT_FORM = {
 }
 
 export default function SubmitResult() {
-  const { user, getAllUsers, getFixtures, getResults, updateResults, updateFixtures, addTokens, triggerDataRefresh, notifyAdmins } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, updateResults, updateFixtures, addTokens, triggerDataRefresh, notifyAdmins, adminData } = useAuth()
   const [searchParams] = useSearchParams()
   const cameraInputRef = useRef(null)
   const uploadInputRef = useRef(null)
@@ -41,6 +41,9 @@ export default function SubmitResult() {
   const fixtureIdParam = searchParams.get('fixtureId')
   const allFixtures = getFixtures()
   const allResults = getResults()
+
+  const currentSeasonLabel = adminData?.currentSeason || 'Season 1'
+
   const userSubmittedResults = allResults
     .filter(result => (
       String(result.submittedBy || '') === String(user.id) ||
@@ -72,7 +75,7 @@ export default function SubmitResult() {
   const cups = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
 
   const opponentUser = availablePlayers.find(p => p.id === formData.opponent)
-  const currentSeason = new Date().getFullYear().toString()
+
   const getDisplayName = (profile, fallback = 'Unknown player') => (
     profile?.username || profile?.name || profile?.displayName || profile?.email || fallback
   )
@@ -100,7 +103,7 @@ export default function SubmitResult() {
     const approvedResults = allResults.filter(r => String(r.status).toLowerCase() === 'approved')
     
     const existingMatch = approvedResults.find(r => {
-      const isSameSeason = r.season === currentSeason
+      const isSameSeason = r.season === currentSeasonLabel
       const isLeagueGame = r.gameType === 'League'
       const sameDivision = r.division === user.division
       const isBetweenPlayers = (String(r.player1Id) === String(user.id) && String(r.player2Id) === String(opponentId)) ||
@@ -316,7 +319,7 @@ export default function SubmitResult() {
         score2: parseInt(formData.opponentScore),
         division: user.division,
         gameType: formData.gameType,
-        season: currentSeason,
+        season: currentSeasonLabel,
         date: new Date().toISOString().split('T')[0],
         submittedAt: new Date().toISOString(),
         bestOf: formData.bestOf,

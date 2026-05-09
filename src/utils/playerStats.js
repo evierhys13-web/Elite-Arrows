@@ -59,10 +59,18 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
 
     // Season filtering logic
     if (currentSeason) {
-      // If the result has a season field, it must match.
-      // If it DOES NOT have a season field, we treat it as part of the current/active
-      // legacy season so it doesn't disappear.
-      if (result.season && result.season !== currentSeason) return false
+      // Result matches active season exactly
+      if (result.season === currentSeason) {
+         // Pass through
+      }
+      // Legacy results (no season field) are allowed in 'Season 1' or '2026'
+      else if (!result.season && (currentSeason === 'Season 1' || currentSeason === '2026')) {
+         // Pass through
+      }
+      // Otherwise, if it has a season and it doesn't match, block it
+      else if (result.season && result.season !== currentSeason) {
+        return false
+      }
     }
 
     if (superLeagueOnly) {
