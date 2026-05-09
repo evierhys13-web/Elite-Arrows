@@ -170,7 +170,6 @@ export default function SuperLeague() {
               <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', listStyleType: 'disc' }}>
                 <li><strong>1 Point</strong> per leg won.</li>
                 <li><strong>3 Points</strong> bonus for a Match Win.</li>
-                <li><strong>1 Point</strong> bonus for a Match Draw.</li>
               </ul>
             </section>
 

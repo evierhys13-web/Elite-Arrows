@@ -92,13 +92,13 @@ export const createEmptyPlayerStats = (player = {}) => ({
   history: []
 })
 
-const addResultToPlayer = (stats, result, playerNumber, opponentScore, score, countsForPoints) => {
+const addResultToPlayer = (stats, result, playerNumber, opponentScore, score, countsForPoints, scoringOptions = {}) => {
   const submittedStats = result[`player${playerNumber}Stats`] || {}
   stats.played += 1
   stats.legsWon += score
   stats.legsLost += opponentScore
   stats.legDiff = stats.legsWon - stats.legsLost
-  stats.points += countsForPoints ? getLeaguePoints(score, opponentScore) : 0
+  stats.points += countsForPoints ? getLeaguePoints(score, opponentScore, scoringOptions) : 0
 
   if (score > opponentScore) {
     stats.wins += 1
@@ -171,13 +171,16 @@ export const derivePlayerStatsFromResults = (users = [], results = [], options =
     const player2Id = getResultPlayerId(result, 2, users)
     const score1 = toNumber(result.score1)
     const score2 = toNumber(result.score2)
-    const countsForPoints = isLeagueResult(result, fixturesById)
+
+    const isSuper = isSuperLeagueResult(result, fixturesById)
+    const countsForPoints = isSuper || isLeagueResult(result, fixturesById)
+    const scoringOptions = { noDrawBonus: isSuper }
 
     if (player1Id && statsByPlayerId[player1Id]) {
-      addResultToPlayer(statsByPlayerId[player1Id], result, 1, score2, score1, countsForPoints)
+      addResultToPlayer(statsByPlayerId[player1Id], result, 1, score2, score1, countsForPoints, scoringOptions)
     }
     if (player2Id && statsByPlayerId[player2Id]) {
-      addResultToPlayer(statsByPlayerId[player2Id], result, 2, score1, score2, countsForPoints)
+      addResultToPlayer(statsByPlayerId[player2Id], result, 2, score1, score2, countsForPoints, scoringOptions)
     }
   })
 
