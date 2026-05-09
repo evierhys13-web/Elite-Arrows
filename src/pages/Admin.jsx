@@ -491,8 +491,14 @@ export default function Admin() {
         {activeTab === 'results' && (
           <div className="card glass">
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-              <h3>Match History & Review</h3>
+              <div>
+                <h3>Match History & Review</h3>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}> Standings are updated automatically from Approved League results.</p>
+              </div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button className="btn btn-sm btn-secondary glass" onClick={() => { triggerDataRefresh('all'); showToast('Standings sync triggered', 'info'); }} title="Force refresh of all league data">
+                  🔄 Sync Standings
+                </button>
                 {resultFilter === 'pending' && selectedResults.length > 0 && (
                   <button className="btn btn-sm btn-primary" onClick={handleBulkApprove} disabled={isApproving}>
                     Approve Selected ({selectedResults.length})
