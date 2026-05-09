@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { Purchases } from "@revenuecat/purchases-capacitor";
+import { Capacitor } from "@capacitor/core";
 
 // Maximum size for the proof image
 const MAX_IMAGE_BYTES = 800 * 1024;
@@ -50,7 +52,43 @@ export default function Subscription() {
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  const isNativeApp = window.hasOwnProperty('Capacitor');
+  const isNativeApp = Capacitor.isNativePlatform();
+
+  const handleNativePurchase = async (planId) => {
+    try {
+      setSubmitting(true);
+      // Maps your plan IDs to RevenueCat product/package IDs
+      const productID = planId === 'elite' ? 'elite_pass' : 'standard_pass';
+
+      const offerings = await Purchases.getOfferings();
+      if (offerings.current !== null && offerings.current.availablePackages.length > 0) {
+        const pkg = offerings.current.availablePackages.find(p => p.product.identifier === productID);
+        if (pkg) {
+          const { customerInfo } = await Purchases.purchasePackage({ aPackage: pkg });
+          if (typeof customerInfo.entitlements.active['elite_pass'] !== "undefined" ||
+              typeof customerInfo.entitlements.active['standard_pass'] !== "undefined") {
+
+            await updateUser({
+              isSubscribed: true,
+              subscriptionDate: new Date().toISOString(),
+              subscriptionTier: planId === 'elite' ? 'premium' : 'standard',
+              paymentMethod: 'google_play'
+            }, false);
+
+            alert("Success! Your Elite Pass is now active.");
+          }
+        } else {
+          alert("Selected plan is not available for purchase right now.");
+        }
+      }
+    } catch (e) {
+      if (!e.userCancelled) {
+        alert("Purchase error: " + e.message);
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const plans = [
     {
@@ -170,69 +208,51 @@ export default function Subscription() {
 
             <button
               className={`btn btn-block ${plan.active ? 'btn-secondary' : 'btn-primary'}`}
-              disabled={plan.active || user?.paymentPending}
-              onClick={() => setPaymentMethod(plan.id)}
+              disabled={plan.active || user?.paymentPending || (submitting && isNativeApp)}
+              onClick={() => isNativeApp ? handleNativePurchase(plan.id) : setPaymentMethod(plan.id)}
               style={{ marginTop: '24px', background: plan.premium && !plan.active ? 'linear-gradient(135deg, #fbbf24, #f59e0b)' : '' }}
             >
-              {user?.paymentPending ? 'Pending Approval' : plan.buttonText}
+              {user?.paymentPending ? 'Pending Approval' : (submitting && isNativeApp) ? 'Connecting Store...' : plan.buttonText}
             </button>
           </div>
         ))}
       </div>
 
-      {paymentMethod && (
+      {!isNativeApp && paymentMethod && (
         <div className="card glass animate-fade-in" style={{ border: '1px solid var(--accent-cyan)', padding: '40px' }}>
           <h3 style={{ marginBottom: '20px', textAlign: 'center' }}>Finalize Your {paymentMethod === 'elite' ? 'Elite' : 'Standard'} Pass</h3>
 
-          {isNativeApp ? (
-            <div style={{ textAlign: 'center', padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
-              <div style={{ fontSize: '3rem', marginBottom: '20px' }}>🎯</div>
-              <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '15px' }}>Request League Entry</h4>
-              <p style={{ color: 'var(--text-muted)', lineHeight: '1.6', marginBottom: '20px' }}>
-                Registration for the new season is handled via manual league dues. Request your entry below and an official will contact you with payment instructions.
-              </p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                <button className="btn btn-secondary" onClick={() => setPaymentMethod("")}>Cancel</button>
-                <button className="btn btn-primary" onClick={handleSubmitPayment} disabled={submitting}>
-                  {submitting ? 'Sending Request...' : 'Send Entry Request'}
-                </button>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '30px' }}>
+            <div style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
+              <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '12px' }}>Option 1: PayPal</h4>
+              <p style={{ fontSize: '0.9rem', marginBottom: '10px' }}>Send £5.00 to:</p>
+              <a href="https://paypal.me/DanielHineBerry" target="_blank" rel="noreferrer" style={{ display: 'block', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', color: 'white', textAlign: 'center', textDecoration: 'none', fontWeight: 700 }}>paypal.me/DanielHineBerry</a>
+            </div>
+
+            <div style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
+              <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '12px' }}>Option 2: Bank Transfer</h4>
+              <div style={{ fontSize: '0.85rem' }}>
+                <div><strong>Acc:</strong> Rhys Howe</div>
+                <div><strong>Sort:</strong> 60-09-09</div>
+                <div><strong>No:</strong> 80249442</div>
+                <div style={{ marginTop: '8px', color: 'var(--warning)' }}>Ref: {user.username}</div>
               </div>
             </div>
-          ) : (
-            <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '30px' }}>
-                <div style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
-                  <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '12px' }}>Option 1: PayPal</h4>
-                  <p style={{ fontSize: '0.9rem', marginBottom: '10px' }}>Send £5.00 to:</p>
-                  <a href="https://paypal.me/DanielHineBerry" target="_blank" rel="noreferrer" style={{ display: 'block', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', color: 'white', textAlign: 'center', textDecoration: 'none', fontWeight: 700 }}>paypal.me/DanielHineBerry</a>
-                </div>
+          </div>
 
-                <div style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
-                  <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '12px' }}>Option 2: Bank Transfer</h4>
-                  <div style={{ fontSize: '0.85rem' }}>
-                    <div><strong>Acc:</strong> Rhys Howe</div>
-                    <div><strong>Sort:</strong> 60-09-09</div>
-                    <div><strong>No:</strong> 80249442</div>
-                    <div style={{ marginTop: '8px', color: 'var(--warning)' }}>Ref: {user.username}</div>
-                  </div>
-                </div>
-              </div>
+          <div className="form-group" style={{ maxWidth: '500px', margin: '0 auto 20px' }}>
+            <label>Upload Proof of Payment (Screenshot)</label>
+            <input type="file" accept="image/*" onChange={handleProofUpload} className="glass" style={{ padding: '12px' }} />
+            {uploading && <p style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>Processing receipt...</p>}
+            {proofImage && <p style={{ fontSize: '0.8rem', color: 'var(--success)' }}>✓ Receipt Attached</p>}
+          </div>
 
-              <div className="form-group" style={{ maxWidth: '500px', margin: '0 auto 20px' }}>
-                <label>Upload Proof of Payment (Screenshot)</label>
-                <input type="file" accept="image/*" onChange={handleProofUpload} className="glass" style={{ padding: '12px' }} />
-                {uploading && <p style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>Processing receipt...</p>}
-                {proofImage && <p style={{ fontSize: '0.8rem', color: 'var(--success)' }}>✓ Receipt Attached</p>}
-              </div>
-
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                <button className="btn btn-secondary" onClick={() => setPaymentMethod("")}>Cancel</button>
-                <button className="btn btn-primary" onClick={handleSubmitPayment} disabled={submitting || !proofImage}>
-                  {submitting ? 'Submitting...' : 'Confirm Payment Submission'}
-                </button>
-              </div>
-            </>
-          )}
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+            <button className="btn btn-secondary" onClick={() => setPaymentMethod("")}>Cancel</button>
+            <button className="btn btn-primary" onClick={handleSubmitPayment} disabled={submitting || !proofImage}>
+              {submitting ? 'Submitting...' : 'Confirm Payment Submission'}
+            </button>
+          </div>
         </div>
       )}
       <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', padding: '20px' }}>
