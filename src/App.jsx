@@ -323,21 +323,23 @@ function AppShell() {
   }, [user?.id])
 
   return (
-    <AuthProvider>
+    <>
       <BackgroundDecor />
       <AppRoutes />
-    </AuthProvider>
+    </>
   )
 }
 
 export default function App() {
   return (
     <ThemeProvider>
-      <ToastProvider>
-        <BrowserRouter>
-          <AppShell />
-        </BrowserRouter>
-      </ToastProvider>
+      <AuthProvider>
+        <ToastProvider>
+          <BrowserRouter>
+            <AppShell />
+          </BrowserRouter>
+        </ToastProvider>
+      </AuthProvider>
     </ThemeProvider>
   )
 }
