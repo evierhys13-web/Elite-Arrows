@@ -90,44 +90,53 @@ const saveResultsCache = (results) => {
 export function AuthProvider({ children }) {
   // Initialize state from local cache to prevent data flickering on refresh
   const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('eliteArrowsCurrentUser')
-    return saved ? JSON.parse(saved) : null
+    try {
+      const saved = localStorage.getItem('eliteArrowsCurrentUser')
+      return (saved && saved !== 'undefined') ? JSON.parse(saved) : null
+    } catch (e) { return null }
   })
   const [loading, setLoading] = useState(true)
   const [allUsers, setAllUsers] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('eliteArrowsUsers') || '[]')
+      const saved = localStorage.getItem('eliteArrowsUsers')
+      return (saved && saved !== 'undefined') ? JSON.parse(saved) : []
     } catch (e) { return [] }
   })
   const [notifications, setNotifications] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('eliteArrowsNotifications') || '[]')
+      const saved = localStorage.getItem('eliteArrowsNotifications')
+      return (saved && saved !== 'undefined') ? JSON.parse(saved) : []
     } catch (e) { return [] }
   })
   const [results, setResults] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem(RESULT_CACHE_KEY) || '[]')
+      const saved = localStorage.getItem(RESULT_CACHE_KEY)
+      return (saved && saved !== 'undefined') ? JSON.parse(saved) : []
     } catch (e) { return [] }
   })
   const [fixtures, setFixtures] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+      const saved = localStorage.getItem('eliteArrowsFixtures')
+      return (saved && saved !== 'undefined') ? JSON.parse(saved) : []
     } catch (e) { return [] }
   })
   const [cups, setCups] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
+      const saved = localStorage.getItem('eliteArrowsCups')
+      return (saved && saved !== 'undefined') ? JSON.parse(saved) : []
     } catch (e) { return [] }
   })
   const [bets, setBets] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('eliteArrowsBets') || '[]')
+      const saved = localStorage.getItem('eliteArrowsBets')
+      return (saved && saved !== 'undefined') ? JSON.parse(saved) : []
     } catch (e) { return [] }
   })
   const [supportRequests, setSupportRequests] = useState([])
   const [seasons, setSeasons] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
+      const saved = localStorage.getItem('eliteArrowsSeasons')
+      return (saved && saved !== 'undefined') ? JSON.parse(saved) : []
     } catch (e) { return [] }
   })
   const [dataRefreshTrigger, setDataRefreshTrigger] = useState(0)
@@ -638,6 +647,9 @@ export function AuthProvider({ children }) {
           const stored = localStorage.getItem('eliteArrowsCurrentUser')
           if (stored) setUser(JSON.parse(stored))
         }
+      } else {
+        setUser(null)
+        localStorage.removeItem('eliteArrowsCurrentUser')
       }
       setLoading(false)
     })

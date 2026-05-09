@@ -49,8 +49,18 @@ const SuperLeague = lazy(() => import('./pages/SuperLeague'))
 
 function PageLoader() {
   return (
-    <div className="loading" style={{ padding: '40px', textAlign: 'center' }}>
-      <Skeleton height="200px" />
+    <div className="loading" style={{
+      padding: '40px',
+      textAlign: 'center',
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'var(--bg-primary)'
+    }}>
+      <div className="spinner" style={{ width: '40px', height: '40px', marginBottom: '20px' }}></div>
+      <h2 style={{ color: 'white' }}>Loading Elite Arrows...</h2>
     </div>
   )
 }
