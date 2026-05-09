@@ -50,6 +50,8 @@ export default function Subscription() {
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
 
+  const isNativeApp = window.hasOwnProperty('Capacitor');
+
   const plans = [
     {
       id: 'free',
@@ -169,39 +171,55 @@ export default function Subscription() {
 
       {paymentMethod && (
         <div className="card glass animate-fade-in" style={{ border: '1px solid var(--accent-cyan)', padding: '40px' }}>
-          <h3 style={{ marginBottom: '20px' }}>Finalize Your {paymentMethod === 'elite' ? 'Elite' : 'Standard'} Pass</h3>
+          <h3 style={{ marginBottom: '20px', textAlign: 'center' }}>Finalize Your {paymentMethod === 'elite' ? 'Elite' : 'Standard'} Pass</h3>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '30px' }}>
-            <div style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
-              <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '12px' }}>Option 1: PayPal</h4>
-              <p style={{ fontSize: '0.9rem', marginBottom: '10px' }}>Send £5.00 to:</p>
-              <a href="https://paypal.me/DanielHineBerry" target="_blank" rel="noreferrer" style={{ display: 'block', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', color: 'white', textAlign: 'center', textDecoration: 'none', fontWeight: 700 }}>paypal.me/DanielHineBerry</a>
+          {isNativeApp ? (
+            <div style={{ textAlign: 'center', padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
+              <div style={{ fontSize: '3rem', marginBottom: '20px' }}>🌐</div>
+              <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '15px' }}>Purchase via Website</h4>
+              <p style={{ color: 'var(--text-muted)', lineHeight: '1.6', marginBottom: '20px' }}>
+                To comply with Google Play policies, subscriptions cannot be processed directly within the app.
+              </p>
+              <p style={{ fontWeight: 700, color: 'white', marginBottom: '24px' }}>
+                Please visit <strong>elitearrows.co.uk</strong> in your mobile or desktop browser to upgrade your account.
+              </p>
+              <button className="btn btn-secondary btn-block" onClick={() => setPaymentMethod("")}>Back to Plans</button>
             </div>
+          ) : (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '30px' }}>
+                <div style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
+                  <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '12px' }}>Option 1: PayPal</h4>
+                  <p style={{ fontSize: '0.9rem', marginBottom: '10px' }}>Send £5.00 to:</p>
+                  <a href="https://paypal.me/DanielHineBerry" target="_blank" rel="noreferrer" style={{ display: 'block', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', color: 'white', textAlign: 'center', textDecoration: 'none', fontWeight: 700 }}>paypal.me/DanielHineBerry</a>
+                </div>
 
-            <div style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
-              <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '12px' }}>Option 2: Bank Transfer</h4>
-              <div style={{ fontSize: '0.85rem' }}>
-                <div><strong>Acc:</strong> Rhys Howe</div>
-                <div><strong>Sort:</strong> 60-09-09</div>
-                <div><strong>No:</strong> 80249442</div>
-                <div style={{ marginTop: '8px', color: 'var(--warning)' }}>Ref: {user.username}</div>
+                <div style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
+                  <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '12px' }}>Option 2: Bank Transfer</h4>
+                  <div style={{ fontSize: '0.85rem' }}>
+                    <div><strong>Acc:</strong> Rhys Howe</div>
+                    <div><strong>Sort:</strong> 60-09-09</div>
+                    <div><strong>No:</strong> 80249442</div>
+                    <div style={{ marginTop: '8px', color: 'var(--warning)' }}>Ref: {user.username}</div>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
 
-          <div className="form-group" style={{ maxWidth: '500px', margin: '0 auto 20px' }}>
-            <label>Upload Proof of Payment (Screenshot)</label>
-            <input type="file" accept="image/*" onChange={handleProofUpload} className="glass" style={{ padding: '12px' }} />
-            {uploading && <p style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>Processing receipt...</p>}
-            {proofImage && <p style={{ fontSize: '0.8rem', color: 'var(--success)' }}>✓ Receipt Attached</p>}
-          </div>
+              <div className="form-group" style={{ maxWidth: '500px', margin: '0 auto 20px' }}>
+                <label>Upload Proof of Payment (Screenshot)</label>
+                <input type="file" accept="image/*" onChange={handleProofUpload} className="glass" style={{ padding: '12px' }} />
+                {uploading && <p style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>Processing receipt...</p>}
+                {proofImage && <p style={{ fontSize: '0.8rem', color: 'var(--success)' }}>✓ Receipt Attached</p>}
+              </div>
 
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-            <button className="btn btn-secondary" onClick={() => setPaymentMethod("")}>Cancel</button>
-            <button className="btn btn-primary" onClick={handleSubmitPayment} disabled={submitting || !proofImage}>
-              {submitting ? 'Submitting...' : 'Confirm Payment Submission'}
-            </button>
-          </div>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                <button className="btn btn-secondary" onClick={() => setPaymentMethod("")}>Cancel</button>
+                <button className="btn btn-primary" onClick={handleSubmitPayment} disabled={submitting || !proofImage}>
+                  {submitting ? 'Submitting...' : 'Confirm Payment Submission'}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
       <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', padding: '20px' }}>
