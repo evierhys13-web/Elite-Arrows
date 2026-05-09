@@ -59,16 +59,16 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
 
     // Season filtering logic
     if (currentSeason) {
-      // 1. If the result matches the active season exactly, show it.
+      // 1. If the result has a season field and it matches the active season, show it.
       if (result.season === currentSeason) {
         // Continue
       }
-      // 2. If the result has NO season field, we treat it as legacy data.
-      // We show legacy data ONLY if the active season is the default 'Season 1'.
-      else if (!result.season && currentSeason === 'Season 1') {
+      // 2. If the result has NO season field, we treat it as part of the primary league.
+      // We'll allow all 'no-season' results into the active season to restore visibility.
+      else if (!result.season) {
         // Continue
       }
-      // 3. Otherwise, if it belongs to a different season, filter it out.
+      // 3. Otherwise, if it has a season field and it doesn't match the current one, filter it out.
       else {
         return false
       }
