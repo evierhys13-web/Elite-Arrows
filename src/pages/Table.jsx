@@ -33,7 +33,8 @@ export default function Table() {
     return derivePlayerStatsFromResults(allUsers, results, {
       fixtures,
       adminData,
-      leagueOnly: true
+      leagueOnly: true,
+      currentSeason: adminData?.currentSeason || 'Season 1'
     })
   }, [allUsers, results, fixtures, adminData, refreshKey])
 

@@ -46,7 +46,8 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
     superLeagueOnly = false,
     includeReset = true,
     timePeriod = 'all',
-    requireProof = false
+    requireProof = false,
+    currentSeason = null
   } = options
 
   const fixturesById = Object.fromEntries(fixtures.map(fixture => [String(fixture.id), fixture]))
@@ -55,6 +56,8 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
   return results.filter(result => {
     if (String(result.status || '').toLowerCase() !== 'approved') return false
     if (requireProof && !resultHasProof(result)) return false
+
+    if (currentSeason && result.season && result.season !== currentSeason) return false
 
     if (superLeagueOnly) {
       return isSuperLeagueResult(result, fixturesById)
@@ -140,7 +143,8 @@ export const derivePlayerStatsFromResults = (users = [], results = [], options =
     superLeagueOnly = false,
     includeReset = true,
     timePeriod = 'all',
-    requireProof = false
+    requireProof = false,
+    currentSeason = null
   } = options
 
   const statsByPlayerId = {}
@@ -156,7 +160,8 @@ export const derivePlayerStatsFromResults = (users = [], results = [], options =
     superLeagueOnly,
     includeReset,
     timePeriod,
-    requireProof
+    requireProof,
+    currentSeason
   })
 
   // Sort results by date ascending to get form in correct order
