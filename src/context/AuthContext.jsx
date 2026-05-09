@@ -596,7 +596,9 @@ export function AuthProvider({ children }) {
   }, [user?.id, triggerDataRefresh, publishResults])
   
   useEffect(() => {
+    console.log('Initializing Auth State...')
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log('Auth state changed:', firebaseUser ? firebaseUser.email : 'No user')
       if (firebaseUser) {
         try {
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
@@ -695,9 +697,9 @@ const cleanUserData = (users) => {
   }
 
   useEffect(() => {
-    runCleanup()
-    const timer = setTimeout(runCleanup, 2000)
-    return () => clearTimeout(timer)
+    // runCleanup()
+    // const timer = setTimeout(runCleanup, 2000)
+    // return () => clearTimeout(timer)
   }, [])
 
   const signUp = async (userData, rememberMe = false) => {

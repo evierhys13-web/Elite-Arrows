@@ -1,9 +1,0 @@
-com.elitearrows.app-pngs-0 C:\Developer\Elite-Arrows\elite-arrows-android\app\build\generated\res\pngs\release
-com.elitearrows.app-res-1 C:\Developer\Elite-Arrows\elite-arrows-android\app\build\generated\res\processReleaseGoogleServices
-com.elitearrows.app-updated_navigation_xml-2 C:\Developer\Elite-Arrows\elite-arrows-android\app\build\generated\updated_navigation_xml\release
-com.elitearrows.app-packageReleaseResources-3 C:\Developer\Elite-Arrows\elite-arrows-android\app\build\intermediates\incremental\release\packageReleaseResources\merged.dir
-com.elitearrows.app-packageReleaseResources-4 C:\Developer\Elite-Arrows\elite-arrows-android\app\build\intermediates\incremental\release\packageReleaseResources\stripped.dir
-com.elitearrows.app-release-5 C:\Developer\Elite-Arrows\elite-arrows-android\app\build\intermediates\merged_res\release\mergeReleaseResources
-com.elitearrows.app-main-6 C:\Developer\Elite-Arrows\elite-arrows-android\app\src\main\res
-com.elitearrows.app-release-7 C:\Developer\Elite-Arrows\elite-arrows-android\app\src\release\res
-gradleHome-0 C:\Users\XJ21c\.gradle

@@ -3,7 +3,7 @@
   "appName": "Elite Arrows",
   "webDir": "dist",
   "server": {
-    "url": "https://elitearrows.co.uk"
+    "url": "https://elite-arrows.co.uk"
   },
   "ios": {
     "cordovaCompat": false,
