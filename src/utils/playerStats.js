@@ -59,17 +59,16 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
 
     // Season filtering logic
     if (currentSeason) {
-      // 1. If the result has a season field and it matches the active season, show it.
-      if (result.season === currentSeason) {
-        // Continue
+      const resSeason = String(result.season || '').trim()
+      const actSeason = String(currentSeason).trim()
+
+      // If no season on result, treat it as "Season 1" / "2026" legacy data
+      if (!resSeason) {
+        const isLegacySeason = actSeason === 'Season 1' || actSeason === '2026'
+        if (!isLegacySeason) return false
       }
-      // 2. If the result has NO season field, we treat it as part of the primary league.
-      // We'll allow all 'no-season' results into the active season to restore visibility.
-      else if (!result.season) {
-        // Continue
-      }
-      // 3. Otherwise, if it has a season field and it doesn't match the current one, filter it out.
-      else {
+      // If season exists, it must match active season exactly
+      else if (resSeason !== actSeason) {
         return false
       }
     }
@@ -80,7 +79,10 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
 
     const leagueResult = isLeagueResult(result, fixturesById)
     if (leagueOnly && !leagueResult) return false
-    if (leagueResult && resetTime && getResultEffectiveTime(result) <= resetTime) return false
+
+    // Legacy Reset logic (Only apply if NOT using the new Season system)
+    if (!currentSeason && leagueResult && resetTime && getResultEffectiveTime(result) <= resetTime) return false
+
     return isWithinPeriod(result, timePeriod)
   })
 }
