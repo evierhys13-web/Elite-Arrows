@@ -88,16 +88,48 @@ const saveResultsCache = (results) => {
 }
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
+  // Initialize state from local cache to prevent data flickering on refresh
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem('eliteArrowsCurrentUser')
+    return saved ? JSON.parse(saved) : null
+  })
   const [loading, setLoading] = useState(true)
-  const [allUsers, setAllUsers] = useState([])
-  const [notifications, setNotifications] = useState([])
-  const [results, setResults] = useState([])
-  const [fixtures, setFixtures] = useState([])
-  const [cups, setCups] = useState([])
-  const [bets, setBets] = useState([])
+  const [allUsers, setAllUsers] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('eliteArrowsUsers') || '[]')
+    } catch (e) { return [] }
+  })
+  const [notifications, setNotifications] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('eliteArrowsNotifications') || '[]')
+    } catch (e) { return [] }
+  })
+  const [results, setResults] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(RESULT_CACHE_KEY) || '[]')
+    } catch (e) { return [] }
+  })
+  const [fixtures, setFixtures] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
+    } catch (e) { return [] }
+  })
+  const [cups, setCups] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
+    } catch (e) { return [] }
+  })
+  const [bets, setBets] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('eliteArrowsBets') || '[]')
+    } catch (e) { return [] }
+  })
   const [supportRequests, setSupportRequests] = useState([])
-  const [seasons, setSeasons] = useState([])
+  const [seasons, setSeasons] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
+    } catch (e) { return [] }
+  })
   const [dataRefreshTrigger, setDataRefreshTrigger] = useState(0)
   const [adminData, setAdminData] = useState({
     subscriptionPot: 0,
