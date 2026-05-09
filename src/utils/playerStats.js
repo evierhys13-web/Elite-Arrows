@@ -1,7 +1,7 @@
 import { getLeaguePoints } from './leagueScoring'
 import { getResultEffectiveTime, getResultPlayerId, isLeagueResult, isSuperLeagueResult } from './leagueResults'
 
-export const DEFAULT_LEAGUE_TABLE_RESET_AT = '2026-04-29T16:14:21.338+01:00'
+export const DEFAULT_LEAGUE_TABLE_RESET_AT = '2020-01-01T00:00:00.000Z'
 
 const toNumber = (value) => {
   const number = Number(value)
@@ -59,16 +59,17 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
 
     // Season filtering logic
     if (currentSeason) {
-      // Result matches active season exactly
+      // 1. If the result matches the active season exactly, show it.
       if (result.season === currentSeason) {
-         // Pass through
+        // Continue
       }
-      // Legacy results (no season field) are allowed in 'Season 1' or '2026'
-      else if (!result.season && (currentSeason === 'Season 1' || currentSeason === '2026')) {
-         // Pass through
+      // 2. If the result has NO season field, we treat it as legacy data.
+      // We show legacy data ONLY if the active season is the default 'Season 1'.
+      else if (!result.season && currentSeason === 'Season 1') {
+        // Continue
       }
-      // Otherwise, if it has a season and it doesn't match, block it
-      else if (result.season && result.season !== currentSeason) {
+      // 3. Otherwise, if it belongs to a different season, filter it out.
+      else {
         return false
       }
     }
