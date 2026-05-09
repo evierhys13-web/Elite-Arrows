@@ -107,7 +107,7 @@ export function AuthProvider({ children }) {
     isMaintenanceMode: false,
     maintenanceMessage: '',
     registrationsEnabled: true,
-    currentSeason: 'Season 1'
+    currentSeason: new Date().getFullYear().toString()
   })
   const [notificationPermission, setNotificationPermission] = useState('default')
   const [fcmToken, setFcmToken] = useState(null)

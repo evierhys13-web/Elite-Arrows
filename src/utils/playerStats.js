@@ -57,7 +57,13 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
     if (String(result.status || '').toLowerCase() !== 'approved') return false
     if (requireProof && !resultHasProof(result)) return false
 
-    if (currentSeason && result.season && result.season !== currentSeason) return false
+    // Season filtering logic
+    if (currentSeason) {
+      // If the result has a season field, it MUST match the active season
+      if (result.season && result.season !== currentSeason) return false
+      // Results with NO season field are treated as part of the initial/current season
+      // to prevent data loss for legacy records.
+    }
 
     if (superLeagueOnly) {
       return isSuperLeagueResult(result, fixturesById)

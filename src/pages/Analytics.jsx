@@ -41,7 +41,7 @@ export default function Analytics() {
   const approvedResults = useMemo(() =>
     results.filter(r =>
       String(r.status || '').toLowerCase() === 'approved' &&
-      r.season === currentSeason
+      (!r.season || r.season === currentSeason)
     ), [results, currentSeason])
 
   const filteredResults = useMemo(() => timeFilter(approvedResults, timePeriod), [approvedResults, timePeriod])
