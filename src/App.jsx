@@ -12,7 +12,6 @@ import NotificationPermissionPrompt from './components/NotificationPermissionPro
 import OnboardingTour, { useOnboarding } from './components/OnboardingTour'
 import WhatsNewPopup, { useWhatsNew } from './components/WhatsNewPopup'
 import { Skeleton } from './components/Skeleton'
-import { Purchases } from '@revenuecat/purchases-capacitor'
 import { Capacitor } from '@capacitor/core'
 
 const Auth = lazy(() => import('./pages/Auth'))
@@ -306,20 +305,7 @@ function AppShell() {
   }, [navMode])
 
   useEffect(() => {
-    const initPurchases = async () => {
-      if (Capacitor.isNativePlatform()) {
-        try {
-          // Note: Replace with your actual RevenueCat API Key
-          await Purchases.configure({ apiKey: 'goog_tAypXunpBvByWNoLpApsGUKoNNo' })
-          if (user?.id) {
-            await Purchases.logIn({ appUserID: user.id })
-          }
-        } catch (e) {
-          console.error('RevenueCat init failed:', e)
-        }
-      }
-    }
-    initPurchases()
+    // Subscription initialization is now handled in Subscription.jsx
   }, [user?.id])
 
   return (
