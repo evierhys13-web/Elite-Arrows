@@ -44,7 +44,7 @@ export default function Donations() {
         </p>
         <button
           className="btn btn-primary"
-          onClick={() => window.open('https://paypal.me/Rhyshowe834', '_blank')}
+          onClick={() => window.open('https://elite-arrows-merch.vercel.app', '_blank')}
           style={{ width: '100%' }}
         >
           View Merch Catalog
