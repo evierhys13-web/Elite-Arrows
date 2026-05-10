@@ -37,6 +37,20 @@ export default function Donations() {
         </div>
       </div>
 
+      <div className="card" style={{ marginBottom: '20px', border: '1px solid var(--accent-cyan)', background: 'rgba(56, 189, 248, 0.05)' }}>
+        <h3 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>👕 Official Merch</h3>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '15px' }}>
+          Represent Elite Arrows with our official jerseys, hoodies, and accessories. All proceeds go directly toward league running costs.
+        </p>
+        <button
+          className="btn btn-primary"
+          onClick={() => window.open('https://paypal.me/Rhyshowe834', '_blank')}
+          style={{ width: '100%' }}
+        >
+          View Merch Catalog
+        </button>
+      </div>
+
       <div className="card" style={{ marginBottom: '20px' }}>
         <h3 style={{ color: 'var(--accent-cyan)', marginBottom: '15px' }}>Bank Transfer</h3>
         
