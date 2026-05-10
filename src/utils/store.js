@@ -17,7 +17,7 @@ export const initStore = (onPurchaseSuccess) => {
 
   // Register products
   store.register([{
-    id: 'standard_pass',
+    id: 'standard_pass.',
     type: ProductType.PAID_SUBSCRIPTION,
     platform: Platform.GOOGLE_PLAY,
   }, {

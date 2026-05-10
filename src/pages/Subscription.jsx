@@ -4,10 +4,10 @@ import { initStore, requestPurchase } from "../utils/store";
 import { Capacitor } from "@capacitor/core";
 
 const SUBSCRIPTION_PRODUCT_IDS = {
-  standard: 'standard_pass',
+  standard: 'standard_pass.',
   elite: 'elite_pass'
 }
-const SUBSCRIPTION_ENTITLEMENTS = ['standard_pass', 'elite_pass']
+const SUBSCRIPTION_ENTITLEMENTS = ['standard_pass.', 'elite_pass']
 
 // Maximum size for the proof image
 const MAX_IMAGE_BYTES = 800 * 1024;
