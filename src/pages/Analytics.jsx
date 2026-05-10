@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import {
   PieChart, Pie, Cell, LineChart, Line, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area,
@@ -39,6 +40,7 @@ function calcStdDev(values) {
 
 export default function Analytics() {
   const { user, getAllUsers, getResults, adminData, triggerDataRefresh } = useAuth()
+  const { showToast } = useToast()
   const [activeSection, setActiveSection] = useState('personal')
   const [timePeriod, setTimePeriod] = useState('all')
   const [h2hOpponent, setH2hOpponent] = useState('')
@@ -202,7 +204,12 @@ export default function Analytics() {
         </div>
         <button
           className="btn btn-secondary glass"
-          onClick={() => { triggerDataRefresh('results'); alert('Syncing latest match data...'); }}
+          onClick={() => {
+            triggerDataRefresh('all');
+            showToast?.('Syncing latest match data...', 'info');
+            // Force a reload after a short delay to ensure clean state
+            setTimeout(() => window.location.reload(), 1500);
+          }}
           style={{ padding: '8px 16px', borderRadius: '99px', fontSize: '0.8rem' }}
         >
           🔄 Sync

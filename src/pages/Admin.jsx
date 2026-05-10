@@ -33,6 +33,9 @@ export default function Admin() {
   const [isApproving, setIsApproving] = useState(false)
   const [resultFilter, setResultFilter] = useState('pending')
   const [selectedResults, setSelectedResults] = useState([])
+  const [resultSearch, setResultSearch] = useState('')
+  const [resultTypeFilter, setResultTypeFilter] = useState('all')
+  const [editingResult, setEditingResult] = useState(null)
 
   // Form states
   const [showSubmitGame, setShowSubmitGame] = useState(false)
@@ -162,6 +165,19 @@ export default function Admin() {
       await logAudit('DELETE_RESULT', `Deleted result: ${res?.player1} vs ${res?.player2}`)
       triggerDataRefresh('results')
       showToast('Result Deleted', 'info')
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
+  const handleUpdateResult = async (e) => {
+    e.preventDefault()
+    if (!editingResult) return
+    try {
+      const { id, ...updates } = editingResult
+      await setDoc(doc(db, 'results', String(id)), updates, { merge: true })
+      await logAudit('EDIT_RESULT', `Edited match: ${updates.player1} vs ${updates.player2}`)
+      setEditingResult(null)
+      triggerDataRefresh('results')
+      showToast('Result updated!', 'success')
     } catch (e) { showToast(e.message, 'error') }
   }
 
@@ -396,7 +412,7 @@ export default function Admin() {
     const approvedMatches = allResults.filter(r => String(r.status).toLowerCase() === 'approved');
     if (approvedMatches.length === 0) return showToast('No approved matches to sync', 'info');
 
-    if (!window.confirm(`Sync ${approvedMatches.length} approved games to Analytics? This will also ensure they belong to the current season.`)) return;
+    if (!window.confirm(`Sync ${approvedMatches.length} approved games to Analytics? This will also ensure they belong to the current season and have correct division data.`)) return;
 
     setIsApproving(true);
     try {
@@ -408,24 +424,71 @@ export default function Admin() {
         // 1. Log to external Firebase Analytics
         logMatchApproved(match);
 
-        // 2. Ensure internal analytics page can see it (fix missing season)
+        // 2. Ensure internal analytics page can see it correctly
+        const updates = {};
+
+        // Fix missing or incorrect season
         if (!match.season || match.season !== currentSeason) {
-          batch.update(doc(db, 'results', String(match.id)), { season: currentSeason });
+          updates.season = currentSeason;
+        }
+
+        // Fix missing division data in the match record
+        if (!match.division) {
+          const p1 = allPlayers.find(u => u.id === match.player1Id);
+          if (p1?.division) {
+            updates.division = p1.division;
+          }
+        }
+
+        // Ensure approvedAt exists for time filtering
+        if (!match.approvedAt) {
+          updates.approvedAt = match.date ? new Date(match.date).toISOString() : new Date().toISOString();
+        }
+
+        if (Object.keys(updates).length > 0) {
+          batch.update(doc(db, 'results', String(match.id)), updates);
           updatedCount++;
         }
       }
 
       if (updatedCount > 0) {
         await batch.commit();
+        // Force a local state update immediately
         triggerDataRefresh('results');
+        // If results aren't updating locally, we might need to manually update the results state
+        // but since we have a listener in AuthContext, triggerDataRefresh + Firestore update should work.
       }
 
-      showToast(`Synced ${approvedMatches.length} games to Analytics Dashboard and updated ${updatedCount} games to ${currentSeason}!`, 'success');
+      showToast(`Synced ${approvedMatches.length} games. Updated ${updatedCount} records to ${currentSeason}.`, 'success');
+
+      // Additional nudge to refresh
+      setTimeout(() => {
+        setRefreshKey(prev => prev + 1);
+      }, 1000);
+
     } catch (e) {
       showToast('Sync failed: ' + e.message, 'error');
     }
     setIsApproving(false);
   };
+
+  const filteredResultsList = useMemo(() => {
+    let list = allResults.filter(r => String(r.status).toLowerCase() === resultFilter)
+
+    if (resultSearch) {
+      const s = resultSearch.toLowerCase()
+      list = list.filter(r =>
+        String(r.player1).toLowerCase().includes(s) ||
+        String(r.player2).toLowerCase().includes(s)
+      )
+    }
+
+    if (resultTypeFilter !== 'all') {
+      list = list.filter(r => String(r.gameType).toLowerCase() === resultTypeFilter.toLowerCase())
+    }
+
+    return list.sort((a, b) => new Date(b.date || b.submittedAt) - new Date(a.date || a.submittedAt))
+  }, [allResults, resultFilter, resultSearch, resultTypeFilter])
 
   const stats = useMemo(() => {
     const lastWeek = new Date()
@@ -563,6 +626,61 @@ export default function Admin() {
               </div>
             </div>
 
+            {/* Search and Filter Bar */}
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
+              <input
+                type="text"
+                className="glass"
+                placeholder="🔍 Search players..."
+                style={{ flex: 2, minWidth: '200px', padding: '10px' }}
+                value={resultSearch}
+                onChange={e => setResultSearch(e.target.value)}
+              />
+              <select
+                className="glass"
+                style={{ flex: 1, minWidth: '150px', padding: '10px' }}
+                value={resultTypeFilter}
+                onChange={e => setResultTypeFilter(e.target.value)}
+              >
+                <option value="all">All Types</option>
+                <option value="league">League</option>
+                <option value="cup">Cup</option>
+                <option value="friendly">Friendly</option>
+              </select>
+            </div>
+
+            {editingResult && (
+              <div className="card glass" style={{ marginBottom: '24px', padding: '24px', border: '1px solid var(--accent-cyan)' }}>
+                <h4 style={{ marginBottom: '16px', color: 'var(--accent-cyan)' }}>Edit Match Record</h4>
+                <form onSubmit={handleUpdateResult}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                    <div className="form-group">
+                      <label>Score 1 ({editingResult.player1})</label>
+                      <input type="number" value={editingResult.score1} onChange={e => setEditingResult({...editingResult, score1: parseInt(e.target.value)})} />
+                    </div>
+                    <div className="form-group">
+                      <label>Score 2 ({editingResult.player2})</label>
+                      <input type="number" value={editingResult.score2} onChange={e => setEditingResult({...editingResult, score2: parseInt(e.target.value)})} />
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                    <div className="form-group">
+                      <label>P1 180s</label>
+                      <input type="number" value={editingResult.player1Stats?.['180s'] || 0} onChange={e => setEditingResult({...editingResult, player1Stats: {...(editingResult.player1Stats||{}), '180s': parseInt(e.target.value)}})} />
+                    </div>
+                    <div className="form-group">
+                      <label>P2 180s</label>
+                      <input type="number" value={editingResult.player2Stats?.['180s'] || 0} onChange={e => setEditingResult({...editingResult, player2Stats: {...(editingResult.player2Stats||{}), '180s': parseInt(e.target.value)}})} />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Save Changes</button>
+                    <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setEditingResult(null)}>Cancel</button>
+                  </div>
+                </form>
+              </div>
+            )}
+
             {showSubmitGame && (
               <div className="card glass" style={{ marginBottom: '24px', padding: '24px', background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
                 <h4 style={{ marginBottom: '16px', color: 'var(--success)' }}>Submit Game (No Proof Required)</h4>
@@ -616,7 +734,7 @@ export default function Admin() {
             )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {(resultFilter === 'pending' ? pendingResults : resultFilter === 'approved' ? approvedResults : rejectedResults).map(r => (
+              {filteredResultsList.map(r => (
                 <div key={r.id} className="result-item glass" style={{ padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', display: 'flex', alignItems: 'center', gap: '16px' }}>
                   {resultFilter === 'pending' && (
                     <input type="checkbox" checked={selectedResults.includes(r.id)} onChange={() => toggleSelectResult(r.id)} style={{ width: '20px', height: '20px' }} />
@@ -632,13 +750,18 @@ export default function Admin() {
                     <div style={{ display: 'flex', gap: '8px' }}>
                       {resultFilter === 'pending' && <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => handleApproveResult(r.id)}>Approve</button>}
                       {resultFilter === 'pending' && <button className="btn btn-danger btn-sm" style={{ flex: 1 }} onClick={() => handleRejectResult(r.id)}>Reject</button>}
-                      {resultFilter !== 'pending' && <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => handleApproveResult(r.id)}>Restore/Reset</button>}
+                      {resultFilter !== 'pending' && (
+                        <>
+                          <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => setEditingResult({...r})}>✏️ Edit</button>
+                          <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => handleApproveResult(r.id)}>Restore/Reset</button>
+                        </>
+                      )}
                       <button className="btn btn-danger btn-sm" style={{ padding: '8px' }} onClick={() => handleDeleteResult(r.id)}>🗑️</button>
                     </div>
                   </div>
                 </div>
               ))}
-              {((resultFilter === 'pending' ? pendingResults : resultFilter === 'approved' ? approvedResults : rejectedResults).length === 0) && <p style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No results found in this category.</p>}
+              {(filteredResultsList.length === 0) && <p style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No results found matching your criteria.</p>}
             </div>
           </div>
         )}
