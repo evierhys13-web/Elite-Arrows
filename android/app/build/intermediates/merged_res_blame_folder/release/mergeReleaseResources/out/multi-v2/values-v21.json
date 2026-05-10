@@ -4,7 +4,24 @@
             "outputFile": "com.elitearrows.app-mergeReleaseResources-2:/values-v21/values-v21.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\XJ21c\\.gradle\\caches\\9.5.0\\transforms\\4e29b8ebc34e68fec3d4f5169e14fff3\\transformed\\core-1.15.0\\res\\values-v21\\values-v21.xml",
+                    "source": "C:\\Users\\XJ21c\\.gradle\\caches\\9.5.0\\transforms\\fbc69710d62bf9717d08abca0c7ea271\\transformed\\material-1.13.0\\res\\values-v21\\values-v21.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,153,248,344",
+                        "endColumns": "97,94,95,96",
+                        "endOffsets": "148,243,339,436"
+                    },
+                    "to": {
+                        "startLines": "3,4,5,6",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "173,271,366,462",
+                        "endColumns": "97,94,95,96",
+                        "endOffsets": "266,361,457,554"
+                    }
+                },
+                {
+                    "source": "C:\\Users\\XJ21c\\.gradle\\caches\\9.5.0\\transforms\\92224b730de2939fcb01b64dcd7d51e7\\transformed\\core-1.17.0\\res\\values-v21\\values-v21.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9,10,13",
                         "startColumns": "4,4,4,4,4,4,4,4,4,4",
@@ -20,23 +37,6 @@
                         "endLines": "2,7,8,9,268,269,270,271,274,279",
                         "endColumns": "117,63,66,63,115,125,125,127,12,12",
                         "endOffsets": "168,618,685,749,19152,19278,19404,19532,19704,20056"
-                    }
-                },
-                {
-                    "source": "C:\\Users\\XJ21c\\.gradle\\caches\\9.5.0\\transforms\\fbc69710d62bf9717d08abca0c7ea271\\transformed\\material-1.13.0\\res\\values-v21\\values-v21.xml",
-                    "from": {
-                        "startLines": "2,3,4,5",
-                        "startColumns": "4,4,4,4",
-                        "startOffsets": "55,153,248,344",
-                        "endColumns": "97,94,95,96",
-                        "endOffsets": "148,243,339,436"
-                    },
-                    "to": {
-                        "startLines": "3,4,5,6",
-                        "startColumns": "4,4,4,4",
-                        "startOffsets": "173,271,366,462",
-                        "endColumns": "97,94,95,96",
-                        "endOffsets": "266,361,457,554"
                     }
                 },
                 {

@@ -4,7 +4,7 @@
             "outputFile": "com.elitearrows.app-mergeReleaseResources-2:/values-en-rCA/values-en-rCA.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\XJ21c\\.gradle\\caches\\9.5.0\\transforms\\4e29b8ebc34e68fec3d4f5169e14fff3\\transformed\\core-1.15.0\\res\\values-en-rCA\\values-en-rCA.xml",
+                    "source": "C:\\Users\\XJ21c\\.gradle\\caches\\9.5.0\\transforms\\92224b730de2939fcb01b64dcd7d51e7\\transformed\\core-1.17.0\\res\\values-en-rCA\\values-en-rCA.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9",
                         "startColumns": "4,4,4,4,4,4,4,4",

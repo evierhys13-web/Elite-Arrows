@@ -1,7 +1,7 @@
 <variant
     name="release"
     package="com.elitearrows.app"
-    minSdkVersion="23"
+    minSdkVersion="24"
     targetSdkVersion="35"
     mergedManifest="build\intermediates\merged_manifest\release\processReleaseMainManifest\AndroidManifest.xml"
     manifestMergeReport="build\outputs\logs\manifest-merger-release-report.txt"
@@ -26,6 +26,6 @@
       applicationId="com.elitearrows.app"
       generatedSourceFolders="build\generated\ap_generated_sources\release\out"
       generatedResourceFolders="build\generated\res\processReleaseGoogleServices"
-      desugaredMethodsFiles="C:\Users\XJ21c\.gradle\caches\9.5.0\transforms\7e910c1baed22f3420c0a93d5d8310d8\transformed\D8BackportedDesugaredMethods.txt">
+      desugaredMethodsFiles="C:\Users\XJ21c\.gradle\caches\9.5.0\transforms\c8a80d42b5a26e90698d61bd3a82e11b\transformed\D8BackportedDesugaredMethods.txt">
   </artifact>
 </variant>

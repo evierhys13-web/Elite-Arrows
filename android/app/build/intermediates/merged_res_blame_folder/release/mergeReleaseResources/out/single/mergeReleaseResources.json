@@ -20,6 +20,10 @@
         "source": "com.elitearrows.app-main-5:/layout/activity_main.xml"
     },
     {
+        "merged": "com.elitearrows.app-release-4:/xml_config.xml.flat",
+        "source": "com.elitearrows.app-main-5:/xml/config.xml"
+    },
+    {
         "merged": "com.elitearrows.app-release-4:/mipmap-xxhdpi_ic_launcher.png.flat",
         "source": "com.elitearrows.app-main-5:/mipmap-xxhdpi/ic_launcher.png"
     },

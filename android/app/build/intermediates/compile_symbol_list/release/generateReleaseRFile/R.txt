@@ -18,5 +18,6 @@ int string google_crash_reporting_api_key 0x0
 int string google_storage_bucket 0x0
 int string project_id 0x0
 int style AppTheme 0x0
+int xml config 0x0
 int xml filepaths 0x0
 int xml network_security_config 0x0

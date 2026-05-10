@@ -1,0 +1,9 @@
+capacitor.cordova.android.plugins.capacitor-cordova-android-plugins-pngs-0 C:\Developer\Elite-Arrows\android\capacitor-cordova-android-plugins\build\generated\res\pngs\release
+capacitor.cordova.android.plugins.capacitor-cordova-android-plugins-updated_navigation_xml-1 C:\Developer\Elite-Arrows\android\capacitor-cordova-android-plugins\build\generated\updated_navigation_xml\release
+capacitor.cordova.android.plugins.capacitor-cordova-android-plugins-mergeReleaseResources-2 C:\Developer\Elite-Arrows\android\capacitor-cordova-android-plugins\build\intermediates\incremental\release\mergeReleaseResources\merged.dir
+capacitor.cordova.android.plugins.capacitor-cordova-android-plugins-mergeReleaseResources-3 C:\Developer\Elite-Arrows\android\capacitor-cordova-android-plugins\build\intermediates\incremental\release\mergeReleaseResources\stripped.dir
+capacitor.cordova.android.plugins.capacitor-cordova-android-plugins-release-4 C:\Developer\Elite-Arrows\android\capacitor-cordova-android-plugins\build\intermediates\merged_res\release\mergeReleaseResources
+capacitor.cordova.android.plugins.capacitor-cordova-android-plugins-release-5 C:\Developer\Elite-Arrows\android\capacitor-cordova-android-plugins\build\intermediates\packaged_res\release\packageReleaseResources
+capacitor.cordova.android.plugins.capacitor-cordova-android-plugins-main-6 C:\Developer\Elite-Arrows\android\capacitor-cordova-android-plugins\src\main\res
+capacitor.cordova.android.plugins.capacitor-cordova-android-plugins-release-7 C:\Developer\Elite-Arrows\android\capacitor-cordova-android-plugins\src\release\res
+gradleHome-0 C:\Users\XJ21c\.gradle

@@ -4,6 +4,23 @@
             "outputFile": "com.elitearrows.app-mergeReleaseResources-2:/values-or/values-or.xml",
             "map": [
                 {
+                    "source": "C:\\Users\\XJ21c\\.gradle\\caches\\9.5.0\\transforms\\92224b730de2939fcb01b64dcd7d51e7\\transformed\\core-1.17.0\\res\\values-or\\values-or.xml",
+                    "from": {
+                        "startLines": "2,3,4,5,6,7,8,9",
+                        "startColumns": "4,4,4,4,4,4,4,4",
+                        "startOffsets": "55,158,260,363,468,569,671,790",
+                        "endColumns": "102,101,102,104,100,101,118,100",
+                        "endOffsets": "153,255,358,463,564,666,785,886"
+                    },
+                    "to": {
+                        "startLines": "37,38,39,40,41,42,43,139",
+                        "startColumns": "4,4,4,4,4,4,4,4",
+                        "startOffsets": "3395,3498,3600,3703,3808,3909,4011,12364",
+                        "endColumns": "102,101,102,104,100,101,118,100",
+                        "endOffsets": "3493,3595,3698,3803,3904,4006,4125,12460"
+                    }
+                },
+                {
                     "source": "C:\\Users\\XJ21c\\.gradle\\caches\\9.5.0\\transforms\\2dcb1b6b3d535740ab66516688aee18a\\transformed\\play-services-base-18.5.0\\res\\values-or\\values.xml",
                     "from": {
                         "startLines": "4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20",
@@ -35,23 +52,6 @@
                         "startOffsets": "322,433,543,650,736,840,960,1039,1120,1211,1304,1405,1500,1600,1693,1788,1884,1975,2065,2154,2264,2368,2474,2585,2687,2805,2968,12043",
                         "endColumns": "110,109,106,85,103,119,78,80,90,92,100,94,99,92,94,95,90,89,88,109,103,105,110,101,117,162,105,89",
                         "endOffsets": "428,538,645,731,835,955,1034,1115,1206,1299,1400,1495,1595,1688,1783,1879,1970,2060,2149,2259,2363,2469,2580,2682,2800,2963,3069,12128"
-                    }
-                },
-                {
-                    "source": "C:\\Users\\XJ21c\\.gradle\\caches\\9.5.0\\transforms\\4e29b8ebc34e68fec3d4f5169e14fff3\\transformed\\core-1.15.0\\res\\values-or\\values-or.xml",
-                    "from": {
-                        "startLines": "2,3,4,5,6,7,8,9",
-                        "startColumns": "4,4,4,4,4,4,4,4",
-                        "startOffsets": "55,158,260,363,468,569,671,790",
-                        "endColumns": "102,101,102,104,100,101,118,100",
-                        "endOffsets": "153,255,358,463,564,666,785,886"
-                    },
-                    "to": {
-                        "startLines": "37,38,39,40,41,42,43,139",
-                        "startColumns": "4,4,4,4,4,4,4,4",
-                        "startOffsets": "3395,3498,3600,3703,3808,3909,4011,12364",
-                        "endColumns": "102,101,102,104,100,101,118,100",
-                        "endOffsets": "3493,3595,3698,3803,3904,4006,4125,12460"
                     }
                 },
                 {

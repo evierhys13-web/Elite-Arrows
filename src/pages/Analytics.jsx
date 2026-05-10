@@ -8,7 +8,16 @@ import {
 import { getLeaguePoints } from '../utils/leagueScoring'
 import Breadcrumbs from '../components/Breadcrumbs'
 
-const COLORS = ['#7C5CFC', '#ef4444', '#f59e0b', '#10b981']
+const DIVISION_COLORS = {
+  'Elite': '#fbbf24',
+  'Diamond': '#38bdf8',
+  'Platinum': '#818cf8',
+  'Gold': '#fcd34d',
+  'Silver': '#cbd5e1',
+  'Bronze': '#d97706',
+  'Development': '#4ade80',
+  'Unassigned': '#6B7280'
+}
 
 function timeFilter(results, period) {
   if (period === 'all') return results
@@ -171,11 +180,13 @@ export default function Analytics() {
       }
     })
 
-    const finalData = Object.values(divisionData).map(div => ({
-      ...div,
-      avgPoints: div.matchesPlayed > 0 ? (div.totalPoints / div.matchesPlayed).toFixed(2) : 0,
-      avg180s: div.matchesPlayed > 0 ? (div.total180s / div.matchesPlayed).toFixed(2) : 0
-    })).filter(d => d.playerCount > 0)
+    const finalData = Object.values(divisionData)
+      .filter(div => div.name !== 'Unassigned')
+      .map(div => ({
+        ...div,
+        avgPoints: div.matchesPlayed > 0 ? (div.totalPoints / div.matchesPlayed).toFixed(2) : 0,
+        avg180s: div.matchesPlayed > 0 ? (div.total180s / div.matchesPlayed).toFixed(2) : 0
+      })).filter(d => d.playerCount > 0)
 
     return finalData
   }, [allUsers, approvedResults])
@@ -338,7 +349,11 @@ export default function Analytics() {
                     <XAxis dataKey="name" stroke="var(--text-muted)" tick={{ fontSize: 10 }} />
                     <YAxis stroke="var(--text-muted)" tick={{ fontSize: 10 }} />
                     <Tooltip cursor={{ fill: 'var(--bg-hover)' }} contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '12px' }} />
-                    <Bar dataKey="avgPoints" fill="var(--accent-cyan)" radius={[4, 4, 0, 0]} name="Avg Points" />
+                    <Bar dataKey="avgPoints" radius={[4, 4, 0, 0]} name="Avg Points">
+                      {leagueStats.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={DIVISION_COLORS[entry.name] || 'var(--accent-cyan)'} />
+                      ))}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -359,7 +374,7 @@ export default function Analytics() {
                       label={({ name, percent }) => `${name.substring(0, 3)} ${(percent * 100).toFixed(0)}%`}
                     >
                       {leagueStats.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        <Cell key={`cell-${index}`} fill={DIVISION_COLORS[entry.name] || '#7C5CFC'} />
                       ))}
                     </Pie>
                     <Tooltip />

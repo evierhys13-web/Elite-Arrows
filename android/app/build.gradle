@@ -9,10 +9,10 @@ android {
 
     defaultConfig {
         applicationId "com.elitearrows.app"
-        minSdk 23
+        minSdk 24
         targetSdk 35
-        versionCode 2205
-        versionName "22.0.5"
+        versionCode 2209
+        versionName "22.0.9"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -48,6 +48,8 @@ android {
 }
 
 dependencies {
+    implementation project(':capacitor-android')
+    implementation project(':capacitor-cordova-android-plugins')
     implementation 'androidx.appcompat:appcompat:1.7.1'
     implementation 'com.google.android.material:material:1.13.0'
     implementation 'androidx.core:core:1.15.0'
@@ -57,3 +59,5 @@ dependencies {
     implementation 'com.google.firebase:firebase-analytics'
     implementation 'com.google.firebase:firebase-messaging'
 }
+
+apply from: 'capacitor.build.gradle'

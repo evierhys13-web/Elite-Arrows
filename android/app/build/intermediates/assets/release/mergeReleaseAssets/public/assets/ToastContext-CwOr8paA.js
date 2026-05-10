@@ -1,0 +1,6 @@
+import{i as e,t}from"./jsx-runtime-D-oznMWL.js";import{t as n}from"./react-BeFwIp5l.js";var r=e(n(),1),i=t(),a=(0,r.createContext)(null);function o({children:e}){let[t,n]=(0,r.useState)([]),o=(0,r.useCallback)((e,t=`info`)=>{let r=Date.now();n(n=>[...n,{id:r,message:e,type:t}]),setTimeout(()=>{n(e=>e.filter(e=>e.id!==r))},4e3)},[]);return(0,i.jsxs)(a.Provider,{value:{showToast:o},children:[e,(0,i.jsx)(`div`,{style:{position:`fixed`,bottom:`80px`,right:`20px`,zIndex:11e3,display:`flex`,flexDirection:`column`,gap:`10px`,pointerEvents:`none`},children:t.map(e=>(0,i.jsx)(`div`,{style:{padding:`12px 24px`,borderRadius:`12px`,color:`white`,background:e.type===`success`?`var(--success)`:e.type===`error`?`var(--error)`:`var(--accent-primary)`,boxShadow:`0 8px 32px rgba(0,0,0,0.4)`,backdropFilter:`blur(8px)`,animation:`toast-in 0.3s ease-out forwards`,fontWeight:600,fontSize:`0.9rem`,pointerEvents:`auto`,border:`1px solid rgba(255,255,255,0.1)`},children:e.message},e.id))}),(0,i.jsx)(`style`,{children:`
+        @keyframes toast-in {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+      `})]})}function s(){let e=(0,r.useContext)(a);if(!e)throw Error(`useToast must be used within ToastProvider`);return e}export{s as n,o as t};
