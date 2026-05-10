@@ -1,7 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import { Purchases } from "@revenuecat/purchases-capacitor";
+import { initStore, requestPurchase } from "../utils/store";
 import { Capacitor } from "@capacitor/core";
+
+const SUBSCRIPTION_PRODUCT_IDS = {
+  standard: 'standard_pass',
+  elite: 'elite_pass'
+}
+const SUBSCRIPTION_ENTITLEMENTS = ['standard_pass', 'elite_pass']
 
 // Maximum size for the proof image
 const MAX_IMAGE_BYTES = 800 * 1024;
@@ -54,40 +60,25 @@ export default function Subscription() {
 
   const isNativeApp = Capacitor.isNativePlatform();
 
-  const handleNativePurchase = async (planId) => {
-    try {
-      setSubmitting(true);
-      // Maps your plan IDs to RevenueCat product/package IDs
-      const productID = planId === 'elite' ? 'elite_pass' : 'standard_pass';
-
-      const offerings = await Purchases.getOfferings();
-      if (offerings.current !== null && offerings.current.availablePackages.length > 0) {
-        const pkg = offerings.current.availablePackages.find(p => p.product.identifier === productID);
-        if (pkg) {
-          const { customerInfo } = await Purchases.purchasePackage({ aPackage: pkg });
-          if (typeof customerInfo.entitlements.active['elite_pass'] !== "undefined" ||
-              typeof customerInfo.entitlements.active['standard_pass'] !== "undefined") {
-
-            await updateUser({
-              isSubscribed: true,
-              subscriptionDate: new Date().toISOString(),
-              subscriptionTier: planId === 'elite' ? 'premium' : 'standard',
-              paymentMethod: 'google_play'
-            }, false);
-
-            alert("Success! Your Elite Pass is now active.");
-          }
-        } else {
-          alert("Selected plan is not available for purchase right now.");
-        }
-      }
-    } catch (e) {
-      if (!e.userCancelled) {
-        alert("Purchase error: " + e.message);
-      }
-    } finally {
-      setSubmitting(false);
+  useEffect(() => {
+    if (isNativeApp) {
+      initStore((productId) => {
+        const tier = productId === 'elite_pass' ? 'premium' : 'standard';
+        updateUser({
+          isSubscribed: true,
+          subscriptionDate: new Date().toISOString(),
+          subscriptionTier: tier,
+          paymentMethod: 'google_play'
+        }, false).then(() => {
+          alert(`Success! Your ${tier.charAt(0).toUpperCase() + tier.slice(1)} pass is now active.`);
+        });
+      });
     }
+  }, [isNativeApp]);
+
+  const handleNativePurchase = async (planId) => {
+    const productID = SUBSCRIPTION_PRODUCT_IDS[planId];
+    requestPurchase(productID);
   };
 
   const plans = [

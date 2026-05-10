@@ -5,6 +5,7 @@ import { db, doc, setDoc, getDoc, getDocs, collection, deleteDoc, updateDoc, wri
 import UserSearchSelect from '../components/UserSearchSelect'
 import CupManagement from './CupManagement'
 import { useToast } from '../context/ToastContext'
+import { logMatchApproved } from '../utils/analytics'
 
 const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
 
@@ -113,6 +114,7 @@ export default function Admin() {
       const res = allResults.find(r => String(r.id) === String(resultId))
       if (!res) throw new Error('Result not found')
       await setDoc(doc(db, 'results', String(resultId)), { ...res, status: 'approved', approvedAt: new Date().toISOString() }, { merge: true })
+      logMatchApproved(res)
       await logAudit('APPROVE_RESULT', `Approved match: ${res.player1} vs ${res.player2}`)
       triggerDataRefresh('results')
       showToast('Result Approved!', 'success')
@@ -129,6 +131,7 @@ export default function Admin() {
         const res = allResults.find(r => String(r.id) === String(id))
         if (res) {
           batch.update(doc(db, 'results', String(id)), { status: 'approved', approvedAt: new Date().toISOString() })
+          logMatchApproved(res)
         }
       })
       await batch.commit()
@@ -175,7 +178,7 @@ export default function Admin() {
 
     const resultId = `admin_${Date.now()}`
     try {
-      await setDoc(doc(db, 'results', resultId), {
+      const newMatch = {
         id: resultId,
         player1: p1.username,
         player1Id: p1.id,
@@ -189,7 +192,9 @@ export default function Admin() {
         submittedBy: 'admin',
         player1Stats: { '180s': parseInt(f.p1_180s) || 0, highestCheckout: parseInt(f.p1_checkout) || 0, doubleSuccess: parseFloat(f.p1_doubles) || 0 },
         player2Stats: { '180s': parseInt(f.p2_180s) || 0, highestCheckout: parseInt(f.p2_checkout) || 0, doubleSuccess: parseFloat(f.p2_doubles) || 0 }
-      })
+      }
+      await setDoc(doc(db, 'results', resultId), newMatch)
+      logMatchApproved(newMatch)
       await logAudit('ADMIN_SUBMIT_GAME', `Admin submitted game: ${p1.username} ${s1}-${s2} ${p2.username}`)
       setAdminGameForm({ player1: '', player2: '', score1: '', score2: '', gameType: 'Friendly', p1_180s: '', p2_180s: '', p1_checkout: '', p2_checkout: '', p1_doubles: '', p2_doubles: '' })
       triggerDataRefresh('results')
@@ -387,6 +392,25 @@ export default function Admin() {
     } catch (e) { showToast(e.message, 'error') }
   }
 
+  const handleBulkSyncAnalytics = async () => {
+    const approvedMatches = allResults.filter(r => String(r.status).toLowerCase() === 'approved');
+    if (approvedMatches.length === 0) return showToast('No approved matches to sync', 'info');
+
+    if (!window.confirm(`Sync ${approvedMatches.length} approved games to Analytics?`)) return;
+
+    setIsApproving(true);
+    try {
+      // Small delay between logs to avoid flooding if many
+      for (const match of approvedMatches) {
+        logMatchApproved(match);
+      }
+      showToast(`Synced ${approvedMatches.length} games to Analytics!`, 'success');
+    } catch (e) {
+      showToast('Sync failed: ' + e.message, 'error');
+    }
+    setIsApproving(false);
+  };
+
   const stats = useMemo(() => {
     const lastWeek = new Date()
     lastWeek.setDate(lastWeek.getDate() - 7)
@@ -461,6 +485,16 @@ export default function Admin() {
                 <div className="stat-value">£{stats.totalPot.toFixed(0)}</div>
                 <div className="stat-label">Total Sub Pot</div>
               </div>
+            </div>
+
+            <div className="card glass" style={{ marginBottom: '24px' }}>
+              <h3 className="card-title">📊 Analytics Sync</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '16px' }}>
+                Sync all approved match results and player data to Firebase Analytics for deeper insights.
+              </p>
+              <button className="btn btn-primary" onClick={handleBulkSyncAnalytics} disabled={isApproving}>
+                {isApproving ? 'Syncing...' : 'Bulk Sync All Approved Games'}
+              </button>
             </div>
 
             <div className="card glass">

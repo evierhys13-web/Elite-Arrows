@@ -29,7 +29,7 @@ function calcStdDev(values) {
 }
 
 export default function Analytics() {
-  const { user, getAllUsers, getResults, adminData } = useAuth()
+  const { user, getAllUsers, getResults, adminData, triggerDataRefresh } = useAuth()
   const [activeSection, setActiveSection] = useState('personal')
   const [timePeriod, setTimePeriod] = useState('all')
   const [h2hOpponent, setH2hOpponent] = useState('')
@@ -184,9 +184,18 @@ export default function Analytics() {
     <div className="page animate-fade-in">
       <Breadcrumbs items={[{ label: 'Home', path: '/home' }, { label: 'Analytics', path: '/analytics' }]} />
 
-      <div className="page-header" style={{ marginBottom: '32px' }}>
-        <h1 className="page-title text-gradient">Performance Insights</h1>
-        <p style={{ color: 'var(--text-secondary)' }}>Deep dive into your Season 1 statistics</p>
+      <div className="page-header" style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1 className="page-title text-gradient">Performance Insights</h1>
+          <p style={{ color: 'var(--text-secondary)' }}>Deep dive into your Season 1 statistics</p>
+        </div>
+        <button
+          className="btn btn-secondary glass"
+          onClick={() => { triggerDataRefresh('results'); alert('Syncing latest match data...'); }}
+          style={{ padding: '8px 16px', borderRadius: '99px', fontSize: '0.8rem' }}
+        >
+          🔄 Sync
+        </button>
       </div>
 
       <div className="division-tabs">

@@ -11,8 +11,8 @@ android {
         applicationId "com.elitearrows.app"
         minSdk 23
         targetSdk 35
-        versionCode 2208
-        versionName "22.0.8"
+        versionCode 2205
+        versionName "22.0.5"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -56,7 +56,4 @@ dependencies {
     implementation platform('com.google.firebase:firebase-bom:34.12.0')
     implementation 'com.google.firebase:firebase-analytics'
     implementation 'com.google.firebase:firebase-messaging'
-
-    // Google Play Billing
-    implementation 'com.android.billingclient:billing:7.1.1'
 }

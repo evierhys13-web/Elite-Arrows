@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app'
 import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, onSnapshot, deleteDoc, addDoc, updateDoc, writeBatch, deleteField as deleteFieldFirestore } from 'firebase/firestore'
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, sendPasswordResetEmail } from 'firebase/auth'
 import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging'
+import { getAnalytics, logEvent } from 'firebase/analytics'
 
 export const FieldValue = deleteFieldFirestore
 
@@ -17,6 +18,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig)
 export const db = getFirestore(app)
 export const auth = getAuth(app)
+export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null
 
 let messaging = null
 export const getMessagingInstance = async () => {
@@ -49,5 +51,6 @@ export {
   signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged,
   setPersistence, browserSessionPersistence, browserLocalPersistence,
   sendPasswordResetEmail,
-  getMessaging, getToken, onMessage, isSupported
+  getMessaging, getToken, onMessage, isSupported,
+  logEvent
 }

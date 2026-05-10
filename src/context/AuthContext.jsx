@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef } f
 import { db, auth, usersCollection, adminDataCollection, fcmTokensCollection, doc, setDoc, getDoc, getDocs, query, where, collection, orderBy, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, updateDoc, deleteDoc, FieldValue, getMessagingInstance, getToken, onMessage, isSupported } from '../firebase'
 import SeasonOneWelcomeModal from '../components/SeasonOneWelcomeModal'
 import { getResultIdentityKey, getResultOverrideKeys } from '../utils/resultIdentity'
+import { logSubscriptionActivated } from '../utils/analytics'
 
 const AuthContext = createContext(null)
 
@@ -808,7 +809,11 @@ const cleanUserData = (users) => {
         localStorage.setItem('eliteArrowsUsers', JSON.stringify(updated))
         return updated
       })
-      
+
+      if (cleanUpdates.isSubscribed) {
+        logSubscriptionActivated(user.id, cleanUpdates.subscriptionTier || 'standard')
+      }
+
       if (showAlert) alert('Profile updated!')
     } catch (error) {
       if (showAlert) alert('Error: ' + error.message)
