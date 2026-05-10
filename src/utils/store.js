@@ -7,10 +7,15 @@ export const initStore = (onPurchaseSuccess) => {
 
   if (typeof window.CdvPurchase === 'undefined') {
     console.log('Store not available on this platform.');
+    // Only alert if we are definitely on a native platform
+    if (Capacitor.isNativePlatform()) {
+      alert('Billing Plugin Error: window.CdvPurchase is undefined. The bridge might be broken.');
+    }
     return;
   }
 
   const { store, ProductType, Platform } = window.CdvPurchase;
+  alert('Store initialized! Plugin detected successfully.');
 
   // Handle debug logs
   store.verbosity = store.DEBUG;

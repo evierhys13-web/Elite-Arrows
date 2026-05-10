@@ -396,15 +396,31 @@ export default function Admin() {
     const approvedMatches = allResults.filter(r => String(r.status).toLowerCase() === 'approved');
     if (approvedMatches.length === 0) return showToast('No approved matches to sync', 'info');
 
-    if (!window.confirm(`Sync ${approvedMatches.length} approved games to Analytics?`)) return;
+    if (!window.confirm(`Sync ${approvedMatches.length} approved games to Analytics? This will also ensure they belong to the current season.`)) return;
 
     setIsApproving(true);
     try {
-      // Small delay between logs to avoid flooding if many
+      const currentSeason = adminData?.currentSeason || 'Season 1';
+      const batch = writeBatch(db);
+      let updatedCount = 0;
+
       for (const match of approvedMatches) {
+        // 1. Log to external Firebase Analytics
         logMatchApproved(match);
+
+        // 2. Ensure internal analytics page can see it (fix missing season)
+        if (!match.season || match.season !== currentSeason) {
+          batch.update(doc(db, 'results', String(match.id)), { season: currentSeason });
+          updatedCount++;
+        }
       }
-      showToast(`Synced ${approvedMatches.length} games to Analytics!`, 'success');
+
+      if (updatedCount > 0) {
+        await batch.commit();
+        triggerDataRefresh('results');
+      }
+
+      showToast(`Synced ${approvedMatches.length} games to Analytics Dashboard and updated ${updatedCount} games to ${currentSeason}!`, 'success');
     } catch (e) {
       showToast('Sync failed: ' + e.message, 'error');
     }
