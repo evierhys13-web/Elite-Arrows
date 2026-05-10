@@ -50,6 +50,7 @@ export default function Admin() {
   const [tokenForm, setTokenForm] = useState({ player: '', amount: 0, action: 'add' })
   const [seasonForm, setSeasonForm] = useState({ name: '', startDate: new Date().toISOString().split('T')[0], endDate: '' })
   const [grantSubForm, setGrantSubForm] = useState({ player: '', tier: 'standard' })
+  const [divisionForm, setDivisionForm] = useState({ player: '', division: '' })
   const [potAdjust, setPotAdjust] = useState({ standard: 0, premium: 0 })
   const [trophyForm, setTrophyForm] = useState({ player: '', name: '', icon: '🏆', season: '' })
 
@@ -252,6 +253,18 @@ export default function Admin() {
       await logAudit('GRANT_SUBSCRIPTION', `Manually granted ${grantSubForm.tier} sub to ${target.username}`)
       triggerDataRefresh('users')
       showToast(`Granted ${grantSubForm.tier} subscription to ${target.username}`, 'success')
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
+  const handleUpdateDivision = async () => {
+    if (!divisionForm.player || !divisionForm.division) return showToast('Select both player and division', 'error')
+    try {
+      const target = allPlayers.find(p => p.id === divisionForm.player)
+      await setDoc(doc(db, 'users', target.id), { division: divisionForm.division }, { merge: true })
+      await logAudit('MOVE_DIVISION', `Moved ${target.username} to ${divisionForm.division}`)
+      triggerDataRefresh('users')
+      showToast(`${target.username} moved to ${divisionForm.division}`, 'success')
+      setDivisionForm({ player: '', division: '' })
     } catch (e) { showToast(e.message, 'error') }
   }
 
@@ -887,16 +900,41 @@ export default function Admin() {
           <div className="card glass">
             <h3 style={{ marginBottom: '20px' }}>Global Membership List</h3>
 
-            <div style={{ marginBottom: '30px', padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '15px' }}>
-               <h4>Manually Grant Elite Pass</h4>
-               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginTop: '12px' }}>
-                  <UserSearchSelect users={allPlayers} selectedId={grantSubForm.player} onSelect={id => setGrantSubForm({...grantSubForm, player: id})} label="Target Player" />
-                  <select className="glass" style={{ padding: '10px' }} value={grantSubForm.tier} onChange={e => setGrantSubForm({...grantSubForm, tier: e.target.value})}>
-                     <option value="standard">Standard (£5)</option>
-                     <option value="premium">Premium (£10)</option>
-                  </select>
-                  <button className="btn btn-primary" onClick={handleGrantSubscription}>Activate Pass</button>
-               </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '30px' }}>
+              <div className="glass" style={{ padding: '20px', borderRadius: '15px' }}>
+                <h4>Manually Grant Elite Pass</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
+                    <UserSearchSelect users={allPlayers} selectedId={grantSubForm.player} onSelect={id => setGrantSubForm({...grantSubForm, player: id})} label="Target Player" />
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <select className="glass" style={{ flex: 1, padding: '10px' }} value={grantSubForm.tier} onChange={e => setGrantSubForm({...grantSubForm, tier: e.target.value})}>
+                        <option value="standard">Standard (£5)</option>
+                        <option value="premium">Premium (£10)</option>
+                      </select>
+                      <button className="btn btn-primary" onClick={handleGrantSubscription}>Activate</button>
+                    </div>
+                </div>
+              </div>
+
+              <div className="glass" style={{ padding: '20px', borderRadius: '15px' }}>
+                <h4>Move Player Division</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
+                    <UserSearchSelect users={allPlayers} selectedId={divisionForm.player} onSelect={id => setDivisionForm({...divisionForm, player: id})} label="Target Player" />
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <select className="glass" style={{ flex: 1, padding: '10px' }} value={divisionForm.division} onChange={e => setDivisionForm({...divisionForm, division: e.target.value})}>
+                        <option value="">Select Division...</option>
+                        <option value="Elite">Elite</option>
+                        <option value="Diamond">Diamond</option>
+                        <option value="Platinum">Platinum</option>
+                        <option value="Gold">Gold</option>
+                        <option value="Silver">Silver</option>
+                        <option value="Bronze">Bronze</option>
+                        <option value="Development">Development</option>
+                        <option value="Unassigned">Unassigned</option>
+                      </select>
+                      <button className="btn btn-primary" onClick={handleUpdateDivision}>Move</button>
+                    </div>
+                </div>
+              </div>
             </div>
 
             <div style={{ maxHeight: '500px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
