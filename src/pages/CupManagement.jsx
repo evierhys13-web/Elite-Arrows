@@ -24,6 +24,31 @@ function CupManagement() {
   })
   const allUsers = getAllUsers()
 
+  const handleSyncExistingWinners = async () => {
+    if (!window.confirm('This will scan all approved Cup results and ensure winners are advanced in their brackets and fixtures are created for ready matches. Continue?')) return
+
+    setIsSubmitting(true)
+    try {
+      const approvedCupResults = getResults().filter(r =>
+        String(r.gameType).toLowerCase() === 'cup' &&
+        String(r.status).toLowerCase() === 'approved'
+      )
+
+      console.log(`Syncing ${approvedCupResults.length} cup results...`)
+
+      for (const result of approvedCupResults) {
+        await advanceCupBracket(result)
+      }
+
+      alert('Sync complete! Brackets updated and fixtures created for all approved results.')
+      setRefreshKey(prev => prev + 1)
+    } catch (err) {
+      alert('Sync failed: ' + err.message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   useEffect(() => {
     try {
       const cupsData = getCups()
@@ -171,6 +196,16 @@ function CupManagement() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingBottom: '100px' }}>
+      <div className="card glass" style={{ padding: '20px', border: '1px solid var(--accent-cyan)' }}>
+        <h3 className="card-title">Cup Progression Tools</h3>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '15px' }}>
+          If a player has won but isn't advanced (like ConnorMurphy14), use this tool to sync all existing approved results with their brackets.
+        </p>
+        <button className="btn btn-primary" onClick={handleSyncExistingWinners} disabled={isSubmitting}>
+          {isSubmitting ? 'Syncing...' : 'Sync Brackets with Results'}
+        </button>
+      </div>
+
       {cups.map(cup => {
         const totalRounds = Math.max(...(cup.matches?.map(m => m.round) || [1]))
         // Sort matches by round then matchNum
