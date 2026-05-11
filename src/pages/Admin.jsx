@@ -16,6 +16,7 @@ export default function Admin() {
     getAllUsers,
     getResults,
     getCups,
+    advanceCupBracket,
     bets,
     getSeasons,
     adminData,
@@ -117,8 +118,14 @@ export default function Admin() {
     try {
       const res = allResults.find(r => String(r.id) === String(resultId))
       if (!res) throw new Error('Result not found')
-      await setDoc(doc(db, 'results', String(resultId)), { ...res, status: 'approved', approvedAt: new Date().toISOString() }, { merge: true })
+      const approvedResult = { ...res, status: 'approved', approvedAt: new Date().toISOString() }
+      await setDoc(doc(db, 'results', String(resultId)), approvedResult, { merge: true })
       logMatchApproved(res)
+
+      if (res.gameType === 'Cup') {
+        await advanceCupBracket(approvedResult)
+      }
+
       await logAudit('APPROVE_RESULT', `Approved match: ${res.player1} vs ${res.player2}`)
       triggerDataRefresh('results')
       showToast('Result Approved!', 'success')
@@ -131,14 +138,24 @@ export default function Admin() {
     setIsApproving(true)
     try {
       const batch = writeBatch(db)
+      const cupResults = []
       selectedResults.forEach(id => {
         const res = allResults.find(r => String(r.id) === String(id))
         if (res) {
-          batch.update(doc(db, 'results', String(id)), { status: 'approved', approvedAt: new Date().toISOString() })
+          const approvedResult = { ...res, status: 'approved', approvedAt: new Date().toISOString() }
+          batch.update(doc(db, 'results', String(id)), { status: 'approved', approvedAt: approvedResult.approvedAt })
           logMatchApproved(res)
+          if (res.gameType === 'Cup') {
+            cupResults.push(approvedResult)
+          }
         }
       })
       await batch.commit()
+
+      for (const res of cupResults) {
+        await advanceCupBracket(res)
+      }
+
       await logAudit('BULK_APPROVE', `Approved ${selectedResults.length} matches`)
       setSelectedResults([])
       triggerDataRefresh('results')

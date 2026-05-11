@@ -214,8 +214,9 @@ export default function CupBracket() {
                       const hasPlayers = match.player1 && match.player2
                       const p1Name = getPlayerName(match.player1)
                       const p2Name = getPlayerName(match.player2)
-                      const p1Won = String(match.winner) === String(match.player1)
-                      const p2Won = String(match.winner) === String(match.player2)
+
+                      const p1Won = String(match.winner) === String(match.player1) || (result && result.score1 > result.score2)
+                      const p2Won = String(match.winner) === String(match.player2) || (result && result.score2 > result.score1)
                       
                       const containerHeight = roundData.round === 1 ? 75 : Math.pow(2, roundData.round - 1) * 75
                       const halfHeight = containerHeight / 2

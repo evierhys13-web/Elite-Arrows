@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { db, doc, setDoc, deleteDoc, getDoc } from '../firebase'
 
 function CupManagement() {
-  const { getAllUsers, getCups, getFixtures, getResults, triggerDataRefresh, dataRefreshTrigger } = useAuth()
+  const { getAllUsers, getCups, getFixtures, getResults, advanceCupBracket, triggerDataRefresh, dataRefreshTrigger } = useAuth()
   const [refreshKey, setRefreshKey] = useState(0)
   const [cups, setCups] = useState([])
   const [allCupFixtures, setAllCupFixtures] = useState([])
@@ -132,7 +132,7 @@ function CupManagement() {
 
     try {
       // 1. Save Result Record
-      await setDoc(doc(db, 'results', resultId), {
+      const approvedResult = {
         id: resultId,
         player1: getPlayerName(match.player1),
         player1Id: match.player1,
@@ -150,62 +150,12 @@ function CupManagement() {
         submittedBy: 'admin',
         player1Stats: { '180s': parseInt(p1_180s) || 0, highestCheckout: parseInt(p1_checkout) || 0, doubleSuccess: parseFloat(p1_doubles) || 0 },
         player2Stats: { '180s': parseInt(p2_180s) || 0, highestCheckout: parseInt(p2_checkout) || 0, doubleSuccess: parseFloat(p2_doubles) || 0 }
-      })
-
-      // 2. Update Cup Data (Bracket Advancement) - read fresh from localStorage then Firestore
-      const localCups = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
-      const localCupIdx = localCups.findIndex(c => String(c.id) === String(cup.id))
-
-      const cupRef = doc(db, 'cups', String(cup.id))
-      const cupSnap = await getDoc(cupRef)
-      const cupData = cupSnap.exists() ? cupSnap.data() : (localCupIdx !== -1 ? { ...localCups[localCupIdx] } : null)
-      
-      if (cupData) {
-        let updatedMatches = cupData.matches.map(m =>
-          String(m.id) === String(match.id) ? { ...m, winner: winnerId, score1: s1, score2: s2, resultId } : { ...m }
-        )
-
-        // Propagation Logic - position-based with null check
-        if (match.nextMatchId) {
-          const nextMatchIdx = updatedMatches.findIndex(m => String(m.id) === String(match.nextMatchId))
-          if (nextMatchIdx !== -1) {
-            const currentRoundMatches = updatedMatches
-              .filter(m => Number(m.round) === Number(match.round))
-              .sort((a, b) => (Number(a.matchNum) || 0) - (Number(b.matchNum) || 0))
-
-            const matchPos = currentRoundMatches.findIndex(m => String(m.id) === String(match.id))
-            if (matchPos !== -1) {
-              const targetPlayer = matchPos % 2 === 0 ? 'player1' : 'player2'
-              if (!updatedMatches[nextMatchIdx][targetPlayer]) {
-                updatedMatches[nextMatchIdx][targetPlayer] = winnerId
-              }
-            }
-          }
-        }
-
-        const allComplete = updatedMatches.every(m => {
-          if (!m.player1 || !m.player2) return true
-          return m.winner !== null
-        })
-        const updatedCup = { ...cupData, matches: updatedMatches, status: allComplete ? 'completed' : 'active' }
-
-        // Save to Firestore
-        await setDoc(cupRef, updatedCup, { merge: true })
-
-        // Save to localStorage
-        if (localCupIdx !== -1) {
-          localCups[localCupIdx] = updatedCup
-          localStorage.setItem('eliteArrowsCups', JSON.stringify(localCups))
-        }
-
-        // Update local component state immediately
-        setCups(prev => {
-          const next = [...prev]
-          const idx = next.findIndex(c => String(c.id) === String(cup.id))
-          if (idx !== -1) next[idx] = updatedCup
-          return next
-        })
       }
+      
+      await setDoc(doc(db, 'results', resultId), approvedResult)
+
+      // 2. Use shared advancement logic
+      await advanceCupBracket(approvedResult)
 
       setShowResultModal(false)
       alert('Result saved and winner advanced!')
