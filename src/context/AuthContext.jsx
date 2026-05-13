@@ -1089,26 +1089,58 @@ const cleanUserData = (users) => {
   }
 
   const advanceCupBracket = async (result) => {
-    if (!result.cupId || !result.matchId || String(result.status).toLowerCase() !== 'approved') return
+    if (!result.cupId || !result.matchId) {
+      console.warn('advanceCupBracket: result missing cupId or matchId', result.id)
+      return
+    }
+    if (String(result.status).toLowerCase() !== 'approved') {
+      console.warn('advanceCupBracket: result not approved yet', result.id, result.status)
+      return
+    }
 
     try {
       const cupId = String(result.cupId)
       const matchId = String(result.matchId)
       const winnerId = result.score1 > result.score2 ? result.player1Id : result.player2Id
 
+      if (!winnerId) {
+        console.warn('advanceCupBracket: could not determine winner', result.id, result.score1, result.score2, result.player1Id, result.player2Id)
+        return
+      }
+
       const cupRef = doc(db, 'cups', cupId)
       const cupSnap = await getDoc(cupRef)
-      if (!cupSnap.exists()) return
+      if (!cupSnap.exists()) {
+        console.warn('advanceCupBracket: cup not found', cupId)
+        return
+      }
 
       const cupData = cupSnap.data()
-      let updatedMatches = cupData.matches.map(m => {
-        if (String(m.id) === matchId) {
+      if (!cupData.matches) {
+        console.warn('advanceCupBracket: cup has no matches', cupId)
+        return
+      }
+
+      const matchIdx = cupData.matches.findIndex(m => String(m.id) === matchId)
+      if (matchIdx === -1) {
+        console.warn('advanceCupBracket: match not found in cup', cupId, matchId)
+        return
+      }
+
+      // If this match already has this result recorded, skip
+      if (String(cupData.matches[matchIdx].resultId) === String(result.id)) {
+        console.log('advanceCupBracket: match already advanced with this result', matchId)
+        return
+      }
+
+      let updatedMatches = cupData.matches.map((m, i) => {
+        if (i === matchIdx) {
           return { ...m, winner: winnerId, score1: result.score1, score2: result.score2, resultId: result.id }
         }
         return m
       })
 
-      const match = updatedMatches.find(m => String(m.id) === matchId)
+      const match = updatedMatches[matchIdx]
       if (match && match.nextMatchId) {
         const nextMatchIdx = updatedMatches.findIndex(m => String(m.id) === String(match.nextMatchId))
         if (nextMatchIdx !== -1) {
@@ -1180,7 +1212,7 @@ const cleanUserData = (users) => {
       triggerDataRefresh('cups')
       triggerDataRefresh('fixtures')
     } catch (err) {
-      console.error('Error advancing cup bracket:', err)
+      console.error('Error advancing cup bracket for result', result?.id, err)
     }
   }
 

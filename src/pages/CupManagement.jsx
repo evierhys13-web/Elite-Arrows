@@ -10,6 +10,7 @@ function CupManagement() {
   const [allCupResults, setAllCupResults] = useState([])
   const [showResultModal, setShowResultModal] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [syncResult, setSyncResult] = useState(null)
   const [resultForm, setResultForm] = useState({
     cup: null,
     match: null,
@@ -24,26 +25,64 @@ function CupManagement() {
   })
   const allUsers = getAllUsers()
 
-  const handleSyncExistingWinners = async () => {
-    if (!window.confirm('This will scan all approved Cup results and ensure winners are advanced in their brackets and fixtures are created for ready matches. Continue?')) return
+  const handleSyncExistingWinners = async (silent = false) => {
+    if (!silent && !window.confirm('This will scan all approved Cup results and ensure winners are advanced in their brackets and fixtures are created for ready matches. Continue?')) return
 
     setIsSubmitting(true)
+    setSyncResult(null)
+    let advanced = 0
+    let skipped = 0
+    let errors = 0
     try {
       const approvedCupResults = getResults().filter(r =>
         String(r.gameType).toLowerCase() === 'cup' &&
         String(r.status).toLowerCase() === 'approved'
       )
 
-      console.log(`Syncing ${approvedCupResults.length} cup results...`)
+      // Group results by cup, then sort by round (ascending) for proper sequential processing
+      const resultsByCup = {}
+      approvedCupResults.forEach(r => {
+        const key = String(r.cupId || 'unknown')
+        if (!resultsByCup[key]) resultsByCup[key] = []
+        resultsByCup[key].push(r)
+      })
 
-      for (const result of approvedCupResults) {
-        await advanceCupBracket(result)
+      for (const cupId of Object.keys(resultsByCup)) {
+        const cupResults = resultsByCup[cupId]
+        // Try to sort by match round if we can get the cup data
+        try {
+          const cupSnap = await getDoc(doc(db, 'cups', cupId))
+          if (cupSnap.exists()) {
+            const cupData = cupSnap.data()
+            const roundByMatchId = {}
+            ;(cupData.matches || []).forEach(m => {
+              roundByMatchId[String(m.id)] = Number(m.round) || 99
+            })
+            cupResults.sort((a, b) => (roundByMatchId[String(a.matchId)] || 99) - (roundByMatchId[String(b.matchId)] || 99))
+          }
+        } catch (e) {
+          // If we can't sort, just process as-is
+        }
       }
 
-      alert('Sync complete! Brackets updated and fixtures created for all approved results.')
+      for (const result of approvedCupResults) {
+        if (!result.cupId || !result.matchId) { skipped++; continue }
+        try {
+          await advanceCupBracket(result)
+          advanced++
+        } catch (e) {
+          errors++
+        }
+      }
+
+      if (!silent) {
+        alert(`Sync complete!\nAdvanced: ${advanced}\nSkipped (missing cup/match): ${skipped}\nErrors: ${errors}`)
+      }
+      setSyncResult({ advanced, skipped, errors })
+      triggerDataRefresh('all')
       setRefreshKey(prev => prev + 1)
     } catch (err) {
-      alert('Sync failed: ' + err.message)
+      if (!silent) alert('Sync failed: ' + err.message)
     } finally {
       setIsSubmitting(false)
     }
@@ -59,6 +98,15 @@ function CupManagement() {
       console.error('Error loading data in CupManagement:', err)
     }
   }, [refreshKey, dataRefreshTrigger, getCups, getFixtures, getResults])
+
+  // Auto-sync once on mount (silently) to fix any un-advanced results
+  useEffect(() => {
+    const autoSynced = sessionStorage.getItem('cupManagementAutoSynced')
+    if (!autoSynced) {
+      sessionStorage.setItem('cupManagementAutoSynced', 'true')
+      handleSyncExistingWinners(true)
+    }
+  }, [])
 
   const getPlayerName = (id) => {
     if (!id) return 'TBD'
@@ -199,11 +247,16 @@ function CupManagement() {
       <div className="card glass" style={{ padding: '20px', border: '1px solid var(--accent-cyan)' }}>
         <h3 className="card-title">Cup Progression Tools</h3>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '15px' }}>
-          If a player has won but isn't advanced (like ConnorMurphy14), use this tool to sync all existing approved results with their brackets.
+          If a player has won but isn't advanced in the bracket, use this tool to sync all approved results.
         </p>
-        <button className="btn btn-primary" onClick={handleSyncExistingWinners} disabled={isSubmitting}>
+        <button className="btn btn-primary" onClick={() => handleSyncExistingWinners(false)} disabled={isSubmitting}>
           {isSubmitting ? 'Syncing...' : 'Sync Brackets with Results'}
         </button>
+        {syncResult && (
+          <div style={{ marginTop: '12px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            Last sync: {syncResult.advanced} advanced, {syncResult.skipped} skipped, {syncResult.errors} errors
+          </div>
+        )}
       </div>
 
       {cups.map(cup => {
