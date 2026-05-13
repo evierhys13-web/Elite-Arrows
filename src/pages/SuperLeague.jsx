@@ -104,14 +104,13 @@ export default function SuperLeague() {
                     <th style={{ width: '40px', padding: '15px 5px', textAlign: 'center' }}>D</th>
                     <th style={{ width: '40px', padding: '15px 5px', textAlign: 'center' }}>L</th>
                     <th style={{ width: '50px', padding: '15px 5px', textAlign: 'center' }}>+/-</th>
-                    <th style={{ width: '50px', padding: '15px 5px', textAlign: 'center', color: 'var(--accent-cyan)', fontWeight: '800' }}>Avg</th>
                     <th style={{ width: '60px', padding: '15px 5px', textAlign: 'center', color: 'var(--accent-cyan)' }}>Pts</th>
                   </tr>
                 </thead>
                 <tbody>
                   {playersInDivision.length === 0 ? (
                     <tr>
-                      <td colSpan={9} style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>No players assigned to {activeDivision} yet.</td>
+                      <td colSpan={8} style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>No players assigned to {activeDivision} yet.</td>
                     </tr>
                   ) : (
                     playersInDivision.map((player, index) => {
@@ -127,7 +126,14 @@ export default function SuperLeague() {
                             {index + 1}
                           </td>
                           <td style={{ padding: '15px 10px' }}>
-                            <span style={{ fontWeight: 700, color: 'white' }}>{player.username}</span>
+                            <span style={{ fontWeight: 700, color: 'white' }}>
+                              {player.username}
+                              {player.stats.average > 0 && (
+                                <span style={{ fontWeight: 400, color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', marginLeft: '6px' }}>
+                                  ({player.stats.average.toFixed(2)})
+                                </span>
+                              )}
+                            </span>
                           </td>
                           <td style={{ textAlign: 'center' }}>{player.stats.played}</td>
                           <td style={{ textAlign: 'center', color: 'var(--text-muted)' }}>{player.stats.wins}</td>
@@ -135,9 +141,6 @@ export default function SuperLeague() {
                           <td style={{ textAlign: 'center', color: 'var(--text-muted)' }}>{player.stats.losses}</td>
                           <td style={{ textAlign: 'center', fontWeight: '800', color: legDiff > 0 ? 'var(--success)' : legDiff < 0 ? 'var(--error)' : 'white' }}>
                             {legDiff > 0 ? `+${legDiff}` : legDiff}
-                          </td>
-                          <td style={{ textAlign: 'center', fontWeight: '600', color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem' }}>
-                            {player.stats.played > 0 ? player.stats.average?.toFixed(2) : '-'}
                           </td>
                           <td style={{ textAlign: 'center', fontWeight: '900', color: 'var(--accent-cyan)', fontSize: '1.1rem' }}>
                             {player.stats.points}

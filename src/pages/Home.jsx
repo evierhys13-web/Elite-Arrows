@@ -8,6 +8,7 @@ import Tooltip from '../components/Tooltip'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { getLeaguePoints } from '../utils/leagueScoring'
 import { getResultEffectiveTime, getResultPlayerId, isLeagueResult } from '../utils/leagueResults'
+import AverageUpdateModal from '../components/AverageUpdateModal'
 
 const DEFAULT_LEAGUE_TABLE_RESET_AT = '2026-04-29T16:14:21.338+01:00'
 const SEASON_START = new Date('2026-05-01T00:00:00+01:00')
@@ -16,7 +17,7 @@ const SEASON_START_LABEL = '01/05/2026 00:00'
 const SEASON_END_LABEL = '01/06/2026 00:00'
 
 export default function Home() {
-  const { user, getAllUsers, getFixtures, getResults, dataRefreshTrigger, loading, adminData } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, dataRefreshTrigger, loading, adminData, updateUser } = useAuth()
   
   const [refreshKey, setRefreshKey] = useState(0)
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
@@ -24,6 +25,7 @@ export default function Home() {
   const [visible, setVisible] = useState(false)
   const [surveyAnswers, setSurveyAnswers] = useState({})
   const [submittingSurvey, setSubmittingSurvey] = useState(null)
+  const [showAverageModal, setShowAverageModal] = useState(false)
 
   useEffect(() => {
     setRefreshKey(prev => prev + 1)
@@ -32,6 +34,12 @@ export default function Home() {
   useEffect(() => {
     setVisible(true)
   }, [])
+
+  useEffect(() => {
+    if (user && (!user.threeDartAverage || user.threeDartAverage === 0)) {
+      setShowAverageModal(true)
+    }
+  }, [user])
 
   useEffect(() => {
     const calculateTimeLeft = () => {
@@ -100,6 +108,7 @@ export default function Home() {
   }, { played: 0, wins: 0, losses: 0, draws: 0, points: 0 })
 
   return (
+    <>
     <div className="page">
       <Breadcrumbs items={[{ label: 'Home', path: '/home' }]} />
       
@@ -368,5 +377,8 @@ export default function Home() {
         </a>
       </div>
     </div>
+
+      <AverageUpdateModal isOpen={showAverageModal} onClose={() => setShowAverageModal(false)} />
+    </>
   )
 }

@@ -119,14 +119,13 @@ export default function Table() {
                 <th style={{ width: '22px', padding: '12px 2px', textAlign: 'center' }}>D</th>
                 <th style={{ width: '22px', padding: '12px 2px', textAlign: 'center' }}>L</th>
                 <th style={{ width: '30px', padding: '12px 2px', textAlign: 'center' }}>+/-</th>
-                <th style={{ width: '35px', padding: '12px 2px', textAlign: 'center', color: 'var(--accent-cyan)', fontWeight: '800' }}>Avg</th>
                 <th style={{ width: '35px', padding: '12px 2px', textAlign: 'center', color: 'var(--accent-cyan)' }}>Pts</th>
               </tr>
             </thead>
             <tbody>
               {playersInDivision.length === 0 ? (
                 <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No data</td>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No data</td>
                 </tr>
               ) : (
                 playersInDivision.map((player, index) => {
@@ -148,6 +147,11 @@ export default function Table() {
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                           <span style={{ fontWeight: isMe ? '800' : '600', color: isMe ? 'white' : 'rgba(255,255,255,0.9)' }}>
                             {player.username}
+                            {player.stats.average > 0 && (
+                              <span style={{ fontWeight: 400, color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', marginLeft: '6px' }}>
+                                ({player.stats.average.toFixed(2)})
+                              </span>
+                            )}
                           </span>
                           {(isPromotion || isRelegation) && (
                             <span style={{ fontSize: '0.5rem', fontWeight: '900', color: isPromotion ? '#10b981' : '#ef4444', letterSpacing: '0.05em' }}>
@@ -167,9 +171,6 @@ export default function Table() {
                         color: legDiff > 0 ? '#10b981' : legDiff < 0 ? '#ef4444' : 'rgba(255,255,255,0.4)'
                       }}>
                         {legDiff > 0 ? `+${legDiff}` : legDiff}
-                      </td>
-                      <td style={{ textAlign: 'center', padding: '10px 2px', fontWeight: '600', color: 'rgba(255,255,255,0.7)', fontSize: '0.78rem' }}>
-                        {player.stats.played > 0 ? player.stats.average?.toFixed(2) : '-'}
                       </td>
                       <td style={{ textAlign: 'center', padding: '10px 2px', fontWeight: '900', color: 'var(--accent-cyan)', fontSize: '0.9rem' }}>
                         {player.stats.points}
