@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { db, doc, setDoc, deleteDoc, getDoc } from '../firebase'
 
@@ -11,6 +11,7 @@ function CupManagement() {
   const [showResultModal, setShowResultModal] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [syncResult, setSyncResult] = useState(null)
+  const syncInProgressRef = useRef(false)
   const [resultForm, setResultForm] = useState({
     cup: null,
     match: null,
@@ -26,71 +27,98 @@ function CupManagement() {
   const allUsers = getAllUsers()
 
   const handleSyncExistingWinners = async (silent = false) => {
+    if (syncInProgressRef.current) return
     if (!silent && !window.confirm('This will scan all approved Cup results and ensure winners are advanced in their brackets and fixtures are created for ready matches. Continue?')) return
+    syncInProgressRef.current = true
 
     setIsSubmitting(true)
     setSyncResult(null)
     let advanced = 0
     let skipped = 0
     let errors = 0
+    let byesAdvanced = 0
+
     try {
-      const approvedCupResults = getResults().filter(r =>
-        String(r.gameType).toLowerCase() === 'cup' &&
-        String(r.status).toLowerCase() === 'approved'
-      )
+      const allCups = getCups()
+      const allResults = getResults()
 
-      // Group results by cup, then sort by round (ascending) for proper sequential processing
-      const resultsByCup = {}
-      approvedCupResults.forEach(r => {
-        const key = String(r.cupId || 'unknown')
-        if (!resultsByCup[key]) resultsByCup[key] = []
-        resultsByCup[key].push(r)
-      })
+      for (const cup of allCups) {
+        const approvedCupResults = allResults.filter(r =>
+          String(r.cupId) === String(cup.id) &&
+          String(r.status).toLowerCase() === 'approved'
+        )
 
-      for (const cupId of Object.keys(resultsByCup)) {
-        const cupResults = resultsByCup[cupId]
-        // Try to sort by match round if we can get the cup data
-        try {
-          const cupSnap = await getDoc(doc(db, 'cups', cupId))
-          if (cupSnap.exists()) {
-            const cupData = cupSnap.data()
-            const roundByMatchId = {}
-            ;(cupData.matches || []).forEach(m => {
-              roundByMatchId[String(m.id)] = Number(m.round) || 99
-            })
-            cupResults.sort((a, b) => (roundByMatchId[String(a.matchId)] || 99) - (roundByMatchId[String(b.matchId)] || 99))
-          }
-        } catch (e) {
-          // If we can't sort, just process as-is
+        // Sort by round to ensure sequential advancement
+        const sortedResults = approvedCupResults.sort((a, b) => {
+          const matchA = cup.matches?.find(m => String(m.id) === String(a.matchId))
+          const matchB = cup.matches?.find(m => String(m.id) === String(b.matchId))
+          return (matchA?.round || 99) - (matchB?.round || 99)
+        })
+
+        // 1. Advance winners from results
+        for (const result of sortedResults) {
+          try {
+            await advanceCupBracket(result)
+            advanced++
+          } catch (e) { errors++ }
         }
-      }
 
-      // Flatten sorted results back into a single array for sequential processing
-      const sortedResults = []
-      for (const cupId of Object.keys(resultsByCup)) {
-        sortedResults.push(...resultsByCup[cupId])
-      }
+        // 2. Scan for and advance Byes (matches with only one player and no winner)
+        // We do this after results to handle cascaded byes
+        const cupRef = doc(db, 'cups', String(cup.id))
+        const cupSnap = await getDoc(cupRef)
+        if (cupSnap.exists()) {
+          const cupData = cupSnap.data()
+          let matches = [...(cupData.matches || [])]
+          let matchesChanged = false
 
-      for (const result of sortedResults) {
-        if (!result.cupId || !result.matchId) { skipped++; continue }
-        try {
-          await advanceCupBracket(result)
-          advanced++
-        } catch (e) {
-          errors++
+          // Sort matches by round to process sequentially
+          const sortedMatches = [...matches].sort((a, b) => a.round - b.round)
+
+          for (const match of sortedMatches) {
+            // A bye is a match with one player and no winner yet
+            const isBye = (match.player1 && !match.player2) || (!match.player1 && match.player2)
+            if (isBye && !match.winner) {
+              const winnerId = match.player1 || match.player2
+              const matchIdx = matches.findIndex(m => m.id === match.id)
+              matches[matchIdx] = { ...matches[matchIdx], winner: winnerId, score1: 1, score2: 0 }
+
+              if (match.nextMatchId) {
+                const nextMatchIdx = matches.findIndex(m => String(m.id) === String(match.nextMatchId))
+                if (nextMatchIdx !== -1) {
+                  const siblings = matches
+                    .filter(m => Number(m.round) === Number(match.round) && String(m.nextMatchId) === String(match.nextMatchId))
+                    .sort((a, b) => (Number(a.matchNum) || 0) - (Number(b.matchNum) || 0))
+
+                  const siblingPos = siblings.findIndex(m => String(m.id) === String(match.id))
+                  if (siblingPos !== -1) {
+                    const targetPlayer = siblingPos === 0 ? 'player1' : 'player2'
+                    matches[nextMatchIdx] = { ...matches[nextMatchIdx], [targetPlayer]: winnerId }
+                  }
+                }
+              }
+              matchesChanged = true
+              byesAdvanced++
+            }
+          }
+
+          if (matchesChanged) {
+            await setDoc(cupRef, { matches }, { merge: true })
+          }
         }
       }
 
       if (!silent) {
-        alert(`Sync complete!\nAdvanced: ${advanced}\nSkipped (missing cup/match): ${skipped}\nErrors: ${errors}`)
+        alert(`Sync complete!\nAdvanced from results: ${advanced}\nByes advanced: ${byesAdvanced}\nErrors: ${errors}`)
       }
-      setSyncResult({ advanced, skipped, errors })
+      setSyncResult({ advanced: advanced + byesAdvanced, skipped, errors })
       triggerDataRefresh('all')
       setRefreshKey(prev => prev + 1)
     } catch (err) {
       if (!silent) alert('Sync failed: ' + err.message)
     } finally {
       setIsSubmitting(false)
+      syncInProgressRef.current = false
     }
   }
 
@@ -194,19 +222,24 @@ function CupManagement() {
     if (isSubmitting) return
     const { cup, match, score1, score2, p1_180s, p2_180s, p1_checkout, p2_checkout, p1_doubles, p2_doubles } = resultForm
 
-    if (!cup || !match || !match.player1 || !match.player2) {
+    if (!cup || !match || (!match.player1 && !match.player2)) {
       alert('Error: Bracket data is incomplete. Please refresh and try again.')
       return
     }
 
-    const s1 = parseInt(score1)
-    const s2 = parseInt(score2)
+    const s1 = parseInt(score1) || 0
+    const s2 = parseInt(score2) || 0
     
-    if (isNaN(s1) || isNaN(s2)) return alert('Please enter scores for both players.')
-    if (s1 === s2) return alert('Draws are not permitted in Cup matches.')
+    if (match.player1 && match.player2) {
+      if (isNaN(parseInt(score1)) || isNaN(parseInt(score2))) return alert('Please enter scores for both players.')
+      if (s1 === s2) return alert('Draws are not permitted in Cup matches.')
+    }
     
     setIsSubmitting(true)
-    const winnerId = s1 > s2 ? match.player1 : match.player2
+    const winnerId = (match.player1 && match.player2)
+      ? (s1 > s2 ? match.player1 : match.player2)
+      : (match.player1 || match.player2)
+
     const resultId = `admin_cup_${Date.now()}`
 
     try {
@@ -350,7 +383,7 @@ function CupManagement() {
                           <button
                             className="btn btn-primary btn-sm"
                             onClick={() => enterResult(cup, match)}
-                            disabled={!match.player1 || !match.player2}
+                            disabled={!match.player1 && !match.player2}
                             style={{ padding: '8px 12px', fontSize: '0.75rem' }}
                           >
                             Enter

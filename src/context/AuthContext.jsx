@@ -1129,9 +1129,14 @@ const cleanUserData = (users) => {
         }
 
         // Build updated matches
+        const currentMatchInCup = cupData.matches[matchIdx]
+        const isPlayer1Submitter = String(result.player1Id) === String(currentMatchInCup.player1)
+        const s1 = isPlayer1Submitter ? result.score1 : result.score2
+        const s2 = isPlayer1Submitter ? result.score2 : result.score1
+
         const updatedMatches = cupData.matches.map((m, i) => {
           if (i === matchIdx) {
-            return { ...m, winner: winnerId, score1: result.score1, score2: result.score2, resultId: result.id }
+            return { ...m, winner: winnerId, score1: s1, score2: s2, resultId: result.id }
           }
           return { ...m } // shallow clone to avoid mutating originals
         })
@@ -1140,13 +1145,14 @@ const cleanUserData = (users) => {
         if (match && match.nextMatchId) {
           const nextMatchIdx = updatedMatches.findIndex(m => String(m.id) === String(match.nextMatchId))
           if (nextMatchIdx !== -1) {
-            const currentRoundMatches = updatedMatches
-              .filter(m => Number(m.round) === Number(match.round))
+            // Group same-round matches by nextMatchId to determine player1/player2 slot
+            const siblingsWithSameNext = updatedMatches
+              .filter(m => Number(m.round) === Number(match.round) && String(m.nextMatchId) === String(match.nextMatchId))
               .sort((a, b) => (Number(a.matchNum) || 0) - (Number(b.matchNum) || 0))
 
-            const matchPos = currentRoundMatches.findIndex(m => String(m.id) === matchId)
-            if (matchPos !== -1) {
-              const targetPlayer = matchPos % 2 === 0 ? 'player1' : 'player2'
+            const siblingPos = siblingsWithSameNext.findIndex(m => String(m.id) === matchId)
+            if (siblingPos !== -1) {
+              const targetPlayer = siblingPos === 0 ? 'player1' : 'player2'
               updatedMatches[nextMatchIdx] = {
                 ...updatedMatches[nextMatchIdx],
                 [targetPlayer]: winnerId
@@ -1208,10 +1214,8 @@ const cleanUserData = (users) => {
       })
     } catch (err) {
       console.error('Error advancing cup bracket for result', result?.id, err)
+      throw err
     }
-
-    triggerDataRefresh('cups')
-    triggerDataRefresh('fixtures')
   }
 
   const getCups = () => {
