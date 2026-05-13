@@ -65,7 +65,13 @@ function CupManagement() {
         }
       }
 
-      for (const result of approvedCupResults) {
+      // Flatten sorted results back into a single array for sequential processing
+      const sortedResults = []
+      for (const cupId of Object.keys(resultsByCup)) {
+        sortedResults.push(...resultsByCup[cupId])
+      }
+
+      for (const result of sortedResults) {
         if (!result.cupId || !result.matchId) { skipped++; continue }
         try {
           await advanceCupBracket(result)
