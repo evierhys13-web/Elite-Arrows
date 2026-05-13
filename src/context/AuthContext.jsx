@@ -1111,51 +1111,69 @@ const cleanUserData = (users) => {
       await runTransaction(db, async (transaction) => {
         const cupRef = doc(db, 'cups', cupId)
         const cupSnap = await transaction.get(cupRef)
-        if (!cupSnap.exists()) {
-          console.warn('advanceCupBracket: cup not found', cupId)
-          return
-        }
+        if (!cupSnap.exists()) return
 
         const cupData = cupSnap.data()
-        if (!cupData.matches) {
-          console.warn('advanceCupBracket: cup has no matches', cupId)
-          return
-        }
+        if (!cupData.matches) return
 
-        const matchIdx = cupData.matches.findIndex(m => String(m.id) === matchId)
-        if (matchIdx === -1) {
-          console.warn('advanceCupBracket: match not found in cup', cupId, matchId)
-          return
-        }
+        const updatedMatches = [...cupData.matches]
+        const matchIdx = updatedMatches.findIndex(m => String(m.id) === matchId)
+        if (matchIdx === -1) return
 
-        // Build updated matches
-        const currentMatchInCup = cupData.matches[matchIdx]
-        const isPlayer1Submitter = String(result.player1Id) === String(currentMatchInCup.player1)
+        const match = updatedMatches[matchIdx]
+        const isPlayer1Submitter = String(result.player1Id) === String(match.player1)
         const s1 = isPlayer1Submitter ? result.score1 : result.score2
         const s2 = isPlayer1Submitter ? result.score2 : result.score1
 
-        const updatedMatches = cupData.matches.map((m, i) => {
-          if (i === matchIdx) {
-            return { ...m, winner: winnerId, score1: s1, score2: s2, resultId: result.id }
-          }
-          return { ...m } // shallow clone to avoid mutating originals
-        })
+        updatedMatches[matchIdx] = {
+          ...match,
+          winner: winnerId,
+          score1: s1,
+          score2: s2,
+          resultId: result.id
+        }
 
-        const match = updatedMatches[matchIdx]
-        if (match && match.nextMatchId) {
+        if (match.nextMatchId) {
           const nextMatchIdx = updatedMatches.findIndex(m => String(m.id) === String(match.nextMatchId))
           if (nextMatchIdx !== -1) {
-            // Group same-round matches by nextMatchId to determine player1/player2 slot
-            const siblingsWithSameNext = updatedMatches
+            const siblings = updatedMatches
               .filter(m => Number(m.round) === Number(match.round) && String(m.nextMatchId) === String(match.nextMatchId))
               .sort((a, b) => (Number(a.matchNum) || 0) - (Number(b.matchNum) || 0))
 
-            const siblingPos = siblingsWithSameNext.findIndex(m => String(m.id) === matchId)
+            const siblingPos = siblings.findIndex(m => String(m.id) === matchId)
             if (siblingPos !== -1) {
               const targetPlayer = siblingPos === 0 ? 'player1' : 'player2'
               updatedMatches[nextMatchIdx] = {
                 ...updatedMatches[nextMatchIdx],
                 [targetPlayer]: winnerId
+              }
+
+              // Create fixture if next match is now ready
+              const nextMatch = updatedMatches[nextMatchIdx]
+              if (nextMatch.player1 && nextMatch.player2) {
+                const fixtureId = `cup_${cupId}_match_${nextMatch.id}`
+                const fixtureRef = doc(db, 'fixtures', fixtureId)
+                const fixtureSnap = await transaction.get(fixtureRef)
+
+                if (!fixtureSnap.exists()) {
+                  const format = cupData.roundFormats?.[nextMatch.round] || { startScore: 501, bestOf: 3 }
+                  transaction.set(fixtureRef, {
+                    id: fixtureId,
+                    cupId: parseInt(cupId),
+                    cupName: cupData.name,
+                    startScore: format.startScore,
+                    bestOf: format.bestOf,
+                    firstTo: Math.ceil(format.bestOf / 2),
+                    player1: nextMatch.player1,
+                    player1Id: nextMatch.player1,
+                    player2: nextMatch.player2,
+                    player2Id: nextMatch.player2,
+                    matchId: nextMatch.id,
+                    round: nextMatch.round,
+                    status: 'pending',
+                    createdAt: new Date().toISOString()
+                  })
+                }
               }
             }
           }
@@ -1181,39 +1199,9 @@ const cleanUserData = (users) => {
           status: allComplete ? 'completed' : 'active',
           currentRound
         })
-
-        // After transaction succeeds, create fixture if next match has both players
-        if (match && match.nextMatchId) {
-          const nextMatch = updatedMatches.find(m => String(m.id) === String(match.nextMatchId))
-          if (nextMatch && nextMatch.player1 && nextMatch.player2) {
-            const allFixtures = getFixtures()
-            const exists = allFixtures.some(f => String(f.cupId) === cupId && String(f.matchId) === String(nextMatch.id))
-
-            if (!exists) {
-              const format = cupData.roundFormats?.[nextMatch.round] || { startScore: 501, bestOf: 3 }
-              const newFixture = {
-                id: Date.now() + nextMatch.id,
-                cupId: parseInt(cupId),
-                cupName: cupData.name,
-                startScore: format.startScore,
-                bestOf: format.bestOf,
-                firstTo: Math.ceil(format.bestOf / 2),
-                player1: nextMatch.player1,
-                player1Id: nextMatch.player1,
-                player2: nextMatch.player2,
-                player2Id: nextMatch.player2,
-                matchId: nextMatch.id,
-                round: nextMatch.round,
-                status: 'pending',
-                createdAt: new Date().toISOString()
-              }
-              await setDoc(doc(db, 'fixtures', newFixture.id.toString()), newFixture)
-            }
-          }
-        }
       })
     } catch (err) {
-      console.error('Error advancing cup bracket for result', result?.id, err)
+      console.error('Error advancing cup bracket', err)
       throw err
     }
   }
