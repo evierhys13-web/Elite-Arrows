@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app'
-import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, onSnapshot, deleteDoc, addDoc, updateDoc, writeBatch, deleteField as deleteFieldFirestore } from 'firebase/firestore'
+import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, onSnapshot, deleteDoc, addDoc, updateDoc, writeBatch, runTransaction, deleteField as deleteFieldFirestore } from 'firebase/firestore'
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, sendPasswordResetEmail } from 'firebase/auth'
 import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging'
 import { getAnalytics, logEvent } from 'firebase/analytics'
@@ -47,7 +47,7 @@ export const fcmTokensCollection = collection(db, 'fcmTokens')
 export const newsCollection = collection(db, 'news')
 
 export { 
-  doc, setDoc, getDoc, getDocs, query, where, orderBy, onSnapshot, deleteDoc, collection, addDoc, updateDoc, writeBatch,
+  doc, setDoc, getDoc, getDocs, query, where, orderBy, onSnapshot, deleteDoc, collection, addDoc, updateDoc, writeBatch, runTransaction,
   signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged,
   setPersistence, browserSessionPersistence, browserLocalPersistence,
   sendPasswordResetEmail,

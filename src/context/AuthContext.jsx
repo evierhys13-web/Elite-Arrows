@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
-import { db, auth, usersCollection, adminDataCollection, fcmTokensCollection, doc, setDoc, getDoc, getDocs, query, where, collection, orderBy, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, updateDoc, deleteDoc, FieldValue, getMessagingInstance, getToken, onMessage, isSupported } from '../firebase'
+import { db, auth, usersCollection, adminDataCollection, fcmTokensCollection, doc, setDoc, getDoc, getDocs, query, where, collection, orderBy, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, updateDoc, deleteDoc, runTransaction, FieldValue, getMessagingInstance, getToken, onMessage, isSupported } from '../firebase'
 import SeasonOneWelcomeModal from '../components/SeasonOneWelcomeModal'
 import { getResultIdentityKey, getResultOverrideKeys } from '../utils/resultIdentity'
 import { logSubscriptionActivated } from '../utils/analytics'
@@ -1098,122 +1098,120 @@ const cleanUserData = (users) => {
       return
     }
 
+    const cupId = String(result.cupId)
+    const matchId = String(result.matchId)
+    const winnerId = result.score1 > result.score2 ? result.player1Id : result.player2Id
+
+    if (!winnerId) {
+      console.warn('advanceCupBracket: could not determine winner', result.id, result.score1, result.score2, result.player1Id, result.player2Id)
+      return
+    }
+
     try {
-      const cupId = String(result.cupId)
-      const matchId = String(result.matchId)
-      const winnerId = result.score1 > result.score2 ? result.player1Id : result.player2Id
-
-      if (!winnerId) {
-        console.warn('advanceCupBracket: could not determine winner', result.id, result.score1, result.score2, result.player1Id, result.player2Id)
-        return
-      }
-
-      const cupRef = doc(db, 'cups', cupId)
-      const cupSnap = await getDoc(cupRef)
-      if (!cupSnap.exists()) {
-        console.warn('advanceCupBracket: cup not found', cupId)
-        return
-      }
-
-      const cupData = cupSnap.data()
-      if (!cupData.matches) {
-        console.warn('advanceCupBracket: cup has no matches', cupId)
-        return
-      }
-
-      const matchIdx = cupData.matches.findIndex(m => String(m.id) === matchId)
-      if (matchIdx === -1) {
-        console.warn('advanceCupBracket: match not found in cup', cupId, matchId)
-        return
-      }
-
-      // If this match already has this result recorded, skip
-      if (String(cupData.matches[matchIdx].resultId) === String(result.id)) {
-        console.log('advanceCupBracket: match already advanced with this result', matchId)
-        return
-      }
-
-      let updatedMatches = cupData.matches.map((m, i) => {
-        if (i === matchIdx) {
-          return { ...m, winner: winnerId, score1: result.score1, score2: result.score2, resultId: result.id }
+      await runTransaction(db, async (transaction) => {
+        const cupRef = doc(db, 'cups', cupId)
+        const cupSnap = await transaction.get(cupRef)
+        if (!cupSnap.exists()) {
+          console.warn('advanceCupBracket: cup not found', cupId)
+          return
         }
-        return m
-      })
 
-      const match = updatedMatches[matchIdx]
-      if (match && match.nextMatchId) {
-        const nextMatchIdx = updatedMatches.findIndex(m => String(m.id) === String(match.nextMatchId))
-        if (nextMatchIdx !== -1) {
-          const currentRoundMatches = updatedMatches
-            .filter(m => Number(m.round) === Number(match.round))
-            .sort((a, b) => (Number(a.matchNum) || 0) - (Number(b.matchNum) || 0))
+        const cupData = cupSnap.data()
+        if (!cupData.matches) {
+          console.warn('advanceCupBracket: cup has no matches', cupId)
+          return
+        }
 
-          const matchPos = currentRoundMatches.findIndex(m => String(m.id) === matchId)
-          if (matchPos !== -1) {
-            const targetPlayer = matchPos % 2 === 0 ? 'player1' : 'player2'
-            updatedMatches[nextMatchIdx][targetPlayer] = winnerId
+        const matchIdx = cupData.matches.findIndex(m => String(m.id) === matchId)
+        if (matchIdx === -1) {
+          console.warn('advanceCupBracket: match not found in cup', cupId, matchId)
+          return
+        }
+
+        // Build updated matches
+        const updatedMatches = cupData.matches.map((m, i) => {
+          if (i === matchIdx) {
+            return { ...m, winner: winnerId, score1: result.score1, score2: result.score2, resultId: result.id }
+          }
+          return { ...m } // shallow clone to avoid mutating originals
+        })
+
+        const match = updatedMatches[matchIdx]
+        if (match && match.nextMatchId) {
+          const nextMatchIdx = updatedMatches.findIndex(m => String(m.id) === String(match.nextMatchId))
+          if (nextMatchIdx !== -1) {
+            const currentRoundMatches = updatedMatches
+              .filter(m => Number(m.round) === Number(match.round))
+              .sort((a, b) => (Number(a.matchNum) || 0) - (Number(b.matchNum) || 0))
+
+            const matchPos = currentRoundMatches.findIndex(m => String(m.id) === matchId)
+            if (matchPos !== -1) {
+              const targetPlayer = matchPos % 2 === 0 ? 'player1' : 'player2'
+              updatedMatches[nextMatchIdx] = {
+                ...updatedMatches[nextMatchIdx],
+                [targetPlayer]: winnerId
+              }
+            }
           }
         }
-      }
 
-      const allComplete = updatedMatches.every(m => {
-        if (!m.player1 || !m.player2) return true
-        return m.winner !== null
-      })
+        const allComplete = updatedMatches.every(m => {
+          if (!m.player1 || !m.player2) return true
+          return m.winner !== null
+        })
 
-      let currentRound = cupData.currentRound || 1
-      const roundMatches = updatedMatches.filter(m => Number(m.round) === Number(currentRound))
-      const roundComplete = roundMatches.every(m => m.winner)
-      if (roundComplete) {
-        const maxRound = Math.max(...updatedMatches.map(m => m.round))
-        if (currentRound < maxRound) {
-          currentRound++
+        let currentRound = cupData.currentRound || 1
+        const roundMatches = updatedMatches.filter(m => Number(m.round) === Number(currentRound))
+        const roundComplete = roundMatches.every(m => m.winner)
+        if (roundComplete) {
+          const maxRound = Math.max(...updatedMatches.map(m => m.round))
+          if (currentRound < maxRound) {
+            currentRound++
+          }
         }
-      }
 
-      const updatedCup = {
-        ...cupData,
-        matches: updatedMatches,
-        status: allComplete ? 'completed' : 'active',
-        currentRound
-      }
+        transaction.update(cupRef, {
+          matches: updatedMatches,
+          status: allComplete ? 'completed' : 'active',
+          currentRound
+        })
 
-      await setDoc(cupRef, updatedCup, { merge: true })
-
-      if (match && match.nextMatchId) {
-         const nextMatch = updatedMatches.find(m => String(m.id) === String(match.nextMatchId))
-         if (nextMatch && nextMatch.player1 && nextMatch.player2) {
+        // After transaction succeeds, create fixture if next match has both players
+        if (match && match.nextMatchId) {
+          const nextMatch = updatedMatches.find(m => String(m.id) === String(match.nextMatchId))
+          if (nextMatch && nextMatch.player1 && nextMatch.player2) {
             const allFixtures = getFixtures()
             const exists = allFixtures.some(f => String(f.cupId) === cupId && String(f.matchId) === String(nextMatch.id))
 
             if (!exists) {
-               const format = cupData.roundFormats?.[nextMatch.round] || { startScore: 501, bestOf: 3 }
-               const newFixture = {
-                  id: Date.now() + nextMatch.id,
-                  cupId: parseInt(cupId),
-                  cupName: cupData.name,
-                  startScore: format.startScore,
-                  bestOf: format.bestOf,
-                  firstTo: Math.ceil(format.bestOf / 2),
-                  player1: nextMatch.player1,
-                  player1Id: nextMatch.player1,
-                  player2: nextMatch.player2,
-                  player2Id: nextMatch.player2,
-                  matchId: nextMatch.id,
-                  round: nextMatch.round,
-                  status: 'pending',
-                  createdAt: new Date().toISOString()
-               }
-               await setDoc(doc(db, 'fixtures', newFixture.id.toString()), newFixture)
+              const format = cupData.roundFormats?.[nextMatch.round] || { startScore: 501, bestOf: 3 }
+              const newFixture = {
+                id: Date.now() + nextMatch.id,
+                cupId: parseInt(cupId),
+                cupName: cupData.name,
+                startScore: format.startScore,
+                bestOf: format.bestOf,
+                firstTo: Math.ceil(format.bestOf / 2),
+                player1: nextMatch.player1,
+                player1Id: nextMatch.player1,
+                player2: nextMatch.player2,
+                player2Id: nextMatch.player2,
+                matchId: nextMatch.id,
+                round: nextMatch.round,
+                status: 'pending',
+                createdAt: new Date().toISOString()
+              }
+              await setDoc(doc(db, 'fixtures', newFixture.id.toString()), newFixture)
             }
-         }
-      }
-
-      triggerDataRefresh('cups')
-      triggerDataRefresh('fixtures')
+          }
+        }
+      })
     } catch (err) {
       console.error('Error advancing cup bracket for result', result?.id, err)
     }
+
+    triggerDataRefresh('cups')
+    triggerDataRefresh('fixtures')
   }
 
   const getCups = () => {
