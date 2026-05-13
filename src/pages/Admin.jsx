@@ -54,6 +54,9 @@ export default function Admin() {
   const [divisionForm, setDivisionForm] = useState({ player: '', division: '' })
   const [potAdjust, setPotAdjust] = useState({ standard: 0, premium: 0 })
   const [trophyForm, setTrophyForm] = useState({ player: '', name: '', icon: '🏆', season: '' })
+  const [surveyForm, setSurveyForm] = useState({ title: '', description: '', targetType: 'all', targetUserIds: [] })
+  const [surveyQuestions, setSurveyQuestions] = useState([{ id: 'q1', text: '', type: 'text', options: '' }])
+  const [viewSurveyResponses, setViewSurveyResponses] = useState(null)
 
   // Guard: wait for auth
   if (authLoading) return <div className="page glass"><div style={{ padding: '60px', textAlign: 'center', color: 'var(--accent-cyan)', fontWeight: 800 }}>Validating Admin Access...</div></div>
@@ -90,7 +93,7 @@ export default function Admin() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    const allowed = ['dashboard', 'results', 'payments', 'moneypot', 'cups', 'players', 'admins', 'seasons', 'trophies', 'tokens', 'maintenance']
+    const allowed = ['dashboard', 'results', 'payments', 'moneypot', 'cups', 'players', 'admins', 'seasons', 'trophies', 'tokens', 'surveys', 'maintenance']
     if (tab && allowed.includes(tab)) setActiveTab(tab)
   }, [searchParams])
 
@@ -355,6 +358,44 @@ export default function Admin() {
     } catch (e) { showToast(e.message, 'error') }
   }
 
+  const handleCreateSurvey = async () => {
+    if (!surveyForm.title) return showToast('Survey title required', 'error')
+    if (!surveyQuestions[0]?.text) return showToast('At least one question required', 'error')
+
+    const surveys = adminData?.surveys || []
+    const newSurvey = {
+      id: Date.now().toString(),
+      title: surveyForm.title,
+      description: surveyForm.description,
+      questions: surveyQuestions.map(q => ({
+        ...q,
+        options: q.options ? q.options.split(',').map(s => s.trim()).filter(Boolean) : []
+      })),
+      targetType: surveyForm.targetType,
+      targetUserIds: surveyForm.targetUserIds,
+      createdAt: new Date().toISOString(),
+      active: true,
+      responses: []
+    }
+
+    try {
+      await updateAdminData({ surveys: [...surveys, newSurvey] })
+      await logAudit('CREATE_SURVEY', `Created survey: ${surveyForm.title}`)
+      setSurveyForm({ title: '', description: '', targetType: 'all', targetUserIds: [] })
+      setSurveyQuestions([{ id: 'q1', text: '', type: 'text', options: '' }])
+      showToast('Survey created!', 'success')
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
+  const handleDeleteSurvey = async (surveyId) => {
+    if (!window.confirm('Delete this survey? All responses will be lost.')) return
+    const surveys = (adminData?.surveys || []).filter(s => s.id !== surveyId)
+    try {
+      await updateAdminData({ surveys })
+      showToast('Survey deleted', 'success')
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
   const handleDeleteUser = async (targetId) => {
     const target = allPlayers.find(p => p.id === targetId)
     if (!target) return
@@ -542,6 +583,7 @@ export default function Admin() {
     { id: 'players', label: 'Members' },
     { id: 'seasons', label: 'Seasons' },
     { id: 'trophies', label: 'Trophies' },
+    { id: 'surveys', label: 'Surveys' },
     { id: 'bets', label: 'Bets' },
     { id: 'tokens', label: 'Tokens' },
     { id: 'maintenance', label: 'System' }
@@ -1101,6 +1143,143 @@ export default function Admin() {
               </div>
 
               <button className="btn btn-primary btn-block" onClick={handleAwardTrophy}>Award Trophy to Player</button>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: SURVEYS */}
+        {activeTab === 'surveys' && (
+          <div className="card glass">
+            <h3 style={{ marginBottom: '24px' }}>Survey Management</h3>
+
+            <div className="card glass" style={{ padding: '24px', marginBottom: '24px', border: '1px solid var(--accent-cyan)' }}>
+              <h4 style={{ marginBottom: '16px', color: 'var(--accent-cyan)' }}>Create New Survey</h4>
+
+              <div className="form-group">
+                <label>Survey Title</label>
+                <input value={surveyForm.title} onChange={e => setSurveyForm({...surveyForm, title: e.target.value})} placeholder="e.g. Season 2 Feedback" />
+              </div>
+              <div className="form-group">
+                <label>Description (optional)</label>
+                <textarea value={surveyForm.description} onChange={e => setSurveyForm({...surveyForm, description: e.target.value})} rows={2} placeholder="Brief explanation..." />
+              </div>
+              <div className="form-group">
+                <label>Target Audience</label>
+                <select value={surveyForm.targetType} onChange={e => setSurveyForm({...surveyForm, targetType: e.target.value})}>
+                  <option value="all">All Users</option>
+                  <option value="specific">Specific Users</option>
+                </select>
+              </div>
+
+              {surveyForm.targetType === 'specific' && (
+                <div className="form-group">
+                  <label>Select Target Users</label>
+                  <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
+                    {allPlayers.map(p => (
+                      <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={surveyForm.targetUserIds.includes(p.id)}
+                          onChange={e => {
+                            if (e.target.checked) setSurveyForm({...surveyForm, targetUserIds: [...surveyForm.targetUserIds, p.id]})
+                            else setSurveyForm({...surveyForm, targetUserIds: surveyForm.targetUserIds.filter(id => id !== p.id)})
+                          }}
+                        />
+                        {p.username} <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>({p.division || 'Unassigned'})</span>
+                      </label>
+                    ))}
+                  </div>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '6px' }}>{surveyForm.targetUserIds.length} selected</p>
+                </div>
+              )}
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '8px' }}>Questions</label>
+                {surveyQuestions.map((q, i) => (
+                  <div key={q.id} className="glass" style={{ padding: '16px', borderRadius: '8px', marginBottom: '10px', background: 'rgba(255,255,255,0.03)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Question {i + 1}</span>
+                      {surveyQuestions.length > 1 && (
+                        <button className="btn btn-danger btn-sm" style={{ padding: '4px 8px', fontSize: '0.7rem' }} onClick={() => setSurveyQuestions(surveyQuestions.filter((_, idx) => idx !== i))}>Remove</button>
+                      )}
+                    </div>
+                    <input value={q.text} onChange={e => {
+                      const next = [...surveyQuestions]
+                      next[i] = { ...next[i], text: e.target.value }
+                      setSurveyQuestions(next)
+                    }} placeholder="Question text" style={{ marginBottom: '8px' }} />
+                    <select value={q.type} onChange={e => {
+                      const next = [...surveyQuestions]
+                      next[i] = { ...next[i], type: e.target.value }
+                      setSurveyQuestions(next)
+                    }} style={{ marginBottom: '8px' }}>
+                      <option value="text">Text Answer</option>
+                      <option value="radio">Single Choice</option>
+                      <option value="checkbox">Multiple Choice</option>
+                    </select>
+                    {(q.type === 'radio' || q.type === 'checkbox') && (
+                      <input value={q.options || ''} onChange={e => {
+                        const next = [...surveyQuestions]
+                        next[i] = { ...next[i], options: e.target.value }
+                        setSurveyQuestions(next)
+                      }} placeholder="Options (comma-separated)" style={{ fontSize: '0.8rem' }} />
+                    )}
+                  </div>
+                ))}
+                <button className="btn btn-secondary btn-sm" onClick={() => setSurveyQuestions([...surveyQuestions, { id: `q${Date.now()}`, text: '', type: 'text', options: '' }])}>+ Add Question</button>
+              </div>
+
+              <button className="btn btn-primary btn-block" onClick={handleCreateSurvey}>Publish Survey</button>
+            </div>
+
+            <h4 style={{ marginBottom: '16px' }}>Existing Surveys</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {(adminData?.surveys || []).length === 0 ? (
+                <p style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>No surveys created yet.</p>
+              ) : (
+                [...(adminData?.surveys || [])].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).map(survey => (
+                  <div key={survey.id} className="glass" style={{ padding: '16px', borderRadius: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <div>
+                        <strong>{survey.title}</strong>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '10px' }}>{survey.questions.length} questions | {survey.targetType === 'all' ? 'All users' : `${(survey.targetUserIds || []).length} users`}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <span style={{ fontSize: '0.7rem', color: survey.active ? 'var(--success)' : 'var(--text-muted)' }}>{survey.active ? 'Active' : 'Inactive'}</span>
+                        <button className="btn btn-secondary btn-sm" onClick={() => setViewSurveyResponses(viewSurveyResponses === survey.id ? null : survey.id)}>
+                          {(survey.responses || []).length} Responses
+                        </button>
+                        <button className="btn btn-danger btn-sm" onClick={() => handleDeleteSurvey(survey.id)}>🗑️</button>
+                      </div>
+                    </div>
+                    {survey.description && <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '8px' }}>{survey.description}</p>}
+
+                    {viewSurveyResponses === survey.id && (
+                      <div style={{ marginTop: '16px', padding: '16px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
+                        <h5 style={{ marginBottom: '12px', fontSize: '0.85rem' }}>Responses ({(survey.responses || []).length})</h5>
+                        {(survey.responses || []).length === 0 ? (
+                          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No responses yet.</p>
+                        ) : (
+                          survey.responses.map((resp, ri) => {
+                            const player = allPlayers.find(p => p.id === resp.userId)
+                            return (
+                              <div key={ri} style={{ padding: '12px', borderBottom: '1px solid var(--border)', marginBottom: '8px' }}>
+                                <div style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '6px' }}>{player?.username || 'Unknown'}</div>
+                                {resp.answers.map((ans, ai) => (
+                                  <div key={ai} style={{ fontSize: '0.75rem', marginBottom: '4px' }}>
+                                    <span style={{ color: 'var(--text-muted)' }}>Q{ai + 1}:</span> {ans.answer}
+                                  </div>
+                                ))}
+                                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(resp.submittedAt).toLocaleDateString()}</div>
+                              </div>
+                            )
+                          })
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
           </div>
         )}

@@ -208,8 +208,11 @@ export default function Profile() {
         {[
           { label: 'Played', value: displayStats?.played || 0 },
           { label: 'Wins', value: displayStats?.wins || 0, color: 'var(--success)' },
+          { label: 'Avg Legs', value: displayStats?.played > 0 ? displayStats.average?.toFixed(2) : '-', color: 'var(--accent-cyan)' },
           { label: 'Total 180s', value: displayStats?.['180s'] || 0, color: 'var(--warning)' },
-          { label: 'Best CO', value: displayStats?.highestCheckout || 0, color: 'var(--accent-cyan)' }
+          { label: 'Best CO', value: displayStats?.highestCheckout || 0, color: 'var(--accent-cyan)' },
+          { label: 'Doubles %', value: displayStats?.doubleSuccess ? (displayStats.doubleSuccess).toFixed(1) + '%' : '-', color: '#10b981' },
+          { label: '3-Dart Avg', value: displayUser?.threeDartAverage?.toFixed(2) || '-', color: 'var(--accent-primary)' }
         ].map(stat => (
           <div key={stat.label} className="stat-card glass" style={{ background: 'rgba(15, 23, 42, 0.3)', border: '1px solid rgba(255,255,255,0.05)' }}>
             <div className="stat-value" style={{ color: stat.color }}>{stat.value}</div>

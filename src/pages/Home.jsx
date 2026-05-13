@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { db, doc, setDoc } from '../firebase'
 import NewsFeed from '../components/NewsFeed'
 import { SkeletonList } from '../components/Skeleton'
 import Tooltip from '../components/Tooltip'
@@ -21,6 +22,8 @@ export default function Home() {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
   const [seasonPhase, setSeasonPhase] = useState('upcoming')
   const [visible, setVisible] = useState(false)
+  const [surveyAnswers, setSurveyAnswers] = useState({})
+  const [submittingSurvey, setSubmittingSurvey] = useState(null)
 
   useEffect(() => {
     setRefreshKey(prev => prev + 1)
@@ -111,6 +114,85 @@ export default function Home() {
       <div className={`animate-fade-in-up stagger-item`}>
         <NewsFeed />
       </div>
+
+      {/* Surveys */}
+      {(() => {
+        const allSurveys = adminData?.surveys || []
+        const pendingSurveys = allSurveys.filter(s => {
+          if (!s.active) return false
+          if (s.targetType === 'all') return true
+          return (s.targetUserIds || []).includes(user.id)
+        }).filter(s => {
+          const responses = s.responses || []
+          return !responses.find(r => r.userId === user.id)
+        })
+
+        if (pendingSurveys.length === 0) return null
+
+        return pendingSurveys.map(survey => (
+          <div key={survey.id} className="card animate-fade-in-up stagger-item" style={{ marginBottom: '20px', border: '2px solid var(--accent-primary)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <h3 style={{ color: 'var(--accent-primary)', margin: 0 }}>📋 {survey.title}</h3>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.1)', padding: '4px 10px', borderRadius: '20px' }}>Survey</span>
+            </div>
+            {survey.description && <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '16px' }}>{survey.description}</p>}
+
+            {survey.questions.map((q, qi) => (
+              <div key={q.id} className="form-group" style={{ marginBottom: '12px' }}>
+                <label>{q.text}</label>
+                {q.type === 'text' && (
+                  <input value={surveyAnswers[`${survey.id}_${q.id}`] || ''} onChange={e => setSurveyAnswers({...surveyAnswers, [`${survey.id}_${q.id}`]: e.target.value})} placeholder="Your answer..." />
+                )}
+                {q.type === 'radio' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {(q.options || []).map(opt => (
+                      <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', cursor: 'pointer' }}>
+                        <input type="radio" name={`${survey.id}_${q.id}`} value={opt} checked={surveyAnswers[`${survey.id}_${q.id}`] === opt} onChange={e => setSurveyAnswers({...surveyAnswers, [`${survey.id}_${q.id}`]: e.target.value})} />
+                        {opt}
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {q.type === 'checkbox' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {(q.options || []).map(opt => (
+                      <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', cursor: 'pointer' }}>
+                        <input type="checkbox" value={opt} checked={(surveyAnswers[`${survey.id}_${q.id}`] || []).includes(opt)} onChange={e => {
+                          const current = surveyAnswers[`${survey.id}_${q.id}`] || []
+                          const next = e.target.checked ? [...current, opt] : current.filter(x => x !== opt)
+                          setSurveyAnswers({...surveyAnswers, [`${survey.id}_${q.id}`]: next})
+                        }} />
+                        {opt}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+
+            <button className="btn btn-primary btn-block" disabled={submittingSurvey === survey.id} onClick={async () => {
+              setSubmittingSurvey(survey.id)
+              const answers = survey.questions.map(q => ({
+                questionId: q.id,
+                question: q.text,
+                answer: q.type === 'checkbox' ? (surveyAnswers[`${survey.id}_${q.id}`] || []).join(', ') : (surveyAnswers[`${survey.id}_${q.id}`] || '')
+              }))
+              const response = { userId: user.id, username: user.username, answers, submittedAt: new Date().toISOString() }
+              const surveys = [...(adminData?.surveys || [])]
+              const idx = surveys.findIndex(s => s.id === survey.id)
+              if (idx !== -1) {
+                surveys[idx] = { ...surveys[idx], responses: [...(surveys[idx].responses || []), response] }
+                try {
+                  await setDoc(doc(db, 'admin', 'data'), { surveys }, { merge: true })
+                  setSurveyAnswers({})
+                  setSubmittingSurvey(null)
+                  window.location.reload()
+                } catch (e) { alert('Error: ' + e.message); setSubmittingSurvey(null) }
+              } else { setSubmittingSurvey(null) }
+            }}>{submittingSurvey === survey.id ? 'Submitting...' : 'Submit Answers'}</button>
+          </div>
+        ))
+      })()}
 
       <div className={`card animate-fade-in-up stagger-item`} style={{ marginBottom: '20px', border: '2px solid var(--accent-cyan)' }}>
         <div style={{ textAlign: 'center' }}>

@@ -51,14 +51,15 @@ export default function SuperLeague() {
     return source
       .map(p => ({
         ...p,
-        stats: playerStats[String(p.id)] || { played: 0, wins: 0, draws: 0, losses: 0, legsWon: 0, legsLost: 0, points: 0 }
+        stats: playerStats[String(p.id)] || { played: 0, wins: 0, draws: 0, losses: 0, legsWon: 0, legsLost: 0, points: 0, average: 0 }
       }))
       .sort((a, b) => {
         if (b.stats.points !== a.stats.points) return b.stats.points - a.stats.points
         const aLegDiff = a.stats.legsWon - a.stats.legsLost
         const bLegDiff = b.stats.legsWon - b.stats.legsLost
         if (bLegDiff !== aLegDiff) return bLegDiff - aLegDiff
-        return b.stats.legsWon - a.stats.legsWon
+        if (b.stats.legsWon !== a.stats.legsWon) return b.stats.legsWon - a.stats.legsWon
+        return (b.stats.average || 0) - (a.stats.average || 0)
       })
   }, [activeDivision, allUsers, playerStats])
 
@@ -103,13 +104,14 @@ export default function SuperLeague() {
                     <th style={{ width: '40px', padding: '15px 5px', textAlign: 'center' }}>D</th>
                     <th style={{ width: '40px', padding: '15px 5px', textAlign: 'center' }}>L</th>
                     <th style={{ width: '50px', padding: '15px 5px', textAlign: 'center' }}>+/-</th>
+                    <th style={{ width: '50px', padding: '15px 5px', textAlign: 'center', color: 'var(--accent-cyan)', fontWeight: '800' }}>Avg</th>
                     <th style={{ width: '60px', padding: '15px 5px', textAlign: 'center', color: 'var(--accent-cyan)' }}>Pts</th>
                   </tr>
                 </thead>
                 <tbody>
                   {playersInDivision.length === 0 ? (
                     <tr>
-                      <td colSpan={8} style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>No players assigned to {activeDivision} yet.</td>
+                      <td colSpan={9} style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>No players assigned to {activeDivision} yet.</td>
                     </tr>
                   ) : (
                     playersInDivision.map((player, index) => {
@@ -133,6 +135,9 @@ export default function SuperLeague() {
                           <td style={{ textAlign: 'center', color: 'var(--text-muted)' }}>{player.stats.losses}</td>
                           <td style={{ textAlign: 'center', fontWeight: '800', color: legDiff > 0 ? 'var(--success)' : legDiff < 0 ? 'var(--error)' : 'white' }}>
                             {legDiff > 0 ? `+${legDiff}` : legDiff}
+                          </td>
+                          <td style={{ textAlign: 'center', fontWeight: '600', color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem' }}>
+                            {player.stats.played > 0 ? player.stats.average?.toFixed(2) : '-'}
                           </td>
                           <td style={{ textAlign: 'center', fontWeight: '900', color: 'var(--accent-cyan)', fontSize: '1.1rem' }}>
                             {player.stats.points}

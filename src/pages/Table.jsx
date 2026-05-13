@@ -47,14 +47,15 @@ export default function Table() {
       .map(p => ({
         ...p,
         displayDivision: p.division || 'Unassigned',
-        stats: playerStats[String(p.id)] || { played: 0, wins: 0, draws: 0, losses: 0, legsWon: 0, legsLost: 0, points: 0 }
+        stats: playerStats[String(p.id)] || { played: 0, wins: 0, draws: 0, losses: 0, legsWon: 0, legsLost: 0, points: 0, average: 0 }
       }))
       .sort((a, b) => {
         if (b.stats.points !== a.stats.points) return b.stats.points - a.stats.points
         const aLegDiff = a.stats.legsWon - a.stats.legsLost
         const bLegDiff = b.stats.legsWon - b.stats.legsLost
         if (bLegDiff !== aLegDiff) return bLegDiff - aLegDiff
-        return b.stats.legsWon - a.stats.legsWon
+        if (b.stats.legsWon !== a.stats.legsWon) return b.stats.legsWon - a.stats.legsWon
+        return (b.stats.average || 0) - (a.stats.average || 0)
       })
   }, [activeDivision, allUsers, playerStats])
 
@@ -118,13 +119,14 @@ export default function Table() {
                 <th style={{ width: '22px', padding: '12px 2px', textAlign: 'center' }}>D</th>
                 <th style={{ width: '22px', padding: '12px 2px', textAlign: 'center' }}>L</th>
                 <th style={{ width: '30px', padding: '12px 2px', textAlign: 'center' }}>+/-</th>
+                <th style={{ width: '35px', padding: '12px 2px', textAlign: 'center', color: 'var(--accent-cyan)', fontWeight: '800' }}>Avg</th>
                 <th style={{ width: '35px', padding: '12px 2px', textAlign: 'center', color: 'var(--accent-cyan)' }}>Pts</th>
               </tr>
             </thead>
             <tbody>
               {playersInDivision.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No data</td>
+                  <td colSpan={9} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No data</td>
                 </tr>
               ) : (
                 playersInDivision.map((player, index) => {
@@ -165,6 +167,9 @@ export default function Table() {
                         color: legDiff > 0 ? '#10b981' : legDiff < 0 ? '#ef4444' : 'rgba(255,255,255,0.4)'
                       }}>
                         {legDiff > 0 ? `+${legDiff}` : legDiff}
+                      </td>
+                      <td style={{ textAlign: 'center', padding: '10px 2px', fontWeight: '600', color: 'rgba(255,255,255,0.7)', fontSize: '0.78rem' }}>
+                        {player.stats.played > 0 ? player.stats.average?.toFixed(2) : '-'}
                       </td>
                       <td style={{ textAlign: 'center', padding: '10px 2px', fontWeight: '900', color: 'var(--accent-cyan)', fontSize: '0.9rem' }}>
                         {player.stats.points}
