@@ -48,85 +48,61 @@ function CupManagement() {
 
             let cupData = cupSnap.data()
             let matches = [...(cupData.matches || [])]
-            let changed = true
             let cupChanges = 0
 
+            // Sort rounds ascending to process sequentially
+            const rounds = Array.from(new Set(matches.map(m => m.round))).sort((a, b) => a - b)
             const cupResults = allResults.filter(r => String(r.cupId) === String(cup.id))
 
-            // Keep propagating changes (results and byes) until no more advancements are possible
-            while (changed) {
-              changed = false
+            for (const round of rounds) {
+              const roundMatches = matches.filter(m => m.round === round)
 
-              // 1. Check for missing result advancements
-              for (const res of cupResults) {
-                const mIdx = matches.findIndex(m => String(m.id) === String(res.matchId))
-                if (mIdx !== -1 && !matches[mIdx].winner) {
-                  const winnerId = res.score1 > res.score2 ? res.player1Id : res.player2Id
-                  if (winnerId) {
-                    const m = matches[mIdx]
-                    // Correct mapping based on identity
-                    const isP1 = String(res.player1Id) === String(m.player1)
+              for (const m of roundMatches) {
+                const mIdx = matches.findIndex(match => match.id === m.id)
+                let winnerId = matches[mIdx].winner
+
+                // 1. Check for results if no winner yet
+                if (!winnerId) {
+                  const res = cupResults.find(r => String(r.matchId) === String(m.id))
+                  if (res) {
+                    winnerId = res.score1 > res.score2 ? res.player1Id : res.player2Id
+                    const isP1 = String(res.player1Id) === String(matches[mIdx].player1)
                     matches[mIdx] = {
-                      ...m,
+                      ...matches[mIdx],
                       winner: winnerId,
                       score1: isP1 ? res.score1 : res.score2,
                       score2: isP1 ? res.score2 : res.score1,
                       resultId: res.id
                     }
-
-                    // propagate winner to next match
-                    if (m.nextMatchId) {
-                      const nextMIdx = matches.findIndex(nm => String(nm.id) === String(m.nextMatchId))
-                      if (nextMIdx !== -1) {
-                         const siblings = matches
-                          .filter(sm => Number(sm.round) === Number(m.round) && String(sm.nextMatchId) === String(m.nextMatchId))
-                          .sort((a,b) => (Number(a.matchNum)||0) - (Number(b.matchNum)||0))
-
-                         const pos = siblings.findIndex(sm => String(sm.id) === String(m.id))
-                         if (pos !== -1) {
-                            const target = pos === 0 ? 'player1' : 'player2'
-                            if (matches[nextMIdx][target] !== winnerId) {
-                               matches[nextMIdx] = { ...matches[nextMIdx], [target]: winnerId }
-                               changed = true
-                            }
-                         }
-                      }
-                    }
-                    changed = true
                     cupChanges++
                   }
-                }
-              }
-
-              // 2. Check for and advance Byes (matches with only one player)
-              for (let i = 0; i < matches.length; i++) {
-                const m = matches[i]
-                if (m.winner) continue
-                const isBye = (m.player1 && !m.player2) || (!m.player1 && m.player2)
-                if (isBye) {
-                  const winnerId = m.player1 || m.player2
-                  matches[i] = { ...m, winner: winnerId, score1: 1, score2: 0 }
-
-                  // propagate bye winner to next match
-                  if (m.nextMatchId) {
-                    const nextMIdx = matches.findIndex(nm => String(nm.id) === String(m.nextMatchId))
-                    if (nextMIdx !== -1) {
-                       const siblings = matches
-                        .filter(sm => Number(sm.round) === Number(match.round) && String(sm.nextMatchId) === String(match.nextMatchId))
-                        .sort((a,b) => (Number(a.matchNum)||0) - (Number(b.matchNum)||0))
-
-                       const pos = siblings.findIndex(sm => String(sm.id) === String(m.id))
-                       if (pos !== -1) {
-                          const target = pos === 0 ? 'player1' : 'player2'
-                          if (matches[nextMIdx][target] !== winnerId) {
-                             matches[nextMIdx] = { ...matches[nextMIdx], [target]: winnerId }
-                             changed = true
-                          }
-                       }
+                  // 2. Check for Byes if still no winner and no result
+                  else {
+                    const isBye = (m.player1 && !m.player2) || (!m.player1 && m.player2)
+                    if (isBye) {
+                      winnerId = m.player1 || m.player2
+                      matches[mIdx] = { ...matches[mIdx], winner: winnerId, score1: 1, score2: 0 }
+                      cupChanges++
                     }
                   }
-                  changed = true
-                  cupChanges++
+                }
+
+                // 3. Propagate winner to next round
+                if (winnerId && m.nextMatchId) {
+                  const nextMIdx = matches.findIndex(nm => String(nm.id) === String(m.nextMatchId))
+                  if (nextMIdx !== -1) {
+                    const siblings = matches
+                      .filter(sm => sm.round === m.round && String(sm.nextMatchId) === String(m.nextMatchId))
+                      .sort((a,b) => (Number(a.matchNum)||0) - (Number(b.matchNum)||0))
+
+                    const pos = siblings.findIndex(sm => String(sm.id) === String(m.id))
+                    const target = pos === 0 ? 'player1' : 'player2'
+
+                    if (matches[nextMIdx][target] !== winnerId) {
+                      matches[nextMIdx] = { ...matches[nextMIdx], [target]: winnerId }
+                      cupChanges++
+                    }
+                  }
                 }
               }
             }
@@ -134,7 +110,6 @@ function CupManagement() {
             if (cupChanges > 0) {
               const allComplete = matches.every(m => (m.player1 && m.player2) ? m.winner : true)
               let currentRound = cupData.currentRound || 1
-              // Update currentRound if necessary
               while (matches.filter(m => Number(m.round) === currentRound).every(m => m.winner)) {
                 const maxRound = Math.max(...matches.map(m => m.round))
                 if (currentRound < maxRound) currentRound++
@@ -144,38 +119,31 @@ function CupManagement() {
               transaction.update(cupRef, { matches, status: allComplete ? 'completed' : 'active', currentRound })
               totalAdvanced += cupChanges
 
-              // 3. Create fixtures for any matches that are now "ready"
+              // Create fixtures for ready matches
               for (const m of matches) {
                 if (m.player1 && m.player2 && !m.winner) {
-                   const fId = `cup_${cup.id}_match_${m.id}`
-                   const fRef = doc(db, 'fixtures', fId)
-                   const fSnap = await transaction.get(fRef)
-                   if (!fSnap.exists()) {
-                      const fmt = cupData.roundFormats?.[m.round] || { startScore: 501, bestOf: 3 }
-                      transaction.set(fRef, {
-                        id: fId,
-                        cupId: parseInt(cup.id),
-                        cupName: cupData.name,
-                        startScore: fmt.startScore,
-                        bestOf: fmt.bestOf,
-                        firstTo: Math.ceil(fmt.bestOf / 2),
-                        player1: m.player1,
-                        player1Id: m.player1,
-                        player2: m.player2,
-                        player2Id: m.player2,
-                        matchId: m.id,
-                        round: m.round,
-                        status: 'pending',
-                        createdAt: new Date().toISOString()
-                      })
-                   }
+                  const fId = `cup_${cup.id}_match_${m.id}`
+                  const fRef = doc(db, 'fixtures', fId)
+                  const fSnap = await transaction.get(fRef)
+                  if (!fSnap.exists()) {
+                    const fmt = cupData.roundFormats?.[m.round] || { startScore: 501, bestOf: 3 }
+                    transaction.set(fRef, {
+                      id: fId, cupId: parseInt(cup.id), cupName: cupData.name,
+                      startScore: fmt.startScore, bestOf: fmt.bestOf,
+                      firstTo: Math.ceil(fmt.bestOf / 2),
+                      player1: m.player1, player1Id: m.player1,
+                      player2: m.player2, player2Id: m.player2,
+                      matchId: m.id, round: m.round, status: 'pending',
+                      createdAt: new Date().toISOString()
+                    })
+                  }
                 }
               }
             }
           })
         } catch (e) {
           if (e.code === 'resource-exhausted') {
-            console.error('Firestore Quota Exceeded during sync.')
+            console.error('Firestore Quota Exceeded.')
             errors++
           } else {
             console.error(`Sync error for cup ${cup.id}:`, e)
@@ -185,11 +153,8 @@ function CupManagement() {
       }
 
       if (!silent) {
-        if (errors > 0) {
-           alert(`Sync partially failed: Quota Exceeded or other errors occurred. Some brackets may not have updated.`)
-        } else {
-           alert(`Sync complete!\nProcessed advancements: ${totalAdvanced}`)
-        }
+        if (errors > 0) alert('Sync partially failed due to database limits (Quota Exceeded). Some brackets may not have updated.')
+        else alert(`Sync complete!\nProcessed advancements: ${totalAdvanced}`)
       }
       setSyncResult({ advanced: totalAdvanced, skipped: 0, errors })
       triggerDataRefresh('all')

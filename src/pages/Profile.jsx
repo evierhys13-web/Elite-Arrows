@@ -32,7 +32,8 @@ export default function Profile() {
     bio: '',
     country: '',
     dartCounterUsername: '',
-    walkOnSong: ''
+    walkOnSong: '',
+    threeDartAverage: ''
   })
   
   const [profilePicture, setProfilePicture] = useState('')
@@ -51,7 +52,8 @@ export default function Profile() {
         bio: displayUser.bio || '',
         country: displayUser.country || '',
         dartCounterUsername: displayUser.dartCounterUsername || '',
-        walkOnSong: displayUser.walkOnSong || ''
+        walkOnSong: displayUser.walkOnSong || '',
+        threeDartAverage: displayUser.threeDartAverage || ''
       })
       setProfilePicture(displayUser.profilePicture || '')
       setGearPhoto(displayUser.gearPhoto || '')
@@ -128,6 +130,8 @@ export default function Profile() {
       country: formData.country?.trim(),
       dartCounterUsername: formData.dartCounterUsername?.trim(),
       walkOnSong: formData.walkOnSong?.trim(),
+      threeDartAverage: parseFloat(formData.threeDartAverage) || 0,
+      averageLastUpdated: new Date().toISOString(),
       profilePicture,
       gearPhoto,
       tags,
@@ -296,6 +300,18 @@ export default function Profile() {
                 <div className="form-group">
                   <label>Walk-on Song (Link)</label>
                   <input name="walkOnSong" value={formData.walkOnSong} onChange={e => setFormData({...formData, walkOnSong: e.target.value})} placeholder="Spotify or YouTube URL" />
+                </div>
+
+                <div className="form-group">
+                  <label>3-Dart Average</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="threeDartAverage"
+                    value={formData.threeDartAverage}
+                    onChange={e => setFormData({...formData, threeDartAverage: e.target.value})}
+                    placeholder="e.g. 45.5"
+                  />
                 </div>
 
                 <div className="form-group">
