@@ -64,6 +64,7 @@ function CupManagement() {
                   const winnerId = res.score1 > res.score2 ? res.player1Id : res.player2Id
                   if (winnerId) {
                     const m = matches[mIdx]
+                    // Correct mapping based on identity
                     const isP1 = String(res.player1Id) === String(m.player1)
                     matches[mIdx] = {
                       ...m,
@@ -111,7 +112,7 @@ function CupManagement() {
                     const nextMIdx = matches.findIndex(nm => String(nm.id) === String(m.nextMatchId))
                     if (nextMIdx !== -1) {
                        const siblings = matches
-                        .filter(sm => Number(sm.round) === Number(m.round) && String(sm.nextMatchId) === String(m.nextMatchId))
+                        .filter(sm => Number(sm.round) === Number(match.round) && String(sm.nextMatchId) === String(match.nextMatchId))
                         .sort((a,b) => (Number(a.matchNum)||0) - (Number(b.matchNum)||0))
 
                        const pos = siblings.findIndex(sm => String(sm.id) === String(m.id))
@@ -143,7 +144,7 @@ function CupManagement() {
               transaction.update(cupRef, { matches, status: allComplete ? 'completed' : 'active', currentRound })
               totalAdvanced += cupChanges
 
-              // 3. Create fixtures for any matches that are now "ready" (have 2 players but no winner)
+              // 3. Create fixtures for any matches that are now "ready"
               for (const m of matches) {
                 if (m.player1 && m.player2 && !m.winner) {
                    const fId = `cup_${cup.id}_match_${m.id}`
@@ -173,13 +174,22 @@ function CupManagement() {
             }
           })
         } catch (e) {
-          console.error(`Sync error for cup ${cup.id}:`, e)
-          errors++
+          if (e.code === 'resource-exhausted') {
+            console.error('Firestore Quota Exceeded during sync.')
+            errors++
+          } else {
+            console.error(`Sync error for cup ${cup.id}:`, e)
+            errors++
+          }
         }
       }
 
       if (!silent) {
-        alert(`Sync complete!\nProcessed advancements: ${totalAdvanced}\nErrors: ${errors}`)
+        if (errors > 0) {
+           alert(`Sync partially failed: Quota Exceeded or other errors occurred. Some brackets may not have updated.`)
+        } else {
+           alert(`Sync complete!\nProcessed advancements: ${totalAdvanced}`)
+        }
       }
       setSyncResult({ advanced: totalAdvanced, skipped: 0, errors })
       triggerDataRefresh('all')
@@ -292,24 +302,19 @@ function CupManagement() {
     if (isSubmitting) return
     const { cup, match, score1, score2, p1_180s, p2_180s, p1_checkout, p2_checkout, p1_doubles, p2_doubles } = resultForm
 
-    if (!cup || !match || (!match.player1 && !match.player2)) {
+    if (!cup || !match || !match.player1 || !match.player2) {
       alert('Error: Bracket data is incomplete. Please refresh and try again.')
       return
     }
 
-    const s1 = parseInt(score1) || 0
-    const s2 = parseInt(score2) || 0
+    const s1 = parseInt(score1)
+    const s2 = parseInt(score2)
     
-    if (match.player1 && match.player2) {
-      if (isNaN(parseInt(score1)) || isNaN(parseInt(score2))) return alert('Please enter scores for both players.')
-      if (s1 === s2) return alert('Draws are not permitted in Cup matches.')
-    }
+    if (isNaN(s1) || isNaN(s2)) return alert('Please enter scores for both players.')
+    if (s1 === s2) return alert('Draws are not permitted in Cup matches.')
     
     setIsSubmitting(true)
-    const winnerId = (match.player1 && match.player2)
-      ? (s1 > s2 ? match.player1 : match.player2)
-      : (match.player1 || match.player2)
-
+    const winnerId = s1 > s2 ? match.player1 : match.player2
     const resultId = `admin_cup_${Date.now()}`
 
     try {
@@ -453,7 +458,7 @@ function CupManagement() {
                           <button
                             className="btn btn-primary btn-sm"
                             onClick={() => enterResult(cup, match)}
-                            disabled={!match.player1 && !match.player2}
+                            disabled={!match.player1 || !match.player2}
                             style={{ padding: '8px 12px', fontSize: '0.75rem' }}
                           >
                             Enter

@@ -1121,17 +1121,30 @@ const cleanUserData = (users) => {
         if (matchIdx === -1) return
 
         const match = updatedMatches[matchIdx]
+
+        // Correct score mapping based on who is player1 in the bracket
         const isPlayer1Submitter = String(result.player1Id) === String(match.player1)
         const s1 = isPlayer1Submitter ? result.score1 : result.score2
         const s2 = isPlayer1Submitter ? result.score2 : result.score1
 
-        updatedMatches[matchIdx] = {
-          ...match,
-          winner: winnerId,
-          score1: s1,
-          score2: s2,
-          resultId: result.id
+        // Check if anything changed to avoid unnecessary writes
+        const matchUpdated =
+          match.winner !== winnerId ||
+          match.score1 !== s1 ||
+          match.score2 !== s2 ||
+          match.resultId !== result.id
+
+        if (matchUpdated) {
+          updatedMatches[matchIdx] = {
+            ...match,
+            winner: winnerId,
+            score1: s1,
+            score2: s2,
+            resultId: result.id
+          }
         }
+
+        let needsCupUpdate = matchUpdated
 
         if (match.nextMatchId) {
           const nextMatchIdx = updatedMatches.findIndex(m => String(m.id) === String(match.nextMatchId))
@@ -1143,14 +1156,17 @@ const cleanUserData = (users) => {
             const siblingPos = siblings.findIndex(m => String(m.id) === matchId)
             if (siblingPos !== -1) {
               const targetPlayer = siblingPos === 0 ? 'player1' : 'player2'
-              updatedMatches[nextMatchIdx] = {
-                ...updatedMatches[nextMatchIdx],
-                [targetPlayer]: winnerId
+              if (updatedMatches[nextMatchIdx][targetPlayer] !== winnerId) {
+                updatedMatches[nextMatchIdx] = {
+                  ...updatedMatches[nextMatchIdx],
+                  [targetPlayer]: winnerId
+                }
+                needsCupUpdate = true
               }
 
-              // Create fixture if next match is now ready
+              // Create fixture inside transaction if next match is now ready
               const nextMatch = updatedMatches[nextMatchIdx]
-              if (nextMatch.player1 && nextMatch.player2) {
+              if (nextMatch.player1 && nextMatch.player2 && !nextMatch.winner) {
                 const fixtureId = `cup_${cupId}_match_${nextMatch.id}`
                 const fixtureRef = doc(db, 'fixtures', fixtureId)
                 const fixtureSnap = await transaction.get(fixtureRef)
@@ -1191,17 +1207,26 @@ const cleanUserData = (users) => {
           const maxRound = Math.max(...updatedMatches.map(m => m.round))
           if (currentRound < maxRound) {
             currentRound++
+            needsCupUpdate = true
           }
         }
 
-        transaction.update(cupRef, {
-          matches: updatedMatches,
-          status: allComplete ? 'completed' : 'active',
-          currentRound
-        })
+        if (cupData.status === 'active' && allComplete) needsCupUpdate = true
+
+        if (needsCupUpdate) {
+          transaction.update(cupRef, {
+            matches: updatedMatches,
+            status: allComplete ? 'completed' : 'active',
+            currentRound
+          })
+        }
       })
     } catch (err) {
-      console.error('Error advancing cup bracket', err)
+      if (err.code === 'resource-exhausted') {
+        console.error('Firestore Quota Exceeded. Reached free tier limit.')
+      } else {
+        console.error('Error advancing cup bracket', err)
+      }
       throw err
     }
   }
