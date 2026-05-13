@@ -1012,34 +1012,34 @@ const cleanUserData = (users) => {
     updateUser({ adminRequestPending: true })
   }
 
-  const getAllUsers = () => {
+  const getAllUsers = useCallback(() => {
     if (allUsers.length > 0) return allUsers
     const localUsers = JSON.parse(localStorage.getItem('eliteArrowsUsers') || '[]')
     return localUsers
-  }
+  }, [allUsers])
 
-  const getFriends = () => {
+  const getFriends = useCallback(() => {
     return allUsers.filter(u => (user?.friends || []).includes(u.id))
-  }
+  }, [allUsers, user?.friends])
 
-  const getResults = () => {
+  const getResults = useCallback(() => {
     if (results.length > 0) return results
     return getCachedResults()
-  }
+  }, [results])
 
-  const updateResults = (updatedResults) => {
+  const updateResults = useCallback((updatedResults) => {
     const nextResults = Array.isArray(updatedResults) ? updatedResults : []
     resultRowsRef.current = nextResults
     setResults(nextResults)
     saveResultsCache(nextResults)
     triggerDataRefresh('results')
-  }
+  }, [triggerDataRefresh])
 
-  const getFixtures = () => {
+  const getFixtures = useCallback(() => {
     if (fixtures.length > 0) return fixtures
     const local = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
     return local
-  }
+  }, [fixtures])
 
   useEffect(() => {
     if (!user?.id) {
@@ -1168,27 +1168,32 @@ const cleanUserData = (users) => {
               const nextMatch = updatedMatches[nextMatchIdx]
               if (nextMatch.player1 && nextMatch.player2 && !nextMatch.winner) {
                 const fixtureId = `cup_${cupId}_match_${nextMatch.id}`
-                const fixtureRef = doc(db, 'fixtures', fixtureId)
-                const fixtureSnap = await transaction.get(fixtureRef)
+                const existingFixtures = getFixtures()
+                const existsLocally = existingFixtures.some(f => String(f.id) === fixtureId)
 
-                if (!fixtureSnap.exists()) {
-                  const format = cupData.roundFormats?.[nextMatch.round] || { startScore: 501, bestOf: 3 }
-                  transaction.set(fixtureRef, {
-                    id: fixtureId,
-                    cupId: parseInt(cupId),
-                    cupName: cupData.name,
-                    startScore: format.startScore,
-                    bestOf: format.bestOf,
-                    firstTo: Math.ceil(format.bestOf / 2),
-                    player1: nextMatch.player1,
-                    player1Id: nextMatch.player1,
-                    player2: nextMatch.player2,
-                    player2Id: nextMatch.player2,
-                    matchId: nextMatch.id,
-                    round: nextMatch.round,
-                    status: 'pending',
-                    createdAt: new Date().toISOString()
-                  })
+                if (!existsLocally) {
+                  const fixtureRef = doc(db, 'fixtures', fixtureId)
+                  const fixtureSnap = await transaction.get(fixtureRef)
+
+                  if (!fixtureSnap.exists()) {
+                    const format = cupData.roundFormats?.[nextMatch.round] || { startScore: 501, bestOf: 3 }
+                    transaction.set(fixtureRef, {
+                      id: fixtureId,
+                      cupId: parseInt(cupId),
+                      cupName: cupData.name,
+                      startScore: format.startScore,
+                      bestOf: format.bestOf,
+                      firstTo: Math.ceil(format.bestOf / 2),
+                      player1: nextMatch.player1,
+                      player1Id: nextMatch.player1,
+                      player2: nextMatch.player2,
+                      player2Id: nextMatch.player2,
+                      matchId: nextMatch.id,
+                      round: nextMatch.round,
+                      status: 'pending',
+                      createdAt: new Date().toISOString()
+                    })
+                  }
                 }
               }
             }
@@ -1231,29 +1236,29 @@ const cleanUserData = (users) => {
     }
   }
 
-  const getCups = () => {
+  const getCups = useCallback(() => {
     if (cups.length > 0) return cups
     const local = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
     return local
-  }
+  }, [cups])
 
-  const getSupportRequests = () => {
+  const getSupportRequests = useCallback(() => {
     if (supportRequests.length > 0) return supportRequests
     const local = JSON.parse(localStorage.getItem('eliteArrowsSupportRequests') || '[]')
     return local
-  }
+  }, [supportRequests])
 
-  const getSeasons = () => {
+  const getSeasons = useCallback(() => {
     if (seasons.length > 0) return seasons
     const local = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
     return local
-  }
+  }, [seasons])
 
-  const getNews = () => {
+  const getNews = useCallback(() => {
     if (news.length > 0) return news
     const local = JSON.parse(localStorage.getItem('eliteArrowsNews') || '[]')
     return local
-  }
+  }, [news])
 
   const postNews = async (title, message, pinned = false) => {
     if (!user) return

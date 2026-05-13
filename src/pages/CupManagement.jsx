@@ -120,22 +120,28 @@ function CupManagement() {
               totalAdvanced += cupChanges
 
               // Create fixtures for ready matches
+              const existingFixtures = getFixtures()
               for (const m of matches) {
                 if (m.player1 && m.player2 && !m.winner) {
                   const fId = `cup_${cup.id}_match_${m.id}`
-                  const fRef = doc(db, 'fixtures', fId)
-                  const fSnap = await transaction.get(fRef)
-                  if (!fSnap.exists()) {
-                    const fmt = cupData.roundFormats?.[m.round] || { startScore: 501, bestOf: 3 }
-                    transaction.set(fRef, {
-                      id: fId, cupId: parseInt(cup.id), cupName: cupData.name,
-                      startScore: fmt.startScore, bestOf: fmt.bestOf,
-                      firstTo: Math.ceil(fmt.bestOf / 2),
-                      player1: m.player1, player1Id: m.player1,
-                      player2: m.player2, player2Id: m.player2,
-                      matchId: m.id, round: m.round, status: 'pending',
-                      createdAt: new Date().toISOString()
-                    })
+
+                  // Optimization: Only check/set if it doesn't exist locally to save quota
+                  const existsLocally = existingFixtures.some(f => String(f.id) === fId)
+                  if (!existsLocally) {
+                    const fRef = doc(db, 'fixtures', fId)
+                    const fSnap = await transaction.get(fRef)
+                    if (!fSnap.exists()) {
+                      const fmt = cupData.roundFormats?.[m.round] || { startScore: 501, bestOf: 3 }
+                      transaction.set(fRef, {
+                        id: fId, cupId: parseInt(cup.id), cupName: cupData.name,
+                        startScore: fmt.startScore, bestOf: fmt.bestOf,
+                        firstTo: Math.ceil(fmt.bestOf / 2),
+                        player1: m.player1, player1Id: m.player1,
+                        player2: m.player2, player2Id: m.player2,
+                        matchId: m.id, round: m.round, status: 'pending',
+                        createdAt: new Date().toISOString()
+                      })
+                    }
                   }
                 }
               }
