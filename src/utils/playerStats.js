@@ -107,7 +107,7 @@ export const createEmptyPlayerStats = (player = {}) => ({
   doubleSuccessTotal: 0,
   doubleSuccessCount: 0,
   doubleSuccess: 0,
-  average: 0,
+  average: Math.min(70, player.threeDartAverage || 0),
   form: [],
   history: []
 })
@@ -149,8 +149,8 @@ const addResultToPlayer = (stats, result, playerNumber, opponentScore, score, co
     stats.doubleSuccess = Number((stats.doubleSuccessTotal / stats.doubleSuccessCount).toFixed(1))
   }
 
-  // Use the player's explicit profile average if available, otherwise fallback to calculated legs/played
-  stats.average = Math.min(70, toNumber(result[`player${playerNumber}ExplicitAverage`] || player.threeDartAverage || 0))
+  const explicitAvg = toNumber(result[`player${playerNumber}ExplicitAverage`])
+  if (explicitAvg > 0) stats.average = Math.min(70, explicitAvg)
 }
 
 export const derivePlayerStatsFromResults = (users = [], results = [], options = {}) => {
