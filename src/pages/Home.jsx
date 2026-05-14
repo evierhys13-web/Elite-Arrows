@@ -37,7 +37,11 @@ export default function Home() {
 
   useEffect(() => {
     if (user && (!user.threeDartAverage || user.threeDartAverage === 0)) {
-      setShowAverageModal(true)
+      const lastUpdate = user.averageLastUpdated ? new Date(user.averageLastUpdated).getTime() : 0
+      const oneDay = 24 * 60 * 60 * 1000
+      if ((Date.now() - lastUpdate) > oneDay) {
+        setShowAverageModal(true)
+      }
     }
   }, [user])
 

@@ -238,7 +238,7 @@ export default function SubmitResult() {
     const opponentName = getDisplayName(opponentUser, formData.opponent || 'Selected opponent')
     
     if (formData.gameType === 'League' && opponentUser) {
-      if (opponentUser.division !== user.division) {
+      if (opponentUser.division !== user?.division) {
         setError('League results can only be submitted against players in your division.')
         return
       }
