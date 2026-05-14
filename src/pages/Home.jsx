@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { db, doc, setDoc } from '../firebase'
@@ -24,8 +24,8 @@ export default function Home() {
   const [showAverageModal, setShowAverageModal] = useState(false)
 
   const activeSeason = useMemo(() => {
-    const seasons = getSeasons()
-    return seasons.find(s => s.status === 'active') || {
+    const seasons = typeof getSeasons === 'function' ? getSeasons() : []
+    return (Array.isArray(seasons) ? seasons : []).find(s => s.status === 'active') || {
       name: 'Season 1',
       startDate: '2026-05-01T00:00:00+01:00',
       endDate: '2026-06-01T00:00:00+01:00'

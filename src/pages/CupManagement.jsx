@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { db, doc, setDoc, deleteDoc, getDoc } from '../firebase'
+import { db, doc, setDoc, deleteDoc, getDoc, runTransaction } from '../firebase'
 
 function CupManagement() {
   const { getAllUsers, getCups, getFixtures, getResults, advanceCupBracket, triggerDataRefresh, dataRefreshTrigger } = useAuth()

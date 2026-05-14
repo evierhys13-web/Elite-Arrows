@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import { db, doc, setDoc, deleteDoc, getDocs, collection, ADMIN_EMAILS } from '../firebase'
+import { db, doc, setDoc, deleteDoc, getDocs, collection } from '../firebase'
+import { ADMIN_EMAILS } from '../config'
 import UserSearchSelect from '../components/UserSearchSelect'
 
 export default function Fixtures() {

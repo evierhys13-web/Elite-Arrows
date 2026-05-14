@@ -15,7 +15,7 @@ import AverageUpdateModal from './components/AverageUpdateModal'
 import ErrorBoundary from './components/ErrorBoundary'
 import { Skeleton } from './components/Skeleton'
 import { Capacitor } from '@capacitor/core'
-import { ADMIN_EMAILS } from './firebase'
+import { ADMIN_EMAILS } from './config'
 
 const Auth = lazy(() => import('./pages/Auth'))
 const Home = lazy(() => import('./pages/Home'))

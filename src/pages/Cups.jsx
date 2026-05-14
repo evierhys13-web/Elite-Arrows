@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { Link } from 'react-router-dom'
-import { db, doc, setDoc, deleteDoc, ADMIN_EMAILS } from '../firebase'
+import { db, doc, setDoc, deleteDoc } from '../firebase'
+import { ADMIN_EMAILS } from '../config'
 import UserSearchSelect from '../components/UserSearchSelect'
 
 export default function CupTournaments() {

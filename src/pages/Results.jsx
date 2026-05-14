@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { db, setDoc, getDocs, doc, collection, addDoc, ADMIN_EMAILS } from '../firebase'
+import { db, setDoc, getDocs, doc, collection, addDoc } from '../firebase'
+import { ADMIN_EMAILS } from '../config'
 import { derivePlayerStatsFromResults, getPersistedPlayerStats } from '../utils/playerStats'
 import { useToast } from '../context/ToastContext'
 import { SkeletonList } from '../components/Skeleton'
