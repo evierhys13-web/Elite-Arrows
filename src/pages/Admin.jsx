@@ -1,13 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { db, doc, setDoc, getDoc, getDocs, collection, deleteDoc, updateDoc, writeBatch, addDoc } from '../firebase'
+import { db, doc, setDoc, getDoc, getDocs, collection, deleteDoc, updateDoc, writeBatch, addDoc, ADMIN_EMAILS } from '../firebase'
 import UserSearchSelect from '../components/UserSearchSelect'
 import CupManagement from './CupManagement'
 import { useToast } from '../context/ToastContext'
 import { logMatchApproved } from '../utils/analytics'
-
-const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
 
 export default function Admin() {
   const {

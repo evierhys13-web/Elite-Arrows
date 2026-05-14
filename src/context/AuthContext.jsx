@@ -1,12 +1,11 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
-import { db, auth, usersCollection, adminDataCollection, fcmTokensCollection, doc, setDoc, getDoc, getDocs, query, where, collection, orderBy, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, updateDoc, deleteDoc, runTransaction, FieldValue, getMessagingInstance, getToken, onMessage, isSupported } from '../firebase'
+import { db, auth, usersCollection, adminDataCollection, fcmTokensCollection, doc, setDoc, getDoc, getDocs, query, where, collection, orderBy, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, updateDoc, deleteDoc, runTransaction, FieldValue, getMessagingInstance, getToken, onMessage, isSupported, ADMIN_EMAILS } from '../firebase'
 import SeasonOneWelcomeModal from '../components/SeasonOneWelcomeModal'
 import { getResultIdentityKey, getResultOverrideKeys } from '../utils/resultIdentity'
 import { logSubscriptionActivated } from '../utils/analytics'
 
 const AuthContext = createContext(null)
 
-const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com', 'test@elitearrows.co.uk']
 const SEASON_ONE_WELCOME_START = new Date('2026-05-01T00:00:00+01:00').getTime()
 
 export const DIVISIONS = ['Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Development']
@@ -789,7 +788,7 @@ const cleanUserData = (users) => {
     
     const cleanUpdates = {}
     Object.keys(updates).forEach(key => {
-      if (updates[key] !== undefined && updates[key] !== null && updates[key] !== '') {
+      if (updates[key] !== undefined && updates[key] !== null) {
         cleanUpdates[key] = updates[key]
       }
     })
@@ -805,7 +804,8 @@ const cleanUserData = (users) => {
       localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(updatedUser))
       
       setAllUsers(prev => {
-        const updated = prev.map(u => u.id === user.id ? { ...u, ...cleanUpdates } : u)
+        const currentUsers = Array.isArray(prev) ? prev : []
+        const updated = currentUsers.map(u => u.id === user.id ? { ...u, ...cleanUpdates } : u)
         localStorage.setItem('eliteArrowsUsers', JSON.stringify(updated))
         return updated
       })
@@ -816,7 +816,8 @@ const cleanUserData = (users) => {
 
       if (showAlert) alert('Profile updated!')
     } catch (error) {
-      if (showAlert) alert('Error: ' + error.message)
+      if (showAlert) alert('Error updating profile: ' + error.message)
+      console.error('updateUser error:', error)
     }
   }
 

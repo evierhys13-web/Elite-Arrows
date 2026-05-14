@@ -40,14 +40,14 @@ export default function CupBracket() {
     )
   }
 
-  const totalRounds = Math.max(...(cup.matches?.map(m => m.round) || [1]))
-  const prizePot = cup.entryFee * (cup.players?.length || 0)
+  const totalRounds = cup.matches?.length > 0 ? Math.max(...cup.matches.map(m => m.round)) : 1
+  const prizePot = (cup.entryFee || 0) * (cup.players?.length || 0)
   const cupWinner = cup.matches?.find(m => m.round === totalRounds)?.winner
 
   const getRoundName = (round) => {
     if (round === totalRounds) return 'FINAL'
-    if (round === totalRounds - 1) return 'SEMI-FINALS'
-    if (round === totalRounds - 2) return 'QUARTER-FINALS'
+    if (round === totalRounds - 1 && totalRounds > 1) return 'SEMI-FINALS'
+    if (round === totalRounds - 2 && totalRounds > 2) return 'QUARTER-FINALS'
     return `ROUND ${round}`
   }
 

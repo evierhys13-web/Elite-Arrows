@@ -166,13 +166,24 @@ export const derivePlayerStatsFromResults = (users = [], results = [], options =
   } = options
 
   const statsByPlayerId = {}
+
+  if (!Array.isArray(users)) {
+    console.warn('derivePlayerStatsFromResults: users is not an array', users)
+    return {}
+  }
+
   users.forEach(user => {
-    statsByPlayerId[String(user.id)] = createEmptyPlayerStats(user)
+    if (user && user.id) {
+      statsByPlayerId[String(user.id)] = createEmptyPlayerStats(user)
+    }
   })
 
-  const fixturesById = Object.fromEntries(fixtures.map(fixture => [String(fixture.id), fixture]))
-  const approvedResults = getApprovedResultsForStats(results, {
-    fixtures,
+  const fixturesList = Array.isArray(fixtures) ? fixtures : []
+  const fixturesById = Object.fromEntries(fixturesList.map(fixture => [String(fixture.id), fixture]))
+
+  const resultsList = Array.isArray(results) ? results : []
+  const approvedResults = getApprovedResultsForStats(resultsList, {
+    fixtures: fixturesList,
     adminData,
     leagueOnly,
     superLeagueOnly,
@@ -190,6 +201,7 @@ export const derivePlayerStatsFromResults = (users = [], results = [], options =
   })
 
   sortedResults.forEach(result => {
+    if (!result) return
     const player1Id = getResultPlayerId(result, 1, users)
     const player2Id = getResultPlayerId(result, 2, users)
     const score1 = toNumber(result.score1)

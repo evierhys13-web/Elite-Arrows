@@ -11,8 +11,11 @@ import BackgroundDecor from './components/BackgroundDecor'
 import NotificationPermissionPrompt from './components/NotificationPermissionPrompt'
 import OnboardingTour, { useOnboarding } from './components/OnboardingTour'
 import WhatsNewPopup, { useWhatsNew } from './components/WhatsNewPopup'
+import AverageUpdateModal from './components/AverageUpdateModal'
+import ErrorBoundary from './components/ErrorBoundary'
 import { Skeleton } from './components/Skeleton'
 import { Capacitor } from '@capacitor/core'
+import { ADMIN_EMAILS } from './firebase'
 
 const Auth = lazy(() => import('./pages/Auth'))
 const Home = lazy(() => import('./pages/Home'))
@@ -91,8 +94,7 @@ function SubscribedRoute({ children }) {
   }
 
   const isFreeTier = !user?.division || user?.division === 'Unassigned'
-  const adminEmails = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
-  const isEmailAdmin = adminEmails.includes(user?.email?.toLowerCase())
+  const isEmailAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
   const isDbAdmin = user?.isAdmin === true
   const isAdmin = isEmailAdmin || isDbAdmin
   const isSubscribed = user?.isSubscribed === true
@@ -155,8 +157,7 @@ function AdminRoute({ children }) {
     return <Navigate to="/auth" replace />
   }
 
-  const adminEmails = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
-  const isEmailAdmin = adminEmails.includes(user?.email?.toLowerCase())
+  const isEmailAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
   const isDbAdmin = user?.isAdmin === true
   const isTournamentAdmin = user?.isTournamentAdmin === true
   const isAdmin = isEmailAdmin || isDbAdmin || isTournamentAdmin
@@ -201,10 +202,18 @@ function AdminRoute({ children }) {
 }
 
 function AppLayout({ children }) {
-  const { dataRefreshTrigger, adminData } = useAuth()
+  const { user, dataRefreshTrigger, adminData } = useAuth()
   const { showOnboarding, completeOnboarding } = useOnboarding()
   const { showWhatsNew } = useWhatsNew()
   const [whatsNewOpen, setWhatsNewOpen] = useState(showWhatsNew)
+
+  // Force average update logic: If not updated in last 24h OR never updated
+  const [showAvgModal, setShowAvgModal] = useState(() => {
+    if (!user) return false
+    const lastUpdate = user.averageLastUpdated ? new Date(user.averageLastUpdated).getTime() : 0
+    const oneDay = 24 * 60 * 60 * 1000
+    return (Date.now() - lastUpdate) > oneDay
+  })
 
   const hasMaintenance = adminData?.isMaintenanceMode && adminData?.maintenanceMessage
 
@@ -249,6 +258,7 @@ function AppLayout({ children }) {
         <NotificationPermissionPrompt />
         {showOnboarding && <OnboardingTour onComplete={completeOnboarding} />}
         <WhatsNewPopup isOpen={whatsNewOpen} onClose={() => setWhatsNewOpen(false)} />
+        <AverageUpdateModal isOpen={showAvgModal} onClose={() => setShowAvgModal(false)} />
       </div>
     </>
   )
@@ -317,15 +327,22 @@ function AppShell() {
 }
 
 export default function App() {
+  useEffect(() => {
+    // Reset crash count on successful mount
+    sessionStorage.setItem('crashCount', '0')
+  }, [])
+
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <ToastProvider>
-          <BrowserRouter>
-            <AppShell />
-          </BrowserRouter>
-        </ToastProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <BrowserRouter>
+              <AppShell />
+            </BrowserRouter>
+          </ToastProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   )
 }

@@ -11,13 +11,9 @@ import { getResultEffectiveTime, getResultPlayerId, isLeagueResult } from '../ut
 import AverageUpdateModal from '../components/AverageUpdateModal'
 
 const DEFAULT_LEAGUE_TABLE_RESET_AT = '2026-04-29T16:14:21.338+01:00'
-const SEASON_START = new Date('2026-05-01T00:00:00+01:00')
-const SEASON_END = new Date('2026-06-01T00:00:00+01:00')
-const SEASON_START_LABEL = '01/05/2026 00:00'
-const SEASON_END_LABEL = '01/06/2026 00:00'
 
 export default function Home() {
-  const { user, getAllUsers, getFixtures, getResults, dataRefreshTrigger, loading, adminData, updateUser } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, dataRefreshTrigger, loading, adminData, updateUser, getSeasons } = useAuth()
   
   const [refreshKey, setRefreshKey] = useState(0)
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
@@ -26,6 +22,15 @@ export default function Home() {
   const [surveyAnswers, setSurveyAnswers] = useState({})
   const [submittingSurvey, setSubmittingSurvey] = useState(null)
   const [showAverageModal, setShowAverageModal] = useState(false)
+
+  const activeSeason = useMemo(() => {
+    const seasons = getSeasons()
+    return seasons.find(s => s.status === 'active') || {
+      name: 'Season 1',
+      startDate: '2026-05-01T00:00:00+01:00',
+      endDate: '2026-06-01T00:00:00+01:00'
+    }
+  }, [getSeasons])
 
   useEffect(() => {
     setRefreshKey(prev => prev + 1)
@@ -48,8 +53,11 @@ export default function Home() {
   useEffect(() => {
     const calculateTimeLeft = () => {
       const now = new Date()
-      const nextPhase = now < SEASON_START ? 'upcoming' : now < SEASON_END ? 'active' : 'ended'
-      const targetDate = nextPhase === 'upcoming' ? SEASON_START : nextPhase === 'active' ? SEASON_END : null
+      const startDate = new Date(activeSeason.startDate)
+      const endDate = new Date(activeSeason.endDate)
+
+      const nextPhase = now < startDate ? 'upcoming' : now < endDate ? 'active' : 'ended'
+      const targetDate = nextPhase === 'upcoming' ? startDate : nextPhase === 'active' ? endDate : null
       const diff = targetDate ? targetDate - now : 0
 
       setSeasonPhase(nextPhase)
@@ -69,7 +77,7 @@ export default function Home() {
     calculateTimeLeft()
     const timer = setInterval(calculateTimeLeft, 1000)
     return () => clearInterval(timer)
-  }, [])
+  }, [activeSeason])
 
   const allUsers = getAllUsers()
   const isSeasonActive = seasonPhase === 'active'
@@ -214,8 +222,8 @@ export default function Home() {
           </h2>
           <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
             {isSeasonActive 
-              ? `${SEASON_START_LABEL} - ${SEASON_END_LABEL}`
-              : `Season 1: ${SEASON_START_LABEL} - ${SEASON_END_LABEL}`
+              ? `${new Date(activeSeason.startDate).toLocaleString()} - ${new Date(activeSeason.endDate).toLocaleString()}`
+              : `${activeSeason.name}: ${new Date(activeSeason.startDate).toLocaleString()} - ${new Date(activeSeason.endDate).toLocaleString()}`
             }
           </p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '20px' }}>

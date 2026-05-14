@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { db, setDoc, getDocs, doc, collection, addDoc } from '../firebase'
+import { db, setDoc, getDocs, doc, collection, addDoc, ADMIN_EMAILS } from '../firebase'
 import { derivePlayerStatsFromResults, getPersistedPlayerStats } from '../utils/playerStats'
 import { useToast } from '../context/ToastContext'
 import { SkeletonList } from '../components/Skeleton'
@@ -16,7 +16,6 @@ export default function Results() {
     setRefreshKey(prev => prev + 1)
   }, [dataRefreshTrigger])
   
-  const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
   const isAdmin = user?.isAdmin || user?.isTournamentAdmin || ADMIN_EMAILS.includes(user?.email?.toLowerCase())
   const isSubscribed = user?.isSubscribed === true || isAdmin
   

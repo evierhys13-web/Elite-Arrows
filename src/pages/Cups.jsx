@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { Link } from 'react-router-dom'
-import { db, doc, setDoc, deleteDoc } from '../firebase'
+import { db, doc, setDoc, deleteDoc, ADMIN_EMAILS } from '../firebase'
 import UserSearchSelect from '../components/UserSearchSelect'
 
 export default function CupTournaments() {
@@ -13,7 +13,6 @@ export default function CupTournaments() {
   const [roundFormats, setRoundFormats] = useState({})
   const [refreshKey, setRefreshKey] = useState(0)
   
-  const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
   const isEmailAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
   const isDbAdmin = user?.isAdmin === true
   const isTournamentAdmin = user?.isTournamentAdmin === true

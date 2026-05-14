@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import { db, doc, setDoc, deleteDoc, getDocs, collection } from '../firebase'
+import { db, doc, setDoc, deleteDoc, getDocs, collection, ADMIN_EMAILS } from '../firebase'
 import UserSearchSelect from '../components/UserSearchSelect'
 
 export default function Fixtures() {
@@ -33,7 +33,6 @@ const [counterFixture, setCounterFixture] = useState(null)
   const [predictedScore1, setPredictedScore1] = useState('')
   const [predictedScore2, setPredictedScore2] = useState('')
 
-  const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
   const isEmailAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
   const isDbAdmin = user?.isAdmin === true
   const isTournamentAdmin = user?.isTournamentAdmin === true
