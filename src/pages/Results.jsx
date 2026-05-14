@@ -29,8 +29,9 @@ export default function Results() {
     try {
       const res = allResults.find(r => String(r.id) === String(resultId))
       if (!res) return
+      const targetId = res.firestoreId || String(resultId)
       const updated = { ...res, status: 'approved', approvedAt: new Date().toISOString() }
-      await setDoc(doc(db, 'results', String(resultId)), updated, { merge: true })
+      await setDoc(doc(db, 'results', targetId), updated, { merge: true })
       triggerDataRefresh('results')
       showToast('Result Approved', 'success')
     } catch (e) { showToast(e.message, 'error') }
@@ -41,8 +42,9 @@ export default function Results() {
     try {
       const res = allResults.find(r => String(r.id) === String(resultId))
       if (!res) return
+      const targetId = res.firestoreId || String(resultId)
       const updated = { ...res, status: 'rejected', updatedAt: new Date().toISOString() }
-      await setDoc(doc(db, 'results', String(resultId)), updated, { merge: true })
+      await setDoc(doc(db, 'results', targetId), updated, { merge: true })
       triggerDataRefresh('results')
       showToast('Result Rejected', 'info')
     } catch (e) { showToast(e.message, 'error') }

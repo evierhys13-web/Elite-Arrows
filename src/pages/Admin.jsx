@@ -121,8 +121,9 @@ export default function Admin() {
     try {
       const res = allResults.find(r => String(r.id) === String(resultId))
       if (!res) throw new Error('Result not found')
+      const targetId = res.firestoreId || String(resultId)
       const approvedResult = { ...res, status: 'approved', approvedAt: new Date().toISOString() }
-      await setDoc(doc(db, 'results', String(resultId)), approvedResult, { merge: true })
+      await setDoc(doc(db, 'results', targetId), approvedResult, { merge: true })
       logMatchApproved(res)
 
       if (res.gameType === 'Cup') {
@@ -145,8 +146,9 @@ export default function Admin() {
       selectedResults.forEach(id => {
         const res = allResults.find(r => String(r.id) === String(id))
         if (res) {
+          const targetId = res.firestoreId || String(id)
           const approvedResult = { ...res, status: 'approved', approvedAt: new Date().toISOString() }
-          batch.update(doc(db, 'results', String(id)), { status: 'approved', approvedAt: approvedResult.approvedAt })
+          batch.update(doc(db, 'results', targetId), { status: 'approved', approvedAt: approvedResult.approvedAt })
           logMatchApproved(res)
           if (res.gameType === 'Cup') {
             cupResults.push(approvedResult)
@@ -171,7 +173,8 @@ export default function Admin() {
     try {
       const res = allResults.find(r => String(r.id) === String(resultId))
       if (!res) throw new Error('Result not found')
-      await setDoc(doc(db, 'results', String(resultId)), { ...res, status: 'rejected', updatedAt: new Date().toISOString() }, { merge: true })
+      const targetId = res.firestoreId || String(resultId)
+      await setDoc(doc(db, 'results', targetId), { ...res, status: 'rejected', updatedAt: new Date().toISOString() }, { merge: true })
       await logAudit('REJECT_RESULT', `Rejected match: ${res.player1} vs ${res.player2}`)
       triggerDataRefresh('results')
       showToast('Result Rejected', 'info')
@@ -182,7 +185,8 @@ export default function Admin() {
     if (!window.confirm('Permanently delete this result?')) return
     try {
       const res = allResults.find(r => String(r.id) === String(resultId))
-      await deleteDoc(doc(db, 'results', String(resultId)))
+      const targetId = res?.firestoreId || String(resultId)
+      await deleteDoc(doc(db, 'results', targetId))
       await logAudit('DELETE_RESULT', `Deleted result: ${res?.player1} vs ${res?.player2}`)
       triggerDataRefresh('results')
       showToast('Result Deleted', 'info')
@@ -194,7 +198,9 @@ export default function Admin() {
     if (!editingResult) return
     try {
       const { id, ...updates } = editingResult
-      await setDoc(doc(db, 'results', String(id)), updates, { merge: true })
+      const res = allResults.find(r => String(r.id) === String(id))
+      const targetId = res?.firestoreId || String(id)
+      await setDoc(doc(db, 'results', targetId), updates, { merge: true })
       await logAudit('EDIT_RESULT', `Edited match: ${updates.player1} vs ${updates.player2}`)
       setEditingResult(null)
       triggerDataRefresh('results')
@@ -497,6 +503,7 @@ export default function Admin() {
 
         // 2. Ensure internal analytics page can see it correctly
         const updates = {};
+        const targetId = match.firestoreId || String(match.id);
 
         // Fix missing or incorrect season
         if (!match.season || match.season !== currentSeason) {
@@ -517,7 +524,7 @@ export default function Admin() {
         }
 
         if (Object.keys(updates).length > 0) {
-          batch.update(doc(db, 'results', String(match.id)), updates);
+          batch.update(doc(db, 'results', targetId), updates);
           updatedCount++;
         }
       }
