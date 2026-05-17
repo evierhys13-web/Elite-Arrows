@@ -6,12 +6,17 @@ export default function SurveyPopup() {
   const [activeSurvey, setActiveSurvey] = useState(null)
   const [answers, setAnswers] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [skippedIds, setSkippedIds] = useState(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem('eliteArrowsSkippedSurveys') || '[]')
+    } catch (e) { return [] }
+  })
 
   useEffect(() => {
     if (!user || !adminData?.surveys) return
 
     const pendingSurvey = adminData.surveys.find(s => {
-      if (!s.active) return false
+      if (!s.active || skippedIds.includes(s.id)) return false
 
       // Check if user already responded
       const hasResponded = s.responses?.some(r => r.userId === user.id)
@@ -81,7 +86,11 @@ export default function SurveyPopup() {
   }
 
   const handleSkip = () => {
-    // Optionally track skips so they don't see it again this session
+    if (activeSurvey) {
+      const nextSkipped = [...skippedIds, activeSurvey.id]
+      setSkippedIds(nextSkipped)
+      sessionStorage.setItem('eliteArrowsSkippedSurveys', JSON.stringify(nextSkipped))
+    }
     setActiveSurvey(null)
   }
 

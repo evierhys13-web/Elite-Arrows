@@ -690,31 +690,41 @@ const [counterFixture, setCounterFixture] = useState(null)
     }
 
     try {
-      // Use _deleted flag instead of hard delete for better reliability with security rules
-      await setDoc(doc(db, 'fixtures', String(fixtureId)), { _deleted: true }, { merge: true })
+      const { player1Id, player2Id } = getFixturePlayerIds(fixture)
+      const opponentId = isSameId(player1Id, user.id) ? player2Id : player1Id
+
+      // If fixture is pending and user is the creator, we can try to hard delete
+      if (fixture.status === 'pending' && isSameId(fixture.createdBy, user.id)) {
+        try {
+          await deleteDoc(doc(db, 'fixtures', String(fixtureId)))
+        } catch (e) {
+          // Fallback to soft delete if hard delete fails (e.g. security rules)
+          await setDoc(doc(db, 'fixtures', String(fixtureId)), { _deleted: true }, { merge: true })
+        }
+      } else {
+        // Otherwise use soft delete
+        await setDoc(doc(db, 'fixtures', String(fixtureId)), { _deleted: true }, { merge: true })
+      }
 
       const updatedFixtures = getFixtures().filter(f => String(f.id) !== String(fixtureId))
       saveFixtures(updatedFixtures)
 
-      const recipientId = getOtherPlayerId(fixture)
-      if (recipientId) {
+      if (opponentId) {
         await notifyUser(
-          recipientId,
+          opponentId,
           'Fixture Cancelled',
           `${user.username} cancelled a ${fixture.gameType || 'league'} fixture request.`,
           'fixture_cancelled',
           { fixtureKind: 'league', fixtureId }
         )
       }
-      if (fixture) {
-        await sendFixtureActivityToAdmins('cancelled', fixture)
-      }
 
+      await sendFixtureActivityToAdmins('cancelled', fixture)
       triggerDataRefresh('fixtures')
       showToast('Fixture cancelled successfully', 'info')
     } catch (e) {
       console.error('Error cancelling fixture:', e)
-      showToast('Failed to cancel fixture on server: ' + e.message, 'error')
+      showToast('Failed to cancel fixture: ' + (e.code === 'permission-denied' ? 'Access denied by server' : e.message), 'error')
     }
   }
 
@@ -728,6 +738,7 @@ const [counterFixture, setCounterFixture] = useState(null)
       return
     }
 
+    // For Cup matches, we ONLY reset the proposal fields, we never delete the fixture itself
     const updatedFixture = {
       ...allFixtures[index],
       status: 'pending',
@@ -743,6 +754,7 @@ const [counterFixture, setCounterFixture] = useState(null)
       time: '',
       fixtureDate: '',
       fixtureTime: '',
+      _deleted: false,
       updatedAt: new Date().toISOString()
     }
 
@@ -773,10 +785,10 @@ const [counterFixture, setCounterFixture] = useState(null)
 
       triggerDataRefresh('fixtures')
       setRefreshKey(prev => prev + 1)
-      showToast('Cup fixture proposal cancelled successfully. It is back in cup fixtures for a new proposal.', 'info')
+      showToast('Cup fixture proposal cancelled', 'info')
     } catch (e) {
       console.error('Error cancelling cup fixture proposal:', e)
-      showToast('Failed to cancel proposal on server: ' + e.message, 'error')
+      showToast('Failed to cancel proposal: ' + e.message, 'error')
     }
   }
 

@@ -625,55 +625,78 @@ export default function Admin() {
         {/* TAB: DASHBOARD */}
         {activeTab === 'dashboard' && (
           <div className="animate-fade-in">
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '32px' }}>
-              <div className="stat-card glass" onClick={() => setActiveTab('results')} style={{ cursor: 'pointer' }}>
-                <div className="stat-value" style={{ color: stats.pendingResults > 0 ? 'var(--warning)' : 'var(--success)' }}>{stats.pendingResults}</div>
-                <div className="stat-label">Pending Results</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '24px', marginBottom: '32px' }}>
+              <div className="stat-card glass" onClick={() => setActiveTab('results')} style={{ cursor: 'pointer', transition: 'transform 0.2s', padding: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <div className="stat-label" style={{ margin: 0 }}>Pending Results</div>
+                  <div style={{ fontSize: '1.5rem' }}>🎯</div>
+                </div>
+                <div className="stat-value" style={{ color: stats.pendingResults > 0 ? 'var(--warning)' : 'var(--success)', fontSize: '2.5rem' }}>{stats.pendingResults}</div>
               </div>
-              <div className="stat-card glass" onClick={() => setActiveTab('payments')} style={{ cursor: 'pointer' }}>
-                <div className="stat-value" style={{ color: stats.pendingPayments > 0 ? 'var(--error)' : 'var(--success)' }}>{stats.pendingPayments}</div>
-                <div className="stat-label">Pending Payments</div>
+              <div className="stat-card glass" onClick={() => setActiveTab('payments')} style={{ cursor: 'pointer', transition: 'transform 0.2s', padding: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <div className="stat-label" style={{ margin: 0 }}>Pending Payments</div>
+                  <div style={{ fontSize: '1.5rem' }}>💳</div>
+                </div>
+                <div className="stat-value" style={{ color: stats.pendingPayments > 0 ? 'var(--error)' : 'var(--success)', fontSize: '2.5rem' }}>{stats.pendingPayments}</div>
               </div>
-              <div className="stat-card glass">
-                <div className="stat-value" style={{ color: 'var(--accent-cyan)' }}>{stats.newUsers}</div>
-                <div className="stat-label">New Users (7d)</div>
+              <div className="stat-card glass" style={{ padding: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <div className="stat-label" style={{ margin: 0 }}>New Users (7d)</div>
+                  <div style={{ fontSize: '1.5rem' }}>👤</div>
+                </div>
+                <div className="stat-value" style={{ color: 'var(--accent-cyan)', fontSize: '2.5rem' }}>{stats.newUsers}</div>
               </div>
-              <div className="stat-card glass">
-                <div className="stat-value">£{stats.totalPot.toFixed(0)}</div>
-                <div className="stat-label">Total Sub Pot</div>
+              <div className="stat-card glass" style={{ padding: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <div className="stat-label" style={{ margin: 0 }}>Total Sub Pot</div>
+                  <div style={{ fontSize: '1.5rem' }}>💰</div>
+                </div>
+                <div className="stat-value" style={{ fontSize: '2.5rem' }}>£{stats.totalPot.toFixed(0)}</div>
               </div>
             </div>
 
-            <div className="card glass" style={{ marginBottom: '24px' }}>
-              <h3 className="card-title">📊 Analytics Sync</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '16px' }}>
-                Sync all approved match results and player data to Firebase Analytics for deeper insights.
-              </p>
-              <button className="btn btn-primary" onClick={handleBulkSyncAnalytics} disabled={isApproving}>
-                {isApproving ? 'Syncing...' : 'Bulk Sync All Approved Games'}
-              </button>
-            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
+              <div className="card glass" style={{ padding: '24px' }}>
+                <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span>📊</span> Analytics Sync
+                </h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px', lineHeight: '1.6' }}>
+                  Synchronize all approved match results and player data with the Analytics engine. This ensures all charts and historical stats are correctly categorized by season and division.
+                </p>
+                <button className="btn btn-primary btn-block" onClick={handleBulkSyncAnalytics} disabled={isApproving} style={{ padding: '14px' }}>
+                  {isApproving ? 'Syncing...' : 'Bulk Sync All Approved Games'}
+                </button>
+              </div>
 
-            <div className="card glass">
-              <h3 className="card-title">🚨 Urgent Actions</h3>
-              {(stats.pendingResults > 0 || stats.pendingPayments > 0) ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {stats.pendingResults > 0 && (
-                    <div className="glass" style={{ padding: '16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: '4px solid var(--warning)' }}>
-                      <span>{stats.pendingResults} match results are waiting for approval.</span>
-                      <button className="btn btn-secondary btn-sm" onClick={() => setActiveTab('results')}>Review Scores</button>
-                    </div>
-                  )}
-                  {stats.pendingPayments > 0 && (
-                    <div className="glass" style={{ padding: '16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: '4px solid var(--error)' }}>
-                      <span>{stats.pendingPayments} players have pending membership payments.</span>
-                      <button className="btn btn-secondary btn-sm" onClick={() => setActiveTab('payments')}>Verify Payments</button>
+              <div className="card glass" style={{ padding: '24px' }}>
+                <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span>🚨</span> Urgent Actions
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '16px' }}>
+                  {(stats.pendingResults > 0 || stats.pendingPayments > 0) ? (
+                    <>
+                      {stats.pendingResults > 0 && (
+                        <div className="glass" style={{ padding: '16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: '4px solid var(--warning)', background: 'rgba(245, 158, 11, 0.05)' }}>
+                          <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{stats.pendingResults} matches awaiting review.</span>
+                          <button className="btn btn-secondary btn-sm" onClick={() => setActiveTab('results')}>Review</button>
+                        </div>
+                      )}
+                      {stats.pendingPayments > 0 && (
+                        <div className="glass" style={{ padding: '16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: '4px solid var(--error)', background: 'rgba(239, 68, 68, 0.05)' }}>
+                          <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{stats.pendingPayments} payments to verify.</span>
+                          <button className="btn btn-secondary btn-sm" onClick={() => setActiveTab('payments')}>Verify</button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '20px' }}>
+                      <div style={{ fontSize: '2rem', marginBottom: '10px' }}>✅</div>
+                      <p style={{ color: 'var(--text-muted)', margin: 0 }}>System is healthy. No urgent tasks.</p>
                     </div>
                   )}
                 </div>
-              ) : (
-                <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>No urgent tasks. Everything is up to date! ✅</p>
-              )}
+              </div>
             </div>
           </div>
         )}
@@ -1002,26 +1025,61 @@ export default function Admin() {
               </div>
             </div>
 
-            <div style={{ maxHeight: '500px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {allPlayers.map(p => (
-                <div key={p.id} className="player-card glass" style={{ padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontWeight: 600 }}>{p.username} {p.isSubscribed && <span style={{ color: 'var(--success)', fontSize: '0.6rem', border: '1px solid var(--success)', padding: '1px 4px', borderRadius: '4px', marginLeft: '5px' }}>PASSED</span>}</div>
-                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{p.email} | Div: {p.division || 'Unassigned'}</div>
+            <div style={{ maxHeight: '600px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingRight: '10px' }}>
+              {allPlayers.sort((a, b) => a.username.localeCompare(b.username)).map(p => (
+                <div key={p.id} className="player-card glass" style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div className="avatar-ring" style={{ width: '45px', height: '42px', padding: '2px' }}>
+                      <div className="avatar-inner" style={{ background: '#050816', fontSize: '1rem' }}>
+                        {p.profilePicture ? (
+                          <img src={p.profilePicture} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <span>{(p.username || '?').charAt(0).toUpperCase()}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {p.username}
+                        {p.isSubscribed && (
+                          <span style={{
+                            color: 'var(--success)',
+                            fontSize: '0.6rem',
+                            background: 'rgba(16, 185, 129, 0.1)',
+                            padding: '2px 8px',
+                            borderRadius: '99px',
+                            border: '1px solid rgba(16, 185, 129, 0.3)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em'
+                          }}>
+                            Pass
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        {p.email} • <span style={{ color: 'var(--accent-cyan)' }}>{p.division || 'Unassigned'}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/profile/${p.id}`)}>View</button>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button className="btn btn-secondary btn-sm" style={{ padding: '8px 12px' }} onClick={() => navigate(`/profile/${p.id}`)}>View</button>
                     {isFullAdmin && (
                       <>
                         <button
                           className="btn btn-sm"
-                          style={{ background: p.isBanned ? 'var(--success)' : 'var(--error)', padding: '8px', color: 'white' }}
+                          style={{
+                            background: p.isBanned ? 'var(--success)' : 'rgba(239, 68, 68, 0.1)',
+                            border: `1px solid ${p.isBanned ? 'var(--success)' : 'var(--error)'}`,
+                            padding: '8px',
+                            color: p.isBanned ? 'white' : 'var(--error)',
+                            minWidth: '40px'
+                          }}
                           onClick={() => handleToggleBan(p.id, p.isBanned)}
                           title={p.isBanned ? 'Unban User' : 'Ban User'}
                         >
                           {p.isBanned ? '😇' : '🚫'}
                         </button>
-                        <button className="btn btn-danger btn-sm" style={{ padding: '8px' }} onClick={() => handleDeleteUser(p.id)}>🗑️</button>
+                        <button className="btn btn-danger btn-sm" style={{ padding: '8px', minWidth: '40px' }} onClick={() => handleDeleteUser(p.id)}>🗑️</button>
                       </>
                     )}
                   </div>
@@ -1292,30 +1350,73 @@ export default function Admin() {
 
         {/* TAB: MAINTENANCE */}
         {activeTab === 'maintenance' && (
-          <div className="card glass">
-            <h3>System Status</h3>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '24px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
-                <input type="checkbox" checked={adminData?.isMaintenanceMode || false} onChange={e => updateAdminData({ isMaintenanceMode: e.target.checked })} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600 }}>Global Maintenance Lock</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Blocks all users from using the app except admins.</div>
-                </div>
-              </label>
-
-              <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
-                <input type="checkbox" checked={adminData?.registrationsEnabled !== false} onChange={e => updateAdminData({ registrationsEnabled: e.target.checked })} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600 }}>New Player Sign-ups</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Disable this when recruitment is closed to stop new accounts.</div>
-                </div>
-              </label>
+          <div className="card glass" style={{ padding: '32px' }}>
+            <div style={{ marginBottom: '32px' }}>
+              <h3 className="card-title" style={{ fontSize: '1.5rem', marginBottom: '8px' }}>System Control Center</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Manage global application behavior and maintenance states.</p>
             </div>
 
-            <h4 style={{ marginBottom: '12px', fontSize: '0.9rem' }}>Maintenance Message</h4>
-            <textarea className="glass" style={{ width: '100%', padding: '15px', borderRadius: '12px', marginBottom: '10px' }} rows={3} placeholder="Banner message..." defaultValue={adminData?.maintenanceMessage || ''} id="maintMsgInput" />
-            <button className="btn btn-primary btn-block" onClick={() => { updateAdminData({ maintenanceMessage: document.getElementById('maintMsgInput').value }); showToast('Message updated', 'success'); }}>Broadcast Update</button>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '40px' }}>
+              <div className="glass" style={{ padding: '24px', borderRadius: '16px', background: adminData?.isMaintenanceMode ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.05)', border: `1px solid ${adminData?.isMaintenanceMode ? 'var(--error)' : 'var(--success)'}` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                  <div style={{ fontSize: '2rem' }}>🔒</div>
+                  <div className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      id="maintenanceToggle"
+                      checked={adminData?.isMaintenanceMode || false}
+                      onChange={e => updateAdminData({ isMaintenanceMode: e.target.checked })}
+                    />
+                    <label htmlFor="maintenanceToggle"></label>
+                  </div>
+                </div>
+                <h4 style={{ margin: '0 0 8px 0', fontWeight: 800 }}>Maintenance Mode</h4>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0, lineHeight: '1.5' }}>
+                  When enabled, only administrators can access the application. All other users will see the maintenance banner.
+                </p>
+              </div>
+
+              <div className="glass" style={{ padding: '24px', borderRadius: '16px', background: adminData?.registrationsEnabled !== false ? 'rgba(56, 189, 248, 0.1)' : 'rgba(255,255,255,0.05)', border: `1px solid ${adminData?.registrationsEnabled !== false ? 'var(--accent-cyan)' : 'var(--border)'}` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                  <div style={{ fontSize: '2rem' }}>📝</div>
+                  <div className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      id="regToggle"
+                      checked={adminData?.registrationsEnabled !== false}
+                      onChange={e => updateAdminData({ registrationsEnabled: e.target.checked })}
+                    />
+                    <label htmlFor="regToggle"></label>
+                  </div>
+                </div>
+                <h4 style={{ margin: '0 0 8px 0', fontWeight: 800 }}>User Sign-ups</h4>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0, lineHeight: '1.5' }}>
+                  Control whether new players can create accounts. Disable this during peak season or when recruitment is closed.
+                </p>
+              </div>
+            </div>
+
+            <div className="glass" style={{ padding: '24px', borderRadius: '16px', border: '1px solid var(--border)' }}>
+              <h4 style={{ marginBottom: '16px', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--accent-cyan)' }}>Maintenance Message</h4>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '16px' }}>
+                This message will be displayed at the bottom of the screen for all users when Maintenance Mode is active.
+              </p>
+              <textarea
+                className="glass"
+                style={{ width: '100%', padding: '16px', borderRadius: '12px', marginBottom: '20px', fontSize: '0.95rem', border: '1px solid rgba(255,255,255,0.1)' }}
+                rows={4}
+                placeholder="e.g. System upgrade in progress. We'll be back online at 6 PM GMT."
+                defaultValue={adminData?.maintenanceMessage || ''}
+                id="maintMsgInput"
+              />
+              <button
+                className="btn btn-primary"
+                style={{ width: '100%', padding: '14px' }}
+                onClick={() => { updateAdminData({ maintenanceMessage: document.getElementById('maintMsgInput').value }); showToast('Maintenance message updated', 'success'); }}
+              >
+                Update System Message
+              </button>
+            </div>
           </div>
         )}
 
