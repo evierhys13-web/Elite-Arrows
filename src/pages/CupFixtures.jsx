@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { db, doc, setDoc } from '../firebase'
+import { useToast } from '../context/ToastContext'
 
 export default function CupFixtures() {
   const { user, getAllUsers, getFixtures, getCups, updateFixtures, triggerDataRefresh, dataRefreshTrigger, notifyUser, notifyAdmins } = useAuth()
+  const { showToast } = useToast()
   const navigate = useNavigate()
   const [fixtures, setFixtures] = useState([])
   const [selectedFixture, setSelectedFixture] = useState(null)
@@ -162,7 +164,7 @@ export default function CupFixtures() {
       setScheduleMode('propose')
       setScheduleDate('')
       setScheduleTime('')
-      alert(scheduleMode === 'counter' ? 'Counter proposal sent!' : 'Schedule proposal sent!')
+      showToast(scheduleMode === 'counter' ? 'Counter proposal sent!' : 'Schedule proposal sent!', 'success')
     }
   }
 
@@ -204,7 +206,7 @@ export default function CupFixtures() {
       
       triggerDataRefresh('fixtures')
       setRefreshKey(prev => prev + 1)
-      alert('Fixture accepted!')
+      showToast('Fixture accepted!', 'success')
     }
   }
 
@@ -265,7 +267,7 @@ export default function CupFixtures() {
     
     triggerDataRefresh('fixtures')
     setRefreshKey(prev => prev + 1)
-    alert('Fixture rejected. It is back in cup fixtures for a new proposal.')
+    showToast('Fixture rejected. It is back in cup fixtures for a new proposal.', 'info')
   }
 
   const cancelProposal = async (fixture) => {
@@ -312,10 +314,10 @@ export default function CupFixtures() {
 
       triggerDataRefresh('fixtures')
       setRefreshKey(prev => prev + 1)
-      alert('Proposal cancelled successfully. The match is back in cup fixtures for a new proposal.')
+      showToast('Proposal cancelled successfully. The match is back in cup fixtures for a new proposal.', 'info')
     } catch (e) {
       console.error('Error cancelling proposal:', e)
-      alert('Failed to cancel proposal on server: ' + e.message)
+      showToast('Failed to cancel proposal on server: ' + e.message, 'error')
     }
   }
 

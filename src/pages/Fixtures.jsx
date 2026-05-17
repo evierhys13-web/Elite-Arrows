@@ -4,9 +4,11 @@ import { useNavigate } from 'react-router-dom'
 import { db, doc, setDoc, deleteDoc, getDocs, collection } from '../firebase'
 import { ADMIN_EMAILS } from '../config'
 import UserSearchSelect from '../components/UserSearchSelect'
+import { useToast } from '../context/ToastContext'
 
 export default function Fixtures() {
   const { user, getAllUsers, getFixtures, getResults, updateResults, updateFixtures, triggerDataRefresh, notifyUser, notifyAdmins, useTokens, bets: allBetsData } = useAuth()
+  const { showToast } = useToast()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('my')
   const [allFixtureFilter, setAllFixtureFilter] = useState('confirmed')
@@ -442,7 +444,7 @@ const [counterFixture, setCounterFixture] = useState(null)
       setCupScheduleMode('propose')
       setScheduleDate('')
       setScheduleTime('')
-      alert(cupScheduleMode === 'counter' ? 'Counter proposal sent!' : 'Schedule proposal sent!')
+      showToast(cupScheduleMode === 'counter' ? 'Counter proposal sent!' : 'Schedule proposal sent!', 'success')
       triggerDataRefresh('fixtures')
       setRefreshKey(prev => prev + 1)
     }
@@ -485,7 +487,7 @@ const [counterFixture, setCounterFixture] = useState(null)
         console.log('Error saving to Firebase:', e)
       }
       
-      alert('Fixture accepted!')
+      showToast('Fixture accepted!', 'success')
       triggerDataRefresh('fixtures')
       setRefreshKey(prev => prev + 1)
     }
@@ -602,7 +604,7 @@ const [counterFixture, setCounterFixture] = useState(null)
       }
     }
     
-    alert('Result submitted!')
+    showToast('Result submitted!', 'success')
     triggerDataRefresh('results')
     triggerDataRefresh('fixtures')
     setRefreshKey(prev => prev + 1)
@@ -672,10 +674,10 @@ const [counterFixture, setCounterFixture] = useState(null)
         await sendFixtureActivityToAdmins('declined', fixture)
       }
       triggerDataRefresh('fixtures')
-      alert('Fixture declined successfully')
+      showToast('Fixture declined successfully', 'info')
     } catch (e) {
       console.error('Error declining fixture:', e)
-      alert('Failed to decline fixture on server: ' + e.message)
+      showToast('Failed to decline fixture on server: ' + e.message, 'error')
     }
   }
 
@@ -709,10 +711,10 @@ const [counterFixture, setCounterFixture] = useState(null)
       }
 
       triggerDataRefresh('fixtures')
-      alert('Fixture cancelled successfully')
+      showToast('Fixture cancelled successfully', 'info')
     } catch (e) {
       console.error('Error cancelling fixture:', e)
-      alert('Failed to cancel fixture on server: ' + e.message)
+      showToast('Failed to cancel fixture on server: ' + e.message, 'error')
     }
   }
 
@@ -771,10 +773,10 @@ const [counterFixture, setCounterFixture] = useState(null)
 
       triggerDataRefresh('fixtures')
       setRefreshKey(prev => prev + 1)
-      alert('Cup fixture proposal cancelled successfully. It is back in cup fixtures for a new proposal.')
+      showToast('Cup fixture proposal cancelled successfully. It is back in cup fixtures for a new proposal.', 'info')
     } catch (e) {
       console.error('Error cancelling cup fixture proposal:', e)
-      alert('Failed to cancel proposal on server: ' + e.message)
+      showToast('Failed to cancel proposal on server: ' + e.message, 'error')
     }
   }
 
@@ -837,7 +839,7 @@ const [counterFixture, setCounterFixture] = useState(null)
     setCounterDate('')
     setCounterTime('')
     triggerDataRefresh('fixtures')
-    alert('Counter proposal sent')
+    showToast('Counter proposal sent', 'success')
   }
 
   const handleScheduleCupMatch = (fixtureId, date, time) => {
@@ -886,7 +888,7 @@ const [counterFixture, setCounterFixture] = useState(null)
         console.log('Error accepting fixture:', e)
       }
       triggerDataRefresh('fixtures')
-      alert('Fixture accepted!')
+      showToast('Fixture accepted!', 'success')
     }
   }
 
@@ -1239,7 +1241,7 @@ const [counterFixture, setCounterFixture] = useState(null)
                   setShowCreateModal(false)
                   setCreateForm({ opponent: '', gameType: 'Friendly', fixtureDate: '', fixtureTime: '' })
                   triggerDataRefresh('fixtures')
-                  alert('Fixture challenge sent!')
+                  showToast('Fixture challenge sent!', 'success')
                 }}
               >
                 Send Challenge
@@ -1389,7 +1391,7 @@ const [counterFixture, setCounterFixture] = useState(null)
                 setRescheduleDate('')
                 setRescheduleTime('')
                 triggerDataRefresh('fixtures')
-                alert('Fixture rescheduled!')
+                showToast('Fixture rescheduled!', 'success')
               }}>
                 Save Changes
               </button>

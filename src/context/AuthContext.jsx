@@ -4,6 +4,7 @@ import { ADMIN_EMAILS } from '../config'
 import SeasonOneWelcomeModal from '../components/SeasonOneWelcomeModal'
 import { getResultIdentityKey, getResultOverrideKeys } from '../utils/resultIdentity'
 import { logSubscriptionActivated } from '../utils/analytics'
+import { useToast } from './ToastContext'
 
 const AuthContext = createContext(null)
 
@@ -89,6 +90,7 @@ const saveResultsCache = (results) => {
 }
 
 export function AuthProvider({ children }) {
+  const { showToast } = useToast()
   // Initialize state from local cache to prevent data flickering on refresh
   const [user, setUser] = useState(() => {
     try {
@@ -1402,6 +1404,7 @@ const cleanUserData = (users) => {
             body: notification.message || 'New notification',
             data: notification.data
           })
+          showToast(notification.message || notification.title || 'New notification', 'info')
         }
       })
 
