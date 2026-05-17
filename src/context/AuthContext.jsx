@@ -203,7 +203,6 @@ export function AuthProvider({ children }) {
     try {
       const supported = await isSupported()
       if (!supported) {
-        console.log('Firebase messaging not supported')
         return null
       }
 
@@ -212,7 +211,6 @@ export function AuthProvider({ children }) {
 
       if ('serviceWorker' in navigator) {
         const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js')
-        console.log('FCM SW registered:', registration)
       }
 
       const token = await getToken(messaging, {
@@ -356,7 +354,6 @@ export function AuthProvider({ children }) {
 
   const triggerDataRefresh = useCallback((dataType = 'all') => {
     setDataRefreshTrigger(prev => prev + 1)
-    console.log(`Data refresh triggered: ${dataType}`)
   }, [])
 
   const publishResults = useCallback((options = {}) => {
@@ -440,7 +437,7 @@ export function AuthProvider({ children }) {
         publishResults({ announce: false })
       }
     }, (error) => {
-      console.log('Admin data listener error:', error)
+      // console.log('Admin data listener error:', error)
     })
 
     const unsubscribeNews = onSnapshot(query(collection(db, 'news'), orderBy('createdAt', 'desc')), (snapshot) => {
@@ -452,7 +449,7 @@ export function AuthProvider({ children }) {
         localStorage.setItem('eliteArrowsNews', JSON.stringify(newsData))
       } catch (e) {}
     }, (error) => {
-      console.log('News listener error:', error)
+      // console.log('News listener error:', error)
       setNews([])
     })
 
@@ -501,7 +498,7 @@ export function AuthProvider({ children }) {
       }
       announceAfterHydration('users')
     }, (error) => {
-      console.log('Users listener error:', error)
+      // console.log('Users listener error:', error)
     })
     
     const unsubscribeResults = onSnapshot(collection(db, 'results'), (snapshot) => {
@@ -517,7 +514,7 @@ export function AuthProvider({ children }) {
       hydratedCollections.add('results')
       publishResults({ announce: shouldAnnounce })
     }, (error) => {
-      console.log('Results listener error:', error)
+      // console.log('Results listener error:', error)
     })
     
     const unsubscribeFixtures = onSnapshot(collection(db, 'fixtures'), (snapshot) => {
@@ -535,7 +532,7 @@ export function AuthProvider({ children }) {
 
       announceAfterHydration('fixtures')
     }, (error) => {
-      console.log('Fixtures listener error:', error)
+      // console.log('Fixtures listener error:', error)
     })
     
     const unsubscribeCups = onSnapshot(collection(db, 'cups'), (snapshot) => {
@@ -548,7 +545,7 @@ export function AuthProvider({ children }) {
       } catch (e) {}
       announceAfterHydration('cups')
     }, (error) => {
-      console.log('Cups listener error:', error)
+      // console.log('Cups listener error:', error)
     })
 
     const unsubscribeBets = onSnapshot(collection(db, 'bets'), (snapshot) => {
@@ -559,7 +556,7 @@ export function AuthProvider({ children }) {
       } catch (e) {}
       announceAfterHydration('bets')
     }, (error) => {
-      console.log('Bets listener error:', error)
+      // console.log('Bets listener error:', error)
     })
     
     const unsubscribeSupport = onSnapshot(collection(db, 'supportRequests'), (snapshot) => {
@@ -572,7 +569,7 @@ export function AuthProvider({ children }) {
       } catch (e) {}
       announceAfterHydration('supportRequests')
     }, (error) => {
-      console.log('Support listener error:', error)
+      // console.log('Support listener error:', error)
     })
     
     const unsubscribeSeasons = onSnapshot(collection(db, 'seasons'), (snapshot) => {
@@ -591,7 +588,7 @@ export function AuthProvider({ children }) {
       }
       announceAfterHydration('seasons')
     }, (error) => {
-      console.log('Seasons listener error:', error)
+      // console.log('Seasons listener error:', error)
     })
     
     return () => {
@@ -608,9 +605,7 @@ export function AuthProvider({ children }) {
   }, [user?.id, triggerDataRefresh, publishResults])
   
   useEffect(() => {
-    console.log('Initializing Auth State...')
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log('Auth state changed:', firebaseUser ? firebaseUser.email : 'No user')
       if (firebaseUser) {
         try {
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
@@ -931,7 +926,7 @@ const cleanUserData = (users) => {
     try {
       await setDoc(doc(db, 'notifications', notification.id), notification)
     } catch (e) {
-      console.log('Error saving to Firebase:', e)
+      // console.log('Error saving to Firebase:', e)
     }
   }
 
@@ -968,7 +963,7 @@ const cleanUserData = (users) => {
     try {
       await setDoc(doc(db, 'notifications', notification.id), notification)
     } catch (e) {
-      console.log('Error saving to Firebase:', e)
+      // console.log('Error saving to Firebase:', e)
     }
   }
 
@@ -1278,7 +1273,7 @@ const cleanUserData = (users) => {
     try {
       await setDoc(doc(db, 'news', newPost.id), newPost, { merge: true })
     } catch (e) {
-      console.log('Error posting news to Firebase:', e)
+      // console.log('Error posting news to Firebase:', e)
     }
     const local = JSON.parse(localStorage.getItem('eliteArrowsNews') || '[]')
     local.unshift(newPost)
@@ -1290,7 +1285,7 @@ const cleanUserData = (users) => {
     try {
       await deleteDoc(doc(db, 'news', newsId))
     } catch (e) {
-      console.log('Error deleting news from Firebase:', e)
+      // console.log('Error deleting news from Firebase:', e)
     }
     const local = JSON.parse(localStorage.getItem('eliteArrowsNews') || '[]')
     const updated = local.filter(n => n.id !== newsId)
@@ -1302,7 +1297,7 @@ const cleanUserData = (users) => {
     try {
       await setDoc(doc(db, 'news', newsId), { pinned: !currentPinned }, { merge: true })
     } catch (e) {
-      console.log('Error pinning news:', e)
+      // console.log('Error pinning news:', e)
     }
     const local = JSON.parse(localStorage.getItem('eliteArrowsNews') || '[]')
     const updated = local.map(n => n.id === newsId ? { ...n, pinned: !currentPinned } : n)
@@ -1344,8 +1339,6 @@ const cleanUserData = (users) => {
             localStorage.setItem('eliteArrowsMoneyHistory', JSON.stringify(newData.moneyHistory || []))
           }
         } catch (e) {
-          console.error('localStorage error (quota exceeded?):', e)
-          // Clear problematic keys if quota exceeded
           if (e.name === 'QuotaExceededError' || e.code === 22) {
             localStorage.removeItem('eliteArrowsResultStatusOverrides')
             localStorage.removeItem('eliteArrowsMoneyHistory')
@@ -1353,12 +1346,11 @@ const cleanUserData = (users) => {
         }
         return next
       })
-      console.log('Admin data updated:', newData)
     } catch (e) {
       console.error('Error updating admin data:', e)
     }
   }
-  
+
   const addToMoneyHistory = async (type, amount, description) => {
     try {
       const docRef = doc(db, 'adminData', 'main')

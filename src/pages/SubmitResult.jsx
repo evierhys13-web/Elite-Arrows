@@ -343,9 +343,7 @@ export default function SubmitResult() {
         ...(cupFixture?.startScore && { startScore: cupFixture.startScore })
       }
 
-      console.log('Attempting to save to Firestore with data:', newResult)
       await setDoc(doc(db, 'results', resultId), newResult, { merge: true })
-      console.log('Document written with ID:', resultId)
 
       results.push(newResult)
       try {

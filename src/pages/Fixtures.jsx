@@ -437,7 +437,7 @@ const [counterFixture, setCounterFixture] = useState(null)
         )
         await sendFixtureActivityToAdmins(isCounter ? 'countered' : 'proposed', allFixtures[index], { proposedDate: scheduleDate, proposedTime: scheduleTime })
       } catch (e) {
-        console.log('Error saving to Firebase:', e)
+        // console.log('Error saving to Firebase:', e)
       }
       
       setSelectedCupFixture(null)
@@ -484,7 +484,7 @@ const [counterFixture, setCounterFixture] = useState(null)
         )
         await sendFixtureActivityToAdmins('accepted', allFixtures[index])
       } catch (e) {
-        console.log('Error saving to Firebase:', e)
+        // console.log('Error saving to Firebase:', e)
       }
       
       showToast('Fixture accepted!', 'success')
@@ -539,7 +539,7 @@ const [counterFixture, setCounterFixture] = useState(null)
       )
       await sendFixtureActivityToAdmins('declined', fixture)
     } catch (e) {
-      console.log('Error saving to Firebase:', e)
+      // console.log('Error saving to Firebase:', e)
     }
     
     alert('Fixture rejected. It is back in cup fixtures for a new proposal.')
@@ -582,7 +582,7 @@ const [counterFixture, setCounterFixture] = useState(null)
     try {
       await setDoc(doc(db, 'results', resultId), newResult, { merge: true })
     } catch (e) {
-      console.log('Error saving to Firebase:', e)
+      // console.log('Error saving to Firebase:', e)
     }
     
     const allFixtures = getFixtures()
@@ -600,7 +600,7 @@ const [counterFixture, setCounterFixture] = useState(null)
       try {
         await persistFixture(allFixtures[index])
       } catch (e) {
-        console.log('Error saving to Firebase:', e)
+        // console.log('Error saving to Firebase:', e)
       }
     }
     
@@ -928,7 +928,7 @@ const [counterFixture, setCounterFixture] = useState(null)
 
       await Promise.all(Array.from(resultDocIds).map(resultDocId =>
         deleteDoc(doc(db, 'results', resultDocId)).catch(error => {
-          console.log('Error deleting result from Firebase:', error)
+          // console.log('Error deleting result from Firebase:', error)
         })
       ))
 
@@ -936,7 +936,7 @@ const [counterFixture, setCounterFixture] = useState(null)
       triggerDataRefresh('fixtures')
       alert('Fixture and linked result removed')
     } catch (error) {
-      console.log('Error removing fixture/result:', error)
+      // console.log('Error removing fixture/result:', error)
       alert('Removed locally, but there was a problem syncing the deletion: ' + error.message)
     }
   }
@@ -1385,7 +1385,7 @@ const [counterFixture, setCounterFixture] = useState(null)
                   }
                   await sendFixtureActivityToAdmins('rescheduled', allFixtures[index], { newDate: rescheduleDate, newTime: rescheduleTime })
                 } catch (e) {
-                  console.log('Error rescheduling fixture:', e)
+                  // console.log('Error rescheduling fixture:', e)
                 }
                 setRescheduleFixture(null)
                 setRescheduleDate('')

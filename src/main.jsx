@@ -5,9 +5,7 @@ import './index.css'
 
 // Initialize Capacitor for mobile (only runs when Capacitor is available)
 if (typeof window !== 'undefined' && window.Capacitor) {
-  import('@capacitor/core').then(({ Capacitor }) => {
-    console.log('Capacitor initialized:', Capacitor.getPlatform())
-  })
+  import('@capacitor/core')
 }
 
 if ('serviceWorker' in navigator) {

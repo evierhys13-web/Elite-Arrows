@@ -43,9 +43,7 @@ export default function CupFixtures() {
   }
 
   const userFixtures = fixtures.filter(f => f.player1 === user.id || f.player2 === user.id || f.player1Id === user.id || f.player2Id === user.id)
-  
-  console.log('User fixtures:', userFixtures)
-  
+
   const needsScheduling = userFixtures.filter(f => 
     f.status === 'pending' && !f.proposedDate
   )
@@ -155,7 +153,7 @@ export default function CupFixtures() {
         )
         await sendFixtureActivityToAdmins(isCounter ? 'countered' : 'proposed', allFixtures[index], { proposedDate: scheduleDate, proposedTime: scheduleTime })
       } catch (e) {
-        console.log('Error saving to Firebase:', e)
+        // console.log('Error saving to Firebase:', e)
       }
       
       triggerDataRefresh('fixtures')
@@ -201,7 +199,7 @@ export default function CupFixtures() {
         )
         await sendFixtureActivityToAdmins('accepted', allFixtures[index])
       } catch (e) {
-        console.log('Error saving to Firebase:', e)
+        // console.log('Error saving to Firebase:', e)
       }
       
       triggerDataRefresh('fixtures')
@@ -262,7 +260,7 @@ export default function CupFixtures() {
       )
       await sendFixtureActivityToAdmins('declined', fixture)
     } catch (e) {
-      console.log('Error saving to Firebase:', e)
+      // console.log('Error saving to Firebase:', e)
     }
     
     triggerDataRefresh('fixtures')
