@@ -103,36 +103,37 @@ export default function NotificationBell() {
         setDropdownPosition({
           position: 'fixed',
           top: `calc(var(--header-height) + var(--safe-top) + 10px)`,
-          right: '10px',
-          left: 'auto',
-          transform: 'none'
+          left: '50%',
+          right: 'auto',
+          transform: 'translateX(-50%)'
         })
-      } else if (spaceOnRight < dropdownWidth && spaceOnLeft > dropdownWidth) {
-        // Not enough space on right, but enough on left -> align right
+      } else if (spaceOnLeft < dropdownWidth) {
+        // In the sidebar or near left edge -> align left and shift right slightly to be more "middle"
+        setDropdownPosition({
+          position: 'absolute',
+          top: '100%',
+          left: '0',
+          right: 'auto',
+          transform: 'none',
+          marginLeft: '10px'
+        })
+      } else if (spaceOnRight < dropdownWidth) {
+        // Near right edge -> align right
         setDropdownPosition({
           position: 'absolute',
           top: '100%',
           right: 0,
           left: 'auto',
-          transform: 'none'
-        })
-      } else if (spaceOnLeft < dropdownWidth) {
-        // Not enough space on left -> align left (extend to right)
-        setDropdownPosition({
-          position: 'absolute',
-          top: '100%',
-          left: 0,
-          right: 'auto',
           transform: 'none'
         })
       } else {
-        // Default to right alignment
+        // Default to centering relative to the bell if there's space
         setDropdownPosition({
           position: 'absolute',
           top: '100%',
-          right: 0,
-          left: 'auto',
-          transform: 'none'
+          left: '50%',
+          right: 'auto',
+          transform: 'translateX(-50%)'
         })
       }
     }
