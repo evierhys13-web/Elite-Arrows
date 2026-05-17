@@ -12,6 +12,7 @@ import NotificationPermissionPrompt from './components/NotificationPermissionPro
 import OnboardingTour, { useOnboarding } from './components/OnboardingTour'
 import WhatsNewPopup, { useWhatsNew } from './components/WhatsNewPopup'
 import AverageUpdateModal from './components/AverageUpdateModal'
+import SurveyPopup from './components/SurveyPopup'
 import ErrorBoundary from './components/ErrorBoundary'
 import { Skeleton } from './components/Skeleton'
 import { Capacitor } from '@capacitor/core'
@@ -208,60 +209,63 @@ function AppLayout({ children }) {
   const { showWhatsNew } = useWhatsNew()
   const [whatsNewOpen, setWhatsNewOpen] = useState(showWhatsNew)
 
-  // Force average update logic: If not updated in last 24h OR never updated
-  const [showAvgModal, setShowAvgModal] = useState(() => {
-    if (!user) return false
+  // Force average update logic
+  const [showAvgModal, setShowAvgModal] = useState(false)
+
+  useEffect(() => {
+    if (!user) return
     const lastUpdate = user.averageLastUpdated ? new Date(user.averageLastUpdated).getTime() : 0
     const oneDay = 24 * 60 * 60 * 1000
-    return (Date.now() - lastUpdate) > oneDay
-  })
+    if ((Date.now() - lastUpdate) > oneDay) {
+      setShowAvgModal(true)
+    }
+  }, [user])
 
   const hasMaintenance = adminData?.isMaintenanceMode && adminData?.maintenanceMessage
 
   return (
-    <>
-      <div className="app-layout">
-        <Sidebar />
-        <main id="main-content" className="main-content" tabIndex={-1}>
-          <Suspense fallback={<PageLoader />}>
-            {children}
-          </Suspense>
-        </main>
+    <div className="app-layout">
+      <Sidebar />
+      <main id="main-content" className="main-content" tabIndex={-1}>
+        <Suspense fallback={<PageLoader />}>
+          {children}
+        </Suspense>
+      </main>
 
-        {hasMaintenance && (
-          <div style={{
-            background: 'var(--warning)',
-            color: '#000',
-            padding: '10px 16px',
-            textAlign: 'center',
-            fontSize: '0.75rem',
-            fontWeight: 900,
-            position: 'fixed',
-            bottom: 'calc(var(--bottom-nav-height) + var(--safe-bottom))',
-            left: 0,
-            right: 0,
-            zIndex: 1003,
-            boxShadow: '0 -4px 15px rgba(0,0,0,0.3)',
-            textTransform: 'uppercase',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px'
-          }}>
-            <span>⚠️</span>
-            {adminData.maintenanceMessage}
-          </div>
-        )}
+      {hasMaintenance && (
+        <div style={{
+          background: 'var(--warning)',
+          color: '#000',
+          padding: '10px 16px',
+          textAlign: 'center',
+          fontSize: '0.75rem',
+          fontWeight: 900,
+          position: 'fixed',
+          bottom: 'calc(var(--bottom-nav-height) + var(--safe-bottom))',
+          left: 0,
+          right: 0,
+          zIndex: 1003,
+          boxShadow: '0 -4px 15px rgba(0,0,0,0.3)',
+          textTransform: 'uppercase',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px'
+        }}>
+          <span>⚠️</span>
+          {adminData.maintenanceMessage}
+        </div>
+      )}
 
-        <BottomNav />
-        <InstallPrompt />
-        <DataRefreshToast refreshTrigger={dataRefreshTrigger} />
-        <NotificationPermissionPrompt />
-        {showOnboarding && <OnboardingTour onComplete={completeOnboarding} />}
-        <WhatsNewPopup isOpen={whatsNewOpen} onClose={() => setWhatsNewOpen(false)} />
-        <AverageUpdateModal isOpen={showAvgModal} onClose={() => setShowAvgModal(false)} />
-      </div>
-    </>
+      <BottomNav />
+      <InstallPrompt />
+      <DataRefreshToast refreshTrigger={dataRefreshTrigger} />
+      <NotificationPermissionPrompt />
+      {showOnboarding && <OnboardingTour onComplete={completeOnboarding} />}
+      <WhatsNewPopup isOpen={whatsNewOpen} onClose={() => setWhatsNewOpen(false)} />
+      <AverageUpdateModal isOpen={showAvgModal} onClose={() => setShowAvgModal(false)} />
+      <SurveyPopup />
+    </div>
   )
 }
 
@@ -316,10 +320,6 @@ function AppShell() {
     document.body.classList.add(`nav-mode-${navMode}`)
   }, [navMode])
 
-  useEffect(() => {
-    // Subscription initialization is now handled in Subscription.jsx
-  }, [user?.id])
-
   return (
     <>
       <BackgroundDecor />
@@ -329,22 +329,17 @@ function AppShell() {
 }
 
 export default function App() {
-  useEffect(() => {
-    // Reset crash count on successful mount
-    sessionStorage.setItem('crashCount', '0')
-  }, [])
-
   return (
-    <ErrorBoundary>
-      <ThemeProvider>
-        <ToastProvider>
-          <AuthProvider>
-            <BrowserRouter>
+    <ThemeProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <ErrorBoundary>
               <AppShell />
-            </BrowserRouter>
-          </AuthProvider>
-        </ToastProvider>
-      </ThemeProvider>
-    </ErrorBoundary>
+            </ErrorBoundary>
+          </BrowserRouter>
+        </AuthProvider>
+      </ToastProvider>
+    </ThemeProvider>
   )
 }

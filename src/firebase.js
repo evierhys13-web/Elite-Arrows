@@ -7,13 +7,12 @@ import { getAnalytics, logEvent } from 'firebase/analytics'
 export const FieldValue = deleteFieldFirestore
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+  apiKey: "AIzaSyBLuRvmE1UgKvYFw7K0utT11ljjrf52vlA",
+  authDomain: "elitearrowsapp.firebaseapp.com",
+  projectId: "elitearrowsapp",
+  storageBucket: "elitearrowsapp.firebasestorage.app",
+  messagingSenderId: "848326452210",
+  appId: "1:848326452210:web:3626c7f4214167d51ec16b"
 }
 
 const app = initializeApp(firebaseConfig)

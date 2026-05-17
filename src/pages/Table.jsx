@@ -47,7 +47,7 @@ export default function Table() {
       .map(p => ({
         ...p,
         displayDivision: p.division || 'Unassigned',
-        stats: playerStats[String(p.id)] || { played: 0, wins: 0, draws: 0, losses: 0, legsWon: 0, legsLost: 0, points: 0, average: 0 }
+        stats: playerStats[String(p.id)] || { played: 0, wins: 0, draws: 0, losses: 0, legsWon: 0, legsLost: 0, points: 0, average: p.threeDartAverage || 0 }
       }))
       .sort((a, b) => {
         if (b.stats.points !== a.stats.points) return b.stats.points - a.stats.points

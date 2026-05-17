@@ -90,6 +90,7 @@ export default function Profile() {
     leagueOnly: false
   })
   const displayStats = displayUser?.id ? statsByUserId[String(displayUser.id)] : null
+  const displayAverage = displayUser?.threeDartAverage || displayStats?.average || 0
 
   const chartData = useMemo(() => {
     if (!displayStats?.history) return []
@@ -216,7 +217,7 @@ export default function Profile() {
           { label: 'Total 180s', value: displayStats?.['180s'] || 0, color: 'var(--warning)' },
           { label: 'Best CO', value: displayStats?.highestCheckout || 0, color: 'var(--accent-cyan)' },
           { label: 'Doubles %', value: displayStats?.doubleSuccess ? (displayStats.doubleSuccess).toFixed(2) + '%' : '-', color: '#10b981' },
-          { label: '3-Dart Avg', value: displayUser?.threeDartAverage?.toFixed(2) || '-', color: 'var(--accent-primary)' }
+          { label: '3-Dart Avg', value: typeof displayAverage === 'number' ? displayAverage.toFixed(2) : displayAverage, color: 'var(--accent-primary)' }
         ].map(stat => (
           <div key={stat.label} className="stat-card glass" style={{ background: 'rgba(15, 23, 42, 0.3)', border: '1px solid rgba(255,255,255,0.05)' }}>
             <div className="stat-value" style={{ color: stat.color }}>{stat.value}</div>
