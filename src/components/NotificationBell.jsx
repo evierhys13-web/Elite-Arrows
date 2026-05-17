@@ -103,9 +103,9 @@ export default function NotificationBell() {
         setDropdownPosition({
           position: 'fixed',
           top: `calc(var(--header-height) + var(--safe-top) + 10px)`,
-          left: '50%',
-          right: 'auto',
-          transform: 'translateX(-50%)'
+          right: '10px',
+          left: 'auto',
+          transform: 'none'
         })
       } else if (spaceOnRight < dropdownWidth && spaceOnLeft > dropdownWidth) {
         // Not enough space on right, but enough on left -> align right
