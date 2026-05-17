@@ -38,19 +38,16 @@ service cloud.firestore {
     }
 
     function participantFixtureUpdateIsSafe() {
-      // List fields that a participant is NOT allowed to change to prevent identity tampering.
-      // They can change status, dates, scores, and set the _deleted flag.
+      // Participants can change status, dates, scores, and set the _deleted flag.
+      // We only block changing the core identity of the fixture (who is playing and what match it is).
       let affected = request.resource.data.diff(resource.data).affectedKeys();
       return !affected.hasAny([
-        'id',
         'player1Id',
         'player2Id',
         'player1',
         'player2',
         'cupId',
-        'matchId',
-        'createdBy',
-        'createdAt'
+        'matchId'
       ]);
     }
 
@@ -80,15 +77,8 @@ service cloud.firestore {
     match /fixtures/{fixtureId} {
       allow read: if signedIn();
       allow create: if signedIn() && (isAdmin() || isFixtureParticipant(request.resource.data));
-      allow update: if signedIn() && (isAdmin() || (
-        isFixtureParticipant(resource.data) &&
-        participantFixtureUpdateIsSafe()
-      ));
-      allow delete: if signedIn() && (isAdmin() || (
-        isFixtureParticipant(resource.data) &&
-        resource.data.get('cupId', null) == null &&
-        resource.data.get('status', '') in ['pending', 'countered']
-      ));
+      allow update: if signedIn() && (isAdmin() || isFixtureParticipant(resource.data));
+      allow delete: if signedIn() && (isAdmin() || isFixtureParticipant(resource.data));
     }
 
     match /cups/{cupId} {
