@@ -671,7 +671,7 @@ export default function SubmitResult() {
                     onChange={handleChange}
                     min="0"
                     max="100"
-                    step="0.1"
+                    step="0.01"
                     placeholder="0"
                   />
                 </div>
@@ -717,7 +717,7 @@ export default function SubmitResult() {
                     onChange={handleChange}
                     min="0"
                     max="100"
-                    step="0.1"
+                    step="0.01"
                     placeholder="0"
                   />
                 </div>

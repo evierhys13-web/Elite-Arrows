@@ -276,7 +276,8 @@ export default function CupFixtures() {
       alert('Could not find that fixture. Please refresh and try again.')
       return
     }
-    allFixtures[index] = {
+
+    const updatedFixture = {
       ...allFixtures[index],
       status: 'pending',
       proposalStatus: 'needs_scheduling',
@@ -293,10 +294,13 @@ export default function CupFixtures() {
       fixtureTime: '',
       updatedAt: new Date().toISOString()
     }
-    saveFixtures(allFixtures)
-    
+
     try {
-      await setDoc(doc(db, 'fixtures', fixture.id.toString()), allFixtures[index], { merge: true })
+      await setDoc(doc(db, 'fixtures', fixture.id.toString()), updatedFixture, { merge: true })
+
+      allFixtures[index] = updatedFixture
+      saveFixtures(allFixtures)
+
       await notifyUser(
         getOpponentId(fixture),
         'Cup Fixture Cancelled',
@@ -304,14 +308,15 @@ export default function CupFixtures() {
         'fixture_cancelled',
         { fixtureKind: 'cup', fixtureId: fixture.id }
       )
-      await sendFixtureActivityToAdmins('cancelled', fixture)
+      await sendFixtureActivityToAdmins('cancelled', updatedFixture)
+
+      triggerDataRefresh('fixtures')
+      setRefreshKey(prev => prev + 1)
+      alert('Proposal cancelled successfully. The match is back in cup fixtures for a new proposal.')
     } catch (e) {
-      console.log('Error deleting from Firebase:', e)
+      console.error('Error cancelling proposal:', e)
+      alert('Failed to cancel proposal on server: ' + e.message)
     }
-    
-    triggerDataRefresh('fixtures')
-    setRefreshKey(prev => prev + 1)
-    alert('Proposal cancelled. The match is back in cup fixtures for a new proposal.')
   }
 
   return (

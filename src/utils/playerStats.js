@@ -146,7 +146,7 @@ const addResultToPlayer = (stats, result, playerNumber, opponentScore, score, co
   if (submittedStats.doubleSuccess !== undefined && submittedStats.doubleSuccess !== null && submittedStats.doubleSuccess !== '') {
     stats.doubleSuccessTotal += toNumber(submittedStats.doubleSuccess)
     stats.doubleSuccessCount += 1
-    stats.doubleSuccess = Number((stats.doubleSuccessTotal / stats.doubleSuccessCount).toFixed(1))
+    stats.doubleSuccess = Number((stats.doubleSuccessTotal / stats.doubleSuccessCount).toFixed(2))
   }
 
   const explicitAvg = toNumber(result[`player${playerNumber}ExplicitAverage`])

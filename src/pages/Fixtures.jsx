@@ -644,10 +644,14 @@ const [counterFixture, setCounterFixture] = useState(null)
       alert('Could not find that fixture. Please refresh and try again.')
       return
     }
-    const updatedFixtures = getFixtures().filter(f => String(f.id) !== String(fixtureId))
-    saveFixtures(updatedFixtures)
+
     try {
-      await deleteDoc(doc(db, 'fixtures', String(fixtureId)))
+      // Use _deleted flag instead of hard delete for better reliability with security rules
+      await setDoc(doc(db, 'fixtures', String(fixtureId)), { _deleted: true }, { merge: true })
+
+      const updatedFixtures = getFixtures().filter(f => String(f.id) !== String(fixtureId))
+      saveFixtures(updatedFixtures)
+
       if (fixture?.createdBy) {
         await notifyUser(
           fixture.createdBy,
@@ -667,11 +671,12 @@ const [counterFixture, setCounterFixture] = useState(null)
       if (fixture) {
         await sendFixtureActivityToAdmins('declined', fixture)
       }
+      triggerDataRefresh('fixtures')
+      alert('Fixture declined successfully')
     } catch (e) {
-      console.log('Error declining fixture:', e)
+      console.error('Error declining fixture:', e)
+      alert('Failed to decline fixture on server: ' + e.message)
     }
-    triggerDataRefresh('fixtures')
-    alert('Fixture declined')
   }
 
   const handleCancelFixture = async (fixtureId) => {
@@ -681,10 +686,14 @@ const [counterFixture, setCounterFixture] = useState(null)
       alert('Could not find that fixture. Please refresh and try again.')
       return
     }
-    const updatedFixtures = getFixtures().filter(f => String(f.id) !== String(fixtureId))
-    saveFixtures(updatedFixtures)
+
     try {
-      await deleteDoc(doc(db, 'fixtures', String(fixtureId)))
+      // Use _deleted flag instead of hard delete for better reliability with security rules
+      await setDoc(doc(db, 'fixtures', String(fixtureId)), { _deleted: true }, { merge: true })
+
+      const updatedFixtures = getFixtures().filter(f => String(f.id) !== String(fixtureId))
+      saveFixtures(updatedFixtures)
+
       const recipientId = getOtherPlayerId(fixture)
       if (recipientId) {
         await notifyUser(
@@ -698,11 +707,13 @@ const [counterFixture, setCounterFixture] = useState(null)
       if (fixture) {
         await sendFixtureActivityToAdmins('cancelled', fixture)
       }
+
+      triggerDataRefresh('fixtures')
+      alert('Fixture cancelled successfully')
     } catch (e) {
-      console.log('Error cancelling fixture:', e)
+      console.error('Error cancelling fixture:', e)
+      alert('Failed to cancel fixture on server: ' + e.message)
     }
-    triggerDataRefresh('fixtures')
-    alert('Fixture cancelled')
   }
 
   const cancelCupProposal = async (fixture) => {
@@ -715,7 +726,7 @@ const [counterFixture, setCounterFixture] = useState(null)
       return
     }
 
-    allFixtures[index] = {
+    const updatedFixture = {
       ...allFixtures[index],
       status: 'pending',
       proposalStatus: 'needs_scheduling',
@@ -732,10 +743,13 @@ const [counterFixture, setCounterFixture] = useState(null)
       fixtureTime: '',
       updatedAt: new Date().toISOString()
     }
-    saveFixtures(allFixtures)
 
     try {
-      await persistFixture(allFixtures[index])
+      await persistFixture(updatedFixture)
+
+      allFixtures[index] = updatedFixture
+      saveFixtures(allFixtures)
+
       const recipientId = getOtherPlayerId(fixture)
       if (recipientId) {
         await notifyUser(
@@ -753,14 +767,15 @@ const [counterFixture, setCounterFixture] = useState(null)
         'fixture_cancelled',
         { fixtureKind: 'cup', fixtureId: fixture.id }
       )
-      await sendFixtureActivityToAdmins('cancelled', allFixtures[index])
-    } catch (e) {
-      console.log('Error cancelling cup fixture proposal:', e)
-    }
+      await sendFixtureActivityToAdmins('cancelled', updatedFixture)
 
-    triggerDataRefresh('fixtures')
-    setRefreshKey(prev => prev + 1)
-    alert('Cup fixture proposal cancelled. It is back in cup fixtures for a new proposal.')
+      triggerDataRefresh('fixtures')
+      setRefreshKey(prev => prev + 1)
+      alert('Cup fixture proposal cancelled successfully. It is back in cup fixtures for a new proposal.')
+    } catch (e) {
+      console.error('Error cancelling cup fixture proposal:', e)
+      alert('Failed to cancel proposal on server: ' + e.message)
+    }
   }
 
   const openCounterFixture = (fixture) => {
