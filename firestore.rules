@@ -76,9 +76,15 @@ service cloud.firestore {
 
     match /fixtures/{fixtureId} {
       allow read: if signedIn();
-      allow create: if signedIn() && (isAdmin() || isFixtureParticipant(request.resource.data));
-      allow update: if signedIn() && (isAdmin() || isFixtureParticipant(resource.data));
-      allow delete: if signedIn() && (isAdmin() || isFixtureParticipant(resource.data));
+      allow create: if signedIn();
+      allow update, delete: if signedIn() && (
+        isAdmin() ||
+        resource.data.get('player1Id', '') == request.auth.uid ||
+        resource.data.get('player2Id', '') == request.auth.uid ||
+        resource.data.get('player1', '') == request.auth.uid ||
+        resource.data.get('player2', '') == request.auth.uid ||
+        resource.data.get('createdBy', '') == request.auth.uid
+      );
     }
 
     match /cups/{cupId} {

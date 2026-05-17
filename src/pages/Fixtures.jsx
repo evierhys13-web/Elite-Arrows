@@ -690,29 +690,20 @@ const [counterFixture, setCounterFixture] = useState(null)
     }
 
     try {
-      const { player1Id, player2Id } = getFixturePlayerIds(fixture)
-      const opponentId = isSameId(player1Id, user.id) ? player2Id : player1Id
-
-      // Use updateDoc instead of setDoc for better compatibility with security rules
-      // This ensures we only touch the _deleted flag and nothing else.
       const fixtureRef = doc(db, 'fixtures', String(fixtureId))
 
-      try {
-        // If it's a simple pending fixture created by the user, we can try to delete it
-        if (fixture.status === 'pending' && isSameId(fixture.createdBy, user.id) && !fixture.cupId) {
-          await deleteDoc(fixtureRef)
-        } else {
-          // Otherwise, mark as deleted (soft delete)
-          await updateDoc(fixtureRef, { _deleted: true, status: 'cancelled' })
-        }
-      } catch (e) {
-        // Final fallback: attempt soft delete if deleteDoc was denied
-        await updateDoc(fixtureRef, { _deleted: true, status: 'cancelled' })
-      }
+      // Use updateDoc (soft delete) as the primary method for reliability
+      // This is less likely to trigger security rule violations than deleteDoc
+      await updateDoc(fixtureRef, {
+        _deleted: true,
+        status: 'cancelled',
+        updatedAt: new Date().toISOString()
+      })
 
       const updatedFixtures = getFixtures().filter(f => String(f.id) !== String(fixtureId))
       saveFixtures(updatedFixtures)
 
+      const opponentId = getOtherPlayerId(fixture)
       if (opponentId) {
         await notifyUser(
           opponentId,
@@ -728,7 +719,7 @@ const [counterFixture, setCounterFixture] = useState(null)
       showToast('Fixture cancelled successfully', 'info')
     } catch (e) {
       console.error('Error cancelling fixture:', e)
-      showToast('Failed to cancel fixture: ' + (e.code === 'permission-denied' ? 'Access denied by server' : e.message), 'error')
+      showToast('Failed to cancel fixture: ' + (e.code === 'permission-denied' ? 'Server permission error. Please ensure you are a participant.' : e.message), 'error')
     }
   }
 
