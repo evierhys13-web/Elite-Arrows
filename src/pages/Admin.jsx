@@ -1357,64 +1357,89 @@ export default function Admin() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '40px' }}>
-              <div className="glass" style={{ padding: '24px', borderRadius: '16px', background: adminData?.isMaintenanceMode ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.05)', border: `1px solid ${adminData?.isMaintenanceMode ? 'var(--error)' : 'var(--success)'}` }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                  <div style={{ fontSize: '2rem' }}>🔒</div>
-                  <div className="toggle-switch">
-                    <input
-                      type="checkbox"
-                      id="maintenanceToggle"
-                      checked={adminData?.isMaintenanceMode || false}
-                      onChange={e => updateAdminData({ isMaintenanceMode: e.target.checked })}
-                    />
-                    <label htmlFor="maintenanceToggle"></label>
+              <div className="glass" style={{
+                padding: '24px',
+                borderRadius: '16px',
+                background: adminData?.isMaintenanceMode ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.05)',
+                border: `1px solid ${adminData?.isMaintenanceMode ? 'var(--error)' : 'var(--success)'}`,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                minHeight: '180px'
+              }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                    <div style={{ fontSize: '2.5rem' }}>{adminData?.isMaintenanceMode ? '🔒' : '🔓'}</div>
+                    <div className="toggle-switch">
+                      <input
+                        type="checkbox"
+                        id="maintenanceToggle"
+                        checked={adminData?.isMaintenanceMode || false}
+                        onChange={e => updateAdminData({ isMaintenanceMode: e.target.checked })}
+                      />
+                      <label htmlFor="maintenanceToggle"></label>
+                    </div>
                   </div>
+                  <h4 style={{ margin: '0 0 8px 0', fontWeight: 800, fontSize: '1.1rem' }}>Maintenance Mode</h4>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, lineHeight: '1.5' }}>
+                    Only administrators can access the application. Users will see your custom banner message.
+                  </p>
                 </div>
-                <h4 style={{ margin: '0 0 8px 0', fontWeight: 800 }}>Maintenance Mode</h4>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0, lineHeight: '1.5' }}>
-                  When enabled, only administrators can access the application. All other users will see the maintenance banner.
-                </p>
               </div>
 
-              <div className="glass" style={{ padding: '24px', borderRadius: '16px', background: adminData?.registrationsEnabled !== false ? 'rgba(56, 189, 248, 0.1)' : 'rgba(255,255,255,0.05)', border: `1px solid ${adminData?.registrationsEnabled !== false ? 'var(--accent-cyan)' : 'var(--border)'}` }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                  <div style={{ fontSize: '2rem' }}>📝</div>
-                  <div className="toggle-switch">
-                    <input
-                      type="checkbox"
-                      id="regToggle"
-                      checked={adminData?.registrationsEnabled !== false}
-                      onChange={e => updateAdminData({ registrationsEnabled: e.target.checked })}
-                    />
-                    <label htmlFor="regToggle"></label>
+              <div className="glass" style={{
+                padding: '24px',
+                borderRadius: '16px',
+                background: adminData?.registrationsEnabled !== false ? 'rgba(56, 189, 248, 0.1)' : 'rgba(255,255,255,0.05)',
+                border: `1px solid ${adminData?.registrationsEnabled !== false ? 'var(--accent-cyan)' : 'var(--border)'}`,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                minHeight: '180px'
+              }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                    <div style={{ fontSize: '2.5rem' }}>{adminData?.registrationsEnabled !== false ? '📝' : '🚫'}</div>
+                    <div className="toggle-switch">
+                      <input
+                        type="checkbox"
+                        id="regToggle"
+                        checked={adminData?.registrationsEnabled !== false}
+                        onChange={e => updateAdminData({ registrationsEnabled: e.target.checked })}
+                      />
+                      <label htmlFor="regToggle"></label>
+                    </div>
                   </div>
+                  <h4 style={{ margin: '0 0 8px 0', fontWeight: 800, fontSize: '1.1rem' }}>User Sign-ups</h4>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, lineHeight: '1.5' }}>
+                    Control whether new players can create accounts. Useful for closing recruitment during peak season.
+                  </p>
                 </div>
-                <h4 style={{ margin: '0 0 8px 0', fontWeight: 800 }}>User Sign-ups</h4>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0, lineHeight: '1.5' }}>
-                  Control whether new players can create accounts. Disable this during peak season or when recruitment is closed.
-                </p>
               </div>
             </div>
 
             <div className="glass" style={{ padding: '24px', borderRadius: '16px', border: '1px solid var(--border)' }}>
-              <h4 style={{ marginBottom: '16px', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--accent-cyan)' }}>Maintenance Message</h4>
+              <h4 style={{ marginBottom: '16px', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--accent-cyan)' }}>Broadcast Message</h4>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '16px' }}>
-                This message will be displayed at the bottom of the screen for all users when Maintenance Mode is active.
+                This message is displayed to all active users when Maintenance Mode is locked.
               </p>
               <textarea
                 className="glass"
-                style={{ width: '100%', padding: '16px', borderRadius: '12px', marginBottom: '20px', fontSize: '0.95rem', border: '1px solid rgba(255,255,255,0.1)' }}
-                rows={4}
-                placeholder="e.g. System upgrade in progress. We'll be back online at 6 PM GMT."
+                style={{ width: '100%', padding: '16px', borderRadius: '12px', marginBottom: '20px', fontSize: '0.95rem', border: '1px solid rgba(255,255,255,0.1)', color: 'white' }}
+                rows={3}
+                placeholder="e.g. Updating league tables for Season 2. Back online soon!"
                 defaultValue={adminData?.maintenanceMessage || ''}
                 id="maintMsgInput"
               />
               <button
                 className="btn btn-primary"
-                style={{ width: '100%', padding: '14px' }}
-                onClick={() => { updateAdminData({ maintenanceMessage: document.getElementById('maintMsgInput').value }); showToast('Maintenance message updated', 'success'); }}
+                style={{ width: '100%', padding: '14px', fontWeight: 700 }}
+                onClick={() => {
+                  updateAdminData({ maintenanceMessage: document.getElementById('maintMsgInput').value });
+                  showToast('Broadcast message updated', 'success');
+                }}
               >
-                Update System Message
+                Update Broadcast Message
               </button>
             </div>
           </div>

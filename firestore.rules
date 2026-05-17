@@ -32,7 +32,8 @@ service cloud.firestore {
         data.get('player1Id', '') == request.auth.uid ||
         data.get('player2Id', '') == request.auth.uid ||
         data.get('player1', '') == request.auth.uid ||
-        data.get('player2', '') == request.auth.uid
+        data.get('player2', '') == request.auth.uid ||
+        data.get('createdBy', '') == request.auth.uid
       );
     }
 

@@ -693,17 +693,21 @@ const [counterFixture, setCounterFixture] = useState(null)
       const { player1Id, player2Id } = getFixturePlayerIds(fixture)
       const opponentId = isSameId(player1Id, user.id) ? player2Id : player1Id
 
-      // If fixture is pending and user is the creator, we can try to hard delete
-      if (fixture.status === 'pending' && isSameId(fixture.createdBy, user.id)) {
-        try {
-          await deleteDoc(doc(db, 'fixtures', String(fixtureId)))
-        } catch (e) {
-          // Fallback to soft delete if hard delete fails (e.g. security rules)
-          await setDoc(doc(db, 'fixtures', String(fixtureId)), { _deleted: true }, { merge: true })
+      // Use updateDoc instead of setDoc for better compatibility with security rules
+      // This ensures we only touch the _deleted flag and nothing else.
+      const fixtureRef = doc(db, 'fixtures', String(fixtureId))
+
+      try {
+        // If it's a simple pending fixture created by the user, we can try to delete it
+        if (fixture.status === 'pending' && isSameId(fixture.createdBy, user.id) && !fixture.cupId) {
+          await deleteDoc(fixtureRef)
+        } else {
+          // Otherwise, mark as deleted (soft delete)
+          await updateDoc(fixtureRef, { _deleted: true, status: 'cancelled' })
         }
-      } else {
-        // Otherwise use soft delete
-        await setDoc(doc(db, 'fixtures', String(fixtureId)), { _deleted: true }, { merge: true })
+      } catch (e) {
+        // Final fallback: attempt soft delete if deleteDoc was denied
+        await updateDoc(fixtureRef, { _deleted: true, status: 'cancelled' })
       }
 
       const updatedFixtures = getFixtures().filter(f => String(f.id) !== String(fixtureId))
