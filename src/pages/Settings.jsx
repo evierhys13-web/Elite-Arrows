@@ -388,7 +388,7 @@ export default function Settings() {
           <h3 className="card-title">Elite Arrows Pass</h3>
           <div style={{ padding: '20px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center', marginBottom: '20px' }}>
             <p style={{ color: 'var(--success)', fontSize: '1.2rem', fontWeight: '600' }}>Active</p>
-            <p style={{ fontSize: '2rem', fontWeight: '700', color: 'var(--accent-cyan)', margin: '10px 0' }}>£5<span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>/month</span></p>
+            <p style={{ fontSize: '2rem', fontWeight: '700', color: 'var(--accent-cyan)', margin: '10px 0' }}>£5.99<span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>/month</span></p>
             <p style={{ color: 'var(--text-muted)' }}>Monthly subscription</p>
           </div>
           
@@ -396,7 +396,7 @@ export default function Settings() {
           <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', marginBottom: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
               <span>Elite Arrows Pass - Monthly</span>
-              <span style={{ color: 'var(--success)' }}>-£5.00</span>
+              <span style={{ color: 'var(--success)' }}>-£5.99</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
               <span>Date paid</span>

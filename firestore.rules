@@ -56,7 +56,8 @@ service cloud.firestore {
         'submittedResultId',
         'score1',
         'score2',
-        'updatedAt'
+        'updatedAt',
+        '_deleted'
       ]);
     }
 

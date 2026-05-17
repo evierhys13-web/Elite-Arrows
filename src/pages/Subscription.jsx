@@ -95,7 +95,7 @@ export default function Subscription() {
     {
       id: 'standard',
       name: 'Standard Pass',
-      price: '£5',
+      price: '£5.99',
       description: 'Gold, Silver, Bronze & Development divisions.',
       features: ['Official League Entry', 'Tournament Access', 'Match Submissions', 'Advanced Stats'],
       color: 'var(--accent-cyan)',
@@ -105,7 +105,7 @@ export default function Subscription() {
     {
       id: 'elite',
       name: 'Elite Pass',
-      price: '£5',
+      price: '£5.99',
       description: 'For Elite, Diamond & Platinum challengers.',
       features: ['Official League Entry', 'Cash Prize Tournaments', 'Priority Support', 'Full Dashboard'],
       color: '#fbbf24',
@@ -216,7 +216,7 @@ export default function Subscription() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '30px' }}>
             <div style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
               <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '12px' }}>Option 1: PayPal</h4>
-              <p style={{ fontSize: '0.9rem', marginBottom: '10px' }}>Send £5.00 to:</p>
+              <p style={{ fontSize: '0.9rem', marginBottom: '10px' }}>Send £5.99 to:</p>
               <a href="https://paypal.me/DanielHineBerry" target="_blank" rel="noreferrer" style={{ display: 'block', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', color: 'white', textAlign: 'center', textDecoration: 'none', fontWeight: 700 }}>paypal.me/DanielHineBerry</a>
             </div>
 
