@@ -2,9 +2,6 @@
   "appId": "com.elitearrows.app",
   "appName": "Elite Arrows",
   "webDir": "dist",
-  "server": {
-    "url": "https://elite-arrows.co.uk"
-  },
   "ios": {
     "cordovaCompat": false,
     "contentInset": "always",
