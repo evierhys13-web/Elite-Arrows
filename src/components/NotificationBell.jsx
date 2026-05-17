@@ -81,7 +81,9 @@ export default function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false)
   const [localNotifications, setLocalNotifications] = useState([])
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1100)
+  const [dropdownPosition, setDropdownPosition] = useState({ top: '100%', right: 0, left: 'auto', transform: 'none' })
   const dropdownRef = useRef(null)
+  const buttonRef = useRef(null)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -89,6 +91,52 @@ export default function NotificationBell() {
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
+
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect()
+      const spaceOnRight = window.innerWidth - rect.right
+      const spaceOnLeft = rect.left
+      const dropdownWidth = 380
+
+      if (isMobile) {
+        setDropdownPosition({
+          position: 'fixed',
+          top: `calc(var(--header-height) + var(--safe-top) + 10px)`,
+          left: '50%',
+          right: 'auto',
+          transform: 'translateX(-50%)'
+        })
+      } else if (spaceOnRight < dropdownWidth && spaceOnLeft > dropdownWidth) {
+        // Not enough space on right, but enough on left -> align right
+        setDropdownPosition({
+          position: 'absolute',
+          top: '100%',
+          right: 0,
+          left: 'auto',
+          transform: 'none'
+        })
+      } else if (spaceOnLeft < dropdownWidth) {
+        // Not enough space on left -> align left (extend to right)
+        setDropdownPosition({
+          position: 'absolute',
+          top: '100%',
+          left: 0,
+          right: 'auto',
+          transform: 'none'
+        })
+      } else {
+        // Default to right alignment
+        setDropdownPosition({
+          position: 'absolute',
+          top: '100%',
+          right: 0,
+          left: 'auto',
+          transform: 'none'
+        })
+      }
+    }
+  }, [isOpen, isMobile])
 
   useEffect(() => {
     setLocalNotifications(notifications.slice(0, 20))
@@ -204,6 +252,7 @@ export default function NotificationBell() {
   return (
     <div style={{ position: 'relative', display: 'inline-flex' }} ref={dropdownRef}>
       <button
+        ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
         style={{
           position: 'relative',
@@ -258,12 +307,7 @@ export default function NotificationBell() {
           role="dialog"
           aria-label="Notifications"
           style={{
-            position: isMobile ? 'fixed' : 'absolute',
-            top: isMobile ? 'calc(var(--header-height) + var(--safe-top) + 10px)' : '100%',
-            right: isMobile ? 'auto' : 0,
-            left: isMobile ? '50%' : 'auto',
-            transform: isMobile ? 'translateX(-50%)' : 'none',
-            marginTop: isMobile ? 0 : '8px',
+            ...dropdownPosition,
             width: 'min(380px, calc(100vw - 20px))',
             maxHeight: 'min(500px, calc(100vh - 120px))',
             background: '#0b1228',
