@@ -1428,17 +1428,24 @@ const [counterFixture, setCounterFixture] = useState(null)
                      <div style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)', marginTop: '5px' }}>
                        Status: confirmed
                      </div>
-                     <button
-                       className="btn btn-secondary btn-sm"
-                       style={{ marginTop: '8px' }}
-                       onClick={() => {
-                         setRescheduleFixture(fixture)
-                         setRescheduleDate(getFixtureDate(fixture) || '')
-                         setRescheduleTime(getFixtureTime(fixture) || '')
-                       }}
-                     >
-                       📅 Reschedule
-                     </button>
+                     <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                       <button
+                         className="btn btn-secondary btn-sm"
+                         onClick={() => {
+                           setRescheduleFixture(fixture)
+                           setRescheduleDate(getFixtureDate(fixture) || '')
+                           setRescheduleTime(getFixtureTime(fixture) || '')
+                         }}
+                       >
+                         📅 Reschedule
+                       </button>
+                       <button
+                         className="btn btn-danger btn-sm"
+                         onClick={() => handleCancelFixture(fixture.id)}
+                       >
+                         Cancel
+                       </button>
+                     </div>
                    </div>
                ))}
                {[...cupAccepted]
@@ -1460,6 +1467,13 @@ const [counterFixture, setCounterFixture] = useState(null)
                     <div style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)', marginTop: '5px' }}>
                       Status: confirmed
                     </div>
+                    <button
+                      className="btn btn-danger btn-sm"
+                      style={{ marginTop: '8px' }}
+                      onClick={() => cancelCupProposal(fixture)}
+                    >
+                      Cancel Fixture
+                    </button>
                   </div>
                 ))}
             </>
@@ -1523,24 +1537,30 @@ const [counterFixture, setCounterFixture] = useState(null)
                     <div style={{ fontWeight: '600' }}>⏰ {fixture.fixtureTime}</div>
                   </div>
                 </div>
-                 <button
-                   className="btn btn-primary"
-                   style={{ marginTop: '12px' }}
-                   onClick={() => navigate(`/submit-result?fixtureId=${fixture.id}`)}
-                 >
-                   Submit Result
-                 </button>
-                 <button
-                   className="btn btn-secondary"
-                   style={{ marginTop: '12px', marginLeft: '8px' }}
-                   onClick={() => {
-                     setRescheduleFixture(fixture)
-                     setRescheduleDate(fixture.fixtureDate || fixture.date || '')
-                     setRescheduleTime(fixture.fixtureTime || fixture.time || '')
-                   }}
-                 >
-                   📅 Reschedule
-                 </button>
+                 <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                   <button
+                     className="btn btn-primary"
+                     onClick={() => navigate(`/submit-result?fixtureId=${fixture.id}`)}
+                   >
+                     Submit Result
+                   </button>
+                   <button
+                     className="btn btn-secondary"
+                     onClick={() => {
+                       setRescheduleFixture(fixture)
+                       setRescheduleDate(fixture.fixtureDate || fixture.date || '')
+                       setRescheduleTime(fixture.fixtureTime || fixture.time || '')
+                     }}
+                   >
+                     📅 Reschedule
+                   </button>
+                   <button
+                     className="btn btn-danger"
+                     onClick={() => handleCancelFixture(fixture.id)}
+                   >
+                     Cancel
+                   </button>
+                 </div>
                </div>
              ))
            )}
@@ -1595,24 +1615,30 @@ const [counterFixture, setCounterFixture] = useState(null)
                       <div style={{ fontWeight: '600' }}>{fixture.time || fixture.proposedTime || 'TBC'}</div>
                     </div>
                   </div>
-                   <button
-                     className="btn btn-primary"
-                     style={{ marginTop: '12px' }}
-                     onClick={() => navigate(`/submit-result?fixtureId=${fixture.id}`)}
-                   >
-                     Submit Result
-                   </button>
-                   <button
-                     className="btn btn-secondary"
-                     style={{ marginTop: '12px', marginLeft: '8px' }}
-                     onClick={() => {
-                       setRescheduleFixture(fixture)
-                       setRescheduleDate(fixture.date || fixture.fixtureDate || '')
-                       setRescheduleTime(fixture.time || fixture.fixtureTime || '')
-                     }}
-                   >
-                     📅 Reschedule
-                   </button>
+                   <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                     <button
+                       className="btn btn-primary"
+                       onClick={() => navigate(`/submit-result?fixtureId=${fixture.id}`)}
+                     >
+                       Submit Result
+                     </button>
+                     <button
+                       className="btn btn-secondary"
+                       onClick={() => {
+                         setRescheduleFixture(fixture)
+                         setRescheduleDate(fixture.date || fixture.fixtureDate || '')
+                         setRescheduleTime(fixture.time || fixture.fixtureTime || '')
+                       }}
+                     >
+                       📅 Reschedule
+                     </button>
+                     <button
+                       className="btn btn-danger"
+                       onClick={() => cancelCupProposal(fixture)}
+                     >
+                       Cancel
+                     </button>
+                   </div>
                  </div>
                ))}
              </div>

@@ -101,16 +101,15 @@ export default function SuperLeague() {
                     <th style={{ textAlign: 'left', padding: '15px 10px' }}>Player</th>
                     <th style={{ width: '40px', padding: '15px 5px', textAlign: 'center' }}>P</th>
                     <th style={{ width: '40px', padding: '15px 5px', textAlign: 'center' }}>W</th>
-                    <th style={{ width: '40px', padding: '15px 5px', textAlign: 'center' }}>D</th>
                     <th style={{ width: '40px', padding: '15px 5px', textAlign: 'center' }}>L</th>
                     <th style={{ width: '50px', padding: '15px 5px', textAlign: 'center' }}>+/-</th>
-                    <th style={{ width: '60px', padding: '15px 5px', textAlign: 'center', color: 'var(--accent-cyan)' }}>Pts</th>
+                    <th style={{ width: '60px', padding: '15px 5px', textAlign: 'center' , color: 'var(--accent-cyan)' }}>Pts</th>
                   </tr>
                 </thead>
                 <tbody>
                   {playersInDivision.length === 0 ? (
                     <tr>
-                      <td colSpan={8} style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>No players assigned to {activeDivision} yet.</td>
+                      <td colSpan={7} style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>No players assigned to {activeDivision} yet.</td>
                     </tr>
                   ) : (
                     playersInDivision.map((player, index) => {
@@ -137,7 +136,6 @@ export default function SuperLeague() {
                           </td>
                           <td style={{ textAlign: 'center' }}>{player.stats.played}</td>
                           <td style={{ textAlign: 'center', color: 'var(--text-muted)' }}>{player.stats.wins}</td>
-                          <td style={{ textAlign: 'center', color: 'var(--text-muted)' }}>{player.stats.draws}</td>
                           <td style={{ textAlign: 'center', color: 'var(--text-muted)' }}>{player.stats.losses}</td>
                           <td style={{ textAlign: 'center', fontWeight: '800', color: legDiff > 0 ? 'var(--success)' : legDiff < 0 ? 'var(--error)' : 'white' }}>
                             {legDiff > 0 ? `+${legDiff}` : legDiff}

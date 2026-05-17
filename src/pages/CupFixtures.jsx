@@ -510,13 +510,20 @@ export default function CupFixtures() {
                   Format: {fixture.startScore || 501} / Best of {fixture.bestOf || 3}
                 </p>
               </div>
-              <button
-                className="btn btn-primary"
-                style={{ marginTop: '10px' }}
-                onClick={() => navigate(`/submit-result?fixtureId=${fixture.id}`)}
-              >
-                Submit Result
-              </button>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => navigate(`/submit-result?fixtureId=${fixture.id}`)}
+                >
+                  Submit Result
+                </button>
+                <button
+                  className="btn btn-danger"
+                  onClick={() => cancelProposal(fixture)}
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           ))}
         </div>
