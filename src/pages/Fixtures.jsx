@@ -692,11 +692,12 @@ const [counterFixture, setCounterFixture] = useState(null)
     try {
       const fixtureRef = doc(db, 'fixtures', String(fixtureId))
 
-      // Use updateDoc (soft delete) as the primary method for reliability
-      // This is less likely to trigger security rule violations than deleteDoc
+      // Use a surgical updateDoc to mark as deleted.
+      // This ensures we only touch fields the user has permission to change.
       await updateDoc(fixtureRef, {
         _deleted: true,
         status: 'cancelled',
+        cancelledBy: user.id,
         updatedAt: new Date().toISOString()
       })
 
@@ -719,7 +720,10 @@ const [counterFixture, setCounterFixture] = useState(null)
       showToast('Fixture cancelled successfully', 'info')
     } catch (e) {
       console.error('Error cancelling fixture:', e)
-      showToast('Failed to cancel fixture: ' + (e.code === 'permission-denied' ? 'Server permission error. Please ensure you are a participant.' : e.message), 'error')
+      const errorMsg = e.code === 'permission-denied'
+        ? 'Access Denied. Ensure you are a participant in this fixture.'
+        : e.message
+      showToast('Failed to cancel fixture: ' + errorMsg, 'error')
     }
   }
 

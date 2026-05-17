@@ -79,11 +79,11 @@ service cloud.firestore {
       allow create: if signedIn();
       allow update, delete: if signedIn() && (
         isAdmin() ||
-        resource.data.get('player1Id', '') == request.auth.uid ||
-        resource.data.get('player2Id', '') == request.auth.uid ||
-        resource.data.get('player1', '') == request.auth.uid ||
-        resource.data.get('player2', '') == request.auth.uid ||
-        resource.data.get('createdBy', '') == request.auth.uid
+        resource.data.player1Id == request.auth.uid ||
+        resource.data.player2Id == request.auth.uid ||
+        resource.data.player1 == request.auth.uid ||
+        resource.data.player2 == request.auth.uid ||
+        resource.data.createdBy == request.auth.uid
       );
     }
 
