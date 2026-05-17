@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import { db, doc, setDoc, deleteDoc, getDocs, collection } from '../firebase'
+import { db, doc, setDoc, deleteDoc, updateDoc, getDocs, collection } from '../firebase'
 import { ADMIN_EMAILS } from '../config'
 import UserSearchSelect from '../components/UserSearchSelect'
 import { useToast } from '../context/ToastContext'
@@ -648,8 +648,8 @@ const [counterFixture, setCounterFixture] = useState(null)
     }
 
     try {
-      // Use _deleted flag instead of hard delete for better reliability with security rules
-      await setDoc(doc(db, 'fixtures', String(fixtureId)), { _deleted: true }, { merge: true })
+      // Use updateDoc instead of setDoc for better compatibility with security rules
+      await updateDoc(doc(db, 'fixtures', String(fixtureId)), { _deleted: true, status: 'declined' })
 
       const updatedFixtures = getFixtures().filter(f => String(f.id) !== String(fixtureId))
       saveFixtures(updatedFixtures)
@@ -743,8 +743,7 @@ const [counterFixture, setCounterFixture] = useState(null)
     }
 
     // For Cup matches, we ONLY reset the proposal fields, we never delete the fixture itself
-    const updatedFixture = {
-      ...allFixtures[index],
+    const updates = {
       status: 'pending',
       proposalStatus: 'needs_scheduling',
       proposedDate: '',
@@ -763,9 +762,10 @@ const [counterFixture, setCounterFixture] = useState(null)
     }
 
     try {
-      await persistFixture(updatedFixture)
+      // Use updateDoc for targeted field resets to avoid security rule violations
+      await updateDoc(doc(db, 'fixtures', String(fixture.id)), updates)
 
-      allFixtures[index] = updatedFixture
+      allFixtures[index] = { ...allFixtures[index], ...updates }
       saveFixtures(allFixtures)
 
       const recipientId = getOtherPlayerId(fixture)
