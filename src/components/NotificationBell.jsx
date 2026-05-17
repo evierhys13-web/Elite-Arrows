@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { db, doc, setDoc } from '../firebase'
@@ -81,7 +82,7 @@ export default function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false)
   const [localNotifications, setLocalNotifications] = useState([])
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1100)
-  const [dropdownPosition, setDropdownPosition] = useState({ top: '100%', right: 0, left: 'auto', transform: 'none' })
+  const [dropdownPosition, setDropdownPosition] = useState({ top: '0', left: '0', position: 'fixed' })
   const dropdownRef = useRef(null)
   const buttonRef = useRef(null)
   const navigate = useNavigate()
@@ -95,45 +96,27 @@ export default function NotificationBell() {
   useEffect(() => {
     if (isOpen && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect()
-      const spaceOnRight = window.innerWidth - rect.right
-      const spaceOnLeft = rect.left
-      const dropdownWidth = 380
 
       if (isMobile) {
+        // Truly center on mobile viewport, regardless of where the bell is (header or sidebar)
         setDropdownPosition({
           position: 'fixed',
           top: `calc(var(--header-height) + var(--safe-top) + 10px)`,
           left: '50%',
-          right: 'auto',
-          transform: 'translateX(-50%)'
-        })
-      } else if (spaceOnLeft < dropdownWidth) {
-        // In the sidebar or near left edge -> align left and shift right slightly to be more "middle"
-        setDropdownPosition({
-          position: 'absolute',
-          top: '100%',
-          left: '0',
-          right: 'auto',
-          transform: 'none',
-          marginLeft: '10px'
-        })
-      } else if (spaceOnRight < dropdownWidth) {
-        // Near right edge -> align right
-        setDropdownPosition({
-          position: 'absolute',
-          top: '100%',
-          right: 0,
-          left: 'auto',
-          transform: 'none'
+          transform: 'translateX(-50%)',
+          zIndex: 11000
         })
       } else {
-        // Default to centering relative to the bell if there's space
+        // Desktop positioning - align with the bell but stay in viewport
+        const dropdownWidth = 380
+        let left = rect.right - dropdownWidth
+        if (left < 10) left = 10 // Don't go off left edge
+
         setDropdownPosition({
-          position: 'absolute',
-          top: '100%',
-          left: '50%',
-          right: 'auto',
-          transform: 'translateX(-50%)'
+          position: 'fixed',
+          top: `${rect.bottom + 8}px`,
+          left: `${left}px`,
+          zIndex: 11000
         })
       }
     }
@@ -145,17 +128,23 @@ export default function NotificationBell() {
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      // Close if clicking outside both the button and the dropdown
+      const isButtonClick = buttonRef.current && buttonRef.current.contains(event.target)
+      const isDropdownClick = dropdownRef.current && dropdownRef.current.contains(event.target)
+
+      if (!isButtonClick && !isDropdownClick) {
         setIsOpen(false)
       }
     }
 
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('touchstart', handleClickOutside)
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('touchstart', handleClickOutside)
     }
   }, [isOpen])
 
@@ -251,7 +240,7 @@ export default function NotificationBell() {
   if (!user) return null
 
   return (
-    <div style={{ position: 'relative', display: 'inline-flex' }} ref={dropdownRef}>
+    <div style={{ position: 'relative', display: 'inline-flex' }}>
       <button
         ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
@@ -302,8 +291,9 @@ export default function NotificationBell() {
         )}
       </button>
 
-      {isOpen && (
+      {isOpen && createPortal(
         <div
+          ref={dropdownRef}
           className="notifications-dropdown"
           role="dialog"
           aria-label="Notifications"
@@ -316,7 +306,6 @@ export default function NotificationBell() {
             borderRadius: '16px',
             boxShadow: '0 12px 48px rgba(0,0,0,0.5)',
             border: '1px solid rgba(148, 163, 184, 0.3)',
-            zIndex: 11000,
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column'
@@ -410,7 +399,8 @@ export default function NotificationBell() {
               ))
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
