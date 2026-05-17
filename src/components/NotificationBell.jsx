@@ -80,8 +80,15 @@ export default function NotificationBell() {
   const { user, notifications, unreadCount, updateBadgeCount } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
   const [localNotifications, setLocalNotifications] = useState([])
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 1100)
   const dropdownRef = useRef(null)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 1100)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   useEffect(() => {
     setLocalNotifications(notifications.slice(0, 20))
@@ -104,7 +111,7 @@ export default function NotificationBell() {
   }, [isOpen])
 
   const handleNotificationClick = async (notification) => {
-    let url = notification.data?.url || '/settings'
+    let url = notification.data?.url || '/home'
 
     if (!notification.data?.url) {
       switch (notification.type) {
@@ -142,7 +149,7 @@ export default function NotificationBell() {
           url = '/chat'
           break
         default:
-          url = '/settings'
+          url = '/notifications'
       }
     }
 
@@ -195,7 +202,7 @@ export default function NotificationBell() {
   if (!user) return null
 
   return (
-    <div style={{ position: 'relative' }} ref={dropdownRef}>
+    <div style={{ position: 'relative', display: 'inline-flex' }} ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         style={{
@@ -222,12 +229,12 @@ export default function NotificationBell() {
           <span
             style={{
               position: 'absolute',
-              top: 2,
-              right: 2,
+              top: 4,
+              right: 4,
               background: '#ff4444',
               color: 'white',
-              fontSize: '0.65rem',
-              fontWeight: 'bold',
+              fontSize: '0.6rem',
+              fontWeight: '900',
               borderRadius: '50%',
               width: '18px',
               height: '18px',
@@ -235,7 +242,8 @@ export default function NotificationBell() {
               alignItems: 'center',
               justifyContent: 'center',
               minWidth: '18px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+              boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+              border: '2px solid #0b1228'
             }}
             aria-hidden="true"
           >
@@ -250,17 +258,19 @@ export default function NotificationBell() {
           role="dialog"
           aria-label="Notifications"
           style={{
-            position: 'absolute',
-            top: '100%',
-            right: 0,
-            marginTop: '8px',
-            width: 'min(360px, calc(100vw - 24px))',
-            maxHeight: 'min(480px, calc(100vh - 90px))',
+            position: isMobile ? 'fixed' : 'absolute',
+            top: isMobile ? 'calc(var(--header-height) + var(--safe-top) + 10px)' : '100%',
+            right: isMobile ? 'auto' : 0,
+            left: isMobile ? '50%' : 'auto',
+            transform: isMobile ? 'translateX(-50%)' : 'none',
+            marginTop: isMobile ? 0 : '8px',
+            width: 'min(380px, calc(100vw - 20px))',
+            maxHeight: 'min(500px, calc(100vh - 120px))',
             background: '#0b1228',
             color: '#f8fafc',
-            borderRadius: '12px',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-            border: '1px solid rgba(148, 163, 184, 0.35)',
+            borderRadius: '16px',
+            boxShadow: '0 12px 48px rgba(0,0,0,0.5)',
+            border: '1px solid rgba(148, 163, 184, 0.3)',
             zIndex: 11000,
             overflow: 'hidden',
             display: 'flex',
