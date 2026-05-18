@@ -571,8 +571,13 @@ export default function Admin() {
     const lastWeek = new Date()
     lastWeek.setDate(lastWeek.getDate() - 7)
 
+    const newMembersList = allPlayers
+      .filter(u => new Date(u.createdAt || 0) > lastWeek)
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+
     return {
-      newUsers: allPlayers.filter(u => new Date(u.createdAt) > lastWeek).length,
+      newUsers: newMembersList.length,
+      newMembers: newMembersList,
       pendingResults: pendingResults.length,
       pendingPayments: pendingPayments.length + entryRequests.length,
       totalPot: subscriptionPot + subscriptionPot10
@@ -583,6 +588,7 @@ export default function Admin() {
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'results', label: 'Scores', count: pendingResults.length },
     { id: 'payments', label: 'Payments', count: pendingPayments.length + entryRequests.length },
+    { id: 'new', label: 'New Users', count: stats.newUsers },
     { id: 'moneypot', label: 'Finances' },
     { id: 'admins', label: 'Staff' },
     { id: 'cups', label: 'Cups' },
@@ -640,7 +646,7 @@ export default function Admin() {
                 </div>
                 <div className="stat-value" style={{ color: stats.pendingPayments > 0 ? 'var(--error)' : 'var(--success)', fontSize: '2.5rem' }}>{stats.pendingPayments}</div>
               </div>
-              <div className="stat-card glass" style={{ padding: '24px' }}>
+              <div className="stat-card glass" onClick={() => setActiveTab('new')} style={{ cursor: 'pointer', transition: 'transform 0.2s', padding: '24px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                   <div className="stat-label" style={{ margin: 0 }}>New Users (7d)</div>
                   <div style={{ fontSize: '1.5rem' }}>👤</div>
@@ -890,6 +896,66 @@ export default function Admin() {
               </div>
             ))}
             {pendingPayments.length === 0 && <p style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No payments awaiting approval.</p>}
+          </div>
+        )}
+
+        {/* TAB: NEW USERS */}
+        {activeTab === 'new' && (
+          <div className="card glass animate-fade-in">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <div>
+                <h3 className="card-title">New User Onboarding</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Users who joined in the last 7 days.</p>
+              </div>
+              <div style={{ padding: '8px 16px', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid var(--accent-cyan)', borderRadius: '8px', color: 'var(--accent-cyan)', fontWeight: 700 }}>
+                {stats.newUsers} RECENT
+              </div>
+            </div>
+
+            {stats.newMembers.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+                <div style={{ fontSize: '3rem', marginBottom: '20px' }}>🌵</div>
+                <p style={{ color: 'var(--text-muted)' }}>No new users joined in the last week.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {stats.newMembers.map(p => (
+                  <div key={p.id} className="glass" style={{ padding: '20px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                      <div className="avatar-ring" style={{ width: '55px', height: '52px', padding: '2px' }}>
+                        <div className="avatar-inner" style={{ background: '#050816', fontSize: '1.2rem' }}>
+                          {p.profilePicture ? (
+                            <img src={p.profilePicture} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            <span>{(p.username || '?').charAt(0).toUpperCase()}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: '1.1rem', marginBottom: '4px' }}>{p.username}</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                          {p.email} • Joined {new Date(p.createdAt).toLocaleDateString()}
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                          <span style={{ fontSize: '0.7rem', padding: '3px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                             Div: {p.division || 'TBC'}
+                          </span>
+                          {p.isSubscribed && (
+                             <span style={{ fontSize: '0.7rem', padding: '3px 8px', borderRadius: '4px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid var(--success)', color: 'var(--success)' }}>
+                               ELITE PASS
+                             </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/profile/${p.id}`)}>Profile</button>
+                      <button className="btn btn-primary btn-sm" onClick={() => { setDivisionForm({ player: p.id, division: '' }); setActiveTab('players'); }}>Assign Div</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
