@@ -70,7 +70,14 @@ export default function Table() {
         displayDivision: p.division || 'Unassigned',
         stats: playerStats[String(p.id)] || { played: 0, wins: 0, draws: 0, losses: 0, legsWon: 0, legsLost: 0, points: 0, average: p.threeDartAverage || 0 }
       }))
-      .filter(p => p.stats.played > 0 || activeDivision !== 'Overall') // Hide inactive players in overall view
+      .filter(p => {
+        // Always show players in specific division views
+        if (activeDivision !== 'Overall') return true;
+
+        // In Overall view, show anyone who has played OR has been assigned a valid league division
+        const hasValidDivision = p.division && p.division !== 'Unassigned' && p.division !== 'Admin';
+        return p.stats.played > 0 || hasValidDivision;
+      })
       .sort((a, b) => {
         if (b.stats.points !== a.stats.points) return b.stats.points - a.stats.points
         const aLegDiff = a.stats.legsWon - a.stats.legsLost
