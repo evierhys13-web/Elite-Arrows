@@ -749,7 +749,15 @@ export default function Admin() {
         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Comprehensive League Management</p>
       </div>
 
-      <div style={{ display: 'flex', overflowX: 'auto', gap: '10px', marginBottom: '24px', paddingBottom: '10px', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+      <div style={{
+        display: 'flex',
+        overflowX: 'auto',
+        gap: '10px',
+        marginBottom: '24px',
+        paddingBottom: '12px',
+        WebkitOverflowScrolling: 'touch',
+        borderBottom: '1px solid rgba(255,255,255,0.05)'
+      }}>
         {tabs.map(tab => (
           <button
             key={tab.id}

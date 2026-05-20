@@ -15,36 +15,38 @@ export const getResultEffectiveTime = (result) => Math.max(
 )
 
 export const isLeagueResult = (result, fixturesById = {}) => {
+  // MUST have scores and be approved
+  if (result.score1 === undefined || result.score2 === undefined) return false
+
   const gameType = normalizeText(result.gameType)
 
-  // 1. Explicitly ignore non-league types
+  // 1. Explicitly ignore non-league types in the gameType label
   const nonLeagueTypes = ['super league', 'cup', 'friendly', 'playoff', 'tournament']
   if (nonLeagueTypes.some(type => gameType.includes(type))) return false
 
-  // 2. MUST NOT have cup or tournament identifiers
+  // 2. If it has a cupId or matchId on the result itself, it's NOT league
   if (result.cupId || result.matchId || result.tournamentId) return false
 
-  // 3. Check the associated fixture if it exists - MUST BE LEAGUE
+  // 3. Check the associated fixture if it exists
   if (result.fixtureId) {
     const fixture = fixturesById[String(result.fixtureId)]
     if (fixture) {
       const fixtureType = normalizeText(fixture.gameType)
       if (nonLeagueTypes.some(type => fixtureType.includes(type))) return false
-      if (fixture.cupId || fixture.tournamentId) return false
-      if (fixtureType.includes('league')) return true
+      if (fixture.cupId || fixture.tournamentId || fixture.matchId) return false
     }
   }
 
-  // 4. If it's explicitly 'league' or contain it (e.g. 'Elite League')
+  // 4. MUST be explicitly 'league' or contain it (e.g. 'Elite League')
   if (gameType.includes('league')) return true
 
   // 5. For legacy/unlabeled matches (Season 1 support)
-  // ONLY allow if it's completely unlabeled AND matches the format AND has no cup data
   if (!gameType || gameType === 'unknown' || gameType === '') {
+    // Only allow if it matches the standard league format (Best of 8 / max 8 legs)
     const s1 = Number(result.score1) || 0
     const s2 = Number(result.score2) || 0
-    // Standard league is Best of 8 (max 8 legs total)
-    return (s1 + s2) <= 8
+    // Strictly max 8 legs for league
+    return (s1 + s2) <= 8 && (s1 + s2) > 0
   }
 
   return false
