@@ -531,30 +531,27 @@ export default function Admin() {
     const approvedMatches = allResults.filter(r => String(r.status).toLowerCase() === 'approved');
     if (approvedMatches.length === 0) return showToast('No approved matches to sync', 'info');
 
-    if (!window.confirm(`Sync ${approvedMatches.length} approved games to Analytics? This will also ensure they belong to the current season and have correct division data.`)) return;
+    if (!window.confirm(`Sync ${approvedMatches.length} approved games to Analytics? This will ensure they belong to the current season if they don't have one, and have correct division data.`)) return;
 
     setIsApproving(true);
     try {
       const currentSeason = adminData?.currentSeason || 'Season 1';
-      const batch = writeBatch(db);
       let updatedCount = 0;
+      let currentBatch = writeBatch(db);
+      let opCount = 0;
 
       for (const match of approvedMatches) {
-        // 1. Log to external Firebase Analytics
-        logMatchApproved(match);
-
-        // 2. Ensure internal analytics page can see it correctly
         const updates = {};
         const targetId = match.firestoreId || String(match.id);
 
-        // Fix missing or incorrect season
-        if (!match.season || match.season !== currentSeason) {
+        // Fix missing season - but DON'T overwrite existing seasons to preserve history
+        if (!match.season) {
           updates.season = currentSeason;
         }
 
         // Fix missing division data in the match record
         if (!match.division) {
-          const p1 = allPlayers.find(u => u.id === match.player1Id);
+          const p1 = allPlayers.find(u => String(u.id) === String(match.player1Id));
           if (p1?.division) {
             updates.division = p1.division;
           }
@@ -566,27 +563,37 @@ export default function Admin() {
         }
 
         if (Object.keys(updates).length > 0) {
-          batch.update(doc(db, 'results', targetId), updates);
+          currentBatch.update(doc(db, 'results', targetId), updates);
           updatedCount++;
+          opCount++;
+
+          // Firestore batch limit is 500
+          if (opCount >= 450) {
+            await currentBatch.commit();
+            currentBatch = writeBatch(db);
+            opCount = 0;
+          }
         }
+
+        // Log to external analytics (once)
+        logMatchApproved(match);
       }
 
-      if (updatedCount > 0) {
-        await batch.commit();
-        // Force a local state update immediately
-        triggerDataRefresh('results');
-        // If results aren't updating locally, we might need to manually update the results state
-        // but since we have a listener in AuthContext, triggerDataRefresh + Firestore update should work.
+      if (opCount > 0) {
+        await currentBatch.commit();
       }
 
-      showToast(`Synced ${approvedMatches.length} games. Updated ${updatedCount} records to ${currentSeason}.`, 'success');
+      await logAudit('BULK_SYNC_ANALYTICS', `Synchronized ${approvedMatches.length} approved games. Updated ${updatedCount} records to ${currentSeason}.`);
+      showToast(`Sync complete! Updated ${updatedCount} records.`, 'success');
+      triggerDataRefresh('results');
 
-      // Additional nudge to refresh
+      // Additional nudge to refresh UI
       setTimeout(() => {
         setRefreshKey(prev => prev + 1);
       }, 1000);
 
     } catch (e) {
+      console.error('Sync error:', e);
       showToast('Sync failed: ' + e.message, 'error');
     }
     setIsApproving(false);

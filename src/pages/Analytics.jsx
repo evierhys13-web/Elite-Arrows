@@ -39,21 +39,30 @@ function calcStdDev(values) {
 }
 
 export default function Analytics() {
-  const { user, getAllUsers, getResults, adminData, triggerDataRefresh } = useAuth()
+  const { user, getAllUsers, getResults, adminData, triggerDataRefresh, getSeasons } = useAuth()
   const { showToast } = useToast()
   const [activeSection, setActiveSection] = useState('personal')
   const [timePeriod, setTimePeriod] = useState('all')
+  const [selectedSeason, setSelectedSeason] = useState(adminData?.currentSeason || 'Season 1')
+  const [hasInitializedSeason, setHasInitializedSeason] = useState(false)
   const [h2hOpponent, setH2hOpponent] = useState('')
 
   const allUsers = getAllUsers()
   const results = getResults()
-  const currentSeason = adminData?.currentSeason || 'Season 1'
+  const seasons = getSeasons()
+
+  useEffect(() => {
+    if (adminData?.currentSeason && !hasInitializedSeason) {
+      setSelectedSeason(adminData.currentSeason)
+      setHasInitializedSeason(true)
+    }
+  }, [adminData?.currentSeason, hasInitializedSeason])
 
   const approvedResults = useMemo(() =>
     results.filter(r =>
       String(r.status || '').toLowerCase() === 'approved' &&
-      (!r.season || r.season === currentSeason)
-    ), [results, currentSeason])
+      (!r.season || r.season === selectedSeason)
+    ), [results, selectedSeason])
 
   const filteredResults = useMemo(() => timeFilter(approvedResults, timePeriod), [approvedResults, timePeriod])
   const userResults = useMemo(() => filteredResults.filter(r => String(r.player1Id) === String(user.id) || String(r.player2Id) === String(user.id)), [filteredResults, user.id])
@@ -197,10 +206,21 @@ export default function Analytics() {
     <div className="page animate-fade-in">
       <Breadcrumbs items={[{ label: 'Home', path: '/home' }, { label: 'Analytics', path: '/analytics' }]} />
 
-      <div className="page-header" style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="page-header" style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h1 className="page-title text-gradient">Performance Insights</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Deep dive into your Season 1 statistics</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px' }}>
+             <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Season:</span>
+             <select
+               className="glass"
+               value={selectedSeason}
+               onChange={e => setSelectedSeason(e.target.value)}
+               style={{ padding: '4px 12px', borderRadius: '8px', fontSize: '0.85rem', border: '1px solid rgba(255,255,255,0.1)' }}
+             >
+               {seasons.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+               {!seasons.find(s => s.name === 'Season 1') && <option value="Season 1">Season 1</option>}
+             </select>
+          </div>
         </div>
         <button
           className="btn btn-secondary glass"

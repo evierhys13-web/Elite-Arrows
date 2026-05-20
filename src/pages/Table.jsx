@@ -20,15 +20,17 @@ export default function Table() {
   const { user, getAllUsers, getFixtures, getResults, triggerDataRefresh, dataRefreshTrigger, adminData, getSeasons } = useAuth()
   const [refreshKey, setRefreshKey] = useState(0)
   const [selectedSeason, setSelectedSeason] = useState(adminData?.currentSeason || 'Season 1')
+  const [hasInitializedSeason, setHasInitializedSeason] = useState(false)
 
   const divisions = ['Overall', 'Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Development']
   const seasons = getSeasons()
 
   useEffect(() => {
-    if (adminData?.currentSeason && !selectedSeason) {
+    if (adminData?.currentSeason && !hasInitializedSeason) {
       setSelectedSeason(adminData.currentSeason)
+      setHasInitializedSeason(true)
     }
-  }, [adminData?.currentSeason])
+  }, [adminData?.currentSeason, hasInitializedSeason])
 
   useEffect(() => {
     setRefreshKey(prev => prev + 1)
@@ -43,10 +45,10 @@ export default function Table() {
       fixtures,
       adminData,
       leagueOnly: true,
-      currentSeason: adminData?.currentSeason || 'Season 1',
+      currentSeason: selectedSeason,
       includePlayoffs: false
     })
-  }, [allUsers, results, fixtures, adminData, refreshKey])
+  }, [allUsers, results, fixtures, adminData, refreshKey, selectedSeason])
 
   const playersInDivision = useMemo(() => {
     const source = activeDivision === 'Overall'
@@ -59,6 +61,7 @@ export default function Table() {
         displayDivision: p.division || 'Unassigned',
         stats: playerStats[String(p.id)] || { played: 0, wins: 0, draws: 0, losses: 0, legsWon: 0, legsLost: 0, points: 0, average: p.threeDartAverage || 0 }
       }))
+      .filter(p => p.stats.played > 0 || activeDivision !== 'Overall') // Hide inactive players in overall view
       .sort((a, b) => {
         if (b.stats.points !== a.stats.points) return b.stats.points - a.stats.points
         const aLegDiff = a.stats.legsWon - a.stats.legsLost
@@ -72,6 +75,9 @@ export default function Table() {
   const handleRefresh = () => {
     triggerDataRefresh('all')
     setRefreshKey(prev => prev + 1)
+    showToast('Refreshing table data...', 'info')
+    // Force a full reload to clear any stale memoized states
+    setTimeout(() => window.location.reload(), 1000)
   }
 
   return (
@@ -79,12 +85,24 @@ export default function Table() {
       <Breadcrumbs items={[{ label: 'Home', path: '/home' }, { label: 'League Table', path: '/table' }]} />
 
       <div className="page-header" style={{ marginBottom: '24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           <div>
-            <h1 className="page-title text-gradient" style={{ fontSize: '2.2rem' }}>League Standings</h1>
+            <h1 className="page-title text-gradient" style={{ fontSize: '2.2rem', marginBottom: '4px' }}>League Standings</h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+               <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Season:</span>
+               <select
+                 className="glass"
+                 value={selectedSeason}
+                 onChange={e => setSelectedSeason(e.target.value)}
+                 style={{ padding: '4px 12px', borderRadius: '8px', fontSize: '0.85rem', border: '1px solid rgba(255,255,255,0.1)' }}
+               >
+                 {seasons.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                 {!seasons.find(s => s.name === 'Season 1') && <option value="Season 1">Season 1</option>}
+               </select>
+            </div>
           </div>
           <button className="btn btn-secondary btn-sm glass" onClick={handleRefresh} style={{ padding: '8px 12px' }}>
-            🔄 Sync
+            🔄 Sync Data
           </button>
         </div>
       </div>
