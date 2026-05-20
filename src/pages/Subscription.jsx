@@ -76,7 +76,9 @@ export default function Subscription() {
 
   useEffect(() => {
     if (availableSeasons.length > 0 && !targetSeason) {
-      setTargetSeason(availableSeasons[0].name);
+      // Prioritize Season 2 as default if it exists in available list
+      const season2 = availableSeasons.find(s => s.name === 'Season 2');
+      setTargetSeason(season2 ? season2.name : availableSeasons[0].name);
     }
   }, [availableSeasons, targetSeason]);
 
@@ -254,7 +256,7 @@ export default function Subscription() {
 
       {!isNativeApp && paymentMethod && (
         <div className="card glass animate-fade-in" style={{ border: '1px solid var(--accent-cyan)', padding: '40px' }}>
-          <h3 style={{ marginBottom: '20px', textAlign: 'center' }}>Finalize Your {paymentMethod === 'elite' ? 'Elite' : 'Standard'} Pass</h3>
+          <h3 style={{ marginBottom: '20px', textAlign: 'center' }}>Finalize Your {paymentMethod === 'elite' ? 'Elite' : 'Standard'} Pass for {targetSeason}</h3>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '30px' }}>
             <div style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>

@@ -37,6 +37,8 @@ export default function Admin() {
   const [resultSearch, setResultSearch] = useState('')
   const [resultTypeFilter, setResultTypeFilter] = useState('all')
   const [editingResult, setEditingResult] = useState(null)
+  const [approvingPaymentId, setApprovingPaymentId] = useState(null)
+  const [approvalOverride, setApprovalOverride] = useState({ tier: 'standard', season: '' })
 
   // Form states
   const [showSubmitGame, setShowSubmitGame] = useState(false)
@@ -248,29 +250,31 @@ export default function Admin() {
 
   const handleApprovePayment = async (u) => {
     try {
-      const tier = (u.paymentMethod === 'paypal10' || u.requestedPlan === 'elite') ? 10 : 5
-      const targetSeason = u.requestedSeason || adminData?.currentSeason || 'Season 1'
+      const isOverriding = approvingPaymentId === u.id
+      const finalTier = isOverriding ? (approvalOverride.tier === 'premium' ? 10 : 5) : ((u.paymentMethod === 'paypal10' || u.requestedPlan === 'elite') ? 10 : 5)
+      const finalSeason = isOverriding ? approvalOverride.season : (u.requestedSeason || adminData?.currentSeason || 'Season 1')
 
       const currentSeasons = Array.isArray(u.subscribedSeasons) ? u.subscribedSeasons : []
-      const nextSeasons = Array.from(new Set([...currentSeasons, targetSeason]))
+      const nextSeasons = Array.from(new Set([...currentSeasons, finalSeason]))
 
       const updates = {
         isSubscribed: true,
         paymentPending: false,
         subscriptionDate: new Date().toISOString(),
-        subscriptionTier: tier === 10 ? 'premium' : 'standard',
+        subscriptionTier: finalTier === 10 ? 'premium' : 'standard',
         subscribedSeasons: nextSeasons
       }
       await setDoc(doc(db, 'users', u.id), updates, { merge: true })
 
-      const potKey = tier === 10 ? 'subscriptionPot10' : 'subscriptionPot'
-      const currentPot = tier === 10 ? subscriptionPot10 : subscriptionPot
-      await updateAdminData({ [potKey]: currentPot + tier })
-      addToMoneyHistory('subscription', tier, `Approved payment: ${u.username} for ${targetSeason}`)
-      await logAudit('APPROVE_PAYMENT', `Approved payment for ${u.username} (£${tier}) - ${targetSeason}`)
+      const potKey = finalTier === 10 ? 'subscriptionPot10' : 'subscriptionPot'
+      const currentPot = finalTier === 10 ? subscriptionPot10 : subscriptionPot
+      await updateAdminData({ [potKey]: currentPot + finalTier })
+      addToMoneyHistory('subscription', finalTier, `Approved payment: ${u.username} for ${finalSeason}`)
+      await logAudit('APPROVE_PAYMENT', `Approved payment for ${u.username} (£${finalTier}) - ${finalSeason}`)
 
+      setApprovingPaymentId(null)
       triggerDataRefresh('users')
-      showToast(`Subscription Approved for ${targetSeason}!`, 'success')
+      showToast(`Subscription Approved for ${finalSeason}!`, 'success')
     } catch (e) { showToast(e.message, 'error') }
   }
 
@@ -1032,7 +1036,49 @@ export default function Admin() {
                             Method: {u.paymentMethod || 'Unknown'} | Plan: {u.requestedPlan || 'Standard'} | Season: {u.requestedSeason || adminData?.currentSeason || 'TBC'}
                           </div>
                        </div>
-                       <button className="btn btn-primary btn-sm" style={{ alignSelf: 'flex-start' }} onClick={() => handleApprovePayment(u)}>Approve Access</button>
+
+                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                         {approvingPaymentId === u.id ? (
+                           <div className="glass" style={{ display: 'flex', gap: '8px', padding: '8px', borderRadius: '8px', border: '1px solid var(--accent-cyan)' }}>
+                             <select
+                               className="glass"
+                               style={{ fontSize: '0.75rem', padding: '4px' }}
+                               value={approvalOverride.tier}
+                               onChange={e => setApprovalOverride({...approvalOverride, tier: e.target.value})}
+                             >
+                               <option value="standard">Standard (£5)</option>
+                               <option value="premium">Premium (£10)</option>
+                             </select>
+                             <select
+                               className="glass"
+                               style={{ fontSize: '0.75rem', padding: '4px' }}
+                               value={approvalOverride.season}
+                               onChange={e => setApprovalOverride({...approvalOverride, season: e.target.value})}
+                             >
+                               {getSeasons().map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                               {!getSeasons().find(s => s.name === 'Season 1') && <option value="Season 1">Season 1</option>}
+                             </select>
+                             <button className="btn btn-primary btn-sm" onClick={() => handleApprovePayment(u)}>Confirm</button>
+                             <button className="btn btn-secondary btn-sm" onClick={() => setApprovingPaymentId(null)}>×</button>
+                           </div>
+                         ) : (
+                           <>
+                             <button
+                               className="btn btn-secondary btn-sm"
+                               onClick={() => {
+                                 setApprovingPaymentId(u.id);
+                                 setApprovalOverride({
+                                   tier: (u.requestedPlan === 'elite' || u.paymentMethod === 'paypal10') ? 'premium' : 'standard',
+                                   season: u.requestedSeason || adminData?.currentSeason || 'Season 1'
+                                 });
+                               }}
+                             >
+                               Edit & Approve
+                             </button>
+                             <button className="btn btn-primary btn-sm" onClick={() => handleApprovePayment(u)}>Quick Approve</button>
+                           </>
+                         )}
+                       </div>
                     </div>
                     {u.paymentProof && (
                       <div style={{ marginTop: '10px' }}>
