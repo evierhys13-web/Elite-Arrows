@@ -32,6 +32,7 @@ export default function Admin() {
   const [refreshKey, setRefreshKey] = useState(0)
   const [isApproving, setIsApproving] = useState(false)
   const [resultFilter, setResultFilter] = useState('pending')
+  const [paymentSubTab, setPaymentSubTab] = useState('pending')
   const [selectedResults, setSelectedResults] = useState([])
   const [resultSearch, setResultSearch] = useState('')
   const [resultTypeFilter, setResultTypeFilter] = useState('all')
@@ -998,26 +999,105 @@ export default function Admin() {
         {/* TAB: PAYMENTS */}
         {activeTab === 'payments' && (
           <div className="card glass">
-            <h3 style={{ marginBottom: '20px' }}>Pending Subscriptions</h3>
-            {pendingPayments.map(u => (
-              <div key={u.id} className="glass" style={{ padding: '20px', borderRadius: '12px', marginBottom: '15px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-                   <div>
-                      <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>{u.username}</div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{u.email}</div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)', marginTop: '4px' }}>Method: {u.paymentMethod || 'Unknown'}</div>
-                   </div>
-                   <button className="btn btn-primary btn-sm" onClick={() => handleApprovePayment(u)}>Approve Access</button>
-                </div>
-                {u.paymentProof && (
-                  <div style={{ marginTop: '10px' }}>
-                    <p style={{ fontSize: '0.75rem', marginBottom: '8px', color: 'var(--text-muted)' }}>Payment Receipt:</p>
-                    <img src={u.paymentProof} alt="Proof" style={{ width: '100%', maxWidth: '300px', borderRadius: '8px', border: '1px solid var(--border)' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+              <div>
+                <h3 style={{ margin: 0 }}>League Subscriptions</h3>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>Verify and manage player access payments.</p>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  className={`btn btn-sm ${paymentSubTab === 'pending' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setPaymentSubTab('pending')}
+                >
+                  Pending ({pendingPayments.length})
+                </button>
+                <button
+                  className={`btn btn-sm ${paymentSubTab === 'approved' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setPaymentSubTab('approved')}
+                >
+                  Approved ({subscribers.length})
+                </button>
+              </div>
+            </div>
+
+            {paymentSubTab === 'pending' ? (
+              <div className="animate-fade-in">
+                {pendingPayments.map(u => (
+                  <div key={u.id} className="glass" style={{ padding: '20px', borderRadius: '12px', marginBottom: '15px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', flexWrap: 'wrap', gap: '12px' }}>
+                       <div>
+                          <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>{u.username}</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{u.email}</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)', marginTop: '4px', fontWeight: 600 }}>
+                            Method: {u.paymentMethod || 'Unknown'} | Plan: {u.requestedPlan || 'Standard'} | Season: {u.requestedSeason || adminData?.currentSeason || 'TBC'}
+                          </div>
+                       </div>
+                       <button className="btn btn-primary btn-sm" style={{ alignSelf: 'flex-start' }} onClick={() => handleApprovePayment(u)}>Approve Access</button>
+                    </div>
+                    {u.paymentProof && (
+                      <div style={{ marginTop: '10px' }}>
+                        <p style={{ fontSize: '0.75rem', marginBottom: '8px', color: 'var(--text-muted)' }}>Payment Receipt:</p>
+                        <img
+                          src={u.paymentProof}
+                          alt="Proof"
+                          style={{ width: '100%', maxWidth: '400px', borderRadius: '12px', border: '1px solid var(--border)', cursor: 'pointer' }}
+                          onClick={() => window.open(u.paymentProof, '_blank')}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {pendingPayments.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+                    <div style={{ fontSize: '2.5rem', marginBottom: '16px' }}>✅</div>
+                    <p style={{ color: 'var(--text-muted)', margin: 0 }}>No payments awaiting approval.</p>
                   </div>
                 )}
               </div>
-            ))}
-            {pendingPayments.length === 0 && <p style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No payments awaiting approval.</p>}
+            ) : (
+              <div className="animate-fade-in">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {subscribers.sort((a,b) => new Date(b.subscriptionDate || 0) - new Date(a.subscriptionDate || 0)).map(u => (
+                    <div key={u.id} className="glass" style={{ padding: '16px', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid rgba(255,255,255,0.03)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <div className="avatar-ring" style={{ width: '45px', height: '42px', padding: '2px' }}>
+                          <div className="avatar-inner" style={{ background: '#050816', fontSize: '1rem' }}>
+                            {u.profilePicture ? (
+                              <img src={u.profilePicture} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              <span>{u.username.charAt(0).toUpperCase()}</span>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '1rem' }}>{u.username}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                            <span style={{ color: u.subscriptionTier === 'premium' ? '#fbbf24' : 'var(--accent-cyan)', fontWeight: 700 }}>
+                              {u.subscriptionTier?.toUpperCase() || 'STANDARD'}
+                            </span>
+                            {' • '} Approved {u.subscriptionDate ? new Date(u.subscriptionDate).toLocaleDateString() : 'Historical'}
+                          </div>
+                          <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: '2px', fontStyle: 'italic' }}>
+                            Seasons: {(u.subscribedSeasons || []).join(', ') || 'Legacy'}
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        {u.paymentProof && (
+                          <button className="btn btn-secondary btn-sm" style={{ padding: '6px 12px', fontSize: '0.75rem' }} onClick={() => window.open(u.paymentProof, '_blank')}>View Receipt</button>
+                        )}
+                        <button className="btn btn-secondary btn-sm" style={{ padding: '6px 12px', fontSize: '0.75rem' }} onClick={() => navigate(`/profile/${u.id}`)}>Profile</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {subscribers.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+                    <p style={{ color: 'var(--text-muted)', margin: 0 }}>No approved subscribers found.</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
