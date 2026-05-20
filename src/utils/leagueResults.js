@@ -45,6 +45,15 @@ export const isSuperLeagueResult = (result, fixturesById = {}) => {
   return fixtureGameType === 'super league'
 }
 
+export const isPlayoffResult = (result, fixturesById = {}) => {
+  const gameType = normalizeText(result.gameType)
+  if (gameType === 'playoff') return true
+
+  const fixture = result.fixtureId ? fixturesById[String(result.fixtureId)] : null
+  const fixtureGameType = normalizeText(fixture?.gameType)
+  return fixtureGameType === 'playoff'
+}
+
 export const getResultPlayerId = (result, playerNumber, users = []) => {
   const directId = result[`player${playerNumber}Id`]
   if (directId) return String(directId)

@@ -139,6 +139,8 @@ export default function SubmitResult() {
         }))
       } else if (value === 'Cup') {
         setFormData(prev => ({ ...prev, opponent: '', bestOf: '3', firstTo: '2' }))
+      } else if (value === 'Playoff') {
+        setFormData(prev => ({ ...prev, bestOf: '3', firstTo: '2' }))
       } else {
         setFormData(prev => ({ ...prev, bestOf: '3', firstTo: '2' }))
       }
@@ -443,12 +445,12 @@ export default function SubmitResult() {
           <div className="form-group" style={{ marginBottom: '25px' }}>
             <label style={{ fontWeight: '600', marginBottom: '10px', display: 'block' }}>Match Type</label>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              {['Friendly', 'League', 'Super League', 'Cup'].map(type => (
+              {['Friendly', 'League', 'Super League', 'Cup', 'Playoff'].map(type => (
                 <button
                   key={type}
                   type="button"
-                  className={`btn ${formData.gameType === (type === 'Cup' ? 'Cup' : type) ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => handleChange({ target: { name: 'gameType', value: type === 'Cup' ? 'Cup' : type } })}
+                  className={`btn ${formData.gameType === type ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => handleChange({ target: { name: 'gameType', value: type } })}
                   style={{ flex: 1, minWidth: '100px' }}
                 >
                   {type === 'Cup' ? 'Cup Match' : type}

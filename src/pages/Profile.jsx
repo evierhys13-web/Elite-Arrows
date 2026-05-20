@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Tooltip from '../components/Tooltip'
 import { compressImage } from '../components/ImageUtils'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
+import { getResultPlayerId, isLeagueResult, isPlayoffResult } from '../utils/leagueResults'
 
 const AVAILABLE_BADGES = [
   { id: 'competitive', label: 'Competitive', icon: '🏆', color: '#FFD700' },
@@ -105,6 +106,40 @@ export default function Profile() {
     if (!displayStats?.form) return []
     return displayStats.form.slice(-5)
   }, [displayStats])
+
+  const matchLog = useMemo(() => {
+    if (!displayUser?.id) return []
+    const fixturesById = Object.fromEntries(fixtures.map(f => [String(f.id), f]))
+
+    return allResults
+      .filter(r => {
+        const p1Id = getResultPlayerId(r, 1, allUsers)
+        const p2Id = getResultPlayerId(r, 2, allUsers)
+        return (
+          String(r.status || '').toLowerCase() === 'approved' &&
+          (isLeagueResult(r, fixturesById) || isPlayoffResult(r, fixturesById)) &&
+          (String(p1Id) === String(displayUser.id) || String(p2Id) === String(displayUser.id))
+        )
+      })
+      .map(r => {
+        const p1Id = getResultPlayerId(r, 1, allUsers)
+        const p2Id = getResultPlayerId(r, 2, allUsers)
+        const isPlayer1 = String(p1Id) === String(displayUser.id)
+        const opponentId = isPlayer1 ? p2Id : p1Id
+        const opponentUser = allUsers.find(u => String(u.id) === String(opponentId))
+        const win = isPlayer1 ? r.score1 > r.score2 : r.score2 > r.score1
+        return {
+          id: r.id,
+          opponentId,
+          opponent: opponentUser?.username || 'Unknown',
+          result: win ? 'Win' : (r.score1 === r.score2 ? 'Draw' : 'Loss'),
+          score: isPlayer1 ? `${r.score1}-${r.score2}` : `${r.score2}-${r.score1}`,
+          date: r.date,
+          season: r.season
+        }
+      })
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+  }, [displayUser, allResults, allUsers, fixtures])
 
   const handlePictureChange = async (e) => {
     const file = e.target.files[0]
@@ -463,6 +498,45 @@ export default function Profile() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Match Log Section */}
+      <div className="card glass" style={{ marginBottom: '32px' }}>
+        <h3 className="card-title">🎯 League Match Log</h3>
+        {matchLog.length === 0 ? (
+          <p style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>No league matches recorded.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {matchLog.map(match => (
+              <div key={match.id} style={{
+                padding: '16px',
+                background: 'rgba(255,255,255,0.03)',
+                borderRadius: '12px',
+                border: '1px solid var(--border)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontWeight: 600 }}>vs {match.opponent}</span>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{match.season}</span>
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{match.date}</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{
+                    fontWeight: 900,
+                    color: match.result === 'Win' ? 'var(--success)' : match.result === 'Draw' ? 'var(--warning)' : 'var(--error)'
+                  }}>
+                    {match.result}
+                  </div>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>{match.score}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Trophy Cabinet Section */}

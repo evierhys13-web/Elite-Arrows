@@ -53,6 +53,7 @@ export default function Admin() {
   const [divisionForm, setDivisionForm] = useState({ player: '', division: '' })
   const [potAdjust, setPotAdjust] = useState({ standard: 0, premium: 0 })
   const [trophyForm, setTrophyForm] = useState({ player: '', name: '', icon: '🏆', season: '' })
+  const [playoffForm, setPlayoffForm] = useState({ player1: '', player2: '', division: '', date: '', time: '', bestOf: '3' })
   const [surveyForm, setSurveyForm] = useState({ title: '', description: '', targetType: 'all', targetUserIds: [] })
   const [surveyQuestions, setSurveyQuestions] = useState([{ id: 'q1', text: '', type: 'text', options: '' }])
   const [viewSurveyResponses, setViewSurveyResponses] = useState(null)
@@ -92,7 +93,7 @@ export default function Admin() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    const allowed = ['dashboard', 'results', 'payments', 'moneypot', 'cups', 'players', 'admins', 'seasons', 'trophies', 'tokens', 'surveys', 'maintenance']
+    const allowed = ['dashboard', 'results', 'payments', 'moneypot', 'cups', 'playoffs', 'players', 'admins', 'seasons', 'trophies', 'tokens', 'surveys', 'maintenance']
     if (tab && allowed.includes(tab)) setActiveTab(tab)
   }, [searchParams])
 
@@ -284,6 +285,42 @@ export default function Admin() {
       await logAudit('GRANT_SUBSCRIPTION', `Manually granted ${grantSubForm.tier} sub to ${target.username}`)
       triggerDataRefresh('users')
       showToast(`Granted ${grantSubForm.tier} subscription to ${target.username}`, 'success')
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
+  const handleCreatePlayoff = async () => {
+    if (!playoffForm.player1 || !playoffForm.player2 || !playoffForm.date || !playoffForm.time) {
+      return showToast('Please fill in all playoff fields', 'error')
+    }
+    try {
+      const p1 = allPlayers.find(p => p.id === playoffForm.player1)
+      const p2 = allPlayers.find(p => p.id === playoffForm.player2)
+      const fixtureId = `playoff_${Date.now()}`
+
+      const newFixture = {
+        id: fixtureId,
+        player1Id: p1.id,
+        player1Name: p1.username,
+        player2Id: p2.id,
+        player2Name: p2.username,
+        division: playoffForm.division || p1.division || 'Open',
+        gameType: 'Playoff',
+        fixtureDate: playoffForm.date,
+        fixtureTime: playoffForm.time,
+        bestOf: parseInt(playoffForm.bestOf),
+        firstTo: Math.ceil(parseInt(playoffForm.bestOf) / 2),
+        createdBy: user.id,
+        createdAt: new Date().toISOString(),
+        status: 'accepted',
+        proposalStatus: 'accepted'
+      }
+
+      await setDoc(doc(db, 'fixtures', fixtureId), newFixture)
+      await logAudit('CREATE_PLAYOFF', `Created playoff match: ${p1.username} vs ${p2.username}`)
+
+      setPlayoffForm({ player1: '', player2: '', division: '', date: '', time: '', bestOf: '3' })
+      triggerDataRefresh('fixtures')
+      showToast('Playoff match created!', 'success')
     } catch (e) { showToast(e.message, 'error') }
   }
 
@@ -598,6 +635,7 @@ export default function Admin() {
     { id: 'moneypot', label: 'Finances' },
     { id: 'admins', label: 'Staff' },
     { id: 'cups', label: 'Cups' },
+    { id: 'playoffs', label: 'Playoffs' },
     { id: 'players', label: 'Members' },
     { id: 'seasons', label: 'Seasons' },
     { id: 'trophies', label: 'Trophies' },
@@ -1021,6 +1059,59 @@ export default function Admin() {
                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                   <UserSearchSelect users={allPlayers.filter(p => !p.isAdmin)} selectedId={''} onSelect={id => handleUpdateAdminRole(id, 'isTournamentAdmin', true)} label="Select User to Promote" />
                </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: PLAYOFFS */}
+        {activeTab === 'playoffs' && (
+          <div className="card glass animate-fade-in">
+            <h3 className="card-title">Playoff Match Creation</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
+              Create official playoff fixtures between two players. These will appear in the fixtures list immediately.
+            </p>
+
+            <div className="glass" style={{ padding: '24px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                <div className="form-group">
+                  <label>Player 1</label>
+                  <UserSearchSelect users={allPlayers} selectedId={playoffForm.player1} onSelect={id => setPlayoffForm({...playoffForm, player1: id})} label="Select Player 1" />
+                </div>
+                <div className="form-group">
+                  <label>Player 2</label>
+                  <UserSearchSelect users={allPlayers} selectedId={playoffForm.player2} onSelect={id => setPlayoffForm({...playoffForm, player2: id})} label="Select Player 2" />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                <div className="form-group">
+                  <label>Division Override (Optional)</label>
+                  <input type="text" className="glass" placeholder="e.g. Elite" value={playoffForm.division} onChange={e => setPlayoffForm({...playoffForm, division: e.target.value})} />
+                </div>
+                <div className="form-group">
+                  <label>Start Date</label>
+                  <input type="date" className="glass" value={playoffForm.date} onChange={e => setPlayoffForm({...playoffForm, date: e.target.value})} />
+                </div>
+                <div className="form-group">
+                  <label>Start Time</label>
+                  <input type="time" className="glass" value={playoffForm.time} onChange={e => setPlayoffForm({...playoffForm, time: e.target.value})} />
+                </div>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '24px' }}>
+                <label>Format (Best of Legs)</label>
+                <select className="glass" value={playoffForm.bestOf} onChange={e => setPlayoffForm({...playoffForm, bestOf: e.target.value})}>
+                  <option value="1">Best of 1 (First to 1)</option>
+                  <option value="3">Best of 3 (First to 2)</option>
+                  <option value="5">Best of 5 (First to 3)</option>
+                  <option value="7">Best of 7 (First to 4)</option>
+                  <option value="9">Best of 9 (First to 5)</option>
+                  <option value="11">Best of 11 (First to 6)</option>
+                  <option value="13">Best of 13 (First to 7)</option>
+                </select>
+              </div>
+
+              <button className="btn btn-primary btn-block" onClick={handleCreatePlayoff}>Create Playoff Fixture</button>
             </div>
           </div>
         )}

@@ -1,54 +1,72 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { getResultPlayerId, isLeagueResult } from '../utils/leagueResults'
+import { getResultPlayerId, isLeagueResult, isPlayoffResult } from '../utils/leagueResults'
+import UserSearchSelect from '../components/UserSearchSelect'
 
 export default function MatchLog() {
   const { user, getAllUsers, getFixtures, getResults } = useAuth()
   const [activeTab, setActiveTab] = useState('played')
-  
+  const [targetPlayerId, setTargetPlayerId] = useState(user.id)
+
   const allResults = getResults()
   const allUsers = getAllUsers()
   const fixtures = getFixtures()
   const fixturesById = Object.fromEntries(fixtures.map(fixture => [String(fixture.id), fixture]))
   
-  const leagueResults = allResults
-    .filter(r => {
-      const player1Id = getResultPlayerId(r, 1, allUsers)
-      const player2Id = getResultPlayerId(r, 2, allUsers)
-      return (
-        String(r.status || '').toLowerCase() === 'approved' &&
-        isLeagueResult(r, fixturesById) &&
-        (String(player1Id) === String(user.id) || String(player2Id) === String(user.id))
-      )
-    })
-    .map(r => {
-      const player1Id = getResultPlayerId(r, 1, allUsers)
-      const player2Id = getResultPlayerId(r, 2, allUsers)
-      const isPlayer1 = String(player1Id) === String(user.id)
-      const opponentId = isPlayer1 ? player2Id : player1Id
-      const opponentUser = allUsers.find(u => String(u.id) === String(opponentId))
-      const win = isPlayer1 ? r.score1 > r.score2 : r.score2 > r.score1
-      return {
-        id: r.id,
-        opponentId,
-        opponent: opponentUser?.username || 'Unknown',
-        opponentDivision: opponentUser?.division || '',
-        result: win ? 'Win' : (r.score1 === r.score2 ? 'Draw' : 'Loss'),
-        score: isPlayer1 ? `${r.score1}-${r.score2}` : `${r.score2}-${r.score1}`,
-        date: r.date,
-        average: isPlayer1 ? user.threeDartAverage : 0
-      }
-    })
+  const targetUser = allUsers.find(u => String(u.id) === String(targetPlayerId)) || user
+
+  const leagueResults = useMemo(() => {
+    return allResults
+      .filter(r => {
+        const player1Id = getResultPlayerId(r, 1, allUsers)
+        const player2Id = getResultPlayerId(r, 2, allUsers)
+        return (
+          String(r.status || '').toLowerCase() === 'approved' &&
+          (isLeagueResult(r, fixturesById) || isPlayoffResult(r, fixturesById)) &&
+          (String(player1Id) === String(targetUser.id) || String(player2Id) === String(targetUser.id))
+        )
+      })
+      .map(r => {
+        const player1Id = getResultPlayerId(r, 1, allUsers)
+        const player2Id = getResultPlayerId(r, 2, allUsers)
+        const isPlayer1 = String(player1Id) === String(targetUser.id)
+        const opponentId = isPlayer1 ? player2Id : player1Id
+        const opponentUser = allUsers.find(u => String(u.id) === String(opponentId))
+        const win = isPlayer1 ? r.score1 > r.score2 : r.score2 > r.score1
+        return {
+          id: r.id,
+          opponentId,
+          opponent: opponentUser?.username || 'Unknown',
+          opponentDivision: opponentUser?.division || '',
+          result: win ? 'Win' : (r.score1 === r.score2 ? 'Draw' : 'Loss'),
+          score: isPlayer1 ? `${r.score1}-${r.score2}` : `${r.score2}-${r.score1}`,
+          date: r.date,
+          season: r.season
+        }
+      })
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+  }, [allResults, allUsers, fixturesById, targetUser.id])
 
   const playedOpponentIds = leagueResults.map(m => m.opponentId)
   
-  const allDivisionPlayers = allUsers.filter(u => u.id !== user.id && u.division === user.division)
+  const allDivisionPlayers = allUsers.filter(u => u.id !== targetUser.id && u.division === targetUser.division)
   const opponentsToPlay = allDivisionPlayers.filter(p => !playedOpponentIds.includes(p.id))
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <h1 className="page-title">Match Log</h1>
+    <div className="page animate-fade-in">
+      <div className="page-header" style={{ marginBottom: '24px' }}>
+        <h1 className="page-title text-gradient">Match Log</h1>
+        <p style={{ color: 'var(--text-muted)' }}>Historical league performance and remaining fixtures</p>
+      </div>
+
+      <div className="card glass" style={{ marginBottom: '24px', padding: '16px' }}>
+        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '8px', display: 'block' }}>Viewing matches for:</label>
+        <UserSearchSelect
+          users={allUsers}
+          selectedId={targetPlayerId}
+          onSelect={setTargetPlayerId}
+          label="Select Player"
+        />
       </div>
 
       <div className="division-tabs" style={{ marginBottom: '20px' }}>
@@ -67,26 +85,36 @@ export default function MatchLog() {
       </div>
 
       {activeTab === 'played' && (
-        <div className="card">
+        <div className="card glass" style={{ padding: '10px' }}>
           {leagueResults.length === 0 ? (
-            <div className="empty-state">
-              <p>No league games played yet</p>
+            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+              <p>No league games recorded for this player.</p>
             </div>
           ) : (
             leagueResults.map(match => (
-              <div key={match.id} className="match-log-item">
-                <div className="match-log-header">
-                  <span style={{ fontWeight: '600' }}>vs {match.opponent}</span>
-                  <span 
-                    className="match-log-result"
-                    style={{ color: match.result === 'Win' ? 'var(--success)' : (match.result === 'Draw' ? 'var(--warning)' : 'var(--error)') }}
+              <div key={match.id} style={{
+                padding: '16px',
+                borderBottom: '1px solid rgba(255,255,255,0.05)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <div>
+                  <div style={{ fontWeight: '700', fontSize: '1rem' }}>vs {match.opponent}</div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                    {match.season} • {match.date}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div
+                    style={{
+                      fontWeight: '900',
+                      color: match.result === 'Win' ? 'var(--success)' : (match.result === 'Draw' ? 'var(--warning)' : 'var(--error)')
+                    }}
                   >
                     {match.result}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                  <span>Score: {match.score}</span>
-                  <span>{match.date}</span>
+                  </div>
+                  <div style={{ fontWeight: '700', fontSize: '1.1rem' }}>{match.score}</div>
                 </div>
               </div>
             ))
@@ -95,25 +123,33 @@ export default function MatchLog() {
       )}
 
       {activeTab === 'toPlay' && (
-        <div className="card">
+        <div className="card glass" style={{ padding: '10px' }}>
           {opponentsToPlay.length === 0 ? (
-            <div className="empty-state">
-              <p style={{ color: 'var(--success)' }}>All league games completed!</p>
+            <div style={{ textAlign: 'center', padding: '40px' }}>
+              <p style={{ color: 'var(--success)', fontWeight: 700 }}>Season schedule complete!</p>
             </div>
           ) : (
             opponentsToPlay.map(player => (
               <div key={player.id} style={{ 
-                padding: '15px', 
-                borderBottom: '1px solid var(--border)',
+                padding: '16px',
+                borderBottom: '1px solid rgba(255,255,255,0.05)',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center'
               }}>
                 <div>
-                  <span style={{ fontWeight: '600' }}>{player.username}</span>
-                  <span style={{ color: 'var(--text-muted)', marginLeft: '10px' }}>({player.division})</span>
+                  <span style={{ fontWeight: '700' }}>{player.username}</span>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{player.division} Division</div>
                 </div>
-                <span style={{ color: 'var(--accent-cyan)', fontSize: '0.85rem' }}>To Play</span>
+                <span style={{
+                  color: 'var(--accent-cyan)',
+                  fontSize: '0.7rem',
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  background: 'rgba(0, 212, 255, 0.1)',
+                  padding: '4px 10px',
+                  borderRadius: '20px'
+                }}>Remaining</span>
               </div>
             ))
           )}

@@ -1,5 +1,5 @@
 import { getLeaguePoints } from './leagueScoring'
-import { getResultEffectiveTime, getResultPlayerId, isLeagueResult, isSuperLeagueResult } from './leagueResults'
+import { getResultEffectiveTime, getResultPlayerId, isLeagueResult, isSuperLeagueResult, isPlayoffResult } from './leagueResults'
 
 export const DEFAULT_LEAGUE_TABLE_RESET_AT = '2020-01-01T00:00:00.000Z'
 
@@ -47,7 +47,8 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
     includeReset = true,
     timePeriod = 'all',
     requireProof = false,
-    currentSeason = null
+    currentSeason = null,
+    includePlayoffs = true
   } = options
 
   const fixturesById = Object.fromEntries(fixtures.map(fixture => [String(fixture.id), fixture]))
@@ -81,7 +82,8 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
     }
 
     const leagueResult = isLeagueResult(result, fixturesById)
-    if (leagueOnly && !leagueResult) return false
+    const playoffResult = isPlayoffResult(result, fixturesById)
+    if (leagueOnly && !leagueResult && !playoffResult) return false
 
     return isWithinPeriod(result, timePeriod)
   })
@@ -162,7 +164,8 @@ export const derivePlayerStatsFromResults = (users = [], results = [], options =
     includeReset = true,
     timePeriod = 'all',
     requireProof = false,
-    currentSeason = null
+    currentSeason = null,
+    includePlayoffs = true
   } = options
 
   const statsByPlayerId = {}
@@ -208,8 +211,12 @@ export const derivePlayerStatsFromResults = (users = [], results = [], options =
     const score2 = toNumber(result.score2)
 
     const isSuper = isSuperLeagueResult(result, fixturesById)
-    const countsForPoints = isSuper || isLeagueResult(result, fixturesById)
-    const scoringOptions = { noDrawBonus: isSuper }
+    const isPlayoff = isPlayoffResult(result, fixturesById)
+
+    if (isPlayoff && !includePlayoffs) return
+
+    const countsForPoints = (isSuper || isLeagueResult(result, fixturesById)) && !isPlayoff
+    const scoringOptions = { noDrawBonus: isSuper || isPlayoff }
 
     if (player1Id && statsByPlayerId[player1Id]) {
       addResultToPlayer(statsByPlayerId[player1Id], result, 1, score2, score1, countsForPoints, scoringOptions)

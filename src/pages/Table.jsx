@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
 import Breadcrumbs from '../components/Breadcrumbs'
@@ -16,10 +17,18 @@ const DIVISION_COLORS = {
 
 export default function Table() {
   const [activeDivision, setActiveDivision] = useState('Overall')
-  const { user, getAllUsers, getFixtures, getResults, triggerDataRefresh, dataRefreshTrigger, adminData } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, triggerDataRefresh, dataRefreshTrigger, adminData, getSeasons } = useAuth()
   const [refreshKey, setRefreshKey] = useState(0)
+  const [selectedSeason, setSelectedSeason] = useState(adminData?.currentSeason || 'Season 1')
 
   const divisions = ['Overall', 'Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Development']
+  const seasons = getSeasons()
+
+  useEffect(() => {
+    if (adminData?.currentSeason && !selectedSeason) {
+      setSelectedSeason(adminData.currentSeason)
+    }
+  }, [adminData?.currentSeason])
 
   useEffect(() => {
     setRefreshKey(prev => prev + 1)
@@ -34,7 +43,8 @@ export default function Table() {
       fixtures,
       adminData,
       leagueOnly: true,
-      currentSeason: adminData?.currentSeason || 'Season 1'
+      currentSeason: adminData?.currentSeason || 'Season 1',
+      includePlayoffs: false
     })
   }, [allUsers, results, fixtures, adminData, refreshKey])
 
@@ -144,7 +154,7 @@ export default function Table() {
                         {index + 1}
                       </td>
                       <td style={{ padding: '10px 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <Link to={`/profile/${player.id}`} style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column' }}>
                           <span style={{ fontWeight: isMe ? '800' : '600', color: isMe ? 'white' : 'rgba(255,255,255,0.9)' }}>
                             {player.username}
                             {player.stats.average > 0 && (
@@ -158,7 +168,7 @@ export default function Table() {
                               {isPromotion ? 'PROMOTION' : 'RELEGATION'}
                             </span>
                           )}
-                        </div>
+                        </Link>
                       </td>
                       <td style={{ textAlign: 'center', padding: '10px 2px' }}>{player.stats.played}</td>
                       <td style={{ textAlign: 'center', padding: '10px 2px', color: 'rgba(255,255,255,0.6)' }}>{player.stats.wins}</td>
