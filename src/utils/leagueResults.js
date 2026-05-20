@@ -29,9 +29,10 @@ export const isLeagueResult = (result, fixturesById = {}) => {
     // Legacy check: if it has cupId or matchId, it's definitely NOT a league game
     if (result.cupId || result.matchId || result.tournamentId) return false
 
-    // For Season 1 restoration, we might allow unlabeled matches
-    // But let's be strict for everything else
-    return true
+    // Only allow if it matches the standard league format (Best of 8 / max 8 legs)
+    const s1 = Number(result.score1) || 0
+    const s2 = Number(result.score2) || 0
+    return (s1 + s2) <= 8
   }
 
   return false

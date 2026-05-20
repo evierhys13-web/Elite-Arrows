@@ -562,11 +562,18 @@ export default function Admin() {
           }
         }
 
-        // 2. Force Game Type to League ONLY if it's currently unlabeled/unknown
-        // and NOT a cup game. Standings engine is now strict about "League".
-        if (!match.gameType || ['unknown', ''].includes(match.gameType)) {
-          if (!match.cupId && !match.tournamentId) {
-            updates.gameType = 'League';
+        // 2. Fix Game Type
+        const s1 = Number(match.score1) || 0;
+        const s2 = Number(match.score2) || 0;
+        const totalLegs = s1 + s2;
+        const isStandardFormat = totalLegs <= 8;
+
+        if (!match.cupId && !match.matchId && !match.tournamentId) {
+          if (!match.gameType || ['unknown', '', 'undefined'].includes(match.gameType)) {
+            updates.gameType = isStandardFormat ? 'League' : 'Friendly';
+          } else if (match.gameType === 'League' && !isStandardFormat) {
+            // Revert mislabeled league games to friendly if they exceed leg limit
+            updates.gameType = 'Friendly';
           }
         }
 
