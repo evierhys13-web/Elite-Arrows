@@ -25,29 +25,31 @@ export default function Home() {
 
   const activeSeason = useMemo(() => {
     const seasons = typeof getSeasons === 'function' ? getSeasons() : []
-    if (!Array.isArray(seasons) || seasons.length === 0) {
-      return {
-        name: adminData?.currentSeason || 'Season 1',
-        startDate: '2026-05-01T00:00:00+01:00',
-        endDate: '2026-06-01T00:00:00+01:00'
-      }
-    }
-
     const now = new Date()
 
     // 1. Try to find the season that matches adminData.currentSeason
-    const current = seasons.find(s => s.name === adminData?.currentSeason)
-    if (current) return current
+    let current = seasons.find(s => s.name === adminData?.currentSeason)
 
     // 2. Otherwise find the latest one that has started
-    const started = [...seasons]
-      .filter(s => !s.startDate || new Date(s.startDate) <= now)
-      .sort((a, b) => new Date(b.startDate || 0) - new Date(a.startDate || 0))
+    if (!current) {
+      const started = [...seasons]
+        .filter(s => !s.startDate || new Date(s.startDate) <= now)
+        .sort((a, b) => new Date(b.startDate || 0) - new Date(a.startDate || 0))
+      if (started.length > 0) current = started[0]
+    }
 
-    if (started.length > 0) return started[0]
+    // 3. Fallback / Default for Season 1
+    if (!current || current.name === 'Season 1') {
+      return {
+        id: current?.id || 'season1_legacy',
+        name: 'Season 1',
+        startDate: current?.startDate || '2026-05-01T00:00:00+01:00',
+        endDate: current?.endDate || '2026-06-01T00:00:00+01:00',
+        ...current
+      }
+    }
 
-    // 3. Fallback to the first one
-    return seasons[0]
+    return current
   }, [getSeasons, adminData?.currentSeason])
 
   useEffect(() => {

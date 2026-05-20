@@ -531,7 +531,7 @@ export default function Admin() {
     const approvedMatches = allResults.filter(r => String(r.status).toLowerCase() === 'approved');
     if (approvedMatches.length === 0) return showToast('No approved matches to sync', 'info');
 
-    if (!window.confirm(`Sync ${approvedMatches.length} approved games? This will fix missing divisions and ensure unlabeled games are assigned to a season.`)) return;
+    if (!window.confirm(`Sync ${approvedMatches.length} approved games? This will ensure all games are assigned to a season (defaulting to Season 1 if unlabeled), have a division, and are correctly typed as League games.`)) return;
 
     setIsApproving(true);
     try {
@@ -540,26 +540,40 @@ export default function Admin() {
       let currentBatch = writeBatch(db);
       let opCount = 0;
 
-      // Identify when Season 1 ended (roughly)
-      // Any match before May 2026 without a label is likely Season 1
-      const season1Cutoff = new Date('2026-05-01').getTime();
+      // Identify when Season 1 started and ended
+      const season1Start = new Date('2026-05-01T00:00:00').getTime();
+      const season1End = new Date('2026-06-01T23:59:59').getTime();
 
       for (const match of approvedMatches) {
         const updates = {};
         const targetId = match.firestoreId || String(match.id);
         const matchTime = new Date(match.date || match.submittedAt || 0).getTime();
 
-        // Fix missing season
-        if (!match.season) {
-          // If it's old, label as Season 1. If new, use current.
-          updates.season = (matchTime > 0 && matchTime < season1Cutoff) ? 'Season 1' : currentSeason;
+        // 1. Fix missing season or legacy labels
+        if (!match.season || match.season === '2026' || match.season === 'Legacy') {
+          // If it falls within the Season 1 window, or we are fixing legacy data
+          updates.season = (matchTime >= season1Start && matchTime <= season1End) || !match.season ? 'Season 1' : currentSeason;
         }
 
-        // Fix missing division data in the match record
+        // 2. Fix missing or unknown gameType to ensure they count for League standings
+        // Most approved games in this system are intended for the league
+        if (!match.gameType || match.gameType === 'unknown' || match.gameType === 'Friendly') {
+           // Only change Friendly to League if it's not explicitly marked as a friendly by an admin recently
+           // For now, let's be aggressive as requested
+           if (!match.cupId && !match.tournamentId) {
+              updates.gameType = 'League';
+           }
+        }
+
+        // 3. Fix missing division data in the match record
+        // This is crucial for the division-specific tables
         if (!match.division) {
           const p1 = allPlayers.find(u => String(u.id) === String(match.player1Id));
+          const p2 = allPlayers.find(u => String(u.id) === String(match.player2Id));
           if (p1?.division) {
             updates.division = p1.division;
+          } else if (p2?.division) {
+            updates.division = p2.division;
           }
         }
 
@@ -1546,6 +1560,16 @@ export default function Admin() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '40px' }}>
+              <div className="glass" style={{ padding: '24px', borderRadius: '16px', border: '1px solid var(--accent-cyan)' }}>
+                <h4 style={{ marginBottom: '12px' }}>Season 1 Recovery</h4>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                  Force all existing approved matches without a season label (or labeled '2026') to "Season 1". Also fixes missing divisions.
+                </p>
+                <button className="btn btn-secondary btn-block" onClick={handleBulkSyncAnalytics} disabled={isApproving}>
+                  {isApproving ? 'Processing...' : 'Run Season 1 Data Sync'}
+                </button>
+              </div>
+
               <div className="glass" style={{
                 padding: '24px',
                 borderRadius: '16px',

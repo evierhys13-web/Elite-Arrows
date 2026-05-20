@@ -24,12 +24,12 @@ export const isLeagueResult = (result, fixturesById = {}) => {
   if (gameType.includes('league')) return true
 
   // If it's empty or unknown, check if it's NOT a different specific type
-  if (!gameType || gameType === 'unknown') {
-    if (result.cupId) return false
+  if (!gameType || gameType === 'unknown' || gameType === 'friendly') {
+    if (result.cupId || result.tournamentId) return false
     return true // Default to league for historical/unlabeled matches
   }
 
-  if (gameType.includes('friendly') || gameType.includes('cup') || gameType.includes('tournament')) return false
+  if (gameType.includes('cup') || gameType.includes('tournament')) return false
 
   const fixture = result.fixtureId ? fixturesById[String(result.fixtureId)] : null
   const fixtureGameType = normalizeText(fixture?.gameType)

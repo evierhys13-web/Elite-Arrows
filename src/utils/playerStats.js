@@ -63,8 +63,8 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
       const resSeason = String(result.season || '').trim().toLowerCase()
       const actSeason = String(currentSeason).trim().toLowerCase()
 
-      // If result has NO season, we allow it if active season is 'Season 1' or '2026'
-      if (!resSeason && (actSeason === 'season 1' || actSeason === '2026' || actSeason === '')) {
+      // If result has NO season, we allow it if active season is 'Season 1' or '2026' or 'Legacy'
+      if (!resSeason && (actSeason === 'season 1' || actSeason === '2026' || actSeason === 'legacy' || actSeason === '')) {
         return true
       }
 
@@ -73,9 +73,9 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
 
       // If both have season labels, but they don't match
       if (resSeason && actSeason && resSeason !== actSeason) {
-        // Special case: '2026' and 'season 1' are often the same in this app's data
-        const isLegacyMatch = (resSeason === '2026' && actSeason === 'season 1') ||
-                              (resSeason === 'season 1' && actSeason === '2026')
+        // Special case: '2026', 'legacy' and 'season 1' are often the same in this app's data
+        const legacyLabels = ['season 1', '2026', 'legacy']
+        const isLegacyMatch = legacyLabels.includes(resSeason) && legacyLabels.includes(actSeason)
         if (!isLegacyMatch) return false
       }
     }
