@@ -93,7 +93,14 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
     const playoffResult = isPlayoffResult(result, fixturesById)
 
     // If we only want league games, exclude playoffs and other types
-    if (leagueOnly && !leagueResult) return false
+    if (leagueOnly) {
+      if (!leagueResult) return false
+      // Defense-in-depth: explicitly exclude any result with cup/tournament markers
+      if (result.cupId || result.matchId || result.tournamentId) return false
+      const gt = String(result.gameType || '').toLowerCase().trim()
+      const nonLeague = ['cup', 'friendly', 'playoff', 'tournament', 'super league']
+      if (nonLeague.some(t => gt.includes(t))) return false
+    }
 
     // Fallback check if playoffs are explicitly wanted
     if (!leagueResult && !playoffResult) return false
