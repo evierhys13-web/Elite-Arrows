@@ -63,20 +63,19 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
       const resSeason = String(result.season || '').trim().toLowerCase()
       const actSeason = String(currentSeason).trim().toLowerCase()
 
-      // If result has NO season, we allow it if active season is 'Season 1' or '2026' or 'Legacy'
-      if (!resSeason && (actSeason === 'season 1' || actSeason === '2026' || actSeason === 'legacy' || actSeason === '')) {
-        return true
+      // 1. Exact match
+      if (resSeason === actSeason) {
+         // Continue to type checks
       }
-
-      // If seasons match (case insensitive)
-      if (resSeason === actSeason) return true
-
-      // If both have season labels, but they don't match
-      if (resSeason && actSeason && resSeason !== actSeason) {
-        // Special case: '2026', 'legacy' and 'season 1' are often the same in this app's data
-        const legacyLabels = ['season 1', '2026', 'legacy']
-        const isLegacyMatch = legacyLabels.includes(resSeason) && legacyLabels.includes(actSeason)
+      // 2. Legacy/Window fallback for Season 1
+      else if (actSeason === 'season 1' || actSeason === '2026' || actSeason === 'legacy') {
+        const isLegacyMatch = ['season 1', '2026', 'legacy', '', 'undefined', 'null'].includes(resSeason)
         if (!isLegacyMatch) return false
+        // Continue to type checks
+      }
+      // 3. Mismatch
+      else {
+        return false
       }
     }
 

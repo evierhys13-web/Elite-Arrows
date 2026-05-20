@@ -529,9 +529,11 @@ export default function Admin() {
 
   const handleBulkSyncAnalytics = async () => {
     const approvedMatches = allResults.filter(r => String(r.status).toLowerCase() === 'approved');
+    const users = getAllUsers();
+
     if (approvedMatches.length === 0) return showToast('No approved matches to sync', 'info');
 
-    if (!window.confirm(`Sync ${approvedMatches.length} approved games? This will ensure all games are assigned to a season (defaulting to Season 1 if unlabeled), have a division, and are correctly typed as League games.`)) return;
+    if (!window.confirm(`DEEP SYNC ${approvedMatches.length} approved games? This will force all historical data to "Season 1", link missing IDs, and set game types to "League" to ensure the table updates.`)) return;
 
     setIsApproving(true);
     try {
@@ -540,7 +542,7 @@ export default function Admin() {
       let currentBatch = writeBatch(db);
       let opCount = 0;
 
-      // Identify when Season 1 started and ended
+      // Strictly Season 1 window
       const season1Start = new Date('2026-05-01T00:00:00').getTime();
       const season1End = new Date('2026-06-01T23:59:59').getTime();
 
@@ -549,35 +551,54 @@ export default function Admin() {
         const targetId = match.firestoreId || String(match.id);
         const matchTime = new Date(match.date || match.submittedAt || 0).getTime();
 
-        // 1. Fix missing season or legacy labels
-        if (!match.season || match.season === '2026' || match.season === 'Legacy') {
-          // If it falls within the Season 1 window, or we are fixing legacy data
-          updates.season = (matchTime >= season1Start && matchTime <= season1End) || !match.season ? 'Season 1' : currentSeason;
-        }
+        // 1. Force Season label
+        const currentResSeason = String(match.season || '').trim();
+        const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null'].includes(currentResSeason);
+        const isInWindow = matchTime >= season1Start && matchTime <= season1End;
 
-        // 2. Fix missing or unknown gameType to ensure they count for League standings
-        // Most approved games in this system are intended for the league
-        if (!match.gameType || match.gameType === 'unknown' || match.gameType === 'Friendly') {
-           // Only change Friendly to League if it's not explicitly marked as a friendly by an admin recently
-           // For now, let's be aggressive as requested
-           if (!match.cupId && !match.tournamentId) {
-              updates.gameType = 'League';
-           }
-        }
-
-        // 3. Fix missing division data in the match record
-        // This is crucial for the division-specific tables
-        if (!match.division) {
-          const p1 = allPlayers.find(u => String(u.id) === String(match.player1Id));
-          const p2 = allPlayers.find(u => String(u.id) === String(match.player2Id));
-          if (p1?.division) {
-            updates.division = p1.division;
-          } else if (p2?.division) {
-            updates.division = p2.division;
+        if (isLegacyLabel || isInWindow) {
+          if (currentResSeason !== 'Season 1') {
+            updates.season = 'Season 1';
           }
         }
 
-        // Ensure approvedAt exists for time filtering
+        // 2. Force Game Type to League
+        if (!match.gameType || ['unknown', 'Friendly', 'friendly', ''].includes(match.gameType)) {
+          if (!match.cupId && !match.tournamentId) {
+            updates.gameType = 'League';
+          }
+        }
+
+        // 3. Fix missing Player IDs
+        let p1Id = match.player1Id;
+        let p2Id = match.player2Id;
+
+        if (!p1Id && match.player1) {
+          const found = users.find(u =>
+            u.username?.toLowerCase() === String(match.player1).toLowerCase() ||
+            u.email?.toLowerCase() === String(match.player1).toLowerCase()
+          );
+          if (found) { p1Id = found.id; updates.player1Id = found.id; }
+        }
+        if (!p2Id && match.player2) {
+          const found = users.find(u =>
+            u.username?.toLowerCase() === String(match.player2).toLowerCase() ||
+            u.email?.toLowerCase() === String(match.player2).toLowerCase()
+          );
+          if (found) { p2Id = found.id; updates.player2Id = found.id; }
+        }
+
+        // 4. Fix missing division data
+        if (!match.division || match.division === 'Unassigned') {
+          const p1 = users.find(u => String(u.id) === String(p1Id));
+          const p2 = users.find(u => String(u.id) === String(p2Id));
+          const division = p1?.division || p2?.division;
+          if (division && division !== 'Unassigned') {
+            updates.division = division;
+          }
+        }
+
+        // 5. Ensure approvedAt exists
         if (!match.approvedAt) {
           updates.approvedAt = match.date ? new Date(match.date).toISOString() : new Date().toISOString();
         }
@@ -593,17 +614,25 @@ export default function Admin() {
             opCount = 0;
           }
         }
-
-        logMatchApproved(match);
       }
 
       if (opCount > 0) {
         await currentBatch.commit();
       }
 
-      await logAudit('BULK_SYNC_ANALYTICS', `Synchronized ${approvedMatches.length} games. Fixed ${updatedCount} records.`);
-      showToast(`Sync complete! Updated ${updatedCount} records.`, 'success');
-      triggerDataRefresh('results');
+      await logAudit('BULK_SYNC_ANALYTICS', `Deep Sync ${approvedMatches.length} games. Fixed ${updatedCount} records.`);
+      showToast(`Success! Fixed ${updatedCount} matches. Standings should now update.`, 'success');
+
+      // Force local refresh
+      triggerDataRefresh('all');
+      setTimeout(() => window.location.reload(), 1500);
+
+    } catch (e) {
+      console.error('Sync error:', e);
+      showToast('Sync failed: ' + e.message, 'error');
+    }
+    setIsApproving(false);
+  };
 
       setTimeout(() => {
         setRefreshKey(prev => prev + 1);

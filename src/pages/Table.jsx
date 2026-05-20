@@ -26,8 +26,15 @@ export default function Table() {
   const seasons = getSeasons()
 
   useEffect(() => {
+    // Ensure selectedSeason is always valid and prioritize Season 1 if currently in May 2026
+    const now = new Date()
+    const isMay2026 = now.getFullYear() === 2026 && now.getMonth() === 4 // May is 4
+
     if (adminData?.currentSeason && !hasInitializedSeason) {
       setSelectedSeason(adminData.currentSeason)
+      setHasInitializedSeason(true)
+    } else if (isMay2026 && !hasInitializedSeason) {
+      setSelectedSeason('Season 1')
       setHasInitializedSeason(true)
     }
   }, [adminData?.currentSeason, hasInitializedSeason])

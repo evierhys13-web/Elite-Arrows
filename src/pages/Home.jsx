@@ -33,23 +33,26 @@ export default function Home() {
     // 2. Otherwise find the latest one that has started
     if (!current) {
       const started = [...seasons]
-        .filter(s => !s.startDate || new Date(s.startDate) <= now)
+        .filter(s => s.startDate && new Date(s.startDate) <= now)
         .sort((a, b) => new Date(b.startDate || 0) - new Date(a.startDate || 0))
       if (started.length > 0) current = started[0]
     }
 
-    // 3. Fallback / Default for Season 1
-    if (!current || current.name === 'Season 1') {
+    // 3. Fallback / Hard Override for Season 1
+    // We force the dates for Season 1 regardless of what's in the database for consistency
+    const isSeason1 = current?.name === 'Season 1' || (!current && adminData?.currentSeason === 'Season 1') || (!current && seasons.length === 0)
+
+    if (isSeason1) {
       return {
+        ...current,
         id: current?.id || 'season1_legacy',
         name: 'Season 1',
-        startDate: current?.startDate || '2026-05-01T00:00:00+01:00',
-        endDate: current?.endDate || '2026-06-01T00:00:00+01:00',
-        ...current
+        startDate: '2026-05-01T00:00:00.000Z',
+        endDate: '2026-06-01T23:59:59.000Z'
       }
     }
 
-    return current
+    return current || { name: 'Off-Season', startDate: now.toISOString(), endDate: now.toISOString() }
   }, [getSeasons, adminData?.currentSeason])
 
   useEffect(() => {
