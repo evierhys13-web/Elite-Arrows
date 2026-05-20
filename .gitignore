@@ -69,3 +69,13 @@ node_modules/
 .dataconnect
 
 .vercel
+
+dist/
+build/
+android/app/build/
+android/.gradle/
+.gradle/
+*.apk
+*.aab
+.idea/
+.DS_Store

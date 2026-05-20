@@ -14,6 +14,7 @@ export default function Admin() {
     loading: authLoading,
     getAllUsers,
     getResults,
+    getFixtures,
     getCups,
     advanceCupBracket,
     bets,
@@ -596,7 +597,7 @@ export default function Admin() {
         const totalLegs = s1 + s2;
         const isStandardFormat = totalLegs <= 8;
 
-        // Check fixture context
+        // Check fixture context to identify hidden cup games
         let isCupGame = Boolean(match.cupId || match.matchId || match.tournamentId);
         if (!isCupGame && match.fixtureId) {
           const fx = (getFixtures() || []).find(f => String(f.id) === String(match.fixtureId));
@@ -606,14 +607,15 @@ export default function Admin() {
         }
 
         if (isCupGame) {
-          if (match.gameType === 'League') {
+          if (match.gameType !== 'Cup') {
             updates.gameType = 'Cup';
           }
         } else {
-          if (!match.gameType || ['unknown', '', 'undefined'].includes(match.gameType)) {
+          // It's not a cup game. Determine if it's League or Friendly.
+          if (!match.gameType || ['unknown', '', 'undefined', 'null'].includes(String(match.gameType))) {
             updates.gameType = isStandardFormat ? 'League' : 'Friendly';
           } else if (match.gameType === 'League' && !isStandardFormat) {
-            // Revert mislabeled league games to friendly if they exceed leg limit
+            // Force non-standard formats to Friendly so they don't hit the table
             updates.gameType = 'Friendly';
           }
         }
