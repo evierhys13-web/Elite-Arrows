@@ -44,11 +44,11 @@ export default function Home() {
 
     if (isSeason1) {
       return {
-        ...current,
-        id: current?.id || 'season1_legacy',
+        id: (current && current.id) ? current.id : 'season1_legacy',
         name: 'Season 1',
         startDate: '2026-05-01T00:00:00.000Z',
-        endDate: '2026-06-01T23:59:59.000Z'
+        endDate: '2026-06-01T23:59:59.000Z',
+        ...(current || {})
       }
     }
 
@@ -120,6 +120,9 @@ export default function Home() {
   const leagueTableResetTime = resetTimes.length ? Math.max(...resetTimes) : 0
   
   const stats = userResults.reduce((acc, r) => {
+    const isLeague = isLeagueResult(r, fixturesById)
+    if (!isLeague) return acc
+
     acc.played++
     const isPlayer1 = String(getResultPlayerId(r, 1, allUsers)) === String(user.id)
     const score1 = Number(r.score1) || 0
@@ -133,7 +136,8 @@ export default function Home() {
       else if (score2 < score1) acc.losses++
       else acc.draws++
     }
-    const countsForLeaguePoints = isLeagueResult(r, fixturesById) && (!leagueTableResetTime || getResultEffectiveTime(r) > leagueTableResetTime)
+
+    const countsForLeaguePoints = !leagueTableResetTime || getResultEffectiveTime(r) > leagueTableResetTime
     if (countsForLeaguePoints) {
       const myScore = isPlayer1 ? score1 : score2
       const opponentScore = isPlayer1 ? score2 : score1

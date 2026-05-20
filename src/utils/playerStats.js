@@ -65,13 +65,13 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
 
       // 1. Exact match
       if (resSeason === actSeason) {
-         // Continue to type checks
+         // Matched successfully, proceed to other checks
       }
       // 2. Legacy/Window fallback for Season 1
       else if (actSeason === 'season 1' || actSeason === '2026' || actSeason === 'legacy') {
         const isLegacyMatch = ['season 1', '2026', 'legacy', '', 'undefined', 'null'].includes(resSeason)
         if (!isLegacyMatch) return false
-        // Continue to type checks
+        // Matched legacy successfully, proceed to other checks
       }
       // 3. Mismatch
       else {

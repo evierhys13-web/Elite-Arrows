@@ -533,7 +533,7 @@ export default function Admin() {
 
     if (approvedMatches.length === 0) return showToast('No approved matches to sync', 'info');
 
-    if (!window.confirm(`DEEP SYNC ${approvedMatches.length} approved games? This will force all historical data to "Season 1", link missing IDs, and set game types to "League" to ensure the table updates.`)) return;
+    if (!window.confirm(`DEEP SYNC ${approvedMatches.length} approved games? This will force historical data to "Season 1", link missing IDs, and set game types to "League" ONLY for non-cup games.`)) return;
 
     setIsApproving(true);
     try {
@@ -562,8 +562,9 @@ export default function Admin() {
           }
         }
 
-        // 2. Force Game Type to League
-        if (!match.gameType || ['unknown', 'Friendly', 'friendly', ''].includes(match.gameType)) {
+        // 2. Force Game Type to League ONLY if it's currently unlabeled/unknown
+        // and NOT a cup game. Standings engine is now strict about "League".
+        if (!match.gameType || ['unknown', ''].includes(match.gameType)) {
           if (!match.cupId && !match.tournamentId) {
             updates.gameType = 'League';
           }
@@ -621,22 +622,10 @@ export default function Admin() {
       }
 
       await logAudit('BULK_SYNC_ANALYTICS', `Deep Sync ${approvedMatches.length} games. Fixed ${updatedCount} records.`);
-      showToast(`Success! Fixed ${updatedCount} matches. Standings should now update.`, 'success');
+      showToast(`Success! Fixed ${updatedCount} matches.`, 'success');
 
-      // Force local refresh
       triggerDataRefresh('all');
       setTimeout(() => window.location.reload(), 1500);
-
-    } catch (e) {
-      console.error('Sync error:', e);
-      showToast('Sync failed: ' + e.message, 'error');
-    }
-    setIsApproving(false);
-  };
-
-      setTimeout(() => {
-        setRefreshKey(prev => prev + 1);
-      }, 1000);
 
     } catch (e) {
       console.error('Sync error:', e);

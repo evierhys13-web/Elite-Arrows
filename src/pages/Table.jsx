@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
 import Breadcrumbs from '../components/Breadcrumbs'
+import { useToast } from '../context/ToastContext'
 
 const DIVISION_COLORS = {
   'Elite': '#fbbf24',
@@ -18,6 +19,7 @@ const DIVISION_COLORS = {
 export default function Table() {
   const [activeDivision, setActiveDivision] = useState('Overall')
   const { user, getAllUsers, getFixtures, getResults, triggerDataRefresh, dataRefreshTrigger, adminData, getSeasons } = useAuth()
+  const { showToast } = useToast()
   const [refreshKey, setRefreshKey] = useState(0)
   const [selectedSeason, setSelectedSeason] = useState(adminData?.currentSeason || 'Season 1')
   const [hasInitializedSeason, setHasInitializedSeason] = useState(false)
