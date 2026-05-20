@@ -685,6 +685,27 @@ export default function Admin() {
     setIsApproving(false);
   };
 
+  const handleSoftResetStandings = async () => {
+    if (!window.confirm("Soft Reset will hide all current results from the standings table without deleting them. This allows you to start a fresh phase while keeping history. Proceed?")) return;
+    try {
+      const now = new Date().toISOString();
+      await updateAdminData({ leagueTableResetAt: now });
+      await logAudit('SOFT_RESET_TABLE', `Set table reset timestamp to ${now}`);
+      triggerDataRefresh('all');
+      showToast('Standings table reset!', 'success');
+    } catch (e) { showToast(e.message, 'error'); }
+  };
+
+  const handleClearTableReset = async () => {
+    if (!window.confirm("This will restore ALL historical league matches to the standings table. Proceed?")) return;
+    try {
+      await updateAdminData({ leagueTableResetAt: null });
+      await logAudit('CLEAR_TABLE_RESET', 'Cleared table reset timestamp');
+      triggerDataRefresh('all');
+      showToast('Full history restored to standings!', 'success');
+    } catch (e) { showToast(e.message, 'error'); }
+  };
+
   const filteredResultsList = useMemo(() => {
     let list = allResults.filter(r => String(r.status).toLowerCase() === resultFilter)
 
@@ -1804,11 +1825,21 @@ export default function Admin() {
               <div className="glass" style={{ padding: '24px', borderRadius: '16px', border: '1px solid var(--accent-cyan)' }}>
                 <h4 style={{ marginBottom: '12px' }}>Season 1 Recovery</h4>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
-                  Force all existing approved matches without a season label (or labeled '2026') to "Season 1". Also fixes missing divisions.
+                  Force historical data to "Season 1" and link missing IDs.
                 </p>
-                <button className="btn btn-secondary btn-block" onClick={handleBulkSyncAnalytics} disabled={isApproving}>
-                  {isApproving ? 'Processing...' : 'Run Season 1 Data Sync'}
-                </button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <button className="btn btn-secondary btn-sm" onClick={handleBulkSyncAnalytics} disabled={isApproving}>
+                    {isApproving ? 'Processing...' : 'Run Deep Sync'}
+                  </button>
+                  <button className="btn btn-danger btn-sm" style={{ opacity: 0.8 }} onClick={handleSoftResetStandings}>
+                    Soft Reset Table (Wipe Stats)
+                  </button>
+                  {adminData?.leagueTableResetAt && (
+                    <button className="btn btn-secondary btn-sm" style={{ fontSize: '0.7rem' }} onClick={handleClearTableReset}>
+                      Restore All History
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="glass" style={{

@@ -58,6 +58,12 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
     if (String(result.status || '').toLowerCase() !== 'approved') return false
     if (requireProof && !resultHasProof(result)) return false
 
+    // Apply Soft Reset filter (if resetTime is set)
+    if (resetTime > 0) {
+      const effectiveTime = getResultEffectiveTime(result)
+      if (effectiveTime <= resetTime) return false
+    }
+
     // Season filtering logic - robust matching
     if (currentSeason) {
       const resSeason = String(result.season || '').trim().toLowerCase()
