@@ -63,17 +63,20 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
       const resSeason = String(result.season || '').trim().toLowerCase()
       const actSeason = String(currentSeason).trim().toLowerCase()
 
-      // If both have season labels, they must match
+      // If result has NO season, we allow it if active season is 'Season 1' or '2026'
+      if (!resSeason && (actSeason === 'season 1' || actSeason === '2026' || actSeason === '')) {
+        return true
+      }
+
+      // If seasons match (case insensitive)
+      if (resSeason === actSeason) return true
+
+      // If both have season labels, but they don't match
       if (resSeason && actSeason && resSeason !== actSeason) {
         // Special case: '2026' and 'season 1' are often the same in this app's data
         const isLegacyMatch = (resSeason === '2026' && actSeason === 'season 1') ||
                               (resSeason === 'season 1' && actSeason === '2026')
         if (!isLegacyMatch) return false
-      }
-
-      // If result has NO season, we allow it if active season is 'Season 1' or '2026'
-      if (!resSeason && !(actSeason === 'season 1' || actSeason === '2026' || actSeason === '')) {
-        return false
       }
     }
 

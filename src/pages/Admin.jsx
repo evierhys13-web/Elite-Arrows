@@ -531,7 +531,7 @@ export default function Admin() {
     const approvedMatches = allResults.filter(r => String(r.status).toLowerCase() === 'approved');
     if (approvedMatches.length === 0) return showToast('No approved matches to sync', 'info');
 
-    if (!window.confirm(`Sync ${approvedMatches.length} approved games to Analytics? This will ensure they belong to the current season if they don't have one, and have correct division data.`)) return;
+    if (!window.confirm(`Sync ${approvedMatches.length} approved games? This will fix missing divisions and ensure unlabeled games are assigned to a season.`)) return;
 
     setIsApproving(true);
     try {
@@ -540,13 +540,19 @@ export default function Admin() {
       let currentBatch = writeBatch(db);
       let opCount = 0;
 
+      // Identify when Season 1 ended (roughly)
+      // Any match before May 2026 without a label is likely Season 1
+      const season1Cutoff = new Date('2026-05-01').getTime();
+
       for (const match of approvedMatches) {
         const updates = {};
         const targetId = match.firestoreId || String(match.id);
+        const matchTime = new Date(match.date || match.submittedAt || 0).getTime();
 
-        // Fix missing season - but DON'T overwrite existing seasons to preserve history
+        // Fix missing season
         if (!match.season) {
-          updates.season = currentSeason;
+          // If it's old, label as Season 1. If new, use current.
+          updates.season = (matchTime > 0 && matchTime < season1Cutoff) ? 'Season 1' : currentSeason;
         }
 
         // Fix missing division data in the match record
@@ -567,7 +573,6 @@ export default function Admin() {
           updatedCount++;
           opCount++;
 
-          // Firestore batch limit is 500
           if (opCount >= 450) {
             await currentBatch.commit();
             currentBatch = writeBatch(db);
@@ -575,7 +580,6 @@ export default function Admin() {
           }
         }
 
-        // Log to external analytics (once)
         logMatchApproved(match);
       }
 
@@ -583,11 +587,10 @@ export default function Admin() {
         await currentBatch.commit();
       }
 
-      await logAudit('BULK_SYNC_ANALYTICS', `Synchronized ${approvedMatches.length} approved games. Updated ${updatedCount} records to ${currentSeason}.`);
+      await logAudit('BULK_SYNC_ANALYTICS', `Synchronized ${approvedMatches.length} games. Fixed ${updatedCount} records.`);
       showToast(`Sync complete! Updated ${updatedCount} records.`, 'success');
       triggerDataRefresh('results');
 
-      // Additional nudge to refresh UI
       setTimeout(() => {
         setRefreshKey(prev => prev + 1);
       }, 1000);
@@ -811,6 +814,22 @@ export default function Admin() {
               <div className="card glass" style={{ marginBottom: '24px', padding: '24px', border: '1px solid var(--accent-cyan)' }}>
                 <h4 style={{ marginBottom: '16px', color: 'var(--accent-cyan)' }}>Edit Match Record</h4>
                 <form onSubmit={handleUpdateResult}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                    <div className="form-group">
+                      <label>Season</label>
+                      <select value={editingResult.season || ''} onChange={e => setEditingResult({...editingResult, season: e.target.value})}>
+                        <option value="">Legacy (Season 1)</option>
+                        {getSeasons().map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Division</label>
+                      <select value={editingResult.division || ''} onChange={e => setEditingResult({...editingResult, division: e.target.value})}>
+                        <option value="">Auto (Profile)</option>
+                        {['Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Development'].map(d => <option key={d} value={d}>{d}</option>)}
+                      </select>
+                    </div>
+                  </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                     <div className="form-group">
                       <label>Score 1 ({editingResult.player1})</label>
