@@ -634,8 +634,11 @@ export function AuthProvider({ children }) {
           const batch = writeBatch(db)
           allUsers.forEach(u => {
             const isSubscribedForNext = (u.subscribedSeasons || []).includes(nextSeason.name)
-            if (u.isSubscribed !== isSubscribedForNext) {
-              batch.update(doc(db, 'users', u.id), { isSubscribed: isSubscribedForNext })
+            // Safety: If for some reason we are switching to Season 1, or the user is an admin, keep them subscribed
+            const shouldBeSubscribed = isSubscribedForNext || (nextSeason.name === 'Season 1' && (u.isSubscribed || u.subscribedSeasons?.length > 0))
+
+            if (u.isSubscribed !== shouldBeSubscribed) {
+              batch.update(doc(db, 'users', u.id), { isSubscribed: shouldBeSubscribed })
             }
           })
           await batch.commit()

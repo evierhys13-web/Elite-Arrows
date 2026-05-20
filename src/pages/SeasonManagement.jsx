@@ -27,6 +27,14 @@ export default function SeasonManagement() {
   const seasons = getSeasons()
   const currentSeason = adminData?.currentSeason || 'Season 1'
 
+  useEffect(() => {
+    if (showCreateForm && !startDate) {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 7); // Default to 7 days away
+      setStartDate(tomorrow.toISOString().split('T')[0]);
+    }
+  }, [showCreateForm, startDate]);
+
   const createSeason = async () => {
     if (!newSeasonName.trim()) return showToast('Please enter a season name', 'error')
     if (!startDate) return showToast('Please select a start date', 'error')
@@ -100,9 +108,12 @@ export default function SeasonManagement() {
 
       const batch = writeBatch(db)
       allPlayers.forEach(u => {
+        // For Season 1, we assume everyone who has any record of subscription should be active (Legacy support)
         const isSubscribedForSeason = (u.subscribedSeasons || []).includes(seasonName)
-        if (u.isSubscribed !== isSubscribedForSeason) {
-          batch.update(doc(db, 'users', u.id), { isSubscribed: isSubscribedForSeason })
+        const shouldBeSubscribed = isSubscribedForSeason || (seasonName === 'Season 1' && (u.isSubscribed || (u.subscribedSeasons && u.subscribedSeasons.length > 0)))
+
+        if (u.isSubscribed !== shouldBeSubscribed) {
+          batch.update(doc(db, 'users', u.id), { isSubscribed: shouldBeSubscribed })
         }
       })
       await batch.commit()
@@ -111,6 +122,37 @@ export default function SeasonManagement() {
       triggerDataRefresh('users')
     } catch (e) {
       showToast('Error updating active season: ' + e.message, 'error')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const emergencyRevert = async () => {
+    if (!confirm("This will set 'Season 1' as the active season and restore ALL previous subscribers. Use this if a new season launched accidentally.")) return
+    setIsProcessing(true)
+    try {
+      // 1. Reset current season
+      await updateAdminData({ currentSeason: 'Season 1' })
+
+      // 2. Fix launched flags
+      const launchedSeasons = seasons.filter(s => s.isLaunched && s.name !== 'Season 1')
+      const batch = writeBatch(db)
+      launchedSeasons.forEach(s => {
+        batch.update(doc(db, 'seasons', s.id), { isLaunched: false, status: 'upcoming' })
+      })
+
+      // 3. Restore subscriptions (Assume anyone who was a subscriber is restored)
+      allPlayers.forEach(u => {
+        if (!u.isSubscribed && (u.isTournamentAdmin || u.isAdmin || u.subscribedSeasons?.length > 0 || u.division)) {
+          batch.update(doc(db, 'users', u.id), { isSubscribed: true })
+        }
+      })
+
+      await batch.commit()
+      showToast("Emergency Revert Successful! 'Season 1' is live again.", "success")
+      triggerDataRefresh('all')
+    } catch (e) {
+      showToast("Error during revert: " + e.message, "error")
     } finally {
       setIsProcessing(false)
     }
@@ -341,6 +383,11 @@ export default function SeasonManagement() {
             <button className="btn btn-secondary btn-block" onClick={() => { setEditingSeason(null); setShowCreateForm(!showCreateForm); }}>
               {showCreateForm ? 'Close Form' : '+ New Season Entry'}
             </button>
+            {currentSeason !== 'Season 1' && (
+              <button className="btn btn-warning btn-block" onClick={emergencyRevert} disabled={isProcessing}>
+                Emergency Revert to Season 1
+              </button>
+            )}
             <button className="btn btn-danger btn-block" style={{ opacity: 0.8 }} onClick={clearAllDivisions} disabled={isProcessing}>
               Reset All Divisions
             </button>
