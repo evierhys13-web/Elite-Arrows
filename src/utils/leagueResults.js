@@ -17,19 +17,23 @@ export const getResultEffectiveTime = (result) => Math.max(
 export const isLeagueResult = (result, fixturesById = {}) => {
   const gameType = normalizeText(result.gameType)
 
-  // Specifically ignore Super League in the regular league check
-  if (gameType === 'super league') return false
+  // Explicitly ignore Super League, Cup, Friendly, and Playoff in the regular league check
+  const nonLeagueTypes = ['super league', 'cup', 'friendly', 'playoff', 'tournament']
+  if (nonLeagueTypes.some(type => gameType.includes(type))) return false
 
   // If it's explicitly 'league' or contains it (e.g. 'Elite League')
   if (gameType.includes('league')) return true
 
-  // If it's empty or unknown, check if it's NOT a different specific type
+  // If it's empty or unknown, it might be a legacy match
   if (!gameType || gameType === 'unknown') {
-    if (result.cupId || result.tournamentId) return false
-    return true // Default to league for historical/unlabeled matches
+    // Legacy check: if it has cupId or matchId, it's definitely NOT a league game
+    if (result.cupId || result.matchId || result.tournamentId) return false
+
+    // For Season 1 restoration, we might allow unlabeled matches
+    // But let's be strict for everything else
+    return true
   }
 
-  // Explicitly exclude friendlies and others from league standings
   return false
 }
 

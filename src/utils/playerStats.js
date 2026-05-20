@@ -85,7 +85,12 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
 
     const leagueResult = isLeagueResult(result, fixturesById)
     const playoffResult = isPlayoffResult(result, fixturesById)
-    if (leagueOnly && !leagueResult && !playoffResult) return false
+
+    // If we only want league games, exclude playoffs and other types
+    if (leagueOnly && !leagueResult) return false
+
+    // Fallback check if playoffs are explicitly wanted
+    if (!leagueResult && !playoffResult) return false
 
     return isWithinPeriod(result, timePeriod)
   })
