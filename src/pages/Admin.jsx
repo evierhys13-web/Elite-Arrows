@@ -84,6 +84,7 @@ export default function Admin() {
   // Data Selectors
   const allPlayers = getAllUsers() || []
   const allResults = getResults() || []
+  const allFixtures = getFixtures() || []
   const pendingResults = allResults.filter(r => String(r.status).toLowerCase() === 'pending')
   const approvedResults = allResults.filter(r => String(r.status).toLowerCase() === 'approved')
   const rejectedResults = allResults.filter(r => String(r.status).toLowerCase() === 'rejected')
@@ -600,7 +601,7 @@ export default function Admin() {
         // Check fixture context to identify hidden cup games
         let isCupGame = Boolean(match.cupId || match.matchId || match.tournamentId);
         if (!isCupGame && match.fixtureId) {
-          const fx = (getFixtures() || []).find(f => String(f.id) === String(match.fixtureId));
+          const fx = allFixtures.find(f => String(f.id) === String(match.fixtureId));
           if (fx && (fx.cupId || fx.tournamentId || String(fx.gameType).toLowerCase().includes('cup'))) {
             isCupGame = true;
           }
