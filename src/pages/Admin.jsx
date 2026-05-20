@@ -278,6 +278,29 @@ export default function Admin() {
     } catch (e) { showToast(e.message, 'error') }
   }
 
+  const handleUpdateApprovedSubscription = async (u) => {
+    try {
+      const finalTier = approvalOverride.tier
+      const finalSeason = approvalOverride.season
+
+      const currentSeasons = Array.isArray(u.subscribedSeasons) ? u.subscribedSeasons : []
+      // We'll add the selected season if it's not there, keeping others.
+      // If they want to remove one, they can use the profile edit (advanced) but this covers 99% of "picked wrong season" cases.
+      const nextSeasons = Array.from(new Set([...currentSeasons, finalSeason]))
+
+      await setDoc(doc(db, 'users', u.id), {
+        subscriptionTier: finalTier,
+        subscribedSeasons: nextSeasons
+      }, { merge: true })
+
+      await logAudit('UPDATE_SUBSCRIPTION', `Admin updated ${u.username} sub: ${finalTier}, seasons: ${nextSeasons.join(', ')}`)
+
+      setApprovingPaymentId(null)
+      triggerDataRefresh('users')
+      showToast(`Subscription updated for ${u.username}`, 'success')
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
   const handleGrantSubscription = async () => {
     if (!grantSubForm.player) return showToast('Select a player', 'error')
     try {
@@ -1104,35 +1127,78 @@ export default function Admin() {
               <div className="animate-fade-in">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {subscribers.sort((a,b) => new Date(b.subscriptionDate || 0) - new Date(a.subscriptionDate || 0)).map(u => (
-                    <div key={u.id} className="glass" style={{ padding: '16px', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid rgba(255,255,255,0.03)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                        <div className="avatar-ring" style={{ width: '45px', height: '42px', padding: '2px' }}>
-                          <div className="avatar-inner" style={{ background: '#050816', fontSize: '1rem' }}>
-                            {u.profilePicture ? (
-                              <img src={u.profilePicture} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            ) : (
-                              <span>{u.username.charAt(0).toUpperCase()}</span>
-                            )}
+                    <div key={u.id} className="glass" style={{ padding: '16px', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '12px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                          <div className="avatar-ring" style={{ width: '45px', height: '42px', padding: '2px' }}>
+                            <div className="avatar-inner" style={{ background: '#050816', fontSize: '1rem' }}>
+                              {u.profilePicture ? (
+                                <img src={u.profilePicture} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              ) : (
+                                <span>{u.username.charAt(0).toUpperCase()}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: '1rem' }}>{u.username}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              <span style={{ color: u.subscriptionTier === 'premium' ? '#fbbf24' : 'var(--accent-cyan)', fontWeight: 700 }}>
+                                {u.subscriptionTier?.toUpperCase() || 'STANDARD'}
+                              </span>
+                              {' • '} Approved {u.subscriptionDate ? new Date(u.subscriptionDate).toLocaleDateString() : 'Historical'}
+                            </div>
+                            <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: '2px', fontStyle: 'italic' }}>
+                              Seasons: {(u.subscribedSeasons || []).join(', ') || 'Legacy'}
+                            </div>
                           </div>
                         </div>
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: '1rem' }}>{u.username}</div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                            <span style={{ color: u.subscriptionTier === 'premium' ? '#fbbf24' : 'var(--accent-cyan)', fontWeight: 700 }}>
-                              {u.subscriptionTier?.toUpperCase() || 'STANDARD'}
-                            </span>
-                            {' • '} Approved {u.subscriptionDate ? new Date(u.subscriptionDate).toLocaleDateString() : 'Historical'}
-                          </div>
-                          <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: '2px', fontStyle: 'italic' }}>
-                            Seasons: {(u.subscribedSeasons || []).join(', ') || 'Legacy'}
-                          </div>
+
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          {approvingPaymentId === u.id ? (
+                            <div className="glass" style={{ display: 'flex', gap: '8px', padding: '8px', borderRadius: '8px', border: '1px solid var(--accent-cyan)' }}>
+                              <select
+                                className="glass"
+                                style={{ fontSize: '0.75rem', padding: '4px' }}
+                                value={approvalOverride.tier}
+                                onChange={e => setApprovalOverride({...approvalOverride, tier: e.target.value})}
+                              >
+                                <option value="standard">Standard (£5)</option>
+                                <option value="premium">Premium (£10)</option>
+                              </select>
+                              <select
+                                className="glass"
+                                style={{ fontSize: '0.75rem', padding: '4px' }}
+                                value={approvalOverride.season}
+                                onChange={e => setApprovalOverride({...approvalOverride, season: e.target.value})}
+                              >
+                                {getSeasons().map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                                {!getSeasons().find(s => s.name === 'Season 1') && <option value="Season 1">Season 1</option>}
+                              </select>
+                              <button className="btn btn-primary btn-sm" onClick={() => handleUpdateApprovedSubscription(u)}>Update</button>
+                              <button className="btn btn-secondary btn-sm" onClick={() => setApprovingPaymentId(null)}>×</button>
+                            </div>
+                          ) : (
+                            <>
+                              <button
+                                className="btn btn-secondary btn-sm"
+                                style={{ padding: '6px 12px', fontSize: '0.75rem' }}
+                                onClick={() => {
+                                  setApprovingPaymentId(u.id);
+                                  setApprovalOverride({
+                                    tier: u.subscriptionTier || 'standard',
+                                    season: adminData?.currentSeason || 'Season 1'
+                                  });
+                                }}
+                              >
+                                Edit Sub
+                              </button>
+                              {u.paymentProof && (
+                                <button className="btn btn-secondary btn-sm" style={{ padding: '6px 12px', fontSize: '0.75rem' }} onClick={() => window.open(u.paymentProof, '_blank')}>View Receipt</button>
+                              )}
+                              <button className="btn btn-secondary btn-sm" style={{ padding: '6px 12px', fontSize: '0.75rem' }} onClick={() => navigate(`/profile/${u.id}`)}>Profile</button>
+                            </>
+                          )}
                         </div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        {u.paymentProof && (
-                          <button className="btn btn-secondary btn-sm" style={{ padding: '6px 12px', fontSize: '0.75rem' }} onClick={() => window.open(u.paymentProof, '_blank')}>View Receipt</button>
-                        )}
-                        <button className="btn btn-secondary btn-sm" style={{ padding: '6px 12px', fontSize: '0.75rem' }} onClick={() => navigate(`/profile/${u.id}`)}>Profile</button>
                       </div>
                     </div>
                   ))}

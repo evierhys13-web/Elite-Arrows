@@ -39,16 +39,16 @@ export default function Home() {
     }
 
     // 3. Fallback / Hard Override for Season 1
-    // We force the dates for Season 1 regardless of what's in the database for consistency
+    // We force the dates for Season 1 strictly to May 1st - June 1st 2026
     const isSeason1 = current?.name === 'Season 1' || (!current && adminData?.currentSeason === 'Season 1') || (!current && seasons.length === 0)
 
     if (isSeason1) {
       return {
+        ...current,
         id: (current && current.id) ? current.id : 'season1_legacy',
         name: 'Season 1',
-        startDate: '2026-05-01T00:00:00.000Z',
-        endDate: '2026-06-01T23:59:59.000Z',
-        ...(current || {})
+        startDate: '2026-05-01T00:00:00', // Local start
+        endDate: '2026-06-01T00:00:00'    // Local end (Exactly start of June 1st)
       }
     }
 
