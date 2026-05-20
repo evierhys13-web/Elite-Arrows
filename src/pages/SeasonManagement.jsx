@@ -4,6 +4,7 @@ import { db, doc, setDoc, deleteDoc, collection, addDoc, getDocs, writeBatch } f
 import Breadcrumbs from '../components/Breadcrumbs'
 import UserSearchSelect from '../components/UserSearchSelect'
 import { useToast } from '../context/ToastContext'
+import { derivePlayerStatsFromResults } from '../utils/playerStats'
 
 const SUPER_LEAGUE_DIVISIONS = ['Premier', 'Pro', 'Amateur']
 
@@ -14,6 +15,8 @@ export default function SeasonManagement() {
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [editingSeason, setEditingSeason] = useState(null)
   const [newSeasonName, setNewSeasonName] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [startTime, setStartTime] = useState('00:00')
   const [selectedPlayer, setSelectedPlayer] = useState('')
   const [newDivision, setNewDivision] = useState('')
   const [selectedSuperPlayer, setSelectedSuperPlayer] = useState('')
@@ -26,21 +29,29 @@ export default function SeasonManagement() {
 
   const createSeason = async () => {
     if (!newSeasonName.trim()) return showToast('Please enter a season name', 'error')
+    if (!startDate) return showToast('Please select a start date', 'error')
+
     setIsProcessing(true)
     
     try {
       const id = Date.now().toString()
+      const startDateTime = new Date(`${startDate}T${startTime}`).toISOString()
+
       const newSeason = {
         id,
         name: newSeasonName,
         createdAt: new Date().toISOString(),
-        status: 'active',
-        isArchived: false
+        startDate: startDateTime,
+        status: 'upcoming',
+        isArchived: false,
+        isLaunched: false
       }
 
       await setDoc(doc(db, 'seasons', id), newSeason)
-      showToast(`Season "${newSeasonName}" created!`, 'success')
+      showToast(`Season "${newSeasonName}" created and scheduled for ${new Date(startDateTime).toLocaleString()}`, 'success')
       setNewSeasonName('')
+      setStartDate('')
+      setStartTime('00:00')
       setShowCreateForm(false)
       triggerDataRefresh('seasons')
     } catch (e) {
@@ -50,17 +61,29 @@ export default function SeasonManagement() {
     }
   }
 
-  const updateSeasonName = async () => {
+  const updateSeason = async () => {
     if (!editingSeason || !newSeasonName.trim()) return
     setIsProcessing(true)
     try {
-      await setDoc(doc(db, 'seasons', editingSeason.id), { ...editingSeason, name: newSeasonName }, { merge: true })
+      const startDateTime = startDate && startTime ? new Date(`${startDate}T${startTime}`).toISOString() : editingSeason.startDate
+
+      const updatedSeason = {
+        ...editingSeason,
+        name: newSeasonName,
+        startDate: startDateTime
+      }
+
+      await setDoc(doc(db, 'seasons', editingSeason.id), updatedSeason)
+
       if (currentSeason === editingSeason.name) {
         await updateAdminData({ currentSeason: newSeasonName })
       }
-      showToast('Season name updated!', 'success')
+
+      showToast('Season updated!', 'success')
       setEditingSeason(null)
       setNewSeasonName('')
+      setStartDate('')
+      setStartTime('00:00')
       triggerDataRefresh('seasons')
     } catch (e) {
       showToast('Error: ' + e.message, 'error')
@@ -70,13 +93,24 @@ export default function SeasonManagement() {
   }
 
   const setActiveSeason = async (seasonName) => {
-    if (!confirm(`Set "${seasonName}" as the active season? All new results will be linked to this.`)) return
+    if (!confirm(`Set "${seasonName}" as the active season? All new results will be linked to this. This will also sync player subscriptions for this season.`)) return
     setIsProcessing(true)
     try {
       await updateAdminData({ currentSeason: seasonName })
-      showToast(`Active season updated to ${seasonName}`, 'success')
+
+      const batch = writeBatch(db)
+      allPlayers.forEach(u => {
+        const isSubscribedForSeason = (u.subscribedSeasons || []).includes(seasonName)
+        if (u.isSubscribed !== isSubscribedForSeason) {
+          batch.update(doc(db, 'users', u.id), { isSubscribed: isSubscribedForSeason })
+        }
+      })
+      await batch.commit()
+
+      showToast(`Active season updated to ${seasonName} and subscriptions synced.`, 'success')
+      triggerDataRefresh('users')
     } catch (e) {
-      showToast('Error updating active season', 'error')
+      showToast('Error updating active season: ' + e.message, 'error')
     } finally {
       setIsProcessing(false)
     }
@@ -143,6 +177,72 @@ export default function SeasonManagement() {
       triggerDataRefresh('results')
     } catch (e) {
       showToast('Error resetting table: ' + e.message, 'error')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const runSeasonTransitions = async (fromSeasonName) => {
+    if (!fromSeasonName) return showToast('No previous season found', 'error')
+    if (!confirm(`Are you sure you want to transition divisions based on "${fromSeasonName}" standings? This will update ALL players' divisions.`)) return
+
+    setIsProcessing(true)
+    try {
+      const results = getResults()
+      const users = getAllUsers()
+
+      const stats = derivePlayerStatsFromResults(users, results, {
+        adminData,
+        leagueOnly: true,
+        currentSeason: fromSeasonName
+      })
+
+      const batch = writeBatch(db)
+      const updates = []
+
+      // Process each division
+      DIVISIONS.forEach((div, divIndex) => {
+        const playersInDiv = users
+          .filter(u => u.division === div)
+          .map(p => ({
+            id: p.id,
+            stats: stats[p.id] || { points: 0, legsWon: 0, legsLost: 0, average: 0 }
+          }))
+          .sort((a, b) => {
+            if (b.stats.points !== a.stats.points) return b.stats.points - a.stats.points
+            const aDiff = a.stats.legsWon - a.stats.legsLost
+            const bDiff = b.stats.legsWon - b.stats.legsLost
+            if (bDiff !== aDiff) return bDiff - aDiff
+            return (b.stats.average || 0) - (a.stats.average || 0)
+          })
+
+        if (playersInDiv.length === 0) return
+
+        playersInDiv.forEach((player, index) => {
+          let nextDivision = div
+
+          // Promotion (Top 2)
+          if (index < 2 && divIndex > 0) {
+            nextDivision = DIVISIONS[divIndex - 1]
+          }
+          // Relegation (Bottom 2)
+          else if (index >= playersInDiv.length - 2 && playersInDiv.length > 4 && divIndex < DIVISIONS.length - 1) {
+            nextDivision = DIVISIONS[divIndex + 1]
+          }
+
+          if (nextDivision !== div) {
+            updates.push({ id: player.id, old: div, new: nextDivision })
+            batch.update(doc(db, 'users', player.id), { division: nextDivision })
+          }
+        })
+      })
+
+      await batch.commit()
+      showToast(`Transition complete! ${updates.length} players moved divisions.`, 'success')
+      triggerDataRefresh('users')
+    } catch (e) {
+      console.error(e)
+      showToast('Error during transition: ' + e.message, 'error')
     } finally {
       setIsProcessing(false)
     }
@@ -253,9 +353,9 @@ export default function SeasonManagement() {
 
       {(showCreateForm || editingSeason) && (
         <div className="card glass animate-slide-up" style={{ marginBottom: '32px', border: '1px solid var(--accent-cyan)' }}>
-          <h3 className="card-title">{editingSeason ? 'Edit Season Name' : 'Launch New Season'}</h3>
+          <h3 className="card-title">{editingSeason ? 'Edit Season' : 'Schedule New Season'}</h3>
           <div className="form-group">
-            <label>Season Identifier</label>
+            <label>Season Name</label>
             <input
               type="text"
               value={newSeasonName}
@@ -264,13 +364,34 @@ export default function SeasonManagement() {
               className="glass"
             />
           </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Start Date</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="glass"
+              />
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Start Time</label>
+              <input
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                className="glass"
+              />
+            </div>
+          </div>
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
+            New seasons are only visible to admins until their start date.
+          </p>
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button className="btn btn-primary btn-block" onClick={editingSeason ? updateSeasonName : createSeason} disabled={isProcessing}>
-              {isProcessing ? 'Processing...' : editingSeason ? 'Update Name' : 'Create Season Record'}
+            <button className="btn btn-primary btn-block" onClick={editingSeason ? updateSeason : createSeason} disabled={isProcessing}>
+              {isProcessing ? 'Processing...' : editingSeason ? 'Update Season' : 'Schedule Season'}
             </button>
-            {editingSeason && (
-              <button className="btn btn-secondary" onClick={() => { setEditingSeason(null); setNewSeasonName(''); }}>Cancel</button>
-            )}
+            <button className="btn btn-secondary" onClick={() => { setEditingSeason(null); setNewSeasonName(''); setStartDate(''); setStartTime('00:00'); setShowCreateForm(false); }}>Cancel</button>
           </div>
         </div>
       )}
@@ -331,7 +452,19 @@ export default function SeasonManagement() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button className="btn btn-secondary btn-sm" onClick={() => { setEditingSeason(s); setNewSeasonName(s.name); setShowCreateForm(false); }}>Edit</button>
+                  <button className="btn btn-secondary btn-sm" onClick={() => {
+                    setEditingSeason(s);
+                    setNewSeasonName(s.name);
+                    if (s.startDate) {
+                      const d = new Date(s.startDate);
+                      setStartDate(d.toISOString().split('T')[0]);
+                      setStartTime(d.toTimeString().split(' ')[0].substring(0, 5));
+                    }
+                    setShowCreateForm(false);
+                  }}>Edit</button>
+                  {s.name !== currentSeason && (
+                    <button className="btn btn-secondary btn-sm" onClick={() => runSeasonTransitions(currentSeason)}>Seed from {currentSeason}</button>
+                  )}
                   {s.name !== currentSeason && (
                     <button className="btn btn-secondary btn-sm" onClick={() => setActiveSeason(s.name)}>Set Active</button>
                   )}

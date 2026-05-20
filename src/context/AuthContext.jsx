@@ -580,6 +580,7 @@ export function AuthProvider({ children }) {
       try {
         localStorage.setItem('eliteArrowsSeasons', JSON.stringify(seasonsData))
       } catch (e) {}
+
       if (seasonsData.length > 0) {
         const activeSeason = seasonsData.find(s => s.isActive)
         if (activeSeason) {
@@ -603,7 +604,53 @@ export function AuthProvider({ children }) {
       unsubscribeAdmin()
     }
   }, [user?.id, triggerDataRefresh, publishResults])
-  
+
+  // Auto-launch scheduled seasons
+  useEffect(() => {
+    if (!user?.isAdmin || !seasons.length) return
+
+    const checkAutoLaunch = async () => {
+      const now = new Date()
+      const upcomingSeasons = seasons.filter(s =>
+        !s.isArchived &&
+        s.startDate &&
+        new Date(s.startDate) <= now &&
+        s.name !== adminData.currentSeason &&
+        !s.isLaunched
+      ).sort((a, b) => new Date(b.startDate) - new Date(a.startDate))
+
+      if (upcomingSeasons.length > 0) {
+        const nextSeason = upcomingSeasons[0]
+        console.log('Auto-launching season:', nextSeason.name)
+
+        try {
+          // 1. Update active season label
+          await updateAdminData({ currentSeason: nextSeason.name })
+
+          // 2. Mark season as launched
+          await updateDoc(doc(db, 'seasons', nextSeason.id), { isLaunched: true, status: 'active' })
+
+          // 3. Update all users' subscription status for the new season
+          const batch = writeBatch(db)
+          allUsers.forEach(u => {
+            const isSubscribedForNext = (u.subscribedSeasons || []).includes(nextSeason.name)
+            if (u.isSubscribed !== isSubscribedForNext) {
+              batch.update(doc(db, 'users', u.id), { isSubscribed: isSubscribedForNext })
+            }
+          })
+          await batch.commit()
+          console.log(`Auto-launched ${nextSeason.name} and synced subscriptions.`)
+        } catch (err) {
+          console.error('Error during auto-launch:', err)
+        }
+      }
+    }
+
+    checkAutoLaunch()
+    const timer = setInterval(checkAutoLaunch, 60000) // Check every minute
+    return () => clearInterval(timer)
+  }, [user?.isAdmin, seasons, adminData.currentSeason, allUsers])
+
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
@@ -1248,10 +1295,19 @@ const cleanUserData = (users) => {
   }, [supportRequests])
 
   const getSeasons = useCallback(() => {
-    if (seasons.length > 0) return seasons
-    const local = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
-    return local
-  }, [seasons])
+    const allSeasons = seasons.length > 0 ? seasons : JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
+
+    // Admins see all seasons (including upcoming ones)
+    if (user?.isAdmin || user?.isTournamentAdmin) return allSeasons
+
+    // Regular users only see seasons that have already started
+    const now = new Date()
+    return allSeasons.filter(s => {
+      if (s.isArchived) return true // Keep archived seasons visible in history
+      if (!s.startDate) return true // Legacy seasons without start date
+      return new Date(s.startDate) <= now
+    })
+  }, [seasons, user?.isAdmin, user?.isTournamentAdmin])
 
   const getNews = useCallback(() => {
     if (news.length > 0) return news

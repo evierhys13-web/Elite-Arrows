@@ -52,11 +52,33 @@ function compressImage(file) {
 }
 
 export default function Subscription() {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, getSeasons, adminData } = useAuth();
   const [paymentMethod, setPaymentMethod] = useState("");
+  const [targetSeason, setTargetSeason] = useState("");
   const [proofImage, setProofImage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+  const seasons = getSeasons();
+  const currentSeasonName = adminData?.currentSeason || 'Season 1';
+
+  // Find upcoming seasons that are not the current one
+  const upcomingSeasons = seasons.filter(s =>
+    !s.isArchived &&
+    (s.status === 'upcoming' || (s.startDate && new Date(s.startDate) > new Date())) &&
+    s.name !== currentSeasonName
+  );
+
+  const availableSeasons = [
+    { name: currentSeasonName, label: 'Current Season' },
+    ...upcomingSeasons.map(s => ({ name: s.name, label: 'Next Season' }))
+  ];
+
+  useEffect(() => {
+    if (availableSeasons.length > 0 && !targetSeason) {
+      setTargetSeason(availableSeasons[0].name);
+    }
+  }, [availableSeasons, targetSeason]);
 
   const isNativeApp = Capacitor.isNativePlatform();
 
@@ -81,6 +103,8 @@ export default function Subscription() {
     requestPurchase(productID);
   };
 
+  const isSubscribedForSelected = (user?.subscribedSeasons || []).includes(targetSeason) || (targetSeason === currentSeasonName && user?.isSubscribed);
+
   const plans = [
     {
       id: 'free',
@@ -90,7 +114,7 @@ export default function Subscription() {
       features: ['League Standings', 'Global Chat', 'Basic Analytics', 'User Profile'],
       color: 'var(--text-muted)',
       buttonText: 'Current Plan',
-      active: !user?.isSubscribed && (!user?.division || user?.division === 'Unassigned')
+      active: !isSubscribedForSelected && (!user?.division || user?.division === 'Unassigned')
     },
     {
       id: 'standard',
@@ -100,7 +124,7 @@ export default function Subscription() {
       features: ['Official League Entry', 'Tournament Access', 'Match Submissions', 'Advanced Stats'],
       color: 'var(--accent-cyan)',
       buttonText: 'Get Standard',
-      active: user?.isSubscribed && ['Gold', 'Silver', 'Bronze', 'Development'].includes(user?.division)
+      active: isSubscribedForSelected && ['Gold', 'Silver', 'Bronze', 'Development'].includes(user?.division)
     },
     {
       id: 'elite',
@@ -111,7 +135,7 @@ export default function Subscription() {
       color: '#fbbf24',
       buttonText: 'Get Elite',
       premium: true,
-      active: user?.isSubscribed && ['Elite', 'Diamond', 'Platinum'].includes(user?.division)
+      active: isSubscribedForSelected && ['Elite', 'Diamond', 'Platinum'].includes(user?.division)
     }
   ];
 
@@ -138,18 +162,21 @@ export default function Subscription() {
         await updateUser({
           adminRequestPending: true,
           requestedPlan: paymentMethod,
+          requestedSeason: targetSeason,
           requestDate: new Date().toISOString()
         }, false);
-        alert("Request sent! An admin will contact you to arrange payment and activate your pass.");
+        alert(`Request sent for ${targetSeason}! An admin will contact you to arrange payment and activate your pass.`);
       } else {
         // Web logic: Usual flow with proof
         await updateUser({
           paymentPending: true,
           paymentMethod,
           paymentProof: proofImage,
-          paymentDate: new Date().toISOString()
+          paymentDate: new Date().toISOString(),
+          requestedSeason: targetSeason,
+          requestedPlan: paymentMethod
         }, false);
-        alert("Payment submitted! Awaiting admin approval.");
+        alert(`Payment submitted for ${targetSeason}! Awaiting admin approval.`);
       }
       setPaymentMethod("");
       setProofImage("");
@@ -165,6 +192,22 @@ export default function Subscription() {
       <div className="page-header" style={{ textAlign: 'center', marginBottom: '40px' }}>
         <h1 className="page-title text-gradient" style={{ fontSize: '2.5rem' }}>Elite Arrows Pass</h1>
         <p style={{ color: 'var(--text-muted)' }}>Unlock full league participation and cash prize tournaments.</p>
+
+        {availableSeasons.length > 1 && (
+          <div style={{ marginTop: '24px', display: 'inline-flex', alignItems: 'center', gap: '12px', background: 'rgba(255,255,255,0.05)', padding: '8px 16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+            <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Select Season:</span>
+            <select
+              value={targetSeason}
+              onChange={(e) => setTargetSeason(e.target.value)}
+              className="glass"
+              style={{ padding: '4px 12px', minWidth: '150px' }}
+            >
+              {availableSeasons.map(s => (
+                <option key={s.name} value={s.name}>{s.label}: {s.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       <div style={{

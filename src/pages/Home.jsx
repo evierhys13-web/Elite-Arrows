@@ -25,12 +25,30 @@ export default function Home() {
 
   const activeSeason = useMemo(() => {
     const seasons = typeof getSeasons === 'function' ? getSeasons() : []
-    return (Array.isArray(seasons) ? seasons : []).find(s => s.status === 'active') || {
-      name: 'Season 1',
-      startDate: '2026-05-01T00:00:00+01:00',
-      endDate: '2026-06-01T00:00:00+01:00'
+    if (!Array.isArray(seasons) || seasons.length === 0) {
+      return {
+        name: adminData?.currentSeason || 'Season 1',
+        startDate: '2026-05-01T00:00:00+01:00',
+        endDate: '2026-06-01T00:00:00+01:00'
+      }
     }
-  }, [getSeasons])
+
+    const now = new Date()
+
+    // 1. Try to find the season that matches adminData.currentSeason
+    const current = seasons.find(s => s.name === adminData?.currentSeason)
+    if (current) return current
+
+    // 2. Otherwise find the latest one that has started
+    const started = [...seasons]
+      .filter(s => !s.startDate || new Date(s.startDate) <= now)
+      .sort((a, b) => new Date(b.startDate || 0) - new Date(a.startDate || 0))
+
+    if (started.length > 0) return started[0]
+
+    // 3. Fallback to the first one
+    return seasons[0]
+  }, [getSeasons, adminData?.currentSeason])
 
   useEffect(() => {
     setRefreshKey(prev => prev + 1)

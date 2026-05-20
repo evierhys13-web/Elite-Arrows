@@ -83,9 +83,9 @@ export default function Admin() {
   const approvedResults = allResults.filter(r => String(r.status).toLowerCase() === 'approved')
   const rejectedResults = allResults.filter(r => String(r.status).toLowerCase() === 'rejected')
 
-  const pendingPayments = allPlayers.filter(u => u?.paymentPending && !u?.isSubscribed)
-  const entryRequests = allPlayers.filter(u => u?.adminRequestPending && !u?.isSubscribed)
-  const subscribers = allPlayers.filter(u => u?.isSubscribed)
+  const pendingPayments = allPlayers.filter(u => u?.paymentPending)
+  const entryRequests = allPlayers.filter(u => u?.adminRequestPending)
+  const subscribers = allPlayers.filter(u => u?.isSubscribed || (u?.subscribedSeasons && u.subscribedSeasons.length > 0))
 
   const subscriptionPot = adminData?.subscriptionPot || 0
   const subscriptionPot10 = adminData?.subscriptionPot10 || 0
@@ -246,23 +246,29 @@ export default function Admin() {
 
   const handleApprovePayment = async (u) => {
     try {
-      const tier = u.paymentMethod === 'paypal10' ? 10 : 5
+      const tier = (u.paymentMethod === 'paypal10' || u.requestedPlan === 'elite') ? 10 : 5
+      const targetSeason = u.requestedSeason || adminData?.currentSeason || 'Season 1'
+
+      const currentSeasons = Array.isArray(u.subscribedSeasons) ? u.subscribedSeasons : []
+      const nextSeasons = Array.from(new Set([...currentSeasons, targetSeason]))
+
       const updates = {
         isSubscribed: true,
         paymentPending: false,
         subscriptionDate: new Date().toISOString(),
-        subscriptionTier: tier === 10 ? 'premium' : 'standard'
+        subscriptionTier: tier === 10 ? 'premium' : 'standard',
+        subscribedSeasons: nextSeasons
       }
       await setDoc(doc(db, 'users', u.id), updates, { merge: true })
 
       const potKey = tier === 10 ? 'subscriptionPot10' : 'subscriptionPot'
       const currentPot = tier === 10 ? subscriptionPot10 : subscriptionPot
       await updateAdminData({ [potKey]: currentPot + tier })
-      addToMoneyHistory('subscription', tier, `Approved payment: ${u.username}`)
-      await logAudit('APPROVE_PAYMENT', `Approved payment for ${u.username} (£${tier})`)
+      addToMoneyHistory('subscription', tier, `Approved payment: ${u.username} for ${targetSeason}`)
+      await logAudit('APPROVE_PAYMENT', `Approved payment for ${u.username} (£${tier}) - ${targetSeason}`)
 
       triggerDataRefresh('users')
-      showToast('Subscription Approved!', 'success')
+      showToast(`Subscription Approved for ${targetSeason}!`, 'success')
     } catch (e) { showToast(e.message, 'error') }
   }
 
