@@ -224,9 +224,9 @@ export default function SeasonManagement() {
     }
   }
 
-  const runSeasonTransitions = async (fromSeasonName) => {
+  const runSeasonTransitions = async (targetSeason, fromSeasonName) => {
     if (!fromSeasonName) return showToast('No previous season found', 'error')
-    if (!confirm(`Are you sure you want to transition divisions based on "${fromSeasonName}" standings? This will update ALL players' divisions.`)) return
+    if (!confirm(`This will calculate promotions/relegations based on "${fromSeasonName}" and save them as a DRAFT for "${targetSeason.name}". It will NOT update players yet. Proceed?`)) return
 
     setIsProcessing(true)
     try {
@@ -239,10 +239,8 @@ export default function SeasonManagement() {
         currentSeason: fromSeasonName
       })
 
-      const batch = writeBatch(db)
-      const updates = []
+      const stagedDivisions = {}
 
-      // Process each division
       DIVISIONS.forEach((div, divIndex) => {
         const playersInDiv = users
           .filter(u => u.division === div)
@@ -262,29 +260,18 @@ export default function SeasonManagement() {
 
         playersInDiv.forEach((player, index) => {
           let nextDivision = div
+          if (index < 2 && divIndex > 0) nextDivision = DIVISIONS[divIndex - 1]
+          else if (index >= playersInDiv.length - 2 && playersInDiv.length > 4 && divIndex < DIVISIONS.length - 1) nextDivision = DIVISIONS[divIndex + 1]
 
-          // Promotion (Top 2)
-          if (index < 2 && divIndex > 0) {
-            nextDivision = DIVISIONS[divIndex - 1]
-          }
-          // Relegation (Bottom 2)
-          else if (index >= playersInDiv.length - 2 && playersInDiv.length > 4 && divIndex < DIVISIONS.length - 1) {
-            nextDivision = DIVISIONS[divIndex + 1]
-          }
-
-          if (nextDivision !== div) {
-            updates.push({ id: player.id, old: div, new: nextDivision })
-            batch.update(doc(db, 'users', player.id), { division: nextDivision })
-          }
+          stagedDivisions[player.id] = nextDivision
         })
       })
 
-      await batch.commit()
-      showToast(`Transition complete! ${updates.length} players moved divisions.`, 'success')
-      triggerDataRefresh('users')
+      await setDoc(doc(db, 'seasons', targetSeason.id), { ...targetSeason, stagedDivisions }, { merge: true })
+      showToast(`Draft divisions saved for ${targetSeason.name}!`, 'success')
+      triggerDataRefresh('seasons')
     } catch (e) {
-      console.error(e)
-      showToast('Error during transition: ' + e.message, 'error')
+      showToast('Error: ' + e.message, 'error')
     } finally {
       setIsProcessing(false)
     }
@@ -509,8 +496,8 @@ export default function SeasonManagement() {
                     }
                     setShowCreateForm(false);
                   }}>Edit</button>
-                  {s.name !== currentSeason && (
-                    <button className="btn btn-secondary btn-sm" onClick={() => runSeasonTransitions(currentSeason)}>Seed from {currentSeason}</button>
+                  {s.name !== currentSeason && !s.isLaunched && !s.isArchived && (
+                    <button className="btn btn-secondary btn-sm" onClick={() => runSeasonTransitions(s, currentSeason)}>Draft Seeding from {currentSeason}</button>
                   )}
                   {s.name !== currentSeason && (
                     <button className="btn btn-secondary btn-sm" onClick={() => setActiveSeason(s.name)}>Set Active</button>

@@ -138,7 +138,10 @@ export default function Leaderboards() {
                           #{index + 1}
                         </td>
                         <td style={{ padding: '12px 8px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div
+                            style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+                            onClick={() => navigate(`/profile/${player.id}`)}
+                          >
                             <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)', overflow: 'hidden' }}>
                               {player.profilePicture ? <img src={player.profilePicture} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontWeight: 800, fontSize: '0.8rem' }}>{player.username.charAt(0)}</span>}
                             </div>

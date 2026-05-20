@@ -630,18 +630,27 @@ export function AuthProvider({ children }) {
           // 2. Mark season as launched
           await updateDoc(doc(db, 'seasons', nextSeason.id), { isLaunched: true, status: 'active' })
 
-          // 3. Update all users' subscription status for the new season
+          // 3. Update all users' subscription status and apply staged divisions
           const batch = writeBatch(db)
-          allUsers.forEach(u => {
-            const isSubscribedForNext = (u.subscribedSeasons || []).includes(nextSeason.name)
-            // Safety: If for some reason we are switching to Season 1, or the user is an admin, keep them subscribed
-            const shouldBeSubscribed = isSubscribedForNext || (nextSeason.name === 'Season 1' && (u.isSubscribed || u.subscribedSeasons?.length > 0))
+          const stagedDivisions = nextSeason.stagedDivisions || {}
 
-            if (u.isSubscribed !== shouldBeSubscribed) {
-              batch.update(doc(db, 'users', u.id), { isSubscribed: shouldBeSubscribed })
+          allUsers.forEach(u => {
+            const updates = {}
+
+            // Sync Subscriptions
+            const isSubscribedForNext = (u.subscribedSeasons || []).includes(nextSeason.name)
+            const shouldBeSubscribed = isSubscribedForNext || (nextSeason.name === 'Season 1' && (u.isSubscribed || u.subscribedSeasons?.length > 0))
+            if (u.isSubscribed !== shouldBeSubscribed) updates.isSubscribed = shouldBeSubscribed
+
+            // Apply Staged Divisions
+            if (stagedDivisions[u.id]) updates.division = stagedDivisions[u.id]
+
+            if (Object.keys(updates).length > 0) {
+              batch.update(doc(db, 'users', u.id), updates)
             }
           })
           await batch.commit()
+          console.log(`Auto-launched ${nextSeason.name}, synced subscriptions and applied divisions.`)
           console.log(`Auto-launched ${nextSeason.name} and synced subscriptions.`)
         } catch (err) {
           console.error('Error during auto-launch:', err)

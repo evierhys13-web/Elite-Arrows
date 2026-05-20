@@ -367,16 +367,19 @@ export default function Home() {
               const result = isPlayer1 ? (score1 > score2 ? 'Win' : score1 < score2 ? 'Loss' : 'Draw') : (score2 > score1 ? 'Win' : score2 < score1 ? 'Loss' : 'Draw')
               const score = isPlayer1 ? `${score1}-${score2}` : `${score2}-${score1}`
               const opponent = isPlayer1 ? r.player2 : r.player1
+              const opponentId = isPlayer1 ? r.player2Id : r.player1Id
               return (
-                <div key={r.id} style={{ padding: '12px', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>vs {opponent}</span>
-                    <span style={{ color: result === 'Win' ? 'var(--success)' : result === 'Loss' ? 'var(--error)' : 'var(--warning)' }}>{result}</span>
+                <Link key={r.id} to={`/profile/${opponentId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                  <div style={{ padding: '12px', borderBottom: '1px solid var(--border)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>vs {opponent}</span>
+                      <span style={{ color: result === 'Win' ? 'var(--success)' : result === 'Loss' ? 'var(--error)' : 'var(--warning)' }}>{result}</span>
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                      {score} • {r.date}
+                    </div>
                   </div>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                    {score} • {r.date}
-                  </div>
-                </div>
+                </Link>
               )
             })}
           </div>
