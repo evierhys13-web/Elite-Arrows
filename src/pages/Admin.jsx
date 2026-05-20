@@ -568,7 +568,20 @@ export default function Admin() {
         const totalLegs = s1 + s2;
         const isStandardFormat = totalLegs <= 8;
 
-        if (!match.cupId && !match.matchId && !match.tournamentId) {
+        // Check fixture context
+        let isCupGame = Boolean(match.cupId || match.matchId || match.tournamentId);
+        if (!isCupGame && match.fixtureId) {
+          const fx = (getFixtures() || []).find(f => String(f.id) === String(match.fixtureId));
+          if (fx && (fx.cupId || fx.tournamentId || String(fx.gameType).toLowerCase().includes('cup'))) {
+            isCupGame = true;
+          }
+        }
+
+        if (isCupGame) {
+          if (match.gameType === 'League') {
+            updates.gameType = 'Cup';
+          }
+        } else {
           if (!match.gameType || ['unknown', '', 'undefined'].includes(match.gameType)) {
             updates.gameType = isStandardFormat ? 'League' : 'Friendly';
           } else if (match.gameType === 'League' && !isStandardFormat) {

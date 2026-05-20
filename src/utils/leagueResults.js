@@ -17,19 +17,29 @@ export const getResultEffectiveTime = (result) => Math.max(
 export const isLeagueResult = (result, fixturesById = {}) => {
   const gameType = normalizeText(result.gameType)
 
-  // Explicitly ignore Super League, Cup, Friendly, and Playoff in the regular league check
+  // 1. Explicitly ignore non-league types in the gameType label
   const nonLeagueTypes = ['super league', 'cup', 'friendly', 'playoff', 'tournament']
   if (nonLeagueTypes.some(type => gameType.includes(type))) return false
 
-  // If it's explicitly 'league' or contains it (e.g. 'Elite League')
+  // 2. Check the associated fixture if it exists
+  if (result.fixtureId) {
+    const fixture = fixturesById[String(result.fixtureId)]
+    if (fixture) {
+      const fixtureType = normalizeText(fixture.gameType)
+      if (nonLeagueTypes.some(type => fixtureType.includes(type))) return false
+      if (fixture.cupId || fixture.tournamentId) return false
+    }
+  }
+
+  // 3. If it has a cupId or tournamentId on the result itself, it's NOT league
+  if (result.cupId || result.matchId || result.tournamentId) return false
+
+  // 4. MUST be explicitly 'league' or contain it (e.g. 'Elite League')
   if (gameType.includes('league')) return true
 
-  // If it's empty or unknown, it might be a legacy match
+  // 5. For legacy/unlabeled matches
   if (!gameType || gameType === 'unknown') {
-    // Legacy check: if it has cupId or matchId, it's definitely NOT a league game
-    if (result.cupId || result.matchId || result.tournamentId) return false
-
-    // Only allow if it matches the standard league format (Best of 8 / max 8 legs)
+    // Only allow if it matches the standard league format (max 8 legs)
     const s1 = Number(result.score1) || 0
     const s2 = Number(result.score2) || 0
     return (s1 + s2) <= 8
