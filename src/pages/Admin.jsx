@@ -23,7 +23,8 @@ export default function Admin() {
     updateAdminData,
     addToMoneyHistory,
     triggerDataRefresh,
-    dataRefreshTrigger
+    dataRefreshTrigger,
+    forceFetchResults
   } = useAuth()
 
   const navigate = useNavigate()
@@ -676,7 +677,8 @@ export default function Admin() {
       showToast(`Success! Fixed ${updatedCount} matches.`, 'success');
 
       triggerDataRefresh('all');
-      setTimeout(() => window.location.reload(), 1500);
+      await forceFetchResults();
+      showToast('Table data synced!', 'success');
 
     } catch (e) {
       console.error('Sync error:', e);

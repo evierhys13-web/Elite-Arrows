@@ -1093,6 +1093,21 @@ const cleanUserData = (users) => {
     triggerDataRefresh('results')
   }, [triggerDataRefresh])
 
+  const forceFetchResults = useCallback(async () => {
+    try {
+      const snapshot = await getDocs(collection(db, 'results'))
+      const freshResults = snapshot.docs.map(docSnap => {
+        const data = docSnap.data()
+        return { ...data, id: data.id || docSnap.id, firestoreId: docSnap.id }
+      })
+      updateResults(freshResults)
+      return freshResults
+    } catch (e) {
+      console.warn('forceFetchResults failed:', e)
+      return null
+    }
+  }, [updateResults])
+
   const getFixtures = useCallback(() => {
     if (fixtures.length > 0) return fixtures
     const local = JSON.parse(localStorage.getItem('eliteArrowsFixtures') || '[]')
@@ -1575,6 +1590,7 @@ const cleanUserData = (users) => {
       getAllUsers,
       getFriends,
       getResults,
+      forceFetchResults,
       updateResults,
       getFixtures,
       updateFixtures,

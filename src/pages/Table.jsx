@@ -18,7 +18,7 @@ const DIVISION_COLORS = {
 
 export default function Table() {
   const [activeDivision, setActiveDivision] = useState('Overall')
-  const { user, getAllUsers, getFixtures, getResults, triggerDataRefresh, dataRefreshTrigger, adminData, getSeasons } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, triggerDataRefresh, dataRefreshTrigger, adminData, getSeasons, forceFetchResults } = useAuth()
   const { showToast } = useToast()
   const [refreshKey, setRefreshKey] = useState(0)
   const [selectedSeason, setSelectedSeason] = useState(adminData?.currentSeason || 'Season 1')
@@ -88,12 +88,14 @@ export default function Table() {
       })
   }, [activeDivision, allUsers, playerStats])
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     triggerDataRefresh('all')
     setRefreshKey(prev => prev + 1)
     showToast('Refreshing table data...', 'info')
-    // Force a full reload to clear any stale memoized states
-    setTimeout(() => window.location.reload(), 1000)
+    // Force fresh fetch from Firestore to bypass stale cache
+    await forceFetchResults()
+    setRefreshKey(prev => prev + 1)
+    showToast('Table data synced!', 'success')
   }
 
   return (
