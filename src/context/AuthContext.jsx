@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
-import { db, auth, usersCollection, adminDataCollection, fcmTokensCollection, doc, setDoc, getDoc, getDocs, query, where, collection, orderBy, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, updateDoc, deleteDoc, runTransaction, FieldValue, getMessagingInstance, getToken, onMessage, isSupported } from '../firebase'
+import { db, auth, usersCollection, adminDataCollection, fcmTokensCollection, doc, setDoc, getDoc, getDocs, getDocsFromServer, query, where, collection, orderBy, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, updateDoc, deleteDoc, runTransaction, FieldValue, getMessagingInstance, getToken, onMessage, isSupported } from '../firebase'
 import { ADMIN_EMAILS } from '../config'
 import SeasonOneWelcomeModal from '../components/SeasonOneWelcomeModal'
 import { getResultIdentityKey, getResultOverrideKeys } from '../utils/resultIdentity'
@@ -1095,7 +1095,7 @@ const cleanUserData = (users) => {
 
   const forceFetchResults = useCallback(async () => {
     try {
-      const snapshot = await getDocs(collection(db, 'results'))
+      const snapshot = await getDocsFromServer(collection(db, 'results'))
       const freshResults = snapshot.docs.map(docSnap => {
         const data = docSnap.data()
         return { ...data, id: data.id || docSnap.id, firestoreId: docSnap.id }

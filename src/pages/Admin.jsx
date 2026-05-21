@@ -24,6 +24,7 @@ export default function Admin() {
     addToMoneyHistory,
     triggerDataRefresh,
     dataRefreshTrigger,
+    updateResults,
     forceFetchResults
   } = useAuth()
 
@@ -136,9 +137,13 @@ export default function Admin() {
         await advanceCupBracket(approvedResult)
       }
 
+      // Update local state immediately so the UI reflects the change
+      const updatedResults = allResults.map(r =>
+        String(r.id) === String(resultId) ? { ...r, status: 'approved', approvedAt: approvedResult.approvedAt } : r
+      )
+      updateResults(updatedResults)
+
       await logAudit('APPROVE_RESULT', `Approved match: ${res.player1} vs ${res.player2}`)
-      triggerDataRefresh('results')
-      await forceFetchResults()
       showToast('Result Approved!', 'success')
     } catch (e) { showToast(e.message, 'error') }
     setIsApproving(false)
@@ -170,8 +175,12 @@ export default function Admin() {
 
       await logAudit('BULK_APPROVE', `Approved ${selectedResults.length} matches`)
       setSelectedResults([])
-      triggerDataRefresh('results')
-      await forceFetchResults()
+      // Update local state immediately
+      const approvedIds = new Set(selectedResults)
+      const updatedResults = allResults.map(r =>
+        approvedIds.has(String(r.id)) ? { ...r, status: 'approved', approvedAt: new Date().toISOString() } : r
+      )
+      updateResults(updatedResults)
       showToast(`Approved ${selectedResults.length} matches!`, 'success')
     } catch (e) { showToast(e.message, 'error') }
     setIsApproving(false)
