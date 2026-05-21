@@ -56,6 +56,7 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
 
   return results.filter(result => {
     if (String(result.status || '').toLowerCase() !== 'approved') return false
+    if (result.excludeFromLeague) return false
     if (requireProof && !resultHasProof(result)) return false
 
     // Apply Soft Reset filter (if resetTime is set)
@@ -247,6 +248,26 @@ export const derivePlayerStatsFromResults = (users = [], results = [], options =
     }
     if (player2Id && statsByPlayerId[player2Id]) {
       addResultToPlayer(statsByPlayerId[player2Id], result, 2, score1, score2, countsForPoints, scoringOptions)
+    }
+  })
+
+  // Apply manual stats overrides (admin can set these directly on the user doc)
+  users.forEach(user => {
+    if (user && user.id && user.manualStats) {
+      const id = String(user.id)
+      if (statsByPlayerId[id]) {
+        statsByPlayerId[id] = {
+          ...statsByPlayerId[id],
+          played: user.manualStats.played ?? statsByPlayerId[id].played,
+          wins: user.manualStats.wins ?? statsByPlayerId[id].wins,
+          draws: user.manualStats.draws ?? statsByPlayerId[id].draws,
+          losses: user.manualStats.losses ?? statsByPlayerId[id].losses,
+          points: user.manualStats.points ?? statsByPlayerId[id].points,
+          legsWon: user.manualStats.legsWon ?? statsByPlayerId[id].legsWon,
+          legsLost: user.manualStats.legsLost ?? statsByPlayerId[id].legsLost,
+          legDiff: (user.manualStats.legsWon ?? statsByPlayerId[id].legsWon) - (user.manualStats.legsLost ?? statsByPlayerId[id].legsLost)
+        }
+      }
     }
   })
 

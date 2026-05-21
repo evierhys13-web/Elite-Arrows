@@ -186,6 +186,21 @@ export default function Admin() {
     setIsApproving(false)
   }
 
+  const handleToggleExcludeFromLeague = async (result) => {
+    const newVal = !result.excludeFromLeague
+    const targetId = result.firestoreId || String(result.id)
+    try {
+      await setDoc(doc(db, 'results', targetId), { excludeFromLeague: newVal }, { merge: true })
+      const updatedResults = allResults.map(r =>
+        String(r.id) === String(result.id) ? { ...r, excludeFromLeague: newVal } : r
+      )
+      updateResults(updatedResults)
+      showToast(newVal ? 'Excluded from league table' : 'Included in league table', 'success')
+    } catch (e) {
+      showToast('Failed to update: ' + e.message, 'error')
+    }
+  }
+
   const handleRejectResult = async (resultId) => {
     try {
       const res = allResults.find(r => String(r.id) === String(resultId))
@@ -1065,6 +1080,7 @@ export default function Admin() {
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '10px' }}>
                       {r.gameType} | {r.date} | Sub: {r.submittedBy || 'Player'}
+                      {r.excludeFromLeague && <span style={{ marginLeft: '8px', color: 'var(--error)', fontWeight: 700 }}>🚫 EXCLUDED</span>}
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       {resultFilter === 'pending' && <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => handleApproveResult(r.id)}>Approve</button>}
@@ -1073,6 +1089,9 @@ export default function Admin() {
                         <>
                           <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => setEditingResult({...r})}>✏️ Edit</button>
                           <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => handleApproveResult(r.id)}>Restore/Reset</button>
+                          <button className={`btn btn-sm ${r.excludeFromLeague ? 'btn-warning' : 'btn-secondary'}`} style={{ flex: 1 }} onClick={() => handleToggleExcludeFromLeague(r)}>
+                            {r.excludeFromLeague ? 'Include' : 'Exclude'}
+                          </button>
                         </>
                       )}
                       <button className="btn btn-danger btn-sm" style={{ padding: '8px' }} onClick={() => handleDeleteResult(r.id)}>🗑️</button>

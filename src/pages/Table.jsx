@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { useToast } from '../context/ToastContext'
+import { db, doc, setDoc } from '../firebase'
 
 const DIVISION_COLORS = {
   'Elite': '#fbbf24',
@@ -23,6 +24,10 @@ export default function Table() {
   const [refreshKey, setRefreshKey] = useState(0)
   const [selectedSeason, setSelectedSeason] = useState(adminData?.currentSeason || 'Season 1')
   const [hasInitializedSeason, setHasInitializedSeason] = useState(false)
+  const [editingManual, setEditingManual] = useState(null)
+  const [manualForm, setManualForm] = useState({ played: 0, wins: 0, draws: 0, losses: 0, points: 0, legsWon: 0, legsLost: 0 })
+
+  const isAdmin = user?.isAdmin === true
 
   const divisions = ['Overall', 'Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Development']
   const seasons = getSeasons()
@@ -95,6 +100,44 @@ export default function Table() {
     const ok = await forceFetchResults()
     setRefreshKey(prev => prev + 1)
     showToast(ok ? 'Table data synced!' : 'Sync failed — using cached data', ok ? 'success' : 'warning')
+  }
+
+  const openManualEditor = (player) => {
+    const ms = player.manualStats || {}
+    setManualForm({
+      played: ms.played ?? player.stats.played,
+      wins: ms.wins ?? player.stats.wins,
+      draws: ms.draws ?? player.stats.draws,
+      losses: ms.losses ?? player.stats.losses,
+      points: ms.points ?? player.stats.points,
+      legsWon: ms.legsWon ?? player.stats.legsWon,
+      legsLost: ms.legsLost ?? player.stats.legsLost
+    })
+    setEditingManual(player)
+  }
+
+  const saveManualStats = async () => {
+    if (!editingManual) return
+    const targetId = editingManual.id
+    const defaultStats = { played: 0, wins: 0, draws: 0, losses: 0, points: 0, legsWon: 0, legsLost: 0 }
+    const hasChanges = Object.keys(defaultStats).some(k => {
+      const v = Number(manualForm[k]) || 0
+      const existing = (editingManual.manualStats || {})[k]
+      return v !== (existing ?? editingManual.stats[k])
+    })
+    if (!hasChanges) {
+      // Remove manualStats if all values match computed stats
+      await setDoc(doc(db, 'users', targetId), { manualStats: null }, { merge: true })
+      showToast('Manual stats cleared — using computed stats', 'success')
+    } else {
+      const payload = {}
+      Object.keys(defaultStats).forEach(k => { payload[k] = Number(manualForm[k]) || 0 })
+      await setDoc(doc(db, 'users', targetId), { manualStats: payload }, { merge: true })
+      showToast('Manual stats saved!', 'success')
+    }
+    setEditingManual(null)
+    triggerDataRefresh('all')
+    setRefreshKey(prev => prev + 1)
   }
 
   return (
@@ -204,6 +247,11 @@ export default function Table() {
                             </span>
                           )}
                         </Link>
+                        {isAdmin && (
+                          <span style={{ cursor: 'pointer', marginLeft: '6px', fontSize: '0.7rem', opacity: 0.6, whiteSpace: 'nowrap' }} onClick={() => openManualEditor(player)}>
+                            {player.manualStats ? '✏️*' : '✏️'}
+                          </span>
+                        )}
                       </td>
                       <td style={{ textAlign: 'center', padding: '10px 2px' }}>{player.stats.played}</td>
                       <td style={{ textAlign: 'center', padding: '10px 2px', color: 'rgba(255,255,255,0.6)' }}>{player.stats.wins}</td>
@@ -239,6 +287,28 @@ export default function Table() {
           <span>Relegation Zone</span>
         </div>
       </div>
+
+      {/* Manual stats editor (admin only) */}
+      {isAdmin && editingManual && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setEditingManual(null)}>
+          <div className="card glass" style={{ padding: '28px', maxWidth: '400px', width: '90%', border: '1px solid var(--accent-cyan)' }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ marginBottom: '4px' }}>Manual Stats: {editingManual.username}</h3>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '20px' }}>Leave values as-is to use computed stats. Click "Clear Override" to remove manual stats.</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              {['played', 'wins', 'draws', 'losses', 'points', 'legsWon', 'legsLost'].map(field => (
+                <div key={field} className="form-group" style={{ marginBottom: 0 }}>
+                  <label>{field.charAt(0).toUpperCase() + field.slice(1)}</label>
+                  <input type="number" value={manualForm[field]} onChange={e => setManualForm({...manualForm, [field]: e.target.value})} />
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={saveManualStats}>Save Override</button>
+              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setEditingManual(null)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
