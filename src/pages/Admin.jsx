@@ -138,6 +138,7 @@ export default function Admin() {
 
       await logAudit('APPROVE_RESULT', `Approved match: ${res.player1} vs ${res.player2}`)
       triggerDataRefresh('results')
+      await forceFetchResults()
       showToast('Result Approved!', 'success')
     } catch (e) { showToast(e.message, 'error') }
     setIsApproving(false)
@@ -170,6 +171,7 @@ export default function Admin() {
       await logAudit('BULK_APPROVE', `Approved ${selectedResults.length} matches`)
       setSelectedResults([])
       triggerDataRefresh('results')
+      await forceFetchResults()
       showToast(`Approved ${selectedResults.length} matches!`, 'success')
     } catch (e) { showToast(e.message, 'error') }
     setIsApproving(false)
