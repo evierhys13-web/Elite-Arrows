@@ -701,6 +701,13 @@ export default function Admin() {
         showToast('All records already correct. No changes needed.', 'info');
       }
 
+      // If Soft Reset is active, clear it so the labeled data actually shows in the table
+      if (adminData?.leagueTableResetAt) {
+        await updateAdminData({ leagueTableResetAt: null })
+        triggerDataRefresh('all')
+        showToast('Soft Reset cleared — all results now visible in the table.', 'success')
+      }
+
     } catch (e) {
       console.error('Sync error:', e);
       showToast('Sync failed: ' + e.message, 'error');
