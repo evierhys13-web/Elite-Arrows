@@ -584,6 +584,9 @@ export default function Admin() {
       let currentBatch = writeBatch(db);
       let opCount = 0;
 
+      // Track per-result updates so we can merge into local state after batch commit
+      const updatesByTargetId = {};
+
       // Strictly Season 1 window
       const season1Start = new Date('2026-05-01T00:00:00').getTime();
       const season1End = new Date('2026-06-01T23:59:59').getTime();
@@ -624,11 +627,9 @@ export default function Admin() {
             updates.gameType = 'Cup';
           }
         } else {
-          // It's not a cup game. Determine if it's League or Friendly.
           if (!match.gameType || ['unknown', '', 'undefined', 'null'].includes(String(match.gameType))) {
             updates.gameType = isStandardFormat ? 'League' : 'Friendly';
           } else if (match.gameType === 'League' && !isStandardFormat) {
-            // Force non-standard formats to Friendly so they don't hit the table
             updates.gameType = 'Friendly';
           }
         }
@@ -668,6 +669,7 @@ export default function Admin() {
         }
 
         if (Object.keys(updates).length > 0) {
+          updatesByTargetId[targetId] = updates;
           currentBatch.update(doc(db, 'results', targetId), updates);
           updatedCount++;
           opCount++;
@@ -685,11 +687,19 @@ export default function Admin() {
       }
 
       await logAudit('BULK_SYNC_ANALYTICS', `Deep Sync ${approvedMatches.length} games. Fixed ${updatedCount} records.`);
-      showToast(`Success! Fixed ${updatedCount} matches.`, 'success');
 
-      triggerDataRefresh('all');
-      await forceFetchResults();
-      showToast('Table data synced!', 'success');
+      // Merge updates into local state directly — avoids silent failure of forceFetchResults
+      if (updatedCount > 0) {
+        const updatedResults = allResults.map(r => {
+          const key = r.firestoreId || String(r.id)
+          const merge = updatesByTargetId[key]
+          return merge ? { ...r, ...merge } : r
+        })
+        updateResults(updatedResults)
+        showToast(`Fixed ${updatedCount} records. Table updated!`, 'success');
+      } else {
+        showToast('All records already correct. No changes needed.', 'info');
+      }
 
     } catch (e) {
       console.error('Sync error:', e);

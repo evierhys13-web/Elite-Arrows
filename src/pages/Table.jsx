@@ -92,10 +92,9 @@ export default function Table() {
     triggerDataRefresh('all')
     setRefreshKey(prev => prev + 1)
     showToast('Refreshing table data...', 'info')
-    // Force fresh fetch from Firestore to bypass stale cache
-    await forceFetchResults()
+    const ok = await forceFetchResults()
     setRefreshKey(prev => prev + 1)
-    showToast('Table data synced!', 'success')
+    showToast(ok ? 'Table data synced!' : 'Sync failed — using cached data', ok ? 'success' : 'warning')
   }
 
   return (

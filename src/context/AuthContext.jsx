@@ -1101,10 +1101,10 @@ const cleanUserData = (users) => {
         return { ...data, id: data.id || docSnap.id, firestoreId: docSnap.id }
       })
       updateResults(freshResults)
-      return freshResults
+      return true
     } catch (e) {
       console.warn('forceFetchResults failed:', e)
-      return null
+      return false
     }
   }, [updateResults])
 
