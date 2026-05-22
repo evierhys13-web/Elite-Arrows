@@ -19,10 +19,9 @@ if ('serviceWorker' in navigator) {
           if (newWorker) {
             newWorker.addEventListener('statechange', () => {
               if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                if (confirm('New version available! Click OK to update.')) {
-                  newWorker.postMessage({ type: 'SKIP_WAITING' });
-                  window.location.reload();
-                }
+                // Silently skip waiting and reload when a new version is installed
+                newWorker.postMessage({ type: 'SKIP_WAITING' });
+                window.location.reload();
               }
             });
           }
@@ -33,6 +32,22 @@ if ('serviceWorker' in navigator) {
       });
   });
 }
+
+// Global handler for script load failures (ChunkLoadError)
+window.addEventListener('error', (e) => {
+  if (e.message && (e.message.includes('chunk') || e.message.includes('Loading chunk'))) {
+    console.log('Chunk error detected, reloading...');
+    window.location.reload();
+  }
+}, true);
+
+// Global handler for unhandled promise rejections (often happens with dynamic imports)
+window.addEventListener('unhandledrejection', (e) => {
+  if (e.reason && (e.reason.name === 'ChunkLoadError' || (e.reason.message && e.reason.message.includes('Loading chunk')))) {
+    console.log('Chunk load rejection detected, reloading...');
+    window.location.reload();
+  }
+});
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

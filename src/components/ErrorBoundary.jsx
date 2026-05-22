@@ -13,18 +13,31 @@ export default class ErrorBoundary extends React.Component {
   componentDidCatch(error, errorInfo) {
     console.error('ErrorBoundary caught an error', error, errorInfo)
 
-    // Auto-refresh after 3 seconds if it's the first time
+    const isChunkError = error?.name === 'ChunkLoadError' ||
+                         error?.message?.includes('chunk') ||
+                         error?.message?.includes('Loading chunk')
+
+    // Auto-refresh logic
     const crashCount = parseInt(sessionStorage.getItem('crashCount') || '0')
-    if (crashCount < 2) {
+
+    if (isChunkError || crashCount < 2) {
       sessionStorage.setItem('crashCount', (crashCount + 1).toString())
+
+      // If it's a chunk error, reload immediately as it's almost always a version mismatch
+      const delay = isChunkError ? 0 : 3000
+
       setTimeout(() => {
         window.location.reload()
-      }, 3000)
+      }, delay)
     }
   }
 
   render() {
     if (this.state.hasError) {
+      const isChunkError = this.state.error?.name === 'ChunkLoadError' ||
+                           this.state.error?.message?.includes('chunk') ||
+                           this.state.error?.message?.includes('Loading chunk')
+
       return (
         <div style={{
           padding: '40px',
@@ -37,10 +50,16 @@ export default class ErrorBoundary extends React.Component {
           background: 'var(--bg-primary)',
           color: 'white'
         }}>
-          <div style={{ fontSize: '4rem', marginBottom: '20px' }}>⚠️</div>
-          <h2 style={{ marginBottom: '10px' }}>Something went wrong</h2>
+          <div style={{ fontSize: '4rem', marginBottom: '20px' }}>
+            {isChunkError ? '🔄' : '⚠️'}
+          </div>
+          <h2 style={{ marginBottom: '10px' }}>
+            {isChunkError ? 'Updating App...' : 'Something went wrong'}
+          </h2>
           <p style={{ color: 'var(--text-muted)', marginBottom: '30px', maxWidth: '400px' }}>
-            The app encountered an unexpected error. We're attempting to reload for you automatically.
+            {isChunkError
+              ? 'We found a new version of the app. Refreshing to get the latest features for you...'
+              : "The app encountered an unexpected error. We're attempting to reload for you automatically."}
           </p>
           <button
             className="btn btn-primary"
