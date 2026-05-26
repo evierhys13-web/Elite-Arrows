@@ -50,6 +50,8 @@ const SeedData = lazy(() => import('./pages/SeedData'))
 const SeasonManagement = lazy(() => import('./pages/SeasonManagement'))
 const SuperLeague = lazy(() => import('./pages/SuperLeague'))
 const Notifications = lazy(() => import('./pages/Notifications'))
+const Challenges = lazy(() => import('./pages/Challenges'))
+const Giveaways = lazy(() => import('./pages/Giveaways'))
 
 function PageLoader() {
   return (
@@ -301,6 +303,8 @@ function AppRoutes() {
       <Route path="/install" element={<ProtectedRoute><AppLayout><Install /></AppLayout></ProtectedRoute>} />
       <Route path="/analytics" element={<SubscribedRoute><AppLayout><Analytics /></AppLayout></SubscribedRoute>} />
       <Route path="/notifications" element={<ProtectedRoute><AppLayout><Notifications /></AppLayout></ProtectedRoute>} />
+      <Route path="/challenges" element={<ProtectedRoute><AppLayout><Challenges /></AppLayout></ProtectedRoute>} />
+      <Route path="/giveaways" element={<ProtectedRoute><AppLayout><Giveaways /></AppLayout></ProtectedRoute>} />
       <Route path="/super-league" element={<AdminRoute><AppLayout><SuperLeague /></AppLayout></AdminRoute>} />
       <Route path="/season-management" element={<AdminRoute><AppLayout><SeasonManagement /></AppLayout></AdminRoute>} />
       <Route path="/seed-data" element={<AdminRoute><AppLayout><SeedData /></AppLayout></AdminRoute>} />
