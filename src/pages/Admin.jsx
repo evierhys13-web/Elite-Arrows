@@ -36,6 +36,7 @@ export default function Admin() {
   const [isApproving, setIsApproving] = useState(false)
   const [resultFilter, setResultFilter] = useState('pending')
   const [paymentSubTab, setPaymentSubTab] = useState('pending')
+  const [paymentSeasonFilter, setPaymentSeasonFilter] = useState('all')
   const [selectedResults, setSelectedResults] = useState([])
   const [resultSearch, setResultSearch] = useState('')
   const [resultTypeFilter, setResultTypeFilter] = useState('all')
@@ -93,7 +94,12 @@ export default function Admin() {
 
   const pendingPayments = allPlayers.filter(u => u?.paymentPending)
   const entryRequests = allPlayers.filter(u => u?.adminRequestPending)
-  const subscribers = allPlayers.filter(u => u?.isSubscribed || (u?.subscribedSeasons && u.subscribedSeasons.length > 0))
+  const subscribers = allPlayers.filter(u => {
+    const isSub = u?.isSubscribed || (u?.subscribedSeasons && u.subscribedSeasons.length > 0)
+    if (!isSub) return false
+    if (paymentSeasonFilter === 'all') return true
+    return u.subscribedSeasons?.includes(paymentSeasonFilter)
+  })
 
   const subscriptionPot = adminData?.subscriptionPot || 0
   const subscriptionPot10 = adminData?.subscriptionPot10 || 0
@@ -763,7 +769,11 @@ export default function Admin() {
     }
 
     if (resultTypeFilter !== 'all') {
-      list = list.filter(r => String(r.gameType).toLowerCase() === resultTypeFilter.toLowerCase())
+      list = list.filter(r => {
+        const gt = String(r.gameType).toLowerCase()
+        if (resultTypeFilter === 'league') return gt === 'league' || gt === 'playoff'
+        return gt === resultTypeFilter.toLowerCase()
+      })
     }
 
     return list.sort((a, b) => new Date(b.date || b.submittedAt) - new Date(a.date || a.submittedAt))
@@ -962,6 +972,7 @@ export default function Admin() {
               >
                 <option value="all">All Types</option>
                 <option value="league">League</option>
+                <option value="playoff">Playoff</option>
                 <option value="cup">Cup</option>
                 <option value="friendly">Friendly</option>
               </select>
@@ -1112,7 +1123,19 @@ export default function Admin() {
                 <h3 style={{ margin: 0 }}>League Subscriptions</h3>
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>Verify and manage player access payments.</p>
               </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {paymentSubTab === 'approved' && (
+                  <select
+                    className="glass btn-sm"
+                    style={{ padding: '4px 12px', borderRadius: '8px', fontSize: '0.75rem' }}
+                    value={paymentSeasonFilter}
+                    onChange={e => setPaymentSeasonFilter(e.target.value)}
+                  >
+                    <option value="all">All Seasons</option>
+                    {getSeasons().map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                    <option value="Season 1">Season 1</option>
+                  </select>
+                )}
                 <button
                   className={`btn btn-sm ${paymentSubTab === 'pending' ? 'btn-primary' : 'btn-secondary'}`}
                   onClick={() => setPaymentSubTab('pending')}
@@ -1229,7 +1252,24 @@ export default function Admin() {
                               {' • '} Approved {u.subscriptionDate ? new Date(u.subscriptionDate).toLocaleDateString() : 'Historical'}
                             </div>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: '2px', fontStyle: 'italic' }}>
-                              Seasons: {(u.subscribedSeasons || []).join(', ') || 'Legacy'}
+                              Seasons: {(u.subscribedSeasons || []).map(s => (
+                                <span key={s} className="glass" style={{ padding: '2px 6px', borderRadius: '4px', marginRight: '4px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                  {s}
+                                  <span
+                                    style={{ cursor: 'pointer', color: 'var(--error)', fontWeight: 900 }}
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      if (!window.confirm(`Remove ${s} from ${u.username}?`)) return;
+                                      const next = (u.subscribedSeasons || []).filter(item => item !== s);
+                                      await setDoc(doc(db, 'users', u.id), { subscribedSeasons: next }, { merge: true });
+                                      triggerDataRefresh('users');
+                                      showToast(`Removed ${s}`, 'info');
+                                    }}
+                                  >
+                                    ×
+                                  </span>
+                                </span>
+                              )) || 'Legacy'}
                             </div>
                           </div>
                         </div>

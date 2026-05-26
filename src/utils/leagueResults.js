@@ -21,7 +21,7 @@ export const isLeagueResult = (result, fixturesById = {}) => {
   const gameType = normalizeText(result.gameType)
 
   // 1. Explicitly ignore non-league types in the gameType label
-  const nonLeagueTypes = ['super league', 'cup', 'friendly', 'playoff', 'tournament']
+  const nonLeagueTypes = ['super league', 'cup', 'friendly', 'tournament']
   if (nonLeagueTypes.some(type => gameType.includes(type))) return false
 
   // 2. If it has a cupId or matchId on the result itself, it's NOT league
@@ -37,8 +37,8 @@ export const isLeagueResult = (result, fixturesById = {}) => {
     }
   }
 
-  // 4. MUST be explicitly 'league' or contain it (e.g. 'Elite League')
-  if (gameType.includes('league')) return true
+  // 4. MUST be explicitly 'league' or contain it (e.g. 'Elite League') or be a 'playoff'
+  if (gameType.includes('league') || gameType.includes('playoff')) return true
 
   // 5. For legacy/unlabeled matches (Season 1 support)
   if (!gameType || gameType === 'unknown' || gameType === '') {
