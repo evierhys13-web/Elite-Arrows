@@ -101,14 +101,16 @@ export default function SubmitResult() {
 
   const checkExistingLeagueMatch = (opponentId) => {
     const approvedResults = allResults.filter(r => String(r.status).toLowerCase() === 'approved')
-    
+    const fixturesById = Object.fromEntries(allFixtures.map(f => [String(f.id), f]))
+
     const existingMatch = approvedResults.find(r => {
-      const isSameSeason = r.season === currentSeasonLabel
-      const isLeagueGame = r.gameType === 'League'
-      const sameDivision = r.division === user.division
+      const isLeagueGame = isLeagueResult(r, fixturesById) && !isPlayoffResult(r, fixturesById)
+      if (!isLeagueGame) return false
+
+      const isSameSeason = (r.season || 'Season 1') === currentSeasonLabel
       const isBetweenPlayers = (String(r.player1Id) === String(user.id) && String(r.player2Id) === String(opponentId)) ||
                                  (String(r.player2Id) === String(user.id) && String(r.player1Id) === String(opponentId))
-      return isSameSeason && isLeagueGame && sameDivision && isBetweenPlayers
+      return isSameSeason && isBetweenPlayers
     })
     
     return existingMatch

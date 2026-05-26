@@ -146,6 +146,31 @@ export default function Home() {
     return acc
   }, { played: 0, wins: 0, losses: 0, draws: 0, points: 0 })
 
+  const divisionActivity = useMemo(() => {
+    const divisionStats = {}
+    const seasonStart = new Date(activeSeason.startDate).getTime()
+    const now = new Date().getTime()
+    const msPerWeek = 7 * 24 * 60 * 60 * 1000
+    const weeksElapsed = Math.max(1, (now - seasonStart) / msPerWeek)
+
+    approvedResults.forEach(r => {
+      const isLeague = isLeagueResult(r, fixturesById)
+      if (!isLeague) return
+
+      const isThisSeason = !r.season || r.season === activeSeason.name
+      if (!isThisSeason) return
+
+      const div = r.division || 'Unassigned'
+      if (!divisionStats[div]) divisionStats[div] = 0
+      divisionStats[div]++
+    })
+
+    return Object.entries(divisionStats).map(([name, count]) => ({
+      name,
+      avgPerWeek: (count / weeksElapsed).toFixed(1)
+    })).sort((a, b) => b.avgPerWeek - a.avgPerWeek)
+  }, [approvedResults, activeSeason, fixturesById])
+
   return (
     <>
     <div className="page">
@@ -346,6 +371,21 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {divisionActivity.length > 0 && (
+        <div className="card" style={{ marginBottom: '20px', background: 'var(--bg-secondary)' }}>
+          <h2 className="card-title" style={{ color: 'var(--accent-cyan)' }}>Division Activity</h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '15px' }}>Average league games played per week this season</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
+            {divisionActivity.map(div => (
+              <div key={div.name} className="glass" style={{ padding: '12px', borderRadius: '12px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <div style={{ color: 'var(--accent-cyan)', fontWeight: 800, fontSize: '1.2rem' }}>{div.avgPerWeek}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '4px' }}>{div.name}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {tournaments.length > 0 && (
         <div className="card" style={{ marginBottom: '20px' }}>

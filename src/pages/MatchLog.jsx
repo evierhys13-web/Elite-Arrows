@@ -14,6 +14,7 @@ export default function MatchLog() {
   const fixturesById = Object.fromEntries(fixtures.map(fixture => [String(fixture.id), fixture]))
   
   const targetUser = allUsers.find(u => String(u.id) === String(targetPlayerId)) || user
+  const currentSeason = adminData?.currentSeason || 'Season 1'
 
   const leagueResults = useMemo(() => {
     return allResults
@@ -41,19 +42,29 @@ export default function MatchLog() {
           result: win ? 'Win' : (r.score1 === r.score2 ? 'Draw' : 'Loss'),
           score: isPlayer1 ? `${r.score1}-${r.score2}` : `${r.score2}-${r.score1}`,
           date: r.date,
-          season: r.season
+          season: r.season,
+          gameType: r.gameType
         }
       })
       .sort((a, b) => new Date(b.date) - new Date(a.date))
   }, [allResults, allUsers, fixturesById, targetUser.id])
 
-  const playedOpponentIds = leagueResults.map(m => m.opponentId)
+  const playedLeagueOpponentIds = useMemo(() => {
+    // Only count regular league matches for the CURRENT season
+    return leagueResults
+      .filter(r => {
+        const isLeague = !String(r.gameType || '').toLowerCase().includes('playoff')
+        const isThisSeason = !r.season || r.season === currentSeason
+        return isLeague && isThisSeason
+      })
+      .map(m => String(m.opponentId))
+  }, [leagueResults, currentSeason])
   
   const opponentsToPlay = useMemo(() => {
-    // 1. Basic Round Robin (remaining divisional players)
-    const allDivisionPlayers = allUsers.filter(u => u.id !== targetUser.id && u.division === targetUser.division)
+    // 1. Basic Round Robin (remaining divisional players for this season)
+    const allDivisionPlayers = allUsers.filter(u => String(u.id) !== String(targetUser.id) && u.division === targetUser.division)
     const remainingDivisional = allDivisionPlayers
-      .filter(p => !playedOpponentIds.includes(p.id))
+      .filter(p => !playedLeagueOpponentIds.includes(String(p.id)))
       .map(p => ({
         id: `rr-${p.id}`,
         opponentId: p.id,
@@ -96,6 +107,7 @@ export default function MatchLog() {
     })
 
     // Deduplicate: if an explicit fixture exists for a RR opponent, prefer the fixture info
+    // ALSO: if it's a playoff, it SHOULD appear even if already played in league
     const combined = [...explicitFixtures]
     remainingDivisional.forEach(rr => {
       if (!combined.some(c => String(c.opponentId) === String(rr.opponentId))) {
@@ -104,7 +116,7 @@ export default function MatchLog() {
     })
 
     return combined
-  }, [allUsers, targetUser.id, playedOpponentIds, fixtures, allResults])
+  }, [allUsers, targetUser.id, playedLeagueOpponentIds, fixtures, allResults])
 
   return (
     <div className="page animate-fade-in">
