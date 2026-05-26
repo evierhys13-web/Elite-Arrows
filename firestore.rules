@@ -143,5 +143,21 @@ service cloud.firestore {
       allow create: if request.auth != null;
       allow update, delete: if isAdmin();
     }
+
+    match /giveaways/{giveawayId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /challenges/{challengeId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /challengeSubmissions/{submissionId} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update, delete: if isAdmin();
+    }
   }
 }
