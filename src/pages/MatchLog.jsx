@@ -13,10 +13,10 @@ export default function MatchLog() {
   const fixtures = getFixtures()
   const fixturesById = Object.fromEntries(fixtures.map(fixture => [String(fixture.id), fixture]))
   
-  const targetUser = allUsers.find(u => String(u.id) === String(targetPlayerId)) || user
-  const currentSeason = adminData?.currentSeason || 'Season 1'
+  const targetUser = allUsers.find(u => String(u.id) === String(targetPlayerId)) || user || {}
 
   const leagueResults = useMemo(() => {
+    if (!targetUser.id) return []
     return allResults
       .filter(r => {
         const player1Id = getResultPlayerId(r, 1, allUsers)
@@ -33,90 +33,34 @@ export default function MatchLog() {
         const isPlayer1 = String(player1Id) === String(targetUser.id)
         const opponentId = isPlayer1 ? player2Id : player1Id
         const opponentUser = allUsers.find(u => String(u.id) === String(opponentId))
-        const win = isPlayer1 ? r.score1 > r.score2 : r.score2 > r.score1
+        const win = Number(r.score1) > Number(r.score2) ? (isPlayer1 ? true : false) : (Number(r.score2) > Number(r.score1) ? (isPlayer1 ? false : true) : null)
+
+        let resultLabel = 'Draw'
+        if (win === true) resultLabel = 'Win'
+        if (win === false) resultLabel = 'Loss'
+
         return {
           id: r.id,
-          opponentId,
+          opponentId: String(opponentId),
           opponent: opponentUser?.username || 'Unknown',
           opponentDivision: opponentUser?.division || '',
-          result: win ? 'Win' : (r.score1 === r.score2 ? 'Draw' : 'Loss'),
+          result: resultLabel,
           score: isPlayer1 ? `${r.score1}-${r.score2}` : `${r.score2}-${r.score1}`,
           date: r.date,
-          season: r.season,
-          gameType: r.gameType
+          season: r.season
         }
       })
-      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
   }, [allResults, allUsers, fixturesById, targetUser.id])
 
-  const playedLeagueOpponentIds = useMemo(() => {
-    // Only count regular league matches for the CURRENT season
-    return leagueResults
-      .filter(r => {
-        const isLeague = !String(r.gameType || '').toLowerCase().includes('playoff')
-        const isThisSeason = !r.season || r.season === currentSeason
-        return isLeague && isThisSeason
-      })
-      .map(m => String(m.opponentId))
-  }, [leagueResults, currentSeason])
+  const playedOpponentIds = useMemo(() => leagueResults.map(m => String(m.opponentId)), [leagueResults])
   
   const opponentsToPlay = useMemo(() => {
-    // 1. Basic Round Robin (remaining divisional players for this season)
-    const allDivisionPlayers = allUsers.filter(u => String(u.id) !== String(targetUser.id) && u.division === targetUser.division)
-    const remainingDivisional = allDivisionPlayers
-      .filter(p => !playedLeagueOpponentIds.includes(String(p.id)))
-      .map(p => ({
-        id: `rr-${p.id}`,
-        opponentId: p.id,
-        opponent: p.username,
-        opponentDivision: p.division,
-        type: 'League',
-        status: 'unarranged',
-        date: 'TBC'
-      }))
-
-    // 2. Explicit Fixtures (Playoffs, etc.) that aren't played yet
-    const explicitFixtures = fixtures.filter(f => {
-      const p1 = f.player1Id || f.player1
-      const p2 = f.player2Id || f.player2
-      const isPart = String(p1) === String(targetUser.id) || String(p2) === String(targetUser.id)
-      const status = String(f.status).toLowerCase()
-      const isUnplayed = ['pending', 'accepted', 'countered', 'result_submitted'].includes(status)
-      const isLeagueOrPlayoff = ['league', 'playoff'].includes(String(f.gameType).toLowerCase())
-
-      const hasApproved = allResults.some(r =>
-        String(r.status).toLowerCase() === 'approved' &&
-        (String(r.fixtureId) === String(f.id) || (f.cupId && r.cupId && String(r.cupId) === String(f.cupId) && String(r.matchId) === String(f.matchId)))
-      )
-
-      return isPart && isUnplayed && isLeagueOrPlayoff && !hasApproved
-    }).map(f => {
-      const p1 = f.player1Id || f.player1
-      const p2 = f.player2Id || f.player2
-      const opponentId = String(p1) === String(targetUser.id) ? p2 : p1
-      const opponentUser = allUsers.find(u => String(u.id) === String(opponentId))
-      return {
-        id: f.id,
-        opponentId,
-        opponent: opponentUser?.username || f.player1Name || f.player2Name || 'Unknown',
-        opponentDivision: opponentUser?.division || '',
-        type: f.gameType,
-        status: f.status,
-        date: f.fixtureDate || f.date || 'TBC'
-      }
-    })
-
-    // Deduplicate: if an explicit fixture exists for a RR opponent, prefer the fixture info
-    // ALSO: if it's a playoff, it SHOULD appear even if already played in league
-    const combined = [...explicitFixtures]
-    remainingDivisional.forEach(rr => {
-      if (!combined.some(c => String(c.opponentId) === String(rr.opponentId))) {
-        combined.push(rr)
-      }
-    })
-
-    return combined
-  }, [allUsers, targetUser.id, playedLeagueOpponentIds, fixtures, allResults])
+    if (!targetUser.id || !targetUser.division) return []
+    return allUsers
+      .filter(u => String(u.id) !== String(targetUser.id) && u.division === targetUser.division)
+      .filter(p => !playedOpponentIds.includes(String(p.id)))
+  }, [allUsers, targetUser.id, targetUser.division, playedOpponentIds])
 
   return (
     <div className="page animate-fade-in">
@@ -195,8 +139,8 @@ export default function MatchLog() {
               <p style={{ color: 'var(--success)', fontWeight: 700 }}>Season schedule complete!</p>
             </div>
           ) : (
-            opponentsToPlay.map(match => (
-              <div key={match.id} style={{
+            opponentsToPlay.map(player => (
+              <div key={player.id} style={{
                 padding: '16px',
                 borderBottom: '1px solid rgba(255,255,255,0.05)',
                 display: 'flex',
@@ -204,23 +148,18 @@ export default function MatchLog() {
                 alignItems: 'center'
               }}>
                 <div>
-                  <span style={{ fontWeight: '700' }}>{match.opponent}</span>
-                  <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                    {match.type} {match.opponentDivision ? `(${match.opponentDivision})` : ''} • {match.date}
-                  </div>
+                  <span style={{ fontWeight: '700' }}>{player.username}</span>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{player.division} Division</div>
                 </div>
                 <span style={{
-                  color: match.status === 'accepted' ? 'var(--success)' : 'var(--accent-cyan)',
+                  color: 'var(--accent-cyan)',
                   fontSize: '0.7rem',
                   fontWeight: 800,
                   textTransform: 'uppercase',
-                  background: match.status === 'accepted' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(0, 212, 255, 0.1)',
+                  background: 'rgba(0, 212, 255, 0.1)',
                   padding: '4px 10px',
-                  borderRadius: '20px',
-                  border: `1px solid ${match.status === 'accepted' ? 'rgba(16, 185, 129, 0.3)' : 'transparent'}`
-                }}>
-                  {match.status === 'accepted' ? 'Confirmed' : 'Remaining'}
-                </span>
+                  borderRadius: '20px'
+                }}>Remaining</span>
               </div>
             ))
           )}

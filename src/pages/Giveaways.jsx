@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { db, doc, setDoc, getDocs, collection, deleteDoc, updateDoc, query, where } from '../firebase'
+import { db, doc, setDoc, getDocs, collection, deleteDoc, updateDoc } from '../firebase'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { useToast } from '../context/ToastContext'
 import { ADMIN_EMAILS } from '../config'
@@ -16,8 +16,9 @@ export default function Giveaways() {
 
   const [newGiveaway, setNewGiveaway] = useState({ title: '', description: '', steps: '', drawDate: '' })
 
-  const isEmailAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
-  const isAdmin = isEmailAdmin || user?.isAdmin
+  const isAdmin = useMemo(() => {
+    return ADMIN_EMAILS.includes(user?.email?.toLowerCase()) || user?.isAdmin || user?.isTournamentAdmin
+  }, [user])
 
   useEffect(() => {
     fetchGiveaways()
@@ -61,7 +62,6 @@ export default function Giveaways() {
   }
 
   const handleCreateGiveaway = async () => {
-    console.log('Creating giveaway...', newGiveaway)
     if (!newGiveaway.title || !newGiveaway.description) {
       showToast('Title and Description are required', 'error')
       return
@@ -75,13 +75,11 @@ export default function Giveaways() {
         createdAt: new Date().toISOString()
       }
       await setDoc(doc(db, 'giveaways', id), giveaway)
-      console.log('Giveaway saved to Firestore')
       setGiveaways([...giveaways, giveaway])
       setShowCreateModal(false)
       setNewGiveaway({ title: '', description: '', steps: '', drawDate: '' })
       showToast('Giveaway posted!', 'success')
     } catch (e) {
-      console.error('Error in handleCreateGiveaway:', e)
       showToast('Error creating giveaway: ' + e.message, 'error')
     }
   }
