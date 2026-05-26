@@ -40,6 +40,8 @@ export default function Admin() {
   const [selectedResults, setSelectedResults] = useState([])
   const [resultSearch, setResultSearch] = useState('')
   const [resultTypeFilter, setResultTypeFilter] = useState('all')
+  const [fixtureSearch, setFixtureSearch] = useState('')
+  const [fixtureTypeFilter, setFixtureTypeFilter] = useState('all')
   const [editingResult, setEditingResult] = useState(null)
   const [approvingPaymentId, setApprovingPaymentId] = useState(null)
   const [approvalOverride, setApprovalOverride] = useState({ tier: 'standard', season: '' })
@@ -228,6 +230,32 @@ export default function Admin() {
       await logAudit('DELETE_RESULT', `Deleted result: ${res?.player1} vs ${res?.player2}`)
       triggerDataRefresh('results')
       showToast('Result Deleted', 'info')
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
+  const handleDeleteFixture = async (fixtureId) => {
+    if (!window.confirm('Permanently delete this fixture? This will also remove any linked submitted results.')) return
+    try {
+      const fx = allFixtures.find(f => String(f.id) === String(fixtureId))
+      if (!fx) throw new Error('Fixture not found')
+
+      // Delete the fixture
+      await deleteDoc(doc(db, 'fixtures', String(fixtureId)))
+
+      // Find and delete any linked results (pending or approved)
+      const linkedResults = allResults.filter(r => String(r.fixtureId) === String(fixtureId))
+      if (linkedResults.length > 0) {
+        const batch = writeBatch(db)
+        linkedResults.forEach(r => {
+          batch.delete(doc(db, 'results', r.firestoreId || String(r.id)))
+        })
+        await batch.commit()
+      }
+
+      await logAudit('DELETE_FIXTURE', `Deleted fixture: ${fx.player1Name} vs ${fx.player2Name}`)
+      triggerDataRefresh('fixtures')
+      triggerDataRefresh('results')
+      showToast('Fixture and linked results deleted', 'info')
     } catch (e) { showToast(e.message, 'error') }
   }
 
@@ -779,6 +807,28 @@ export default function Admin() {
     return list.sort((a, b) => new Date(b.date || b.submittedAt) - new Date(a.date || a.submittedAt))
   }, [allResults, resultFilter, resultSearch, resultTypeFilter])
 
+  const filteredFixturesList = useMemo(() => {
+    let list = [...allFixtures]
+
+    if (fixtureSearch) {
+      const s = fixtureSearch.toLowerCase()
+      list = list.filter(f =>
+        String(f.player1Name || '').toLowerCase().includes(s) ||
+        String(f.player2Name || '').toLowerCase().includes(s)
+      )
+    }
+
+    if (fixtureTypeFilter !== 'all') {
+      list = list.filter(f => {
+        const gt = String(f.gameType || '').toLowerCase()
+        if (fixtureTypeFilter === 'league') return gt === 'league' || gt === 'playoff'
+        return gt === fixtureTypeFilter.toLowerCase()
+      })
+    }
+
+    return list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+  }, [allFixtures, fixtureSearch, fixtureTypeFilter])
+
   const stats = useMemo(() => {
     const lastWeek = new Date()
     lastWeek.setDate(lastWeek.getDate() - 7)
@@ -799,6 +849,7 @@ export default function Admin() {
   const tabs = [
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'results', label: 'Scores', count: pendingResults.length },
+    { id: 'fixtures', label: 'Fixtures' },
     { id: 'payments', label: 'Payments', count: pendingPayments.length + entryRequests.length },
     { id: 'new', label: 'New Users', count: stats.newUsers },
     { id: 'moneypot', label: 'Finances' },
@@ -1111,6 +1162,61 @@ export default function Admin() {
                 </div>
               ))}
               {(filteredResultsList.length === 0) && <p style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No results found matching your criteria.</p>}
+            </div>
+          </div>
+        )}
+
+        {/* TAB: FIXTURES */}
+        {activeTab === 'fixtures' && (
+          <div className="card glass">
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+              <div>
+                <h3>Fixtures Management</h3>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>Delete unplayed or scheduled fixtures for players.</p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
+              <input
+                type="text"
+                className="glass"
+                placeholder="🔍 Search players..."
+                style={{ flex: 2, minWidth: '200px', padding: '10px' }}
+                value={fixtureSearch}
+                onChange={e => setFixtureSearch(e.target.value)}
+              />
+              <select
+                className="glass"
+                style={{ flex: 1, minWidth: '150px', padding: '10px' }}
+                value={fixtureTypeFilter}
+                onChange={e => setFixtureTypeFilter(e.target.value)}
+              >
+                <option value="all">All Types</option>
+                <option value="league">League/Playoff</option>
+                <option value="cup">Cup</option>
+                <option value="friendly">Friendly</option>
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {filteredFixturesList.map(f => (
+                <div key={f.id} className="result-item glass" style={{ padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                      <span style={{ fontWeight: 700 }}>{f.player1Name || 'TBC'} <span style={{ color: 'var(--accent-cyan)' }}>vs</span> {f.player2Name || 'TBC'}</span>
+                      <span style={{ fontWeight: 700, color: 'var(--accent-cyan)' }}>{f.status?.toUpperCase()}</span>
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '10px' }}>
+                      {f.gameType || 'Fixture'} | {f.fixtureDate || f.date || 'TBC'} {f.fixtureTime || f.time || ''}
+                      {f.cupName && ` | ${f.cupName}`}
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button className="btn btn-danger btn-sm" style={{ flex: 1 }} onClick={() => handleDeleteFixture(f.id)}>🗑️ Delete Fixture</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {filteredFixturesList.length === 0 && <p style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No fixtures found.</p>}
             </div>
           </div>
         )}
