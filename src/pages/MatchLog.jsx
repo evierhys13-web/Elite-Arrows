@@ -49,8 +49,62 @@ export default function MatchLog() {
 
   const playedOpponentIds = leagueResults.map(m => m.opponentId)
   
-  const allDivisionPlayers = allUsers.filter(u => u.id !== targetUser.id && u.division === targetUser.division)
-  const opponentsToPlay = allDivisionPlayers.filter(p => !playedOpponentIds.includes(p.id))
+  const opponentsToPlay = useMemo(() => {
+    // 1. Basic Round Robin (remaining divisional players)
+    const allDivisionPlayers = allUsers.filter(u => u.id !== targetUser.id && u.division === targetUser.division)
+    const remainingDivisional = allDivisionPlayers
+      .filter(p => !playedOpponentIds.includes(p.id))
+      .map(p => ({
+        id: `rr-${p.id}`,
+        opponentId: p.id,
+        opponent: p.username,
+        opponentDivision: p.division,
+        type: 'League',
+        status: 'unarranged',
+        date: 'TBC'
+      }))
+
+    // 2. Explicit Fixtures (Playoffs, etc.) that aren't played yet
+    const explicitFixtures = fixtures.filter(f => {
+      const p1 = f.player1Id || f.player1
+      const p2 = f.player2Id || f.player2
+      const isPart = String(p1) === String(targetUser.id) || String(p2) === String(targetUser.id)
+      const status = String(f.status).toLowerCase()
+      const isUnplayed = ['pending', 'accepted', 'countered', 'result_submitted'].includes(status)
+      const isLeagueOrPlayoff = ['league', 'playoff'].includes(String(f.gameType).toLowerCase())
+
+      const hasApproved = allResults.some(r =>
+        String(r.status).toLowerCase() === 'approved' &&
+        (String(r.fixtureId) === String(f.id) || (f.cupId && r.cupId && String(r.cupId) === String(f.cupId) && String(r.matchId) === String(f.matchId)))
+      )
+
+      return isPart && isUnplayed && isLeagueOrPlayoff && !hasApproved
+    }).map(f => {
+      const p1 = f.player1Id || f.player1
+      const p2 = f.player2Id || f.player2
+      const opponentId = String(p1) === String(targetUser.id) ? p2 : p1
+      const opponentUser = allUsers.find(u => String(u.id) === String(opponentId))
+      return {
+        id: f.id,
+        opponentId,
+        opponent: opponentUser?.username || f.player1Name || f.player2Name || 'Unknown',
+        opponentDivision: opponentUser?.division || '',
+        type: f.gameType,
+        status: f.status,
+        date: f.fixtureDate || f.date || 'TBC'
+      }
+    })
+
+    // Deduplicate: if an explicit fixture exists for a RR opponent, prefer the fixture info
+    const combined = [...explicitFixtures]
+    remainingDivisional.forEach(rr => {
+      if (!combined.some(c => String(c.opponentId) === String(rr.opponentId))) {
+        combined.push(rr)
+      }
+    })
+
+    return combined
+  }, [allUsers, targetUser.id, playedOpponentIds, fixtures, allResults])
 
   return (
     <div className="page animate-fade-in">
@@ -129,8 +183,8 @@ export default function MatchLog() {
               <p style={{ color: 'var(--success)', fontWeight: 700 }}>Season schedule complete!</p>
             </div>
           ) : (
-            opponentsToPlay.map(player => (
-              <div key={player.id} style={{ 
+            opponentsToPlay.map(match => (
+              <div key={match.id} style={{
                 padding: '16px',
                 borderBottom: '1px solid rgba(255,255,255,0.05)',
                 display: 'flex',
@@ -138,18 +192,23 @@ export default function MatchLog() {
                 alignItems: 'center'
               }}>
                 <div>
-                  <span style={{ fontWeight: '700' }}>{player.username}</span>
-                  <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{player.division} Division</div>
+                  <span style={{ fontWeight: '700' }}>{match.opponent}</span>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                    {match.type} {match.opponentDivision ? `(${match.opponentDivision})` : ''} • {match.date}
+                  </div>
                 </div>
                 <span style={{
-                  color: 'var(--accent-cyan)',
+                  color: match.status === 'accepted' ? 'var(--success)' : 'var(--accent-cyan)',
                   fontSize: '0.7rem',
                   fontWeight: 800,
                   textTransform: 'uppercase',
-                  background: 'rgba(0, 212, 255, 0.1)',
+                  background: match.status === 'accepted' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(0, 212, 255, 0.1)',
                   padding: '4px 10px',
-                  borderRadius: '20px'
-                }}>Remaining</span>
+                  borderRadius: '20px',
+                  border: `1px solid ${match.status === 'accepted' ? 'rgba(16, 185, 129, 0.3)' : 'transparent'}`
+                }}>
+                  {match.status === 'accepted' ? 'Confirmed' : 'Remaining'}
+                </span>
               </div>
             ))
           )}
