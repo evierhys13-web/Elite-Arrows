@@ -99,13 +99,29 @@ export default function Challenges() {
   }
 
   const handleApproveSubmission = async (sub) => {
-    await updateDoc(doc(db, 'challengeSubmissions', sub.id), { status: 'approved' })
+    try {
+      await updateDoc(doc(db, 'challengeSubmissions', sub.id), { status: 'approved' })
 
-    // Also mark user as entered into draw if not already
-    await updateDoc(doc(db, 'users', sub.userId), { christmasDrawEntered: true })
+      const updatedSubmissions = submissions.map(s => s.id === sub.id ? { ...s, status: 'approved' } : s)
+      setSubmissions(updatedSubmissions)
 
-    setSubmissions(submissions.map(s => s.id === sub.id ? { ...s, status: 'approved' } : s))
-    showToast(`${sub.username} entered into draw!`, 'success')
+      // Get count of unique challenges approved for this user
+      const userApprovedChallengeIds = new Set(
+        updatedSubmissions
+          .filter(s => s.userId === sub.userId && s.status === 'approved')
+          .map(s => s.challengeId)
+      )
+      const activeChallengesCount = challenges.length
+
+      if (userApprovedChallengeIds.size >= activeChallengesCount && activeChallengesCount > 0) {
+        await updateDoc(doc(db, 'users', sub.userId), { christmasDrawEntered: true })
+        showToast(`${sub.username} completed ALL ${activeChallengesCount} challenges and entered the draw!`, 'success')
+      } else {
+        showToast(`${sub.username} progress: ${userApprovedChallengeIds.size}/${activeChallengesCount} challenges`, 'success')
+      }
+    } catch (e) {
+      showToast('Error approving submission: ' + e.message, 'error')
+    }
   }
 
   const handleDeleteChallenge = async (id) => {
@@ -127,6 +143,27 @@ export default function Challenges() {
           <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>+ Create Challenge</button>
         )}
       </div>
+
+      {(() => {
+        const userApprovedSubChallengeIds = new Set(
+          submissions.filter(s => s.userId === user.id && s.status === 'approved').map(s => s.challengeId)
+        )
+        const progress = challenges.length > 0 ? (userApprovedSubChallengeIds.size / challenges.length) * 100 : 0
+
+        return (
+          <div className="card glass" style={{ marginBottom: '32px', border: '1px solid var(--accent-cyan)' }}>
+            <h3 style={{ fontSize: '1rem', color: 'var(--accent-cyan)', marginBottom: '16px' }}>🎁 Christmas Giveaway Progress</h3>
+            <div style={{ height: '12px', background: 'rgba(255,255,255,0.1)', borderRadius: '6px', overflow: 'hidden', marginBottom: '12px' }}>
+              <div style={{ height: '100%', width: `${progress}%`, background: 'var(--accent-cyan)', transition: 'width 0.3s ease' }} />
+            </div>
+            <p style={{ fontSize: '0.9rem', textAlign: 'center' }}>
+              {userApprovedSubChallengeIds.size === challenges.length && challenges.length > 0
+                ? "🎉 You've completed all challenges! You're in the draw."
+                : `Complete all ${challenges.length} challenges to enter the draw! (${userApprovedSubChallengeIds.size}/${challenges.length})`}
+            </p>
+          </div>
+        )
+      })()}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
         {challenges.map(c => {

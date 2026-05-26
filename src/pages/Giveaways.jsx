@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { db, doc, setDoc, getDocs, collection, deleteDoc, updateDoc } from '../firebase'
+import { db, doc, setDoc, getDocs, collection, deleteDoc, updateDoc, query, where } from '../firebase'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { useToast } from '../context/ToastContext'
 import { ADMIN_EMAILS } from '../config'
@@ -22,15 +22,29 @@ export default function Giveaways() {
   useEffect(() => {
     fetchGiveaways()
     if (isAdmin) {
-       // Note: we can't easily query christmasDrawEntered across all users without an index or fetching all
-       // For now let's just fetch all and filter in JS if small enough, or assume we'll add an index
-       const fetchEntries = async () => {
+       const fetchAllData = async () => {
          try {
-           const snap = await getDocs(collection(db, 'users'))
-           setEntries(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(u => u.christmasDrawEntered))
+           const [usersSnap, subSnap, chalSnap] = await Promise.all([
+             getDocs(collection(db, 'users')),
+             getDocs(collection(db, 'challengeSubmissions')),
+             getDocs(collection(db, 'challenges'))
+           ])
+
+           const users = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+           const subs = subSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+           const activeChals = chalSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(c => !c._deleted)
+
+           const enteredUsers = users.filter(u => {
+             const userApprovedSubChallengeIds = new Set(
+               subs.filter(s => s.userId === u.id && s.status === 'approved').map(s => s.challengeId)
+             )
+             return activeChals.length > 0 && userApprovedSubChallengeIds.size >= activeChals.length
+           })
+
+           setEntries(enteredUsers)
          } catch (e) { console.error(e) }
        }
-       fetchEntries()
+       fetchAllData()
     }
   }, [isAdmin])
 
@@ -47,19 +61,29 @@ export default function Giveaways() {
   }
 
   const handleCreateGiveaway = async () => {
-    if (!newGiveaway.title || !newGiveaway.description) return
-    const id = Date.now().toString()
-    const giveaway = {
-      ...newGiveaway,
-      id,
-      isActive: true,
-      createdAt: new Date().toISOString()
+    console.log('Creating giveaway...', newGiveaway)
+    if (!newGiveaway.title || !newGiveaway.description) {
+      showToast('Title and Description are required', 'error')
+      return
     }
-    await setDoc(doc(db, 'giveaways', id), giveaway)
-    setGiveaways([...giveaways, giveaway])
-    setShowCreateModal(false)
-    setNewGiveaway({ title: '', description: '', steps: '', drawDate: '' })
-    showToast('Giveaway posted!', 'success')
+    try {
+      const id = Date.now().toString()
+      const giveaway = {
+        ...newGiveaway,
+        id,
+        isActive: true,
+        createdAt: new Date().toISOString()
+      }
+      await setDoc(doc(db, 'giveaways', id), giveaway)
+      console.log('Giveaway saved to Firestore')
+      setGiveaways([...giveaways, giveaway])
+      setShowCreateModal(false)
+      setNewGiveaway({ title: '', description: '', steps: '', drawDate: '' })
+      showToast('Giveaway posted!', 'success')
+    } catch (e) {
+      console.error('Error in handleCreateGiveaway:', e)
+      showToast('Error creating giveaway: ' + e.message, 'error')
+    }
   }
 
   const handleDeleteGiveaway = async (id) => {
