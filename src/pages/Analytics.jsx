@@ -39,13 +39,13 @@ function calcStdDev(values) {
 }
 
 export default function Analytics() {
-  const { user, getAllUsers, getResults, adminData, triggerDataRefresh, getSeasons } = useAuth()
+  const { user, getAllUsers, getResults, adminData, triggerDataRefresh, getSeasons, forceFetchResults } = useAuth()
   const { showToast } = useToast()
   const [activeSection, setActiveSection] = useState('personal')
   const [timePeriod, setTimePeriod] = useState('all')
   const [selectedSeason, setSelectedSeason] = useState(adminData?.currentSeason || 'Season 1')
   const [hasInitializedSeason, setHasInitializedSeason] = useState(false)
-  const [h2hOpponent, setH2hOpponent] = useState('')
+  const [isSyncing, setIsSyncing] = useState(false)
 
   const allUsers = getAllUsers()
   const results = getResults()
@@ -65,16 +65,21 @@ export default function Analytics() {
     ), [results, selectedSeason])
 
   const filteredResults = useMemo(() => timeFilter(approvedResults, timePeriod), [approvedResults, timePeriod])
-  const userResults = useMemo(() => filteredResults.filter(r => String(r.player1Id) === String(user.id) || String(r.player2Id) === String(user.id)), [filteredResults, user.id])
+  const userResults = useMemo(() => {
+    if (!user?.id) return []
+    return filteredResults.filter(r => String(r.player1Id) === String(user.id) || String(r.player2Id) === String(user.id))
+  }, [filteredResults, user?.id])
 
   const personalStats = useMemo(() => {
     const stats = { played: 0, wins: 0, losses: 0, draws: 0, points: 0, legsWon: 0, legsLost: 0, total180s: 0, highestCheckout: 0 }
+    if (!user?.id) return { ...stats, winRate: 0, consistency: 0, monthlyData: [], checkoutTrend: [], radarData: [], last5Matches: [] }
+
     const monthlyData = {}
     const checkoutTrend = []
     const legsPerMatchValues = []
     const formGuide = []
 
-    const sortedResults = [...userResults].sort((a, b) => a.date.localeCompare(b.date))
+    const sortedResults = [...userResults].sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')))
 
     sortedResults.forEach((r) => {
       const isP1 = String(r.player1Id) === String(user.id)
@@ -103,14 +108,16 @@ export default function Analytics() {
       const result = myScore > theirScore ? 'W' : myScore < theirScore ? 'L' : 'D'
       formGuide.push({ date: r.date, result, opponent: oppName, score: `${myScore}-${theirScore}` })
 
-      const month = r.date.substring(0, 7)
-      if (!monthlyData[month]) monthlyData[month] = { month, wins: 0, losses: 0, draws: 0, legsWon: 0, legsLost: 0, _180s: 0 }
-      monthlyData[month].legsWon += myScore
-      monthlyData[month].legsLost += theirScore
-      monthlyData[month]._180s += Number(myStats?.['180s'] || 0)
-      if (myScore > theirScore) monthlyData[month].wins++
-      else if (myScore < theirScore) monthlyData[month].losses++
-      else monthlyData[month].draws++
+      const month = String(r.date || '').substring(0, 7)
+      if (month && month.length === 7) {
+        if (!monthlyData[month]) monthlyData[month] = { month, wins: 0, losses: 0, draws: 0, legsWon: 0, legsLost: 0, _180s: 0 }
+        monthlyData[month].legsWon += myScore
+        monthlyData[month].legsLost += theirScore
+        monthlyData[month]._180s += Number(myStats?.['180s'] || 0)
+        if (myScore > theirScore) monthlyData[month].wins++
+        else if (myScore < theirScore) monthlyData[month].losses++
+        else monthlyData[month].draws++
+      }
     })
 
     const consistency = calcStdDev(legsPerMatchValues)
@@ -224,15 +231,28 @@ export default function Analytics() {
         </div>
         <button
           className="btn btn-secondary glass"
-          onClick={() => {
-            triggerDataRefresh('all');
-            showToast?.('Syncing latest match data...', 'info');
-            // Force a reload after a short delay to ensure clean state
-            setTimeout(() => window.location.reload(), 1500);
+          disabled={isSyncing}
+          onClick={async () => {
+            setIsSyncing(true)
+            showToast?.('Syncing latest match data...', 'info')
+            try {
+              if (forceFetchResults) {
+                await forceFetchResults()
+                showToast?.('Analytics synchronized!', 'success')
+              } else {
+                triggerDataRefresh('all')
+                setTimeout(() => window.location.reload(), 1500)
+              }
+            } catch (err) {
+              console.error('Sync failed', err)
+              showToast?.('Sync failed. Please reload.', 'error')
+            } finally {
+              setIsSyncing(false)
+            }
           }}
-          style={{ padding: '8px 16px', borderRadius: '99px', fontSize: '0.8rem' }}
+          style={{ padding: '8px 16px', borderRadius: '99px', fontSize: '0.8rem', minWidth: '80px' }}
         >
-          🔄 Sync
+          {isSyncing ? '⌛...' : '🔄 Sync'}
         </button>
       </div>
 
@@ -246,10 +266,10 @@ export default function Analytics() {
 
       {activeSection === 'personal' && (
         <>
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', overflowX: 'auto', paddingBottom: '8px' }}>
-            {['week', 'month', 'all'].map(p => (
-              <button key={p} className={`btn btn-sm ${timePeriod === p ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTimePeriod(p)} style={{ borderRadius: '99px' }}>
-                {p === 'all' ? 'All Time' : `This ${p}`}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', overflowX: 'auto', paddingBottom: '8px', scrollbarWidth: 'none' }}>
+            {['week', 'month', 'quarter', 'all'].map(p => (
+              <button key={p} className={`btn btn-sm ${timePeriod === p ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTimePeriod(p)} style={{ borderRadius: '99px', whiteSpace: 'nowrap' }}>
+                {p === 'all' ? 'All Time' : p === 'quarter' ? 'This Quarter' : `This ${p}`}
               </button>
             ))}
           </div>

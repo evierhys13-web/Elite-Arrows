@@ -55,12 +55,56 @@ export default function MatchLog() {
 
   const playedOpponentIds = useMemo(() => leagueResults.map(m => String(m.opponentId)), [leagueResults])
   
+  const getPlayoffOpponent = () => {
+    if (!targetUser.id) return null
+    const allPlayoffs = fixtures.filter(f => {
+      if (f._deleted) return false
+      return String(f.gameType || '').toLowerCase() === 'playoff'
+    })
+    const playoff = allPlayoffs.find(f => {
+      const status = (f.status || '').toLowerCase()
+      const proposal = (f.proposalStatus || '').toLowerCase()
+      if (status !== 'accepted' && proposal !== 'accepted') return false
+      const p1 = String(f.player1Id || f.player1 || '')
+      const p2 = String(f.player2Id || f.player2 || '')
+      return p1 === String(targetUser.id) || p2 === String(targetUser.id)
+    })
+    if (!playoff) return null
+    const p1 = String(playoff.player1Id || playoff.player1 || '')
+    const p2 = String(playoff.player2Id || playoff.player2 || '')
+    const opponentId = p1 === String(targetUser.id) ? p2 : p1
+    const u = allUsers.find(u => String(u.id) === opponentId)
+    return u ? { ...u, _playoff: true, _fixtureId: playoff.id } : null
+  }
+  const playoffOpponent = getPlayoffOpponent()
+
+  const playoffAlreadyPlayed = useMemo(() => {
+    if (!playoffOpponent) return false
+    return allResults.some(r => {
+      if (String(r.status || '').toLowerCase() !== 'approved') return false
+      if (!r.fixtureId) return false
+      return String(r.fixtureId) === String(playoffOpponent._fixtureId)
+    })
+  }, [allResults, playoffOpponent])
+
   const opponentsToPlay = useMemo(() => {
-    if (!targetUser.id || !targetUser.division) return []
-    return allUsers
-      .filter(u => String(u.id) !== String(targetUser.id) && u.division === targetUser.division)
-      .filter(p => !playedOpponentIds.includes(String(p.id)))
-  }, [allUsers, targetUser.id, targetUser.division, playedOpponentIds])
+    if (!targetUser.id) return []
+
+    const divisionOpponents = targetUser.division
+      ? allUsers.filter(u =>
+          String(u.id) !== String(targetUser.id) &&
+          u.division === targetUser.division &&
+          !playedOpponentIds.includes(String(u.id))
+        )
+      : []
+
+    const seen = new Set()
+    return [...divisionOpponents, ...(playoffOpponent && !playoffAlreadyPlayed ? [playoffOpponent] : [])].filter(u => {
+      if (seen.has(String(u.id))) return false
+      seen.add(String(u.id))
+      return true
+    })
+  }, [allUsers, targetUser.id, targetUser.division, playedOpponentIds, playoffOpponent, playoffAlreadyPlayed])
 
   return (
     <div className="page animate-fade-in">
@@ -152,14 +196,14 @@ export default function MatchLog() {
                   <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{player.division} Division</div>
                 </div>
                 <span style={{
-                  color: 'var(--accent-cyan)',
+                  color: player._playoff ? 'var(--warning)' : 'var(--accent-cyan)',
                   fontSize: '0.7rem',
                   fontWeight: 800,
                   textTransform: 'uppercase',
-                  background: 'rgba(0, 212, 255, 0.1)',
+                  background: player._playoff ? 'rgba(245, 158, 11, 0.15)' : 'rgba(0, 212, 255, 0.1)',
                   padding: '4px 10px',
                   borderRadius: '20px'
-                }}>Remaining</span>
+                }}>{player._playoff ? 'Playoff' : 'Remaining'}</span>
               </div>
             ))
           )}

@@ -60,7 +60,7 @@ export default function Table() {
       adminData,
       leagueOnly: true,
       currentSeason: selectedSeason,
-      includePlayoffs: true
+      includePlayoffs: false
     })
   }, [allUsers, results, fixtures, adminData, refreshKey, selectedSeason])
 

@@ -111,7 +111,7 @@ export default function Profile() {
     if (!displayUser?.id) return []
     const fixturesById = Object.fromEntries(fixtures.map(f => [String(f.id), f]))
 
-    const played = allResults
+    return allResults
       .filter(r => {
         const p1Id = getResultPlayerId(r, 1, allUsers)
         const p2Id = getResultPlayerId(r, 2, allUsers)
@@ -138,42 +138,7 @@ export default function Profile() {
           season: r.season
         }
       })
-
-    const upcoming = fixtures.filter(f => {
-      const p1 = f.player1Id || f.player1
-      const p2 = f.player2Id || f.player2
-      const isPart = String(p1) === String(displayUser.id) || String(p2) === String(displayUser.id)
-      const isLeagueOrPlayoff = ['league', 'playoff'].includes(String(f.gameType).toLowerCase())
-      const isUnplayed = ['pending', 'accepted', 'countered', 'result_submitted'].includes(String(f.status).toLowerCase())
-
-      const hasResult = allResults.some(r =>
-        String(r.status).toLowerCase() === 'approved' &&
-        (String(r.fixtureId) === String(f.id) || (f.cupId && r.cupId && String(r.cupId) === String(f.cupId) && String(r.matchId) === String(f.matchId)))
-      )
-
-      return isPart && isLeagueOrPlayoff && isUnplayed && !hasResult
-    }).map(f => {
-      const p1 = f.player1Id || f.player1
-      const p2 = f.player2Id || f.player2
-      const isPlayer1 = String(p1) === String(displayUser.id)
-      const opponentId = isPlayer1 ? p2 : p1
-      const opponentUser = allUsers.find(u => String(u.id) === String(opponentId))
-      return {
-        id: f.id,
-        opponentId,
-        opponent: opponentUser?.username || f.player1Name || f.player2Name || 'Unknown',
-        result: 'Upcoming',
-        score: f.gameType === 'Playoff' ? 'Playoff' : 'League',
-        date: f.fixtureDate || f.date || 'TBC',
-        season: 'Pending'
-      }
-    })
-
-    return [...upcoming, ...played].sort((a, b) => {
-      if (a.result === 'Upcoming' && b.result !== 'Upcoming') return -1
-      if (a.result !== 'Upcoming' && b.result === 'Upcoming') return 1
-      return new Date(b.date) - new Date(a.date)
-    })
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
   }, [displayUser, allResults, allUsers, fixtures])
 
   const handlePictureChange = async (e) => {
@@ -562,7 +527,7 @@ export default function Profile() {
                 <div style={{ textAlign: 'right' }}>
                   <div style={{
                     fontWeight: 900,
-                    color: match.result === 'Win' ? 'var(--success)' : match.result === 'Draw' ? 'var(--warning)' : match.result === 'Upcoming' ? 'var(--accent-cyan)' : 'var(--error)'
+                    color: match.result === 'Win' ? 'var(--success)' : match.result === 'Draw' ? 'var(--warning)' : 'var(--error)'
                   }}>
                     {match.result}
                   </div>

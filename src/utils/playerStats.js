@@ -99,7 +99,7 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
       // Defense-in-depth: explicitly exclude any result with cup/tournament markers
       if (result.cupId || result.matchId || result.tournamentId) return false
       const gt = String(result.gameType || '').toLowerCase().trim()
-      const nonLeague = ['cup', 'friendly', 'tournament', 'super league']
+      const nonLeague = ['cup', 'friendly', 'playoff', 'tournament', 'super league']
       if (nonLeague.some(t => gt.includes(t))) return false
       // Reject unlabeled results (no gameType or gameType doesn't contain 'league')
       // This closes the legacy fallback gap where cup/friendly results with <=8 legs
@@ -240,7 +240,7 @@ export const derivePlayerStatsFromResults = (users = [], results = [], options =
 
     if (isPlayoff && !includePlayoffs) return
 
-    const countsForPoints = (isSuper || isLeagueResult(result, fixturesById) || isPlayoff)
+    const countsForPoints = (isSuper || isLeagueResult(result, fixturesById)) && !isPlayoff
     const scoringOptions = { noDrawBonus: isSuper || isPlayoff }
 
     if (player1Id && statsByPlayerId[player1Id]) {
