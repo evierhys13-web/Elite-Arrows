@@ -119,25 +119,15 @@ export default function Subscription() {
       active: !isSubscribedForSelected && (!user?.division || user?.division === 'Unassigned')
     },
     {
-      id: 'standard',
-      name: 'Standard Pass',
-      price: '£5.99',
-      description: 'Gold, Silver, Bronze & Development divisions.',
-      features: ['Official League Entry', 'Tournament Access', 'Match Submissions', 'Advanced Stats'],
-      color: 'var(--accent-cyan)',
-      buttonText: 'Get Standard',
-      active: isSubscribedForSelected && ['Gold', 'Silver', 'Bronze', 'Development'].includes(user?.division)
-    },
-    {
       id: 'elite',
       name: 'Elite Pass',
       price: '£5.99',
-      description: 'For Elite, Diamond & Platinum challengers.',
-      features: ['Official League Entry', 'Cash Prize Tournaments', 'Priority Support', 'Full Dashboard'],
+      description: 'Full access for all divisions.',
+      features: ['Official League Entry', 'Top 2 Division Playoffs', 'Cash Prize Tournaments', 'Priority Support', 'Full Analytics Dashboard', 'Tournament Access', 'Match Submissions'],
       color: '#fbbf24',
-      buttonText: 'Get Elite',
+      buttonText: 'Get Elite Pass',
       premium: true,
-      active: isSubscribedForSelected && ['Elite', 'Diamond', 'Platinum'].includes(user?.division)
+      active: isSubscribedForSelected && user?.division && user?.division !== 'Unassigned'
     }
   ];
 

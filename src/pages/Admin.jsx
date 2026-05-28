@@ -41,7 +41,7 @@ export default function Admin() {
   const [resultTypeFilter, setResultTypeFilter] = useState('all')
   const [editingResult, setEditingResult] = useState(null)
   const [approvingPaymentId, setApprovingPaymentId] = useState(null)
-  const [approvalOverride, setApprovalOverride] = useState({ tier: 'standard', season: '' })
+  const [approvalOverride, setApprovalOverride] = useState({ tier: 'elite', season: '' })
 
   // Form states
   const [showSubmitGame, setShowSubmitGame] = useState(false)
@@ -55,9 +55,9 @@ export default function Admin() {
   })
   const [tokenForm, setTokenForm] = useState({ player: '', amount: 0, action: 'add' })
   const [seasonForm, setSeasonForm] = useState({ name: '', startDate: new Date().toISOString().split('T')[0], endDate: '' })
-  const [grantSubForm, setGrantSubForm] = useState({ player: '', tier: 'standard', season: '' })
+  const [grantSubForm, setGrantSubForm] = useState({ player: '', tier: 'elite', season: '' })
   const [divisionForm, setDivisionForm] = useState({ player: '', division: '' })
-  const [potAdjust, setPotAdjust] = useState({ standard: 0, premium: 0 })
+  const [potAdjust, setPotAdjust] = useState({ amount: 0 })
   const [trophyForm, setTrophyForm] = useState({ player: '', name: '', icon: '🏆', season: '' })
   const [playoffForm, setPlayoffForm] = useState({ player1: '', player2: '', division: '', date: '', time: '', bestOf: '3' })
   const [surveyForm, setSurveyForm] = useState({ title: '', description: '', targetType: 'all', targetUserIds: [] })
@@ -280,8 +280,8 @@ export default function Admin() {
   const handleApprovePayment = async (u) => {
     try {
       const isOverriding = approvingPaymentId === u.id
-      const finalTier = isOverriding ? (approvalOverride.tier === 'premium' ? 10 : 5) : ((u.paymentMethod === 'paypal10' || u.requestedPlan === 'elite') ? 10 : 5)
       const finalSeason = isOverriding ? approvalOverride.season : (u.requestedSeason || adminData?.currentSeason || 'Season 1')
+      const paymentAmount = 5.99
 
       const currentSeasons = Array.isArray(u.subscribedSeasons) ? u.subscribedSeasons : []
       const nextSeasons = Array.from(new Set([...currentSeasons, finalSeason]))
@@ -290,16 +290,15 @@ export default function Admin() {
         isSubscribed: true,
         paymentPending: false,
         subscriptionDate: new Date().toISOString(),
-        subscriptionTier: finalTier === 10 ? 'premium' : 'standard',
+        subscriptionTier: 'elite',
         subscribedSeasons: nextSeasons
       }
       await setDoc(doc(db, 'users', u.id), updates, { merge: true })
 
-      const potKey = finalTier === 10 ? 'subscriptionPot10' : 'subscriptionPot'
-      const currentPot = finalTier === 10 ? subscriptionPot10 : subscriptionPot
-      await updateAdminData({ [potKey]: currentPot + finalTier })
-      addToMoneyHistory('subscription', finalTier, `Approved payment: ${u.username} for ${finalSeason}`)
-      await logAudit('APPROVE_PAYMENT', `Approved payment for ${u.username} (£${finalTier}) - ${finalSeason}`)
+      const currentPot = adminData?.subscriptionPot || 0
+      await updateAdminData({ subscriptionPot: currentPot + paymentAmount })
+      addToMoneyHistory('subscription', paymentAmount, `Approved payment: ${u.username} for ${finalSeason}`)
+      await logAudit('APPROVE_PAYMENT', `Approved payment for ${u.username} (£${paymentAmount}) - ${finalSeason}`)
 
       setApprovingPaymentId(null)
       triggerDataRefresh('users')
@@ -309,20 +308,17 @@ export default function Admin() {
 
   const handleUpdateApprovedSubscription = async (u) => {
     try {
-      const finalTier = approvalOverride.tier
       const finalSeason = approvalOverride.season
 
       const currentSeasons = Array.isArray(u.subscribedSeasons) ? u.subscribedSeasons : []
-      // We'll add the selected season if it's not there, keeping others.
-      // If they want to remove one, they can use the profile edit (advanced) but this covers 99% of "picked wrong season" cases.
       const nextSeasons = Array.from(new Set([...currentSeasons, finalSeason]))
 
       await setDoc(doc(db, 'users', u.id), {
-        subscriptionTier: finalTier,
+        subscriptionTier: 'elite',
         subscribedSeasons: nextSeasons
       }, { merge: true })
 
-      await logAudit('UPDATE_SUBSCRIPTION', `Admin updated ${u.username} sub: ${finalTier}, seasons: ${nextSeasons.join(', ')}`)
+      await logAudit('UPDATE_SUBSCRIPTION', `Admin updated ${u.username} sub to Elite Pass, seasons: ${nextSeasons.join(', ')}`)
 
       setApprovingPaymentId(null)
       triggerDataRefresh('users')
@@ -435,16 +431,15 @@ export default function Admin() {
     } catch (e) { showToast(e.message, 'error') }
   }
 
-  const handleAdjustPot = async (tier) => {
-    const amount = tier === 'standard' ? potAdjust.standard : potAdjust.premium
-    const key = tier === 'standard' ? 'subscriptionPot' : 'subscriptionPot10'
-    const current = tier === 'standard' ? subscriptionPot : subscriptionPot10
+  const handleAdjustPot = async () => {
+    const amount = potAdjust.amount
+    const current = adminData?.subscriptionPot || 0
     try {
-      await updateAdminData({ [key]: current + amount })
-      addToMoneyHistory('adjustment', amount, `Manual pot adjustment (${tier})`)
-      await logAudit('ADJUST_POT', `Adjusted ${tier} pot by £${amount}`)
+      await updateAdminData({ subscriptionPot: current + amount })
+      addToMoneyHistory('adjustment', amount, `Manual pot adjustment`)
+      await logAudit('ADJUST_POT', `Adjusted league pot by £${amount}`)
       showToast('Pot adjusted', 'success')
-      setPotAdjust({ ...potAdjust, [tier]: 0 })
+      setPotAdjust({ amount: 0 })
     } catch (e) { showToast(e.message, 'error') }
   }
 
@@ -874,10 +869,10 @@ export default function Admin() {
               </div>
               <div className="stat-card glass" style={{ padding: '24px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <div className="stat-label" style={{ margin: 0 }}>Total Sub Pot</div>
+                  <div className="stat-label" style={{ margin: 0 }}>League Prize Pot</div>
                   <div style={{ fontSize: '1.5rem' }}>💰</div>
                 </div>
-                <div className="stat-value" style={{ fontSize: '2.5rem' }}>£{stats.totalPot.toFixed(0)}</div>
+                <div className="stat-value" style={{ fontSize: '2.5rem' }}>£{adminData?.subscriptionPot?.toFixed(2) || '0.00'}</div>
               </div>
             </div>
 
@@ -1155,22 +1150,13 @@ export default function Admin() {
                              <select
                                className="glass"
                                style={{ fontSize: '0.75rem', padding: '4px' }}
-                               value={approvalOverride.tier}
-                               onChange={e => setApprovalOverride({...approvalOverride, tier: e.target.value})}
-                             >
-                               <option value="standard">Standard (£5)</option>
-                               <option value="premium">Premium (£10)</option>
-                             </select>
-                             <select
-                               className="glass"
-                               style={{ fontSize: '0.75rem', padding: '4px' }}
                                value={approvalOverride.season}
                                onChange={e => setApprovalOverride({...approvalOverride, season: e.target.value})}
                              >
                                {getSeasons().map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                                {!getSeasons().find(s => s.name === 'Season 1') && <option value="Season 1">Season 1</option>}
                              </select>
-                             <button className="btn btn-primary btn-sm" onClick={() => handleApprovePayment(u)}>Confirm</button>
+                             <button className="btn btn-primary btn-sm" onClick={() => handleApprovePayment(u)}>Confirm Elite Pass</button>
                              <button className="btn btn-secondary btn-sm" onClick={() => setApprovingPaymentId(null)}>×</button>
                            </div>
                          ) : (
@@ -1180,7 +1166,7 @@ export default function Admin() {
                                onClick={() => {
                                  setApprovingPaymentId(u.id);
                                  setApprovalOverride({
-                                   tier: (u.requestedPlan === 'elite' || u.paymentMethod === 'paypal10') ? 'premium' : 'standard',
+                                   tier: 'elite',
                                    season: u.requestedSeason || adminData?.currentSeason || 'Season 1'
                                  });
                                }}
@@ -1231,8 +1217,8 @@ export default function Admin() {
                           <div>
                             <div style={{ fontWeight: 700, fontSize: '1rem' }}>{u.username}</div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                              <span style={{ color: u.subscriptionTier === 'premium' ? '#fbbf24' : 'var(--accent-cyan)', fontWeight: 700 }}>
-                                {u.subscriptionTier?.toUpperCase() || 'STANDARD'}
+                              <span style={{ color: '#fbbf24', fontWeight: 700 }}>
+                                ELITE PASS
                               </span>
                               {' • '} Approved {u.subscriptionDate ? new Date(u.subscriptionDate).toLocaleDateString() : 'Historical'}
                             </div>
@@ -1248,22 +1234,13 @@ export default function Admin() {
                               <select
                                 className="glass"
                                 style={{ fontSize: '0.75rem', padding: '4px' }}
-                                value={approvalOverride.tier}
-                                onChange={e => setApprovalOverride({...approvalOverride, tier: e.target.value})}
-                              >
-                                <option value="standard">Standard (£5)</option>
-                                <option value="premium">Premium (£10)</option>
-                              </select>
-                              <select
-                                className="glass"
-                                style={{ fontSize: '0.75rem', padding: '4px' }}
                                 value={approvalOverride.season}
                                 onChange={e => setApprovalOverride({...approvalOverride, season: e.target.value})}
                               >
                                 {getSeasons().map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                                 {!getSeasons().find(s => s.name === 'Season 1') && <option value="Season 1">Season 1</option>}
                               </select>
-                              <button className="btn btn-primary btn-sm" onClick={() => handleUpdateApprovedSubscription(u)}>Update</button>
+                              <button className="btn btn-primary btn-sm" onClick={() => handleUpdateApprovedSubscription(u)}>Update Seasons</button>
                               <button className="btn btn-secondary btn-sm" onClick={() => setApprovingPaymentId(null)}>×</button>
                             </div>
                           ) : (
@@ -1274,12 +1251,12 @@ export default function Admin() {
                                 onClick={() => {
                                   setApprovingPaymentId(u.id);
                                   setApprovalOverride({
-                                    tier: u.subscriptionTier || 'standard',
+                                    tier: 'elite',
                                     season: adminData?.currentSeason || 'Season 1'
                                   });
                                 }}
                               >
-                                Edit Sub
+                                Edit Seasons
                               </button>
                               {u.paymentProof && (
                                 <button className="btn btn-secondary btn-sm" style={{ padding: '6px 12px', fontSize: '0.75rem' }} onClick={() => window.open(u.paymentProof, '_blank')}>View Receipt</button>
@@ -1368,19 +1345,11 @@ export default function Admin() {
             <h3>League Financials</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginTop: '20px' }}>
                <div className="glass" style={{ padding: '20px', borderRadius: '12px' }}>
-                  <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Standard Pot (£5)</div>
-                  <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>£{subscriptionPot.toFixed(2)}</div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>League Prize Pot</div>
+                  <div style={{ fontSize: '2.5rem', fontWeight: 900, color: '#fbbf24' }}>£{subscriptionPot.toFixed(2)}</div>
                   <div style={{ marginTop: '15px', display: 'flex', gap: '8px' }}>
-                     <input type="number" className="glass" style={{ flex: 1, padding: '8px' }} placeholder="+/- Amount" onChange={e => setPotAdjust({...potAdjust, standard: parseFloat(e.target.value) || 0})} />
-                     <button className="btn btn-secondary btn-sm" onClick={() => handleAdjustPot('standard')}>Adjust</button>
-                  </div>
-               </div>
-               <div className="glass" style={{ padding: '20px', borderRadius: '12px' }}>
-                  <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Premium Pot (£10)</div>
-                  <div style={{ fontSize: '2.5rem', fontWeight: 900, color: '#fbbf24' }}>£{subscriptionPot10.toFixed(2)}</div>
-                  <div style={{ marginTop: '15px', display: 'flex', gap: '8px' }}>
-                     <input type="number" className="glass" style={{ flex: 1, padding: '8px' }} placeholder="+/- Amount" onChange={e => setPotAdjust({...potAdjust, premium: parseFloat(e.target.value) || 0})} />
-                     <button className="btn btn-secondary btn-sm" onClick={() => handleAdjustPot('premium')}>Adjust</button>
+                     <input type="number" className="glass" style={{ flex: 1, padding: '8px' }} placeholder="+/- Amount" onChange={e => setPotAdjust({...potAdjust, amount: parseFloat(e.target.value) || 0})} />
+                     <button className="btn btn-secondary btn-sm" onClick={handleAdjustPot}>Adjust Pot</button>
                   </div>
                </div>
             </div>
@@ -1516,17 +1485,13 @@ export default function Admin() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
                     <UserSearchSelect users={allPlayers} selectedId={grantSubForm.player} onSelect={id => setGrantSubForm({...grantSubForm, player: id})} label="Target Player" />
                     <div style={{ display: 'flex', gap: '10px' }}>
-                      <select className="glass" style={{ flex: 1, padding: '10px' }} value={grantSubForm.tier} onChange={e => setGrantSubForm({...grantSubForm, tier: e.target.value})}>
-                        <option value="standard">Standard (£5)</option>
-                        <option value="premium">Premium (£10)</option>
-                      </select>
                       <select className="glass" style={{ flex: 1, padding: '10px' }} value={grantSubForm.season} onChange={e => setGrantSubForm({...grantSubForm, season: e.target.value})}>
                         <option value="">Current Season</option>
                         {getSeasons().map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                         {!getSeasons().find(s => s.name === 'Season 1') && <option value="Season 1">Season 1</option>}
                       </select>
                     </div>
-                    <button className="btn btn-primary btn-block" onClick={handleGrantSubscription}>Activate Membership</button>
+                    <button className="btn btn-primary btn-block" onClick={handleGrantSubscription}>Activate Elite Pass</button>
                 </div>
               </div>
 
