@@ -24,18 +24,30 @@ export default function Leaderboards() {
     timePeriod: timeFilter
   }), [allUsers, results, fixtures, adminData, timeFilter, refreshKey])
 
-  let leaderboard = Object.values(playerStats)
-    .filter(p => p.played > 0)
-    .sort((a, b) => b.points - a.points || b.wins - a.wins || b.legDiff - a.legDiff)
+  const leaderboard = useMemo(() => {
+    let list = Object.values(playerStats)
+      .filter(p => p.played > 0)
+      .sort((a, b) => b.points - a.points || b.wins - a.wins || b.legDiff - a.legDiff)
 
-  if (selectedDivision !== 'all') {
-    leaderboard = leaderboard.filter(p => p.division === selectedDivision)
-  }
+    if (selectedDivision !== 'all') {
+      list = list.filter(p => p.division === selectedDivision)
+    }
+    return list
+  }, [playerStats, selectedDivision])
 
   const divisions = ['all', 'Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Development']
-  const top180s = leaderboard.reduce((max, player) => !max || player['180s'] > max['180s'] ? player : max, null)
-  const top170s = leaderboard.reduce((max, player) => !max || player['170s'] > max['170s'] ? player : max, null)
-  const topCheckout = leaderboard.reduce((max, player) => !max || player.highestCheckout > max.highestCheckout ? player : max, null)
+
+  const top180s = useMemo(() =>
+    leaderboard.length > 0 ? leaderboard.reduce((max, player) => (!max || player['180s'] > max['180s']) ? player : max, null) : null
+  , [leaderboard])
+
+  const top170s = useMemo(() =>
+    leaderboard.length > 0 ? leaderboard.reduce((max, player) => (!max || player['170s'] > max['170s']) ? player : max, null) : null
+  , [leaderboard])
+
+  const topCheckout = useMemo(() =>
+    leaderboard.length > 0 ? leaderboard.reduce((max, player) => (!max || player.highestCheckout > max.highestCheckout) ? player : max, null) : null
+  , [leaderboard])
 
   const honoursList = useMemo(() => {
     const list = []

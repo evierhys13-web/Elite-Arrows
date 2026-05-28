@@ -79,7 +79,7 @@ export default function Analytics() {
     const legsPerMatchValues = []
     const formGuide = []
 
-    const sortedResults = [...userResults].sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')))
+    const sortedResults = [...userResults].sort((a, b) => String(a.date || a.submittedAt || '').localeCompare(String(b.date || b.submittedAt || '')))
 
     sortedResults.forEach((r) => {
       const isP1 = String(r.player1Id) === String(user.id)
@@ -87,6 +87,7 @@ export default function Analytics() {
       const theirScore = isP1 ? Number(r.score2) : Number(r.score1)
       const myStats = isP1 ? r.player1Stats : r.player2Stats
       const oppName = isP1 ? r.player2 : r.player1
+      const matchDate = r.date || r.submittedAt || r.approvedAt
 
       stats.played++
       stats.legsWon += myScore
@@ -102,13 +103,13 @@ export default function Analytics() {
       legsPerMatchValues.push(myScore)
 
       if (myStats?.doubleSuccess !== undefined) {
-        checkoutTrend.push({ date: r.date, doubleSuccess: parseFloat(myStats.doubleSuccess) })
+        checkoutTrend.push({ date: matchDate, doubleSuccess: parseFloat(myStats.doubleSuccess) })
       }
 
       const result = myScore > theirScore ? 'W' : myScore < theirScore ? 'L' : 'D'
-      formGuide.push({ date: r.date, result, opponent: oppName, score: `${myScore}-${theirScore}` })
+      formGuide.push({ date: matchDate, result, opponent: oppName, score: `${myScore}-${theirScore}` })
 
-      const month = String(r.date || '').substring(0, 7)
+      const month = String(matchDate || '').substring(0, 7)
       if (month && month.length === 7) {
         if (!monthlyData[month]) monthlyData[month] = { month, wins: 0, losses: 0, draws: 0, legsWon: 0, legsLost: 0, _180s: 0 }
         monthlyData[month].legsWon += myScore
