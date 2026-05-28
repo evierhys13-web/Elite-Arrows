@@ -370,6 +370,24 @@ export default function Guide() {
                 </ul>
               </div>
 
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>Scheduling & Forfeits</h4>
+                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
+                  <li>League matches must be arranged and played within the fixture window.</li>
+                  <li>If a match is not played, no points are awarded unless one player provides evidence of attempting to arrange the match. In that case, the active player is awarded the win and the inactive player receives a loss.</li>
+                  <li>If a player does not complete a minimum number of league fixtures (depends on division size), all of their results are voided.</li>
+                </ul>
+              </div>
+
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>Interrupted Matches</h4>
+                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
+                  <li>If a match is interrupted due to technical issues or circumstances beyond the players’ control, the match will resume from the last confirmed score.</li>
+                  <li>If the interruption is caused by one player refusing to continue or leaving intentionally, the opponent will be awarded a default win.</li>
+                  <li>If the score cannot be verified by either player, the match must be replayed in full from 0–0.</li>
+                </ul>
+              </div>
+
               <div style={{ marginTop: '20px', padding: '15px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', borderLeft: '4px solid #ef4444' }}>
                 <h4 style={{ color: '#ef4444' }}>⚠️ Important</h4>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
