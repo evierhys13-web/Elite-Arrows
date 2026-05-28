@@ -55,7 +55,7 @@ export default function Admin() {
   })
   const [tokenForm, setTokenForm] = useState({ player: '', amount: 0, action: 'add' })
   const [seasonForm, setSeasonForm] = useState({ name: '', startDate: new Date().toISOString().split('T')[0], endDate: '' })
-  const [grantSubForm, setGrantSubForm] = useState({ player: '', tier: 'standard' })
+  const [grantSubForm, setGrantSubForm] = useState({ player: '', tier: 'standard', season: '' })
   const [divisionForm, setDivisionForm] = useState({ player: '', division: '' })
   const [potAdjust, setPotAdjust] = useState({ standard: 0, premium: 0 })
   const [trophyForm, setTrophyForm] = useState({ player: '', name: '', icon: '🏆', season: '' })
@@ -334,14 +334,22 @@ export default function Admin() {
     if (!grantSubForm.player) return showToast('Select a player', 'error')
     try {
       const target = allPlayers.find(p => p.id === grantSubForm.player)
+      const selectedSeason = grantSubForm.season || adminData?.currentSeason || 'Season 1'
+
+      const currentSeasons = Array.isArray(target.subscribedSeasons) ? target.subscribedSeasons : []
+      const nextSeasons = Array.from(new Set([...currentSeasons, selectedSeason]))
+
       await setDoc(doc(db, 'users', target.id), {
         isSubscribed: true,
         subscriptionDate: new Date().toISOString(),
-        subscriptionTier: grantSubForm.tier
+        subscriptionTier: grantSubForm.tier,
+        subscribedSeasons: nextSeasons
       }, { merge: true })
-      await logAudit('GRANT_SUBSCRIPTION', `Manually granted ${grantSubForm.tier} sub to ${target.username}`)
+
+      await logAudit('GRANT_SUBSCRIPTION', `Manually granted ${grantSubForm.tier} sub to ${target.username} for ${selectedSeason}`)
       triggerDataRefresh('users')
-      showToast(`Granted ${grantSubForm.tier} subscription to ${target.username}`, 'success')
+      showToast(`Granted ${grantSubForm.tier} subscription to ${target.username} for ${selectedSeason}`, 'success')
+      setGrantSubForm({ ...grantSubForm, player: '' })
     } catch (e) { showToast(e.message, 'error') }
   }
 
@@ -1512,8 +1520,13 @@ export default function Admin() {
                         <option value="standard">Standard (£5)</option>
                         <option value="premium">Premium (£10)</option>
                       </select>
-                      <button className="btn btn-primary" onClick={handleGrantSubscription}>Activate</button>
+                      <select className="glass" style={{ flex: 1, padding: '10px' }} value={grantSubForm.season} onChange={e => setGrantSubForm({...grantSubForm, season: e.target.value})}>
+                        <option value="">Current Season</option>
+                        {getSeasons().map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                        {!getSeasons().find(s => s.name === 'Season 1') && <option value="Season 1">Season 1</option>}
+                      </select>
                     </div>
+                    <button className="btn btn-primary btn-block" onClick={handleGrantSubscription}>Activate Membership</button>
                 </div>
               </div>
 
