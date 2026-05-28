@@ -19,6 +19,7 @@ export default function SeasonManagement() {
   const [startTime, setStartTime] = useState('00:00')
   const [selectedPlayer, setSelectedPlayer] = useState('')
   const [newDivision, setNewDivision] = useState('')
+  const [seedingSeasonId, setSeedingSeasonId] = useState('current')
   const [selectedSuperPlayer, setSelectedSuperPlayer] = useState('')
   const [newSuperDivision, setNewSuperDivision] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
@@ -282,14 +283,33 @@ export default function SeasonManagement() {
     
     setIsProcessing(true)
     try {
-      await setDoc(doc(db, 'users', selectedPlayer), { division: newDivision }, { merge: true })
-      const p = allPlayers.find(u => u.id === selectedPlayer)
-      showToast(`${p?.username} moved to ${newDivision}`, 'success')
+      if (seedingSeasonId === 'current') {
+        // Update live division on user profile
+        await setDoc(doc(db, 'users', selectedPlayer), { division: newDivision }, { merge: true })
+        const p = allPlayers.find(u => u.id === selectedPlayer)
+        showToast(`${p?.username} moved to ${newDivision} in LIVE season`, 'success')
+      } else {
+        // Update staged division in the selected season document
+        const targetSeason = seasons.find(s => s.id === seedingSeasonId)
+        if (!targetSeason) throw new Error('Target season not found')
+
+        const stagedDivisions = { ...(targetSeason.stagedDivisions || {}) }
+        if (newDivision === 'Unassigned') {
+          delete stagedDivisions[selectedPlayer]
+        } else {
+          stagedDivisions[selectedPlayer] = newDivision
+        }
+
+        await setDoc(doc(db, 'seasons', seedingSeasonId), { stagedDivisions }, { merge: true })
+        const p = allPlayers.find(u => u.id === selectedPlayer)
+        showToast(`${p?.username} assigned to ${newDivision} for ${targetSeason.name}`, 'success')
+      }
+
       setSelectedPlayer('')
       setNewDivision('')
-      triggerDataRefresh('users')
+      triggerDataRefresh('all')
     } catch (e) {
-      showToast('Error moving player', 'error')
+      showToast('Error: ' + e.message, 'error')
     } finally {
       setIsProcessing(false)
     }
@@ -436,14 +456,24 @@ export default function SeasonManagement() {
           <h3 className="card-title">Standard Seeding</h3>
           <p style={{ color: 'var(--text-muted)', marginBottom: '20px', fontSize: '0.85rem' }}>Move players in the regular league.</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <label style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontWeight: 800 }}>Target Season</label>
+            <select value={seedingSeasonId} onChange={e => setSeedingSeasonId(e.target.value)} className="glass">
+              <option value="current">Current Live Season ({currentSeason})</option>
+              {seasons.filter(s => s.name !== currentSeason).map(s => (
+                <option key={s.id} value={s.id}>{s.name} {s.isArchived ? '(Archived)' : '(Upcoming)'}</option>
+              ))}
+            </select>
+
             <UserSearchSelect users={allPlayers} selectedId={selectedPlayer} onSelect={setSelectedPlayer} label="Player" />
+
             <select value={newDivision} onChange={e => setNewDivision(e.target.value)} className="glass">
               <option value="">Select Division...</option>
               {DIVISIONS.map(div => <option key={div} value={div}>{div}</option>)}
-              <option value="Unassigned">Unassigned</option>
+              <option value="Unassigned">Unassigned / Remove</option>
             </select>
+
             <button className="btn btn-primary" onClick={movePlayerDivision} disabled={isProcessing || !selectedPlayer || !newDivision}>
-              Update Division
+              {seedingSeasonId === 'current' ? 'Update Live Division' : 'Update Draft Seeding'}
             </button>
           </div>
         </div>
