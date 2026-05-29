@@ -109,12 +109,18 @@ export default function SeasonManagement() {
 
       const batch = writeBatch(db)
       allPlayers.forEach(u => {
+        const updates = {}
         // For Season 1, we assume everyone who has any record of subscription should be active (Legacy support)
         const isSubscribedForSeason = (u.subscribedSeasons || []).includes(seasonName)
         const shouldBeSubscribed = isSubscribedForSeason || (seasonName === 'Season 1' && (u.isSubscribed || (u.subscribedSeasons && u.subscribedSeasons.length > 0)))
 
-        if (u.isSubscribed !== shouldBeSubscribed) {
-          batch.update(doc(db, 'users', u.id), { isSubscribed: shouldBeSubscribed })
+        if (u.isSubscribed !== shouldBeSubscribed) updates.isSubscribed = shouldBeSubscribed
+
+        // Clear manual stats for a fresh season start
+        if (u.manualStats) updates.manualStats = null
+
+        if (Object.keys(updates).length > 0) {
+          batch.update(doc(db, 'users', u.id), updates)
         }
       })
       await batch.commit()

@@ -645,6 +645,9 @@ export function AuthProvider({ children }) {
             // Apply Staged Divisions
             if (stagedDivisions[u.id]) updates.division = stagedDivisions[u.id]
 
+            // Clear manual stats for the fresh season start
+            if (u.manualStats) updates.manualStats = null
+
             if (Object.keys(updates).length > 0) {
               batch.update(doc(db, 'users', u.id), updates)
             }
