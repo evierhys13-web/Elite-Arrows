@@ -25,7 +25,7 @@ export default function Table() {
   const [selectedSeason, setSelectedSeason] = useState(adminData?.currentSeason || 'Season 1')
   const [hasInitializedSeason, setHasInitializedSeason] = useState(false)
   const [editingManual, setEditingManual] = useState(null)
-  const [manualForm, setManualForm] = useState({ played: 0, wins: 0, draws: 0, losses: 0, points: 0, legsWon: 0, legsLost: 0 })
+  const [manualForm, setManualForm] = useState({ played: 0, wins: 0, draws: 0, losses: 0, points: 0, legsWon: 0, legsLost: 0, division: '' })
 
   const isAdmin = user?.isAdmin === true
 
@@ -111,30 +111,54 @@ export default function Table() {
       losses: ms.losses ?? player.stats.losses,
       points: ms.points ?? player.stats.points,
       legsWon: ms.legsWon ?? player.stats.legsWon,
-      legsLost: ms.legsLost ?? player.stats.legsLost
+      legsLost: ms.legsLost ?? player.stats.legsLost,
+      division: player.division || 'Unassigned'
     })
     setEditingManual(player)
   }
 
-  const saveManualStats = async () => {
+  const saveAdminAdjustments = async () => {
     if (!editingManual) return
     const targetId = editingManual.id
+
+    // 1. Handle Division Change
+    const newDiv = manualForm.division
+    if (newDiv !== editingManual.division) {
+      if (selectedSeason === (adminData?.currentSeason || 'Season 1')) {
+        // Update live division
+        await setDoc(doc(db, 'users', targetId), { division: newDiv }, { merge: true })
+      } else {
+        // Update staged division for selected season
+        const seasonDoc = seasons.find(s => s.name === selectedSeason)
+        if (seasonDoc) {
+          const stagedDivisions = { ...(seasonDoc.stagedDivisions || {}) }
+          if (newDiv === 'Unassigned') {
+            delete stagedDivisions[targetId]
+          } else {
+            stagedDivisions[targetId] = newDiv
+          }
+          await setDoc(doc(db, 'seasons', seasonDoc.id), { stagedDivisions }, { merge: true })
+        }
+      }
+    }
+
+    // 2. Handle Manual Stats
     const defaultStats = { played: 0, wins: 0, draws: 0, losses: 0, points: 0, legsWon: 0, legsLost: 0 }
     const hasChanges = Object.keys(defaultStats).some(k => {
       const v = Number(manualForm[k]) || 0
       const existing = (editingManual.manualStats || {})[k]
       return v !== (existing ?? editingManual.stats[k])
     })
+
     if (!hasChanges) {
-      // Remove manualStats if all values match computed stats
       await setDoc(doc(db, 'users', targetId), { manualStats: null }, { merge: true })
-      showToast('Manual stats cleared — using computed stats', 'success')
     } else {
       const payload = {}
       Object.keys(defaultStats).forEach(k => { payload[k] = Number(manualForm[k]) || 0 })
       await setDoc(doc(db, 'users', targetId), { manualStats: payload }, { merge: true })
-      showToast('Manual stats saved!', 'success')
     }
+
+    showToast('Adjustments saved successfully', 'success')
     setEditingManual(null)
     triggerDataRefresh('all')
     setRefreshKey(prev => prev + 1)
@@ -219,7 +243,7 @@ export default function Table() {
                 playersInDivision.map((player, index) => {
                   const legDiff = player.stats.legsWon - player.stats.legsLost
                   const isPromotion = index < 2 && activeDivision !== 'Overall'
-                  const isRelegation = index >= playersInDivision.length - 2 && playersInDivision.length > 4 && activeDivision !== 'Overall'
+                  const isRelegation = index >= playersInDivision.length - 2 && playersInDivision.length > 4 && activeDivision !== 'Overall' && activeDivision !== 'Development'
                   const isMe = player.id === user?.id
 
                   return (
@@ -288,12 +312,29 @@ export default function Table() {
         </div>
       </div>
 
-      {/* Manual stats editor (admin only) */}
+      {/* Admin Adjustment Modal (stats & division) */}
       {isAdmin && editingManual && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setEditingManual(null)}>
-          <div className="card glass" style={{ padding: '28px', maxWidth: '400px', width: '90%', border: '1px solid var(--accent-cyan)' }} onClick={e => e.stopPropagation()}>
-            <h3 style={{ marginBottom: '4px' }}>Manual Stats: {editingManual.username}</h3>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '20px' }}>Leave values as-is to use computed stats. Click "Clear Override" to remove manual stats.</p>
+          <div className="card glass" style={{ padding: '28px', maxWidth: '420px', width: '90%', border: '1px solid var(--accent-cyan)' }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ marginBottom: '4px' }}>Admin Adjustments: {editingManual.username}</h3>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '20px' }}>
+              Updating division for: <strong style={{ color: 'var(--accent-cyan)' }}>{selectedSeason}</strong>
+            </p>
+
+            <div className="form-group" style={{ marginBottom: '20px' }}>
+              <label>Division</label>
+              <select
+                className="glass"
+                value={manualForm.division}
+                onChange={e => setManualForm({...manualForm, division: e.target.value})}
+                style={{ width: '100%', padding: '10px' }}
+              >
+                {divisions.map(d => (
+                  <option key={d} value={d === 'Overall' ? 'Unassigned' : d}>{d === 'Overall' ? 'Unassigned' : d}</option>
+                ))}
+              </select>
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               {['played', 'wins', 'draws', 'losses', 'points', 'legsWon', 'legsLost'].map(field => (
                 <div key={field} className="form-group" style={{ marginBottom: 0 }}>
@@ -302,8 +343,9 @@ export default function Table() {
                 </div>
               ))}
             </div>
-            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={saveManualStats}>Save Override</button>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={saveAdminAdjustments}>Save All Changes</button>
               <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setEditingManual(null)}>Cancel</button>
             </div>
           </div>
