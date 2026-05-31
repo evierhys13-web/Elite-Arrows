@@ -1351,7 +1351,8 @@ const cleanUserData = (users) => {
                       player2Id: nextMatch.player2,
                       matchId: nextMatch.id,
                       round: nextMatch.round,
-                      status: 'pending',
+                      status: 'accepted',
+                      proposalStatus: 'accepted',
                       createdAt: new Date().toISOString()
                     })
                   }

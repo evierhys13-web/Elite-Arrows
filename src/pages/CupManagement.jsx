@@ -146,7 +146,8 @@ function CupManagement() {
                         firstTo: Math.ceil(fmt.bestOf / 2),
                         player1: m.player1, player1Id: m.player1,
                         player2: m.player2, player2Id: m.player2,
-                        matchId: m.id, round: m.round, status: 'pending',
+                        matchId: m.id, round: m.round, status: 'accepted',
+                        proposalStatus: 'accepted',
                         createdAt: new Date().toISOString()
                       })
                     }

@@ -70,7 +70,9 @@ export default function SubmitResult() {
   }
 
   const cupFixtures = allFixtures.filter((fixture) => {
-    if (!fixture.cupId || fixture.status !== 'accepted') return false
+    if (!fixture.cupId) return false
+    const status = String(fixture.status).toLowerCase()
+    if (['approved', 'result_submitted', 'completed'].includes(status)) return false
     const { player1Id, player2Id } = getFixturePlayerIds(fixture)
     return String(player1Id) === String(user.id) || String(player2Id) === String(user.id)
   })
