@@ -157,6 +157,25 @@ export default function Home() {
     return acc
   }, { played: 0, wins: 0, losses: 0, draws: 0, points: 0 })
 
+  const champions = useMemo(() => {
+    const list = []
+    allUsers.forEach(u => {
+      if (u.trophies && Array.isArray(u.trophies)) {
+        u.trophies.forEach(t => {
+          if (t.name?.toLowerCase().includes('champion') || t.name?.toLowerCase().includes('winner')) {
+            list.push({
+              ...t,
+              username: u.username,
+              userId: u.id,
+              profilePicture: u.profilePicture
+            })
+          }
+        })
+      }
+    })
+    return list.sort((a, b) => new Date(b.awardedAt || 0) - new Date(a.awardedAt || 0)).slice(0, 4)
+  }, [allUsers])
+
   return (
     <>
     <div className="page">
@@ -284,6 +303,26 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {champions.length > 0 && (
+        <div className="card animate-fade-in-up stagger-item" style={{ marginBottom: '20px', background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(245, 158, 11, 0.1))', border: '1px solid #fbbf24' }}>
+          <h2 className="card-title" style={{ color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span>🏆</span> Hall of Fame
+          </h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginTop: '10px' }}>
+            {champions.map((champ, i) => (
+              <Link key={i} to={`/profile/${champ.userId}`} style={{ textDecoration: 'none' }}>
+                <div className="glass" style={{ padding: '12px', textAlign: 'center', borderRadius: '12px', border: '1px solid rgba(251, 191, 36, 0.2)' }}>
+                  <div style={{ fontSize: '1.5rem', marginBottom: '8px' }}>{champ.icon || '🏆'}</div>
+                  <div style={{ fontWeight: 800, fontSize: '0.85rem', color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{champ.username}</div>
+                  <div style={{ fontSize: '0.7rem', color: '#fbbf24', fontWeight: 700 }}>{champ.name}</div>
+                  <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>{champ.season}</div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="card" style={{ marginBottom: '20px', background: 'var(--bg-secondary)' }}>
         <h3 className="card-title" style={{ color: 'var(--accent-cyan)' }}>League Game Rules</h3>
