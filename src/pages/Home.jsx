@@ -173,7 +173,7 @@ export default function Home() {
         })
       }
     })
-    return list.sort((a, b) => new Date(b.awardedAt || 0) - new Date(a.awardedAt || 0)).slice(0, 4)
+    return list.sort((a, b) => new Date(b.awardedAt || 0) - new Date(a.awardedAt || 0)).slice(0, 12)
   }, [allUsers])
 
   return (
@@ -309,14 +309,28 @@ export default function Home() {
           <h2 className="card-title" style={{ color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span>🏆</span> Hall of Fame
           </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginTop: '10px' }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))',
+            gap: '10px',
+            marginTop: '10px'
+          }}>
             {champions.map((champ, i) => (
               <Link key={i} to={`/profile/${champ.userId}`} style={{ textDecoration: 'none' }}>
-                <div className="glass" style={{ padding: '12px', textAlign: 'center', borderRadius: '12px', border: '1px solid rgba(251, 191, 36, 0.2)' }}>
-                  <div style={{ fontSize: '1.5rem', marginBottom: '8px' }}>{champ.icon || '🏆'}</div>
-                  <div style={{ fontWeight: 800, fontSize: '0.85rem', color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{champ.username}</div>
-                  <div style={{ fontSize: '0.7rem', color: '#fbbf24', fontWeight: 700 }}>{champ.name}</div>
-                  <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>{champ.season}</div>
+                <div className="glass" style={{
+                  padding: '12px 8px',
+                  textAlign: 'center',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(251, 191, 36, 0.2)',
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center'
+                }}>
+                  <div style={{ fontSize: '1.4rem', marginBottom: '4px' }}>{champ.icon || '🏆'}</div>
+                  <div style={{ fontWeight: 800, fontSize: '0.8rem', color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{champ.username}</div>
+                  <div style={{ fontSize: '0.65rem', color: '#fbbf24', fontWeight: 700, lineHeight: 1.2, margin: '2px 0' }}>{champ.name}</div>
+                  <div style={{ fontSize: '0.55rem', color: 'var(--text-muted)' }}>{champ.season}</div>
                 </div>
               </Link>
             ))}
