@@ -642,8 +642,9 @@ export function AuthProvider({ children }) {
             const shouldBeSubscribed = isSubscribedForNext || (nextSeason.name === 'Season 1' && (u.isSubscribed || u.subscribedSeasons?.length > 0))
             if (u.isSubscribed !== shouldBeSubscribed) updates.isSubscribed = shouldBeSubscribed
 
-            // Apply Staged Divisions
-            if (stagedDivisions[u.id]) updates.division = stagedDivisions[u.id]
+            // Apply Staged Divisions - If not in staged list, they start as Unassigned for the new season
+            const nextDiv = stagedDivisions[u.id] || 'Unassigned'
+            if (u.division !== nextDiv) updates.division = nextDiv
 
             // Clear manual stats for the fresh season start
             if (u.manualStats) updates.manualStats = null

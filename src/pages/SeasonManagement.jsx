@@ -102,7 +102,15 @@ export default function SeasonManagement() {
   }
 
   const setActiveSeason = async (seasonName) => {
-    if (!confirm(`Set "${seasonName}" as the active season? All new results will be linked to this. This will also sync player subscriptions for this season.`)) return
+    const seasonDoc = seasons.find(s => s.name === seasonName)
+    const stagedDivisions = seasonDoc?.stagedDivisions || {}
+
+    if (!confirm(`Set "${seasonName}" as the active season? This will:
+1. Link all new results to this season.
+2. Sync player subscriptions.
+3. Apply drafted divisions for this season (everyone else will be Unassigned).
+4. Clear all manual stat overrides.`)) return
+
     setIsProcessing(true)
     try {
       await updateAdminData({ currentSeason: seasonName })
@@ -116,6 +124,10 @@ export default function SeasonManagement() {
 
         if (u.isSubscribed !== shouldBeSubscribed) updates.isSubscribed = shouldBeSubscribed
 
+        // Apply Staged Divisions - If not in staged list, they start as Unassigned for the new season
+        const nextDiv = stagedDivisions[u.id] || 'Unassigned'
+        if (u.division !== nextDiv) updates.division = nextDiv
+
         // Clear manual stats for a fresh season start
         if (u.manualStats) updates.manualStats = null
 
@@ -125,8 +137,8 @@ export default function SeasonManagement() {
       })
       await batch.commit()
 
-      showToast(`Active season updated to ${seasonName} and subscriptions synced.`, 'success')
-      triggerDataRefresh('users')
+      showToast(`Season ${seasonName} is now LIVE. Table wiped and seeding applied.`, 'success')
+      triggerDataRefresh('all')
     } catch (e) {
       showToast('Error updating active season: ' + e.message, 'error')
     } finally {
@@ -357,6 +369,25 @@ export default function SeasonManagement() {
     }
   }
 
+  const clearStagedSeeding = async () => {
+    if (seedingSeasonId === 'current') return showToast('Cannot wipe live seeding here. Use "Reset All Divisions" instead.', 'warning')
+    const targetSeason = seasons.find(s => s.id === seedingSeasonId)
+    if (!targetSeason) return
+
+    if (!confirm(`Wipe ALL drafted seeding for "${targetSeason.name}"? This cannot be undone.`)) return
+
+    setIsProcessing(true)
+    try {
+      await setDoc(doc(db, 'seasons', seedingSeasonId), { stagedDivisions: {} }, { merge: true })
+      showToast(`Draft seeding for ${targetSeason.name} wiped.`, 'success')
+      triggerDataRefresh('seasons')
+    } catch (e) {
+      showToast('Error wiping seeding', 'error')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
   if (!user.isAdmin) {
     return (
       <div className="page glass">
@@ -481,6 +512,11 @@ export default function SeasonManagement() {
             <button className="btn btn-primary" onClick={movePlayerDivision} disabled={isProcessing || !selectedPlayer || !newDivision}>
               {seedingSeasonId === 'current' ? 'Update Live Division' : 'Update Draft Seeding'}
             </button>
+            {seedingSeasonId !== 'current' && (
+              <button className="btn btn-danger btn-sm" onClick={clearStagedSeeding} disabled={isProcessing} style={{ marginTop: '8px' }}>
+                Wipe Season Draft Seeding
+              </button>
+            )}
           </div>
         </div>
 
