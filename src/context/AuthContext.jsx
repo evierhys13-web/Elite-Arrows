@@ -1415,12 +1415,16 @@ const cleanUserData = (users) => {
     // Admins see all seasons (including upcoming ones)
     if (user?.isAdmin || user?.isTournamentAdmin) return allSeasons
 
-    // Regular users only see seasons that have already started
+    // Regular users only see seasons that have already started OR upcoming ones that are marked active/upcoming
     const now = new Date()
     return allSeasons.filter(s => {
       if (s.isArchived) return true // Keep archived seasons visible in history
       if (!s.startDate) return true // Legacy seasons without start date
-      return new Date(s.startDate) <= now
+
+      const isUpcoming = s.status === 'upcoming' || (s.startDate && new Date(s.startDate) > now)
+      const isStarted = new Date(s.startDate) <= now
+
+      return isStarted || isUpcoming
     })
   }, [seasons, user?.isAdmin, user?.isTournamentAdmin])
 

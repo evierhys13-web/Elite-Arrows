@@ -430,7 +430,6 @@ function CupManagement() {
       {cups.map(cup => {
         const totalRounds = Math.max(...(cup.matches?.map(m => m.round) || [1]))
         const isExpanded = expandedCups[cup.id]
-        // Sort matches by round then matchNum
         const sortedMatches = [...(cup.matches || [])].sort((a, b) => {
           if (a.round !== b.round) return a.round - b.round
           return (a.matchNum || 0) - (b.matchNum || 0)
@@ -488,15 +487,16 @@ function CupManagement() {
                 <button
                   className="btn btn-secondary btn-sm"
                   style={{ color: 'var(--error)', borderColor: 'rgba(239, 68, 68, 0.2)', padding: '6px 12px' }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if(window.confirm('Delete this cup?')) {
-                    deleteDoc(doc(db, 'cups', String(cup.id))).then(() => triggerDataRefresh('cups'));
-                  }
-                }}
-              >
-                Delete Cup
-              </button>
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (window.confirm('Delete this cup?')) {
+                      deleteDoc(doc(db, 'cups', String(cup.id))).then(() => triggerDataRefresh('cups'))
+                    }
+                  }}
+                >
+                  Delete Cup
+                </button>
+              </div>
             </div>
 
             {isExpanded && (
