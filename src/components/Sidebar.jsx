@@ -51,19 +51,19 @@ export default function Sidebar() {
       items: [
         { path: '/home', label: 'Home', icon: HomeIcon },
         { path: '/table', label: 'Standings', icon: TableIcon },
+        { path: '/match-log', label: 'Schedule', icon: CalendarIcon },
         { path: '/notifications', label: 'Notifications', icon: BellIcon },
         { path: '/players', label: 'Players', icon: UsersIcon },
         { path: '/challenges', label: 'Challenges', icon: StarIcon },
         { path: '/giveaways', label: 'Giveaways', icon: GiftIcon },
         { path: '/results', label: 'Results', icon: TrophyIcon },
-        { path: '/match-log', label: 'Match Log', icon: HistoryIcon },
       ]
     },
     ...(isSubscribed ? [{
       title: 'Compete',
       items: [
         { path: '/submit-result', label: 'Submit Score', icon: PlusCircleIcon },
-        { path: '/fixtures', label: 'Fixtures', icon: CalendarIcon },
+        { path: '/fixtures', label: 'Arrangements', icon: HistoryIcon },
         { path: '/calendar', label: 'Calendar', icon: CalendarIcon },
         { path: '/cups', label: 'Cups', icon: TrophyIcon },
         { path: '/tournaments', label: 'Tournaments', icon: TournamentIcon },

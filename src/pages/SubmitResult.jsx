@@ -39,6 +39,8 @@ export default function SubmitResult() {
       ? availablePlayers.filter(u => u.superLeagueDivision && u.superLeagueDivision === user.superLeagueDivision)
       : availablePlayers
   const fixtureIdParam = searchParams.get('fixtureId')
+  const opponentParam = searchParams.get('opponent')
+  const gameTypeParam = searchParams.get('gameType')
   const allFixtures = getFixtures()
   const allResults = getResults()
 
@@ -85,19 +87,27 @@ export default function SubmitResult() {
     : null
 
   useEffect(() => {
-    if (!selectedFixture) return
-
-    const opponentId = getFixtureOpponentId(selectedFixture)
-    if (!opponentId) return
-
-    setFormData((prev) => ({
-      ...prev,
-      gameType: selectedFixture.cupId ? 'Cup' : (selectedFixture.gameType || 'Friendly'),
-      opponent: opponentId,
-      bestOf: selectedFixture.bestOf ? selectedFixture.bestOf.toString() : prev.bestOf,
-      firstTo: selectedFixture.firstTo ? selectedFixture.firstTo.toString() : prev.firstTo
-    }))
-  }, [selectedFixture, user.id])
+    if (selectedFixture) {
+      const opponentId = getFixtureOpponentId(selectedFixture)
+      if (opponentId) {
+        setFormData((prev) => ({
+          ...prev,
+          gameType: selectedFixture.cupId ? 'Cup' : (selectedFixture.gameType || 'Friendly'),
+          opponent: opponentId,
+          bestOf: selectedFixture.bestOf ? selectedFixture.bestOf.toString() : prev.bestOf,
+          firstTo: selectedFixture.firstTo ? selectedFixture.firstTo.toString() : prev.firstTo
+        }))
+      }
+    } else if (opponentParam || gameTypeParam) {
+      setFormData(prev => ({
+        ...prev,
+        opponent: opponentParam || prev.opponent,
+        gameType: gameTypeParam || prev.gameType,
+        bestOf: gameTypeParam === 'League' ? '8' : prev.bestOf,
+        firstTo: gameTypeParam === 'League' ? '5' : prev.firstTo
+      }))
+    }
+  }, [selectedFixture, opponentParam, gameTypeParam, user.id])
 
   const checkExistingLeagueMatch = (opponentId) => {
     const approvedResults = allResults.filter(r => String(r.status).toLowerCase() === 'approved')

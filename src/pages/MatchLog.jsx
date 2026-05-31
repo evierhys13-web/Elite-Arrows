@@ -1,19 +1,23 @@
 import { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getResultPlayerId, isLeagueResult, isPlayoffResult } from '../utils/leagueResults'
 import UserSearchSelect from '../components/UserSearchSelect'
 
 export default function MatchLog() {
-  const { user, getAllUsers, getFixtures, getResults } = useAuth()
-  const [activeTab, setActiveTab] = useState('played')
-  const [targetPlayerId, setTargetPlayerId] = useState(user.id)
+  const { user, getAllUsers, getFixtures, getResults, adminData } = useAuth()
+  const navigate = useNavigate()
+  const [activeTab, setActiveTab] = useState('toPlay')
+  const [targetPlayerId, setTargetPlayerId] = useState(user?.id)
 
   const allResults = getResults()
   const allUsers = getAllUsers()
   const fixtures = getFixtures()
   const fixturesById = Object.fromEntries(fixtures.map(fixture => [String(fixture.id), fixture]))
   
+  const currentSeasonName = adminData?.currentSeason || 'Season 1'
   const targetUser = allUsers.find(u => String(u.id) === String(targetPlayerId)) || user || {}
+  const isMe = String(targetUser.id) === String(user?.id)
 
   const leagueResults = useMemo(() => {
     if (!targetUser.id) return []
@@ -109,12 +113,12 @@ export default function MatchLog() {
   return (
     <div className="page animate-fade-in">
       <div className="page-header" style={{ marginBottom: '24px' }}>
-        <h1 className="page-title text-gradient">Match Log</h1>
-        <p style={{ color: 'var(--text-muted)' }}>Historical league performance and remaining fixtures</p>
+        <h1 className="page-title text-gradient">Season Schedule</h1>
+        <p style={{ color: 'var(--text-muted)' }}>Track your progress and remaining fixtures for {currentSeasonName}</p>
       </div>
 
       <div className="card glass" style={{ marginBottom: '24px', padding: '16px' }}>
-        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '8px', display: 'block' }}>Viewing matches for:</label>
+        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '8px', display: 'block' }}>Viewing schedule for:</label>
         <UserSearchSelect
           users={allUsers}
           selectedId={targetPlayerId}
@@ -183,29 +187,57 @@ export default function MatchLog() {
               <p style={{ color: 'var(--success)', fontWeight: 700 }}>Season schedule complete!</p>
             </div>
           ) : (
-            opponentsToPlay.map(player => (
-              <div key={player.id} style={{
-                padding: '16px',
-                borderBottom: '1px solid rgba(255,255,255,0.05)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <div>
-                  <span style={{ fontWeight: '700' }}>{player.username}</span>
-                  <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{player.division} Division</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {opponentsToPlay.map(player => (
+                <div key={player.id} className="glass" style={{
+                  padding: '16px',
+                  borderRadius: '12px',
+                  background: 'rgba(255,255,255,0.02)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  border: '1px solid rgba(255,255,255,0.05)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div className="avatar-ring" style={{ width: '40px', height: '40px', padding: '2px' }}>
+                      <div className="avatar-inner" style={{ background: '#050816', fontSize: '0.9rem' }}>
+                        {player.profilePicture ? (
+                          <img src={player.profilePicture} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <span>{player.username.charAt(0).toUpperCase()}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: '700', fontSize: '0.95rem' }}>{player.username}</div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{player.division} Division</div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    {isMe && (
+                      <button
+                        className="btn btn-primary btn-sm"
+                        style={{ padding: '6px 12px', fontSize: '0.75rem' }}
+                        onClick={() => navigate(`/submit-result?opponent=${player.id}&gameType=${player._playoff ? 'Playoff' : 'League'}`)}
+                      >
+                        Submit Score
+                      </button>
+                    )}
+                    <span style={{
+                      color: player._playoff ? 'var(--warning)' : 'var(--accent-cyan)',
+                      fontSize: '0.65rem',
+                      fontWeight: 800,
+                      textTransform: 'uppercase',
+                      background: player._playoff ? 'rgba(245, 158, 11, 0.1)' : 'rgba(0, 212, 255, 0.05)',
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      border: `1px solid ${player._playoff ? 'rgba(245, 158, 11, 0.2)' : 'rgba(0, 212, 255, 0.2)'}`
+                    }}>{player._playoff ? 'Playoff' : 'League'}</span>
+                  </div>
                 </div>
-                <span style={{
-                  color: player._playoff ? 'var(--warning)' : 'var(--accent-cyan)',
-                  fontSize: '0.7rem',
-                  fontWeight: 800,
-                  textTransform: 'uppercase',
-                  background: player._playoff ? 'rgba(245, 158, 11, 0.15)' : 'rgba(0, 212, 255, 0.1)',
-                  padding: '4px 10px',
-                  borderRadius: '20px'
-                }}>{player._playoff ? 'Playoff' : 'Remaining'}</span>
-              </div>
-            ))
+              ))}
+            </div>
           )}
         </div>
       )}
