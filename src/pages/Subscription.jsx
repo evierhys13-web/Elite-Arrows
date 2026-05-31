@@ -106,6 +106,7 @@ export default function Subscription() {
   };
 
   const isSubscribedForSelected = (user?.subscribedSeasons || []).includes(targetSeason) || (targetSeason === currentSeasonName && user?.isSubscribed);
+  const hasSelectedSeason = (user?.subscribedSeasons || []).includes(targetSeason);
 
   const plans = [
     {
@@ -116,18 +117,18 @@ export default function Subscription() {
       features: ['League Standings', 'Global Chat', 'Basic Analytics', 'User Profile'],
       color: 'var(--text-muted)',
       buttonText: 'Current Plan',
-      active: !isSubscribedForSelected && (!user?.division || user?.division === 'Unassigned')
+      active: !hasSelectedSeason && (!user?.isSubscribed && (!user?.division || user?.division === 'Unassigned'))
     },
     {
       id: 'elite',
       name: 'Elite Pass',
       price: '£5.99',
-      description: 'Full access for all divisions.',
+      description: `Full access for ${targetSeason}.`,
       features: ['Official League Entry', 'Top 2 Division Playoffs', 'Cash Prize Tournaments', 'Priority Support', 'Full Analytics Dashboard', 'Tournament Access', 'Match Submissions'],
       color: '#fbbf24',
-      buttonText: 'Get Elite Pass',
+      buttonText: hasSelectedSeason ? 'Already Paid' : 'Get Elite Pass',
       premium: true,
-      active: isSubscribedForSelected && user?.division && user?.division !== 'Unassigned'
+      active: hasSelectedSeason
     }
   ];
 
@@ -240,6 +241,12 @@ export default function Subscription() {
             >
               {user?.paymentPending ? 'Pending Approval' : (submitting && isNativeApp) ? 'Connecting Store...' : plan.buttonText}
             </button>
+
+            {plan.id === 'elite' && hasSelectedSeason && (
+              <p style={{ fontSize: '0.7rem', color: 'var(--success)', textAlign: 'center', marginTop: '12px', fontWeight: 700 }}>
+                ✓ You have access for {targetSeason}
+              </p>
+            )}
           </div>
         ))}
       </div>

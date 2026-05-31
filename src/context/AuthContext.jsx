@@ -1098,18 +1098,50 @@ const cleanUserData = (users) => {
 
   const forceFetchResults = useCallback(async () => {
     try {
-      const snapshot = await getDocsFromServer(collection(db, 'results'))
-      const freshResults = snapshot.docs.map(docSnap => {
+      showToast?.('Performing deep sync with server...', 'info')
+
+      // 1. Fetch Results
+      const resultsSnap = await getDocsFromServer(collection(db, 'results'))
+      const freshResults = resultsSnap.docs.map(docSnap => {
         const data = docSnap.data()
         return { ...data, id: data.id || docSnap.id, firestoreId: docSnap.id }
       })
+
+      // 2. Fetch Users
+      const usersSnap = await getDocsFromServer(collection(db, 'users'))
+      const freshUsers = usersSnap.docs.map(docSnap => {
+        const data = docSnap.data()
+        SENSITIVE_FIELDS.forEach(f => delete data[f])
+        return { id: docSnap.id, ...data }
+      })
+
+      // 3. Fetch Admin Data
+      const adminSnap = await getDocsFromServer(doc(db, 'adminData', 'main'))
+      if (adminSnap.exists()) {
+        const data = adminSnap.data()
+        setAdminData(prev => ({ ...prev, ...data }))
+      }
+
+      // Update state and cache
+      setAllUsers(freshUsers)
+      localStorage.setItem('eliteArrowsUsers', JSON.stringify(freshUsers))
+
       updateResults(freshResults)
+
+      // Trigger update for current user if changed
+      const current = freshUsers.find(u => u.id === user?.id)
+      if (current) {
+        setUser(current)
+        localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(current))
+      }
+
+      triggerDataRefresh('all')
       return true
     } catch (e) {
       console.warn('forceFetchResults failed:', e)
       return false
     }
-  }, [updateResults])
+  }, [updateResults, user?.id, triggerDataRefresh, showToast])
 
   const getFixtures = useCallback(() => {
     if (fixtures.length > 0) return fixtures

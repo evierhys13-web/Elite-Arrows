@@ -282,16 +282,19 @@ export default function Admin() {
       const isOverriding = approvingPaymentId === u.id
       const finalSeason = isOverriding ? approvalOverride.season : (u.requestedSeason || adminData?.currentSeason || 'Season 1')
       const paymentAmount = 5.99
+      const currentSeasonName = adminData?.currentSeason || 'Season 1'
 
       const currentSeasons = Array.isArray(u.subscribedSeasons) ? u.subscribedSeasons : []
       const nextSeasons = Array.from(new Set([...currentSeasons, finalSeason]))
 
       const updates = {
-        isSubscribed: true,
         paymentPending: false,
         subscriptionDate: new Date().toISOString(),
         subscriptionTier: 'elite',
-        subscribedSeasons: nextSeasons
+        subscribedSeasons: nextSeasons,
+        // Only make them "active" if they are paying for the current live season
+        // OR if they were already active (don't downgrade them)
+        isSubscribed: u.isSubscribed || (finalSeason === currentSeasonName)
       }
       await setDoc(doc(db, 'users', u.id), updates, { merge: true })
 
@@ -331,14 +334,15 @@ export default function Admin() {
     try {
       const target = allPlayers.find(p => p.id === grantSubForm.player)
       const selectedSeason = grantSubForm.season || adminData?.currentSeason || 'Season 1'
+      const currentSeasonName = adminData?.currentSeason || 'Season 1'
 
       const currentSeasons = Array.isArray(target.subscribedSeasons) ? target.subscribedSeasons : []
       const nextSeasons = Array.from(new Set([...currentSeasons, selectedSeason]))
 
       await setDoc(doc(db, 'users', target.id), {
-        isSubscribed: true,
+        isSubscribed: target.isSubscribed || (selectedSeason === currentSeasonName),
         subscriptionDate: new Date().toISOString(),
-        subscriptionTier: grantSubForm.tier,
+        subscriptionTier: 'elite',
         subscribedSeasons: nextSeasons
       }, { merge: true })
 
