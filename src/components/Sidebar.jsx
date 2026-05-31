@@ -51,6 +51,7 @@ export default function Sidebar() {
       items: [
         { path: '/home', label: 'Home', icon: HomeIcon },
         { path: '/table', label: 'Standings', icon: TableIcon },
+        { path: '/super-league', label: 'Super League', icon: TrophyIcon },
         { path: '/match-log', label: 'Schedule', icon: CalendarIcon },
         { path: '/notifications', label: 'Notifications', icon: BellIcon },
         { path: '/players', label: 'Players', icon: UsersIcon },
@@ -77,7 +78,6 @@ export default function Sidebar() {
       title: 'Admin',
       items: [
         { path: '/admin', label: 'Admin Panel', icon: ShieldIcon },
-        { path: '/super-league', label: 'Super League', icon: TrophyIcon },
         { path: '/season-management', label: 'Seasons', icon: CalendarIcon },
       ]
     }] : []),

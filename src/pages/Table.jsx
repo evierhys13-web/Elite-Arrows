@@ -54,20 +54,33 @@ export default function Table() {
   const fixtures = getFixtures()
   const results = getResults()
 
+  const activeSeasonDoc = useMemo(() => seasons.find(s => s.name === selectedSeason), [seasons, selectedSeason])
+
+  const usersWithCorrectDivisions = useMemo(() => {
+    const isLive = selectedSeason === (adminData?.currentSeason || 'Season 1')
+    if (isLive) return allUsers
+
+    const staged = activeSeasonDoc?.stagedDivisions || {}
+    return allUsers.map(u => ({
+      ...u,
+      division: staged[u.id] || 'Unassigned'
+    }))
+  }, [allUsers, activeSeasonDoc, selectedSeason, adminData?.currentSeason])
+
   const playerStats = useMemo(() => {
-    return derivePlayerStatsFromResults(allUsers, results, {
+    return derivePlayerStatsFromResults(usersWithCorrectDivisions, results, {
       fixtures,
       adminData,
       leagueOnly: true,
       currentSeason: selectedSeason,
       includePlayoffs: false
     })
-  }, [allUsers, results, fixtures, adminData, refreshKey, selectedSeason])
+  }, [usersWithCorrectDivisions, results, fixtures, adminData, refreshKey, selectedSeason])
 
   const playersInDivision = useMemo(() => {
     const source = activeDivision === 'Overall'
-      ? allUsers
-      : allUsers.filter(u => u.division === activeDivision)
+      ? usersWithCorrectDivisions
+      : usersWithCorrectDivisions.filter(u => u.division === activeDivision)
 
     return source
       .map(p => ({
@@ -180,8 +193,8 @@ export default function Table() {
                  onChange={e => setSelectedSeason(e.target.value)}
                  style={{ padding: '4px 12px', borderRadius: '8px', fontSize: '0.85rem', border: '1px solid rgba(255,255,255,0.1)' }}
                >
-                 {seasons.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                 {!seasons.find(s => s.name === 'Season 1') && <option value="Season 1">Season 1</option>}
+                 {seasons.filter(s => s.name !== 'Season 1' || adminData?.currentSeason === 'Season 1').map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                 {(!seasons.find(s => s.name === 'Season 1') && adminData?.currentSeason === 'Season 1') && <option value="Season 1">Season 1</option>}
                </select>
             </div>
           </div>

@@ -20,22 +20,10 @@ export default function SuperLeague() {
     setRefreshKey(prev => prev + 1)
   }, [dataRefreshTrigger])
 
+  // All data is derived from AuthContext
   const allUsers = getAllUsers()
   const fixtures = getFixtures()
   const results = getResults()
-
-  // Guard: Only admins for now
-  const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
-  const isAdmin = user?.isAdmin || user?.isTournamentAdmin || ADMIN_EMAILS.includes(user?.email?.toLowerCase())
-
-  if (!isAdmin) {
-    return (
-      <div className="page glass">
-        <h1 className="page-title">Access Restricted</h1>
-        <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>The Super League is currently in Private Beta for Admins only.</p>
-      </div>
-    )
-  }
 
   const playerStats = useMemo(() => {
     return derivePlayerStatsFromResults(allUsers, results, {
@@ -69,7 +57,7 @@ export default function SuperLeague() {
 
       <div className="page-header" style={{ marginBottom: '32px' }}>
         <h1 className="page-title text-gradient" style={{ fontSize: '2.5rem' }}>Elite Super League</h1>
-        <p style={{ color: 'var(--accent-cyan)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '0.8rem' }}>Admin Beta Access</p>
+        <p style={{ color: 'var(--accent-cyan)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '0.8rem' }}>Premier Darts Competition</p>
       </div>
 
       <div className="division-tabs" style={{ marginBottom: '24px' }}>
