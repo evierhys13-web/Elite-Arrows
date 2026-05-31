@@ -63,6 +63,7 @@ export default function Admin() {
   const [surveyForm, setSurveyForm] = useState({ title: '', description: '', targetType: 'all', targetUserIds: [] })
   const [surveyQuestions, setSurveyQuestions] = useState([{ id: 'q1', text: '', type: 'text', options: '' }])
   const [viewSurveyResponses, setViewSurveyResponses] = useState(null)
+  const [previewImage, setPreviewImage] = useState(null)
 
   // Guard: wait for auth
   if (authLoading) return <div className="page glass"><div style={{ padding: '60px', textAlign: 'center', color: 'var(--accent-cyan)', fontWeight: 800 }}>Validating Admin Access...</div></div>
@@ -1189,7 +1190,7 @@ export default function Admin() {
                           src={u.paymentProof}
                           alt="Proof"
                           style={{ width: '100%', maxWidth: '400px', borderRadius: '12px', border: '1px solid var(--border)', cursor: 'pointer' }}
-                          onClick={() => window.open(u.paymentProof, '_blank')}
+                          onClick={() => setPreviewImage(u.paymentProof)}
                         />
                       </div>
                     )}
@@ -1263,7 +1264,7 @@ export default function Admin() {
                                 Edit Seasons
                               </button>
                               {u.paymentProof && (
-                                <button className="btn btn-secondary btn-sm" style={{ padding: '6px 12px', fontSize: '0.75rem' }} onClick={() => window.open(u.paymentProof, '_blank')}>View Receipt</button>
+                                <button className="btn btn-secondary btn-sm" style={{ padding: '6px 12px', fontSize: '0.75rem' }} onClick={() => setPreviewImage(u.paymentProof)}>View Receipt</button>
                               )}
                               <button className="btn btn-secondary btn-sm" style={{ padding: '6px 12px', fontSize: '0.75rem' }} onClick={() => navigate(`/profile/${u.id}`)}>Profile</button>
                             </>
@@ -1962,6 +1963,46 @@ export default function Admin() {
         )}
 
       </div>
+
+      {previewImage && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.9)',
+            zIndex: 2000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+            cursor: 'pointer'
+          }}
+          onClick={() => setPreviewImage(null)}
+        >
+          <img
+            src={previewImage}
+            alt="Preview"
+            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 0 40px rgba(0,0,0,0.5)' }}
+          />
+          <button
+            style={{
+              position: 'absolute',
+              top: '20px',
+              right: '20px',
+              background: 'white',
+              color: 'black',
+              border: 'none',
+              borderRadius: '50%',
+              width: '40px',
+              height: '40px',
+              fontSize: '24px',
+              fontWeight: 'bold',
+              cursor: 'pointer'
+            }}
+            onClick={() => setPreviewImage(null)}
+          >×</button>
+        </div>
+      )}
     </div>
   )
 }

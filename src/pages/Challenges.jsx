@@ -17,6 +17,7 @@ export default function Challenges() {
 
   const [newChallenge, setNewChallenge] = useState({ title: '', description: '', reward: 'Entry into Christmas Giveaway Draw', challengeImage: '' })
   const [submissionProofs, setSubmissionProofs] = useState([])
+  const [previewImage, setPreviewImage] = useState(null)
 
   const isAdmin = useMemo(() => {
     return ADMIN_EMAILS.includes(user?.email?.toLowerCase()) || user?.isAdmin || user?.isTournamentAdmin
@@ -190,7 +191,7 @@ export default function Challenges() {
           return (
             <div key={c.id} className="card glass" style={{ borderLeft: userSub?.status === 'approved' ? '4px solid var(--success)' : 'none', padding: 0, overflow: 'hidden' }}>
               {c.challengeImage && (
-                <div style={{ width: '100%', background: 'rgba(0,0,0,0.3)', cursor: 'pointer' }} onClick={() => window.open(c.challengeImage)}>
+                <div style={{ width: '100%', background: 'rgba(0,0,0,0.3)', cursor: 'pointer' }} onClick={() => setPreviewImage(c.challengeImage)}>
                   <img src={c.challengeImage} alt={c.title} style={{ width: '100%', display: 'block', objectFit: 'contain', maxHeight: '400px' }} />
                 </div>
               )}
@@ -232,7 +233,7 @@ export default function Challenges() {
               <div key={s.id} className="card glass">
                 <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', marginBottom: '15px', paddingBottom: '10px' }}>
                   {(s.proofImages || (s.proofImage ? [s.proofImage] : [])).map((img, idx) => (
-                    <img key={idx} src={img} style={{ width: '120px', height: '120px', objectFit: 'cover', borderRadius: '8px', cursor: 'pointer', flexShrink: 0 }} onClick={() => window.open(img)} />
+                    <img key={idx} src={img} style={{ width: '120px', height: '120px', objectFit: 'cover', borderRadius: '8px', cursor: 'pointer', flexShrink: 0 }} onClick={() => setPreviewImage(img)} />
                   ))}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -297,6 +298,46 @@ export default function Challenges() {
             </div>
             <button className="btn btn-primary btn-block" onClick={handleSubmitProof} disabled={submissionProofs.length === 0}>Submit for Review</button>
           </div>
+        </div>
+      )}
+
+      {previewImage && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.9)',
+            zIndex: 2000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+            cursor: 'pointer'
+          }}
+          onClick={() => setPreviewImage(null)}
+        >
+          <img
+            src={previewImage}
+            alt="Preview"
+            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 0 40px rgba(0,0,0,0.5)' }}
+          />
+          <button
+            style={{
+              position: 'absolute',
+              top: '20px',
+              right: '20px',
+              background: 'white',
+              color: 'black',
+              border: 'none',
+              borderRadius: '50%',
+              width: '40px',
+              height: '40px',
+              fontSize: '24px',
+              fontWeight: 'bold',
+              cursor: 'pointer'
+            }}
+            onClick={() => setPreviewImage(null)}
+          >×</button>
         </div>
       )}
     </div>
