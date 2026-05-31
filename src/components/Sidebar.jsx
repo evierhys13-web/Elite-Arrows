@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
+import { ADMIN_EMAILS } from '../config'
 import NotificationBell from './NotificationBell'
 import RefreshButton from './RefreshButton'
 
@@ -41,8 +42,7 @@ export default function Sidebar() {
     navigate('/auth')
   }
 
-  const ADMIN_EMAILS = ['rhyshowe2023@outlook.com', 'dhineberry@yahoo.com']
-  const isAdmin = user?.isAdmin || user?.isTournamentAdmin || ADMIN_EMAILS.includes(user?.email?.toLowerCase())
+  const isAdmin = user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin || ADMIN_EMAILS.includes(user?.email?.toLowerCase())
   const isSubscribed = user?.isSubscribed === true || isAdmin
   
   const navigationGroups = [

@@ -100,7 +100,8 @@ export default function CupTournaments() {
   const isEmailAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
   const isDbAdmin = user?.isAdmin === true
   const isTournamentAdmin = user?.isTournamentAdmin === true
-  const isAdmin = isEmailAdmin || isDbAdmin || isTournamentAdmin
+  const isCupAdmin = user?.isCupAdmin === true
+  const isAdmin = isEmailAdmin || isDbAdmin || isTournamentAdmin || isCupAdmin
   const isSubscribed = user?.isSubscribed === true
 
   const allUsers = getAllUsers()

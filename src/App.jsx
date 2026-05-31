@@ -164,7 +164,8 @@ function AdminRoute({ children }) {
   const isEmailAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
   const isDbAdmin = user?.isAdmin === true
   const isTournamentAdmin = user?.isTournamentAdmin === true
-  const isAdmin = isEmailAdmin || isDbAdmin || isTournamentAdmin
+  const isCupAdmin = user?.isCupAdmin === true
+  const isAdmin = isEmailAdmin || isDbAdmin || isTournamentAdmin || isCupAdmin
 
   if (!isAdmin) {
     return (
