@@ -26,30 +26,41 @@ export default function Home() {
   const activeSeason = useMemo(() => {
     const seasons = typeof getSeasons === 'function' ? getSeasons() : []
     const now = new Date()
+    const nowTime = now.getTime()
+
+    // Season 1 & 2 Hardcoded Thresholds
+    const s1Start = new Date('2026-05-01T00:00:00').getTime()
+    const s1End = new Date('2026-06-01T00:00:00').getTime()
+    const s2End = new Date('2026-07-01T00:00:00').getTime()
 
     // 1. Try to find the season that matches adminData.currentSeason
     let current = seasons.find(s => s.name === adminData?.currentSeason)
 
-    // 2. Otherwise find the latest one that has started
+    // 2. Fallback / Hard Override for Elite Arrows Season 1 & 2
+    if (!current || current.name === 'Season 1' || current.name === 'Season 2') {
+      if (nowTime < s1End) {
+        return {
+          id: 'season1_legacy',
+          name: 'Season 1',
+          startDate: '2026-05-01T00:00:00',
+          endDate: '2026-06-01T00:00:00'
+        }
+      } else if (nowTime < s2End) {
+        return {
+          id: 'season2_auto',
+          name: 'Season 2',
+          startDate: '2026-06-01T00:00:00',
+          endDate: '2026-07-01T00:00:00'
+        }
+      }
+    }
+
+    // 3. Otherwise find the latest one that has started
     if (!current) {
       const started = [...seasons]
         .filter(s => s.startDate && new Date(s.startDate) <= now)
         .sort((a, b) => new Date(b.startDate || 0) - new Date(a.startDate || 0))
       if (started.length > 0) current = started[0]
-    }
-
-    // 3. Fallback / Hard Override for Season 1
-    // We force the dates for Season 1 strictly to May 1st - June 1st 2026
-    const isSeason1 = current?.name === 'Season 1' || (!current && adminData?.currentSeason === 'Season 1') || (!current && seasons.length === 0)
-
-    if (isSeason1) {
-      return {
-        ...current,
-        id: (current && current.id) ? current.id : 'season1_legacy',
-        name: 'Season 1',
-        startDate: '2026-05-01T00:00:00', // Local start
-        endDate: '2026-06-01T00:00:00'    // Local end (Exactly start of June 1st)
-      }
     }
 
     return current || { name: 'Off-Season', startDate: now.toISOString(), endDate: now.toISOString() }

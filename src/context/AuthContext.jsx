@@ -607,10 +607,62 @@ export function AuthProvider({ children }) {
 
   // Auto-launch scheduled seasons
   useEffect(() => {
-    if (!user?.isAdmin || !seasons.length) return
+    if (!user?.isAdmin) return
 
     const checkAutoLaunch = async () => {
       const now = new Date()
+      const nowTime = now.getTime()
+
+      // Hardcoded Season 2 Auto-Launch Trigger
+      const s1End = new Date('2026-06-01T00:00:00').getTime()
+      if (nowTime >= s1End && adminData.currentSeason === 'Season 1') {
+        console.log('Season 1 finished. Triggering Season 2 launch...')
+
+        // Find if Season 2 doc exists, otherwise create basic shell
+        const s2Doc = seasons.find(s => s.name === 'Season 2')
+        const s2Id = s2Doc?.id || 'season2_legacy'
+
+        try {
+          // 1. Set Active Season globally
+          await updateAdminData({ currentSeason: 'Season 2' })
+
+          // 2. Mark as launched in seasons collection
+          if (s2Doc) {
+            await updateDoc(doc(db, 'seasons', s2Id), { isLaunched: true, status: 'active', startDate: new Date('2026-06-01T00:00:00').toISOString(), endDate: new Date('2026-07-01T00:00:00').toISOString() })
+          } else {
+            await setDoc(doc(db, 'seasons', s2Id), { id: s2Id, name: 'Season 2', isLaunched: true, status: 'active', startDate: new Date('2026-06-01T00:00:00').toISOString(), endDate: new Date('2026-07-01T00:00:00').toISOString(), createdAt: new Date().toISOString() })
+          }
+
+          // 3. Process all users: Reset stats and Sync Season 2 subs
+          const batch = writeBatch(db)
+          const stagedDivisions = s2Doc?.stagedDivisions || {}
+
+          allUsers.forEach(u => {
+            const updates = {}
+            const isSubscribedForS2 = (u.subscribedSeasons || []).includes('Season 2')
+            if (u.isSubscribed !== isSubscribedForS2) updates.isSubscribed = isSubscribedForS2
+
+            // Apply staged divisions (otherwise they stay unassigned for fresh S2)
+            const nextDiv = stagedDivisions[u.id] || 'Unassigned'
+            if (u.division !== nextDiv) updates.division = nextDiv
+
+            // Clear manual overrides
+            if (u.manualStats) updates.manualStats = null
+
+            if (Object.keys(updates).length > 0) {
+              batch.update(doc(db, 'users', u.id), updates)
+            }
+          })
+          await batch.commit()
+          console.log('Season 2 auto-transition complete.')
+          return
+        } catch (e) {
+          console.error('Season 2 auto-launch failed:', e)
+        }
+      }
+
+      // Existing dynamic logic for other seasons
+      if (!seasons.length) return
       const upcomingSeasons = seasons.filter(s =>
         !s.isArchived &&
         s.startDate &&

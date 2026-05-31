@@ -6,6 +6,7 @@ function CupManagement() {
   const { getAllUsers, getCups, getFixtures, getResults, advanceCupBracket, triggerDataRefresh, dataRefreshTrigger } = useAuth()
   const [refreshKey, setRefreshKey] = useState(0)
   const [cups, setCups] = useState([])
+  const [expandedCups, setExpandedCups] = useState({})
   const [allCupFixtures, setAllCupFixtures] = useState([])
   const [allCupResults, setAllCupResults] = useState([])
   const [showResultModal, setShowResultModal] = useState(false)
@@ -206,6 +207,13 @@ function CupManagement() {
     return `Round ${round}`
   }
 
+  const toggleCup = (cupId) => {
+    setExpandedCups(prev => ({
+      ...prev,
+      [cupId]: !prev[cupId]
+    }))
+  }
+
   const enterResult = (cup, match) => {
     setResultForm({
       cup,
@@ -346,6 +354,7 @@ function CupManagement() {
 
       {cups.map(cup => {
         const totalRounds = Math.max(...(cup.matches?.map(m => m.round) || [1]))
+        const isExpanded = expandedCups[cup.id]
         // Sort matches by round then matchNum
         const sortedMatches = [...(cup.matches || [])].sort((a, b) => {
           if (a.round !== b.round) return a.round - b.round
@@ -353,102 +362,135 @@ function CupManagement() {
         })
         
         return (
-          <div key={cup.id} className="card glass animate-fade-in" style={{ padding: '28px', border: '1px solid rgba(129, 140, 248, 0.2)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px' }}>
-              <div>
-                <h2 className="text-gradient" style={{ fontSize: '1.75rem', marginBottom: '8px', fontWeight: 900 }}>{cup.name}</h2>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  <span style={{
-                    fontSize: '0.7rem',
-                    background: cup.status === 'active' ? 'var(--success-bg)' : 'rgba(255,255,255,0.1)',
-                    color: cup.status === 'active' ? 'var(--success)' : 'var(--text-muted)',
-                    padding: '4px 10px',
-                    borderRadius: '20px',
-                    fontWeight: 800,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em'
-                  }}>{cup.status || 'Planned'}</span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', opacity: 0.6 }}>ID: {cup.id}</span>
+          <div key={cup.id} className="card glass animate-fade-in" style={{ padding: '0', border: '1px solid rgba(129, 140, 248, 0.2)', overflow: 'hidden' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '24px',
+                cursor: 'pointer',
+                background: 'rgba(255,255,255,0.02)'
+              }}
+              onClick={() => toggleCup(cup.id)}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <span style={{
+                  fontSize: '1.2rem',
+                  transition: 'transform 0.2s',
+                  transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                  color: 'var(--accent-cyan)'
+                }}>▶</span>
+                <div>
+                  <h2 className="text-gradient" style={{ fontSize: '1.5rem', marginBottom: '4px', fontWeight: 900 }}>{cup.name}</h2>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <span style={{
+                      fontSize: '0.65rem',
+                      background: cup.status === 'active' ? 'var(--success-bg)' : 'rgba(255,255,255,0.1)',
+                      color: cup.status === 'active' ? 'var(--success)' : 'var(--text-muted)',
+                      padding: '2px 8px',
+                      borderRadius: '20px',
+                      fontWeight: 800,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em'
+                    }}>{cup.status || 'Planned'}</span>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', opacity: 0.6 }}>ID: {cup.id}</span>
+                  </div>
                 </div>
               </div>
-              <button className="btn btn-secondary btn-sm" style={{ color: 'var(--error)', borderColor: 'rgba(239, 68, 68, 0.2)' }} onClick={async () => { if(window.confirm('Delete this cup?')) { await deleteDoc(doc(db, 'cups', String(cup.id))); triggerDataRefresh('cups'); }}}>Delete Cup</button>
+              <button
+                className="btn btn-secondary btn-sm"
+                style={{ color: 'var(--error)', borderColor: 'rgba(239, 68, 68, 0.2)', padding: '6px 12px' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if(window.confirm('Delete this cup?')) {
+                    deleteDoc(doc(db, 'cups', String(cup.id))).then(() => triggerDataRefresh('cups'));
+                  }
+                }}
+              >
+                Delete Cup
+              </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
-              {sortedMatches.map(match => {
-                const isWinnerSet = !!match.winner
-                const p1 = getPlayerName(match.player1)
-                const p2 = getPlayerName(match.player2)
+            {isExpanded && (
+              <div style={{ padding: '24px' }} className="animate-fade-in">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+                  {sortedMatches.map(match => {
+                    const isWinnerSet = !!match.winner
+                    const p1 = getPlayerName(match.player1)
+                    const p2 = getPlayerName(match.player2)
 
-                return (
-                  <div key={match.id} style={{
-                    padding: '20px',
-                    borderRadius: '16px',
-                    background: isWinnerSet ? 'rgba(16, 185, 129, 0.05)' : 'rgba(255,255,255,0.03)',
-                    border: isWinnerSet ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(255,255,255,0.08)',
-                    transition: 'all 0.2s ease',
-                    position: 'relative',
-                    overflow: 'hidden'
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', alignItems: 'center' }}>
-                       <span style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{getRoundName(match.round, totalRounds)}</span>
-                       {isWinnerSet && <span style={{ fontSize: '0.6rem', fontWeight: 900, color: 'var(--success)', background: 'var(--success-bg)', padding: '2px 8px', borderRadius: '4px' }}>COMPLETED</span>}
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '20px' }}>
-                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        <div style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          padding: '8px 12px',
-                          background: isWinnerSet && match.winner === match.player1 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(0,0,0,0.2)',
-                          borderRadius: '8px',
-                          border: isWinnerSet && match.winner === match.player1 ? '1px solid var(--success)' : '1px solid transparent'
-                        }}>
-                           <span style={{ fontWeight: isWinnerSet && match.winner === match.player1 ? 800 : 500, fontSize: '0.9rem' }}>{p1}</span>
-                           {isWinnerSet && <span style={{ fontWeight: 900, color: 'var(--success)' }}>{match.score1}</span>}
+                    return (
+                      <div key={match.id} style={{
+                        padding: '20px',
+                        borderRadius: '16px',
+                        background: isWinnerSet ? 'rgba(16, 185, 129, 0.05)' : 'rgba(255,255,255,0.03)',
+                        border: isWinnerSet ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(255,255,255,0.08)',
+                        transition: 'all 0.2s ease',
+                        position: 'relative',
+                        overflow: 'hidden'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', alignItems: 'center' }}>
+                           <span style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{getRoundName(match.round, totalRounds)}</span>
+                           {isWinnerSet && <span style={{ fontSize: '0.6rem', fontWeight: 900, color: 'var(--success)', background: 'var(--success-bg)', padding: '2px 8px', borderRadius: '4px' }}>COMPLETED</span>}
                         </div>
 
-                        <div style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          padding: '8px 12px',
-                          background: isWinnerSet && match.winner === match.player2 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(0,0,0,0.2)',
-                          borderRadius: '8px',
-                          border: isWinnerSet && match.winner === match.player2 ? '1px solid var(--success)' : '1px solid transparent'
-                        }}>
-                           <span style={{ fontWeight: isWinnerSet && match.winner === match.player2 ? 800 : 500, fontSize: '0.9rem' }}>{p2}</span>
-                           {isWinnerSet && <span style={{ fontWeight: 900, color: 'var(--success)' }}>{match.score2}</span>}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '20px' }}>
+                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              padding: '8px 12px',
+                              background: isWinnerSet && match.winner === match.player1 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(0,0,0,0.2)',
+                              borderRadius: '8px',
+                              border: isWinnerSet && match.winner === match.player1 ? '1px solid var(--success)' : '1px solid transparent'
+                            }}>
+                               <span style={{ fontWeight: isWinnerSet && match.winner === match.player1 ? 800 : 500, fontSize: '0.9rem' }}>{p1}</span>
+                               {isWinnerSet && <span style={{ fontWeight: 900, color: 'var(--success)' }}>{match.score1}</span>}
+                            </div>
+
+                            <div style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              padding: '8px 12px',
+                              background: isWinnerSet && match.winner === match.player2 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(0,0,0,0.2)',
+                              borderRadius: '8px',
+                              border: isWinnerSet && match.winner === match.player2 ? '1px solid var(--success)' : '1px solid transparent'
+                            }}>
+                               <span style={{ fontWeight: isWinnerSet && match.winner === match.player2 ? 800 : 500, fontSize: '0.9rem' }}>{p2}</span>
+                               {isWinnerSet && <span style={{ fontWeight: 900, color: 'var(--success)' }}>{match.score2}</span>}
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {!isWinnerSet ? (
+                              <button
+                                className="btn btn-primary btn-sm"
+                                onClick={() => enterResult(cup, match)}
+                                disabled={!match.player1 || !match.player2}
+                                style={{ padding: '8px 12px', fontSize: '0.75rem' }}
+                              >
+                                Enter
+                              </button>
+                            ) : (
+                              <button
+                                className="btn btn-secondary btn-sm"
+                                style={{ opacity: 0.6, padding: '8px 12px', fontSize: '0.75rem' }}
+                                onClick={() => resetResult(cup, match)}
+                              >
+                                Reset
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {!isWinnerSet ? (
-                          <button
-                            className="btn btn-primary btn-sm"
-                            onClick={() => enterResult(cup, match)}
-                            disabled={!match.player1 || !match.player2}
-                            style={{ padding: '8px 12px', fontSize: '0.75rem' }}
-                          >
-                            Enter
-                          </button>
-                        ) : (
-                          <button
-                            className="btn btn-secondary btn-sm"
-                            style={{ opacity: 0.6, padding: '8px 12px', fontSize: '0.75rem' }}
-                            onClick={() => resetResult(cup, match)}
-                          >
-                            Reset
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )
       })}

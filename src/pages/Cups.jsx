@@ -13,7 +13,15 @@ export default function CupTournaments() {
   const [matches, setMatches] = useState([])
   const [roundFormats, setRoundFormats] = useState({})
   const [refreshKey, setRefreshKey] = useState(0)
-  
+  const [expandedCups, setExpandedCups] = useState({})
+
+  const toggleCup = (cupId) => {
+    setExpandedCups(prev => ({
+      ...prev,
+      [cupId]: !prev[cupId]
+    }))
+  }
+
   const isEmailAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
   const isDbAdmin = user?.isAdmin === true
   const isTournamentAdmin = user?.isTournamentAdmin === true
@@ -357,11 +365,29 @@ export default function CupTournaments() {
 
       {cups.map(cup => {
         const prizePot = cup.entryFee * (cup.players?.length || 0)
+        const isExpanded = expandedCups[cup.id]
+
         return (
-          <div key={cup.id} className="card" style={{ marginTop: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 className="card-title" style={{ margin: 0 }}>{cup.name}</h3>
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <div key={cup.id} className="card" style={{ marginTop: '20px', padding: '0' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '20px',
+                cursor: 'pointer'
+              }}
+              onClick={() => toggleCup(cup.id)}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{
+                  fontSize: '1.2rem',
+                  transition: 'transform 0.2s',
+                  transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)'
+                }}>▶</span>
+                <h3 className="card-title" style={{ margin: 0 }}>{cup.name}</h3>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
                 <Link to={`/cups/${cup.id}`} className="btn btn-primary btn-sm">
                   View Bracket
                 </Link>
@@ -397,20 +423,41 @@ export default function CupTournaments() {
                 )}
               </div>
             </div>
-            <p style={{ color: 'var(--text-muted)', marginTop: '10px' }}>
-              Entry: £{cup.entryFee} | Players: {cup.players?.length || 0} | Prize Pot: £{prizePot}
-            </p>
-            {cup.roundFormats && (
-              <p style={{ fontSize: '0.85rem', color: 'var(--accent-cyan)', marginTop: '5px' }}>
-                {Object.entries(cup.roundFormats).map(([round, format]) => {
-                  const roundName = parseInt(round) === cup.currentRound ? 'Current' : ''
-                  return `${roundName}${roundName ? ' ' : ''}R${round}: ${format.startScore} / Bo${format.bestOf}`
-                }).join(' | ')}
-              </p>
+
+            {isExpanded && (
+              <div style={{
+                padding: '0 20px 20px 20px',
+                borderTop: '1px solid rgba(255,255,255,0.05)',
+                marginTop: '0'
+              }} className="animate-fade-in">
+                <p style={{ color: 'var(--text-muted)', marginTop: '15px' }}>
+                  Entry: £{cup.entryFee} | Players: {cup.players?.length || 0} | Prize Pot: £{prizePot}
+                </p>
+                {cup.roundFormats && (
+                  <div style={{
+                    fontSize: '0.85rem',
+                    color: 'var(--accent-cyan)',
+                    marginTop: '8px',
+                    background: 'rgba(0,0,0,0.2)',
+                    padding: '10px',
+                    borderRadius: '8px'
+                  }}>
+                    <strong style={{ display: 'block', marginBottom: '5px', color: 'white' }}>Format:</strong>
+                    {Object.entries(cup.roundFormats).map(([round, format]) => {
+                      const roundName = parseInt(round) === cup.currentRound ? 'Current' : ''
+                      return (
+                        <div key={round} style={{ display: 'inline-block', marginRight: '15px' }}>
+                          <span style={{ opacity: 0.7 }}>{roundName}{roundName ? ' ' : ''}R{round}:</span> {format.startScore} / Bo{format.bestOf}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+                <p style={{ fontSize: '0.85rem', color: 'var(--accent-cyan)', marginTop: '12px', fontWeight: 'bold' }}>
+                  Status: {cup.status === 'completed' ? 'Completed' : `Active - Round ${cup.currentRound || 1}`}
+                </p>
+              </div>
             )}
-            <p style={{ fontSize: '0.85rem', color: 'var(--accent-cyan)' }}>
-              Status: {cup.status === 'completed' ? 'Completed' : `Active - Round ${cup.currentRound || 1}`}
-            </p>
           </div>
         )
       })}
