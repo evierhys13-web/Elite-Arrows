@@ -172,7 +172,7 @@ const [counterFixture, setCounterFixture] = useState(null)
   })
   
   const myFixturesCount = myConfirmedFixtures.length + cupFixturesData.length
-  const upcomingCount = upcomingFixtures.length + cupUpcoming.length
+  const upcomingCount = upcomingFixtures.length
 
   const getApprovedResultForFixture = (fixture) => {
     const { player1Id, player2Id } = getFixturePlayerIds(fixture)
