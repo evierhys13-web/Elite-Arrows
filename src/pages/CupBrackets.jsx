@@ -1,15 +1,32 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { db, doc, getDoc, setDoc, query, collection, where, getDocs, writeBatch } from '../firebase'
+import UserSearchSelect from '../components/UserSearchSelect'
+import { useToast } from '../context/ToastContext'
+import { ADMIN_EMAILS } from '../config'
 
 export default function CupBracket() {
   const { cupId } = useParams()
-  const { getAllUsers, getCups, getFixtures, getResults, dataRefreshTrigger } = useAuth()
+  const { user, getAllUsers, getCups, getFixtures, getResults, dataRefreshTrigger, triggerDataRefresh } = useAuth()
+  const { showToast } = useToast()
   const [cup, setCup] = useState(null)
   const [fixtures, setFixtures] = useState([])
   const [results, setResults] = useState([])
   const [refreshKey, setRefreshKey] = useState(0)
+
+  const [showSwapModal, setShowSwapModal] = useState(false)
+  const [playerToRemove, setPlayerToRemove] = useState('')
+  const [playerToAdd, setPlayerToAdd] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
   const allUsers = getAllUsers()
+
+  const isEmailAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
+  const isDbAdmin = user?.isAdmin === true
+  const isTournamentAdmin = user?.isTournamentAdmin === true
+  const isCupAdmin = user?.isCupAdmin === true
+  const isAdmin = isEmailAdmin || isDbAdmin || isTournamentAdmin || isCupAdmin
 
   useEffect(() => {
     const cups = getCups()
@@ -116,10 +133,85 @@ export default function CupBracket() {
     return !hasResult && !match?.winner
   })
 
+  const handleSwapPlayer = async () => {
+    if (!cup || !playerToRemove || !playerToAdd) return showToast?.('Please select both players', 'error')
+
+    setIsSubmitting(true)
+    try {
+      const cupRef = doc(db, 'cups', String(cup.id))
+      const cupSnap = await getDoc(cupRef)
+      if (!cupSnap.exists()) throw new Error('Cup not found')
+
+      const cupData = cupSnap.data()
+      const newPlayer = allUsers.find(u => u.id === playerToAdd)
+      if (!newPlayer) throw new Error('New player not found')
+
+      // 1. Update participants list
+      const updatedPlayers = cupData.players.map(pid => String(pid) === String(playerToRemove) ? playerToAdd : pid)
+
+      // 2. Update all matches
+      const updatedMatches = cupData.matches.map(m => ({
+        ...m,
+        player1: String(m.player1) === String(playerToRemove) ? playerToAdd : m.player1,
+        player2: String(m.player2) === String(playerToRemove) ? playerToAdd : m.player2,
+        winner: String(m.winner) === String(playerToRemove) ? playerToAdd : m.winner
+      }))
+
+      const nextCupData = { ...cupData, players: updatedPlayers, matches: updatedMatches }
+      await setDoc(cupRef, nextCupData, { merge: true })
+
+      // 3. Update Fixtures
+      const fixturesSnap = await getDocs(query(collection(db, 'fixtures'), where('cupId', '==', parseInt(cup.id))))
+      const batch = writeBatch(db)
+      let fixtureCount = 0
+
+      fixturesSnap.docs.forEach(fDoc => {
+        const fData = fDoc.data()
+        let changed = false
+        const updates = {}
+
+        if (String(fData.player1Id) === String(playerToRemove)) {
+          updates.player1Id = playerToAdd
+          updates.player1 = newPlayer.username
+          changed = true
+        }
+        if (String(fData.player2Id) === String(playerToRemove)) {
+          updates.player2Id = playerToAdd
+          updates.player2 = newPlayer.username
+          changed = true
+        }
+
+        if (changed) {
+          batch.update(fDoc.ref, updates)
+          fixtureCount++
+        }
+      })
+
+      if (fixtureCount > 0) await batch.commit()
+
+      showToast?.(`Swapped player and updated ${fixtureCount} fixtures.`, 'success')
+      setCup(nextCupData)
+      setShowSwapModal(false)
+      setPlayerToRemove('')
+      setPlayerToAdd('')
+      triggerDataRefresh('all')
+      setRefreshKey(prev => prev + 1)
+    } catch (e) {
+      showToast?.('Error: ' + e.message, 'error')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   return (
     <div className="page" style={{ padding: '20px' }}>
-      <div className="page-header" style={{ marginBottom: '20px' }}>
+      <div className="page-header" style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Link to="/cups" className="btn btn-secondary">← Back to Cups</Link>
+        {isAdmin && (
+          <button className="btn btn-secondary" onClick={() => setShowSwapModal(true)}>
+            🔄 Swap Participant
+          </button>
+        )}
       </div>
       
       <div style={{ 
@@ -360,6 +452,54 @@ export default function CupBracket() {
           </div>
         )}
       </div>
+
+      {showSwapModal && (
+        <div className="modal-overlay">
+          <div className="modal-content glass" style={{ maxWidth: '400px' }}>
+            <h3 style={{ marginBottom: '20px' }}>Swap Player in Cup</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '20px' }}>
+              Replace a participant throughout the entire bracket and all fixtures for <strong>{cup?.name}</strong>.
+            </p>
+
+            <div className="form-group">
+              <label>Player to Remove</label>
+              <select
+                className="glass"
+                value={playerToRemove}
+                onChange={e => setPlayerToRemove(e.target.value)}
+              >
+                <option value="">Select participant...</option>
+                {cup?.players?.map(pid => {
+                  const p = allUsers.find(u => u.id === pid)
+                  return <option key={pid} value={pid}>{p?.username || pid}</option>
+                })}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label>Replacement Player</label>
+              <UserSearchSelect
+                users={allUsers.filter(u => !(cup?.players || []).includes(u.id))}
+                selectedId={playerToAdd}
+                onSelect={setPlayerToAdd}
+                label=""
+                placeholder="Search for new player..."
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '30px' }}>
+              <button className="btn btn-secondary btn-block" onClick={() => setShowSwapModal(false)}>Cancel</button>
+              <button
+                className="btn btn-primary btn-block"
+                onClick={handleSwapPlayer}
+                disabled={isSubmitting || !playerToRemove || !playerToAdd}
+              >
+                {isSubmitting ? 'Swapping...' : 'Perform Swap'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

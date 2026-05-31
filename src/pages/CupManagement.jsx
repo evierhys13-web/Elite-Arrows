@@ -473,17 +473,17 @@ function CupManagement() {
                   </div>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <button
                   className="btn btn-secondary btn-sm"
-                  style={{ fontSize: '0.75rem' }}
+                  style={{ fontSize: '0.75rem', background: 'rgba(56, 189, 248, 0.1)', borderColor: 'var(--accent-cyan)' }}
                   onClick={(e) => {
                     e.stopPropagation()
                     setSwapCup(cup)
                     setShowSwapModal(true)
                   }}
                 >
-                  🔄 Swap Player
+                  🔄 Swap Participant
                 </button>
                 <button
                   className="btn btn-secondary btn-sm"

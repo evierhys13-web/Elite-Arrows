@@ -97,12 +97,9 @@ export default function CupTournaments() {
     }
   }
 
-  const isEmailAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
-  const isDbAdmin = user?.isAdmin === true
-  const isTournamentAdmin = user?.isTournamentAdmin === true
-  const isCupAdmin = user?.isCupAdmin === true
-  const isAdmin = isEmailAdmin || isDbAdmin || isTournamentAdmin || isCupAdmin
-  const isSubscribed = user?.isSubscribed === true
+  const isEmailAdmin = user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase())
+  const isAdmin = isEmailAdmin || user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin
+  const isSubscribed = user?.isSubscribed === true || isAdmin
 
   const allUsers = getAllUsers()
   const cups = getCups()
@@ -507,6 +504,7 @@ export default function CupTournaments() {
                   >
                     Delete
                   </button>
+                  </>
                 )}
               </div>
             </div>
@@ -517,6 +515,21 @@ export default function CupTournaments() {
                 borderTop: '1px solid rgba(255,255,255,0.05)',
                 marginTop: '0'
               }} className="animate-fade-in">
+                {isAdmin && (
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '15px', marginBottom: '15px' }}>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      style={{ flex: 1, background: 'rgba(255,255,255,0.05)' }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSwapCup(cup)
+                        setShowSwapModal(true)
+                      }}
+                    >
+                      🔄 Swap Participant
+                    </button>
+                  </div>
+                )}
                 <p style={{ color: 'var(--text-muted)', marginTop: '15px' }}>
                   Entry: £{cup.entryFee} | Players: {cup.players?.length || 0} | Prize Pot: £{prizePot}
                 </p>

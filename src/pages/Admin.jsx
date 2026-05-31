@@ -69,9 +69,9 @@ export default function Admin() {
   if (authLoading) return <div className="page glass"><div style={{ padding: '60px', textAlign: 'center', color: 'var(--accent-cyan)', fontWeight: 800 }}>Validating Admin Access...</div></div>
   if (!user) return <div className="page glass"><div style={{ padding: '60px', textAlign: 'center' }}>Please sign in to access the Admin Panel.</div></div>
 
-  const isEmailAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
-  const isDbAdmin = user?.isAdmin === true
-  const canAccess = isEmailAdmin || isDbAdmin || user?.isTournamentAdmin || user?.isCupAdmin
+  const isEmailAdmin = user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase())
+  const isAdminFromDoc = user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin
+  const canAccess = isEmailAdmin || isAdminFromDoc
 
   if (!canAccess) {
     return (

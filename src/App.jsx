@@ -161,11 +161,8 @@ function AdminRoute({ children }) {
     return <Navigate to="/auth" replace />
   }
 
-  const isEmailAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase())
-  const isDbAdmin = user?.isAdmin === true
-  const isTournamentAdmin = user?.isTournamentAdmin === true
-  const isCupAdmin = user?.isCupAdmin === true
-  const isAdmin = isEmailAdmin || isDbAdmin || isTournamentAdmin || isCupAdmin
+  const isEmailAdmin = user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase())
+  const isAdmin = isEmailAdmin || user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin
 
   if (!isAdmin) {
     return (
