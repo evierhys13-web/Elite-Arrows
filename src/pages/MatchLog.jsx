@@ -25,10 +25,15 @@ export default function MatchLog() {
       .filter(r => {
         const player1Id = getResultPlayerId(r, 1, allUsers)
         const player2Id = getResultPlayerId(r, 2, allUsers)
+        const isTargetMatch = String(player1Id) === String(targetUser.id) || String(player2Id) === String(targetUser.id)
+        const isApproved = String(r.status || '').toLowerCase() === 'approved'
+        const isRightSeason = !r.season || r.season === currentSeasonName
+
         return (
-          String(r.status || '').toLowerCase() === 'approved' &&
-          (isLeagueResult(r, fixturesById) || isPlayoffResult(r, fixturesById)) &&
-          (String(player1Id) === String(targetUser.id) || String(player2Id) === String(targetUser.id))
+          isApproved &&
+          isRightSeason &&
+          isTargetMatch &&
+          (isLeagueResult(r, fixturesById) || isPlayoffResult(r, fixturesById))
         )
       })
       .map(r => {
