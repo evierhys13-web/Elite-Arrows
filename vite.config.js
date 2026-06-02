@@ -5,6 +5,8 @@ export default defineConfig({
   plugins: [react()],
   base: '/',
   build: {
-    outDir: 'dist'
+    outDir: 'dist',
+    target: 'es2015',
+    cssTarget: 'chrome61'
   }
 })
