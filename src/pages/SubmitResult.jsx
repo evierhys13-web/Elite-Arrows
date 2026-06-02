@@ -247,8 +247,8 @@ export default function SubmitResult() {
       return
     }
 
-    if (formData.gameType === 'League' && !formData.proofImage) {
-      setError('Proof of result (screenshot/photo) is required for League games')
+    if (!formData.proofImage) {
+      setError('Proof of result (screenshot or photo) is required for all match submissions.')
       return
     }
     
