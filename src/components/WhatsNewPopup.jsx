@@ -2,6 +2,16 @@ import React, { useState, useEffect } from 'react';
 
 const CHANGELOG = [
   {
+    version: '2.2.1',
+    date: 'May 2026',
+    changes: [
+      { type: 'feature', title: 'Season 2 Ready', description: 'Complete support for Season 2 fixtures, standings, and advance registrations.' },
+      { type: 'feature', title: 'Super League Beta', description: 'The Elite Super League is now open for all members to view and track.' },
+      { type: 'improvement', title: 'Simplified Cups', description: 'One-click result submission for cup fixtures without scheduling friction.' },
+      { type: 'improvement', title: 'Data Integrity', description: 'Improved division tracking and mandatory result proofing.' }
+    ]
+  },
+  {
     version: '2.2.0',
     date: 'May 2026',
     changes: [
