@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { db, doc, setDoc } from '../firebase'
 
 const INITIAL_RESULT_FORM = {
@@ -22,6 +22,7 @@ const INITIAL_RESULT_FORM = {
 export default function SubmitResult() {
   const { user, getAllUsers, getFixtures, getResults, updateResults, updateFixtures, addTokens, triggerDataRefresh, notifyAdmins, adminData } = useAuth()
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const cameraInputRef = useRef(null)
   const uploadInputRef = useRef(null)
   const [formData, setFormData] = useState(INITIAL_RESULT_FORM)
@@ -41,10 +42,15 @@ export default function SubmitResult() {
   const fixtureIdParam = searchParams.get('fixtureId')
   const opponentParam = searchParams.get('opponent')
   const gameTypeParam = searchParams.get('gameType')
+  const seasonParam = searchParams.get('season')
   const allFixtures = getFixtures()
   const allResults = getResults()
 
-  const currentSeasonLabel = adminData?.currentSeason || 'Season 1'
+  const currentSeasonLabel = seasonParam || adminData?.currentSeason || 'Season 1'
+  const seasonsData = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
+  const targetSeasonDoc = seasonsData.find(s => s.name === currentSeasonLabel)
+  const stagedDiv = targetSeasonDoc?.stagedDivisions?.[user.id]
+  const effectiveDivision = stagedDiv || user.division || 'Unassigned'
 
   const userSubmittedResults = allResults
     .filter(result => (
@@ -331,7 +337,7 @@ export default function SubmitResult() {
         player2Id: opponentUser?.id || formData.opponent,
         score1: parseInt(formData.yourScore),
         score2: parseInt(formData.opponentScore),
-        division: user.division,
+        division: effectiveDivision,
         gameType: formData.gameType,
         season: currentSeasonLabel,
         date: new Date().toISOString().split('T')[0],
@@ -402,11 +408,14 @@ export default function SubmitResult() {
     setError('')
     setSuccessMessage('Result submitted for admin approval.')
     resetFormAfterSuccessfulSubmit(fixtureToUpdate?.id)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+
+    // Notify user and navigate back
+    showToast?.('Result submitted!', 'success')
     setTimeout(() => {
-      setSubmitted(false)
-      setSuccessMessage('')
-    }, 5000)
+      navigate(-1)
+    }, 1500)
+
+    window.scrollTo({ top: 0, behavior: 'smooth' })
 
     Promise.resolve().then(() => notifyAdmins(
       'New Result Pending',

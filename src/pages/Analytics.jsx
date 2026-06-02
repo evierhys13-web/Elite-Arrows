@@ -242,7 +242,8 @@ export default function Analytics() {
                 showToast?.('Analytics synchronized!', 'success')
               } else {
                 triggerDataRefresh('all')
-                setTimeout(() => window.location.reload(), 1500)
+                triggerDataRefresh('all')
+                showToast('Deep sync complete!', 'success')
               }
             } catch (err) {
               console.error('Sync failed', err)

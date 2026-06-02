@@ -1455,13 +1455,17 @@ export default function Admin() {
             <h3>Season Management</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
                <div className="glass" style={{ padding: '15px', borderRadius: '12px', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid var(--accent-cyan)' }}>
-                  <strong>ACTIVE SEASON:</strong> {localStorage.getItem('eliteArrowsCurrentSeason') || 'Not Set'}
+                  <strong>ACTIVE SEASON:</strong> {adminData?.currentSeason || 'Not Set'}
                </div>
                {getSeasons().map(s => (
                  <div key={s.id} className="glass" style={{ padding: '12px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span>{s.name} ({s.status})</span>
                     <div style={{ display: 'flex', gap: '8px' }}>
-                       <button className="btn btn-secondary btn-sm" onClick={() => { localStorage.setItem('eliteArrowsCurrentSeason', s.name); window.location.reload(); }}>Set Active</button>
+                       <button className="btn btn-secondary btn-sm" onClick={async () => {
+                         await updateAdminData({ currentSeason: s.name });
+                         showToast?.(`Season ${s.name} set as active!`, 'success');
+                         triggerDataRefresh('all');
+                       }}>Set Active</button>
                        <button className="btn btn-danger btn-sm" onClick={async () => { await deleteDoc(doc(db, 'seasons', s.id)); triggerDataRefresh('seasons'); }}>🗑️</button>
                     </div>
                  </div>

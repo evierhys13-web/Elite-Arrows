@@ -20,6 +20,8 @@ export default function SeasonManagement() {
   const [selectedPlayer, setSelectedPlayer] = useState('')
   const [newDivision, setNewDivision] = useState('')
   const [seedingSeasonId, setSeedingSeasonId] = useState('current')
+  const [seedingFilter, setSeedingFilter] = useState('all')
+  const [showSuperInQuickList, setShowSuperInQuickList] = useState(false)
   const [selectedSuperPlayer, setSelectedSuperPlayer] = useState('')
   const [newSuperDivision, setNewSuperDivision] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
@@ -27,6 +29,24 @@ export default function SeasonManagement() {
   const allPlayers = getAllUsers()
   const seasons = getSeasons()
   const currentSeason = adminData?.currentSeason || 'Season 1'
+
+  const targetSeasonDoc = useMemo(() =>
+    seedingSeasonId === 'current' ? null : seasons.find(s => s.id === seedingSeasonId)
+  , [seasons, seedingSeasonId])
+
+  const playersBySeeding = useMemo(() => {
+    const players = allPlayers.map(u => {
+      let div = u.division || 'Unassigned'
+      if (seedingSeasonId !== 'current' && targetSeasonDoc) {
+        div = targetSeasonDoc.stagedDivisions?.[u.id] || 'Unassigned'
+      }
+      return { ...u, effectiveDiv: div }
+    })
+
+    if (seedingFilter === 'unassigned') return players.filter(p => p.effectiveDiv === 'Unassigned')
+    if (DIVISIONS.includes(seedingFilter)) return players.filter(p => p.effectiveDiv === seedingFilter)
+    return players
+  }, [allPlayers, seedingSeasonId, targetSeasonDoc, seedingFilter])
 
   useEffect(() => {
     if (showCreateForm && !startDate) {
@@ -520,7 +540,7 @@ export default function SeasonManagement() {
           </div>
         </div>
 
-        <div className="card glass" style={{ borderLeft: '4px solid var(--warning)' }}>
+        <div className="card glass">
           <h3 className="card-title">Super League Seeding</h3>
           <p style={{ color: 'var(--text-muted)', marginBottom: '20px', fontSize: '0.85rem' }}>Add/remove players from Super League.</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -533,6 +553,98 @@ export default function SeasonManagement() {
             <button className="btn btn-primary" onClick={updateSuperLeagueDivision} disabled={isProcessing || !selectedSuperPlayer || !newSuperDivision}>
               Assign Super Rank
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* QUICK ASSIGNMENT LIST */}
+      <div className="card glass" style={{ marginBottom: '40px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '16px' }}>
+          <div>
+            <h3 className="card-title">Season Seeding Overview</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              Quickly manage assignments for: <strong style={{ color: 'var(--accent-cyan)' }}>{seedingSeasonId === 'current' ? currentSeason : targetSeasonDoc?.name}</strong>
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+            <button
+              className={`btn btn-sm ${showSuperInQuickList ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setShowSuperInQuickList(!showSuperInQuickList)}
+              style={{ marginRight: '16px' }}
+            >
+              {showSuperInQuickList ? 'Hide Super League' : 'Manage Super League'}
+            </button>
+            <button className={`btn btn-sm ${seedingFilter === 'all' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSeedingFilter('all')}>All</button>
+            <button className={`btn btn-sm ${seedingFilter === 'unassigned' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSeedingFilter('unassigned')}>Unassigned</button>
+            {DIVISIONS.map(d => (
+              <button key={d} className={`btn btn-sm ${seedingFilter === d ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSeedingFilter(d)}>{d}</button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ maxHeight: '500px', overflowY: 'auto', paddingRight: '8px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+            {playersBySeeding.sort((a,b) => a.username.localeCompare(b.username)).map(p => (
+              <div key={p.id} className="glass" style={{ padding: '12px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.username}</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                    {p.effectiveDiv} {p.superLeagueDivision ? `• Super: ${p.superLeagueDivision}` : ''}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <select
+                    className="glass"
+                    value={p.effectiveDiv}
+                    style={{ fontSize: '0.75rem', padding: '4px 8px', width: '130px' }}
+                    onChange={async (e) => {
+                      const val = e.target.value
+                      setIsProcessing(true)
+                      try {
+                        if (seedingSeasonId === 'current') {
+                          await setDoc(doc(db, 'users', p.id), { division: val }, { merge: true })
+                        } else {
+                          const staged = { ...(targetSeasonDoc.stagedDivisions || {}) }
+                          if (val === 'Unassigned') delete staged[p.id]
+                          else staged[p.id] = val
+                          await setDoc(doc(db, 'seasons', seedingSeasonId), { stagedDivisions: staged }, { merge: true })
+                        }
+                        triggerDataRefresh('all')
+                      } catch (err) { showToast(err.message, 'error') }
+                      setIsProcessing(false)
+                    }}
+                  >
+                    <option value="Unassigned">League: None</option>
+                    {DIVISIONS.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+
+                  {showSuperInQuickList && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px', background: 'rgba(251, 191, 36, 0.05)', borderRadius: '8px', border: '1px solid rgba(251, 191, 36, 0.1)' }}>
+                      <span style={{ fontSize: '0.6rem', color: '#fbbf24', fontWeight: 800 }}>Super League Rank</span>
+                      <select
+                        className="glass"
+                        value={p.superLeagueDivision || 'None'}
+                        style={{ fontSize: '0.75rem', padding: '4px 8px', width: '130px', borderColor: p.superLeagueDivision ? '#fbbf24' : 'transparent' }}
+                        onChange={async (e) => {
+                          const val = e.target.value
+                          setIsProcessing(true)
+                          try {
+                            await setDoc(doc(db, 'users', p.id), { superLeagueDivision: val === 'None' ? null : val }, { merge: true })
+                            showToast?.(`${p.username} updated in Super League`, 'success')
+                            triggerDataRefresh('all')
+                          } catch (err) { showToast(err.message, 'error') }
+                          setIsProcessing(false)
+                        }}
+                      >
+                        <option value="None">None</option>
+                        {SUPER_LEAGUE_DIVISIONS.map(d => <option key={d} value={d}>{d}</option>)}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>

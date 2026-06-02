@@ -224,7 +224,7 @@ export default function MatchLog() {
                       <button
                         className="btn btn-primary btn-sm"
                         style={{ padding: '6px 12px', fontSize: '0.75rem' }}
-                        onClick={() => navigate(`/submit-result?opponent=${player.id}&gameType=${player._playoff ? 'Playoff' : 'League'}`)}
+                        onClick={() => navigate(`/submit-result?opponent=${player.id}&gameType=${player._playoff ? 'Playoff' : 'League'}&season=${currentSeasonName}`)}
                       >
                         Submit Score
                       </button>
