@@ -7,9 +7,20 @@ import UserSearchSelect from '../components/UserSearchSelect'
 import { useToast } from '../context/ToastContext'
 
 export default function Fixtures() {
-  const { user, getAllUsers, getFixtures, getResults, updateResults, updateFixtures, triggerDataRefresh, notifyUser, notifyAdmins, useTokens, bets: allBetsData } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, updateResults, updateFixtures, triggerDataRefresh, notifyUser, notifyAdmins, useTokens, bets: allBetsData, adminData, getSeasons } = useAuth()
   const { showToast } = useToast()
   const navigate = useNavigate()
+
+  const currentSeasonName = adminData?.currentSeason || 'Season 1'
+  const seasons = getSeasons()
+  const activeSeasonDoc = seasons.find(s => s.name === currentSeasonName)
+
+  // Calculate effective user division for this season
+  const userEffectiveDiv = useMemo(() => {
+    const staged = activeSeasonDoc?.stagedDivisions?.[user.id]
+    return staged || user.division || 'Unassigned'
+  }, [user, activeSeasonDoc])
+
   const [activeTab, setActiveTab] = useState('my')
   const [allFixtureFilter, setAllFixtureFilter] = useState('confirmed')
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -595,9 +606,13 @@ const [counterFixture, setCounterFixture] = useState(null)
   }
 
   const getFilteredOpponents = (gameType) => {
-    let opponents = availablePlayers
+    let opponents = allUsers.map(u => {
+      const staged = activeSeasonDoc?.stagedDivisions?.[u.id]
+      return { ...u, effectiveDiv: staged || u.division || 'Unassigned' }
+    }).filter(u => String(u.id) !== String(user.id))
+
     if (gameType === 'League') {
-      opponents = opponents.filter(p => p.division === user.division)
+      opponents = opponents.filter(p => p.effectiveDiv === userEffectiveDiv)
     }
     const existingOpponentIds = regularFixtures
       .filter(f => (
@@ -615,6 +630,7 @@ const [counterFixture, setCounterFixture] = useState(null)
     const leagueResults = results.filter(r =>
       getStatus(r) === 'approved' &&
       r.gameType === 'League' &&
+      (r.season === currentSeasonName || (!r.season && currentSeasonName === 'Season 1')) &&
       (isSameId(r.player1Id, user.id) || isSameId(r.player2Id, user.id))
     )
     return leagueResults.map(r => isSameId(r.player1Id, user.id) ? String(r.player2Id) : String(r.player1Id))
@@ -1119,7 +1135,7 @@ const [counterFixture, setCounterFixture] = useState(null)
               </select>
               {createForm.gameType === 'League' && (
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '5px' }}>
-                  Only players in your division ({user.division}) are shown
+                  Only players in your division ({userEffectiveDiv}) are shown
                 </p>
               )}
             </div>

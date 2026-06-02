@@ -56,6 +56,7 @@ export default function Admin() {
   const [tokenForm, setTokenForm] = useState({ player: '', amount: 0, action: 'add' })
   const [seasonForm, setSeasonForm] = useState({ name: '', startDate: new Date().toISOString().split('T')[0], endDate: '' })
   const [grantSubForm, setGrantSubForm] = useState({ player: '', tier: 'elite', season: '' })
+  const [superRankForm, setSuperRankForm] = useState({ player: '', rank: '' })
   const [divisionForm, setDivisionForm] = useState({ player: '', division: '' })
   const [potAdjust, setPotAdjust] = useState({ amount: 0 })
   const [trophyForm, setTrophyForm] = useState({ player: '', name: '', icon: '🏆', season: '' })
@@ -328,6 +329,21 @@ export default function Admin() {
       triggerDataRefresh('users')
       showToast(`Subscription updated for ${u.username}`, 'success')
     } catch (e) { showToast(e.message, 'error') }
+  }
+
+  const handleUpdateSuperRank = async () => {
+    if (!superRankForm.player || !superRankForm.rank) return
+    try {
+      const isNone = superRankForm.rank === 'None'
+      await setDoc(doc(db, 'users', superRankForm.player), {
+        superLeagueDivision: isNone ? null : superRankForm.rank
+      }, { merge: true })
+      showToast?.(`Player updated in Super League`, 'success')
+      setSuperRankForm({ player: '', rank: '' })
+      triggerDataRefresh('all')
+    } catch (e) {
+      showToast?.('Error updating rank: ' + e.message, 'error')
+    }
   }
 
   const handleGrantSubscription = async () => {
@@ -1489,6 +1505,22 @@ export default function Admin() {
             <h3 style={{ marginBottom: '20px' }}>Global Membership List</h3>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '30px' }}>
+              <div className="glass" style={{ padding: '20px', borderRadius: '15px' }}>
+                <h4>Manage Super League</h4>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '12px' }}>Assign player to Premier, Pro or Amateur rank.</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <UserSearchSelect users={allPlayers} selectedId={superRankForm.player} onSelect={id => setSuperRankForm({...superRankForm, player: id})} label="Player" />
+                  <select className="glass" style={{ padding: '10px' }} value={superRankForm.rank} onChange={e => setSuperRankForm({...superRankForm, rank: e.target.value})}>
+                    <option value="">Select Rank...</option>
+                    <option value="Premier">Premier</option>
+                    <option value="Pro">Pro</option>
+                    <option value="Amateur">Amateur</option>
+                    <option value="None">None (Remove)</option>
+                  </select>
+                  <button className="btn btn-primary btn-block" onClick={handleUpdateSuperRank} disabled={!superRankForm.player || !superRankForm.rank}>Assign Super Rank</button>
+                </div>
+              </div>
+
               <div className="glass" style={{ padding: '20px', borderRadius: '15px' }}>
                 <h4>Manually Grant Elite Pass</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>

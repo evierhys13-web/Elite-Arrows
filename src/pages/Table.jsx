@@ -57,14 +57,17 @@ export default function Table() {
   const activeSeasonDoc = useMemo(() => seasons.find(s => s.name === selectedSeason), [seasons, selectedSeason])
 
   const usersWithCorrectDivisions = useMemo(() => {
-    const isLive = selectedSeason === (adminData?.currentSeason || 'Season 1')
-    if (isLive) return allUsers
-
     const staged = activeSeasonDoc?.stagedDivisions || {}
-    return allUsers.map(u => ({
-      ...u,
-      division: staged[u.id] || 'Unassigned'
-    }))
+    const isLive = selectedSeason === (adminData?.currentSeason || 'Season 1')
+
+    return allUsers.map(u => {
+      // Use staged division if it exists for this season, otherwise fallback to profile division
+      const effectiveDiv = staged[u.id] || (isLive ? u.division : 'Unassigned')
+      return {
+        ...u,
+        division: effectiveDiv || 'Unassigned'
+      }
+    })
   }, [allUsers, activeSeasonDoc, selectedSeason, adminData?.currentSeason])
 
   const playerStats = useMemo(() => {

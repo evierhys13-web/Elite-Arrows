@@ -5,7 +5,7 @@ import { getResultPlayerId, isLeagueResult, isPlayoffResult } from '../utils/lea
 import UserSearchSelect from '../components/UserSearchSelect'
 
 export default function MatchLog() {
-  const { user, getAllUsers, getFixtures, getResults, adminData } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, adminData, getSeasons } = useAuth()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('toPlay')
   const [targetPlayerId, setTargetPlayerId] = useState(user?.id)
@@ -13,10 +13,23 @@ export default function MatchLog() {
   const allResults = getResults()
   const allUsers = getAllUsers()
   const fixtures = getFixtures()
+  const seasons = getSeasons()
   const fixturesById = Object.fromEntries(fixtures.map(fixture => [String(fixture.id), fixture]))
   
   const currentSeasonName = adminData?.currentSeason || 'Season 1'
-  const targetUser = allUsers.find(u => String(u.id) === String(targetPlayerId)) || user || {}
+  const activeSeasonDoc = seasons.find(s => s.name === currentSeasonName)
+
+  // Calculate effective user (with division for the active season)
+  const targetRaw = allUsers.find(u => String(u.id) === String(targetPlayerId)) || user || {}
+  const targetUser = useMemo(() => {
+    if (!targetRaw.id) return {}
+    const stagedDiv = activeSeasonDoc?.stagedDivisions?.[targetRaw.id]
+    return {
+      ...targetRaw,
+      division: stagedDiv || targetRaw.division || 'Unassigned'
+    }
+  }, [targetRaw, activeSeasonDoc])
+
   const isMe = String(targetUser.id) === String(user?.id)
 
   const leagueResults = useMemo(() => {
@@ -27,7 +40,11 @@ export default function MatchLog() {
         const player2Id = getResultPlayerId(r, 2, allUsers)
         const isTargetMatch = String(player1Id) === String(targetUser.id) || String(player2Id) === String(targetUser.id)
         const isApproved = String(r.status || '').toLowerCase() === 'approved'
-        const isRightSeason = !r.season || r.season === currentSeasonName
+
+        // Strict season matching:
+        // 1. If result has a season, it must match current.
+        // 2. If result has no season, it only matches if current is Season 1.
+        const isRightSeason = r.season === currentSeasonName || (!r.season && currentSeasonName === 'Season 1')
 
         return (
           isApproved &&
@@ -99,10 +116,13 @@ export default function MatchLog() {
   const opponentsToPlay = useMemo(() => {
     if (!targetUser.id) return []
 
-    const divisionOpponents = targetUser.division
-      ? allUsers.filter(u =>
+    const divisionOpponents = targetUser.division && targetUser.division !== 'Unassigned'
+      ? allUsers.map(u => {
+          const sDiv = activeSeasonDoc?.stagedDivisions?.[u.id]
+          return { ...u, effectiveDiv: sDiv || u.division || 'Unassigned' }
+        }).filter(u =>
           String(u.id) !== String(targetUser.id) &&
-          u.division === targetUser.division &&
+          u.effectiveDiv === targetUser.division &&
           !playedOpponentIds.includes(String(u.id))
         )
       : []
