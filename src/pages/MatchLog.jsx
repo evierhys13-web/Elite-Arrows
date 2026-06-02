@@ -23,7 +23,7 @@ export default function MatchLog() {
   const targetRaw = allUsers.find(u => String(u.id) === String(targetPlayerId)) || user || {}
   const targetUser = useMemo(() => {
     if (!targetRaw.id) return {}
-    const stagedDiv = activeSeasonDoc?.stagedDivisions?.[targetRaw.id]
+    const stagedDiv = activeSeasonDoc?.stagedDivisions?.[String(targetRaw.id)]
     return {
       ...targetRaw,
       division: stagedDiv || targetRaw.division || 'Unassigned'
@@ -41,14 +41,13 @@ export default function MatchLog() {
         const isTargetMatch = String(player1Id) === String(targetUser.id) || String(player2Id) === String(targetUser.id)
         const isApproved = String(r.status || '').toLowerCase() === 'approved'
 
-        // Strict season matching:
-        // 1. If result has a season, it must match current.
-        // 2. If result has no season, it only matches if current is Season 1.
-        const isRightSeason = r.season === currentSeasonName || (!r.season && currentSeasonName === 'Season 1')
+        // Robust season matching
+        const resSeason = String(r.season || '').trim()
+        const isSeasonMatch = resSeason === currentSeasonName || (!resSeason && currentSeasonName === 'Season 1')
 
         return (
           isApproved &&
-          isRightSeason &&
+          isSeasonMatch &&
           isTargetMatch &&
           (isLeagueResult(r, fixturesById) || isPlayoffResult(r, fixturesById))
         )
@@ -118,7 +117,7 @@ export default function MatchLog() {
 
     const divisionOpponents = targetUser.division && targetUser.division !== 'Unassigned'
       ? allUsers.map(u => {
-          const sDiv = activeSeasonDoc?.stagedDivisions?.[u.id]
+          const sDiv = activeSeasonDoc?.stagedDivisions?.[String(u.id)]
           return { ...u, effectiveDiv: sDiv || u.division || 'Unassigned' }
         }).filter(u =>
           String(u.id) !== String(targetUser.id) &&
@@ -133,7 +132,7 @@ export default function MatchLog() {
       seen.add(String(u.id))
       return true
     })
-  }, [allUsers, targetUser.id, targetUser.division, playedOpponentIds, playoffOpponent, playoffAlreadyPlayed])
+  }, [allUsers, targetUser.id, targetUser.division, playedOpponentIds, playoffOpponent, playoffAlreadyPlayed, activeSeasonDoc])
 
   return (
     <div className="page animate-fade-in">
