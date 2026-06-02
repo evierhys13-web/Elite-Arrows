@@ -61,8 +61,10 @@ export default function Table() {
     const isLive = selectedSeason === (adminData?.currentSeason || 'Season 1')
 
     return allUsers.map(u => {
-      // Use staged division if it exists for this season, otherwise fallback to profile division
-      const effectiveDiv = staged[u.id] || (isLive ? u.division : 'Unassigned')
+      const uid = String(u.id)
+      // Check staged divisions first (highest priority for new seasons)
+      const effectiveDiv = (staged[uid] || staged[u.id]) || (isLive ? u.division : 'Unassigned')
+
       return {
         ...u,
         division: effectiveDiv || 'Unassigned'

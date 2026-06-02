@@ -49,7 +49,7 @@ export default function SubmitResult() {
   const currentSeasonLabel = seasonParam || adminData?.currentSeason || 'Season 1'
   const seasonsData = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
   const targetSeasonDoc = seasonsData.find(s => s.name === currentSeasonLabel)
-  const stagedDiv = targetSeasonDoc?.stagedDivisions?.[user.id]
+  const stagedDiv = targetSeasonDoc?.stagedDivisions?.[String(user.id)] || targetSeasonDoc?.stagedDivisions?.[user.id]
   const effectiveDivision = stagedDiv || user.division || 'Unassigned'
 
   const userSubmittedResults = allResults

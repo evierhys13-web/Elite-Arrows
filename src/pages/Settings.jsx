@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
+import { useToast } from '../context/ToastContext'
 import { auth, sendPasswordResetEmail, db, doc, setDoc, deleteDoc, usersCollection } from '../firebase'
 
 export default function Settings() {
-  const { signOut, user, updateUser, getAllUsers, notifications: contextNotifications } = useAuth()
+  const { signOut, user, updateUser, getAllUsers, notifications: contextNotifications, forceFetchResults: contextForceFetch, triggerDataRefresh } = useAuth()
   const { theme, toggleTheme, language, setLanguage, chatSettings, setChatSettings, navMode, updateNavMode } = useTheme()
+  const { showToast } = useToast()
   const navigate = useNavigate()
   
   const [activeTab, setActiveTab] = useState('account')
@@ -225,6 +227,7 @@ export default function Settings() {
         <button className={`division-tab ${activeTab === 'social' ? 'active' : ''}`} onClick={() => setActiveTab('social')}>Social Links</button>
         <button className={`division-tab ${activeTab === 'blocked' ? 'active' : ''}`} onClick={() => setActiveTab('blocked')}>Blocked</button>
         <button className={`division-tab ${activeTab === 'appearance' ? 'active' : ''}`} onClick={() => setActiveTab('appearance')}>Appearance</button>
+        <button className={`division-tab ${activeTab === 'sync' ? 'active' : ''}`} onClick={() => setActiveTab('sync')}>Support & Sync</button>
       </div>
 
       {activeTab === 'account' && (
@@ -588,6 +591,58 @@ export default function Settings() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {activeTab === 'sync' && (
+        <div>
+          <div className="card" style={{ marginBottom: '20px', border: '1px solid var(--accent-cyan)' }}>
+            <h3 className="card-title" style={{ color: 'var(--accent-cyan)' }}>Force Deep Sync</h3>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '15px', fontSize: '0.85rem' }}>
+              If your app is showing different data than the website, use this to clear local caches and download fresh data from the server.
+            </p>
+            <button
+              className="btn btn-primary btn-block"
+              onClick={async () => {
+                const ok = await contextForceFetch()
+                if (ok) {
+                   showToast?.('Deep sync successful! Data updated.', 'success')
+                }
+              }}
+            >
+              🚀 Deep Sync with Server
+            </button>
+          </div>
+
+          <div className="card" style={{ marginBottom: '20px' }}>
+            <h3 className="card-title">Clear Local Storage</h3>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '15px', fontSize: '0.85rem' }}>
+              This will reset your local settings and cached data. You will stay logged in.
+            </p>
+            <button
+              className="btn btn-secondary btn-block"
+              onClick={() => {
+                if (confirm('Clear all local data? Your account remains safe.')) {
+                   localStorage.clear()
+                   window.location.reload()
+                }
+              }}
+            >
+              🧹 Wipe Local Cache
+            </button>
+          </div>
+
+          <div className="card">
+            <h3 className="card-title">Version Information</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+              <span>App Version</span>
+              <span style={{ fontWeight: 'bold' }}>2.2.1</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0' }}>
+              <span>Build Environment</span>
+              <span style={{ color: 'var(--text-muted)' }}>Production</span>
+            </div>
+          </div>
         </div>
       )}
 

@@ -73,10 +73,10 @@ const getCachedResults = () => {
 
 const saveResultsCache = (results) => {
   const resultList = Array.isArray(results) ? results : []
-  // Limit cache to 100 most recent results to save space
+  // Increase cache to 500 results for better league tracking
   const limitedResults = resultList
     .sort((a, b) => new Date(b.date || b.submittedAt || 0) - new Date(a.date || a.submittedAt || 0))
-    .slice(0, 100)
+    .slice(0, 500)
 
   try {
     localStorage.setItem(RESULT_CACHE_KEY, JSON.stringify(limitedResults.map(stripResultProofForCache)))
