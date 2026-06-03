@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getResultPlayerId, isLeagueResult, isPlayoffResult } from '../utils/leagueResults'
@@ -288,15 +288,16 @@ export default function MatchLog() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {opponentsToPlay.map(player => (
-                <div key={player.id} className="glass" style={{
-                  padding: '16px',
-                  borderRadius: '12px',
-                  background: 'rgba(255,255,255,0.02)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  border: '1px solid rgba(255,255,255,0.05)'
-                }}>
+                <Fragment key={player.id}>
+                  <div className="glass" style={{
+                    padding: '16px',
+                    borderRadius: '12px',
+                    background: 'rgba(255,255,255,0.02)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    border: '1px solid rgba(255,255,255,0.05)'
+                  }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <div className="avatar-ring" style={{ width: '40px', height: '40px', padding: '2px' }}>
                       <div className="avatar-inner" style={{ background: '#050816', fontSize: '0.9rem' }}>
@@ -440,7 +441,7 @@ export default function MatchLog() {
                     </p>
                   </div>
                 )}
-              </>
+              </Fragment>
 
               ))}
             </div>
