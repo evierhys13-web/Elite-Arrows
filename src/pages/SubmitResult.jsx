@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { db, doc, setDoc } from '../firebase'
+import { useToast } from '../context/ToastContext'
 
 const INITIAL_RESULT_FORM = {
   gameType: 'Friendly',
@@ -21,6 +22,7 @@ const INITIAL_RESULT_FORM = {
 
 export default function SubmitResult() {
   const { user, getAllUsers, getFixtures, getResults, updateResults, updateFixtures, addTokens, triggerDataRefresh, notifyAdmins, adminData } = useAuth()
+  const { showToast } = useToast()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const cameraInputRef = useRef(null)
@@ -50,7 +52,10 @@ export default function SubmitResult() {
   const seasonsData = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
   const targetSeasonDoc = seasonsData.find(s => s.name === currentSeasonLabel)
   const stagedDiv = targetSeasonDoc?.stagedDivisions?.[String(user.id)] || targetSeasonDoc?.stagedDivisions?.[user.id]
-  const effectiveDivision = stagedDiv || user.division || 'Unassigned'
+
+  const effectiveDivision = formData.gameType === 'Super League'
+    ? (user.superLeagueDivision || 'Amateur')
+    : (stagedDiv || user.division || 'Unassigned')
 
   const userSubmittedResults = allResults
     .filter(result => (
@@ -384,7 +389,11 @@ export default function SubmitResult() {
           submittedResultId: resultId,
           updatedAt: new Date().toISOString()
         }
-        updateFixtures(updatedFixtures)
+        try {
+          updateFixtures(updatedFixtures)
+        } catch (fixtureCacheError) {
+          console.log('Result saved to Firestore but local fixture cache update failed:', fixtureCacheError)
+        }
         try {
           await setDoc(
             doc(db, 'fixtures', updatedFixtures[fixtureIndex].id.toString()),

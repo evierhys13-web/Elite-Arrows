@@ -114,28 +114,46 @@ export default function Home() {
   }, [activeSeason])
 
   const allUsers = getAllUsers()
-  const isSeasonActive = seasonPhase === 'active'
-  const seasonTimerTitle = seasonPhase === 'active' ? 'Season Ends In' : seasonPhase === 'ended' ? 'Season Ended' : 'Season Starts In'
   const fixtures = getFixtures()
-  const fixturesById = Object.fromEntries(fixtures.map(fixture => [String(fixture.id), fixture]))
   const allResults = getResults()
-  const approvedResults = allResults.filter(r => String(r.status).toLowerCase() === 'approved')
-  const userResults = approvedResults.filter(r => (
-    String(getResultPlayerId(r, 1, allUsers)) === String(user.id) ||
-    String(getResultPlayerId(r, 2, allUsers)) === String(user.id)
-  ))
-  const tournaments = JSON.parse(localStorage.getItem('eliteArrowsTournaments') || '[]')
-  const resetTimes = [DEFAULT_LEAGUE_TABLE_RESET_AT, adminData?.leagueTableResetAt]
-    .map(value => value ? new Date(value).getTime() : 0)
-    .filter(value => Number.isFinite(value) && value > 0)
-  const leagueTableResetTime = resetTimes.length ? Math.max(...resetTimes) : 0
+
+  const tournaments = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem('eliteArrowsTournaments') || '[]')
+    } catch (e) { return [] }
+  }, [])
+
+  const fixturesById = useMemo(() =>
+    Object.fromEntries(fixtures.map(fixture => [String(fixture.id), fixture])),
+  [fixtures])
+
+  const approvedResults = useMemo(() =>
+    allResults.filter(r => String(r.status).toLowerCase() === 'approved'),
+  [allResults])
+
+  const userResults = useMemo(() =>
+    approvedResults.filter(r => (
+      String(getResultPlayerId(r, 1, allUsers)) === String(user?.id) ||
+      String(getResultPlayerId(r, 2, allUsers)) === String(user?.id)
+    )),
+  [approvedResults, allUsers, user?.id])
+
+  const resetTimes = useMemo(() =>
+    [DEFAULT_LEAGUE_TABLE_RESET_AT, adminData?.leagueTableResetAt]
+      .map(value => value ? new Date(value).getTime() : 0)
+      .filter(value => Number.isFinite(value) && value > 0),
+  [adminData?.leagueTableResetAt])
+
+  const leagueTableResetTime = useMemo(() =>
+    resetTimes.length ? Math.max(...resetTimes) : 0,
+  [resetTimes])
   
-  const stats = userResults.reduce((acc, r) => {
+  const stats = useMemo(() => userResults.reduce((acc, r) => {
     const isLeague = isLeagueResult(r, fixturesById)
     if (!isLeague) return acc
 
     acc.played++
-    const isPlayer1 = String(getResultPlayerId(r, 1, allUsers)) === String(user.id)
+    const isPlayer1 = String(getResultPlayerId(r, 1, allUsers)) === String(user?.id)
     const score1 = Number(r.score1) || 0
     const score2 = Number(r.score2) || 0
     if (isPlayer1) {
@@ -155,7 +173,7 @@ export default function Home() {
       acc.points += getLeaguePoints(myScore, opponentScore)
     }
     return acc
-  }, { played: 0, wins: 0, losses: 0, draws: 0, points: 0 })
+  }, { played: 0, wins: 0, losses: 0, draws: 0, points: 0 }), [userResults, fixturesById, allUsers, user?.id, leagueTableResetTime])
 
   const champions = useMemo(() => {
     const list = []
@@ -175,6 +193,9 @@ export default function Home() {
     })
     return list.sort((a, b) => new Date(b.awardedAt || 0) - new Date(a.awardedAt || 0)).slice(0, 12)
   }, [allUsers])
+
+  const isSeasonActive = seasonPhase === 'active'
+  const seasonTimerTitle = seasonPhase === 'active' ? 'Season Ends In' : seasonPhase === 'ended' ? 'Season Ended' : 'Season Starts In'
 
   return (
     <>

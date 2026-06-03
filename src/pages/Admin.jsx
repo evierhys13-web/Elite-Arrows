@@ -255,6 +255,9 @@ export default function Admin() {
 
     const resultId = `admin_${Date.now()}`
     try {
+      const isSuper = f.gameType === 'Super League'
+      const isLeague = f.gameType === 'League'
+
       const newMatch = {
         id: resultId,
         player1: p1.username,
@@ -264,6 +267,8 @@ export default function Admin() {
         score1: s1, score2: s2,
         gameType: f.gameType,
         status: 'approved',
+        season: adminData?.currentSeason || 'Season 1',
+        division: isSuper ? (p1.superLeagueDivision || '') : (isLeague ? (p1.division || '') : ''),
         date: new Date().toISOString().split('T')[0],
         submittedAt: new Date().toISOString(),
         submittedBy: 'admin',
@@ -409,10 +414,25 @@ export default function Admin() {
   const handleUpdateDivision = async () => {
     if (!divisionForm.player || !divisionForm.division) return showToast('Select both player and division', 'error')
     try {
-      const target = allPlayers.find(p => p.id === divisionForm.player)
+      const target = allPlayers.find(p => String(p.id) === String(divisionForm.player))
+      if (!target) return showToast('Player not found', 'error')
       await setDoc(doc(db, 'users', target.id), { division: divisionForm.division }, { merge: true })
+      // Also clear any staged division for this player in the current season
+      try {
+        const seasons = getSeasons()
+        const currentSeasonName = adminData?.currentSeason || 'Season 1'
+        const currentSeason = seasons.find(s => s.name === currentSeasonName)
+        if (currentSeason && currentSeason.stagedDivisions?.[target.id]) {
+          const updated = { ...currentSeason.stagedDivisions }
+          delete updated[target.id]
+          await setDoc(doc(db, 'seasons', currentSeason.id), { stagedDivisions: updated }, { merge: true })
+        }
+      } catch (stagingError) {
+        console.log('Could not clear staged division:', stagingError)
+      }
       await logAudit('MOVE_DIVISION', `Moved ${target.username} to ${divisionForm.division}`)
       triggerDataRefresh('users')
+      triggerDataRefresh('seasons')
       showToast(`${target.username} moved to ${divisionForm.division}`, 'success')
       setDivisionForm({ player: '', division: '' })
     } catch (e) { showToast(e.message, 'error') }
@@ -986,6 +1006,7 @@ export default function Admin() {
               >
                 <option value="all">All Types</option>
                 <option value="league">League</option>
+                <option value="super league">Super League</option>
                 <option value="cup">Cup</option>
                 <option value="friendly">Friendly</option>
               </select>
@@ -1007,8 +1028,29 @@ export default function Admin() {
                       <label>Division</label>
                       <select value={editingResult.division || ''} onChange={e => setEditingResult({...editingResult, division: e.target.value})}>
                         <option value="">Auto (Profile)</option>
-                        {['Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Development'].map(d => <option key={d} value={d}>{d}</option>)}
+                        <optgroup label="League">
+                          {['Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Development'].map(d => <option key={d} value={d}>{d}</option>)}
+                        </optgroup>
+                        <optgroup label="Super League">
+                          {['Premier', 'Pro', 'Amateur'].map(d => <option key={d} value={d}>{d}</option>)}
+                        </optgroup>
                       </select>
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                    <div className="form-group">
+                      <label>Game Type</label>
+                      <select value={editingResult.gameType || 'Friendly'} onChange={e => setEditingResult({...editingResult, gameType: e.target.value})}>
+                        <option value="Friendly">Friendly</option>
+                        <option value="League">League</option>
+                        <option value="Super League">Super League</option>
+                        <option value="Cup">Cup</option>
+                        <option value="Playoff">Playoff</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Date</label>
+                      <input type="date" value={editingResult.date || ''} onChange={e => setEditingResult({...editingResult, date: e.target.value})} />
                     </div>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
@@ -1073,6 +1115,7 @@ export default function Admin() {
                   <select value={adminGameForm.gameType} onChange={e => setAdminGameForm({...adminGameForm, gameType: e.target.value})}>
                     <option value="Friendly">Friendly</option>
                     <option value="League">League</option>
+                    <option value="Super League">Super League</option>
                     <option value="Cup">Cup</option>
                   </select>
                 </div>

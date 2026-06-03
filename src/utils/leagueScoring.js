@@ -1,8 +1,9 @@
 export const getOutcomePoints = (legsWon, legsLost, options = {}) => {
   const won = Number(legsWon) || 0
   const lost = Number(legsLost) || 0
-  const { noDrawBonus = false } = options
+  const { noDrawBonus = false, noWinBonus = false } = options
 
+  if (noWinBonus) return 0
   if (won > lost) return 3
   if (won === lost && !noDrawBonus) return 1
   return 0

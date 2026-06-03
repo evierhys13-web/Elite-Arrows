@@ -62,7 +62,6 @@ export default function Table() {
 
     return allUsers.map(u => {
       const uid = String(u.id)
-      // Check staged divisions first (highest priority for new seasons)
       const effectiveDiv = (staged[uid] || staged[u.id]) || (isLive ? u.division : 'Unassigned')
 
       return {
@@ -80,7 +79,7 @@ export default function Table() {
       currentSeason: selectedSeason,
       includePlayoffs: false
     })
-  }, [usersWithCorrectDivisions, results, fixtures, adminData, refreshKey, selectedSeason])
+  }, [usersWithCorrectDivisions, results, fixtures, adminData, selectedSeason])
 
   const playersInDivision = useMemo(() => {
     const source = activeDivision === 'Overall'
@@ -94,10 +93,7 @@ export default function Table() {
         stats: playerStats[String(p.id)] || { played: 0, wins: 0, draws: 0, losses: 0, legsWon: 0, legsLost: 0, points: 0, average: p.threeDartAverage || 0 }
       }))
       .filter(p => {
-        // Always show players in specific division views
         if (activeDivision !== 'Overall') return true;
-
-        // In Overall view, show anyone who has played OR has been assigned a valid league division
         const hasValidDivision = p.division && p.division !== 'Unassigned' && p.division !== 'Admin';
         return p.stats.played > 0 || hasValidDivision;
       })
@@ -109,7 +105,7 @@ export default function Table() {
         if (b.stats.legsWon !== a.stats.legsWon) return b.stats.legsWon - a.stats.legsWon
         return (b.stats.average || 0) - (a.stats.average || 0)
       })
-  }, [activeDivision, allUsers, playerStats])
+  }, [activeDivision, usersWithCorrectDivisions, playerStats])
 
   const handleRefresh = async () => {
     triggerDataRefresh('all')

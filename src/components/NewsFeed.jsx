@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 
 const PinIcon = () => (
@@ -33,10 +34,14 @@ export default function NewsFeed() {
   const news = getNews()
   const isAdmin = user?.isAdmin || user?.isTournamentAdmin
 
-  if (news.length === 0) return null
+  const displayNews = useMemo(() => {
+    if (news.length === 0) return []
+    const pinned = news.filter(n => n.pinned)
+    const unpinned = news.filter(n => !n.pinned)
+    return [...pinned, ...unpinned]
+  }, [news])
 
-  const pinned = news.filter(n => n.pinned)
-  const unpinned = news.filter(n => !n.pinned)
+  if (displayNews.length === 0) return null
 
   return (
     <div style={{ marginBottom: '24px' }}>
@@ -49,7 +54,7 @@ export default function NewsFeed() {
         Announcements
       </h2>
 
-      {[...pinned, ...unpinned].map((item) => (
+      {displayNews.map((item) => (
         <div
           key={item.id}
           style={{

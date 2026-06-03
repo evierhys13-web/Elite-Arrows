@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { db, doc, setDoc, deleteDoc, updateDoc, getDocs, collection } from '../firebase'
@@ -17,8 +17,8 @@ export default function Fixtures() {
 
   // Calculate effective user division for this season
   const userEffectiveDiv = useMemo(() => {
-    const staged = activeSeasonDoc?.stagedDivisions?.[user.id]
-    return staged || user.division || 'Unassigned'
+    const staged = activeSeasonDoc?.stagedDivisions?.[user?.id]
+    return staged || user?.division || 'Unassigned'
   }, [user, activeSeasonDoc])
 
   const [activeTab, setActiveTab] = useState('my')
@@ -64,20 +64,22 @@ const [counterFixture, setCounterFixture] = useState(null)
     }
   }, [])
 
-  const bets = allBetsData.filter(bet => String(bet.userId) === String(user.id))
+  const bets = useMemo(() => allBetsData.filter(bet => String(bet.userId) === String(user?.id)), [allBetsData, user?.id])
 
   const fixtures = getFixtures()
   const allResults = getResults()
   
-  const regularFixtures = fixtures.filter(f => !f.cupId)
-  const getFixturePlayerIds = (fixture) => ({
+  const regularFixtures = useMemo(() => fixtures.filter(f => !f.cupId), [fixtures])
+
+  const getFixturePlayerIds = useCallback((fixture) => ({
     player1Id: fixture.player1Id || fixture.player1,
     player2Id: fixture.player2Id || fixture.player2
-  })
-  const getStatus = (item) => String(item?.status || '').toLowerCase()
-  const isSameId = (first, second) => String(first || '') === String(second || '')
+  }), [])
 
-  const resultMatchesFixture = (result, fixture) => {
+  const getStatus = useCallback((item) => String(item?.status || '').toLowerCase(), [])
+  const isSameId = useCallback((first, second) => String(first || '') === String(second || ''), [])
+
+  const resultMatchesFixture = useCallback((result, fixture) => {
     if (isSameId(result.fixtureId, fixture.id)) return true
     if (fixture.cupId && result.cupId && isSameId(result.cupId, fixture.cupId) && isSameId(result.matchId, fixture.matchId)) {
       return true
@@ -95,97 +97,104 @@ const [counterFixture, setCounterFixture] = useState(null)
     const sameGameType = !resultGameType || !fixtureGameType || resultGameType === fixtureGameType
     const sameDivision = !result.division || !fixture.division || String(result.division) === String(fixture.division)
     return sameGameType && sameDivision
-  }
+  }, [getFixturePlayerIds, isSameId])
 
-  const fixtureHasSubmittedResult = (fixture) => (
+  const fixtureHasSubmittedResult = useCallback((fixture) => (
     allResults.some(result => (
       ['pending', 'approved'].includes(getStatus(result)) &&
       resultMatchesFixture(result, fixture)
     ))
-  )
+  ), [allResults, getStatus, resultMatchesFixture])
 
-  const getActiveCupProposalDate = (fixture) => (
+  const getActiveCupProposalDate = useCallback((fixture) => (
     fixture.status === 'countered' && fixture.counterDate
       ? fixture.counterDate
       : fixture.proposedDate
-  )
+  ), [])
 
-  const getActiveCupProposalTime = (fixture) => (
+  const getActiveCupProposalTime = useCallback((fixture) => (
     fixture.status === 'countered' && fixture.counterTime
       ? fixture.counterTime
       : fixture.proposedTime
-  )
+  ), [])
 
-  const getPlayerName = (id) => allUsers.find(u => String(u.id) === String(id))?.username || 'Unknown'
+  const getPlayerName = useCallback((id) => allUsers.find(u => String(u.id) === String(id))?.username || 'Unknown', [allUsers])
 
-  const getFixtureDate = (fixture) => (
+  const getFixtureDate = useCallback((fixture) => (
     fixture.fixtureDate || fixture.date || fixture.proposedDate || ''
-  )
+  ), [])
 
-  const getFixtureTime = (fixture) => (
+  const getFixtureTime = useCallback((fixture) => (
     fixture.fixtureTime || fixture.time || fixture.proposedTime || ''
-  )
+  ), [])
 
-  const getPublicFixtureName = (fixture, playerId, playerNameKey) => (
+  const getPublicFixtureName = useCallback((fixture, playerId, playerNameKey) => (
     fixture[playerNameKey] || getPlayerName(playerId)
-  )
+  ), [getPlayerName])
 
-  const getFixtureStartTime = (fixture) => {
+  const getFixtureStartTime = useCallback((fixture) => {
     const date = getFixtureDate(fixture)
     if (!date) return null
     const timestamp = new Date(`${date}T${getFixtureTime(fixture) || '00:00'}`).getTime()
     return Number.isNaN(timestamp) ? null : timestamp
-  }
+  }, [getFixtureDate, getFixtureTime])
 
-  const getFixtureSortTime = (fixture) => getFixtureStartTime(fixture) ?? Number.MAX_SAFE_INTEGER
+  const getFixtureSortTime = useCallback((fixture) => getFixtureStartTime(fixture) ?? Number.MAX_SAFE_INTEGER, [getFixtureStartTime])
 
-  const isWithinUpcomingWindow = (fixture) => {
+  const isWithinUpcomingWindow = useCallback((fixture) => {
     const startTime = getFixtureStartTime(fixture)
     if (!startTime) return false
     return startTime - Date.now() <= 60 * 60 * 1000
-  }
+  }, [getFixtureStartTime])
 
-  const pendingFixtures = regularFixtures.filter(f => {
+  const pendingFixtures = useMemo(() => regularFixtures.filter(f => {
     if (getStatus(f) === 'pending' && (f.proposalStatus || 'sent') === 'sent') {
-      return isSameId(f.player2Id, user.id) && !isSameId(f.createdBy, user.id)
+      return isSameId(f.player2Id, user?.id) && !isSameId(f.createdBy, user?.id)
     }
     if (getStatus(f) === 'countered' && (f.proposalStatus || 'countered') === 'countered') {
-      return (isSameId(f.player1Id, user.id) || isSameId(f.player2Id, user.id)) && !isSameId(f.counterBy, user.id)
+      return (isSameId(f.player1Id, user?.id) || isSameId(f.player2Id, user?.id)) && !isSameId(f.counterBy, user?.id)
     }
     return false
-  })
-  const sentFixtures = regularFixtures.filter(f => {
+  }), [regularFixtures, getStatus, isSameId, user?.id])
+
+  const sentFixtures = useMemo(() => regularFixtures.filter(f => {
     if (getStatus(f) === 'pending' && (f.proposalStatus || 'sent') === 'sent') {
-      return isSameId(f.createdBy, user.id) || isSameId(f.player1Id, user.id)
+      return isSameId(f.createdBy, user?.id) || isSameId(f.player1Id, user?.id)
     }
     if (getStatus(f) === 'countered' && (f.proposalStatus || 'countered') === 'countered') {
-      return isSameId(f.counterBy, user.id)
+      return isSameId(f.counterBy, user?.id)
     }
     return false
-  })
-  const myConfirmedFixtures = regularFixtures.filter(f => {
+  }), [regularFixtures, getStatus, isSameId, user?.id])
+
+  const myConfirmedFixtures = useMemo(() => regularFixtures.filter(f => {
     const { player1Id, player2Id } = getFixturePlayerIds(f)
     return (
-      (isSameId(player1Id, user.id) || isSameId(player2Id, user.id)) &&
+      (isSameId(player1Id, user?.id) || isSameId(player2Id, user?.id)) &&
       getStatus(f) === 'accepted' &&
       !fixtureHasSubmittedResult(f)
     )
-  })
-  const upcomingFixtures = myConfirmedFixtures.filter(isWithinUpcomingWindow)
-  const completedResults = allResults.filter(r =>
+  }), [regularFixtures, getFixturePlayerIds, isSameId, user?.id, getStatus, fixtureHasSubmittedResult])
+
+  const upcomingFixtures = useMemo(() => myConfirmedFixtures.filter(isWithinUpcomingWindow), [myConfirmedFixtures, isWithinUpcomingWindow])
+
+  const completedResults = useMemo(() => allResults.filter(r =>
     getStatus(r) === 'approved' &&
-    (isSameId(r.player1Id, user.id) || isSameId(r.player2Id, user.id))
-  )
+    (isSameId(r.player1Id, user?.id) || isSameId(r.player2Id, user?.id))
+  ), [allResults, getStatus, isSameId, user?.id])
 
-  const cupFixturesData = fixtures.filter(f => {
+  const cupFixturesData = useMemo(() => fixtures.filter(f => {
     const { player1Id, player2Id } = getFixturePlayerIds(f)
-    return f.cupId && (isSameId(player1Id, user.id) || isSameId(player2Id, user.id)) && !fixtureHasSubmittedResult(f)
-  })
-  
-  const myFixturesCount = myConfirmedFixtures.length + cupFixturesData.length
-  const upcomingCount = upcomingFixtures.length
+    return f.cupId && (isSameId(player1Id, user?.id) || isSameId(player2Id, user?.id)) && !fixtureHasSubmittedResult(f)
+  }), [fixtures, getFixturePlayerIds, isSameId, user?.id, fixtureHasSubmittedResult])
 
-  const getApprovedResultForFixture = (fixture) => {
+  const cupAccepted = useMemo(() => cupFixturesData.filter(f => getStatus(f) === 'accepted'), [cupFixturesData, getStatus])
+  const cupUpcoming = useMemo(() => cupAccepted.filter(isWithinUpcomingWindow), [cupAccepted, isWithinUpcomingWindow])
+
+  const myFixturesCount = useMemo(() => myConfirmedFixtures.length + cupAccepted.length, [myConfirmedFixtures, cupAccepted])
+  const upcomingCount = useMemo(() => upcomingFixtures.length + cupUpcoming.length, [upcomingFixtures, cupUpcoming])
+
+  const getApprovedResultForFixture = useCallback((fixture) => {
     const { player1Id, player2Id } = getFixturePlayerIds(fixture)
     return allResults.find(result => (
       getStatus(result) === 'approved' &&
@@ -201,59 +210,59 @@ const [counterFixture, setCounterFixture] = useState(null)
         )
       )
     ))
-  }
+  }, [allResults, getFixturePlayerIds, getStatus, resultMatchesFixture])
 
-  const hasApprovedResultForFixture = (fixture) => Boolean(getApprovedResultForFixture(fixture))
+  const hasApprovedResultForFixture = useCallback((fixture) => Boolean(getApprovedResultForFixture(fixture)), [getApprovedResultForFixture])
 
-  const isCompletedFixture = (fixture) => (
+  const isCompletedFixture = useCallback((fixture) => (
     ['completed', 'approved'].includes(getStatus(fixture)) || hasApprovedResultForFixture(fixture)
-  )
+  ), [getStatus, hasApprovedResultForFixture])
 
-  const isConfirmedFixture = (fixture) => (
+  const isConfirmedFixture = useCallback((fixture) => (
     getStatus(fixture) === 'accepted' &&
     !isCompletedFixture(fixture) &&
     !fixtureHasSubmittedResult(fixture)
-  )
+  ), [getStatus, isCompletedFixture, fixtureHasSubmittedResult])
 
-  const isUnarrangedFixture = (fixture) => (
+  const isUnarrangedFixture = useCallback((fixture) => (
     ['pending', 'countered'].includes(getStatus(fixture)) &&
     !isCompletedFixture(fixture) &&
     !fixtureHasSubmittedResult(fixture)
-  )
+  ), [getStatus, isCompletedFixture, fixtureHasSubmittedResult])
 
-  const isPublicFixture = (fixture) => (
+  const isPublicFixture = useCallback((fixture) => (
     Boolean(getFixturePlayerIds(fixture).player1Id && getFixturePlayerIds(fixture).player2Id) &&
     (
     isConfirmedFixture(fixture) ||
     isUnarrangedFixture(fixture) ||
     isCompletedFixture(fixture)
     )
-  )
+  ), [getFixturePlayerIds, isConfirmedFixture, isUnarrangedFixture, isCompletedFixture])
 
-  const getLegacyFixtureBetId = (fixture) => {
+  const getLegacyFixtureBetId = useCallback((fixture) => {
     const { player1Id, player2Id } = getFixturePlayerIds(fixture)
     return `fixture_${player1Id}_${player2Id}`
-  }
+  }, [getFixturePlayerIds])
 
-  const getFixtureBetId = (fixture) => (
+  const getFixtureBetId = useCallback((fixture) => (
     fixture.id ? `fixture_${fixture.id}` : getLegacyFixtureBetId(fixture)
-  )
+  ), [getLegacyFixtureBetId])
 
-  const getBetForFixture = (fixture) => (
+  const getBetForFixture = useCallback((fixture) => (
     bets.find(bet => {
       if (bet.fixtureId) return String(bet.fixtureId) === String(fixture.id)
       return String(bet.gameId) === String(getLegacyFixtureBetId(fixture))
     })
-  )
+  ), [bets, getLegacyFixtureBetId])
 
-  const getFixtureScoreForPlayer = (result, playerId, fallbackScore = null) => {
+  const getFixtureScoreForPlayer = useCallback((result, playerId, fallbackScore = null) => {
     if (!result) return fallbackScore
     if (isSameId(result.player1Id, playerId)) return Number(result.score1)
     if (isSameId(result.player2Id, playerId)) return Number(result.score2)
     return fallbackScore
-  }
+  }, [isSameId])
 
-  const getBetOutcomeForFixture = (fixture, bet) => {
+  const getBetOutcomeForFixture = useCallback((fixture, bet) => {
     const approvedResult = getApprovedResultForFixture(fixture)
     if (!approvedResult || !bet) {
       return { status: 'pending', label: 'Waiting for approved result' }
@@ -274,9 +283,9 @@ const [counterFixture, setCounterFixture] = useState(null)
       label: won ? 'Bet won' : 'Bet lost',
       actualScore: `${player1Score}-${player2Score}`
     }
-  }
+  }, [getApprovedResultForFixture, getFixturePlayerIds, getFixtureScoreForPlayer, getPublicFixtureName, isSameId])
 
-  const canBetOnFixture = (fixture) => {
+  const canBetOnFixture = useCallback((fixture) => {
     const { player1Id, player2Id } = getFixturePlayerIds(fixture)
     const fixtureType = String(fixture.gameType || '').toLowerCase()
     const isBettableFixture = fixture.cupId || fixtureType === 'league'
@@ -287,16 +296,16 @@ const [counterFixture, setCounterFixture] = useState(null)
       isBettableFixture &&
       player1Id &&
       player2Id &&
-      String(player1Id) !== String(user.id) &&
-      String(player2Id) !== String(user.id) &&
+      String(player1Id) !== String(user?.id) &&
+      String(player2Id) !== String(user?.id) &&
       !fixtureHasSubmittedResult(fixture) &&
       !hasApprovedResultForFixture(fixture)
     )
-  }
+  }, [getFixturePlayerIds, getStatus, user?.id, fixtureHasSubmittedResult, hasApprovedResultForFixture])
 
-  const publicFixtures = fixtures
+  const publicFixtures = useMemo(() => fixtures
     .filter(isPublicFixture)
-    .sort((a, b) => getFixtureSortTime(a) - getFixtureSortTime(b))
+    .sort((a, b) => getFixtureSortTime(a) - getFixtureSortTime(b)), [fixtures, isPublicFixture, getFixtureSortTime])
 
   const allFixtureFilterOptions = [
     { id: 'confirmed', label: 'Confirmed' },
@@ -780,7 +789,7 @@ const [counterFixture, setCounterFixture] = useState(null)
         'fixture_cancelled',
         { fixtureKind: 'cup', fixtureId: fixture.id }
       )
-      await sendFixtureActivityToAdmins('cancelled', updatedFixture)
+      await sendFixtureActivityToAdmins('cancelled', allFixtures[index])
 
       triggerDataRefresh('fixtures')
       setRefreshKey(prev => prev + 1)
@@ -1022,21 +1031,6 @@ const [counterFixture, setCounterFixture] = useState(null)
     } catch (e) {
       alert('Error placing bet: ' + e.message)
     }
-  }
-
-  if (!isSubscribed && !isAdmin) {
-    return (
-      <div className="page">
-        <div className="page-header">
-          <h1 className="page-title">Fixtures</h1>
-        </div>
-        <div className="card">
-          <p style={{ color: 'var(--text-muted)', textAlign: 'center' }}>
-            Subscribe to access Fixtures.
-          </p>
-        </div>
-      </div>
-    )
   }
 
   return (

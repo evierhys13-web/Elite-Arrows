@@ -5,7 +5,7 @@
     targetSdkVersion="36.0"
     mergedManifest="build\intermediates\merged_manifest\release\processReleaseManifest\AndroidManifest.xml"
     manifestMergeReport="build\outputs\logs\manifest-merger-release-report.txt"
-    proguardFiles="build\intermediates\default_proguard_files\global\proguard-android-optimize.txt-9.2.0"
+    proguardFiles="build\intermediates\default_proguard_files\global\proguard-android-optimize.txt-9.2.1"
     partialResultsDir="build\intermediates\lint_vital_partial_results\release\lintVitalAnalyzeRelease\out">
   <buildFeatures/>
   <sourceProviders>
@@ -26,6 +26,6 @@
       type="MAIN"
       applicationId="capacitor.cordova.android.plugins"
       generatedSourceFolders="build\generated\ap_generated_sources\release\out"
-      desugaredMethodsFiles="C:\Users\XJ21c\.gradle\caches\9.5.0\transforms\c8a80d42b5a26e90698d61bd3a82e11b\transformed\D8BackportedDesugaredMethods.txt">
+      desugaredMethodsFiles="C:\Users\XJ21c\.gradle\caches\9.5.0\transforms\7decbf88089f9dfea97dbe5b9abb2e22\transformed\D8BackportedDesugaredMethods.txt">
   </artifact>
 </variant>

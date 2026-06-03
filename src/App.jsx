@@ -276,30 +276,30 @@ function AppRoutes() {
       <Route path="/home" element={<ProtectedRoute><AppLayout><Home /></AppLayout></ProtectedRoute>} />
       <Route path="/subscription" element={<ProtectedRoute><AppLayout><Subscription /></AppLayout></ProtectedRoute>} />
       <Route path="/table" element={<ProtectedRoute><AppLayout><Table /></AppLayout></ProtectedRoute>} />
-      <Route path="/match-log" element={<SubscribedRoute><AppLayout><MatchLog /></AppLayout></SubscribedRoute>} />
-      <Route path="/results" element={<SubscribedRoute><AppLayout><Results /></AppLayout></SubscribedRoute>} />
+      <Route path="/match-log" element={<ProtectedRoute><AppLayout><MatchLog /></AppLayout></ProtectedRoute>} />
+      <Route path="/results" element={<ProtectedRoute><AppLayout><Results /></AppLayout></ProtectedRoute>} />
       <Route path="/players" element={<ProtectedRoute><AppLayout><Players /></AppLayout></ProtectedRoute>} />
-      <Route path="/submit-result" element={<SubscribedRoute><AppLayout><SubmitResult /></AppLayout></SubscribedRoute>} />
-      <Route path="/chat" element={<SubscribedRoute><AppLayout><Chat /></AppLayout></SubscribedRoute>} />
+      <Route path="/submit-result" element={<ProtectedRoute><AppLayout><SubmitResult /></AppLayout></ProtectedRoute>} />
+      <Route path="/chat" element={<ProtectedRoute><AppLayout><Chat /></AppLayout></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><AppLayout><Profile /></AppLayout></ProtectedRoute>} />
       <Route path="/profile/:id" element={<ProtectedRoute><AppLayout><Profile /></AppLayout></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>} />
       <Route path="/contact" element={<ProtectedRoute><AppLayout><Contact /></AppLayout></ProtectedRoute>} />
       <Route path="/support" element={<ProtectedRoute><AppLayout><Support /></AppLayout></ProtectedRoute>} />
-      <Route path="/tournaments" element={<SubscribedRoute><AppLayout><Tournaments /></AppLayout></SubscribedRoute>} />
-      <Route path="/cups" element={<SubscribedRoute><AppLayout><Cups /></AppLayout></SubscribedRoute>} />
-      <Route path="/cups/:cupId" element={<SubscribedRoute><AppLayout><CupBracket /></AppLayout></SubscribedRoute>} />
-      <Route path="/leaderboards" element={<SubscribedRoute><AppLayout><Leaderboards /></AppLayout></SubscribedRoute>} />
-      <Route path="/rewards" element={<SubscribedRoute><AppLayout><Rewards /></AppLayout></SubscribedRoute>} />
-      <Route path="/fixtures" element={<SubscribedRoute><AppLayout><Fixtures /></AppLayout></SubscribedRoute>} />
-      <Route path="/cup-fixtures" element={<SubscribedRoute><AppLayout><CupFixtures /></AppLayout></SubscribedRoute>} />
-      <Route path="/calendar" element={<SubscribedRoute><AppLayout><Calendar /></AppLayout></SubscribedRoute>} />
+      <Route path="/tournaments" element={<ProtectedRoute><AppLayout><Tournaments /></AppLayout></ProtectedRoute>} />
+      <Route path="/cups" element={<ProtectedRoute><AppLayout><Cups /></AppLayout></ProtectedRoute>} />
+      <Route path="/cups/:cupId" element={<ProtectedRoute><AppLayout><CupBracket /></AppLayout></ProtectedRoute>} />
+      <Route path="/leaderboards" element={<ProtectedRoute><AppLayout><Leaderboards /></AppLayout></ProtectedRoute>} />
+      <Route path="/rewards" element={<ProtectedRoute><AppLayout><Rewards /></AppLayout></ProtectedRoute>} />
+      <Route path="/fixtures" element={<ProtectedRoute><AppLayout><Fixtures /></AppLayout></ProtectedRoute>} />
+      <Route path="/cup-fixtures" element={<ProtectedRoute><AppLayout><CupFixtures /></AppLayout></ProtectedRoute>} />
+      <Route path="/calendar" element={<ProtectedRoute><AppLayout><Calendar /></AppLayout></ProtectedRoute>} />
       <Route path="/guide" element={<ProtectedRoute><AppLayout><Guide /></AppLayout></ProtectedRoute>} />
       <Route path="/privacy-policy" element={<ProtectedRoute><AppLayout><PrivacyPolicy /></AppLayout></ProtectedRoute>} />
       <Route path="/delete-account" element={<ProtectedRoute><AppLayout><DeleteAccount /></AppLayout></ProtectedRoute>} />
       <Route path="/donations" element={<ProtectedRoute><AppLayout><Donations /></AppLayout></ProtectedRoute>} />
       <Route path="/install" element={<ProtectedRoute><AppLayout><Install /></AppLayout></ProtectedRoute>} />
-      <Route path="/analytics" element={<SubscribedRoute><AppLayout><Analytics /></AppLayout></SubscribedRoute>} />
+      <Route path="/analytics" element={<ProtectedRoute><AppLayout><Analytics /></AppLayout></ProtectedRoute>} />
       <Route path="/notifications" element={<ProtectedRoute><AppLayout><Notifications /></AppLayout></ProtectedRoute>} />
       <Route path="/challenges" element={<ProtectedRoute><AppLayout><Challenges /></AppLayout></ProtectedRoute>} />
       <Route path="/giveaways" element={<ProtectedRoute><AppLayout><Giveaways /></AppLayout></ProtectedRoute>} />

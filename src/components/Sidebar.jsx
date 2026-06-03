@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
@@ -45,7 +45,7 @@ export default function Sidebar() {
   const isAdmin = user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin || ADMIN_EMAILS.includes(user?.email?.toLowerCase())
   const isSubscribed = user?.isSubscribed === true || isAdmin
   
-  const navigationGroups = [
+  const navigationGroups = useMemo(() => [
     {
       title: 'League',
       items: [
@@ -60,7 +60,7 @@ export default function Sidebar() {
         { path: '/results', label: 'Results', icon: TrophyIcon },
       ]
     },
-    ...(isSubscribed ? [{
+    {
       title: 'Compete',
       items: [
         { path: '/submit-result', label: 'Submit Score', icon: PlusCircleIcon },
@@ -69,11 +69,10 @@ export default function Sidebar() {
         { path: '/cups', label: 'Cups', icon: TrophyIcon },
         { path: '/tournaments', label: 'Tournaments', icon: TournamentIcon },
         { path: '/rewards', label: 'Rewards', icon: GiftIcon },
-        { path: '/chat', label: 'Chat', icon: MessageIcon },
         { path: '/leaderboards', label: 'Leaderboards', icon: TrophyIcon },
         { path: '/analytics', label: 'Analytics', icon: BarChartIcon },
       ]
-    }] : []),
+    },
     ...(isAdmin ? [{
       title: 'Admin',
       items: [
@@ -100,7 +99,7 @@ export default function Sidebar() {
         { path: '/install', label: 'Install App', icon: DownloadIcon },
       ]
     },
-  ]
+  ], [isAdmin])
 
   return (
     <>

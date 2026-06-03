@@ -4,7 +4,7 @@
     name=":capacitor-cordova-android-plugins"
     type="LIBRARY"
     maven="Elite-Arrows:capacitor-cordova-android-plugins:unspecified"
-    agpVersion="9.2.0"
+    agpVersion="9.2.1"
     buildFolder="build"
     bootClassPath="C:\Users\XJ21c\AppData\Local\Android\Sdk\platforms\android-36\android.jar;C:\Users\XJ21c\AppData\Local\Android\Sdk\build-tools\36.0.0\core-lambda-stubs.jar"
     javaSourceLevel="21"
