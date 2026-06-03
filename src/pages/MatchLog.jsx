@@ -3,12 +3,20 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getResultPlayerId, isLeagueResult, isPlayoffResult } from '../utils/leagueResults'
 import UserSearchSelect from '../components/UserSearchSelect'
+import { db, doc, setDoc } from '../firebase'
+import { useToast } from '../context/ToastContext'
 
 export default function MatchLog() {
-  const { user, getAllUsers, getFixtures, getResults, adminData, getSeasons } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, adminData, getSeasons, bets, useTokens, triggerDataRefresh } = useAuth()
   const navigate = useNavigate()
+  const { showToast } = useToast()
   const [activeTab, setActiveTab] = useState('toPlay')
   const [targetPlayerId, setTargetPlayerId] = useState(user?.id)
+  const [showBetForm, setShowBetForm] = useState(null)
+  const [betAmount, setBetAmount] = useState(10)
+  const [predictedWinner, setPredictedWinner] = useState('')
+  const [predictedScore1, setPredictedScore1] = useState('')
+  const [predictedScore2, setPredictedScore2] = useState('')
 
   const allResults = getResults()
   const allUsers = getAllUsers()
@@ -18,6 +26,73 @@ export default function MatchLog() {
   
   const currentSeasonName = adminData?.currentSeason || 'Season 1'
   const activeSeasonDoc = seasons.find(s => s.name === currentSeasonName)
+
+  const handlePlaceBet = async (opponent) => {
+    if (!predictedWinner || predictedScore1 === '' || predictedScore2 === '') {
+      showToast('Please fill in all prediction fields', 'error')
+      return
+    }
+
+    const cost = parseInt(betAmount)
+    if ((user?.eliteTokens || 0) < cost) {
+      showToast('Not enough elite tokens!', 'error')
+      return
+    }
+
+    // Identify if a fixture already exists for this match
+    const existingFixture = fixtures.find(f =>
+      !f._deleted &&
+      String(f.gameType || '').toLowerCase() === 'league' &&
+      ((String(f.player1Id) === String(targetUser.id) && String(f.player2Id) === String(opponent.id)) ||
+       (String(f.player1Id) === String(opponent.id) && String(f.player2Id) === String(targetUser.id)))
+    )
+
+    const gameId = existingFixture ? `fixture_${existingFixture.id}` : `fixture_${targetUser.id}_${opponent.id}`
+
+    const hasBet = bets.some(b => b.userId === user.id && b.gameId === gameId)
+    if (hasBet) {
+      showToast('You have already bet on this game!', 'error')
+      return
+    }
+
+    const success = await useTokens(cost)
+    if (!success) return
+
+    const betId = `bet_${Date.now()}`
+    const player1Name = targetUser.username
+    const player2Name = opponent.username
+    const predictedWinnerName = String(predictedWinner) === String(targetUser.id) ? player1Name : player2Name
+
+    const newBet = {
+      id: betId,
+      userId: user.id,
+      username: user.username,
+      gameId: gameId,
+      fixtureId: existingFixture?.id || null,
+      fixtureType: 'League',
+      fixturePlayer1Id: targetUser.id,
+      fixturePlayer2Id: opponent.id,
+      player1Name,
+      player2Name,
+      amount: cost,
+      predictedWinner: predictedWinnerName,
+      predictedWinnerId: predictedWinner,
+      predictedScore1: parseInt(predictedScore1),
+      predictedScore2: parseInt(predictedScore2),
+      won: null,
+      createdAt: new Date().toISOString(),
+      season: currentSeasonName
+    }
+
+    try {
+      await setDoc(doc(db, 'bets', betId), newBet)
+      showToast('Bet placed! Good luck!', 'success')
+      setShowBetForm(null)
+      triggerDataRefresh('bets')
+    } catch (e) {
+      showToast('Error placing bet: ' + e.message, 'error')
+    }
+  }
 
   // Calculate effective user (with division for the active season)
   const targetRaw = allUsers.find(u => String(u.id) === String(targetPlayerId)) || user || {}
@@ -238,7 +313,7 @@ export default function MatchLog() {
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                     {isMe && (
                       <button
                         className="btn btn-primary btn-sm"
@@ -248,6 +323,26 @@ export default function MatchLog() {
                         Submit Score
                       </button>
                     )}
+
+                    {!isMe && String(player.id) !== String(user?.id) && (
+                      <button
+                        className="btn btn-accent btn-sm"
+                        style={{ padding: '6px 12px', fontSize: '0.75rem', background: 'var(--accent-primary)', color: '#000' }}
+                        onClick={() => {
+                          if (showBetForm === player.id) {
+                            setShowBetForm(null)
+                          } else {
+                            setShowBetForm(player.id)
+                            setPredictedWinner('')
+                            setPredictedScore1('')
+                            setPredictedScore2('')
+                          }
+                        }}
+                      >
+                        {showBetForm === player.id ? 'Cancel Bet' : 'Bet on Game'}
+                      </button>
+                    )}
+
                     <span style={{
                       color: player._playoff ? 'var(--warning)' : 'var(--accent-cyan)',
                       fontSize: '0.65rem',
@@ -260,6 +355,93 @@ export default function MatchLog() {
                     }}>{player._playoff ? 'Playoff' : 'League'}</span>
                   </div>
                 </div>
+
+                {showBetForm === player.id && (
+                  <div className="glass animate-fade-in" style={{
+                    marginTop: '-4px',
+                    marginBottom: '12px',
+                    padding: '16px',
+                    borderRadius: '0 0 12px 12px',
+                    background: 'rgba(168, 85, 247, 0.05)',
+                    border: '1px solid rgba(168, 85, 247, 0.2)',
+                    borderTop: 'none'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                      <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--accent-primary)' }}>Place Your Bet</h4>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        Balance: <span style={{ color: 'var(--accent-cyan)' }}>{user?.eliteTokens || 0} tokens</span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label style={{ fontSize: '0.7rem' }}>Bet Amount</label>
+                        <select
+                          value={betAmount}
+                          onChange={(e) => setBetAmount(parseInt(e.target.value))}
+                          style={{ padding: '8px', fontSize: '0.8rem' }}
+                        >
+                          <option value="10">10 Tokens</option>
+                          <option value="20">20 Tokens</option>
+                          <option value="50">50 Tokens</option>
+                          <option value="100">100 Tokens</option>
+                        </select>
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label style={{ fontSize: '0.7rem' }}>Predict Winner</label>
+                        <select
+                          value={predictedWinner}
+                          onChange={(e) => setPredictedWinner(e.target.value)}
+                          style={{ padding: '8px', fontSize: '0.8rem' }}
+                        >
+                          <option value="">Select winner</option>
+                          <option value={targetUser.id}>{targetUser.username}</option>
+                          <option value={player.id}>{player.username}</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label style={{ fontSize: '0.7rem' }}>{targetUser.username} Score</label>
+                        <input
+                          type="number"
+                          value={predictedScore1}
+                          onChange={(e) => setPredictedScore1(e.target.value)}
+                          placeholder="0"
+                          min="0"
+                          max="10"
+                          style={{ padding: '8px', fontSize: '0.8rem' }}
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label style={{ fontSize: '0.7rem' }}>{player.username} Score</label>
+                        <input
+                          type="number"
+                          value={predictedScore2}
+                          onChange={(e) => setPredictedScore2(e.target.value)}
+                          placeholder="0"
+                          min="0"
+                          max="10"
+                          style={{ padding: '8px', fontSize: '0.8rem' }}
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      className="btn btn-primary btn-block"
+                      style={{ padding: '10px', fontSize: '0.85rem' }}
+                      onClick={() => handlePlaceBet(player)}
+                    >
+                      Confirm Bet ({betAmount} Tokens)
+                    </button>
+                    <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '8px', textAlign: 'center' }}>
+                      Correct score predicts enter you into the Promotion Draw!
+                    </p>
+                  </div>
+                )}
+              </>
+
               ))}
             </div>
           )}

@@ -1653,6 +1653,22 @@ const [counterFixture, setCounterFixture] = useState(null)
 
       {activeTab === 'all' && (
         <div className="card">
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(0, 212, 255, 0.1))',
+            padding: '16px',
+            borderRadius: '12px',
+            marginBottom: '20px',
+            border: '1px solid rgba(168, 85, 247, 0.3)'
+          }}>
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '1rem', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              🎯 Betting Center
+            </h3>
+            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+              Bet on any league or cup game! Correct score predictions enter you into the <strong>Season Promotion Draw</strong>.
+              You can also go to a player's <strong>Match Log</strong> to bet on their entire season schedule!
+            </p>
+          </div>
+
           <h3 className="card-title">All Fixtures</h3>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '15px' }}>
             {allFixtureFilterOptions.map(filter => (
@@ -1829,7 +1845,13 @@ const [counterFixture, setCounterFixture] = useState(null)
                         </div>
                       ) : betIsAvailable ? (
                         <button
-                          className="btn btn-primary"
+                          className="btn"
+                          style={{
+                            background: 'var(--accent-primary)',
+                            color: '#000',
+                            fontWeight: '700',
+                            boxShadow: '0 0 15px rgba(168, 85, 247, 0.3)'
+                          }}
                           onClick={() => {
                             setShowBetForm(String(fixture.id))
                             setPredictedWinner('')
@@ -1838,7 +1860,7 @@ const [counterFixture, setCounterFixture] = useState(null)
                             setBetAmount(10)
                           }}
                         >
-                          Bet on Game
+                          💸 Place Bet
                         </button>
                       ) : null}
                     </div>
