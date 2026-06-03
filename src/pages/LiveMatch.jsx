@@ -46,17 +46,20 @@ export default function LiveMatch() {
   const [stream, setStream] = useState(null)
 
   useEffect(() => {
-    if (location.state?.invitePlayer) {
+    if (location.state && location.state.invitePlayer) {
         setIsVsBot(false)
         setIsOnline(true)
     }
   }, [location.state])
 
-  // ... (Camera useEffect and startCamera logic remains similar, but updated for better selection)
-
   useEffect(() => {
     // Check for available cameras
     const getCameras = async () => {
+        if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+            console.warn('Camera API not available')
+            return
+        }
+
         try {
             // Request permission first to ensure labels are visible (especially for OBS)
             await navigator.mediaDevices.getUserMedia({ video: true }).catch(() => {})
@@ -72,9 +75,14 @@ export default function LiveMatch() {
         }
     }
     getCameras()
-  }, [])
+  }, [selectedCamera])
 
   const startCamera = async () => {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showToast('Camera API not supported in this browser', 'error')
+        return
+    }
+
     if (stream) {
         stream.getTracks().forEach(track => track.stop())
     }
@@ -128,16 +136,22 @@ export default function LiveMatch() {
             setStream(null)
         }
     }
+
+    return () => {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop())
+        }
+    }
   }, [useCamera, gameStarted, turn, selectedCamera])
 
   useEffect(() => {
-    if (onlineGameId) {
+    if (onlineGameId && user && user.id) {
         const unsub = onSnapshot(doc(db, 'liveGames', onlineGameId), (snap) => {
             if (snap.exists()) {
                 const data = snap.data()
-                setPlayerScore(data.scores[user.id])
+                setPlayerScore(data.scores[user.id] ?? startScore)
                 const otherId = data.players.find(id => id !== user.id)
-                setOpponentScore(data.scores[otherId])
+                setOpponentScore(data.scores[otherId] ?? startScore)
                 setTurn(data.turn === user.id ? 'player' : 'opponent')
                 setHistory(data.history || [])
                 setPlayerLegs(data.legs?.[user.id] || 0)
@@ -150,10 +164,10 @@ export default function LiveMatch() {
         })
         return () => unsub()
     }
-  }, [onlineGameId, user.id, showToast])
+  }, [onlineGameId, user?.id, showToast, startScore])
 
   const startGame = async () => {
-    if (isOnline && location.state?.invitePlayer) {
+    if (isOnline && location.state && location.state.invitePlayer) {
         setIsWaitingForAccept(true)
         const config = { startScore, gameFormat, legsToWin }
         const inviteId = await sendGameInvite(location.state.invitePlayer.id, config)
@@ -202,18 +216,16 @@ export default function LiveMatch() {
   }
 
   const processOnlineTurn = async (score) => {
+    if (!onlineGameId || !user) return
     const newScore = playerScore - score
     const gameRef = doc(db, 'liveGames', onlineGameId)
 
     let updates = {
-        [`scores.${user.id}`]: newScore < 0 || newScore === 1 ? playerScore : newScore,
+        [`scores.${user.id}`]: (newScore < 0 || newScore === 1) ? playerScore : newScore,
         turn: history.length % 2 === 0 ? user.id : user.id, // simplified logic, actually needs to toggle
         updatedAt: new Date().toISOString(),
-        history: arrayUnion({ who: user.id, score, remaining: newScore < 0 || newScore === 1 ? playerScore : newScore })
+        history: arrayUnion({ who: user.id, score, remaining: (newScore < 0 || newScore === 1) ? playerScore : newScore })
     }
-
-    // Toggle turn logic needs to be more robust for online
-    // In a real implementation, the turn would be players[index]
 
     await updateDoc(gameRef, updates)
   }
@@ -289,24 +301,19 @@ export default function LiveMatch() {
         }
         runBotTurn()
     }
-  }, [turn, gameStarted, isVsBot, bot, botScore, processTurn])
+  }, [turn, gameStarted, isVsBot, bot, opponentScore, processTurn, botScore])
 
   useEffect(() => {
     // Autoscorying Listener from Native Bridge
     const handleNativeScore = (e) => {
-        if (gameStarted && turn === 'player') {
+        if (gameStarted && turn === 'player' && e.detail) {
             const { scoreLabel, scoreValue } = e.detail
             showToast(`Detected: ${scoreLabel}`, 'info')
-
-            // Add to current score or input
-            // If it's a single detection, we might want to sum it up for the turn
-            // For now, let's just append it if it's an ENTER or similar,
-            // but usually auto-scorers work dart by dart.
 
             setCurrentInput(prev => {
                 const currentVal = parseInt(prev || '0')
                 const newVal = currentVal + scoreValue
-                return Math.min(180, newVal).toString()
+                return isNaN(newVal) ? prev : Math.min(180, newVal).toString()
             })
         }
     }
@@ -320,7 +327,7 @@ export default function LiveMatch() {
         <div className="page">
             <div className="card glass" style={{ maxWidth: '400px', margin: '100px auto', textAlign: 'center', padding: '40px' }}>
                 <div className="spinner" style={{ width: '50px', height: '50px', margin: '0 auto 20px' }}></div>
-                <h3>Waiting for {location.state?.invitePlayer?.username} to accept...</h3>
+                <h3>Waiting for {location.state?.invitePlayer?.username || 'player'} to accept...</h3>
                 <button className="btn btn-secondary btn-block" style={{ marginTop: '20px' }} onClick={() => setIsWaitingForAccept(false)}>Cancel Challenge</button>
             </div>
         </div>
@@ -425,7 +432,7 @@ export default function LiveMatch() {
                 background: turn === 'player' ? 'rgba(0, 212, 255, 0.15)' : 'rgba(15, 23, 42, 0.6)'
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                    <h3 style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>{user?.username}</h3>
+                    <h3 style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>{user?.username || 'You'}</h3>
                     <div style={{ background: 'var(--accent-cyan)', color: '#000', padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 800 }}>LEGS: {playerLegs}</div>
                 </div>
                 <div style={{ fontSize: '3.5rem', fontWeight: 900, color: 'white' }}>{playerScore}</div>
@@ -443,7 +450,7 @@ export default function LiveMatch() {
                     <div style={{ background: 'var(--accent-cyan)', color: '#000', padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 800 }}>LEGS: {opponentLegs}</div>
                 </div>
                 <div style={{ fontSize: '3.5rem', fontWeight: 900, color: isBotThinking ? 'var(--accent-cyan)' : 'white' }}>
-                    {isBotThinking ? '...' : opponentScore}
+                    {opponentScore}
                 </div>
             </div>
         </div>
@@ -498,7 +505,7 @@ export default function LiveMatch() {
                                 </button>
                             )}
                         </div>
-                    ) : turn === 'bot' ? (
+                    ) : turn !== 'player' && isVsBot ? (
                         <div className="animate-fade-in" style={{ padding: '20px', textAlign: 'center' }}>
                             <h4 style={{ marginBottom: '15px', color: 'var(--accent-cyan)' }}>DartBot is throwing...</h4>
                             <ScoliaBoard lastDarts={lastBotDarts} size={window.innerWidth < 768 ? 250 : 350} />
@@ -550,12 +557,12 @@ export default function LiveMatch() {
                         ))}
                     </div>
 
-                    {Capacitor.isNativePlatform() && (
+                    {typeof Capacitor !== 'undefined' && Capacitor.isNativePlatform() && (
                         <button
                             className="btn btn-primary btn-block"
                             style={{ marginTop: '20px', background: 'linear-gradient(135deg, #00d4ff, #0080ff)' }}
                             onClick={() => {
-                                Capacitor.Plugins.DartDetection.startDetection()
+                                Capacitor.Plugins['DartDetection']?.startDetection()
                             }}
                         >
                             🎯 Start Auto-Scoring Camera

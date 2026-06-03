@@ -437,19 +437,6 @@ export function AuthProvider({ children }) {
       // console.log('Admin data listener error:', error)
     })
 
-    // Listen for Game Invites
-    const invitesQuery = query(collection(db, 'gameInvites'), where('toUserId', '==', user.id), where('status', '==', 'pending'))
-    const unsubscribeInvites = onSnapshot(invitesQuery, (snapshot) => {
-        snapshot.docChanges().forEach(change => {
-            if (change.type === 'added') {
-                const invite = change.doc.data()
-                if (window.confirm(`${invite.fromUsername} has challenged you to a ${invite.config.startScore} match! Accept?`)) {
-                    acceptGameInvite(invite)
-                }
-            }
-        })
-    })
-
     const unsubscribeNews = onSnapshot(query(collection(db, 'news'), orderBy('createdAt', 'desc')), (snapshot) => {
       const newsData = snapshot.docs
         .map(doc => ({ id: doc.id, ...doc.data() }))
@@ -462,6 +449,22 @@ export function AuthProvider({ children }) {
       // console.log('News listener error:', error)
       setNews([])
     })
+
+    let unsubscribeInvites = null
+    if (user?.id) {
+        // Listen for Game Invites
+        const invitesQuery = query(collection(db, 'gameInvites'), where('toUserId', '==', user.id), where('status', '==', 'pending'))
+        unsubscribeInvites = onSnapshot(invitesQuery, (snapshot) => {
+            snapshot.docChanges().forEach(change => {
+                if (change.type === 'added') {
+                    const invite = change.doc.data()
+                    if (window.confirm(`${invite.fromUsername} has challenged you to a ${invite.config.startScore} match! Accept?`)) {
+                        acceptGameInvite(invite)
+                    }
+                }
+            })
+        })
+    }
 
     if (!user?.id) return
 
