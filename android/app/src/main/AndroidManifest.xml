@@ -65,5 +65,10 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".DartDetectionActivity"
+            android:screenOrientation="portrait"
+            android:theme="@style/AppTheme.NoActionBar" />
+
     </application>
 </manifest>

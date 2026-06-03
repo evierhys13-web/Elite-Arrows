@@ -52,6 +52,7 @@ const SuperLeague = lazy(() => import('./pages/SuperLeague'))
 const Notifications = lazy(() => import('./pages/Notifications'))
 const Challenges = lazy(() => import('./pages/Challenges'))
 const Giveaways = lazy(() => import('./pages/Giveaways'))
+const LiveMatch = lazy(() => import('./pages/LiveMatch'))
 
 function PageLoader() {
   return (
@@ -301,6 +302,7 @@ function AppRoutes() {
       <Route path="/install" element={<ProtectedRoute><AppLayout><Install /></AppLayout></ProtectedRoute>} />
       <Route path="/analytics" element={<ProtectedRoute><AppLayout><Analytics /></AppLayout></ProtectedRoute>} />
       <Route path="/notifications" element={<ProtectedRoute><AppLayout><Notifications /></AppLayout></ProtectedRoute>} />
+      <Route path="/live-match" element={<ProtectedRoute><AppLayout><LiveMatch /></AppLayout></ProtectedRoute>} />
       <Route path="/challenges" element={<ProtectedRoute><AppLayout><Challenges /></AppLayout></ProtectedRoute>} />
       <Route path="/giveaways" element={<ProtectedRoute><AppLayout><Giveaways /></AppLayout></ProtectedRoute>} />
       <Route path="/super-league" element={<ProtectedRoute><AppLayout><SuperLeague /></AppLayout></ProtectedRoute>} />

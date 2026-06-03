@@ -678,3 +678,25 @@ body.nav-mode-bottom .mobile-bottom-nav { display: flex; }
   padding: 16px;
   border-bottom: 1px solid var(--border);
 }
+
+/* Live Match Specifics */
+.active-turn {
+  box-shadow: 0 0 20px var(--accent-cyan-glow) !important;
+  border-color: var(--accent-cyan) !important;
+  transform: scale(1.02);
+  transition: all 0.3s ease;
+}
+
+.keypad button {
+  height: 70px;
+  font-size: 1.5rem !important;
+  border-radius: var(--border-radius-md);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+}
+
+.keypad button:active {
+  transform: scale(0.95);
+  background: var(--accent-cyan);
+  color: black;
+}

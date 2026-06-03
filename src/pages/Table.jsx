@@ -19,11 +19,24 @@ const DIVISION_COLORS = {
 
 export default function Table() {
   const [activeDivision, setActiveDivision] = useState('Overall')
-  const { user, getAllUsers, getFixtures, getResults, triggerDataRefresh, dataRefreshTrigger, adminData, getSeasons, forceFetchResults } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, triggerDataRefresh, dataRefreshTrigger, adminData, getSeasons, forceFetchResults, fetchResultsBySeason, fetchUsersByDivision } = useAuth()
   const { showToast } = useToast()
   const [refreshKey, setRefreshKey] = useState(0)
   const [selectedSeason, setSelectedSeason] = useState(adminData?.currentSeason || 'Season 1')
+  const [loadingSeason, setLoadingSeason] = useState(false)
   const [hasInitializedSeason, setHasInitializedSeason] = useState(false)
+
+  useEffect(() => {
+    const loadSeasonData = async () => {
+      setLoadingSeason(true)
+      await Promise.all([
+        fetchResultsBySeason(selectedSeason),
+        fetchUsersByDivision(activeDivision)
+      ])
+      setLoadingSeason(false)
+    }
+    loadSeasonData()
+  }, [selectedSeason, activeDivision, fetchResultsBySeason, fetchUsersByDivision])
   const [editingManual, setEditingManual] = useState(null)
   const [manualForm, setManualForm] = useState({ played: 0, wins: 0, draws: 0, losses: 0, points: 0, legsWon: 0, legsLost: 0, division: '' })
 
@@ -249,7 +262,14 @@ export default function Table() {
               </tr>
             </thead>
             <tbody>
-              {playersInDivision.length === 0 ? (
+              {loadingSeason ? (
+                <tr>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '40px' }}>
+                    <div className="spinner" style={{ margin: '0 auto 10px', width: '30px', height: '30px' }}></div>
+                    <span style={{ color: 'var(--text-muted)' }}>Loading {selectedSeason} data...</span>
+                  </td>
+                </tr>
+              ) : playersInDivision.length === 0 ? (
                 <tr>
                   <td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No data</td>
                 </tr>

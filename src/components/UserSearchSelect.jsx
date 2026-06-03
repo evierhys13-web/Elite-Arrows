@@ -14,11 +14,18 @@ export default function UserSearchSelect({
   placeholder = 'Search players...',
   excludeIds = [],
   label = 'Select Player',
-  maxResults = 15
+  maxResults = 15,
+  onQueryChange
 }) {
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
   const wrapperRef = useRef(null)
+
+  useEffect(() => {
+    if (onQueryChange && query.length >= 2) {
+      onQueryChange(query)
+    }
+  }, [query, onQueryChange])
 
   useEffect(() => {
     const handleClickOutside = (e) => {

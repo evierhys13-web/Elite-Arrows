@@ -7,7 +7,7 @@ import UserSearchSelect from '../components/UserSearchSelect'
 import { useToast } from '../context/ToastContext'
 
 export default function Fixtures() {
-  const { user, getAllUsers, getFixtures, getResults, updateResults, updateFixtures, triggerDataRefresh, notifyUser, notifyAdmins, useTokens, bets: allBetsData, adminData, getSeasons } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, updateResults, updateFixtures, triggerDataRefresh, notifyUser, notifyAdmins, useTokens, bets: allBetsData, adminData, getSeasons, fetchFixturesBySeason, searchUsers } = useAuth()
   const { showToast } = useToast()
   const navigate = useNavigate()
 
@@ -22,6 +22,18 @@ export default function Fixtures() {
   }, [user, activeSeasonDoc])
 
   const [activeTab, setActiveTab] = useState('my')
+  const [loadingAll, setLoadingAll] = useState(false)
+
+  useEffect(() => {
+    if (activeTab === 'all' || activeTab === 'completed') {
+      const loadAll = async () => {
+        setLoadingAll(true)
+        await fetchFixturesBySeason(currentSeasonName)
+        setLoadingAll(false)
+      }
+      loadAll()
+    }
+  }, [activeTab, currentSeasonName, fetchFixturesBySeason])
   const [allFixtureFilter, setAllFixtureFilter] = useState('confirmed')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [createForm, setCreateForm] = useState({
@@ -1139,6 +1151,7 @@ const [counterFixture, setCounterFixture] = useState(null)
                 users={getFilteredOpponents(createForm.gameType)}
                 selectedId={createForm.opponent}
                 onSelect={(id) => setCreateForm({...createForm, opponent: id})}
+                onQueryChange={searchUsers}
                 placeholder="Search for opponent..."
                 excludeIds={createForm.gameType === 'League' ? [user.id, ...playedOpponentIds] : [user.id]}
                 label="Select Opponent"
@@ -1681,7 +1694,12 @@ const [counterFixture, setCounterFixture] = useState(null)
               </button>
             ))}
           </div>
-          {publicFixtures.length === 0 ? (
+          {loadingAll ? (
+            <div style={{ textAlign: 'center', padding: '40px' }}>
+              <div className="spinner" style={{ margin: '0 auto 10px' }}></div>
+              <p style={{ color: 'var(--text-muted)' }}>Loading public fixtures...</p>
+            </div>
+          ) : publicFixtures.length === 0 ? (
             <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '40px 20px' }}>
               No fixtures yet
             </p>

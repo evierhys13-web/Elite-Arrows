@@ -8,10 +8,20 @@ import { SkeletonList } from '../components/Skeleton'
 import PullToRefresh from '../components/PullToRefresh'
 
 export default function Results() {
-  const { user, getAllUsers, getResults, triggerDataRefresh, dataRefreshTrigger, notifyAdmins, loading } = useAuth()
+  const { user, getAllUsers, getResults, triggerDataRefresh, dataRefreshTrigger, notifyAdmins, loading, fetchMoreResults } = useAuth()
   const { showToast } = useToast()
   const [activeTab, setActiveTab] = useState('approved')
   const [refreshKey, setRefreshKey] = useState(0)
+  const [fetchingMore, setFetchingMore] = useState(false)
+
+  useEffect(() => {
+    const loadInitial = async () => {
+      setFetchingMore(true)
+      await fetchMoreResults()
+      setFetchingMore(false)
+    }
+    loadInitial()
+  }, [fetchMoreResults])
 
   useEffect(() => {
     setRefreshKey(prev => prev + 1)
@@ -197,7 +207,21 @@ export default function Results() {
             pendingResults.map(r => renderResultCard(r, true))
           ) : (
             approvedResults.length === 0 ? <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>No match history found.</p> :
-            approvedResults.map(r => renderResultCard(r, false))
+            <>
+              {approvedResults.map(r => renderResultCard(r, false))}
+              <button
+                className="btn btn-secondary btn-block"
+                disabled={fetchingMore}
+                onClick={async () => {
+                  setFetchingMore(true)
+                  await fetchMoreResults()
+                  setFetchingMore(false)
+                }}
+                style={{ marginTop: '20px', marginBottom: '40px' }}
+              >
+                {fetchingMore ? 'Loading...' : 'Load Older Results'}
+              </button>
+            </>
           )}
         </div>
       </PullToRefresh>

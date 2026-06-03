@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
-import { db, auth, usersCollection, adminDataCollection, fcmTokensCollection, doc, setDoc, getDoc, getDocs, getDocsFromServer, query, where, collection, orderBy, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, updateDoc, deleteDoc, runTransaction, FieldValue, getMessagingInstance, getToken, onMessage, isSupported } from '../firebase'
+import { db, auth, usersCollection, adminDataCollection, fcmTokensCollection, doc, setDoc, getDoc, getDocs, getDocsFromServer, query, where, collection, orderBy, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, updateDoc, deleteDoc, runTransaction, FieldValue, getMessagingInstance, getToken, onMessage, isSupported, limit } from '../firebase'
 import { ADMIN_EMAILS } from '../config'
 import SeasonOneWelcomeModal from '../components/SeasonOneWelcomeModal'
 import { getResultIdentityKey, getResultOverrideKeys } from '../utils/resultIdentity'
@@ -73,19 +73,16 @@ const getCachedResults = () => {
 
 const saveResultsCache = (results) => {
   const resultList = Array.isArray(results) ? results : []
-  // Increase cache to 500 results for better league tracking
+  // Only cache recent results or user's own results to save space
   const limitedResults = resultList
     .sort((a, b) => new Date(b.date || b.submittedAt || 0) - new Date(a.date || a.submittedAt || 0))
-    .slice(0, 500)
+    .slice(0, 100)
 
   try {
     localStorage.setItem(RESULT_CACHE_KEY, JSON.stringify(limitedResults.map(stripResultProofForCache)))
   } catch (error) {
     console.warn('Could not cache results locally (quota exceeded):', error)
-    // If quota exceeded, clear some big ones
     localStorage.removeItem(RESULT_CACHE_KEY)
-    localStorage.removeItem('eliteArrowsFixtures')
-    localStorage.removeItem('eliteArrowsUsers')
   }
 }
 
@@ -465,113 +462,152 @@ export function AuthProvider({ children }) {
       return true
     }
 
-    const unsubscribeUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
-      const users = snapshot.docs.map(doc => {
+    const unsubscribeUsers = onSnapshot(query(collection(db, 'users'), where('isOnline', '==', true)), (snapshot) => {
+      const onlineUsers = snapshot.docs.map(doc => {
         const data = doc.data()
         SENSITIVE_FIELDS.forEach(field => delete data[field])
         return { id: doc.id, ...data }
       })
-      setAllUsers(users)
 
-      try {
-        localStorage.setItem('eliteArrowsUsers', JSON.stringify(users))
-      } catch (e) {
-        console.warn('Users cache failed', e)
-        localStorage.removeItem('eliteArrowsUsers')
-      }
-
-      const currentUser = users.find(item => String(item.id) === String(user.id))
-      if (currentUser) {
-        if (currentUser.isBanned) {
-          firebaseSignOut(auth)
-          setUser(null)
-          localStorage.removeItem('eliteArrowsCurrentUser')
-          window.location.href = '/auth'
-          return
-        }
-        setUser(prev => {
-          if (!prev || String(prev.id) !== String(currentUser.id)) return prev
-          const nextUser = { ...prev, ...currentUser }
-          localStorage.setItem('eliteArrowsCurrentUser', JSON.stringify(nextUser))
-          return nextUser
+      setAllUsers(prev => {
+        const existing = Array.isArray(prev) ? prev : []
+        const merged = [...existing]
+        onlineUsers.forEach(ou => {
+          const idx = merged.findIndex(u => u.id === ou.id)
+          if (idx !== -1) merged[idx] = ou
+          else merged.push(ou)
         })
+        return merged
+      })
+
+      const currentUser = onlineUsers.find(item => String(item.id) === String(user.id))
+      if (currentUser && currentUser.isBanned) {
+        firebaseSignOut(auth)
+        setUser(null)
+        localStorage.removeItem('eliteArrowsCurrentUser')
+        window.location.href = '/auth'
+        return
       }
       announceAfterHydration('users')
     }, (error) => {
       // console.log('Users listener error:', error)
     })
     
-    const unsubscribeResults = onSnapshot(collection(db, 'results'), (snapshot) => {
-      resultRowsRef.current = snapshot.docs.map(docSnap => {
+    // Instead of listening to ALL results, we only listen to PENDING results for admins
+    // or RECENT results for everyone.
+    const resultsQuery = user?.isAdmin
+      ? query(collection(db, 'results'), orderBy('submittedAt', 'desc'), limit(100))
+      : query(collection(db, 'results'), where('status', '==', 'approved'), orderBy('submittedAt', 'desc'), limit(50))
+
+    // Targeted listener for user's own results to ensure Home page accuracy
+    const userResultsQuery1 = !user?.isAdmin ? query(collection(db, 'results'), where('player1Id', '==', user.id), limit(50)) : null
+    const userResultsQuery2 = !user?.isAdmin ? query(collection(db, 'results'), where('player2Id', '==', user.id), limit(50)) : null
+
+    const unsubscribeResults = onSnapshot(resultsQuery, (snapshot) => {
+      const newRows = snapshot.docs.map(docSnap => {
         const data = docSnap.data()
-        return {
-          ...data,
-          id: data.id || docSnap.id,
-          firestoreId: docSnap.id
-        }
+        return { ...data, id: data.id || docSnap.id, firestoreId: docSnap.id }
       })
+
+      // Merge with existing rows in ref
+      const existing = resultRowsRef.current || []
+      const merged = [...existing]
+      newRows.forEach(row => {
+        const idx = merged.findIndex(r => r.id === row.id)
+        if (idx !== -1) merged[idx] = row
+        else merged.push(row)
+      })
+      resultRowsRef.current = merged
+
       const shouldAnnounce = hydratedCollections.has('results')
       hydratedCollections.add('results')
       publishResults({ announce: shouldAnnounce })
     }, (error) => {
       // console.log('Results listener error:', error)
     })
-    
-    const unsubscribeFixtures = onSnapshot(collection(db, 'fixtures'), (snapshot) => {
-      const fixturesData = snapshot.docs
+
+    let unsubscribeUserResults1 = null
+    let unsubscribeUserResults2 = null
+
+    if (userResultsQuery1) {
+      unsubscribeUserResults1 = onSnapshot(userResultsQuery1, (snapshot) => {
+        const data = snapshot.docs.map(docSnap => ({ ...docSnap.data(), id: docSnap.id, firestoreId: docSnap.id }))
+        const existing = resultRowsRef.current || []
+        const merged = [...existing]
+        data.forEach(row => {
+          const idx = merged.findIndex(r => r.id === row.id)
+          if (idx !== -1) merged[idx] = row
+          else merged.push(row)
+        })
+        resultRowsRef.current = merged
+        publishResults({ announce: true })
+      })
+    }
+    if (userResultsQuery2) {
+      unsubscribeUserResults2 = onSnapshot(userResultsQuery2, (snapshot) => {
+        const data = snapshot.docs.map(docSnap => ({ ...docSnap.data(), id: docSnap.id, firestoreId: docSnap.id }))
+        const existing = resultRowsRef.current || []
+        const merged = [...existing]
+        data.forEach(row => {
+          const idx = merged.findIndex(r => r.id === row.id)
+          if (idx !== -1) merged[idx] = row
+          else merged.push(row)
+        })
+        resultRowsRef.current = merged
+        publishResults({ announce: true })
+      })
+    }
+
+    // Instead of listening to ALL fixtures, we only listen to user's fixtures or recent ones
+    const fixturesQuery = user?.isAdmin
+      ? query(collection(db, 'fixtures'), orderBy('createdAt', 'desc'), limit(100))
+      : query(collection(db, 'fixtures'), where('player1Id', '==', user.id), limit(50))
+
+    // Fallback query for user as player2
+    const fixturesQuery2 = !user?.isAdmin ? query(collection(db, 'fixtures'), where('player2Id', '==', user.id), limit(50)) : null
+
+    const unsubscribeFixtures = onSnapshot(fixturesQuery, (snapshot) => {
+      const data = snapshot.docs
         .map(doc => ({ id: doc.id, ...doc.data() }))
         .filter(item => !item._deleted)
-      setFixtures(fixturesData)
 
-      try {
-        localStorage.setItem('eliteArrowsFixtures', JSON.stringify(fixturesData))
-      } catch (e) {
-        console.warn('Fixtures cache failed', e)
-        localStorage.removeItem('eliteArrowsFixtures')
-      }
-
+      setFixtures(prev => {
+        const existing = Array.isArray(prev) ? prev : []
+        const merged = [...existing]
+        data.forEach(item => {
+          const idx = merged.findIndex(f => f.id === item.id)
+          if (idx !== -1) merged[idx] = item
+          else merged.push(item)
+        })
+        return merged
+      })
       announceAfterHydration('fixtures')
     }, (error) => {
       // console.log('Fixtures listener error:', error)
     })
-    
-    const unsubscribeCups = onSnapshot(collection(db, 'cups'), (snapshot) => {
-      const cupsData = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter(item => !item._deleted)
-      setCups(cupsData)
-      try {
-        localStorage.setItem('eliteArrowsCups', JSON.stringify(cupsData))
-      } catch (e) {}
-      announceAfterHydration('cups')
-    }, (error) => {
-      // console.log('Cups listener error:', error)
-    })
 
-    const unsubscribeBets = onSnapshot(collection(db, 'bets'), (snapshot) => {
-      const betsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-      setBets(betsData)
-      try {
-        localStorage.setItem('eliteArrowsBets', JSON.stringify(betsData))
-      } catch (e) {}
-      announceAfterHydration('bets')
-    }, (error) => {
-      // console.log('Bets listener error:', error)
-    })
+    let unsubscribeFixtures2 = null
+    if (fixturesQuery2) {
+      unsubscribeFixtures2 = onSnapshot(fixturesQuery2, (snapshot) => {
+        const data = snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(item => !item._deleted)
+
+        setFixtures(prev => {
+          const existing = Array.isArray(prev) ? prev : []
+          const merged = [...existing]
+          data.forEach(item => {
+            const idx = merged.findIndex(f => f.id === item.id)
+            if (idx !== -1) merged[idx] = item
+            else merged.push(item)
+          })
+          return merged
+        })
+      })
+    }
     
-    const unsubscribeSupport = onSnapshot(collection(db, 'supportRequests'), (snapshot) => {
-      const supportData = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter(item => !item._deleted)
-      setSupportRequests(supportData)
-      try {
-        localStorage.setItem('eliteArrowsSupportRequests', JSON.stringify(supportData))
-      } catch (e) {}
-      announceAfterHydration('supportRequests')
-    }, (error) => {
-      // console.log('Support listener error:', error)
-    })
-    
+    // We fetch cups, bets, supportRequests and seasons on-demand now instead of full listeners
+    // but we can keep a small one for seasons as it's small and controls logic
     const unsubscribeSeasons = onSnapshot(collection(db, 'seasons'), (snapshot) => {
       const seasonsData = snapshot.docs
         .map(doc => ({ id: doc.id, ...doc.data() }))
@@ -595,10 +631,10 @@ export function AuthProvider({ children }) {
     return () => {
       unsubscribeUsers()
       unsubscribeResults()
+      if (unsubscribeUserResults1) unsubscribeUserResults1()
+      if (unsubscribeUserResults2) unsubscribeUserResults2()
       unsubscribeFixtures()
-      unsubscribeCups()
-      unsubscribeBets()
-      unsubscribeSupport()
+      if (unsubscribeFixtures2) unsubscribeFixtures2()
       unsubscribeSeasons()
       unsubscribeNews()
       unsubscribeAdmin()
@@ -1149,6 +1185,149 @@ const cleanUserData = (users) => {
     triggerDataRefresh('results')
   }, [triggerDataRefresh])
 
+  const fetchMoreResults = useCallback(async (lastResult = null, limitCount = 50) => {
+    try {
+      let q = query(
+        collection(db, 'results'),
+        where('status', '==', 'approved'),
+        orderBy('submittedAt', 'desc'),
+        limit(limitCount)
+      )
+
+      // If we had startAfter support I'd use it here, but for now we'll just fetch more
+      const snapshot = await getDocsFromServer(q)
+      const data = snapshot.docs.map(docSnap => {
+        const d = docSnap.data()
+        return { ...d, id: d.id || docSnap.id, firestoreId: docSnap.id }
+      })
+
+      setResults(prev => {
+        const merged = [...prev]
+        data.forEach(item => {
+          const idx = merged.findIndex(r => r.id === item.id)
+          if (idx === -1) merged.push(item)
+        })
+        return merged
+      })
+      return data
+    } catch (e) {
+      console.error('fetchMoreResults error:', e)
+      return []
+    }
+  }, [])
+
+  const fetchResultsBySeason = useCallback(async (seasonName) => {
+    try {
+      const q = query(collection(db, 'results'), where('season', '==', seasonName), where('status', '==', 'approved'))
+      const snapshot = await getDocsFromServer(q)
+      const seasonResults = snapshot.docs.map(docSnap => {
+        const data = docSnap.data()
+        return { ...data, id: data.id || docSnap.id, firestoreId: docSnap.id }
+      })
+
+      setResults(prev => {
+        const merged = [...prev]
+        seasonResults.forEach(row => {
+          const idx = merged.findIndex(r => r.id === row.id)
+          if (idx !== -1) merged[idx] = row
+          else merged.push(row)
+        })
+        return merged
+      })
+      return seasonResults
+    } catch (e) {
+      console.error('fetchResultsBySeason error:', e)
+      return []
+    }
+  }, [])
+
+  const fetchFixturesBySeason = useCallback(async (seasonName) => {
+    try {
+      // For now, season logic in fixtures might be via division or cupId
+      // If there's no season field in fixtures, we might just fetch all recent public ones
+      const q = query(collection(db, 'fixtures'), orderBy('createdAt', 'desc'), limit(200))
+      const snapshot = await getDocsFromServer(q)
+      const data = snapshot.docs
+        .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
+        .filter(item => !item._deleted)
+
+      setFixtures(prev => {
+        const merged = [...prev]
+        data.forEach(item => {
+          const idx = merged.findIndex(f => f.id === item.id)
+          if (idx !== -1) merged[idx] = item
+          else merged.push(item)
+        })
+        return merged
+      })
+      return data
+    } catch (e) {
+      console.error('fetchFixturesBySeason error:', e)
+      return []
+    }
+  }, [])
+
+  const fetchUsersByDivision = useCallback(async (division) => {
+    try {
+      const q = division === 'Overall'
+        ? query(collection(db, 'users'), limit(500))
+        : query(collection(db, 'users'), where('division', '==', division))
+
+      const snapshot = await getDocsFromServer(q)
+      const users = snapshot.docs.map(docSnap => {
+        const data = docSnap.data()
+        SENSITIVE_FIELDS.forEach(f => delete data[f])
+        return { id: docSnap.id, ...data }
+      })
+
+      setAllUsers(prev => {
+        const merged = [...prev]
+        users.forEach(u => {
+          const idx = merged.findIndex(ex => ex.id === u.id)
+          if (idx === -1) merged.push(u)
+          else merged[idx] = u
+        })
+        return merged
+      })
+      return users
+    } catch (e) {
+      console.error('fetchUsersByDivision error:', e)
+      return []
+    }
+  }, [])
+
+  const searchUsers = useCallback(async (searchTerm) => {
+    if (!searchTerm || searchTerm.length < 2) return []
+    try {
+      const q = query(
+        collection(db, 'users'),
+        where('username', '>=', searchTerm),
+        where('username', '<=', searchTerm + '\uf8ff'),
+        limit(20)
+      )
+      const snapshot = await getDocsFromServer(q)
+      const users = snapshot.docs.map(docSnap => {
+        const data = docSnap.data()
+        SENSITIVE_FIELDS.forEach(f => delete data[f])
+        return { id: docSnap.id, ...data }
+      })
+
+      // Merge into allUsers state to keep profile data available
+      setAllUsers(prev => {
+        const merged = [...prev]
+        users.forEach(u => {
+          const idx = merged.findIndex(ex => ex.id === u.id)
+          if (idx === -1) merged.push(u)
+        })
+        return merged
+      })
+      return users
+    } catch (e) {
+      console.error('searchUsers error:', e)
+      return []
+    }
+  }, [])
+
   const forceFetchResults = useCallback(async () => {
     try {
       showToast?.('Performing deep sync with server...', 'info')
@@ -1683,6 +1862,11 @@ const cleanUserData = (users) => {
       getAllUsers,
       getFriends,
       getResults,
+      fetchResultsBySeason,
+      fetchUsersByDivision,
+      fetchMoreResults,
+      fetchFixturesBySeason,
+      searchUsers,
       forceFetchResults,
       updateResults,
       getFixtures,

@@ -2,12 +2,6 @@
 	"appId": "com.elitearrows.app",
 	"appName": "Elite Arrows",
 	"webDir": "dist",
-	"server": {
-		"url": "https://elite-arrows.co.uk",
-		"allowNavigation": [
-			"elite-arrows.co.uk"
-		]
-	},
 	"ios": {
 		"cordovaCompat": false,
 		"contentInset": "always",
@@ -15,7 +9,7 @@
 	},
 	"plugins": {
 		"SplashScreen": {
-			"launchShowDuration": 3000,
+			"launchShowDuration": 1000,
 			"launchAutoHide": true,
 			"backgroundColor": "#0a0a1a",
 			"splashFullScreen": true
