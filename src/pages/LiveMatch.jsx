@@ -67,15 +67,17 @@ export default function LiveMatch() {
             const devices = await navigator.mediaDevices.enumerateDevices()
             const videoDevices = devices.filter(device => device.kind === 'videoinput')
             setAvailableCameras(videoDevices)
-            if (videoDevices.length > 0 && !selectedCamera) {
-                setSelectedCamera(videoDevices[0].deviceId)
+
+            // Only set if not already set to avoid loops
+            if (videoDevices.length > 0) {
+                setSelectedCamera(prev => prev || videoDevices[0].deviceId)
             }
         } catch (e) {
             console.error('Error fetching cameras:', e)
         }
     }
     getCameras()
-  }, [selectedCamera])
+  }, [])
 
   const startCamera = async () => {
     if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -287,7 +289,7 @@ export default function LiveMatch() {
             setIsBotThinking(true)
             setLastBotDarts([]) // Clear previous visuals
 
-            const darts = await bot.takeTurn(botScore, (dart, allDarts) => {
+            const darts = await bot.takeTurn(opponentScore, (dart, allDarts) => {
                 setLastBotDarts([...allDarts]) // Show darts one by one
             })
 
@@ -301,7 +303,7 @@ export default function LiveMatch() {
         }
         runBotTurn()
     }
-  }, [turn, gameStarted, isVsBot, bot, opponentScore, processTurn, botScore])
+  }, [turn, gameStarted, isVsBot, bot, opponentScore, processTurn])
 
   useEffect(() => {
     // Autoscorying Listener from Native Bridge
