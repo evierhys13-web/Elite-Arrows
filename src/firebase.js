@@ -45,6 +45,8 @@ export const supportRequestsCollection = collection(db, 'supportRequests')
 export const seasonsCollection = collection(db, 'seasons')
 export const fcmTokensCollection = collection(db, 'fcmTokens')
 export const newsCollection = collection(db, 'news')
+export const liveGamesCollection = collection(db, 'liveGames')
+export const gameInvitesCollection = collection(db, 'gameInvites')
 
 export { 
   doc, setDoc, getDoc, getDocs, getDocsFromServer, query, where, orderBy, onSnapshot, deleteDoc, collection, addDoc, updateDoc, writeBatch, runTransaction, limit,

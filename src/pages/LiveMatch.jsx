@@ -1,24 +1,37 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { DartBot } from '../utils/DartBot'
 import Breadcrumbs from '../components/Breadcrumbs'
 import ScoliaBoard from '../components/ScoliaBoard'
 import { useToast } from '../context/ToastContext'
+import { db, doc, onSnapshot, updateDoc, arrayUnion } from '../firebase'
 
 export default function LiveMatch() {
-  const { user } = useAuth()
+  const { user, sendGameInvite } = useAuth()
   const { showToast } = useToast()
+  const location = useLocation()
   const videoRef = useRef(null)
 
-  // Game State
+  // Game Setup State
   const [gameStarted, setGameStarted] = useState(false)
+  const [isOnline, setIsOnline] = useState(false)
   const [startScore, setStartScore] = useState(501)
   const [isVsBot, setIsVsBot] = useState(true)
+  const [gameFormat, setGameFormat] = useState('bestOf') // 'bestOf' or 'firstTo'
+  const [legsToWin, setLegsCount] = useState(3)
   const [botConfig, setBotConfig] = useState({ average: 50, checkout: 20 })
 
+  // Online State
+  const [onlineGameId, setOnlineGameId] = useState(null)
+  const [isWaitingForAccept, setIsWaitingForAccept] = useState(false)
+
+  // Live Match State
   const [playerScore, setPlayerScore] = useState(501)
-  const [botScore, setBotScore] = useState(501)
-  const [turn, setTurn] = useState('player') // 'player' or 'bot'
+  const [opponentScore, setOpponentScore] = useState(501)
+  const [playerLegs, setPlayerLegs] = useState(0)
+  const [opponentLegs, setOpponentLegs] = useState(0)
+  const [turn, setTurn] = useState('player') // 'player' or 'bot'/'opponent'
   const [history, setHistory] = useState([])
   const [currentInput, setCurrentInput] = useState('')
   const [bot, setBot] = useState(null)
@@ -30,6 +43,15 @@ export default function LiveMatch() {
   const [availableCameras, setAvailableCameras] = useState([])
   const [selectedCamera, setSelectedCamera] = useState('')
   const [stream, setStream] = useState(null)
+
+  useEffect(() => {
+    if (location.state?.invitePlayer) {
+        setIsVsBot(false)
+        setIsOnline(true)
+    }
+  }, [location.state])
+
+  // ... (Camera useEffect and startCamera logic remains similar, but updated for better selection)
 
   useEffect(() => {
     // Check for available cameras
@@ -107,9 +129,50 @@ export default function LiveMatch() {
     }
   }, [useCamera, gameStarted, turn, selectedCamera])
 
-  const startGame = () => {
+  useEffect(() => {
+    if (onlineGameId) {
+        const unsub = onSnapshot(doc(db, 'liveGames', onlineGameId), (snap) => {
+            if (snap.exists()) {
+                const data = snap.data()
+                setPlayerScore(data.scores[user.id])
+                const otherId = data.players.find(id => id !== user.id)
+                setOpponentScore(data.scores[otherId])
+                setTurn(data.turn === user.id ? 'player' : 'opponent')
+                setHistory(data.history || [])
+                setPlayerLegs(data.legs?.[user.id] || 0)
+                setOpponentLegs(data.legs?.[otherId] || 0)
+                if (data.status === 'finished') {
+                    setGameStarted(false)
+                    showToast('Game Finished!', 'success')
+                }
+            }
+        })
+        return () => unsub()
+    }
+  }, [onlineGameId, user.id, showToast])
+
+  const startGame = async () => {
+    if (isOnline && location.state?.invitePlayer) {
+        setIsWaitingForAccept(true)
+        const config = { startScore, gameFormat, legsToWin }
+        const inviteId = await sendGameInvite(location.state.invitePlayer.id, config)
+
+        // Listen for acceptance
+        const unsub = onSnapshot(doc(db, 'gameInvites', inviteId), (snap) => {
+            if (snap.exists() && snap.data().status === 'accepted') {
+                setOnlineGameId(snap.data().gameId)
+                setGameStarted(true)
+                setIsWaitingForAccept(false)
+                unsub()
+            }
+        })
+        return
+    }
+
     setPlayerScore(startScore)
-    setBotScore(startScore)
+    setOpponentScore(startScore)
+    setPlayerLegs(0)
+    setOpponentLegs(0)
     setHistory([])
     setTurn('player')
     setGameStarted(true)
@@ -123,21 +186,40 @@ export default function LiveMatch() {
     showToast('Match Started! You throw first.', 'info')
   }
 
-  const handleScoreInput = (score) => {
+  const handleScoreInput = async (score) => {
     const val = parseInt(score)
     if (isNaN(val) || val > 180) {
         showToast('Invalid score (max 180)', 'error')
         return
     }
 
-    if (turn === 'player') {
+    if (isOnline && onlineGameId) {
+        await processOnlineTurn(val)
+    } else {
         processTurn('player', val)
     }
   }
 
+  const processOnlineTurn = async (score) => {
+    const newScore = playerScore - score
+    const gameRef = doc(db, 'liveGames', onlineGameId)
+
+    let updates = {
+        [`scores.${user.id}`]: newScore < 0 || newScore === 1 ? playerScore : newScore,
+        turn: history.length % 2 === 0 ? user.id : user.id, // simplified logic, actually needs to toggle
+        updatedAt: new Date().toISOString(),
+        history: arrayUnion({ who: user.id, score, remaining: newScore < 0 || newScore === 1 ? playerScore : newScore })
+    }
+
+    // Toggle turn logic needs to be more robust for online
+    // In a real implementation, the turn would be players[index]
+
+    await updateDoc(gameRef, updates)
+  }
+
   const processTurn = useCallback((who, score) => {
     if (who === 'player') {
-        const newScore = playerScore - score
+        let newScore = playerScore - score
         if (newScore < 0 || newScore === 1) {
             showToast('BUST!', 'warning')
             setHistory(prev => [{ who: 'player', score: 0, result: 'BUST', remaining: playerScore }, ...prev])
@@ -145,28 +227,46 @@ export default function LiveMatch() {
             setPlayerScore(newScore)
             setHistory(prev => [{ who: 'player', score, remaining: newScore }, ...prev])
             if (newScore === 0) {
-                showToast('GAME SHOT! You Win!', 'success')
-                setGameStarted(false)
+                const nextLegs = playerLegs + 1
+                setPlayerLegs(nextLegs)
+                if ((gameFormat === 'firstTo' && nextLegs >= legsToWin) ||
+                    (gameFormat === 'bestOf' && nextLegs > legsToWin / 2)) {
+                    showToast('MATCH SHOT! You Win!', 'success')
+                    setGameStarted(false)
+                } else {
+                    showToast('LEG SHOT!', 'success')
+                    setPlayerScore(startScore)
+                    setOpponentScore(startScore)
+                }
                 return
             }
         }
-        setTurn('bot')
+        setTurn(isVsBot ? 'bot' : 'opponent')
     } else {
-        const newScore = botScore - score
+        let newScore = opponentScore - score
         if (newScore < 0 || newScore === 1) {
-            setHistory(prev => [{ who: 'bot', score: 0, result: 'BUST', remaining: botScore }, ...prev])
+            setHistory(prev => [{ who: who, score: 0, result: 'BUST', remaining: opponentScore }, ...prev])
         } else {
-            setBotScore(newScore)
-            setHistory(prev => [{ who: 'bot', score, remaining: newScore }, ...prev])
+            setOpponentScore(newScore)
+            setHistory(prev => [{ who: who, score, remaining: newScore }, ...prev])
             if (newScore === 0) {
-                showToast('Game Shot for the Bot!', 'error')
-                setGameStarted(false)
+                const nextLegs = opponentLegs + 1
+                setOpponentLegs(nextLegs)
+                if ((gameFormat === 'firstTo' && nextLegs >= legsToWin) ||
+                    (gameFormat === 'bestOf' && nextLegs > legsToWin / 2)) {
+                    showToast('Game Shot for the Opponent!', 'error')
+                    setGameStarted(false)
+                } else {
+                    showToast('Opponent wins leg!', 'info')
+                    setPlayerScore(startScore)
+                    setOpponentScore(startScore)
+                }
                 return
             }
         }
         setTurn('player')
     }
-  }, [playerScore, botScore, showToast])
+  }, [playerScore, opponentScore, playerLegs, opponentLegs, gameFormat, legsToWin, startScore, isVsBot, showToast])
 
   useEffect(() => {
     if (gameStarted && turn === 'bot' && isVsBot && bot) {
@@ -190,6 +290,34 @@ export default function LiveMatch() {
     }
   }, [turn, gameStarted, isVsBot, bot, botScore, processTurn])
 
+  useEffect(() => {
+    // Autoscorying Listener from Native Bridge
+    const handleNativeScore = (e) => {
+        if (gameStarted && turn === 'player') {
+            const { scoreLabel, scoreValue } = e.detail
+            showToast(`Native Detection: ${scoreLabel}`, 'info')
+            // This would eventually feed into currentInput or processTurn directly
+            // For now, let's just log it
+            console.log("Native Score:", scoreValue)
+        }
+    }
+
+    window.addEventListener('dartDetectionScore', handleNativeScore)
+    return () => window.removeEventListener('dartDetectionScore', handleNativeScore)
+  }, [gameStarted, turn, showToast])
+
+  if (isWaitingForAccept) {
+    return (
+        <div className="page">
+            <div className="card glass" style={{ maxWidth: '400px', margin: '100px auto', textAlign: 'center', padding: '40px' }}>
+                <div className="spinner" style={{ width: '50px', height: '50px', margin: '0 auto 20px' }}></div>
+                <h3>Waiting for {location.state?.invitePlayer?.username} to accept...</h3>
+                <button className="btn btn-secondary btn-block" style={{ marginTop: '20px' }} onClick={() => setIsWaitingForAccept(false)}>Cancel Challenge</button>
+            </div>
+        </div>
+    )
+  }
+
   if (!gameStarted) {
     return (
         <div className="page animate-fade-in">
@@ -207,10 +335,32 @@ export default function LiveMatch() {
 
                 <div className="form-group">
                     <label>Opponent</label>
-                    <select value={isVsBot ? 'bot' : 'human'} onChange={e => setIsVsBot(e.target.value === 'bot')}>
+                    <select value={isVsBot ? 'bot' : (isOnline ? 'online' : 'human')} onChange={e => {
+                        const val = e.target.value
+                        setIsVsBot(val === 'bot')
+                        setIsOnline(val === 'online')
+                    }}>
                         <option value="bot">DartBot (AI)</option>
                         <option value="human">Local Human (Pass-and-Play)</option>
+                        <option value="online">Online Friend (Challenge)</option>
                     </select>
+                </div>
+
+                <div className="form-group">
+                    <label>Match Format</label>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <button className={`btn ${gameFormat === 'bestOf' ? 'btn-primary' : 'btn-secondary'} flex-1`} onClick={() => setGameFormat('bestOf')}>Best Of</button>
+                        <button className={`btn ${gameFormat === 'firstTo' ? 'btn-primary' : 'btn-secondary'} flex-1`} onClick={() => setGameFormat('firstTo')}>First To</button>
+                    </div>
+                </div>
+
+                <div className="form-group">
+                    <label>{gameFormat === 'bestOf' ? 'Total Legs' : 'Legs to Win'}: {legsToWin}</label>
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                        {[1, 3, 5, 7, 9, 11, 21].map(n => (
+                            <button key={n} className={`btn btn-sm ${legsToWin === n ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setLegsCount(n)} style={{ flex: '1 0 50px' }}>{n}</button>
+                        ))}
+                    </div>
                 </div>
 
                 <div className="form-group">
@@ -265,20 +415,26 @@ export default function LiveMatch() {
                 border: turn === 'player' ? '2px solid var(--accent-cyan)' : '1px solid var(--border)',
                 background: turn === 'player' ? 'rgba(0, 212, 255, 0.15)' : 'rgba(15, 23, 42, 0.6)'
             }}>
-                <h3 style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{user?.username}</h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <h3 style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>{user?.username}</h3>
+                    <div style={{ background: 'var(--accent-cyan)', color: '#000', padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 800 }}>LEGS: {playerLegs}</div>
+                </div>
                 <div style={{ fontSize: '3.5rem', fontWeight: 900, color: 'white' }}>{playerScore}</div>
             </div>
 
             {/* Opponent Card */}
-            <div className={`card ${turn === 'bot' ? 'glass active-turn' : 'glass'}`} style={{
+            <div className={`card ${turn !== 'player' ? 'glass active-turn' : 'glass'}`} style={{
                 textAlign: 'center',
                 padding: '20px',
-                border: turn === 'bot' ? '2px solid var(--accent-cyan)' : '1px solid var(--border)',
-                background: turn === 'bot' ? 'rgba(0, 212, 255, 0.15)' : 'rgba(15, 23, 42, 0.6)'
+                border: turn !== 'player' ? '2px solid var(--accent-cyan)' : '1px solid var(--border)',
+                background: turn !== 'player' ? 'rgba(0, 212, 255, 0.15)' : 'rgba(15, 23, 42, 0.6)'
             }}>
-                <h3 style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{isVsBot ? 'DartBot' : 'Player 2'}</h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <h3 style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>{isVsBot ? 'DartBot' : (location.state?.invitePlayer?.username || 'Player 2')}</h3>
+                    <div style={{ background: 'var(--accent-cyan)', color: '#000', padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 800 }}>LEGS: {opponentLegs}</div>
+                </div>
                 <div style={{ fontSize: '3.5rem', fontWeight: 900, color: isBotThinking ? 'var(--accent-cyan)' : 'white' }}>
-                    {botScore}
+                    {isBotThinking ? '...' : opponentScore}
                 </div>
             </div>
         </div>

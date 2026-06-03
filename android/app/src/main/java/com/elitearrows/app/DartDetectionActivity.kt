@@ -13,6 +13,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.getcapacitor.BridgeActivity
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -84,6 +85,20 @@ class DartDetectionActivity : AppCompatActivity() {
                 val score = scoringEngine.calculateScore(x, y, centerX, centerY, radius)
                 overlayView.updateLastDart(x, y, score.label)
                 Log.d("DartDetection", "Detected: ${score.label} (${score.value})")
+                
+                // Send to Web View via a custom event
+                sendScoreToWeb(score.label, score.value)
+            }
+        }
+    }
+
+    private fun sendScoreToWeb(label: String, value: Int) {
+        // This is a placeholder. In a real production app, we'd use a Capacitor Plugin.
+        // For now, we'll try to find the bridge activity and use its webView.
+        (parent as? BridgeActivity)?.let { bridge ->
+            val script = "window.dispatchEvent(new CustomEvent('dartDetectionScore', { detail: { scoreLabel: '$label', scoreValue: $value } }));"
+            bridge.bridge.webView.post {
+                bridge.bridge.webView.evaluateJavascript(script, null)
             }
         }
     }

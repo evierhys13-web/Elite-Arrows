@@ -57,6 +57,8 @@ const getNotificationIcon = (type) => {
       return 'TR'
     case 'chat':
       return 'CH'
+    case 'game_invite':
+      return 'GM'
     default:
       return 'NT'
   }
@@ -185,6 +187,9 @@ export default function NotificationBell() {
           break
         case 'chat':
           url = '/chat'
+          break
+        case 'game_invite':
+          url = '/live-match'
           break
         default:
           url = '/notifications'

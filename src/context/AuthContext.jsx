@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
-import { db, auth, usersCollection, adminDataCollection, fcmTokensCollection, doc, setDoc, getDoc, getDocs, getDocsFromServer, query, where, collection, orderBy, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, updateDoc, deleteDoc, runTransaction, FieldValue, getMessagingInstance, getToken, onMessage, isSupported, limit } from '../firebase'
+import { db, auth, usersCollection, adminDataCollection, fcmTokensCollection, liveGamesCollection, gameInvitesCollection, doc, setDoc, getDoc, getDocs, getDocsFromServer, query, where, collection, orderBy, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, updateDoc, deleteDoc, runTransaction, FieldValue, getMessagingInstance, getToken, onMessage, isSupported, limit } from '../firebase'
 import { ADMIN_EMAILS } from '../config'
 import SeasonOneWelcomeModal from '../components/SeasonOneWelcomeModal'
 import { getResultIdentityKey, getResultOverrideKeys } from '../utils/resultIdentity'
@@ -435,6 +435,23 @@ export function AuthProvider({ children }) {
       }
     }, (error) => {
       // console.log('Admin data listener error:', error)
+    })
+
+    const unsubscribeAdmin = onSnapshot(doc(db, 'adminData', 'main'), (docSnap) => {
+        // ... exists
+    })
+
+    // Listen for Game Invites
+    const invitesQuery = query(collection(db, 'gameInvites'), where('toUserId', '==', user.id), where('status', '==', 'pending'))
+    const unsubscribeInvites = onSnapshot(invitesQuery, (snapshot) => {
+        snapshot.docChanges().forEach(change => {
+            if (change.type === 'added') {
+                const invite = change.doc.data()
+                if (window.confirm(`${invite.fromUsername} has challenged you to a ${invite.config.startScore} match! Accept?`)) {
+                    acceptGameInvite(invite)
+                }
+            }
+        })
     })
 
     const unsubscribeNews = onSnapshot(query(collection(db, 'news'), orderBy('createdAt', 'desc')), (snapshot) => {
@@ -1328,6 +1345,46 @@ const cleanUserData = (users) => {
     }
   }, [])
 
+  const sendGameInvite = async (toUserId, gameConfig) => {
+    if (!user) return
+    const inviteId = `invite_${Date.now()}`
+    const invite = {
+        id: inviteId,
+        fromUserId: user.id,
+        fromUsername: user.username,
+        toUserId,
+        status: 'pending',
+        config: gameConfig,
+        createdAt: new Date().toISOString()
+    }
+    await setDoc(doc(db, 'gameInvites', inviteId), invite)
+
+    await notifyUser(toUserId, 'New Game Request', `${user.username} has invited you to a live match!`, 'game_invite', { inviteId })
+    return inviteId
+  }
+
+  const acceptGameInvite = async (invite) => {
+    const gameId = `game_${Date.now()}`
+    const gameState = {
+        id: gameId,
+        players: [invite.fromUserId, invite.toUserId],
+        playerNames: { [invite.fromUserId]: invite.fromUsername, [invite.toUserId]: user.username },
+        scores: { [invite.fromUserId]: invite.config.startScore || 501, [invite.toUserId]: invite.config.startScore || 501 },
+        turn: invite.fromUserId,
+        history: [],
+        status: 'active',
+        config: invite.config,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    }
+
+    await setDoc(doc(db, 'liveGames', gameId), gameState)
+    await updateDoc(doc(db, 'gameInvites', invite.id), { status: 'accepted', gameId })
+
+    await notifyUser(invite.fromUserId, 'Match Accepted', `${user.username} accepted your invite!`, 'game_accepted', { gameId })
+    return gameId
+  }
+
   const forceFetchResults = useCallback(async () => {
     try {
       showToast?.('Performing deep sync with server...', 'info')
@@ -1876,6 +1933,8 @@ const cleanUserData = (users) => {
       getSupportRequests,
       advanceCupBracket,
       getSeasons,
+      sendGameInvite,
+      acceptGameInvite,
       getNews,
       postNews,
       deleteNews,

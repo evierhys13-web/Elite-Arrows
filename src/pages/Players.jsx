@@ -229,16 +229,25 @@ export default function Players() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }} onClick={e => e.stopPropagation()}>
                   <button 
                     className="btn btn-primary btn-sm"
-                    onClick={() => navigate('/chat', { state: { openChat: `friend_${player.id}` } })}
+                    style={{ gridColumn: isOnline ? 'span 2' : 'span 1' }}
+                    onClick={() => {
+                        if (isOnline) {
+                            navigate('/live-match', { state: { invitePlayer: player } })
+                        } else {
+                            navigate('/chat', { state: { openChat: `friend_${player.id}` } })
+                        }
+                    }}
                   >
-                    💬 Chat
+                    {isOnline ? '🎯 Challenge Live' : '💬 Chat'}
                   </button>
-                  <button
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => setProposeModal(player)}
-                  >
-                    📅 Propose
-                  </button>
+                  {!isOnline && (
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => setProposeModal(player)}
+                    >
+                      📅 Propose
+                    </button>
+                  )}
                   <button
                     className="btn btn-secondary btn-sm"
                     style={{ gridColumn: 'span 2' }}
