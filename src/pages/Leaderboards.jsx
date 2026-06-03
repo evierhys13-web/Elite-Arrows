@@ -4,11 +4,13 @@ import { useAuth } from '../context/AuthContext'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
 
 export default function Leaderboards() {
-  const { user, getAllUsers, getFixtures, getResults, dataRefreshTrigger, adminData } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, dataRefreshTrigger, adminData, forceFetchResults, triggerDataRefresh } = useAuth()
+  const { showToast } = useToast()
   const navigate = useNavigate()
   const [selectedDivision, setSelectedDivision] = useState('all')
-  const [timeFilter, setTimeFilter] = useState('week')
+  const [timeFilter, setTimeFilter] = useState('all')
   const [refreshKey, setRefreshKey] = useState(0)
+  const [isSyncing, setIsSyncing] = useState(false)
 
   useEffect(() => {
     setRefreshKey(prev => prev + 1)
@@ -51,6 +53,7 @@ export default function Leaderboards() {
 
   const honoursList = useMemo(() => {
     const list = []
+    if (!Array.isArray(allUsers)) return list
     allUsers.forEach(u => {
       if (u.trophies && Array.isArray(u.trophies)) {
         u.trophies.forEach(t => {
@@ -68,9 +71,38 @@ export default function Leaderboards() {
 
   return (
     <div className="page animate-fade-in">
-      <div className="page-header" style={{ marginBottom: '32px' }}>
-        <h1 className="page-title text-gradient" style={{ fontSize: '2.5rem' }}>League Honours & Rankings</h1>
-        <p style={{ color: 'var(--text-muted)' }}>Celebrating our champions and top performers</p>
+      <Breadcrumbs items={[{ label: 'Home', path: '/home' }, { label: 'Leaderboards' }]} />
+
+      <div className="page-header" style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+        <div>
+          <h1 className="page-title text-gradient" style={{ fontSize: '2.5rem' }}>League Honours & Rankings</h1>
+          <p style={{ color: 'var(--text-muted)' }}>Celebrating our champions and top performers</p>
+        </div>
+        <button
+          className="btn btn-secondary glass"
+          disabled={isSyncing}
+          onClick={async () => {
+            setIsSyncing(true)
+            showToast?.('Syncing latest leaderboard data...', 'info')
+            try {
+              if (forceFetchResults) {
+                await forceFetchResults()
+                showToast?.('Rankings synchronized!', 'success')
+              } else {
+                triggerDataRefresh('all')
+                setRefreshKey(prev => prev + 1)
+                showToast('Data refreshed!', 'success')
+              }
+            } catch (err) {
+              showToast?.('Sync failed. Please reload.', 'error')
+            } finally {
+              setIsSyncing(false)
+            }
+          }}
+          style={{ padding: '8px 16px', borderRadius: '99px', fontSize: '0.8rem', minWidth: '80px' }}
+        >
+          {isSyncing ? '⌛...' : '🔄 Sync'}
+        </button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '32px' }}>
@@ -103,14 +135,14 @@ export default function Leaderboards() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
                <h3 className="card-title" style={{ margin: 0 }}>📊 Performance Tables</h3>
                <div style={{ display: 'flex', gap: '8px' }}>
-                  {['week', 'month', 'all'].map(f => (
+                  {['week', 'month', 'quarter', 'all'].map(f => (
                     <button
                       key={f}
                       className={`btn btn-sm ${timeFilter === f ? 'btn-primary' : 'btn-secondary'}`}
                       onClick={() => setTimeFilter(f)}
                       style={{ fontSize: '0.7rem', padding: '6px 12px' }}
                     >
-                      {f.toUpperCase()}
+                      {f === 'quarter' ? '3M' : f.toUpperCase()}
                     </button>
                   ))}
                </div>
@@ -131,7 +163,12 @@ export default function Leaderboards() {
 
             <div style={{ overflowX: 'auto' }}>
               {leaderboard.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '40px' }}>No matches played in this period.</p>
+                <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+                   <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>No matches played in this period.</p>
+                   {timeFilter !== 'all' && (
+                     <button className="btn btn-secondary btn-sm" onClick={() => setTimeFilter('all')}>Show All Time</button>
+                   )}
+                </div>
               ) : (
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>

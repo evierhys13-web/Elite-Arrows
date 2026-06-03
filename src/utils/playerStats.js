@@ -241,7 +241,7 @@ export const derivePlayerStatsFromResults = (users = [], results = [], options =
     if (isPlayoff && !includePlayoffs) return
 
     const countsForPoints = (isSuper || isLeagueResult(result, fixturesById)) && !isPlayoff
-    const scoringOptions = { noDrawBonus: isSuper || isPlayoff }
+    const scoringOptions = { noDrawBonus: isSuper || isPlayoff, noWinBonus: isSuper }
 
     if (player1Id && statsByPlayerId[player1Id]) {
       addResultToPlayer(statsByPlayerId[player1Id], result, 1, score2, score1, countsForPoints, scoringOptions)
@@ -253,19 +253,20 @@ export const derivePlayerStatsFromResults = (users = [], results = [], options =
 
   // Apply manual stats overrides (admin can set these directly on the user doc)
   users.forEach(user => {
-    if (user && user.id && user.manualStats) {
+    if (user && user.id) {
       const id = String(user.id)
-      if (statsByPlayerId[id]) {
+      const overrides = (superLeagueOnly ? user.manualSuperStats : user.manualStats)
+      if (overrides && statsByPlayerId[id]) {
         statsByPlayerId[id] = {
           ...statsByPlayerId[id],
-          played: user.manualStats.played ?? statsByPlayerId[id].played,
-          wins: user.manualStats.wins ?? statsByPlayerId[id].wins,
-          draws: user.manualStats.draws ?? statsByPlayerId[id].draws,
-          losses: user.manualStats.losses ?? statsByPlayerId[id].losses,
-          points: user.manualStats.points ?? statsByPlayerId[id].points,
-          legsWon: user.manualStats.legsWon ?? statsByPlayerId[id].legsWon,
-          legsLost: user.manualStats.legsLost ?? statsByPlayerId[id].legsLost,
-          legDiff: (user.manualStats.legsWon ?? statsByPlayerId[id].legsWon) - (user.manualStats.legsLost ?? statsByPlayerId[id].legsLost)
+          played: overrides.played ?? statsByPlayerId[id].played,
+          wins: overrides.wins ?? statsByPlayerId[id].wins,
+          draws: overrides.draws ?? statsByPlayerId[id].draws,
+          losses: overrides.losses ?? statsByPlayerId[id].losses,
+          points: overrides.points ?? statsByPlayerId[id].points,
+          legsWon: overrides.legsWon ?? statsByPlayerId[id].legsWon,
+          legsLost: overrides.legsLost ?? statsByPlayerId[id].legsLost,
+          legDiff: (overrides.legsWon ?? statsByPlayerId[id].legsWon) - (overrides.legsLost ?? statsByPlayerId[id].legsLost)
         }
       }
     }

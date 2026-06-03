@@ -1,7 +1,10 @@
 import { useState, useMemo, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
 import Breadcrumbs from '../components/Breadcrumbs'
+import { useToast } from '../context/ToastContext'
+import { db, doc, setDoc } from '../firebase'
 
 const SUPER_DIVISIONS = ['Premier', 'Pro', 'Amateur']
 const DIVISION_COLORS = {
@@ -14,7 +17,12 @@ export default function SuperLeague() {
   const [activeTab, setActiveTab] = useState('table')
   const [activeDivision, setActiveDivision] = useState('Premier')
   const { user, getAllUsers, getFixtures, getResults, triggerDataRefresh, dataRefreshTrigger, adminData } = useAuth()
+  const { showToast } = useToast()
   const [refreshKey, setRefreshKey] = useState(0)
+  const [editingManual, setEditingManual] = useState(null)
+  const [manualForm, setManualForm] = useState({ played: 0, wins: 0, losses: 0, points: 0, legsWon: 0, legsLost: 0 })
+
+  const isAdmin = user?.isAdmin === true || user?.isTournamentAdmin === true || user?.isCupAdmin === true
 
   useEffect(() => {
     setRefreshKey(prev => prev + 1)
@@ -121,6 +129,25 @@ export default function SuperLeague() {
                                 </span>
                               )}
                             </span>
+                            {isAdmin && (
+                              <span
+                                style={{ cursor: 'pointer', marginLeft: '10px', fontSize: '0.75rem', opacity: 0.6 }}
+                                onClick={() => {
+                                  const ms = player.manualSuperStats || {}
+                                  setManualForm({
+                                    played: ms.played ?? player.stats.played,
+                                    wins: ms.wins ?? player.stats.wins,
+                                    losses: ms.losses ?? player.stats.losses,
+                                    points: ms.points ?? player.stats.points,
+                                    legsWon: ms.legsWon ?? player.stats.legsWon,
+                                    legsLost: ms.legsLost ?? player.stats.legsLost
+                                  })
+                                  setEditingManual(player)
+                                }}
+                              >
+                                {player.manualSuperStats ? '✏️*' : '✏️'}
+                              </span>
+                            )}
                           </td>
                           <td style={{ textAlign: 'center' }}>{player.stats.played}</td>
                           <td style={{ textAlign: 'center', color: 'var(--text-muted)' }}>{player.stats.wins}</td>
@@ -163,7 +190,7 @@ export default function SuperLeague() {
               <h3 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>Point System</h3>
               <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', listStyleType: 'disc' }}>
                 <li><strong>1 Point</strong> per leg won.</li>
-                <li><strong>3 Points</strong> bonus for a Match Win.</li>
+                <li><strong>No additional points</strong> for a Match Win (Legs Only).</li>
               </ul>
             </section>
 
@@ -171,6 +198,63 @@ export default function SuperLeague() {
               <h3 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>General Rules</h3>
               <p style={{ color: 'var(--text-muted)' }}>Super League follows the standard Elite Arrows competitive ruleset regarding etiquette, reporting, and disputes. As an elite tier, higher standards of punctuality and sportsmanship are expected.</p>
             </section>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Adjustment Modal */}
+      {isAdmin && editingManual && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000 }} onClick={() => setEditingManual(null)}>
+          <div className="card glass" style={{ padding: '28px', maxWidth: '420px', width: '90%', border: '1px solid var(--accent-cyan)' }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ marginBottom: '4px' }}>Super League Adjustments: {editingManual.username}</h3>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '20px' }}>
+              Override statistics for the Super League table only.
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              {['played', 'wins', 'losses', 'points', 'legsWon', 'legsLost'].map(field => (
+                <div key={field} className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontSize: '0.75rem' }}>{field.charAt(0).toUpperCase() + field.slice(1)}</label>
+                  <input
+                    type="number"
+                    value={manualForm[field]}
+                    className="glass"
+                    onChange={e => setManualForm({...manualForm, [field]: parseInt(e.target.value) || 0})}
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
+              <button
+                className="btn btn-primary"
+                style={{ flex: 1 }}
+                onClick={async () => {
+                  try {
+                    const defaultStats = { played: 0, wins: 0, losses: 0, points: 0, legsWon: 0, legsLost: 0 }
+                    const hasChanges = Object.keys(defaultStats).some(k => {
+                      const v = Number(manualForm[k]) || 0
+                      const existing = (editingManual.manualSuperStats || {})[k]
+                      return v !== (existing ?? editingManual.stats[k])
+                    })
+
+                    if (!hasChanges) {
+                      await setDoc(doc(db, 'users', editingManual.id), { manualSuperStats: null }, { merge: true })
+                    } else {
+                      await setDoc(doc(db, 'users', editingManual.id), { manualSuperStats: manualForm }, { merge: true })
+                    }
+                    showToast('Super League adjustments saved!', 'success')
+                    setEditingManual(null)
+                    triggerDataRefresh('all')
+                  } catch (e) {
+                    showToast('Error: ' + e.message, 'error')
+                  }
+                }}
+              >
+                Save Changes
+              </button>
+              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setEditingManual(null)}>Cancel</button>
+            </div>
           </div>
         </div>
       )}
