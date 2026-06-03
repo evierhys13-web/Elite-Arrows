@@ -449,11 +449,6 @@ export function AuthProvider({ children }) {
             }
         })
     })
-                    acceptGameInvite(invite)
-                }
-            }
-        })
-    })
 
     const unsubscribeNews = onSnapshot(query(collection(db, 'news'), orderBy('createdAt', 'desc')), (snapshot) => {
       const newsData = snapshot.docs
