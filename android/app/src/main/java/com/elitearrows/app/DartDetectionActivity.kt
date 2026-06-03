@@ -6,11 +6,14 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
 import android.view.MotionEvent
+import android.view.ViewGroup
+import android.widget.Button
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.getcapacitor.BridgeActivity
@@ -28,18 +31,33 @@ class DartDetectionActivity : AppCompatActivity() {
     private var centerY = 0f
     private var radius = 0f
     private var calibrationStep = 0
+    private var isLiveMode = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        isLiveMode = intent.getBooleanExtra("isLiveMode", false)
+
         // Dynamic UI creation for isolation
-        val root = androidx.constraintlayout.widget.ConstraintLayout(this)
+        val root = ConstraintLayout(this)
         previewView = PreviewView(this)
         overlayView = DartboardOverlayView(this, null)
         
-        root.addView(previewView, android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT)
-        root.addView(overlayView, android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT)
+        root.addView(previewView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        root.addView(overlayView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         
+        // Add a Close button
+        val closeButton = Button(this).apply {
+            text = "Close"
+            setOnClickListener { finish() }
+        }
+        val buttonParams = ConstraintLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
+            endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
+            setMargins(0, 0, 40, 40)
+        }
+        root.addView(closeButton, buttonParams)
+
         setContentView(root)
 
         if (allPermissionsGranted()) {
@@ -93,12 +111,10 @@ class DartDetectionActivity : AppCompatActivity() {
     }
 
     private fun sendScoreToWeb(label: String, value: Int) {
-        // This is a placeholder. In a real production app, we'd use a Capacitor Plugin.
-        // For now, we'll try to find the bridge activity and use its webView.
-        (parent as? BridgeActivity)?.let { bridge ->
+        MainActivity.instance?.let { bridgeActivity ->
             val script = "window.dispatchEvent(new CustomEvent('dartDetectionScore', { detail: { scoreLabel: '$label', scoreValue: $value } }));"
-            bridge.bridge.webView.post {
-                bridge.bridge.webView.evaluateJavascript(script, null)
+            bridgeActivity.bridge.webView.post {
+                bridgeActivity.bridge.webView.evaluateJavascript(script, null)
             }
         }
     }

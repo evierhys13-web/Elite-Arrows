@@ -9,8 +9,18 @@ import com.google.firebase.firestore.FirebaseFirestore
 
 class MainActivity : BridgeActivity() {
 
+    companion object {
+        var instance: MainActivity? = null
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        instance = this
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (instance == this) instance = null
     }
 
     private var tapCount = 0

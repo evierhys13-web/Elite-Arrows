@@ -6,6 +6,7 @@ import Breadcrumbs from '../components/Breadcrumbs'
 import ScoliaBoard from '../components/ScoliaBoard'
 import { useToast } from '../context/ToastContext'
 import { db, doc, onSnapshot, updateDoc, arrayUnion } from '../firebase'
+import { Capacitor } from '@capacitor/core'
 
 export default function LiveMatch() {
   const { user, sendGameInvite } = useAuth()
@@ -295,10 +296,18 @@ export default function LiveMatch() {
     const handleNativeScore = (e) => {
         if (gameStarted && turn === 'player') {
             const { scoreLabel, scoreValue } = e.detail
-            showToast(`Native Detection: ${scoreLabel}`, 'info')
-            // This would eventually feed into currentInput or processTurn directly
-            // For now, let's just log it
-            console.log("Native Score:", scoreValue)
+            showToast(`Detected: ${scoreLabel}`, 'info')
+
+            // Add to current score or input
+            // If it's a single detection, we might want to sum it up for the turn
+            // For now, let's just append it if it's an ENTER or similar,
+            // but usually auto-scorers work dart by dart.
+
+            setCurrentInput(prev => {
+                const currentVal = parseInt(prev || '0')
+                const newVal = currentVal + scoreValue
+                return Math.min(180, newVal).toString()
+            })
         }
     }
 
@@ -540,6 +549,18 @@ export default function LiveMatch() {
                             </button>
                         ))}
                     </div>
+
+                    {Capacitor.isNativePlatform() && (
+                        <button
+                            className="btn btn-primary btn-block"
+                            style={{ marginTop: '20px', background: 'linear-gradient(135deg, #00d4ff, #0080ff)' }}
+                            onClick={() => {
+                                Capacitor.Plugins.DartDetection.startDetection()
+                            }}
+                        >
+                            🎯 Start Auto-Scoring Camera
+                        </button>
+                    )}
                 </div>
             </div>
 
