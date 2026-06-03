@@ -60,17 +60,38 @@ export default function LiveMatch() {
         const constraints = {
             video: {
                 deviceId: selectedCamera ? { exact: selectedCamera } : undefined,
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
+                width: { ideal: 1920 },
+                height: { ideal: 1080 }
             }
         }
+
+        // Default to back camera on mobile if nothing selected
+        if (!selectedCamera && /Android|iPhone/i.test(navigator.userAgent)) {
+            constraints.video.facingMode = { ideal: 'environment' }
+        }
+
         const newStream = await navigator.mediaDevices.getUserMedia(constraints)
         setStream(newStream)
+
         if (videoRef.current) {
             videoRef.current.srcObject = newStream
         }
+
+        // Update camera list with labels after permission granted
+        const devices = await navigator.mediaDevices.enumerateDevices()
+        const videoDevices = devices.filter(device => device.kind === 'videoinput')
+        setAvailableCameras(videoDevices)
+
+        // Lock in the deviceId if we auto-picked one
+        if (!selectedCamera && videoDevices.length > 0) {
+            const currentTrack = newStream.getVideoTracks()[0]
+            const settings = currentTrack.getSettings()
+            if (settings.deviceId) setSelectedCamera(settings.deviceId)
+        }
+
     } catch (e) {
-        showToast('Camera access denied or unavailable', 'error')
+        console.error('Camera Error:', e)
+        showToast('Camera error: ' + e.message, 'error')
         setUseCamera(false)
     }
   }
@@ -280,13 +301,38 @@ export default function LiveMatch() {
                     border: '1px solid var(--accent-cyan)'
                 }}>
                     {turn === 'player' && useCamera ? (
-                        <video
-                            ref={videoRef}
-                            autoPlay
-                            playsInline
-                            muted
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
+                        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                            <video
+                                ref={videoRef}
+                                autoPlay
+                                playsInline
+                                muted
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                            {availableCameras.length > 1 && (
+                                <button
+                                    onClick={() => {
+                                        const currentIndex = availableCameras.findIndex(c => c.deviceId === selectedCamera)
+                                        const nextIndex = (currentIndex + 1) % availableCameras.length
+                                        setSelectedCamera(availableCameras[nextIndex].deviceId)
+                                    }}
+                                    style={{
+                                        position: 'absolute',
+                                        bottom: '10px',
+                                        right: '10px',
+                                        background: 'rgba(0,0,0,0.6)',
+                                        border: '1px solid var(--accent-cyan)',
+                                        color: 'white',
+                                        padding: '8px 12px',
+                                        borderRadius: '8px',
+                                        fontSize: '0.8rem',
+                                        zIndex: 10
+                                    }}
+                                >
+                                    🔄 Flip Camera
+                                </button>
+                            )}
+                        </div>
                     ) : turn === 'bot' ? (
                         <div className="animate-fade-in" style={{ padding: '20px', textAlign: 'center' }}>
                             <h4 style={{ marginBottom: '15px', color: 'var(--accent-cyan)' }}>DartBot is throwing...</h4>
