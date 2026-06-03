@@ -46,11 +46,11 @@ export default function LiveMatch() {
   const [stream, setStream] = useState(null)
 
   useEffect(() => {
-    if (location.state && location.state.invitePlayer) {
+    if (location && location.state && location.state.invitePlayer) {
         setIsVsBot(false)
         setIsOnline(true)
     }
-  }, [location.state])
+  }, [location])
 
   useEffect(() => {
     // Check for available cameras
@@ -68,7 +68,6 @@ export default function LiveMatch() {
             const videoDevices = devices.filter(device => device.kind === 'videoinput')
             setAvailableCameras(videoDevices)
 
-            // Only set if not already set to avoid loops
             if (videoDevices.length > 0) {
                 setSelectedCamera(prev => prev || videoDevices[0].deviceId)
             }
@@ -98,7 +97,6 @@ export default function LiveMatch() {
             }
         }
 
-        // Default to back camera on mobile if nothing selected
         if (!selectedCamera && /Android|iPhone/i.test(navigator.userAgent)) {
             constraints.video.facingMode = { ideal: 'environment' }
         }
@@ -110,16 +108,14 @@ export default function LiveMatch() {
             videoRef.current.srcObject = newStream
         }
 
-        // Update camera list with labels after permission granted
         const devices = await navigator.mediaDevices.enumerateDevices()
         const videoDevices = devices.filter(device => device.kind === 'videoinput')
         setAvailableCameras(videoDevices)
 
-        // Lock in the deviceId if we auto-picked one
         if (!selectedCamera && videoDevices.length > 0) {
             const currentTrack = newStream.getVideoTracks()[0]
             const settings = currentTrack.getSettings()
-            if (settings.deviceId) setSelectedCamera(settings.deviceId)
+            if (settings && settings.deviceId) setSelectedCamera(settings.deviceId)
         }
 
     } catch (e) {
@@ -151,16 +147,22 @@ export default function LiveMatch() {
         const unsub = onSnapshot(doc(db, 'liveGames', onlineGameId), (snap) => {
             if (snap.exists()) {
                 const data = snap.data()
-                setPlayerScore(data.scores[user.id] ?? startScore)
-                const otherId = data.players.find(id => id !== user.id)
-                setOpponentScore(data.scores[otherId] ?? startScore)
-                setTurn(data.turn === user.id ? 'player' : 'opponent')
-                setHistory(data.history || [])
-                setPlayerLegs(data.legs?.[user.id] || 0)
-                setOpponentLegs(data.legs?.[otherId] || 0)
-                if (data.status === 'finished') {
-                    setGameStarted(false)
-                    showToast('Game Finished!', 'success')
+                if (data && data.scores) {
+                    setPlayerScore(data.scores[user.id] ?? startScore)
+                    const otherId = data.players?.find(id => id !== user.id)
+                    if (otherId) {
+                        setOpponentScore(data.scores[otherId] ?? startScore)
+                    }
+                    setTurn(data.turn === user.id ? 'player' : 'opponent')
+                    setHistory(data.history || [])
+                    setPlayerLegs(data.legs?.[user.id] || 0)
+                    if (otherId) {
+                        setOpponentLegs(data.legs?.[otherId] || 0)
+                    }
+                    if (data.status === 'finished') {
+                        setGameStarted(false)
+                        showToast('Game Finished!', 'success')
+                    }
                 }
             }
         })
@@ -169,12 +171,11 @@ export default function LiveMatch() {
   }, [onlineGameId, user?.id, showToast, startScore])
 
   const startGame = async () => {
-    if (isOnline && location.state && location.state.invitePlayer) {
+    if (isOnline && location && location.state && location.state.invitePlayer) {
         setIsWaitingForAccept(true)
         const config = { startScore, gameFormat, legsToWin }
         const inviteId = await sendGameInvite(location.state.invitePlayer.id, config)
 
-        // Listen for acceptance
         const unsub = onSnapshot(doc(db, 'gameInvites', inviteId), (snap) => {
             if (snap.exists() && snap.data().status === 'accepted') {
                 setOnlineGameId(snap.data().gameId)
@@ -222,11 +223,15 @@ export default function LiveMatch() {
     const newScore = playerScore - score
     const gameRef = doc(db, 'liveGames', onlineGameId)
 
+    const finalScore = (newScore < 0 || newScore === 1) ? playerScore : newScore
+
+    // In a real online game, we'd need to properly toggle turn between players
+    // For now, let's assume simple sequential turns based on history
+
     let updates = {
-        [`scores.${user.id}`]: (newScore < 0 || newScore === 1) ? playerScore : newScore,
-        turn: history.length % 2 === 0 ? user.id : user.id, // simplified logic, actually needs to toggle
+        [`scores.${user.id}`]: finalScore,
         updatedAt: new Date().toISOString(),
-        history: arrayUnion({ who: user.id, score, remaining: (newScore < 0 || newScore === 1) ? playerScore : newScore })
+        history: arrayUnion({ who: user.id, score, remaining: finalScore })
     }
 
     await updateDoc(gameRef, updates)
@@ -287,15 +292,14 @@ export default function LiveMatch() {
     if (gameStarted && turn === 'bot' && isVsBot && bot) {
         const runBotTurn = async () => {
             setIsBotThinking(true)
-            setLastBotDarts([]) // Clear previous visuals
+            setLastBotDarts([])
 
             const darts = await bot.takeTurn(opponentScore, (dart, allDarts) => {
-                setLastBotDarts([...allDarts]) // Show darts one by one
+                setLastBotDarts([...allDarts])
             })
 
             const total = darts.reduce((acc, d) => acc + d.value, 0)
 
-            // Brief pause to show the final board state
             await new Promise(r => setTimeout(r, 1000))
 
             setIsBotThinking(false)
@@ -306,15 +310,14 @@ export default function LiveMatch() {
   }, [turn, gameStarted, isVsBot, bot, opponentScore, processTurn])
 
   useEffect(() => {
-    // Autoscorying Listener from Native Bridge
     const handleNativeScore = (e) => {
-        if (gameStarted && turn === 'player' && e.detail) {
+        if (gameStarted && turn === 'player' && e && e.detail) {
             const { scoreLabel, scoreValue } = e.detail
             showToast(`Detected: ${scoreLabel}`, 'info')
 
             setCurrentInput(prev => {
                 const currentVal = parseInt(prev || '0')
-                const newVal = currentVal + scoreValue
+                const newVal = currentVal + (parseInt(scoreValue) || 0)
                 return isNaN(newVal) ? prev : Math.min(180, newVal).toString()
             })
         }
@@ -329,7 +332,7 @@ export default function LiveMatch() {
         <div className="page">
             <div className="card glass" style={{ maxWidth: '400px', margin: '100px auto', textAlign: 'center', padding: '40px' }}>
                 <div className="spinner" style={{ width: '50px', height: '50px', margin: '0 auto 20px' }}></div>
-                <h3>Waiting for {location.state?.invitePlayer?.username || 'player'} to accept...</h3>
+                <h3>Waiting for {location && location.state && location.state.invitePlayer ? location.state.invitePlayer.username : 'player'} to accept...</h3>
                 <button className="btn btn-secondary btn-block" style={{ marginTop: '20px' }} onClick={() => setIsWaitingForAccept(false)}>Cancel Challenge</button>
             </div>
         </div>
@@ -448,7 +451,7 @@ export default function LiveMatch() {
                 background: turn !== 'player' ? 'rgba(0, 212, 255, 0.15)' : 'rgba(15, 23, 42, 0.6)'
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                    <h3 style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>{isVsBot ? 'DartBot' : (location.state?.invitePlayer?.username || 'Player 2')}</h3>
+                    <h3 style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>{isVsBot ? 'DartBot' : (location && location.state && location.state.invitePlayer ? location.state.invitePlayer.username : 'Player 2')}</h3>
                     <div style={{ background: 'var(--accent-cyan)', color: '#000', padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 800 }}>LEGS: {opponentLegs}</div>
                 </div>
                 <div style={{ fontSize: '3.5rem', fontWeight: 900, color: isBotThinking ? 'var(--accent-cyan)' : 'white' }}>
@@ -510,7 +513,7 @@ export default function LiveMatch() {
                     ) : turn !== 'player' && isVsBot ? (
                         <div className="animate-fade-in" style={{ padding: '20px', textAlign: 'center' }}>
                             <h4 style={{ marginBottom: '15px', color: 'var(--accent-cyan)' }}>DartBot is throwing...</h4>
-                            <ScoliaBoard lastDarts={lastBotDarts} size={window.innerWidth < 768 ? 250 : 350} />
+                            <ScoliaBoard lastDarts={lastBotDarts} size={300} />
                         </div>
                     ) : (
                         <div style={{ color: 'var(--text-muted)', textAlign: 'center' }}>
@@ -564,7 +567,9 @@ export default function LiveMatch() {
                             className="btn btn-primary btn-block"
                             style={{ marginTop: '20px', background: 'linear-gradient(135deg, #00d4ff, #0080ff)' }}
                             onClick={() => {
-                                Capacitor.Plugins['DartDetection']?.startDetection()
+                                if (Capacitor.Plugins && Capacitor.Plugins['DartDetection']) {
+                                    Capacitor.Plugins['DartDetection'].startDetection()
+                                }
                             }}
                         >
                             🎯 Start Auto-Scoring Camera
