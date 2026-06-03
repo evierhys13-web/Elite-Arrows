@@ -13,9 +13,10 @@ export class DartBot {
     /**
      * Simulates a 3-dart turn
      * @param currentScore The bot's current score remaining
+     * @param onDart Callback for each dart thrown to allow visual updates
      * @returns Array of 3 darts [{ value: 60, label: 'T20' }, ...]
      */
-    async takeTurn(currentScore) {
+    async takeTurn(currentScore, onDart) {
       const turnDarts = []
       let remaining = currentScore
 
@@ -25,6 +26,7 @@ export class DartBot {
 
         const dart = this.calculateDart(remaining, i)
         turnDarts.push(dart)
+        if (onDart) onDart(dart, turnDarts)
         remaining -= dart.value
 
         if (remaining <= 0) break // Leg over

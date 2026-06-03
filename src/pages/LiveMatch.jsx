@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { DartBot } from '../utils/DartBot'
 import Breadcrumbs from '../components/Breadcrumbs'
+import ScoliaBoard from '../components/ScoliaBoard'
 import { useToast } from '../context/ToastContext'
 
 export default function LiveMatch() {
@@ -22,6 +23,7 @@ export default function LiveMatch() {
   const [currentInput, setCurrentInput] = useState('')
   const [bot, setBot] = useState(null)
   const [isBotThinking, setIsBotThinking] = useState(false)
+  const [lastBotDarts, setLastBotDarts] = useState([])
 
   // Camera State
   const [useCamera, setUseCamera] = useState(false)
@@ -33,10 +35,13 @@ export default function LiveMatch() {
     // Check for available cameras
     const getCameras = async () => {
         try {
+            // Request permission first to ensure labels are visible (especially for OBS)
+            await navigator.mediaDevices.getUserMedia({ video: true }).catch(() => {})
+
             const devices = await navigator.mediaDevices.enumerateDevices()
             const videoDevices = devices.filter(device => device.kind === 'videoinput')
             setAvailableCameras(videoDevices)
-            if (videoDevices.length > 0) {
+            if (videoDevices.length > 0 && !selectedCamera) {
                 setSelectedCamera(videoDevices[0].deviceId)
             }
         } catch (e) {
@@ -53,7 +58,11 @@ export default function LiveMatch() {
 
     try {
         const constraints = {
-            video: { deviceId: selectedCamera ? { exact: selectedCamera } : undefined }
+            video: {
+                deviceId: selectedCamera ? { exact: selectedCamera } : undefined,
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            }
         }
         const newStream = await navigator.mediaDevices.getUserMedia(constraints)
         setStream(newStream)
@@ -67,7 +76,7 @@ export default function LiveMatch() {
   }
 
   useEffect(() => {
-    if (useCamera && gameStarted) {
+    if (useCamera && gameStarted && turn === 'player') {
         startCamera()
     } else {
         if (stream) {
@@ -75,7 +84,7 @@ export default function LiveMatch() {
             setStream(null)
         }
     }
-  }, [useCamera, gameStarted])
+  }, [useCamera, gameStarted, turn, selectedCamera])
 
   const startGame = () => {
     setPlayerScore(startScore)
@@ -83,6 +92,7 @@ export default function LiveMatch() {
     setHistory([])
     setTurn('player')
     setGameStarted(true)
+    setLastBotDarts([])
     if (isVsBot) {
         setBot(new DartBot({
             targetAverage: botConfig.average,
@@ -141,8 +151,17 @@ export default function LiveMatch() {
     if (gameStarted && turn === 'bot' && isVsBot && bot) {
         const runBotTurn = async () => {
             setIsBotThinking(true)
-            const darts = await bot.takeTurn(botScore)
+            setLastBotDarts([]) // Clear previous visuals
+
+            const darts = await bot.takeTurn(botScore, (dart, allDarts) => {
+                setLastBotDarts([...allDarts]) // Show darts one by one
+            })
+
             const total = darts.reduce((acc, d) => acc + d.value, 0)
+
+            // Brief pause to show the final board state
+            await new Promise(r => setTimeout(r, 1000))
+
             setIsBotThinking(false)
             processTurn('bot', total)
         }
@@ -216,63 +235,72 @@ export default function LiveMatch() {
   }
 
   return (
-    <div className={`page animate-fade-in ${useCamera ? 'live-match-camera-active' : ''}`} style={{ maxWidth: '1200px', margin: '0 auto', position: 'relative' }}>
-        {useCamera && (
-            <div className="camera-background" style={{
-                position: 'fixed',
-                inset: 0,
-                zIndex: 0,
-                background: '#000'
+    <div className="page animate-fade-in" style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+            {/* Player Card */}
+            <div className={`card ${turn === 'player' ? 'glass active-turn' : 'glass'}`} style={{
+                textAlign: 'center',
+                padding: '20px',
+                border: turn === 'player' ? '2px solid var(--accent-cyan)' : '1px solid var(--border)',
+                background: turn === 'player' ? 'rgba(0, 212, 255, 0.15)' : 'rgba(15, 23, 42, 0.6)'
             }}>
-                <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                        opacity: 0.6
-                    }}
-                />
-            </div>
-        )}
-
-        <div style={{ position: 'relative', zIndex: 1 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                {/* Player Card */}
-                <div className={`card ${turn === 'player' ? 'glass active-turn' : 'glass'}`} style={{
-                    textAlign: 'center',
-                    padding: '20px',
-                    border: turn === 'player' ? '2px solid var(--accent-cyan)' : '1px solid var(--border)',
-                    background: turn === 'player' ? 'rgba(0, 212, 255, 0.15)' : 'rgba(15, 23, 42, 0.6)'
-                }}>
-                    <h3 style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{user?.username}</h3>
-                    <div style={{ fontSize: '3.5rem', fontWeight: 900, color: 'white' }}>{playerScore}</div>
-                </div>
-
-                {/* Opponent Card */}
-                <div className={`card ${turn === 'bot' ? 'glass active-turn' : 'glass'}`} style={{
-                    textAlign: 'center',
-                    padding: '20px',
-                    border: turn === 'bot' ? '2px solid var(--accent-cyan)' : '1px solid var(--border)',
-                    background: turn === 'bot' ? 'rgba(0, 212, 255, 0.15)' : 'rgba(15, 23, 42, 0.6)'
-                }}>
-                    <h3 style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{isVsBot ? 'DartBot' : 'Player 2'}</h3>
-                    <div style={{ fontSize: '3.5rem', fontWeight: 900, color: isBotThinking ? 'var(--accent-cyan)' : 'white' }}>
-                        {isBotThinking ? '...' : botScore}
-                    </div>
-                </div>
+                <h3 style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{user?.username}</h3>
+                <div style={{ fontSize: '3.5rem', fontWeight: 900, color: 'white' }}>{playerScore}</div>
             </div>
 
-            <div className="live-match-grid" style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 350px',
-                gap: '20px'
+            {/* Opponent Card */}
+            <div className={`card ${turn === 'bot' ? 'glass active-turn' : 'glass'}`} style={{
+                textAlign: 'center',
+                padding: '20px',
+                border: turn === 'bot' ? '2px solid var(--accent-cyan)' : '1px solid var(--border)',
+                background: turn === 'bot' ? 'rgba(0, 212, 255, 0.15)' : 'rgba(15, 23, 42, 0.6)'
             }}>
-                {/* Scoring Area */}
-                <div className="card glass" style={{ padding: '20px', background: 'rgba(15, 23, 42, 0.6)' }}>
+                <h3 style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{isVsBot ? 'DartBot' : 'Player 2'}</h3>
+                <div style={{ fontSize: '3.5rem', fontWeight: 900, color: isBotThinking ? 'var(--accent-cyan)' : 'white' }}>
+                    {botScore}
+                </div>
+            </div>
+        </div>
+
+        <div className="live-match-grid" style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 350px',
+            gap: '20px'
+        }}>
+            {/* Center Area: Camera or Board */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div className="card glass" style={{
+                    padding: '0',
+                    overflow: 'hidden',
+                    aspectRatio: '16/9',
+                    background: '#000',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '1px solid var(--accent-cyan)'
+                }}>
+                    {turn === 'player' && useCamera ? (
+                        <video
+                            ref={videoRef}
+                            autoPlay
+                            playsInline
+                            muted
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                    ) : turn === 'bot' ? (
+                        <div className="animate-fade-in" style={{ padding: '20px', textAlign: 'center' }}>
+                            <h4 style={{ marginBottom: '15px', color: 'var(--accent-cyan)' }}>DartBot is throwing...</h4>
+                            <ScoliaBoard lastDarts={lastBotDarts} size={window.innerWidth < 768 ? 250 : 350} />
+                        </div>
+                    ) : (
+                        <div style={{ color: 'var(--text-muted)', textAlign: 'center' }}>
+                            <p>Camera feed or Bot board will appear here</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Input Area (Only visible on player turn) */}
+                <div className={`card glass ${turn !== 'player' ? 'opacity-50 pointer-events-none' : ''}`} style={{ padding: '20px' }}>
                     <div style={{
                         background: 'rgba(0,0,0,0.4)',
                         padding: '15px',
@@ -310,20 +338,12 @@ export default function LiveMatch() {
                             </button>
                         ))}
                     </div>
-
-                    <button
-                        className="btn btn-secondary btn-block"
-                        style={{ marginTop: '15px', opacity: 0.7 }}
-                        onClick={() => {
-                            if (window.confirm('Quit match?')) setGameStarted(false)
-                        }}
-                    >
-                        Quit Match
-                    </button>
                 </div>
+            </div>
 
-                {/* History Area */}
-                <div className="card glass history-panel" style={{ padding: '20px', maxHeight: '500px', overflowY: 'auto', background: 'rgba(15, 23, 42, 0.6)' }}>
+            {/* Sidebar Area: Stats & Log */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div className="card glass history-panel" style={{ flex: 1, maxHeight: '600px', overflowY: 'auto', padding: '20px' }}>
                     <h4 style={{ marginBottom: '15px', color: 'var(--accent-cyan)' }}>Match Log</h4>
                     {history.length === 0 ? (
                         <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>No turns yet</p>
@@ -343,6 +363,16 @@ export default function LiveMatch() {
                         </div>
                     ))}
                 </div>
+
+                <button
+                    className="btn btn-secondary btn-block"
+                    style={{ opacity: 0.7 }}
+                    onClick={() => {
+                        if (window.confirm('Quit match?')) setGameStarted(false)
+                    }}
+                >
+                    Quit Match
+                </button>
             </div>
         </div>
 
@@ -352,20 +382,12 @@ export default function LiveMatch() {
                     grid-template-columns: 1fr !important;
                 }
                 .history-panel {
-                    display: none; /* Hide history on mobile scoring to save space */
+                    display: none;
                 }
-                .live-match-camera-active .app-layout {
-                    padding: 0 !important;
-                }
-                .live-match-camera-active .main-content {
-                    padding: 10px !important;
-                    background: transparent !important;
-                }
-                .live-match-camera-active .sidebar,
-                .live-match-camera-active .mobile-header,
-                .live-match-camera-active .mobile-bottom-nav {
-                    display: none !important;
-                }
+            }
+            .active-turn {
+                border-width: 3px !important;
+                box-shadow: 0 0 30px var(--accent-cyan-glow) !important;
             }
         `}</style>
     </div>
