@@ -437,10 +437,6 @@ export function AuthProvider({ children }) {
       // console.log('Admin data listener error:', error)
     })
 
-    const unsubscribeAdmin = onSnapshot(doc(db, 'adminData', 'main'), (docSnap) => {
-        // ... exists
-    })
-
     // Listen for Game Invites
     const invitesQuery = query(collection(db, 'gameInvites'), where('toUserId', '==', user.id), where('status', '==', 'pending'))
     const unsubscribeInvites = onSnapshot(invitesQuery, (snapshot) => {
@@ -448,6 +444,11 @@ export function AuthProvider({ children }) {
             if (change.type === 'added') {
                 const invite = change.doc.data()
                 if (window.confirm(`${invite.fromUsername} has challenged you to a ${invite.config.startScore} match! Accept?`)) {
+                    acceptGameInvite(invite)
+                }
+            }
+        })
+    })
                     acceptGameInvite(invite)
                 }
             }
@@ -655,6 +656,7 @@ export function AuthProvider({ children }) {
       unsubscribeSeasons()
       unsubscribeNews()
       unsubscribeAdmin()
+      if (unsubscribeInvites) unsubscribeInvites()
     }
   }, [user?.id, triggerDataRefresh, publishResults])
 
