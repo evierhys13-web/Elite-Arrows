@@ -25,7 +25,6 @@ export default function LiveMatch() {
   const { showToast } = useToast();
   const location = useLocation();
   const videoRef = useRef(null);
-  const canvasRef = useRef(null);
 
   // Game Setup State
   const [gameStarted, setGameStarted] = useState(false);
@@ -72,6 +71,8 @@ export default function LiveMatch() {
   const dartDetectedThisTurnRef = useRef(0);
   const detectionPhaseRef = useRef('idle');
   const currentInputRef = useRef('');
+  const diagnosticCanvasRef = useRef(null);
+  const [showDiagnostic, setShowDiagnostic] = useState(false);
 
   useEffect(() => {
     if (location.state && location.state.invitePlayer) {
@@ -254,92 +255,106 @@ export default function LiveMatch() {
     detectionPhaseRef.current = 'idle';
   }, [processTurn]);
 
-  // Web JS Analyzer Logic - dense pixel scanning with clean frame baseline
+  // Web JS Analyzer Logic — grayscale downsampled + blob detection + clean baseline
   useEffect(() => {
     if (!gameStarted || !useCamera || turn !== 'player' || !boardCalibration || Capacitor.isNativePlatform()) return;
 
     dartDetectedThisTurnRef.current = 0;
     currentInputRef.current = '';
     detectionPhaseRef.current = 'idle';
-    cleanFrameRef.current = null;
 
     const segments = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
-    const CHANGED_THRESHOLD = 8;
+    const PW = 160, PH = 120;
+    const MOTION_THRESH = 50;
+    const DART_DIFF_THRESH = 12;
+    const STABILITY_FRAMES = 5;
     let requestRef;
 
-    const countChangedPixels = (a, b, threshold) => {
-        let changed = 0;
-        for (let i = 0; i < a.data.length; i += 4) {
-            if (Math.abs(a.data[i] - b.data[i]) > threshold) changed++;
-        }
-        return changed;
+    const pc = document.createElement('canvas');
+    pc.width = PW; pc.height = PH;
+    const pctx = pc.getContext('2d');
+
+    const gray = new Uint8Array(PW * PH);
+    const prevGray = new Uint8Array(PW * PH);
+    const cleanGray = new Uint8Array(PW * PH);
+    let hasPrev = false;
+    let cleanValid = false;
+
+    const toGray = (img) => {
+        const d = img.data;
+        for (let i = 0; i < d.length; i += 4)
+            gray[i >> 2] = (d[i] * 0.299 + d[i+1] * 0.587 + d[i+2] * 0.114) | 0;
     };
 
-    const analyzeFrame = () => {
-        if (!videoRef.current || videoRef.current.paused || videoRef.current.ended) {
-            requestRef = requestAnimationFrame(analyzeFrame);
-            return;
+    const countDiff = (a, b, t) => { let n = 0; for (let i = 0; i < a.length; i++) { if (Math.abs(a[i] - b[i]) > t) n++; } return n; };
+
+    const drawDiagnostic = (motionPx, diffPx) => {
+        const diag = diagnosticCanvasRef.current;
+        if (!diag) return;
+        const dctx = diag.getContext('2d');
+        const id = dctx.createImageData(PW, PH);
+        for (let i = 0; i < gray.length; i++) {
+            const isDiff = cleanValid && Math.abs(gray[i] - cleanGray[i]) > DART_DIFF_THRESH;
+            const isMotion = Math.abs(gray[i] - prevGray[i]) > 12;
+            if (isDiff && isMotion) { id.data[i*4]=255; id.data[i*4+1]=255; id.data[i*4+2]=0; }  // yellow = both
+            else if (isDiff) { id.data[i*4]=0; id.data[i*4+1]=255; id.data[i*4+2]=0; }            // green = dart
+            else if (isMotion) { id.data[i*4]=255; id.data[i*4+1]=0; id.data[i*4+2]=0; }          // red = motion
+            else { const v = gray[i]*0.35|0; id.data[i*4]=v; id.data[i*4+1]=v; id.data[i*4+2]=v; }
+            id.data[i*4+3] = 255;
         }
-
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-
-        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-        const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-        if (prevFrameRef.current) {
-            const changedPixels = countChangedPixels(frame, prevFrameRef.current, 25);
-
-            if (changedPixels > 150) {
-                stabilityCounterRef.current = 0;
-                if (detectionPhaseRef.current === 'idle') {
-                    cleanFrameRef.current = prevFrameRef.current;
-                    detectionPhaseRef.current = 'dart_thrown';
-                } else if (detectionPhaseRef.current === 'dart_landed') {
-                    detectionPhaseRef.current = 'removing';
-                }
-            } else {
-                stabilityCounterRef.current++;
-                if (detectionPhaseRef.current === 'dart_thrown' && stabilityCounterRef.current > 8) {
-                    if (cleanFrameRef.current) {
-                        detectDartPosition(frame, cleanFrameRef.current);
-                    }
-                }
-                if (detectionPhaseRef.current === 'removing' && stabilityCounterRef.current > 8) {
-                    detectionPhaseRef.current = 'idle';
-                    cleanFrameRef.current = null;
-                    if (dartDetectedThisTurnRef.current >= 3) {
-                        handleScoreInput(currentInputRef.current);
-                    }
-                    dartDetectedThisTurnRef.current = 0;
-                    currentInputRef.current = '';
-                }
-            }
-        }
-
-        prevFrameRef.current = frame;
-        requestRef = requestAnimationFrame(analyzeFrame);
+        dctx.putImageData(id, 0, 0);
     };
 
-    const detectDartPosition = (current, baseline) => {
-        let bestX = 0, bestY = 0, changedCount = 0;
-        for (let i = 0; i < current.data.length; i += 4) {
-            const d = Math.abs(current.data[i] - baseline.data[i]);
-            if (d > 40) {
-                const x = (i / 4) % current.width;
-                const y = Math.floor((i / 4) / current.width);
-                bestX += x;
-                bestY += y;
-                changedCount++;
+    const findBlobs = (changed) => {
+        const visited = new Uint8Array(PW * PH);
+        const blobs = [];
+        for (const idx of changed) {
+            if (visited[idx]) continue;
+            const blob = [];
+            const q = [idx];
+            visited[idx] = 1;
+            while (q.length) {
+                const p = q.shift();
+                blob.push(p);
+                const x = p % PW, y = (p / PW) | 0;
+                if (x > 0 && !visited[p-1] && Math.abs(gray[p-1] - cleanGray[p-1]) > DART_DIFF_THRESH) { visited[p-1]=1; q.push(p-1); }
+                if (x < PW-1 && !visited[p+1] && Math.abs(gray[p+1] - cleanGray[p+1]) > DART_DIFF_THRESH) { visited[p+1]=1; q.push(p+1); }
+                if (y > 0 && !visited[p-PW] && Math.abs(gray[p-PW] - cleanGray[p-PW]) > DART_DIFF_THRESH) { visited[p-PW]=1; q.push(p-PW); }
+                if (y < PH-1 && !visited[p+PW] && Math.abs(gray[p+PW] - cleanGray[p+PW]) > DART_DIFF_THRESH) { visited[p+PW]=1; q.push(p+PW); }
             }
+            if (blob.length >= 10) blobs.push(blob);
+        }
+        return blobs;
+    };
+
+    const detectDart = () => {
+        if (!cleanValid) return false;
+        const changed = [];
+        for (let i = 0; i < gray.length; i++)
+            if (Math.abs(gray[i] - cleanGray[i]) > DART_DIFF_THRESH) changed.push(i);
+        if (changed.length < 15 || changed.length > 1500) return false;
+
+        const blobs = findBlobs(changed);
+        if (!blobs.length) return false;
+
+        let best = blobs.reduce((a, b) => b.length > a.length ? b : a);
+        if (best.length < 10) return false;
+
+        // Use bottom portion of blob for tip estimation
+        const ph = PH;
+        let minY = ph, maxY = 0;
+        for (const p of best) { const y = (p / PW) | 0; if (y < minY) minY = y; if (y > maxY) maxY = y; }
+        const tipCut = maxY - (maxY - minY) * 0.25;
+        let sx = 0, sy = 0, n = 0;
+        for (const p of best) {
+            const y = (p / PW) | 0;
+            if (y >= tipCut) { sx += p % PW; sy += y; n++; }
         }
 
-        if (changedCount > CHANGED_THRESHOLD && changedCount < 2000) {
-            const xPct = (bestX / changedCount / current.width) * 100;
-            const yPct = (bestY / changedCount / current.height) * 100;
-            calculateWebScore(xPct, yPct);
-        }
+        const xPct = (sx / n / PW) * 100;
+        const yPct = (sy / n / PH) * 100;
+        calculateWebScore(xPct, yPct);
+        return true;
     };
 
     const calculateWebScore = (x, y) => {
@@ -348,7 +363,6 @@ export default function LiveMatch() {
         const dy = centerY - y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         const relDist = dist / radius;
-
         if (relDist > 1.1) return;
 
         let sVal = 0, sLab = "";
@@ -374,17 +388,62 @@ export default function LiveMatch() {
             return result;
         });
         dartDetectedThisTurnRef.current++;
+    };
 
-        if (dartDetectedThisTurnRef.current >= 3) {
-            detectionPhaseRef.current = 'dart_landed';
-        } else {
-            detectionPhaseRef.current = 'idle';
+    const analyzeFrame = () => {
+        if (!videoRef.current || videoRef.current.paused || videoRef.current.ended) {
+            requestRef = requestAnimationFrame(analyzeFrame);
+            return;
         }
+
+        pctx.drawImage(videoRef.current, 0, 0, PW, PH);
+        toGray(pctx.getImageData(0, 0, PW, PH));
+
+        if (hasPrev) {
+            const motionPx = countDiff(gray, prevGray, 12);
+            const diffPx = cleanValid ? countDiff(gray, cleanGray, DART_DIFF_THRESH) : 0;
+
+            if (motionPx > MOTION_THRESH) {
+                stabilityCounterRef.current = 0;
+                if (detectionPhaseRef.current === 'idle') {
+                    cleanGray.set(prevGray);
+                    cleanValid = true;
+                    detectionPhaseRef.current = 'dart_thrown';
+                } else if (detectionPhaseRef.current === 'dart_landed') {
+                    detectionPhaseRef.current = 'removing';
+                }
+            } else {
+                stabilityCounterRef.current++;
+
+                if (detectionPhaseRef.current === 'dart_thrown' && stabilityCounterRef.current > STABILITY_FRAMES) {
+                    const found = detectDart();
+                    if (!found) { detectionPhaseRef.current = 'idle'; }
+                    else if (dartDetectedThisTurnRef.current >= 3) { detectionPhaseRef.current = 'dart_landed'; }
+                    else { detectionPhaseRef.current = 'idle'; }
+                }
+
+                if (detectionPhaseRef.current === 'removing' && stabilityCounterRef.current > STABILITY_FRAMES) {
+                    detectionPhaseRef.current = 'idle';
+                    cleanValid = false;
+                    if (dartDetectedThisTurnRef.current >= 3) {
+                        handleScoreInput(currentInputRef.current);
+                    }
+                    dartDetectedThisTurnRef.current = 0;
+                    currentInputRef.current = '';
+                }
+            }
+
+            if (showDiagnostic) drawDiagnostic(motionPx, diffPx);
+        }
+
+        prevGray.set(gray);
+        hasPrev = true;
+        requestRef = requestAnimationFrame(analyzeFrame);
     };
 
     requestRef = requestAnimationFrame(analyzeFrame);
     return () => cancelAnimationFrame(requestRef);
-  }, [gameStarted, useCamera, turn, boardCalibration, handleScoreInput, showToast]);
+  }, [gameStarted, useCamera, turn, boardCalibration, handleScoreInput, showToast, showDiagnostic]);
 
   useEffect(() => {
     if (gameStarted && turn === 'bot' && bot) {
@@ -567,7 +626,7 @@ export default function LiveMatch() {
 
   return (
     <div className="page animate-fade-in match-theater-view" style={{ maxWidth: '100%', margin: '0', padding: '10px', height: '100vh', display: 'flex', flexDirection: 'column', background: '#000' }}>
-        <canvas ref={canvasRef} width="640" height="480" style={{ display: 'none' }} />
+        
 
         <div className="match-header-scores">
             <div className={`player-panel ${turn === 'player' ? 'active' : ''}`}>
@@ -592,6 +651,16 @@ export default function LiveMatch() {
             </div>
         </div>
 
+        {showDiagnostic && (
+            <div className="diagnostic-bar">
+                <canvas ref={diagnosticCanvasRef} width="160" height="120" className="diag-canvas" />
+                <div className="diag-info">
+                    <span>Phase: <strong id="diag-phase">{detectionPhaseRef.current}</strong></span>
+                    <span>Darts: <strong>{dartDetectedThisTurnRef.current}/3</strong></span>
+                    <span className="diag-hint">Green=dart Red=motion Yellow=both</span>
+                </div>
+            </div>
+        )}
         <div className="match-workspace">
             <div className="match-stage card glass">
                 {turn === 'player' && useCamera ? (
@@ -610,7 +679,8 @@ export default function LiveMatch() {
                                     <span className="zoom-val">{Math.round(zoomLevel*100)}%</span>
                                     <button onClick={(e) => {e.stopPropagation(); setZoomLevel(p => Math.max(1, p - 0.5))}} className="hud-btn">-</button>
                                 </div>
-                                <button onClick={(e) => {e.stopPropagation(); flipCamera()}} className="hud-btn flip">🔄</button>
+                                 <button onClick={(e) => {e.stopPropagation(); flipCamera()}} className="hud-btn flip">🔄</button>
+                                 <button onClick={(e) => {e.stopPropagation(); setShowDiagnostic(p => !p)}} className="hud-btn" style={{opacity: showDiagnostic ? 1 : 0.5}}>🔍</button>
                              </div>
                         </div>
                     </div>
@@ -696,6 +766,12 @@ export default function LiveMatch() {
             .log-row.player .who { color: var(--accent-cyan); }
             .log-row .pts { flex: 1; text-align: center; font-size: 1.2rem; }
             .log-row .rem { width: 60px; text-align: right; color: var(--text-muted); font-size: 0.8rem; }
+
+            .diagnostic-bar { display: flex; align-items: center; gap: 15px; padding: 8px 15px; background: rgba(0,0,0,0.85); border-radius: 12px; margin-bottom: 6px; border: 1px solid #333; }
+            .diag-canvas { width: 160px; height: 120px; border-radius: 6px; border: 1px solid #555; image-rendering: pixelated; flex-shrink: 0; }
+            .diag-info { display: flex; flex-direction: column; gap: 4px; font-size: 0.7rem; color: #aaa; }
+            .diag-info strong { color: white; }
+            .diag-hint { font-size: 0.6rem; color: #666; margin-top: 4px; }
 
             @media (max-width: 1200px) {
                 .match-workspace { grid-template-columns: 1fr; overflow-y: auto; }
