@@ -9,7 +9,7 @@ import { db, doc, onSnapshot, updateDoc, arrayUnion } from '../firebase'
 import { Capacitor } from '@capacitor/core'
 
 export default function LiveMatch() {
-  const { user, sendGameInvite } = useAuth()
+  const { user, sendGameInvite, allUsers } = useAuth()
   const { showToast } = useToast()
   const location = useLocation()
   const videoRef = useRef(null)
@@ -26,6 +26,21 @@ export default function LiveMatch() {
   // Online State
   const [onlineGameId, setOnlineGameId] = useState(null)
   const [isWaitingForAccept, setIsWaitingForAccept] = useState(false)
+  const [selectedFriend, setSelectedFriend] = useState(null)
+
+  useEffect(() => {
+    if (location && location.state && location.state.invitePlayer) {
+        setIsVsBot(false)
+        setIsOnline(true)
+        setSelectedFriend(location.state.invitePlayer)
+    }
+  }, [location])
+
+  const onlineFriends = allUsers.filter(u =>
+    u.id !== user?.id &&
+    u.isOnline &&
+    (user?.friends || []).includes(u.id)
+  )
 
   // Live Match State
   const [playerScore, setPlayerScore] = useState(501)
@@ -84,43 +99,62 @@ export default function LiveMatch() {
         return
     }
 
+    // Stop existing tracks first
     if (stream) {
-        stream.getTracks().forEach(track => track.stop())
+        stream.getTracks().forEach(track => {
+            track.stop()
+            console.log('Stopped track:', track.label)
+        })
     }
 
+    // Add a tiny delay to allow hardware to release
+    await new Promise(resolve => setTimeout(resolve, 100))
+
     try {
+        // Try high-res first
         const constraints = {
             video: {
-                deviceId: selectedCamera ? { exact: selectedCamera } : undefined,
+                deviceId: selectedCamera ? { ideal: selectedCamera } : undefined,
                 width: { ideal: 1920 },
-                height: { ideal: 1080 }
+                height: { ideal: 1080 },
+                facingMode: selectedCamera ? undefined : { ideal: 'environment' }
             }
         }
 
-        if (!selectedCamera && /Android|iPhone/i.test(navigator.userAgent)) {
-            constraints.video.facingMode = { ideal: 'environment' }
+        console.log('Requesting camera with constraints:', constraints)
+
+        let newStream
+        try {
+            newStream = await navigator.mediaDevices.getUserMedia(constraints)
+        } catch (firstError) {
+            console.warn('High-res camera request failed, retrying with basic settings...', firstError)
+            // Fallback to basic settings
+            newStream = await navigator.mediaDevices.getUserMedia({
+                video: selectedCamera ? { deviceId: { ideal: selectedCamera } } : true
+            })
         }
 
-        const newStream = await navigator.mediaDevices.getUserMedia(constraints)
         setStream(newStream)
 
         if (videoRef.current) {
             videoRef.current.srcObject = newStream
         }
 
+        // Refresh camera list
         const devices = await navigator.mediaDevices.enumerateDevices()
         const videoDevices = devices.filter(device => device.kind === 'videoinput')
         setAvailableCameras(videoDevices)
 
-        if (!selectedCamera && videoDevices.length > 0) {
-            const currentTrack = newStream.getVideoTracks()[0]
-            const settings = currentTrack.getSettings()
-            if (settings && settings.deviceId) setSelectedCamera(settings.deviceId)
+        // Lock in the actual device ID being used
+        const currentTrack = newStream.getVideoTracks()[0]
+        const settings = currentTrack.getSettings()
+        if (settings && settings.deviceId && settings.deviceId !== selectedCamera) {
+            setSelectedCamera(settings.deviceId)
         }
 
     } catch (e) {
-        console.error('Camera Error:', e)
-        showToast('Camera error: ' + e.message, 'error')
+        console.error('Final Camera Error:', e)
+        showToast('Could not start camera. Please check permissions.', 'error')
         setUseCamera(false)
     }
   }
@@ -171,10 +205,11 @@ export default function LiveMatch() {
   }, [onlineGameId, user?.id, showToast, startScore])
 
   const startGame = async () => {
-    if (isOnline && location && location.state && location.state.invitePlayer) {
+    if (isOnline && (location.state?.invitePlayer || selectedFriend)) {
+        const targetPlayer = location.state?.invitePlayer || selectedFriend
         setIsWaitingForAccept(true)
         const config = { startScore, gameFormat, legsToWin }
-        const inviteId = await sendGameInvite(location.state.invitePlayer.id, config)
+        const inviteId = await sendGameInvite(targetPlayer.id, config)
 
         const unsub = onSnapshot(doc(db, 'gameInvites', inviteId), (snap) => {
             if (snap.exists() && snap.data().status === 'accepted') {
@@ -184,6 +219,11 @@ export default function LiveMatch() {
                 unsub()
             }
         })
+        return
+    }
+
+    if (isOnline && !selectedFriend) {
+        showToast('Please select a friend to challenge', 'error')
         return
     }
 
@@ -360,12 +400,36 @@ export default function LiveMatch() {
                         const val = e.target.value
                         setIsVsBot(val === 'bot')
                         setIsOnline(val === 'online')
+                        setSelectedFriend(null)
                     }}>
                         <option value="bot">DartBot (AI)</option>
                         <option value="human">Local Human (Pass-and-Play)</option>
                         <option value="online">Online Friend (Challenge)</option>
                     </select>
                 </div>
+
+                {isOnline && !location.state?.invitePlayer && (
+                    <div className="form-group animate-fade-in">
+                        <label>Select Online Friend</label>
+                        {onlineFriends.length === 0 ? (
+                            <div style={{ padding: '10px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', color: '#ef4444', fontSize: '0.85rem' }}>
+                                No friends are currently online.
+                            </div>
+                        ) : (
+                            <select
+                                value={selectedFriend?.id || ''}
+                                onChange={e => setSelectedFriend(onlineFriends.find(f => f.id === e.target.value))}
+                            >
+                                <option value="">-- Select a friend --</option>
+                                {onlineFriends.map(friend => (
+                                    <option key={friend.id} value={friend.id}>
+                                        {friend.username} ({friend.division})
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
+                )}
 
                 <div className="form-group">
                     <label>Match Format</label>
@@ -451,7 +515,9 @@ export default function LiveMatch() {
                 background: turn !== 'player' ? 'rgba(0, 212, 255, 0.15)' : 'rgba(15, 23, 42, 0.6)'
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                    <h3 style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>{isVsBot ? 'DartBot' : (location && location.state && location.state.invitePlayer ? location.state.invitePlayer.username : 'Player 2')}</h3>
+                    <h3 style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>
+                        {isVsBot ? 'DartBot' : (selectedFriend?.username || location.state?.invitePlayer?.username || 'Player 2')}
+                    </h3>
                     <div style={{ background: 'var(--accent-cyan)', color: '#000', padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 800 }}>LEGS: {opponentLegs}</div>
                 </div>
                 <div style={{ fontSize: '3.5rem', fontWeight: 900, color: isBotThinking ? 'var(--accent-cyan)' : 'white' }}>
