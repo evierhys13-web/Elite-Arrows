@@ -239,7 +239,7 @@ export default function LiveMatch() {
         if (isPlayer) setPlayerScore(newScore);
         else setOpponentScore(newScore);
 
-        setHistory(prev => [{ who, score, remaining: newScore }, ...prev];
+        setHistory(prev => [{ who, score, remaining: newScore }, ...prev]);
 
         if (newScore === 0) {
             const nextLegs = (isPlayer ? playerLegs : opponentLegs) + 1;
