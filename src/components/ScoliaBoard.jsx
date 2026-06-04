@@ -1,33 +1,58 @@
 import { useMemo } from 'react';
 
-const segments = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
+const SEGMENTS = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
+const DARK = '#1a1a2e';
+const LIGHT = '#e8d5b7';
+const RED = '#d32f2f';
+const COLORS = ['#1a1a2e', '#e8d5b7', '#d32f2f', '#e8d5b7', '#1a1a2e', '#e8d5b7', '#d32f2f', '#e8d5b7', '#1a1a2e', '#e8d5b7', '#d32f2f', '#e8d5b7', '#1a1a2e', '#e8d5b7', '#d32f2f', '#e8d5b7', '#1a1a2e', '#e8d5b7', '#d32f2f', '#e8d5b7'];
+
+function polarToCartesian(cx, cy, r, angleDeg) {
+  const rad = (angleDeg - 90) * Math.PI / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+function describeArc(cx, cy, r1, r2, startAngle, endAngle) {
+  const s1 = polarToCartesian(cx, cy, r1, endAngle);
+  const s2 = polarToCartesian(cx, cy, r2, endAngle);
+  const e1 = polarToCartesian(cx, cy, r2, startAngle);
+  const e2 = polarToCartesian(cx, cy, r1, startAngle);
+  const large = endAngle - startAngle > 180 ? 1 : 0;
+  return `M ${s1.x} ${s1.y} L ${s2.x} ${s2.y} A ${r2} ${r2} 0 ${large} 0 ${e1.x} ${e1.y} L ${e2.x} ${e2.y} A ${r1} ${r1} 0 ${large} 1 ${s1.x} ${s1.y} Z`;
+}
 
 export default function ScoliaBoard({ lastDarts = [], size = 300 }) {
   const center = size / 2;
-  const radius = size * 0.45;
+  const R = size * 0.44;
+  const bullRadius = R * 0.04;
+  const outerBullRadius = R * 0.10;
+  const tripleInner = R * 0.52;
+  const tripleOuter = R * 0.60;
+  const doubleInner = R * 0.82;
+  const doubleOuter = R * 0.97;
+  const wireColor = '#555';
+  const wireWidth = 1.5;
 
   const dartMarkers = useMemo(() => {
     return lastDarts.map((dart, i) => {
       let r = 0;
       let angle = 0;
-
       const label = dart.label || '';
       const value = dart.value;
 
       if (label === 'BULL') {
-        r = radius * 0.03;
+        r = bullRadius;
         angle = Math.random() * 360;
       } else if (label === '25') {
-        r = radius * 0.08;
+        r = outerBullRadius * 0.7;
         angle = Math.random() * 360;
       } else {
         const segVal = parseInt(label.replace(/[^0-9]/g, '')) || value;
-        const idx = segments.indexOf(segVal);
-        angle = (idx * 18) - 90; // 20 is at top (-90 deg)
+        const idx = SEGMENTS.indexOf(segVal);
+        angle = (idx * 18) - 90;
 
-        if (label.startsWith('T')) r = radius * 0.62;
-        else if (label.startsWith('D')) r = radius * 0.97;
-        else r = radius * 0.4 + (Math.random() * radius * 0.2);
+        if (label.startsWith('T')) r = tripleInner + (tripleOuter - tripleInner) * 0.5;
+        else if (label.startsWith('D')) r = doubleInner + (doubleOuter - doubleInner) * 0.5;
+        else r = R * 0.28 + (Math.random() * R * 0.18);
 
         angle += (Math.random() - 0.5) * 10;
       }
@@ -37,40 +62,72 @@ export default function ScoliaBoard({ lastDarts = [], size = 300 }) {
 
       return { x, y, id: i, label };
     });
-  }, [lastDarts, center, radius]);
+  }, [lastDarts, center, R, bullRadius, outerBullRadius, tripleInner, tripleOuter, doubleInner, doubleOuter]);
+
+  const segmentsJsx = [];
+  for (let i = 0; i < 20; i++) {
+    const startAngle = i * 18;
+    const endAngle = (i + 1) * 18;
+    const color = COLORS[i];
+
+    segmentsJsx.push(
+      <g key={i}>
+        <path d={describeArc(center, center, outerBullRadius, doubleOuter, startAngle, endAngle)} fill={color} stroke={wireColor} strokeWidth={wireWidth} />
+        <path d={describeArc(center, center, tripleOuter, doubleInner, startAngle, endAngle)} fill={color} stroke={wireColor} strokeWidth={wireWidth} />
+        <text
+          x={polarToCartesian(center, center, R * 0.73, startAngle + 9).x}
+          y={polarToCartesian(center, center, R * 0.73, startAngle + 9).y}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill="#fff"
+          fontSize={R * 0.06}
+          fontWeight="bold"
+          style={{ pointerEvents: 'none' }}
+        >
+          {SEGMENTS[i]}
+        </text>
+      </g>
+    );
+  }
 
   return (
     <div style={{ position: 'relative', width: size, height: size, margin: '0 auto' }}>
-      <img
-        src="/dartboard_flat.png"
-        alt="Board"
-        style={{ width: '100%', height: '100%', borderRadius: '50%', border: '4px solid #333' }}
-        onError={(e) => {
-            e.target.src = 'https://media.istockphoto.com/id/1138245598/vector/dart-board-isolated-on-white-background-vector-illustration.jpg?s=612x612&w=0&k=20&c=6h8L6j_pXpXG-eYmS-fR6L-oYk9yXzX_o6y6qf-h9o0=';
-        }}
-      />
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <circle cx={center} cy={center} r={doubleOuter + 2} fill="#222" />
 
-      {dartMarkers.map(marker => (
-        <div key={marker.id} style={{
-          position: 'absolute',
-          left: marker.x - 6,
-          top: marker.y - 6,
-          width: '12px',
-          height: '12px',
-          background: 'red',
-          borderRadius: '50%',
-          border: '2px solid white',
-          boxShadow: '0 0 10px rgba(0,0,0,0.5)',
-          zIndex: 10,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-            <div style={{ position: 'absolute', top: -20, fontSize: '0.6rem', background: '#000', color: '#fff', padding: '1px 4px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
-                {marker.label}
-            </div>
-        </div>
-      ))}
+        {segmentsJsx}
+
+        {/* Triple ring fill */}
+        <circle cx={center} cy={center} r={tripleOuter} fill="none" stroke={wireColor} strokeWidth={wireWidth} />
+        <circle cx={center} cy={center} r={tripleInner} fill="none" stroke={wireColor} strokeWidth={wireWidth} />
+
+        {/* Double ring fill */}
+        <circle cx={center} cy={center} r={doubleOuter} fill="none" stroke={wireColor} strokeWidth={wireWidth} />
+        <circle cx={center} cy={center} r={doubleInner} fill="none" stroke={wireColor} strokeWidth={wireWidth} />
+
+        {/* Outer bull */}
+        <circle cx={center} cy={center} r={outerBullRadius} fill={RED} stroke={wireColor} strokeWidth={wireWidth} />
+        {/* Inner bull */}
+        <circle cx={center} cy={center} r={bullRadius} fill={DARK} stroke={wireColor} strokeWidth={wireWidth} />
+
+        {/* Spider / wire spokes */}
+        {Array.from({ length: 20 }).map((_, i) => {
+          const a = (i * 18 - 90) * Math.PI / 180;
+          const x2 = center + doubleOuter * Math.cos(a);
+          const y2 = center + doubleOuter * Math.sin(a);
+          return <line key={i} x1={center} y1={center} x2={x2} y2={y2} stroke={wireColor} strokeWidth={wireWidth} opacity={0.3} />;
+        })}
+
+        {/* Dart markers */}
+        {dartMarkers.map(marker => (
+          <g key={marker.id}>
+            <circle cx={marker.x} cy={marker.y} r={6} fill="red" stroke="white" strokeWidth={2} />
+            <text x={marker.x} y={marker.y - 14} textAnchor="middle" fill="#fff" fontSize="11" fontWeight="bold" stroke="#000" strokeWidth={0.5}>
+              {marker.label}
+            </text>
+          </g>
+        ))}
+      </svg>
     </div>
   );
 }
