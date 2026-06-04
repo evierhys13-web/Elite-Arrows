@@ -157,6 +157,9 @@ export default function LiveMatch() {
                 setOnlineGameId(snap.data().gameId);
                 setGameStarted(true);
                 setIsWaitingForAccept(false);
+                if (useCamera && Capacitor.isNativePlatform()) {
+                    Capacitor.Plugins['DartDetection']?.startDetection();
+                }
             }
         });
         return;
@@ -173,6 +176,11 @@ export default function LiveMatch() {
     if (isVsBot) {
         setBot(new DartBot({ targetAverage: botLevel.avg, checkoutRate: botLevel.check / 100 }));
     }
+
+    if (useCamera && Capacitor.isNativePlatform()) {
+        Capacitor.Plugins['DartDetection']?.startDetection();
+    }
+
     showToast('Match Started!', 'info');
   };
 
@@ -344,83 +352,170 @@ export default function LiveMatch() {
   }
 
   return (
-    <div className="page animate-fade-in" style={{ maxWidth: '1600px', margin: '0 auto', padding: '10px' }}>
+    <div className="page animate-fade-in" style={{ maxWidth: '1800px', margin: '0 auto', padding: '10px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
-            <div className={`card ${turn === 'player' ? 'glass active-turn' : 'glass'}`} style={{ padding: '15px', textAlign: 'center', border: turn === 'player' ? '3px solid var(--accent-cyan)' : '1px solid var(--border)' }}>
+            <div className={`card ${turn === 'player' ? 'glass active-turn' : 'glass'}`} style={{
+                padding: '20px',
+                textAlign: 'center',
+                border: turn === 'player' ? '3px solid var(--accent-cyan)' : '1px solid var(--border)',
+                background: turn === 'player' ? 'rgba(0, 212, 255, 0.15)' : 'rgba(15, 23, 42, 0.6)'
+            }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                    <span style={{ fontSize: '0.8rem', fontWeight: 800 }}>{user?.username || 'You'}</span>
-                    <span style={{ background: 'var(--accent-cyan)', color: '#000', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 900 }}>LEGS: {playerLegs}</span>
+                    <span style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>{user?.username || 'You'}</span>
+                    <span style={{ background: 'var(--accent-cyan)', color: '#000', padding: '4px 12px', borderRadius: '6px', fontSize: '0.9rem', fontWeight: 900 }}>LEGS: {playerLegs}</span>
                 </div>
-                <div style={{ fontSize: '4.5rem', fontWeight: 900, lineHeight: 1 }}>{playerScore}</div>
+                <div style={{ fontSize: '6rem', fontWeight: 900, lineHeight: 1, letterSpacing: '-2px' }}>{playerScore}</div>
             </div>
 
-            <div className={`card ${turn !== 'player' ? 'glass active-turn' : 'glass'}`} style={{ padding: '15px', textAlign: 'center', border: turn !== 'player' ? '3px solid var(--accent-cyan)' : '1px solid var(--border)' }}>
+            <div className={`card ${turn !== 'player' ? 'glass active-turn' : 'glass'}`} style={{
+                padding: '20px',
+                textAlign: 'center',
+                border: turn !== 'player' ? '3px solid var(--accent-cyan)' : '1px solid var(--border)',
+                background: turn !== 'player' ? 'rgba(0, 212, 255, 0.15)' : 'rgba(15, 23, 42, 0.6)'
+            }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                    <span style={{ fontSize: '0.8rem', fontWeight: 800 }}>{isVsBot ? 'DartBot' : (selectedFriend?.username || 'Opponent')}</span>
-                    <span style={{ background: 'var(--accent-cyan)', color: '#000', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 900 }}>LEGS: {opponentLegs}</span>
+                    <span style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>{isVsBot ? 'DartBot' : (selectedFriend?.username || 'Opponent')}</span>
+                    <span style={{ background: 'var(--accent-cyan)', color: '#000', padding: '4px 12px', borderRadius: '6px', fontSize: '0.9rem', fontWeight: 900 }}>LEGS: {opponentLegs}</span>
                 </div>
-                <div style={{ fontSize: '4.5rem', fontWeight: 900, lineHeight: 1 }}>{opponentScore}</div>
+                <div style={{ fontSize: '6rem', fontWeight: 900, lineHeight: 1, letterSpacing: '-2px' }}>{opponentScore}</div>
             </div>
         </div>
 
-        <div className="live-match-main-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '15px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                <div className="card glass" style={{ padding: 0, overflow: 'hidden', background: '#000', border: '2px solid var(--accent-cyan)', borderRadius: '24px', position: 'relative', minHeight: '600px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="live-match-main-grid" style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 400px',
+            gap: '15px',
+            height: 'calc(100vh - 280px)',
+            minHeight: '650px'
+        }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', height: '100%' }}>
+                {/* Massive Board Area */}
+                <div className="card glass board-container" style={{
+                    padding: 0,
+                    overflow: 'hidden',
+                    background: '#000',
+                    border: '3px solid var(--accent-cyan)',
+                    borderRadius: '32px',
+                    position: 'relative',
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 0 50px rgba(0, 212, 255, 0.3)'
+                }}>
                     {turn === 'player' && useCamera ? (
                         <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-                            <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${zoomLevel})` }} />
-                            <div style={{ position: 'absolute', bottom: '20px', left: '20px', display: 'flex', gap: '10px', zIndex: 10 }}>
-                                <div style={{ background: 'rgba(0,0,0,0.8)', padding: '5px', borderRadius: '12px', border: '1px solid var(--accent-cyan)', display: 'flex', gap: '10px' }}>
-                                    <button onClick={() => setZoomLevel(prev => Math.max(1, prev - 0.2))} className="btn btn-sm">➖</button>
-                                    <span style={{ display: 'flex', alignItems: 'center', fontWeight: 900, fontSize: '0.8rem' }}>{Math.round(zoomLevel*100)}%</span>
-                                    <button onClick={() => setZoomLevel(prev => Math.min(4, prev + 0.2))} className="btn btn-sm">➕</button>
+                            <video
+                                ref={videoRef}
+                                autoPlay
+                                playsInline
+                                muted
+                                style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'cover',
+                                    transform: `scale(${zoomLevel})`,
+                                    transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                                }}
+                            />
+
+                            {/* HUD Controls */}
+                            <div style={{
+                                position: 'absolute',
+                                top: '20px',
+                                right: '20px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '10px',
+                                zIndex: 10
+                            }}>
+                                <div style={{
+                                    background: 'rgba(0,0,0,0.8)',
+                                    padding: '10px',
+                                    borderRadius: '16px',
+                                    border: '1px solid var(--accent-cyan)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    gap: '15px'
+                                }}>
+                                    <button onClick={() => setZoomLevel(prev => Math.min(4, prev + 0.2))} className="btn btn-sm glass" style={{ width: '44px', height: '44px', borderRadius: '12px' }}>➕</button>
+                                    <span style={{ fontWeight: 900, fontSize: '0.7rem', color: 'var(--accent-cyan)' }}>{Math.round(zoomLevel*100)}%</span>
+                                    <button onClick={() => setZoomLevel(prev => Math.max(1, prev - 0.2))} className="btn btn-sm glass" style={{ width: '44px', height: '44px', borderRadius: '12px' }}>➖</button>
                                 </div>
-                                <button onClick={flipCamera} className="btn btn-secondary btn-sm" style={{ background: 'rgba(0,0,0,0.8)' }}>🔄 FLIP</button>
+                                <button onClick={flipCamera} className="btn btn-secondary glass" style={{ width: '44px', height: '44px', padding: 0, borderRadius: '12px' }}>🔄</button>
+                            </div>
+
+                            <div style={{
+                                position: 'absolute',
+                                top: '20px',
+                                left: '20px',
+                                background: 'rgba(0, 212, 255, 0.1)',
+                                padding: '8px 16px',
+                                borderRadius: '30px',
+                                border: '1px solid var(--accent-cyan)',
+                                backdropFilter: 'blur(10px)',
+                                color: 'white',
+                                fontSize: '0.8rem',
+                                fontWeight: 800
+                            }}>
+                                🔴 LIVE FEED
                             </div>
                         </div>
                     ) : turn !== 'player' && isVsBot ? (
-                        <div className="animate-fade-in" style={{ padding: '20px', textAlign: 'center' }}>
-                            <h4 style={{ color: 'var(--accent-cyan)', fontWeight: 900, textTransform: 'uppercase', marginBottom: '20px' }}>AI IS THROWING...</h4>
-                            <ScoliaBoard lastDarts={lastBotDarts} size={500} />
+                        <div className="animate-fade-in" style={{ padding: '40px', textAlign: 'center', width: '100%', height: '100%', background: 'radial-gradient(circle, #0a0a2a 0%, #000 100%)' }}>
+                            <h4 style={{ color: 'var(--accent-cyan)', fontWeight: 900, textTransform: 'uppercase', marginBottom: '30px', letterSpacing: '4px' }}>DARTBOT IS THROWING...</h4>
+                            <ScoliaBoard lastDarts={lastBotDarts} size={window.innerWidth < 1200 ? 400 : 550} />
                         </div>
                     ) : (
                         <div style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
-                            <div style={{ fontSize: '3rem' }}>🎯</div>
-                            <p>Camera feed or Bot board active here</p>
+                            <div style={{ fontSize: '4rem', marginBottom: '20px' }}>🎯</div>
+                            <p style={{ fontSize: '1.2rem', fontWeight: 800 }}>CAMERA READY</p>
+                            <p style={{ opacity: 0.6 }}>Detection will start when match begins</p>
                         </div>
                     )}
                 </div>
 
-                <div className={`card glass ${turn !== 'player' ? 'opacity-30' : ''}`} style={{ padding: '20px', background: 'rgba(15, 23, 42, 0.8)' }}>
-                    <div style={{ background: '#000', padding: '15px', borderRadius: '16px', fontSize: '3rem', textAlign: 'center', fontWeight: 900, color: 'var(--accent-cyan)', border: '2px solid var(--accent-cyan)', marginBottom: '20px' }}>
+                {/* Score Input Overlay (Desktop only maybe?) - Let's keep it consistent */}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                <div className={`card glass ${turn !== 'player' ? 'opacity-30' : ''}`} style={{ padding: '20px', background: 'rgba(15, 23, 42, 0.9)', border: '1px solid var(--border)' }}>
+                    <div style={{
+                        background: '#000',
+                        padding: '15px',
+                        borderRadius: '20px',
+                        fontSize: '4rem',
+                        textAlign: 'center',
+                        fontWeight: 900,
+                        color: 'var(--accent-cyan)',
+                        border: '3px solid var(--accent-cyan)',
+                        marginBottom: '20px',
+                        textShadow: '0 0 20px var(--accent-cyan-glow)'
+                    }}>
                         {currentInput || '0'}
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
                         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 'DEL', 0, 'ENTER'].map(key => (
-                            <button key={key} className={`btn ${key === 'ENTER' ? 'btn-primary' : 'btn-secondary'}`} style={{ height: '65px', fontSize: '1.4rem', fontWeight: 900 }} onClick={() => {
+                            <button key={key} className={`btn ${key === 'ENTER' ? 'btn-primary' : 'btn-secondary'}`} style={{ height: '70px', fontSize: '1.5rem', fontWeight: 900, borderRadius: '16px' }} onClick={() => {
                                 if (key === 'DEL') setCurrentInput(p => p.slice(0, -1));
                                 else if (key === 'ENTER') { handleScoreInput(currentInput); setCurrentInput(''); }
                                 else if (currentInput.length < 3) setCurrentInput(p => p + key);
                             }}>{key}</button>
                         ))}
                     </div>
-                    {Capacitor.isNativePlatform() && (
-                        <button className="btn btn-primary btn-block" style={{ marginTop: '15px', background: 'linear-gradient(135deg, #FF00E5, #B000FF)', fontWeight: 900 }} onClick={() => Capacitor.Plugins['DartDetection']?.startDetection()}>⚡ AUTOSCORER CAMERA</button>
-                    )}
                 </div>
-            </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                <div className="card glass" style={{ flex: 1, maxHeight: '800px', overflowY: 'auto', padding: '20px' }}>
+                <div className="card glass" style={{ flex: 1, maxHeight: '400px', overflowY: 'auto', padding: '20px', background: 'rgba(0,0,0,0.5)', borderRadius: '24px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                        <h4 style={{ color: 'var(--accent-cyan)', fontWeight: 800, textTransform: 'uppercase', fontSize: '0.8rem' }}>Match Log</h4>
-                        <button className="btn btn-sm btn-secondary" style={{ color: '#ef4444' }} onClick={() => {if(window.confirm('Quit?')) setGameStarted(false)}}>QUIT</button>
+                        <h4 style={{ color: 'var(--accent-cyan)', fontWeight: 900, textTransform: 'uppercase', fontSize: '0.8rem' }}>Log</h4>
+                        <button className="btn btn-sm btn-secondary" style={{ color: '#ef4444', fontSize: '0.6rem' }} onClick={() => {if(window.confirm('Quit?')) setGameStarted(false)}}>QUIT</button>
                     </div>
                     {history.map((e, i) => (
-                        <div key={i} style={{ padding: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                            <span style={{ fontWeight: 800, color: e.who === 'player' ? 'var(--accent-cyan)' : '#fff' }}>{e.who === 'player' ? 'YOU' : 'OPP'}</span>
-                            <span style={{ fontWeight: 900 }}>{e.score} {e.result && `(${e.result})`}</span>
-                            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{e.remaining}</span>
+                        <div key={i} style={{ padding: '15px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', fontSize: '1rem' }}>
+                            <span style={{ fontWeight: 900, color: e.who === 'player' ? 'var(--accent-cyan)' : '#fff' }}>{e.who === 'player' ? 'YOU' : 'OPP'}</span>
+                            <span style={{ fontWeight: 900, fontSize: '1.2rem' }}>{e.score}</span>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', width: '60px', textAlign: 'right' }}>{e.remaining}</span>
                         </div>
                     ))}
                 </div>
@@ -428,11 +523,14 @@ export default function LiveMatch() {
         </div>
 
         <style>{`
-            @media (max-width: 1100px) {
-                .live-match-main-grid { grid-template-columns: 1fr !important; }
-                .card { padding: 15px !important; }
+            .live-match-main-grid { height: calc(100vh - 240px); }
+            @media (max-width: 1200px) {
+                .live-match-main-grid { grid-template-columns: 1fr !important; height: auto !important; }
+                .board-container { min-height: 500px !important; }
+                .active-turn { transform: none !important; }
             }
-            .active-turn { box-shadow: 0 0 30px var(--accent-cyan-glow) !important; transform: scale(1.01); transition: all 0.3s ease; }
+            .active-turn { box-shadow: 0 0 40px var(--accent-cyan-glow) !important; border-width: 4px !important; }
+            .btn:active { transform: scale(0.95); }
         `}</style>
     </div>
   );

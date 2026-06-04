@@ -6,8 +6,13 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
 import android.view.MotionEvent
+import android.graphics.Color
+import android.graphics.Paint
+import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.*
@@ -25,6 +30,7 @@ class DartDetectionActivity : AppCompatActivity() {
     private lateinit var cameraExecutor: ExecutorService
     private lateinit var previewView: PreviewView
     private lateinit var overlayView: DartboardOverlayView
+    private lateinit var scoreNotification: TextView
     private val scoringEngine = ScoringEngine()
 
     private var centerX = 0f
@@ -38,19 +44,36 @@ class DartDetectionActivity : AppCompatActivity() {
         
         isLiveMode = intent.getBooleanExtra("isLiveMode", false)
 
-        // Dynamic UI creation for isolation
         val root = ConstraintLayout(this)
         previewView = PreviewView(this)
         overlayView = DartboardOverlayView(this, null)
         
+        // Large Score Notification (Scolia Style)
+        scoreNotification = TextView(this).apply {
+            textSize = 60f
+            setTextColor(Color.CYAN)
+            gravity = Gravity.CENTER
+            setBackgroundColor(Color.parseColor("#80000000"))
+            setPadding(40, 20, 40, 20)
+            visibility = android.view.View.GONE
+        }
+
         root.addView(previewView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         root.addView(overlayView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         
-        // UI Controls for Testing
-        val controls = android.widget.LinearLayout(this).apply {
-            orientation = android.widget.LinearLayout.HORIZONTAL
-            gravity = android.view.Gravity.BOTTOM or android.view.Gravity.CENTER_HORIZONTAL
-            setPadding(0, 0, 0, 100)
+        val scoreParams = ConstraintLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            topToTop = ConstraintLayout.LayoutParams.PARENT_ID
+            startToStart = ConstraintLayout.LayoutParams.PARENT_ID
+            endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
+            setMargins(0, 150, 0, 0)
+        }
+        root.addView(scoreNotification, scoreParams)
+
+        // UI Controls
+        val controls = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+            setPadding(0, 0, 0, 80)
         }
 
         val closeButton = Button(this).apply {
@@ -62,7 +85,7 @@ class DartDetectionActivity : AppCompatActivity() {
             text = "Submit Turn"
             setOnClickListener { 
                 sendSubmitToWeb()
-                Toast.makeText(this@DartDetectionActivity, "Turn Submitted", Toast.LENGTH_SHORT).show()
+                finish()
             }
         }
 
@@ -118,10 +141,23 @@ class DartDetectionActivity : AppCompatActivity() {
                 // Simulate detection on tap
                 val score = scoringEngine.calculateScore(x, y, centerX, centerY, radius)
                 overlayView.updateLastDart(x, y, score.label)
-                Log.d("DartDetection", "Detected: ${score.label} (${score.value})")
                 
-                // Send to Web View via a custom event
+                // Show Scolia-style popup
+                showHitNotification(score.label)
+                
+                // Send to Web View
                 sendScoreToWeb(score.label, score.value)
+            }
+        }
+    }
+
+    private fun showHitNotification(label: String) {
+        scoreNotification.text = label
+        scoreNotification.visibility = android.view.View.VISIBLE
+        scoreNotification.animate().alpha(1f).setDuration(200).withEndAction {
+            scoreNotification.animate().alpha(0f).setStartDelay(1500).setDuration(500).withEndAction {
+                scoreNotification.visibility = android.view.View.GONE
+                scoreNotification.alpha = 1f
             }
         }
     }
