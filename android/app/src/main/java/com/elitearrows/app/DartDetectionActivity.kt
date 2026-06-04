@@ -46,17 +46,33 @@ class DartDetectionActivity : AppCompatActivity() {
         root.addView(previewView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         root.addView(overlayView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         
-        // Add a Close button
+        // UI Controls for Testing
+        val controls = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.BOTTOM or android.view.Gravity.CENTER_HORIZONTAL
+            setPadding(0, 0, 0, 100)
+        }
+
         val closeButton = Button(this).apply {
             text = "Close"
             setOnClickListener { finish() }
         }
-        val buttonParams = ConstraintLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-            bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
-            endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
-            setMargins(0, 0, 40, 40)
+
+        val submitButton = Button(this).apply {
+            text = "Submit Turn"
+            setOnClickListener { 
+                sendSubmitToWeb()
+                Toast.makeText(this@DartDetectionActivity, "Turn Submitted", Toast.LENGTH_SHORT).show()
+            }
         }
-        root.addView(closeButton, buttonParams)
+
+        controls.addView(submitButton)
+        controls.addView(closeButton)
+
+        val params = ConstraintLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
+        }
+        root.addView(controls, params)
 
         setContentView(root)
 
@@ -119,6 +135,15 @@ class DartDetectionActivity : AppCompatActivity() {
         }
     }
 
+    private fun sendSubmitToWeb() {
+        MainActivity.instance?.let { bridgeActivity ->
+            val script = "window.dispatchEvent(new CustomEvent('dartDetectionSubmit'));"
+            bridgeActivity.bridge.webView.post {
+                bridgeActivity.bridge.webView.evaluateJavascript(script, null)
+            }
+        }
+    }
+
     private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
 
@@ -134,10 +159,16 @@ class DartDetectionActivity : AppCompatActivity() {
                 .build()
                 .also {
                     it.setAnalyzer(cameraExecutor) { image ->
-                        // Future: Pass bitmap to TF Lite model
+                        // 1. Detect Darts using ML
                         // val bitmap = image.toBitmap()
-                        // val results = mlModel.detect(bitmap)
-                        // processDetectionResults(results)
+                        // val detections = mlModel.detect(bitmap)
+                        
+                        // 2. Logic: If previous turn had darts, and current frame has 0
+                        // indicating player removed them:
+                        // if (previousDartCount >= 1 && currentDartCount == 0) {
+                        //    sendSubmitToWeb()
+                        // }
+
                         image.close()
                     }
                 }

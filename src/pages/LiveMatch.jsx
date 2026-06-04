@@ -385,9 +385,23 @@ export default function LiveMatch() {
         }
     }
 
+    const handleNativeSubmit = () => {
+        if (gameStarted && turn === 'player') {
+            showToast('Turn Submitted Automatically', 'success')
+            // Score is already accumulated in currentInput via handleNativeScore
+            // Trigger the Enter logic
+            handleScoreInput(currentInput)
+            setCurrentInput('')
+        }
+    }
+
     window.addEventListener('dartDetectionScore', handleNativeScore)
-    return () => window.removeEventListener('dartDetectionScore', handleNativeScore)
-  }, [gameStarted, turn, showToast])
+    window.addEventListener('dartDetectionSubmit', handleNativeSubmit)
+    return () => {
+        window.removeEventListener('dartDetectionScore', handleNativeScore)
+        window.removeEventListener('dartDetectionSubmit', handleNativeSubmit)
+    }
+  }, [gameStarted, turn, currentInput, showToast, handleScoreInput])
 
   if (isWaitingForAccept) {
     return (
