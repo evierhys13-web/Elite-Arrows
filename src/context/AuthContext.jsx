@@ -505,7 +505,7 @@ export function AuthProvider({ children }) {
     // Instead of listening to ALL results, we only listen to PENDING results for admins
     // or RECENT results for everyone.
     const resultsQuery = user?.isAdmin
-      ? query(collection(db, 'results'), orderBy('submittedAt', 'desc'), limit(100))
+      ? query(collection(db, 'results'), orderBy('submittedAt', 'desc'))
       : query(collection(db, 'results'), where('status', '==', 'approved'), orderBy('submittedAt', 'desc'), limit(50))
 
     // Targeted listener for user's own results to ensure Home page accuracy
@@ -615,7 +615,17 @@ export function AuthProvider({ children }) {
       })
     }
     
-    // We fetch cups, bets, supportRequests and seasons on-demand now instead of full listeners
+    const unsubscribeCups = onSnapshot(collection(db, 'cups'), (snapshot) => {
+      const cupsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      setCups(cupsData)
+      try {
+        localStorage.setItem('eliteArrowsCups', JSON.stringify(cupsData))
+      } catch (e) {}
+    }, (error) => {
+      // console.log('Cups listener error:', error)
+    })
+
+    // We fetch supportRequests and seasons on-demand now instead of full listeners
     // but we can keep a small one for seasons as it's small and controls logic
     const unsubscribeSeasons = onSnapshot(collection(db, 'seasons'), (snapshot) => {
       const seasonsData = snapshot.docs
@@ -655,6 +665,7 @@ export function AuthProvider({ children }) {
       if (unsubscribeUserResults2) unsubscribeUserResults2()
       unsubscribeFixtures()
       if (unsubscribeFixtures2) unsubscribeFixtures2()
+      unsubscribeCups()
       unsubscribeSeasons()
       unsubscribeBets()
       unsubscribeNews()
