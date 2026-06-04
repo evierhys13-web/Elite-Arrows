@@ -1,103 +1,103 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { useLocation } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
-import { DartBot } from '../utils/DartBot'
-import Breadcrumbs from '../components/Breadcrumbs'
-import ScoliaBoard from '../components/ScoliaBoard'
-import { useToast } from '../context/ToastContext'
-import { db, doc, onSnapshot, updateDoc, arrayUnion } from '../firebase'
-import { Capacitor } from '@capacitor/core'
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { DartBot } from '../utils/DartBot';
+import Breadcrumbs from '../components/Breadcrumbs';
+import ScoliaBoard from '../components/ScoliaBoard';
+import { useToast } from '../context/ToastContext';
+import { db, doc, onSnapshot, updateDoc, arrayUnion } from '../firebase';
+import { Capacitor } from '@capacitor/core';
 
-const START_SCORES = [101, 301, 501, 701]
+const START_SCORES = [101, 301, 501, 701];
 const FORMATS = [
   { id: 'bestOf', label: 'Best Of', icon: '🏆' },
   { id: 'firstTo', label: 'First To', icon: '🎯' }
-]
+];
 const BOT_LEVELS = [
   { name: 'Amateur', avg: 35, check: 10, icon: '🌱' },
   { name: 'Club', avg: 50, check: 20, icon: '🎯' },
   { name: 'Pro', avg: 75, check: 35, icon: '🔥' },
   { name: 'Elite', avg: 95, check: 50, icon: '👑' }
-]
+];
 
 export default function LiveMatch() {
-  const { user, sendGameInvite, allUsers } = useAuth()
-  const { showToast } = useToast()
-  const location = useLocation()
-  const videoRef = useRef(null)
+  const { user, sendGameInvite, allUsers } = useAuth();
+  const { showToast } = useToast();
+  const location = useLocation();
+  const videoRef = useRef(null);
 
   // Game Setup State
-  const [gameStarted, setGameStarted] = useState(false)
-  const [isOnline, setIsOnline] = useState(false)
-  const [startScore, setStartScore] = useState(501)
-  const [isVsBot, setIsVsBot] = useState(true)
-  const [gameFormat, setGameFormat] = useState('bestOf')
-  const [legsToWin, setLegsCount] = useState(3)
-  const [botLevel, setBotLevel] = useState(BOT_LEVELS[1])
+  const [gameStarted, setGameStarted] = useState(false);
+  const [isOnline, setIsOnline] = useState(false);
+  const [startScore, setStartScore] = useState(501);
+  const [isVsBot, setIsVsBot] = useState(true);
+  const [gameFormat, setGameFormat] = useState('bestOf');
+  const [legsToWin, setLegsCount] = useState(3);
+  const [botLevel, setBotLevel] = useState(BOT_LEVELS[1]);
 
   // Online State
-  const [onlineGameId, setOnlineGameId] = useState(null)
-  const [isWaitingForAccept, setIsWaitingForAccept] = useState(false)
-  const [selectedFriend, setSelectedFriend] = useState(null)
+  const [onlineGameId, setOnlineGameId] = useState(null);
+  const [isWaitingForAccept, setIsWaitingForAccept] = useState(false);
+  const [selectedFriend, setSelectedFriend] = useState(null);
 
   // Live Match State
-  const [playerScore, setPlayerScore] = useState(501)
-  const [opponentScore, setOpponentScore] = useState(501)
-  const [playerLegs, setPlayerLegs] = useState(0)
-  const [opponentLegs, setOpponentLegs] = useState(0)
-  const [turn, setTurn] = useState('player')
-  const [history, setHistory] = useState([])
-  const [currentInput, setCurrentInput] = useState('')
-  const [bot, setBot] = useState(null)
-  const [isBotThinking, setIsBotThinking] = useState(false)
-  const [lastBotDarts, setLastBotDarts] = useState([])
+  const [playerScore, setPlayerScore] = useState(501);
+  const [opponentScore, setOpponentScore] = useState(501);
+  const [playerLegs, setPlayerLegs] = useState(0);
+  const [opponentLegs, setOpponentLegs] = useState(0);
+  const [turn, setTurn] = useState('player');
+  const [history, setHistory] = useState([]);
+  const [currentInput, setCurrentInput] = useState('');
+  const [bot, setBot] = useState(null);
+  const [isBotThinking, setIsBotThinking] = useState(false);
+  const [lastBotDarts, setLastBotDarts] = useState([]);
 
   // Camera State
-  const [useCamera, setUseCamera] = useState(false)
-  const [availableCameras, setAvailableCameras] = useState([])
-  const [selectedCamera, setSelectedCamera] = useState('')
-  const [stream, setStream] = useState(null)
-  const [zoomLevel, setZoomLevel] = useState(1)
+  const [useCamera, setUseCamera] = useState(false);
+  const [availableCameras, setAvailableCameras] = useState([]);
+  const [selectedCamera, setSelectedCamera] = useState('');
+  const [stream, setStream] = useState(null);
+  const [zoomLevel, setZoomLevel] = useState(1);
 
   useEffect(() => {
     if (location.state && location.state.invitePlayer) {
-        setIsVsBot(false)
-        setIsOnline(true)
-        setSelectedFriend(location.state.invitePlayer)
+        setIsVsBot(false);
+        setIsOnline(true);
+        setSelectedFriend(location.state.invitePlayer);
     }
-  }, [location.state])
+  }, [location.state]);
 
   const onlineFriends = allUsers.filter(u =>
     u.id !== user?.id &&
     u.isOnline &&
     (user?.friends || []).includes(u.id)
-  )
+  );
 
   useEffect(() => {
     const getCameras = async () => {
-        if (typeof navigator === 'undefined' || !navigator.mediaDevices) return
+        if (typeof navigator === 'undefined' || !navigator.mediaDevices) return;
         try {
-            await navigator.mediaDevices.getUserMedia({ video: true }).catch(() => {})
-            const devices = await navigator.mediaDevices.enumerateDevices()
-            const videoDevices = devices.filter(device => device.kind === 'videoinput')
-            setAvailableCameras(videoDevices)
+            await navigator.mediaDevices.getUserMedia({ video: true }).catch(() => {});
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices.filter(device => device.kind === 'videoinput');
+            setAvailableCameras(videoDevices);
             if (videoDevices.length > 0) {
-                setSelectedCamera(prev => prev || videoDevices[0].deviceId)
+                setSelectedCamera(prev => prev || videoDevices[0].deviceId);
             }
-        } catch (e) { console.error(e) }
-    }
-    getCameras()
-  }, [])
+        } catch (e) { console.error(e); }
+    };
+    getCameras();
+  }, [allUsers]);
 
   const startCamera = async (forceDeviceId = null) => {
-    if (typeof navigator === 'undefined' || !navigator.mediaDevices) return
-    const deviceIdToUse = forceDeviceId || selectedCamera
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices) return;
+    const deviceIdToUse = forceDeviceId || selectedCamera;
     if (stream) {
-        stream.getTracks().forEach(t => t.stop())
-        setStream(null)
+        stream.getTracks().forEach(t => t.stop());
+        setStream(null);
     }
-    if (videoRef.current) videoRef.current.srcObject = null
-    await new Promise(r => setTimeout(r, 300))
+    if (videoRef.current) videoRef.current.srcObject = null;
+    await new Promise(r => setTimeout(r, 300));
 
     try {
         const constraints = {
@@ -106,139 +106,145 @@ export default function LiveMatch() {
                 width: { ideal: 1920 },
                 height: { ideal: 1080 }
             }
-        }
-        if (!deviceIdToUse) constraints.video.facingMode = { ideal: 'environment' }
-        const newStream = await navigator.mediaDevices.getUserMedia(constraints)
-        setStream(newStream)
-        if (videoRef.current) videoRef.current.srcObject = newStream
+        };
+        if (!deviceIdToUse) constraints.video.facingMode = { ideal: 'environment' };
+        const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+        setStream(newStream);
+        if (videoRef.current) videoRef.current.srcObject = newStream;
     } catch (e) {
         if (deviceIdToUse) {
-            const fallback = await navigator.mediaDevices.getUserMedia({ video: true })
-            setStream(fallback)
-            if (videoRef.current) videoRef.current.srcObject = fallback
+            try {
+                const fallback = await navigator.mediaDevices.getUserMedia({ video: true });
+                setStream(fallback);
+                if (videoRef.current) videoRef.current.srcObject = fallback;
+            } catch (innerE) {
+                showToast('Camera error: ' + innerE.message, 'error');
+                setUseCamera(false);
+            }
         } else {
-            showToast('Camera error: ' + e.message, 'error')
-            setUseCamera(false)
+            showToast('Camera error: ' + e.message, 'error');
+            setUseCamera(false);
         }
     }
-  }
+  };
 
   const flipCamera = async () => {
-    if (availableCameras.length < 2) return
-    const idx = availableCameras.findIndex(c => c.deviceId === selectedCamera)
-    const nextId = availableCameras[(idx + 1) % availableCameras.length].deviceId
-    setSelectedCamera(nextId)
-    await startCamera(nextId)
-  }
+    if (availableCameras.length < 2) return;
+    const idx = availableCameras.findIndex(c => c.deviceId === selectedCamera);
+    const nextId = availableCameras[(idx + 1) % availableCameras.length].deviceId;
+    setSelectedCamera(nextId);
+    await startCamera(nextId);
+  };
 
   useEffect(() => {
-    if (useCamera && gameStarted && turn === 'player') startCamera()
-    else if (stream) {
-        stream.getTracks().forEach(t => t.stop())
-        setStream(null)
+    if (useCamera && gameStarted && turn === 'player') {
+        startCamera();
+    } else if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+        setStream(null);
     }
-    return () => stream?.getTracks().forEach(t => t.stop())
-  }, [useCamera, gameStarted, turn, selectedCamera])
+    return () => stream?.getTracks().forEach(t => t.stop());
+  }, [useCamera, gameStarted, turn, selectedCamera]);
 
   const startGame = async () => {
     if (isOnline && (location.state?.invitePlayer || selectedFriend)) {
-        const target = location.state?.invitePlayer || selectedFriend
-        setIsWaitingForAccept(true)
-        const config = { startScore, gameFormat, legsToWin }
-        const inviteId = await sendGameInvite(target.id, config)
+        const target = location.state?.invitePlayer || selectedFriend;
+        setIsWaitingForAccept(true);
+        const config = { startScore, gameFormat, legsToWin };
+        const inviteId = await sendGameInvite(target.id, config);
         onSnapshot(doc(db, 'gameInvites', inviteId), (snap) => {
             if (snap.exists() && snap.data().status === 'accepted') {
-                setOnlineGameId(snap.data().gameId)
-                setGameStarted(true)
-                setIsWaitingForAccept(false)
+                setOnlineGameId(snap.data().gameId);
+                setGameStarted(true);
+                setIsWaitingForAccept(false);
             }
-        })
-        return
+        });
+        return;
     }
 
-    setPlayerScore(startScore)
-    setOpponentScore(startScore)
-    setPlayerLegs(0)
-    setOpponentLegs(0)
-    setHistory([])
-    setTurn('player')
-    setGameStarted(true)
-    setLastBotDarts([])
+    setPlayerScore(startScore);
+    setOpponentScore(startScore);
+    setPlayerLegs(0);
+    setOpponentLegs(0);
+    setHistory([]);
+    setTurn('player');
+    setGameStarted(true);
+    setLastBotDarts([]);
     if (isVsBot) {
-        setBot(new DartBot({ targetAverage: botLevel.avg, checkoutRate: botLevel.check / 100 }))
+        setBot(new DartBot({ targetAverage: botLevel.avg, checkoutRate: botLevel.check / 100 }));
     }
-    showToast('Match Started!', 'info')
-  }
+    showToast('Match Started!', 'info');
+  };
 
   const processTurn = useCallback((who, score) => {
-    const isPlayer = who === 'player'
-    let current = isPlayer ? playerScore : opponentScore
-    let newScore = current - score
+    const isPlayer = who === 'player';
+    let current = isPlayer ? playerScore : opponentScore;
+    let newScore = current - score;
 
     if (newScore < 0 || newScore === 1) {
-        showToast('BUST!', 'warning')
-        setHistory(prev => [{ who, score: 0, result: 'BUST', remaining: current }, ...prev])
+        showToast('BUST!', 'warning');
+        setHistory(prev => [{ who, score: 0, result: 'BUST', remaining: current }, ...prev]);
     } else {
-        if (isPlayer) setPlayerScore(newScore)
-        else setOpponentScore(newScore)
+        if (isPlayer) setPlayerScore(newScore);
+        else setOpponentScore(newScore);
 
-        setHistory(prev => [{ who, score, remaining: newScore }, ...prev])
+        setHistory(prev => [{ who, score, remaining: newScore }, ...prev]);
 
         if (newScore === 0) {
-            const nextLegs = (isPlayer ? playerLegs : opponentLegs) + 1
-            if (isPlayer) setPlayerLegs(nextLegs) else setOpponentLegs(nextLegs)
+            const nextLegs = (isPlayer ? playerLegs : opponentLegs) + 1;
+            if (isPlayer) setPlayerLegs(nextLegs); else setOpponentLegs(nextLegs);
 
             if ((gameFormat === 'firstTo' && nextLegs >= legsToWin) ||
                 (gameFormat === 'bestOf' && nextLegs > legsToWin / 2)) {
-                showToast(`MATCH SHOT! ${isPlayer ? 'You Win' : 'Opponent Wins'}!`, 'success')
-                setGameStarted(false)
+                showToast(`MATCH SHOT! ${isPlayer ? 'You Win' : 'Opponent Wins'}!`, 'success');
+                setGameStarted(false);
             } else {
-                showToast('LEG SHOT!', 'success')
-                setPlayerScore(startScore)
-                setOpponentScore(startScore)
+                showToast('LEG SHOT!', 'success');
+                setPlayerScore(startScore);
+                setOpponentScore(startScore);
             }
-            return
+            return;
         }
     }
-    setTurn(isPlayer ? (isVsBot ? 'bot' : 'opponent') : 'player')
-  }, [playerScore, opponentScore, playerLegs, opponentLegs, gameFormat, legsToWin, startScore, isVsBot, showToast])
+    setTurn(isPlayer ? (isVsBot ? 'bot' : 'opponent') : 'player');
+  }, [playerScore, opponentScore, playerLegs, opponentLegs, gameFormat, legsToWin, startScore, isVsBot, showToast]);
 
   useEffect(() => {
     if (gameStarted && turn === 'bot' && bot) {
         const runBot = async () => {
-            setIsBotThinking(true)
-            setLastBotDarts([])
-            const darts = await bot.takeTurn(opponentScore, (_, all) => setLastBotDarts([...all]))
-            await new Promise(r => setTimeout(r, 1000))
-            setIsBotThinking(false)
-            processTurn('bot', darts.reduce((a, d) => a + d.value, 0))
-        }
-        runBot()
+            setIsBotThinking(true);
+            setLastBotDarts([]);
+            const darts = await bot.takeTurn(opponentScore, (_, all) => setLastBotDarts([...all]));
+            await new Promise(r => setTimeout(r, 1000));
+            setIsBotThinking(false);
+            processTurn('bot', darts.reduce((a, d) => a + d.value, 0));
+        };
+        runBot();
     }
-  }, [turn, gameStarted, bot, opponentScore, processTurn])
+  }, [turn, gameStarted, bot, opponentScore, processTurn]);
 
   useEffect(() => {
     const handleNative = (e) => {
         if (gameStarted && turn === 'player' && e.detail) {
-            const { scoreLabel, scoreValue } = e.detail
-            showToast(`Hit: ${scoreLabel}`, 'info')
-            setCurrentInput(prev => Math.min(180, (parseInt(prev || '0') + scoreValue)).toString())
+            const { scoreLabel, scoreValue } = e.detail;
+            showToast(`Hit: ${scoreLabel}`, 'info');
+            setCurrentInput(prev => Math.min(180, (parseInt(prev || '0') + scoreValue)).toString());
         }
-    }
+    };
     const handleSubmit = () => {
         if (gameStarted && turn === 'player') {
-            showToast('Turn Submitted', 'success')
-            processTurn('player', parseInt(currentInput || '0'))
-            setCurrentInput('')
+            showToast('Turn Submitted', 'success');
+            processTurn('player', parseInt(currentInput || '0'));
+            setCurrentInput('');
         }
-    }
-    window.addEventListener('dartDetectionScore', handleNative)
-    window.addEventListener('dartDetectionSubmit', handleSubmit)
+    };
+    window.addEventListener('dartDetectionScore', handleNative);
+    window.addEventListener('dartDetectionSubmit', handleSubmit);
     return () => {
-        window.removeEventListener('dartDetectionScore', handleNative)
-        window.removeEventListener('dartDetectionSubmit', handleSubmit)
-    }
-  }, [gameStarted, turn, currentInput, processTurn, showToast])
+        window.removeEventListener('dartDetectionScore', handleNative);
+        window.removeEventListener('dartDetectionSubmit', handleSubmit);
+    };
+  }, [gameStarted, turn, currentInput, processTurn, showToast]);
 
   if (isWaitingForAccept) {
     return (
@@ -249,7 +255,7 @@ export default function LiveMatch() {
                 <button className="btn btn-secondary btn-block" style={{ marginTop: '20px' }} onClick={() => setIsWaitingForAccept(false)}>Cancel</button>
             </div>
         </div>
-    )
+    );
   }
 
   if (!gameStarted) {
@@ -272,9 +278,9 @@ export default function LiveMatch() {
                 <div className="setup-section" style={{ marginBottom: '30px' }}>
                     <label style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '2px', color: 'var(--text-muted)', marginBottom: '15px', display: 'block' }}>2. Opponent</label>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
-                        <button className={`btn ${isVsBot ? 'btn-primary' : 'btn-secondary'}`} onClick={() => {setIsVsBot(true); setIsOnline(false)}} style={{ gap: '5px' }}>🤖 Bot</button>
-                        <button className={`btn ${!isVsBot && !isOnline ? 'btn-primary' : 'btn-secondary'}`} onClick={() => {setIsVsBot(false); setIsOnline(false)}} style={{ gap: '5px' }}>👥 Local</button>
-                        <button className={`btn ${isOnline ? 'btn-primary' : 'btn-secondary'}`} onClick={() => {setIsVsBot(false); setIsOnline(true)}} style={{ gap: '5px' }}>🌐 Online</button>
+                        <button className={`btn ${isVsBot ? 'btn-primary' : 'btn-secondary'}`} onClick={() => {setIsVsBot(true); setIsOnline(false)}}>🤖 Bot</button>
+                        <button className={`btn ${!isVsBot && !isOnline ? 'btn-primary' : 'btn-secondary'}`} onClick={() => {setIsVsBot(false); setIsOnline(false)}}>👥 Local</button>
+                        <button className={`btn ${isOnline ? 'btn-primary' : 'btn-secondary'}`} onClick={() => {setIsVsBot(false); setIsOnline(true)}}>🌐 Online</button>
                     </div>
                 </div>
 
@@ -334,7 +340,7 @@ export default function LiveMatch() {
                 <button className="btn btn-primary btn-block" style={{ height: '70px', fontSize: '1.4rem', fontWeight: 900, borderRadius: '20px', boxShadow: '0 10px 30px rgba(124, 92, 252, 0.4)' }} onClick={startGame}>START MATCH</button>
             </div>
         </div>
-    )
+    );
   }
 
   return (
@@ -392,9 +398,9 @@ export default function LiveMatch() {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
                         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 'DEL', 0, 'ENTER'].map(key => (
                             <button key={key} className={`btn ${key === 'ENTER' ? 'btn-primary' : 'btn-secondary'}`} style={{ height: '65px', fontSize: '1.4rem', fontWeight: 900 }} onClick={() => {
-                                if (key === 'DEL') setCurrentInput(p => p.slice(0, -1))
-                                else if (key === 'ENTER') { handleScoreInput(currentInput); setCurrentInput('') }
-                                else if (currentInput.length < 3) setCurrentInput(p => p + key)
+                                if (key === 'DEL') setCurrentInput(p => p.slice(0, -1));
+                                else if (key === 'ENTER') { handleScoreInput(currentInput); setCurrentInput(''); }
+                                else if (currentInput.length < 3) setCurrentInput(p => p + key);
                             }}>{key}</button>
                         ))}
                     </div>
@@ -429,5 +435,5 @@ export default function LiveMatch() {
             .active-turn { box-shadow: 0 0 30px var(--accent-cyan-glow) !important; transform: scale(1.01); transition: all 0.3s ease; }
         `}</style>
     </div>
-  )
+  );
 }

@@ -450,23 +450,23 @@ export function AuthProvider({ children }) {
       setNews([])
     })
 
-    let unsubscribeInvites = null
+    let unsubscribeInvites = null;
     if (user?.id) {
         // Listen for Game Invites
-        const invitesQuery = query(collection(db, 'gameInvites'), where('toUserId', '==', user.id), where('status', '==', 'pending'))
+        const invitesQuery = query(collection(db, 'gameInvites'), where('toUserId', '==', user.id), where('status', '==', 'pending'));
         unsubscribeInvites = onSnapshot(invitesQuery, (snapshot) => {
             snapshot.docChanges().forEach(change => {
                 if (change.type === 'added') {
-                    const invite = change.doc.data()
+                    const invite = change.doc.data();
                     if (window.confirm(`${invite.fromUsername} has challenged you to a ${invite.config.startScore} match! Accept?`)) {
-                        acceptGameInvite(invite)
+                        acceptGameInvite(invite);
                     }
                 }
-            })
-        })
+            });
+        });
     }
 
-    if (!user?.id) return
+    if (!user?.id) return;
 
     const hydratedCollections = new Set()
     const announceAfterHydration = (collectionName) => {
