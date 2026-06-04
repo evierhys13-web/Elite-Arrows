@@ -221,8 +221,9 @@ export default function Admin() {
       const res = allResults.find(r => String(r.id) === String(resultId))
       const targetId = res?.firestoreId || String(resultId)
       await deleteDoc(doc(db, 'results', targetId))
+      const updatedResults = allResults.filter(r => String(r.id) !== String(resultId))
+      updateResults(updatedResults)
       await logAudit('DELETE_RESULT', `Deleted result: ${res?.player1} vs ${res?.player2}`)
-      triggerDataRefresh('results')
       showToast('Result Deleted', 'info')
     } catch (e) { showToast(e.message, 'error') }
   }

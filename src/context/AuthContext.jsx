@@ -518,9 +518,12 @@ export function AuthProvider({ children }) {
         return { ...data, id: data.id || docSnap.id, firestoreId: docSnap.id }
       })
 
-      // Merge with existing rows in ref
+      const removedIds = snapshot.docChanges()
+        .filter(c => c.type === 'removed')
+        .map(c => c.doc.data()?.id || c.doc.id)
+
       const existing = resultRowsRef.current || []
-      const merged = [...existing]
+      const merged = [...existing].filter(r => !removedIds.includes(r.id) && !removedIds.includes(r.firestoreId))
       newRows.forEach(row => {
         const idx = merged.findIndex(r => r.id === row.id)
         if (idx !== -1) merged[idx] = row
@@ -541,8 +544,11 @@ export function AuthProvider({ children }) {
     if (userResultsQuery1) {
       unsubscribeUserResults1 = onSnapshot(userResultsQuery1, (snapshot) => {
         const data = snapshot.docs.map(docSnap => ({ ...docSnap.data(), id: docSnap.id, firestoreId: docSnap.id }))
+        const removedIds = snapshot.docChanges()
+          .filter(c => c.type === 'removed')
+          .map(c => c.doc.data()?.id || c.doc.id)
         const existing = resultRowsRef.current || []
-        const merged = [...existing]
+        const merged = [...existing].filter(r => !removedIds.includes(r.id) && !removedIds.includes(r.firestoreId))
         data.forEach(row => {
           const idx = merged.findIndex(r => r.id === row.id)
           if (idx !== -1) merged[idx] = row
@@ -555,8 +561,11 @@ export function AuthProvider({ children }) {
     if (userResultsQuery2) {
       unsubscribeUserResults2 = onSnapshot(userResultsQuery2, (snapshot) => {
         const data = snapshot.docs.map(docSnap => ({ ...docSnap.data(), id: docSnap.id, firestoreId: docSnap.id }))
+        const removedIds = snapshot.docChanges()
+          .filter(c => c.type === 'removed')
+          .map(c => c.doc.data()?.id || c.doc.id)
         const existing = resultRowsRef.current || []
-        const merged = [...existing]
+        const merged = [...existing].filter(r => !removedIds.includes(r.id) && !removedIds.includes(r.firestoreId))
         data.forEach(row => {
           const idx = merged.findIndex(r => r.id === row.id)
           if (idx !== -1) merged[idx] = row
