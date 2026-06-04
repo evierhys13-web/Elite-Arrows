@@ -25,6 +25,7 @@ export default function LiveMatch() {
   const { showToast } = useToast();
   const location = useLocation();
   const videoRef = useRef(null);
+  const canvasRef = useRef(null);
 
   // Game Setup State
   const [gameStarted, setGameStarted] = useState(false);
@@ -53,7 +54,7 @@ export default function LiveMatch() {
   const [lastBotDarts, setLastBotDarts] = useState([]);
   const [currentTurnDarts, setCurrentTurnDarts] = useState([]);
 
-  // Camera State
+  // Camera & Detection State
   const [useCamera, setUseCamera] = useState(false);
   const [availableCameras, setAvailableCameras] = useState([]);
   const [selectedCamera, setSelectedCamera] = useState('');
@@ -61,11 +62,10 @@ export default function LiveMatch() {
   const [zoomLevel, setZoomLevel] = useState(1);
   const [isAutoScoringActive, setIsAutoScoringActive] = useState(false);
 
-  // Web Detection State
-  const [boardCalibration, setBoardCalibration] = useState(null); // { centerX, centerY, radius }
+  const [boardCalibration, setBoardCalibration] = useState(null);
   const [calibrating, setCalibrating] = useState(false);
-  const [calibrationPoint, setCalibrationPoint] = useState(0); // 0: Bull, 1: Outer
-  const canvasRef = useRef(null);
+  const [calibrationPoint, setCalibrationPoint] = useState(0);
+
   const prevFrameRef = useRef(null);
   const isProcessingRef = useRef(false);
   const stabilityCounterRef = useRef(0);
@@ -179,7 +179,6 @@ export default function LiveMatch() {
     setCurrentTurnDarts([]);
     dartDetectedThisTurnRef.current = 0;
 
-    // Load calibration
     const saved = localStorage.getItem('eliteArrowsBoardCalibration');
     if (saved) setBoardCalibration(JSON.parse(saved));
 
@@ -205,18 +204,28 @@ export default function LiveMatch() {
     if (calibrationPoint === 0) {
         setBoardCalibration({ centerX: x, centerY: y, radius: 0 });
         setCalibrationPoint(1);
-        showToast('Now tap the outer double 20 wire', 'info');
+        showToast('Now tap the outer double wire', 'info');
     } else {
         const dx = x - boardCalibration.centerX;
         const dy = y - boardCalibration.centerY;
         const radius = Math.sqrt(dx * dx + dy * dy);
-        setBoardCalibration({ ...boardCalibration, radius });
+        const finalCal = { centerX: boardCalibration.centerX, centerY: boardCalibration.centerY, radius };
+        setBoardCalibration(finalCal);
         setCalibrating(false);
         setCalibrationPoint(0);
-        showToast('Calibration complete! Auto-scoring active.', 'success');
-        localStorage.setItem('eliteArrowsBoardCalibration', JSON.stringify({ centerX: boardCalibration.centerX, centerY: boardCalibration.centerY, radius }));
+        showToast('Calibration complete!', 'success');
+        localStorage.setItem('eliteArrowsBoardCalibration', JSON.stringify(finalCal));
     }
   };
+
+  const handleScoreInput = useCallback((score) => {
+    const val = parseInt(score);
+    if (isNaN(val) || val > 180) return;
+    processTurn('player', val);
+    setCurrentInput('');
+    setCurrentTurnDarts([]);
+    dartDetectedThisTurnRef.current = 0;
+  }, [processTurn]);
 
   const processTurn = useCallback((who, score) => {
     const isPlayer = who === 'player';
@@ -230,7 +239,7 @@ export default function LiveMatch() {
         if (isPlayer) setPlayerScore(newScore);
         else setOpponentScore(newScore);
 
-        setHistory(prev => [{ who, score, remaining: newScore }, ...prev]);
+        setHistory(prev => [{ who, score, remaining: newScore }, ...prev];
 
         if (newScore === 0) {
             const nextLegs = (isPlayer ? playerLegs : opponentLegs) + 1;
@@ -251,13 +260,109 @@ export default function LiveMatch() {
     setTurn(isPlayer ? (isVsBot ? 'bot' : 'opponent') : 'player');
   }, [playerScore, opponentScore, playerLegs, opponentLegs, gameFormat, legsToWin, startScore, isVsBot, showToast]);
 
-  const handleScoreInput = useCallback((score) => {
-    const val = parseInt(score);
-    if (isNaN(val) || val > 180) return;
-    processTurn('player', val);
-    setCurrentInput('');
-    setCurrentTurnDarts([]);
-  }, [processTurn]);
+  // Web JS Analyzer Logic
+  useEffect(() => {
+    if (!gameStarted || !useCamera || turn !== 'player' || !boardCalibration || Capacitor.isNativePlatform()) return;
+
+    const segments = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
+    let requestRef;
+
+    const analyzeFrame = () => {
+        if (!videoRef.current || videoRef.current.paused || videoRef.current.ended) {
+            requestRef = requestAnimationFrame(analyzeFrame);
+            return;
+        }
+
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+        const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+        if (prevFrameRef.current) {
+            let diff = 0;
+            for (let i = 0; i < frame.data.length; i += 32) { // sparse check for speed
+                diff += Math.abs(frame.data[i] - prevFrameRef.current.data[i]);
+            }
+
+            const motionValue = diff / (canvas.width * canvas.height / 8);
+
+            if (motionValue > 20) {
+                stabilityCounterRef.current = 0;
+                isProcessingRef.current = true;
+            } else if (isProcessingRef.current) {
+                stabilityCounterRef.current++;
+                if (stabilityCounterRef.current > 15) { // Frame is stable, dart has likely landed
+                    isProcessingRef.current = false;
+                    detectDartPosition(frame, prevFrameRef.current);
+                }
+            }
+        }
+
+        prevFrameRef.current = frame;
+        requestRef = requestAnimationFrame(analyzeFrame);
+    };
+
+    const detectDartPosition = (current, prev) => {
+        let bestX = 0, bestY = 0, count = 0;
+        for (let i = 0; i < current.data.length; i += 4) {
+            const d = Math.abs(current.data[i] - prev.data[i]);
+            if (d > 50) {
+                const x = (i / 4) % current.width;
+                const y = Math.floor((i / 4) / current.width);
+                bestX += x;
+                bestY += y;
+                count++;
+            }
+        }
+
+        if (count > 10 && count < 1000) { // Valid dart size
+            const xPct = (bestX / count / current.width) * 100;
+            const yPct = (bestY / count / current.height) * 100;
+            calculateWebScore(xPct, yPct);
+        }
+    };
+
+    const calculateWebScore = (x, y) => {
+        const { centerX, centerY, radius } = boardCalibration;
+        const dx = x - centerX;
+        const dy = centerY - y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const relDist = dist / radius;
+
+        if (relDist > 1.1) return; // Ignore far misses
+
+        let sVal = 0, sLab = "";
+        if (relDist <= 0.05) { sVal = 50; sLab = "BULL"; }
+        else if (relDist <= 0.12) { sVal = 25; sLab = "25"; }
+        else {
+            let angle = Math.atan2(dx, dy) * (180 / Math.PI);
+            angle += 9.0;
+            if (angle < 0) angle += 360;
+            const idx = Math.floor(angle / 18) % 20;
+            const val = segments[idx];
+            if (relDist >= 0.95 && relDist <= 1.05) { sVal = val * 2; sLab = `D${val}`; }
+            else if (relDist >= 0.60 && relDist <= 0.68) { sVal = val * 3; sLab = `T${val}`; }
+            else { sVal = val; sLab = val.toString(); }
+        }
+
+        showToast(`Detected: ${sLab}`, 'success');
+        setCurrentTurnDarts(prev => [...prev, sLab]);
+        setCurrentInput(prev => {
+            const next = (parseInt(prev || '0') + sVal);
+            return Math.min(180, next).toString();
+        });
+        dartDetectedThisTurnRef.current++;
+
+        if (dartDetectedThisTurnRef.current >= 3) {
+            setTimeout(() => handleScoreInput(currentInput), 2000);
+        }
+    };
+
+    requestRef = requestAnimationFrame(analyzeFrame);
+    return () => cancelAnimationFrame(requestRef);
+  }, [gameStarted, useCamera, turn, boardCalibration, handleScoreInput, currentInput, showToast]);
 
   useEffect(() => {
     if (gameStarted && turn === 'bot' && bot) {
@@ -296,18 +401,6 @@ export default function LiveMatch() {
     };
   }, [gameStarted, turn, currentInput, handleScoreInput, showToast]);
 
-  if (isWaitingForAccept) {
-    return (
-        <div className="page">
-            <div className="card glass" style={{ maxWidth: '400px', margin: '100px auto', textAlign: 'center', padding: '40px' }}>
-                <div className="spinner" style={{ width: '50px', height: '50px', margin: '0 auto 20px' }}></div>
-                <h3 style={{ fontWeight: 800 }}>Challenging Friend...</h3>
-                <button className="btn btn-secondary btn-block" style={{ marginTop: '20px' }} onClick={() => setIsWaitingForAccept(false)}>Cancel</button>
-            </div>
-        </div>
-    );
-  }
-
   if (!gameStarted) {
     return (
         <div className="page animate-fade-in" style={{ maxWidth: '1000px', margin: '0 auto' }}>
@@ -317,7 +410,6 @@ export default function LiveMatch() {
                 <h1 className="setup-title">PRE-MATCH SETUP</h1>
 
                 <div className="setup-grid">
-                    {/* Left Column */}
                     <div className="setup-col">
                         <section className="setup-section">
                             <label>1. GAME MODE</label>
@@ -348,7 +440,6 @@ export default function LiveMatch() {
                         )}
                     </div>
 
-                    {/* Right Column */}
                     <div className="setup-col">
                         <section className="setup-section">
                             <label>3. FORMAT</label>
@@ -389,7 +480,7 @@ export default function LiveMatch() {
                             <input type="checkbox" checked={useCamera} onChange={e => setUseCamera(e.target.checked)} />
                             <div className="checkbox-text">
                                 <strong>ENABLE LIVE CAMERA & AUTOSCORER</strong>
-                                <small>Use high-performance native detection</small>
+                                <small>Universal JS Detection (Web/App)</small>
                             </div>
                         </label>
 
@@ -411,37 +502,20 @@ export default function LiveMatch() {
                 .setup-title { text-align: center; color: white; font-weight: 900; letter-spacing: 4px; margin-bottom: 40px; font-size: 1.5rem; opacity: 0.8; }
                 .setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; margin-bottom: 40px; }
                 .setup-section label { display: block; font-size: 0.7rem; font-weight: 900; color: var(--accent-cyan); margin-bottom: 15px; letter-spacing: 2px; }
-
                 .setup-btn-group { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
                 .setup-btn-group.split { grid-template-columns: 1fr 1fr; }
                 .setup-btn-group.legs { grid-template-columns: repeat(7, 1fr); }
-
                 .setup-btn { background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: white; padding: 14px; border-radius: 12px; font-weight: 800; cursor: pointer; transition: 0.2s; font-size: 0.85rem; }
                 .setup-btn.active { background: var(--accent-cyan); color: black; border-color: white; box-shadow: 0 0 20px var(--accent-cyan-glow); }
-                .setup-btn.sm { padding: 10px 5px; font-size: 0.75rem; }
-
                 .wide-select { width: 100%; border-radius: 12px; padding: 14px; font-weight: 700; color: white; }
                 .diff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
                 .diff-btn { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 14px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); cursor: pointer; text-align: left; }
                 .diff-btn.active { border-color: var(--accent-cyan); background: rgba(0, 212, 255, 0.1); }
-                .diff-btn .icon { font-size: 1.5rem; }
-                .diff-btn .name { display: block; font-weight: 800; color: white; font-size: 0.9rem; }
-                .diff-btn .stats { display: block; font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; }
-
                 .setup-footer { border-top: 1px solid var(--border); padding-top: 40px; display: flex; justify-content: space-between; align-items: flex-end; gap: 40px; }
                 .checkbox-label { display: flex; align-items: center; gap: 15px; cursor: pointer; }
                 .checkbox-label input { width: 28px; height: 28px; accent-color: var(--accent-cyan); }
-                .checkbox-text strong { display: block; font-size: 0.9rem; color: white; }
-                .checkbox-text small { color: var(--text-muted); font-size: 0.7rem; }
-                .camera-select { width: 100%; margin-top: 15px; border-radius: 10px; padding: 10px; }
-
-                .confirm-start-btn { background: linear-gradient(135deg, #00d4ff 0%, #0080ff 100%); color: black; font-weight: 900; font-size: 1.4rem; padding: 22px 50px; border-radius: 20px; border: none; cursor: pointer; box-shadow: 0 10px 40px rgba(0, 212, 255, 0.4); transition: transform 0.2s; }
-                .confirm-start-btn:active { transform: scale(0.98); }
-
-                @media (max-width: 900px) {
-                    .setup-grid { grid-template-columns: 1fr; gap: 30px; }
-                    .setup-footer { flex-direction: column; align-items: stretch; }
-                }
+                .confirm-start-btn { background: linear-gradient(135deg, #00d4ff 0%, #0080ff 100%); color: black; font-weight: 900; font-size: 1.4rem; padding: 22px 50px; border-radius: 20px; border: none; cursor: pointer; box-shadow: 0 10px 40px rgba(0, 212, 255, 0.4); }
+                @media (max-width: 900px) { .setup-grid { grid-template-columns: 1fr; gap: 30px; } .setup-footer { flex-direction: column; align-items: stretch; } }
             `}</style>
         </div>
     );
@@ -449,7 +523,8 @@ export default function LiveMatch() {
 
   return (
     <div className="page animate-fade-in match-theater-view" style={{ maxWidth: '100%', margin: '0', padding: '10px', height: '100vh', display: 'flex', flexDirection: 'column', background: '#000' }}>
-        {/* Pro Scoreboard */}
+        <canvas ref={canvasRef} width="160" height="120" style={{ display: 'none' }} />
+
         <div className="match-header-scores">
             <div className={`player-panel ${turn === 'player' ? 'active' : ''}`}>
                 <div className="panel-info">
@@ -474,20 +549,26 @@ export default function LiveMatch() {
         </div>
 
         <div className="match-workspace">
-            {/* Main Stage: Camera / Scolia Board */}
             <div className="match-stage card glass">
                 {turn === 'player' && useCamera ? (
-                    <div className="live-cam-container">
+                    <div className="live-cam-container" onClick={handleBoardClick}>
                         <video ref={videoRef} autoPlay playsInline muted style={{ transform: `scale(${zoomLevel})` }} />
                         <div className="stage-overlay">
-                             <div className="status-badge">📡 AUTO-SCORING: {isAutoScoringActive ? 'ACTIVE' : 'READY'}</div>
+                             {!boardCalibration ? (
+                                <div className="calibration-alert animate-pulse">
+                                    {calibrationPoint === 0 ? "TAP CENTER OF BULLSEYE" : "TAP OUTER DOUBLE WIRE"}
+                                </div>
+                             ) : (
+                                <div className="status-badge">📡 AUTO-SCORING ACTIVE</div>
+                             )}
                              <div className="hud-controls">
                                 <div className="zoom-ctrl">
-                                    <button onClick={() => setZoomLevel(p => Math.min(5, p + 0.5))} className="hud-btn">+</button>
+                                    <button onClick={(e) => {e.stopPropagation(); setZoomLevel(p => Math.min(5, p + 0.5))}} className="hud-btn">+</button>
                                     <span className="zoom-val">{Math.round(zoomLevel*100)}%</span>
-                                    <button onClick={() => setZoomLevel(p => Math.max(1, p - 0.5))} className="hud-btn">-</button>
+                                    <button onClick={(e) => {e.stopPropagation(); setZoomLevel(p => Math.max(1, p - 0.5))}} className="hud-btn">-</button>
                                 </div>
-                                <button onClick={flipCamera} className="hud-btn flip">🔄</button>
+                                <button onClick={(e) => {e.stopPropagation(); flipCamera()}} className="hud-btn flip">🔄</button>
+                                <button onClick={(e) => {e.stopPropagation(); setBoardCalibration(null)}} className="hud-btn">⚙️</button>
                              </div>
                         </div>
                     </div>
@@ -503,7 +584,6 @@ export default function LiveMatch() {
                 )}
             </div>
 
-            {/* Controls Side */}
             <aside className="match-controls">
                 <div className={`scoring-panel card glass ${turn !== 'player' ? 'disabled' : ''}`}>
                     <div className="input-lcd">{currentInput || '0'}</div>
@@ -516,11 +596,6 @@ export default function LiveMatch() {
                             }}>{key}</button>
                         ))}
                     </div>
-                    {Capacitor.isNativePlatform() && (
-                        <button className="recal-btn" onClick={() => Capacitor.Plugins['DartDetection']?.startDetection()}>
-                            ⚡ RE-CALIBRATE BOARD
-                        </button>
-                    )}
                 </div>
 
                 <div className="log-panel card glass">
@@ -554,14 +629,14 @@ export default function LiveMatch() {
 
             .match-workspace { display: grid; grid-template-columns: 1.6fr 1fr; gap: 10px; flex: 1; min-height: 0; }
             .match-stage { padding: 0; background: #000; border: 2px solid var(--border); border-radius: 24px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
-            .live-cam-container { width: 100%; height: 100%; position: relative; }
+            .live-cam-container { width: 100%; height: 100%; position: relative; cursor: crosshair; }
             .live-cam-container video { width: 100%; height: 100%; object-fit: cover; transition: 0.3s; }
             .stage-overlay { position: absolute; inset: 0; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; }
+            .calibration-alert { align-self: center; margin-top: 100px; background: #ff0044; color: white; padding: 15px 30px; border-radius: 40px; font-weight: 900; font-size: 1.2rem; box-shadow: 0 0 30px rgba(255,0,68,0.5); }
             .status-badge { align-self: flex-start; background: rgba(0, 212, 255, 0.2); backdrop-filter: blur(10px); padding: 8px 16px; border-radius: 30px; border: 1px solid var(--accent-cyan); font-weight: 900; font-size: 0.75rem; color: white; }
             .hud-controls { align-self: flex-end; display: flex; gap: 10px; pointer-events: auto; }
             .zoom-ctrl { background: rgba(0,0,0,0.8); padding: 8px; border-radius: 14px; border: 1px solid var(--accent-cyan); display: flex; align-items: center; gap: 15px; }
             .hud-btn { width: 44px; height: 44px; border-radius: 10px; background: rgba(255,255,255,0.1); border: 1px solid var(--border); color: white; font-weight: 900; cursor: pointer; }
-            .zoom-val { font-size: 0.8rem; font-weight: 900; color: var(--accent-cyan); }
 
             .match-controls { display: flex; flex-direction: column; gap: 10px; }
             .scoring-panel { padding: 20px; background: rgba(15, 23, 42, 0.95); display: flex; flex-direction: column; gap: 15px; }
@@ -570,7 +645,6 @@ export default function LiveMatch() {
             .pro-keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
             .k-btn { height: 65px; border-radius: 12px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: white; font-weight: 900; font-size: 1.5rem; cursor: pointer; }
             .k-enter { background: var(--accent-cyan); color: black; }
-            .recal-btn { background: linear-gradient(135deg, #FF00E5, #B000FF); border: none; padding: 15px; border-radius: 12px; color: white; font-weight: 900; font-size: 0.8rem; letter-spacing: 1px; }
 
             .log-panel { flex: 1; display: flex; flex-direction: column; padding: 20px; min-height: 0; }
             .log-rows { flex: 1; overflow-y: auto; }
