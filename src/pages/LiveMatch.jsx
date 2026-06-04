@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { DartBot } from '../utils/DartBot';
@@ -22,6 +22,7 @@ export default function LiveMatch() {
   const location = useLocation();
   const videoRef = useRef(null);
   const streamRef = useRef(null);
+  const searchRef = useRef(null);
 
   // Game Setup State
   const [gameStarted, setGameStarted] = useState(false);
@@ -37,7 +38,9 @@ export default function LiveMatch() {
   // Online State
   const [onlineGameId, setOnlineGameId] = useState(null);
   const [isWaitingForAccept, setIsWaitingForAccept] = useState(false);
-  const [selectedFriend, setSelectedFriend] = useState(null);
+  const [selectedOpponent, setSelectedOpponent] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearchResults, setShowSearchResults] = useState(false);
 
   // Live Match State
   const [playerScore, setPlayerScore] = useState(501);
@@ -63,15 +66,28 @@ export default function LiveMatch() {
     if (location.state && location.state.invitePlayer) {
         setIsVsBot(false);
         setIsOnline(true);
-        setSelectedFriend(location.state.invitePlayer);
+        setSelectedOpponent(location.state.invitePlayer);
     }
   }, [location.state]);
 
-  const onlineFriends = allUsers.filter(u =>
-    u.id !== user?.id &&
-    u.isOnline &&
-    (user?.friends || []).includes(u.id)
-  );
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim() || !allUsers) return [];
+    const q = searchQuery.toLowerCase();
+    return allUsers.filter(u =>
+      u.id !== user?.id &&
+      (u.username?.toLowerCase().includes(q) || u.displayName?.toLowerCase().includes(q))
+    ).slice(0, 10);
+  }, [searchQuery, allUsers, user?.id]);
+
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (searchRef.current && !searchRef.current.contains(e.target)) {
+        setShowSearchResults(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   useEffect(() => {
     const getCameras = async () => {
@@ -148,11 +164,10 @@ export default function LiveMatch() {
   });
 
   const startGame = async () => {
-    if (isOnline && (location.state?.invitePlayer || selectedFriend)) {
-        const target = location.state?.invitePlayer || selectedFriend;
+    if (isOnline && selectedOpponent) {
         setIsWaitingForAccept(true);
         const config = { startScore, gameFormat, legsToWin };
-        const inviteId = await sendGameInvite(target.id, config);
+        const inviteId = await sendGameInvite(selectedOpponent.id, config);
         onSnapshot(doc(db, 'gameInvites', inviteId), (snap) => {
             if (snap.exists() && snap.data().status === 'accepted') {
                 setOnlineGameId(snap.data().gameId);
@@ -247,227 +262,347 @@ export default function LiveMatch() {
 
   if (!gameStarted) {
     return (
-        <div className="page animate-fade-in" style={{ maxWidth: '1000px', margin: '0 auto' }}>
+        <div className="page animate-fade-in" style={{ maxWidth: '1100px', margin: '0 auto' }}>
             <Breadcrumbs items={[{ label: 'Home', path: '/home' }, { label: 'Match Setup' }]} />
 
-            <div className="card glass pro-setup-card">
-                <h1 className="setup-title">PRE-MATCH SETUP</h1>
+            <div className="setup-hero">
+                <h1 className="setup-title">
+                    <span className="text-gradient">MATCH SETUP</span>
+                </h1>
+                <p className="setup-subtitle">Configure your game — choose an opponent, format, and scoring</p>
+            </div>
 
-                <div className="setup-grid">
-                    <div className="setup-col">
-                        <section className="setup-section">
-                            <label>1. GAME MODE</label>
-                            <div className="setup-btn-group">
-                                {START_SCORES.map(s => (
-                                    <button key={s} className={`setup-btn ${startScore === s ? 'active' : ''}`} onClick={() => setStartScore(s)}>{s}</button>
-                                ))}
-                            </div>
-                        </section>
-
-                        <section className="setup-section">
-                            <label>2. OPPONENT</label>
-                            <div className="setup-btn-group">
-                                <button className={`setup-btn ${isVsBot ? 'active' : ''}`} onClick={() => {setIsVsBot(true); setIsOnline(false)}}>🤖 BOT</button>
-                                <button className={`setup-btn ${!isVsBot && !isOnline ? 'active' : ''}`} onClick={() => {setIsVsBot(false); setIsOnline(false)}}>👥 LOCAL</button>
-                                <button className={`setup-btn ${isOnline ? 'active' : ''}`} onClick={() => {setIsVsBot(false); setIsOnline(true)}}>🌐 ONLINE</button>
-                            </div>
-                        </section>
-
-                        {isOnline && (
-                            <section className="setup-section animate-fade-in">
-                                <label>CHALLENGE FRIEND</label>
-                                <select className="glass wide-select" value={selectedFriend?.id || ''} onChange={e => setSelectedFriend(onlineFriends.find(f => f.id === e.target.value))}>
-                                    <option value="">-- Choose Online Friend --</option>
-                                    {onlineFriends.map(f => <option key={f.id} value={f.id}>{f.username}</option>)}
-                                </select>
-                            </section>
-                        )}
+            <div className="setup-layout">
+                <div className="setup-card">
+                    <div className="setup-card-header">
+                        <span className="step-badge">1</span>
+                        <span>GAME MODE</span>
+                    </div>
+                    <div className="setup-option-group">
+                        {START_SCORES.map(s => (
+                            <button key={s} className={`opt-btn ${startScore === s ? 'active' : ''}`} onClick={() => setStartScore(s)}>
+                                <span className="opt-val">{s}</span>
+                            </button>
+                        ))}
                     </div>
 
-                    <div className="setup-col">
-                        <section className="setup-section">
-                            <label>3. FORMAT</label>
-                            <div className="setup-btn-group split">
-                                {FORMATS.map(f => (
-                                    <button key={f.id} className={`setup-btn ${gameFormat === f.id ? 'active' : ''}`} onClick={() => setGameFormat(f.id)}>{f.label}</button>
-                                ))}
-                            </div>
-                            <div className="setup-btn-group legs">
-                                {[1, 3, 5, 7, 9, 11, 21].map(n => (
-                                    <button key={n} className={`setup-btn sm ${legsToWin === n ? 'active' : ''}`} onClick={() => setLegsCount(n)}>{n}</button>
-                                ))}
-                            </div>
-                        </section>
-
-                        {isVsBot && (
-                            <section className="setup-section difficulty-section animate-fade-in">
-                                <label>SELECT PRO BOT</label>
-                                <div className="pro-bot-grid">
-                                    {DartBot.getProBots().map(p => (
-                                        <button key={p.id} className={`pro-bot-btn ${selectedProBot.id === p.id ? 'active' : ''}`} onClick={() => setSelectedProBot(p)}>
-                                            <span className="icon">{p.icon}</span>
-                                            <div className="info">
-                                                <span className="name">{p.name}</span>
-                                                <span className="stats">{p.avg} avg · {p.check}%</span>
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
-                                {selectedProBot.id === 'custom' && (
-                                    <div className="custom-bot-controls animate-fade-in">
-                                        <div className="slider-group">
-                                            <label>AVERAGE: <strong>{customAvg}</strong></label>
-                                            <input type="range" min="20" max="110" value={customAvg} onChange={e => setCustomAvg(Number(e.target.value))} />
-                                        </div>
-                                        <div className="slider-group">
-                                            <label>CHECKOUT %: <strong>{customCheck}%</strong></label>
-                                            <input type="range" min="5" max="60" value={customCheck} onChange={e => setCustomCheck(Number(e.target.value))} />
-                                        </div>
-                                    </div>
-                                )}
-                                {selectedProBot.id !== 'custom' && (
-                                    <div className="pro-bot-desc">{selectedProBot.desc}</div>
-                                )}
-                            </section>
-                        )}
+                    <div className="setup-card-header" style={{ marginTop: 28 }}>
+                        <span className="step-badge">2</span>
+                        <span>OPPONENT</span>
+                    </div>
+                    <div className="opponent-selector">
+                        <button className={`opp-btn ${isVsBot ? 'active' : ''}`} onClick={() => {setIsVsBot(true); setIsOnline(false); setSelectedOpponent(null)}}>
+                            <span className="opp-icon">🤖</span>
+                            <span className="opp-label">BOT</span>
+                            <span className="opp-desc">Play against AI</span>
+                        </button>
+                        <button className={`opp-btn ${!isVsBot && !isOnline ? 'active' : ''}`} onClick={() => {setIsVsBot(false); setIsOnline(false); setSelectedOpponent(null)}}>
+                            <span className="opp-icon">👥</span>
+                            <span className="opp-label">LOCAL</span>
+                            <span className="opp-desc">Pass & play</span>
+                        </button>
+                        <button className={`opp-btn ${isOnline ? 'active' : ''}`} onClick={() => {setIsVsBot(false); setIsOnline(true)}}>
+                            <span className="opp-icon">🌐</span>
+                            <span className="opp-label">ONLINE</span>
+                            <span className="opp-desc">Challenge anyone</span>
+                        </button>
                     </div>
                 </div>
 
-                <div className="setup-footer">
-                    <div className="camera-setup-block">
-                        <label className="checkbox-label">
-                            <input type="checkbox" checked={useCamera} onChange={e => setUseCamera(e.target.checked)} />
-                            <div className="checkbox-text">
-                                <strong>ENABLE CAMERA VIEW</strong>
-                                <small>Camera preview during your turn</small>
+                <div className="setup-card">
+                    {isOnline ? (
+                        <>
+                            <div className="setup-card-header">
+                                <span className="step-badge">3</span>
+                                <span>SEARCH PLAYER</span>
                             </div>
-                        </label>
-
-                        {useCamera && (
-                            <div className="camera-preview-area">
-                                <div className="camera-indicator">
-                                    <span className={`camera-dot ${stream ? 'active' : 'offline'}`} />
-                                    {stream ? 'CAMERA ACTIVE' : 'STARTING CAMERA...'}
-                                </div>
-                                {stream && (
-                                    <div className="camera-mini-preview">
-                                        <video ref={videoRef} autoPlay playsInline muted />
+                            <div className="search-wrap" ref={searchRef}>
+                                <input
+                                    className="search-input"
+                                    type="text"
+                                    placeholder="Type a username..."
+                                    value={searchQuery}
+                                    onChange={e => { setSearchQuery(e.target.value); setShowSearchResults(true); setSelectedOpponent(null); }}
+                                    onFocus={() => searchQuery.trim() && setShowSearchResults(true)}
+                                />
+                                {showSearchResults && searchResults.length > 0 && (
+                                    <div className="search-results">
+                                        {searchResults.map(u => (
+                                            <button key={u.id} className={`search-result-item ${selectedOpponent?.id === u.id ? 'active' : ''}`} onClick={() => { setSelectedOpponent(u); setSearchQuery(u.username); setShowSearchResults(false); }}>
+                                                <div className="search-avatar">{u.username?.[0]?.toUpperCase() || '?'}</div>
+                                                <div className="search-info">
+                                                    <span className="search-name">{u.username}</span>
+                                                    <span className="search-status">Online</span>
+                                                </div>
+                                            </button>
+                                        ))}
                                     </div>
                                 )}
-                                <select className="glass camera-select animate-fade-in" value={selectedCamera} onChange={e => setSelectedCamera(e.target.value)}>
-                                    {availableCameras.map(cam => (
-                                        <option key={cam.deviceId} value={cam.deviceId}>{cam.label || 'Webcam'}</option>
-                                    ))}
-                                </select>
+                                {showSearchResults && searchQuery.trim() && searchResults.length === 0 && (
+                                    <div className="search-results"><div className="search-empty">No players found</div></div>
+                                )}
+                                {selectedOpponent && (
+                                    <div className="selected-player">
+                                        <div className="search-avatar">{selectedOpponent.username?.[0]?.toUpperCase() || '?'}</div>
+                                        <span>{selectedOpponent.username}</span>
+                                        <button className="clear-btn" onClick={() => { setSelectedOpponent(null); setSearchQuery(''); }}>✕</button>
+                                    </div>
+                                )}
                             </div>
-                        )}
-                    </div>
+                        </>
+                    ) : isVsBot ? (
+                        <>
+                            <div className="setup-card-header">
+                                <span className="step-badge">3</span>
+                                <span>SELECT PRO BOT</span>
+                            </div>
+                            <div className="pro-bot-grid">
+                                {DartBot.getProBots().map(p => (
+                                    <button key={p.id} className={`pro-bot-btn ${selectedProBot.id === p.id ? 'active' : ''}`} onClick={() => setSelectedProBot(p)}>
+                                        <span className="pro-bot-icon">{p.icon}</span>
+                                        <span className="pro-bot-name">{p.name}</span>
+                                        <span className="pro-bot-stats">{p.avg} · {p.check}%</span>
+                                    </button>
+                                ))}
+                            </div>
+                            {selectedProBot.id === 'custom' && (
+                                <div className="custom-controls">
+                                    <div className="slider-row">
+                                        <label>AVERAGE <strong>{customAvg}</strong></label>
+                                        <input type="range" min="20" max="110" value={customAvg} onChange={e => setCustomAvg(Number(e.target.value))} />
+                                    </div>
+                                    <div className="slider-row">
+                                        <label>CHECKOUT <strong>{customCheck}%</strong></label>
+                                        <input type="range" min="5" max="60" value={customCheck} onChange={e => setCustomCheck(Number(e.target.value))} />
+                                    </div>
+                                </div>
+                            )}
+                            {selectedProBot.id !== 'custom' && (
+                                <div className="bot-desc">{selectedProBot.desc}</div>
+                            )}
+                        </>
+                    ) : (
+                        <div className="local-hint">
+                            <span className="local-icon">🎯</span>
+                            <p>Pass the device to your opponent when it's their turn. No setup needed.</p>
+                        </div>
+                    )}
 
-                    <button className="confirm-start-btn" onClick={startGame}>START MATCH 🎯</button>
+                    <div className="setup-card-header" style={{ marginTop: isOnline ? 28 : 0 }}>
+                        <span className="step-badge">{isOnline ? 4 : 3}</span>
+                        <span>FORMAT</span>
+                    </div>
+                    <div className="format-row">
+                        {FORMATS.map(f => (
+                            <button key={f.id} className={`fmt-btn ${gameFormat === f.id ? 'active' : ''}`} onClick={() => setGameFormat(f.id)}>{f.label}</button>
+                        ))}
+                    </div>
+                    <div className="legs-row">
+                        {[1, 3, 5, 7, 9, 11, 21].map(n => (
+                            <button key={n} className={`leg-btn ${legsToWin === n ? 'active' : ''}`} onClick={() => setLegsCount(n)}>{n}</button>
+                        ))}
+                    </div>
                 </div>
             </div>
 
+            <div className="setup-footer-bar">
+                <label className="camera-toggle">
+                    <input type="checkbox" checked={useCamera} onChange={e => setUseCamera(e.target.checked)} />
+                    <span className={`toggle-track ${useCamera ? 'on' : ''}`}>
+                        <span className="toggle-thumb" />
+                    </span>
+                    <span className="toggle-label">Camera View</span>
+                </label>
+
+                {useCamera && (
+                    <div className="camera-preview-area">
+                        <div className="camera-indicator">
+                            <span className={`camera-dot ${stream ? 'active' : 'offline'}`} />
+                            {stream ? 'ACTIVE' : 'STARTING...'}
+                        </div>
+                        {stream && (
+                            <div className="camera-mini-preview">
+                                <video ref={videoRef} autoPlay playsInline muted />
+                            </div>
+                        )}
+                        <select className="cam-select" value={selectedCamera} onChange={e => setSelectedCamera(e.target.value)}>
+                            {availableCameras.map(cam => (
+                                <option key={cam.deviceId} value={cam.deviceId}>{cam.label || 'Webcam'}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+
+                <button className="start-btn" onClick={startGame} disabled={isOnline && !selectedOpponent}>
+                    {isWaitingForAccept ? 'WAITING FOR ACCEPT...' : (isOnline && selectedOpponent ? `CHALLENGE ${selectedOpponent.username.toUpperCase()}` : 'START MATCH')}
+                    <span className="start-arrow">🎯</span>
+                </button>
+            </div>
+
             <style>{`
-                .pro-setup-card { padding: 40px; border-radius: 32px; border: 2px solid var(--accent-cyan); background: rgba(15, 23, 42, 0.98); box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
-                .setup-title { text-align: center; color: white; font-weight: 900; letter-spacing: 4px; margin-bottom: 40px; font-size: 1.5rem; opacity: 0.8; }
-                .setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; margin-bottom: 40px; }
-                .setup-section label { display: block; font-size: 0.7rem; font-weight: 900; color: var(--accent-cyan); margin-bottom: 15px; letter-spacing: 2px; }
-                .setup-btn-group { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
-                .setup-btn-group.split { grid-template-columns: 1fr 1fr; }
-                .setup-btn-group.legs { grid-template-columns: repeat(7, 1fr); }
-                .setup-btn { background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: white; padding: 14px; border-radius: 12px; font-weight: 800; cursor: pointer; transition: 0.2s; font-size: 0.85rem; }
-                .setup-btn.active { background: var(--accent-cyan); color: black; border-color: white; box-shadow: 0 0 20px var(--accent-cyan-glow); }
-                .wide-select { width: 100%; border-radius: 12px; padding: 14px; font-weight: 700; color: white; }
-                .setup-footer { border-top: 1px solid var(--border); padding-top: 40px; display: flex; justify-content: space-between; align-items: flex-end; gap: 40px; }
-                .checkbox-label { display: flex; align-items: center; gap: 15px; cursor: pointer; }
-                .checkbox-label input { width: 28px; height: 28px; accent-color: var(--accent-cyan); }
-                .confirm-start-btn { background: linear-gradient(135deg, #00d4ff 0%, #0080ff 100%); color: black; font-weight: 900; font-size: 1.4rem; padding: 22px 50px; border-radius: 20px; border: none; cursor: pointer; box-shadow: 0 10px 40px rgba(0, 212, 255, 0.4); }
-                .pro-bot-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; max-height: 300px; overflow-y: auto; padding-right: 4px; scrollbar-width: thin; }
+                .setup-hero { text-align: center; margin-bottom: 36px; }
+                .setup-title { font-size: 2.4rem; font-weight: 900; letter-spacing: 2px; margin-bottom: 8px; }
+                .setup-subtitle { color: var(--text-muted); font-size: 0.9rem; }
+
+                .setup-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+
+                .setup-card { background: var(--bg-card); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: var(--border-radius-lg); padding: 28px; }
+                .setup-card-header { display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 0.8rem; color: white; letter-spacing: 1.5px; margin-bottom: 16px; }
+                .step-badge { width: 28px; height: 28px; border-radius: 50%; background: var(--accent-primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 900; }
+
+                .setup-option-group { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+                .opt-btn { padding: 16px; border-radius: var(--border-radius-md); background: rgba(255,255,255,0.03); border: 1px solid var(--border); color: white; font-weight: 900; font-size: 1.2rem; cursor: pointer; transition: 0.2s; text-align: center; }
+                .opt-btn.active { background: var(--accent-primary); border-color: var(--accent-primary); box-shadow: 0 0 20px var(--accent-purple-glow); }
+                .opt-btn:hover { background: rgba(255,255,255,0.08); }
+
+                .opponent-selector { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+                .opp-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 16px 8px; border-radius: var(--border-radius-md); background: rgba(255,255,255,0.03); border: 1px solid var(--border); cursor: pointer; transition: 0.2s; }
+                .opp-btn.active { border-color: var(--accent-cyan); background: rgba(56, 189, 248, 0.1); box-shadow: 0 0 16px var(--accent-cyan-glow); }
+                .opp-btn:hover { background: rgba(255,255,255,0.08); }
+                .opp-icon { font-size: 1.8rem; }
+                .opp-label { font-weight: 900; font-size: 0.85rem; color: white; }
+                .opp-desc { font-size: 0.6rem; color: var(--text-muted); }
+
+                .search-wrap { position: relative; }
+                .search-input { width: 100%; padding: 14px 16px; border-radius: var(--border-radius-md); background: rgba(0,0,0,0.4); border: 1px solid var(--border); color: white; font-size: 0.95rem; outline: none; transition: 0.2s; }
+                .search-input:focus { border-color: var(--accent-cyan); box-shadow: 0 0 12px var(--accent-cyan-glow); }
+                .search-input::placeholder { color: var(--text-muted); }
+                .search-results { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--border-radius-md); overflow: hidden; z-index: 50; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+                .search-result-item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px; border: none; background: none; color: white; cursor: pointer; text-align: left; transition: 0.15s; }
+                .search-result-item:hover, .search-result-item.active { background: rgba(56, 189, 248, 0.1); }
+                .search-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--accent-primary); display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 0.9rem; flex-shrink: 0; }
+                .search-info { display: flex; flex-direction: column; }
+                .search-name { font-weight: 700; font-size: 0.85rem; }
+                .search-status { font-size: 0.65rem; color: var(--success); }
+                .search-empty { padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.85rem; }
+                .selected-player { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 10px 14px; background: rgba(56, 189, 248, 0.1); border: 1px solid var(--accent-cyan); border-radius: var(--border-radius-md); font-weight: 700; font-size: 0.9rem; }
+                .clear-btn { margin-left: auto; width: 24px; height: 24px; border-radius: 50%; border: none; background: rgba(255,255,255,0.1); color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; }
+
+                .pro-bot-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; max-height: 260px; overflow-y: auto; padding-right: 4px; scrollbar-width: thin; }
                 .pro-bot-grid::-webkit-scrollbar { width: 4px; }
                 .pro-bot-grid::-webkit-scrollbar-thumb { background: var(--accent-cyan); border-radius: 4px; }
-                .pro-bot-btn { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 10px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); cursor: pointer; text-align: left; transition: 0.2s; }
-                .pro-bot-btn.active { border-color: var(--accent-cyan); background: rgba(0, 212, 255, 0.12); box-shadow: 0 0 12px var(--accent-cyan-glow); }
-                .pro-bot-btn .icon { font-size: 1.2rem; }
-                .pro-bot-btn .info { display: flex; flex-direction: column; line-height: 1.2; }
-                .pro-bot-btn .name { font-size: 0.7rem; font-weight: 900; color: white; }
-                .pro-bot-btn .stats { font-size: 0.6rem; color: var(--accent-cyan); font-weight: 700; }
-                .pro-bot-desc { font-size: 0.65rem; color: var(--text-muted); text-align: center; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 8px; margin-top: 8px; }
-                .custom-bot-controls { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
-                .slider-group { display: flex; flex-direction: column; gap: 4px; }
-                .slider-group label { font-size: 0.7rem; margin-bottom: 0; }
-                .slider-group label strong { color: white; }
-                .slider-group input[type=range] { width: 100%; height: 6px; border-radius: 4px; background: var(--border); outline: none; -webkit-appearance: none; appearance: none; }
-                .slider-group input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--accent-cyan); cursor: pointer; border: 2px solid white; }
-                .camera-preview-area { display: flex; flex-direction: column; gap: 12px; margin-top: 15px; }
-                .camera-indicator { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; font-weight: 800; color: var(--accent-cyan); letter-spacing: 1px; }
-                .camera-dot { width: 10px; height: 10px; border-radius: 50%; background: #555; display: inline-block; }
-                .camera-dot.active { background: #00ff88; box-shadow: 0 0 12px #00ff88; animation: pulse-dot 1.5s ease-in-out infinite; }
-                .camera-dot.offline { background: #ff8800; box-shadow: 0 0 12px #ff8800; animation: pulse-dot 1s ease-in-out infinite; }
-                .camera-mini-preview { border-radius: 12px; overflow: hidden; border: 2px solid var(--accent-cyan); background: #000; max-height: 160px; }
+                .pro-bot-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border-radius: 10px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); cursor: pointer; transition: 0.2s; }
+                .pro-bot-btn.active { border-color: var(--accent-cyan); background: rgba(56, 189, 248, 0.12); box-shadow: 0 0 12px var(--accent-cyan-glow); }
+                .pro-bot-btn:hover { background: rgba(255,255,255,0.07); }
+                .pro-bot-icon { font-size: 1.1rem; }
+                .pro-bot-name { font-size: 0.6rem; font-weight: 800; color: white; text-align: center; line-height: 1.1; }
+                .pro-bot-stats { font-size: 0.55rem; color: var(--accent-cyan); font-weight: 700; }
+                .bot-desc { font-size: 0.7rem; color: var(--text-muted); text-align: center; padding: 10px; background: rgba(255,255,255,0.03); border-radius: 8px; margin-top: 10px; }
+                .custom-controls { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+                .slider-row { display: flex; flex-direction: column; gap: 4px; }
+                .slider-row label { font-size: 0.7rem; font-weight: 700; color: var(--accent-cyan); display: flex; justify-content: space-between; }
+                .slider-row label strong { color: white; }
+                .slider-row input[type=range] { width: 100%; height: 5px; border-radius: 4px; background: var(--border); outline: none; -webkit-appearance: none; appearance: none; }
+                .slider-row input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--accent-cyan); cursor: pointer; border: 2px solid white; }
+
+                .local-hint { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 40px 20px; text-align: center; color: var(--text-muted); font-size: 0.85rem; }
+                .local-icon { font-size: 3rem; }
+
+                .format-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+                .fmt-btn { padding: 14px; border-radius: var(--border-radius-md); background: rgba(255,255,255,0.03); border: 1px solid var(--border); color: white; font-weight: 800; cursor: pointer; transition: 0.2s; font-size: 0.9rem; }
+                .fmt-btn.active { background: var(--accent-primary); border-color: var(--accent-primary); box-shadow: 0 0 16px var(--accent-purple-glow); }
+                .fmt-btn:hover { background: rgba(255,255,255,0.07); }
+                .legs-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+                .leg-btn { padding: 12px; border-radius: var(--border-radius-sm); background: rgba(255,255,255,0.03); border: 1px solid var(--border); color: white; font-weight: 800; cursor: pointer; transition: 0.2s; font-size: 0.8rem; }
+                .leg-btn.active { background: var(--accent-primary); border-color: var(--accent-primary); }
+                .leg-btn:hover { background: rgba(255,255,255,0.07); }
+
+                .setup-footer-bar { display: flex; align-items: center; gap: 20px; background: var(--bg-card); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: var(--border-radius-lg); padding: 20px 28px; margin-top: 4px; flex-wrap: wrap; }
+                .camera-toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
+                .toggle-track { width: 44px; height: 24px; border-radius: 12px; background: rgba(255,255,255,0.15); position: relative; transition: 0.25s; flex-shrink: 0; }
+                .toggle-track.on { background: var(--accent-cyan); }
+                .toggle-thumb { position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: white; transition: 0.25s; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+                .toggle-track.on .toggle-thumb { left: 22px; }
+                .toggle-label { font-weight: 700; font-size: 0.8rem; color: white; }
+                .camera-toggle input { display: none; }
+
+                .camera-preview-area { display: flex; align-items: center; gap: 12px; }
+                .camera-indicator { display: flex; align-items: center; gap: 6px; font-size: 0.65rem; font-weight: 800; color: var(--accent-cyan); letter-spacing: 0.5px; }
+                .camera-dot { width: 8px; height: 8px; border-radius: 50%; background: #555; display: inline-block; flex-shrink: 0; }
+                .camera-dot.active { background: #00ff88; box-shadow: 0 0 8px #00ff88; animation: pulse-dot 1.5s ease-in-out infinite; }
+                .camera-dot.offline { background: #ff8800; box-shadow: 0 0 8px #ff8800; animation: pulse-dot 1s ease-in-out infinite; }
+                .camera-mini-preview { border-radius: 8px; overflow: hidden; border: 1px solid var(--accent-cyan); background: #000; max-height: 60px; width: 80px; flex-shrink: 0; }
                 .camera-mini-preview video { width: 100%; height: 100%; object-fit: cover; display: block; }
+                .cam-select { background: rgba(0,0,0,0.4); border: 1px solid var(--border); color: white; padding: 8px 10px; border-radius: var(--border-radius-sm); font-size: 0.7rem; font-weight: 600; max-width: 140px; }
+
+                .start-btn { margin-left: auto; display: flex; align-items: center; gap: 12px; padding: 16px 36px; border-radius: var(--border-radius-md); border: none; background: linear-gradient(135deg, var(--accent-primary), #6344ef); color: white; font-weight: 900; font-size: 1rem; cursor: pointer; transition: 0.25s; box-shadow: 0 8px 24px rgba(129, 140, 248, 0.3); letter-spacing: 1px; white-space: nowrap; }
+                .start-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(129, 140, 248, 0.4); }
+                .start-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+                .start-arrow { font-size: 1.2rem; }
+
                 @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-                @media (max-width: 900px) { .setup-grid { grid-template-columns: 1fr; gap: 30px; } .setup-footer { flex-direction: column; align-items: stretch; } .pro-bot-grid { grid-template-columns: repeat(2, 1fr); } }
+
+                @media (max-width: 900px) {
+                    .setup-layout { grid-template-columns: 1fr; }
+                    .setup-footer-bar { flex-direction: column; align-items: stretch; }
+                    .start-btn { margin-left: 0; justify-content: center; }
+                    .camera-preview-area { flex-wrap: wrap; }
+                    .pro-bot-grid { grid-template-columns: repeat(3, 1fr); }
+                }
             `}</style>
         </div>
     );
   }
 
   return (
-    <div className="page animate-fade-in match-theater-view" style={{ maxWidth: '100%', margin: '0', padding: '10px', height: '100vh', display: 'flex', flexDirection: 'column', background: '#000' }}>
-        
-
-        <div className="match-header-scores">
-            <div className={`player-panel ${turn === 'player' ? 'active' : ''}`}>
-                <div className="panel-info">
-                    <span className="name">{user?.username || 'YOU'}</span>
-                    <span className="legs">LEGS: {playerLegs}</span>
+    <div className="page animate-fade-in" style={{ maxWidth: '100%', margin: '0', padding: '0', height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)', overflow: 'hidden' }}>
+        <div className="match-header">
+            <div className={`player-card ${turn === 'player' ? 'active' : ''}`}>
+                <div className="player-card-top">
+                    <span className="player-name">{user?.username || 'YOU'}</span>
+                    <span className="player-badge">{playerLegs} LEG{playerLegs !== 1 ? 'S' : ''}</span>
                 </div>
-                <div className="score-val">{playerScore}</div>
+                <div className="player-score">{playerScore}</div>
                 {currentTurnDarts.length > 0 && turn === 'player' && (
-                    <div className="turn-darts">
-                        {currentTurnDarts.map((d, i) => <span key={i} className="dart-pill">{d}</span>)}
-                    </div>
+                    <div className="player-darts">{currentTurnDarts.map((d, i) => <span key={i} className="dart-chip">{d}</span>)}</div>
                 )}
+                {turn === 'player' && <div className="turn-arrow">◀ YOUR TURN</div>}
             </div>
 
-            <div className={`player-panel ${turn !== 'player' ? 'active' : ''}`}>
-                <div className="panel-info">
-                    <span className="name">{isVsBot ? selectedProBot.name : (selectedFriend?.username || 'OPPONENT')}</span>
-                    <span className="legs">LEGS: {opponentLegs}</span>
+            <div className="match-divider">
+                <span className="vs-text">VS</span>
+            </div>
+
+            <div className={`player-card right ${turn !== 'player' ? 'active' : ''}`}>
+                <div className="player-card-top">
+                    <span className="player-name">{isVsBot ? selectedProBot.name : (selectedOpponent?.username || 'OPPONENT')}</span>
+                    <span className="player-badge">{opponentLegs} LEG{opponentLegs !== 1 ? 'S' : ''}</span>
                 </div>
-                <div className="score-val">{isBotThinking ? '...' : opponentScore}</div>
+                <div className="player-score">{isBotThinking ? <span className="thinking-dots">...</span> : opponentScore}</div>
+                {turn !== 'player' && !isBotThinking && <div className="turn-arrow right">◀ THEIR TURN</div>}
+                {isBotThinking && <div className="thinking-label">THROWING...</div>}
             </div>
         </div>
 
-        <div className="match-workspace">
-            <div className="match-stage card glass">
+        <div className="match-body">
+            <div className="match-stage-wrap">
                 {turn === 'player' && useCamera ? (
-                    <div className="live-cam-container">
+                    <div className="cam-view">
                         <video ref={videoRef} autoPlay playsInline muted style={{ transform: `scale(${zoomLevel})` }} />
-                        <div className="stage-overlay">
-                             <div className="hud-controls">
-                                <div className="zoom-ctrl">
-                                    <button onClick={(e) => {e.stopPropagation(); setZoomLevel(p => Math.min(5, p + 0.5))}} className="hud-btn">+</button>
-                            <span className="zoom-val">{Math.round(zoomLevel*100)}%</span>
-                                     <button onClick={(e) => {e.stopPropagation(); setZoomLevel(p => Math.max(1, p - 0.5))}} className="hud-btn">-</button>
-                                 </div>
-                                  <button onClick={(e) => {e.stopPropagation(); flipCamera()}} className="hud-btn flip">🔄</button>
-                             </div>
+                        <div className="cam-hud">
+                            <div className="cam-controls">
+                                <div className="zoom-group">
+                                    <button onClick={(e) => {e.stopPropagation(); setZoomLevel(p => Math.min(5, p + 0.5))}} className="cam-btn">+</button>
+                                    <span className="zoom-val">{Math.round(zoomLevel * 100)}%</span>
+                                    <button onClick={(e) => {e.stopPropagation(); setZoomLevel(p => Math.max(1, p - 0.5))}} className="cam-btn">−</button>
+                                </div>
+                                <button onClick={(e) => {e.stopPropagation(); flipCamera()}} className="cam-btn flip">🔄</button>
+                            </div>
                         </div>
                     </div>
                 ) : (
-                    <div className="scolia-view animate-fade-in">
+                    <div className="board-view">
                         <ScoliaBoard lastDarts={lastBotDarts} size={window.innerWidth < 1200 ? 380 : 550} />
                     </div>
                 )}
             </div>
 
-            <aside className="match-controls">
-                <div className={`scoring-panel card glass ${turn !== 'player' ? 'disabled' : ''}`}>
-                    <div className="input-lcd">{currentInput || '0'}</div>
-                    <div className="pro-keypad">
+            <aside className="match-sidebar">
+                <div className={`scoring-module ${turn !== 'player' ? 'blocked' : ''}`}>
+                    <div className="lcd">{currentInput || '0'}</div>
+                    <div className="keypad">
                         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 'DEL', 0, 'ENTER'].map(key => (
-                            <button key={key} className={`k-btn ${key === 'ENTER' ? 'k-enter' : ''}`} onClick={() => {
+                            <button key={key} className={`key ${key === 'ENTER' ? 'enter' : ''} ${key === 'DEL' ? 'del' : ''}`} onClick={() => {
                                 if (key === 'DEL') setCurrentInput(p => p.slice(0, -1));
                                 else if (key === 'ENTER') handleScoreInput(currentInput);
                                 else if (currentInput.length < 3) setCurrentInput(p => p + key);
@@ -476,17 +611,18 @@ export default function LiveMatch() {
                     </div>
                 </div>
 
-                <div className="log-panel card glass">
-                    <div className="log-header">
-                        <span>MATCH HISTORY</span>
-                        <button className="quit-btn" onClick={() => {if(window.confirm('Quit?')) setGameStarted(false)}}>EXIT</button>
+                <div className="history-module">
+                    <div className="history-header">
+                        <span>SHOT LOG</span>
+                        <button className="exit-btn" onClick={() => {if(window.confirm('Quit match?')) setGameStarted(false)}}>EXIT</button>
                     </div>
-                    <div className="log-rows">
+                    <div className="history-scroll">
+                        {history.length === 0 && <div className="history-empty">No throws yet</div>}
                         {history.map((e, i) => (
-                            <div key={i} className={`log-row ${e.who}`}>
-                                <span className="who">{e.who === 'player' ? 'YOU' : 'OPP'}</span>
-                                <span className="pts">{e.score}</span>
-                                <span className="rem">{e.remaining}</span>
+                            <div key={i} className={`history-row ${e.who}`}>
+                                <span className="hw">{e.who === 'player' ? 'YOU' : 'OPP'}</span>
+                                <span className="hs">{e.score}{e.result === 'BUST' ? ' 💥' : ''}</span>
+                                <span className="hr">{e.remaining}</span>
                             </div>
                         ))}
                     </div>
@@ -495,44 +631,79 @@ export default function LiveMatch() {
         </div>
 
         <style>{`
-            .match-theater-view .main-content { padding: 0 !important; margin: 0 !important; max-width: 100vw !important; }
-            .match-header-scores { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; height: 130px; }
-            .player-panel { background: rgba(15, 23, 42, 0.9); border: 2px solid var(--border); border-radius: 20px; padding: 15px; position: relative; transition: 0.3s; display: flex; flex-direction: column; justify-content: center; }
-            .player-panel.active { border-color: var(--accent-cyan); box-shadow: 0 0 40px var(--accent-cyan-glow); background: rgba(0, 212, 255, 0.1); }
-            .player-panel .name { font-weight: 900; color: var(--accent-cyan); font-size: 0.9rem; letter-spacing: 1px; }
-            .player-panel .legs { font-size: 0.7rem; font-weight: 900; background: #000; padding: 2px 8px; border-radius: 5px; }
-            .player-panel .score-val { font-size: 5rem; font-weight: 900; line-height: 1; text-align: center; }
-            .turn-darts { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 5px; }
-            .dart-pill { background: var(--accent-cyan); color: black; font-size: 0.6rem; font-weight: 900; padding: 2px 8px; border-radius: 4px; border: 1px solid white; }
+            .match-header { display: flex; align-items: center; gap: 12px; padding: 12px 20px; background: var(--bg-card); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+            .player-card { flex: 1; padding: 12px 20px; border-radius: var(--border-radius-md); background: rgba(255,255,255,0.03); border: 1px solid var(--border); position: relative; transition: 0.3s; min-width: 0; }
+            .player-card.active { border-color: var(--accent-cyan); box-shadow: 0 0 30px var(--accent-cyan-glow), inset 0 0 30px rgba(56, 189, 248, 0.05); background: rgba(56, 189, 248, 0.06); }
+            .player-card.right { text-align: right; }
+            .player-card-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+            .player-card.right .player-card-top { justify-content: flex-end; }
+            .player-name { font-weight: 900; font-size: 0.85rem; color: white; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .player-badge { font-size: 0.6rem; font-weight: 800; background: rgba(255,255,255,0.08); padding: 2px 8px; border-radius: 4px; color: var(--text-muted); white-space: nowrap; }
+            .player-score { font-size: 4.5rem; font-weight: 900; line-height: 1; color: white; font-variant-numeric: tabular-nums; }
+            .player-card.right .player-score { text-align: right; }
+            .player-darts { display: flex; gap: 4px; margin-top: 6px; }
+            .player-card.right .player-darts { justify-content: flex-end; }
+            .dart-chip { background: var(--accent-cyan); color: black; font-size: 0.6rem; font-weight: 900; padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.3); }
+            .turn-arrow { position: absolute; bottom: -10px; left: 0; font-size: 0.6rem; font-weight: 900; color: var(--accent-cyan); letter-spacing: 1px; animation: pulse-arrow 1.5s ease-in-out infinite; }
+            .turn-arrow.right { left: auto; right: 0; }
+            @keyframes pulse-arrow { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+            .thinking-dots { animation: blink-dots 1s step-end infinite; }
+            @keyframes blink-dots { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+            .thinking-label { font-size: 0.65rem; font-weight: 800; color: var(--warning); letter-spacing: 1px; margin-top: 4px; }
 
-            .match-workspace { display: grid; grid-template-columns: 1.6fr 1fr; gap: 10px; flex: 1; min-height: 0; }
-            .match-stage { padding: 0; background: #000; border: 2px solid var(--border); border-radius: 24px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
-            .live-cam-container { width: 100%; height: 100%; position: relative; cursor: crosshair; }
-            .live-cam-container video { width: 100%; height: 100%; object-fit: cover; transition: 0.3s; }
-            .stage-overlay { position: absolute; inset: 0; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; }
-            .hud-controls { align-self: flex-end; display: flex; gap: 10px; pointer-events: auto; }
-            .zoom-ctrl { background: rgba(0,0,0,0.8); padding: 8px; border-radius: 14px; border: 1px solid var(--accent-cyan); display: flex; align-items: center; gap: 15px; }
-            .hud-btn { width: 44px; height: 44px; border-radius: 10px; background: rgba(255,255,255,0.1); border: 1px solid var(--border); color: white; font-weight: 900; cursor: pointer; }
+            .match-divider { display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0; }
+            .vs-text { font-size: 0.7rem; font-weight: 900; color: var(--text-muted); letter-spacing: 2px; }
 
-            .match-controls { display: flex; flex-direction: column; gap: 10px; }
-            .scoring-panel { padding: 20px; background: rgba(15, 23, 42, 0.95); display: flex; flex-direction: column; gap: 15px; }
-            .scoring-panel.disabled { opacity: 0.2; pointer-events: none; }
-            .input-lcd { background: #000; padding: 15px; border-radius: 16px; border: 3px solid var(--accent-cyan); font-size: 4rem; font-weight: 900; color: var(--accent-cyan); text-align: center; text-shadow: 0 0 20px var(--accent-cyan-glow); }
-            .pro-keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-            .k-btn { height: 65px; border-radius: 12px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: white; font-weight: 900; font-size: 1.5rem; cursor: pointer; }
-            .k-enter { background: var(--accent-cyan); color: black; }
+            .match-body { display: grid; grid-template-columns: 1.6fr 1fr; gap: 12px; flex: 1; padding: 12px 20px 20px; min-height: 0; overflow: hidden; }
 
-            .log-panel { flex: 1; display: flex; flex-direction: column; padding: 20px; min-height: 0; }
-            .log-rows { flex: 1; overflow-y: auto; }
-            .log-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-weight: 800; font-size: 1rem; }
-            .log-row.player .who { color: var(--accent-cyan); }
-            .log-row .pts { flex: 1; text-align: center; font-size: 1.2rem; }
-            .log-row .rem { width: 60px; text-align: right; color: var(--text-muted); font-size: 0.8rem; }
+            .match-stage-wrap { border-radius: var(--border-radius-lg); overflow: hidden; background: #000; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; position: relative; }
+            .cam-view { width: 100%; height: 100%; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+            .cam-view video { width: 100%; height: 100%; object-fit: contain; }
+            .cam-hud { position: absolute; bottom: 16px; right: 16px; pointer-events: none; }
+            .cam-controls { display: flex; gap: 8px; pointer-events: auto; }
+            .zoom-group { display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); padding: 6px 12px; border-radius: 10px; border: 1px solid var(--border); }
+            .cam-btn { width: 36px; height: 36px; border-radius: 8px; background: rgba(255,255,255,0.08); border: none; color: white; font-weight: 900; font-size: 1.1rem; cursor: pointer; transition: 0.15s; display: flex; align-items: center; justify-content: center; }
+            .cam-btn:hover { background: rgba(255,255,255,0.15); }
+            .cam-btn.flip { font-size: 1rem; }
+            .zoom-val { font-size: 0.7rem; font-weight: 800; color: white; min-width: 36px; text-align: center; }
+            .board-view { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+
+            .match-sidebar { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+            .scoring-module { background: var(--bg-card); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: var(--border-radius-lg); padding: 20px; transition: 0.3s; }
+            .scoring-module.blocked { opacity: 0.25; pointer-events: none; }
+            .lcd { background: rgba(0,0,0,0.5); padding: 12px; border-radius: 12px; border: 2px solid var(--accent-cyan); font-size: 3.5rem; font-weight: 900; color: var(--accent-cyan); text-align: center; text-shadow: 0 0 16px var(--accent-cyan-glow); margin-bottom: 12px; font-variant-numeric: tabular-nums; }
+            .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+            .key { height: 58px; border-radius: 10px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: white; font-weight: 800; font-size: 1.3rem; cursor: pointer; transition: 0.15s; display: flex; align-items: center; justify-content: center; }
+            .key:hover { background: rgba(255,255,255,0.08); }
+            .key:active { transform: scale(0.95); }
+            .key.enter { background: var(--accent-primary); border-color: var(--accent-primary); color: white; box-shadow: 0 4px 16px var(--accent-purple-glow); }
+            .key.enter:hover { background: var(--accent-hover); }
+            .key.del { color: var(--text-muted); }
+
+            .history-module { flex: 1; display: flex; flex-direction: column; background: var(--bg-card); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: var(--border-radius-lg); padding: 16px 20px; min-height: 0; }
+            .history-header { display: flex; justify-content: space-between; align-items: center; font-weight: 800; font-size: 0.75rem; color: white; letter-spacing: 1px; margin-bottom: 12px; flex-shrink: 0; }
+            .exit-btn { padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border); background: rgba(255,255,255,0.04); color: var(--text-muted); font-weight: 700; font-size: 0.65rem; cursor: pointer; transition: 0.15s; }
+            .exit-btn:hover { background: rgba(239,68,68,0.15); border-color: var(--error); color: var(--error); }
+            .history-scroll { flex: 1; overflow-y: auto; }
+            .history-empty { text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 30px 0; }
+            .history-row { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-weight: 800; font-size: 0.85rem; }
+            .history-row.player .hw { color: var(--accent-cyan); }
+            .history-row .hw { width: 36px; font-size: 0.7rem; flex-shrink: 0; }
+            .history-row .hs { flex: 1; text-align: center; }
+            .history-row .hr { width: 44px; text-align: right; color: var(--text-muted); font-size: 0.75rem; }
 
             @media (max-width: 1200px) {
-                .match-workspace { grid-template-columns: 1fr; overflow-y: auto; }
-                .match-stage { height: 450px; flex: none; }
-                .match-controls { height: auto; }
+                .match-body { grid-template-columns: 1fr; overflow-y: auto; }
+                .match-stage-wrap { min-height: 350px; flex-shrink: 0; }
+                .match-sidebar { height: auto; }
+                .player-score { font-size: 3.2rem; }
+            }
+            @media (max-width: 600px) {
+                .match-header { padding: 8px 12px; gap: 8px; }
+                .player-card { padding: 8px 12px; }
+                .player-score { font-size: 2.4rem; }
+                .player-name { font-size: 0.7rem; }
+                .match-body { padding: 8px 12px 12px; }
             }
         `}</style>
     </div>
