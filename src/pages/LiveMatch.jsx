@@ -3,7 +3,6 @@ import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { DartBot } from '../utils/DartBot';
 import Breadcrumbs from '../components/Breadcrumbs';
-import ScoliaBoard from '../components/ScoliaBoard';
 import { useToast } from '../context/ToastContext';
 import { db, doc, onSnapshot, updateDoc, arrayUnion } from '../firebase';
 
@@ -599,8 +598,37 @@ export default function LiveMatch() {
                         </div>
                     </div>
                 ) : (
-                    <div className="board-view">
-                        <ScoliaBoard lastDarts={lastBotDarts} size={window.innerWidth < 1200 ? 380 : 550} />
+                    <div className="dart-cards-view">
+                        <div className="dart-cards-container">
+                            {[0, 1, 2].map(i => {
+                                const dart = lastBotDarts[i];
+                                const isTreble = dart?.label?.startsWith('T');
+                                const isDouble = dart?.label?.startsWith('D');
+                                const isBull = dart?.label === 'BULL';
+                                const isMiss = dart?.label === 'MISS';
+                                const cardClass = isTreble ? 'treble' : isDouble ? 'dbl' : isBull ? 'bull' : isMiss ? 'miss' : '';
+                                return (
+                                    <div key={i} className={`dart-card ${dart ? 'filled ' + cardClass : 'empty'}`} style={{ animationDelay: `${i * 0.15}s` }}>
+                                        {dart ? (
+                                            <>
+                                                <div className="dart-label">{dart.label}</div>
+                                                <div className="dart-value">{dart.value}</div>
+                                            </>
+                                        ) : (
+                                            <div className="dart-placeholder">🎯</div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        {lastBotDarts.length > 0 && (
+                            <div className="dart-total">
+                                = {lastBotDarts.reduce((s, d) => s + d.value, 0)}
+                            </div>
+                        )}
+                        {turn === 'bot' && isBotThinking && (
+                            <div className="dart-thinking">THROWING...</div>
+                        )}
                     </div>
                 )}
             </div>
@@ -674,7 +702,25 @@ export default function LiveMatch() {
             .cam-btn:hover { background: rgba(255,255,255,0.15); }
             .cam-btn.flip { font-size: 1rem; }
             .zoom-val { font-size: 0.7rem; font-weight: 800; color: white; min-width: 36px; text-align: center; }
-            .board-view { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+            .dart-cards-view { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; padding: 20px; }
+            .dart-cards-container { display: flex; gap: 20px; align-items: center; }
+            .dart-card { width: 120px; height: 150px; border-radius: 16px; background: var(--bg-card); backdrop-filter: blur(20px); border: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; transition: 0.3s; animation: card-pop 0.4s ease-out both; }
+            .dart-card.filled { border-color: rgba(255,255,255,0.15); background: rgba(15,23,42,0.9); }
+            .dart-card.treble { border-color: var(--accent-cyan); box-shadow: 0 0 24px var(--accent-cyan-glow); }
+            .dart-card.dbl { border-color: #22c55e; box-shadow: 0 0 24px rgba(34,197,94,0.3); }
+            .dart-card.bull { border-color: #eab308; box-shadow: 0 0 24px rgba(234,179,8,0.3); }
+            .dart-card.miss { border-color: var(--error); opacity: 0.5; }
+            .dart-card.empty { opacity: 0.2; }
+            .dart-label { font-size: 1.6rem; font-weight: 900; color: white; }
+            .dart-card.treble .dart-label { color: var(--accent-cyan); }
+            .dart-card.dbl .dart-label { color: #22c55e; }
+            .dart-card.bull .dart-label { color: #eab308; }
+            .dart-card.miss .dart-label { color: var(--error); }
+            .dart-value { font-size: 2rem; font-weight: 900; color: rgba(255,255,255,0.5); }
+            .dart-placeholder { font-size: 1.8rem; opacity: 0.4; }
+            .dart-total { font-size: 1.6rem; font-weight: 900; color: rgba(255,255,255,0.7); letter-spacing: 2px; }
+            .dart-thinking { font-size: 0.75rem; font-weight: 800; color: var(--accent-cyan); letter-spacing: 2px; animation: pulse-arrow 1.2s ease-in-out infinite; }
+            @keyframes card-pop { 0% { transform: scale(0.8) translateY(20px); opacity: 0; } 100% { transform: scale(1) translateY(0); opacity: 1; } }
 
             .match-sidebar { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
             .scoring-module { background: var(--bg-card); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: var(--border-radius-lg); padding: 20px; transition: 0.3s; }
@@ -705,6 +751,9 @@ export default function LiveMatch() {
                 .match-stage-wrap { min-height: 350px; flex-shrink: 0; }
                 .match-sidebar { height: auto; }
                 .player-score { font-size: 3.2rem; }
+                .dart-card { width: 100px; height: 130px; }
+                .dart-label { font-size: 1.3rem; }
+                .dart-value { font-size: 1.6rem; }
             }
             @media (max-width: 600px) {
                 .match-header { padding: 8px 12px; gap: 8px; }
@@ -712,6 +761,10 @@ export default function LiveMatch() {
                 .player-score { font-size: 2.4rem; }
                 .player-name { font-size: 0.7rem; }
                 .match-body { padding: 8px 12px 12px; }
+                .dart-card { width: 80px; height: 110px; }
+                .dart-label { font-size: 1.1rem; }
+                .dart-value { font-size: 1.3rem; }
+                .dart-cards-container { gap: 10px; }
             }
         `}</style>
     </div>
