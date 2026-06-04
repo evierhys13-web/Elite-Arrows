@@ -317,7 +317,9 @@ export default function LiveMatch() {
         best = {
           centerX: Math.round(cx * 10) / 10,
           centerY: Math.round(cy * 10) / 10,
-          radius: Math.round(radius * 10) / 10
+          radius: Math.round(radius * 10) / 10,
+          radiusH: Math.round(radiusH * 10) / 10,
+          radiusV: Math.round(radiusV * 10) / 10
         };
       }
     }
@@ -348,13 +350,21 @@ export default function LiveMatch() {
     const gray = new Uint8Array(PW * PH);
     const prevGray = new Uint8Array(PW * PH);
     const cleanGray = new Uint8Array(PW * PH);
+    const color = new Uint8Array(PW * PH * 3);
+    const prevColor = new Uint8Array(PW * PH * 3);
+    const cleanColor = new Uint8Array(PW * PH * 3);
     let hasPrev = false;
     let cleanValid = false;
 
     const toGray = (img) => {
         const d = img.data;
-        for (let i = 0; i < d.length; i += 4)
-            gray[i >> 2] = (d[i] * 0.299 + d[i+1] * 0.587 + d[i+2] * 0.114) | 0;
+        for (let i = 0; i < d.length; i += 4) {
+            const idx = i >> 2;
+            gray[idx] = (d[i] * 0.299 + d[i+1] * 0.587 + d[i+2] * 0.114) | 0;
+            color[idx * 3] = d[i];
+            color[idx * 3 + 1] = d[i+1];
+            color[idx * 3 + 2] = d[i+2];
+        }
     };
 
     const countDiff = (a, b, t) => { let n = 0; for (let i = 0; i < a.length; i++) { if (Math.abs(a[i] - b[i]) > t) n++; } return n; };
@@ -374,15 +384,16 @@ export default function LiveMatch() {
             id.data[i*4+3] = 255;
         }
         dctx.putImageData(id, 0, 0);
-        // Draw calibration board scope circle
+        // Draw calibration board scope ellipse
         const cal = calibrationRef.current || { centerX: 50, centerY: 50, radius: 30 };
         const cx = (cal.centerX / 100) * PW;
         const cy = (cal.centerY / 100) * PH;
-        const r = ((cal.radius * 1.3) / 100) * PW;
+        const rhPx = ((cal.radiusH || cal.radius) * 1.3 / 100) * PW;
+        const rvPx = ((cal.radiusV || cal.radius) * 1.3 / 100) * PH;
         dctx.strokeStyle = 'cyan';
         dctx.lineWidth = 2;
         dctx.beginPath();
-        dctx.arc(cx, cy, r, 0, Math.PI * 2);
+        dctx.ellipse(cx, cy, rhPx, rvPx, 0, 0, Math.PI * 2);
         dctx.stroke();
         // Draw motion/diff text
         dctx.fillStyle = 'lime';
@@ -419,12 +430,13 @@ export default function LiveMatch() {
         if (!cleanValid) return null;
         if (Date.now() - lastDetectTime < 150) return null;
 
-        const { centerX, centerY, radius } = calibrationRef.current || { centerX: 50, centerY: 50, radius: 30 };
+        const { centerX, centerY, radius, radiusH, radiusV } = calibrationRef.current || { centerX: 50, centerY: 50, radius: 30 };
         const isDefaultCal = centerX === 50 && centerY === 50 && radius === 30;
         const scopeMul = isDefaultCal ? 4 : 1.3;
         const ccx = (centerX / 100) * PW;
         const ccy = (centerY / 100) * PH;
-        const maxDistPx = ((radius * scopeMul) / 100) * PW;
+        const scopeRad = radiusH && radiusV ? Math.max(radiusH, radiusV) : radius;
+        const maxDistPx = ((scopeRad * scopeMul) / 100) * PW;
         const maxDistSq = maxDistPx * maxDistPx;
 
         const changed = [];
@@ -432,7 +444,10 @@ export default function LiveMatch() {
             const x = i % PW, y = (i / PW) | 0;
             const dx = x - ccx, dy = y - ccy;
             if (dx * dx + dy * dy > maxDistSq) continue;
-            if (Math.abs(gray[i] - cleanGray[i]) > DART_DIFF_THRESH) changed.push(i);
+            const dr = Math.abs(color[i*3] - cleanColor[i*3]);
+            const dg = Math.abs(color[i*3+1] - cleanColor[i*3+1]);
+            const db = Math.abs(color[i*3+2] - cleanColor[i*3+2]);
+            if (Math.max(dr, dg, db) > DART_DIFF_THRESH * 2) changed.push(i);
         }
         if (changed.length < 10) return null;
 
@@ -442,64 +457,34 @@ export default function LiveMatch() {
         let best = blobs.reduce((a, b) => b.length > a.length ? b : a);
         if (best.length < 15) return null;
 
-        // Compactness check: blob must fill at least 20% of its bounding box
-        let bMinX = PW, bMaxX = 0, bMinY = PH, bMaxY = 0;
-        for (const p of best) {
-            const x = p % PW, y = (p / PW) | 0;
-            if (x < bMinX) bMinX = x;
-            if (x > bMaxX) bMaxX = x;
-            if (y < bMinY) bMinY = y;
-            if (y > bMaxY) bMaxY = y;
-        }
-        const bboxArea = (bMaxX - bMinX + 1) * (bMaxY - bMinY + 1);
-        if (best.length / bboxArea < 0.2) return null;
-
-        // Reject blobs where fewer than 50% of pixels are within the board area
-        let onBoard = 0;
-        for (const p of best) {
-            const x = p % PW, y = (p / PW) | 0;
-            const dx = x - ccx, dy = y - ccy;
-            if (dx * dx + dy * dy <= maxDistSq) onBoard++;
-        }
-        if (onBoard / best.length < 0.5) return null;
-
-        // Reject blobs too far from board center
-        let sumX = 0, sumY = 0, count = 0;
-        for (const p of best) { sumX += p % PW; sumY += (p / PW) | 0; count++; }
-        const cxPct = (sumX / count / PW) * 100;
-        const cyPct = (sumY / count / PH) * 100;
-        if (Math.sqrt((cxPct - centerX) ** 2 + (cyPct - centerY) ** 2) > radius * 1.3) return null;
-
-        // Use bottom portion of blob for tip estimation
-        const ph = PH;
-        let minY = ph, maxY = 0;
-        for (const p of best) { const y = (p / PW) | 0; if (y < minY) minY = y; if (y > maxY) maxY = y; }
-        const tipCut = maxY - (maxY - minY) * 0.25;
-        let sx = 0, sy = 0, n = 0;
-        for (const p of best) {
-            const y = (p / PW) | 0;
-            if (y >= tipCut) { sx += p % PW; sy += y; n++; }
-        }
-
-        const xPct = (sx / n / PW) * 100;
-        const yPct = (sy / n / PH) * 100;
+        // Use blob centroid directly (no bottom-portion assumption — angle-invariant)
+        let sumX = 0, sumY = 0;
+        for (const p of best) { sumX += p % PW; sumY += (p / PW) | 0; }
+        const cxPct = (sumX / best.length / PW) * 100;
+        const cyPct = (sumY / best.length / PH) * 100;
         lastDetectTime = Date.now();
-        return { xPct, yPct };
+        return { xPct: cxPct, yPct: cyPct, changedCount: changed.length, blobSize: best.length };
     };
 
     const calculateWebScore = (x, y) => {
-        const { centerX, centerY, radius } = calibrationRef.current || { centerX: 50, centerY: 50, radius: 30 };
+        const { centerX, centerY, radius, radiusH, radiusV } = calibrationRef.current || { centerX: 50, centerY: 50, radius: 30 };
+        const rh = radiusH || radius;
+        const rv = radiusV || radius;
         const dx = x - centerX;
         const dy = centerY - y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        const relDist = dist / radius;
-        if (relDist > 1.1) return;
+        // Elliptical distance (1.0 = outer edge of board)
+        const relDist = Math.sqrt((dx / rh) ** 2 + (dy / rv) ** 2);
+        if (relDist > 1.15) return;
 
         let sVal = 0, sLab = "";
         if (relDist <= 0.05) { sVal = 50; sLab = "BULL"; }
         else if (relDist <= 0.12) { sVal = 25; sLab = "25"; }
         else {
-            let angle = Math.atan2(dx, dy) * (180 / Math.PI);
+            // Correct angle for elliptical squish
+            const maxR = Math.max(rh, rv);
+            const unskewX = dx * (maxR / rh);
+            const unskewY = dy * (maxR / rv);
+            let angle = Math.atan2(unskewX, unskewY) * (180 / Math.PI);
             angle += 9.0;
             if (angle < 0) angle += 360;
             const idx = Math.floor(angle / 18) % 20;
@@ -534,6 +519,7 @@ export default function LiveMatch() {
         if (warmup > 0) {
             warmup--;
             prevGray.set(gray);
+            prevColor.set(color);
             hasPrev = true;
             requestRef = requestAnimationFrame(analyzeFrame);
             return;
@@ -575,6 +561,7 @@ export default function LiveMatch() {
                 stabilityCounterRef.current = 0;
                 if (detectionPhaseRef.current === 'idle') {
                     cleanGray.set(prevGray);
+                    cleanColor.set(prevColor);
                     cleanValid = true;
                     detectionPhaseRef.current = 'dart_thrown';
                 } else if (detectionPhaseRef.current === 'dart_landed') {
@@ -625,6 +612,7 @@ export default function LiveMatch() {
         }
 
         prevGray.set(gray);
+        prevColor.set(color);
         hasPrev = true;
         requestRef = requestAnimationFrame(analyzeFrame);
     };
