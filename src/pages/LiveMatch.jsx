@@ -265,8 +265,8 @@ export default function LiveMatch() {
 
     const segments = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
     const PW = 160, PH = 120;
-    const MOTION_THRESH = 50;
-    const DART_DIFF_THRESH = 12;
+    const MOTION_THRESH = 150;
+    const DART_DIFF_THRESH = 18;
     const STABILITY_FRAMES = 5;
     let requestRef;
 
@@ -327,8 +327,11 @@ export default function LiveMatch() {
         return blobs;
     };
 
+    let lastDetectTime = 0;
     const detectDart = () => {
         if (!cleanValid) return false;
+        if (Date.now() - lastDetectTime < 800) return false;
+
         const changed = [];
         for (let i = 0; i < gray.length; i++)
             if (Math.abs(gray[i] - cleanGray[i]) > DART_DIFF_THRESH) changed.push(i);
@@ -339,6 +342,14 @@ export default function LiveMatch() {
 
         let best = blobs.reduce((a, b) => b.length > a.length ? b : a);
         if (best.length < 10) return false;
+
+        // Reject blobs too far from board center (hand/arm entering frame)
+        const { centerX, centerY, radius } = boardCalibration;
+        let sumX = 0, sumY = 0, count = 0;
+        for (const p of best) { sumX += p % PW; sumY += (p / PW) | 0; count++; }
+        const cxPct = (sumX / count / PW) * 100;
+        const cyPct = (sumY / count / PH) * 100;
+        if (Math.sqrt((cxPct - centerX) ** 2 + (cyPct - centerY) ** 2) > radius * 1.15) return false;
 
         // Use bottom portion of blob for tip estimation
         const ph = PH;
@@ -353,6 +364,7 @@ export default function LiveMatch() {
 
         const xPct = (sx / n / PW) * 100;
         const yPct = (sy / n / PH) * 100;
+        lastDetectTime = Date.now();
         calculateWebScore(xPct, yPct);
         return true;
     };
@@ -379,6 +391,7 @@ export default function LiveMatch() {
             else { sVal = val; sLab = val.toString(); }
         }
 
+        cleanGray.set(gray);
         showToast(`Detected: ${sLab}`, 'success');
         setCurrentTurnDarts(prev => [...prev, sLab]);
         setCurrentInput(prev => {
