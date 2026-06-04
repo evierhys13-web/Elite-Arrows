@@ -93,70 +93,92 @@ export default function LiveMatch() {
     getCameras()
   }, [])
 
-  const startCamera = async () => {
+  const startCamera = async (forceDeviceId = null) => {
     if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         showToast('Camera API not supported in this browser', 'error')
         return
     }
 
+    const deviceIdToUse = forceDeviceId || selectedCamera
+
     // Stop existing tracks first
     if (stream) {
         stream.getTracks().forEach(track => {
             track.stop()
-            console.log('Stopped track:', track.label)
         })
+        setStream(null)
     }
 
-    // Add a tiny delay to allow hardware to release
-    await new Promise(resolve => setTimeout(resolve, 100))
+    // Clear video ref immediately
+    if (videoRef.current) {
+        videoRef.current.srcObject = null
+    }
+
+    // Increased delay for hardware release
+    await new Promise(resolve => setTimeout(resolve, 300))
 
     try {
-        // Try high-res first
         const constraints = {
             video: {
-                deviceId: selectedCamera ? { ideal: selectedCamera } : undefined,
+                deviceId: deviceIdToUse ? { exact: deviceIdToUse } : undefined,
                 width: { ideal: 1920 },
-                height: { ideal: 1080 },
-                facingMode: selectedCamera ? undefined : { ideal: 'environment' }
+                height: { ideal: 1080 }
             }
         }
 
-        console.log('Requesting camera with constraints:', constraints)
-
-        let newStream
-        try {
-            newStream = await navigator.mediaDevices.getUserMedia(constraints)
-        } catch (firstError) {
-            console.warn('High-res camera request failed, retrying with basic settings...', firstError)
-            // Fallback to basic settings
-            newStream = await navigator.mediaDevices.getUserMedia({
-                video: selectedCamera ? { deviceId: { ideal: selectedCamera } } : true
-            })
+        // If no specific ID, try back camera preference
+        if (!deviceIdToUse) {
+            constraints.video.facingMode = { ideal: 'environment' }
         }
 
+        const newStream = await navigator.mediaDevices.getUserMedia(constraints)
         setStream(newStream)
 
         if (videoRef.current) {
             videoRef.current.srcObject = newStream
         }
 
-        // Refresh camera list
         const devices = await navigator.mediaDevices.enumerateDevices()
         const videoDevices = devices.filter(device => device.kind === 'videoinput')
         setAvailableCameras(videoDevices)
 
-        // Lock in the actual device ID being used
+        // Sync local state if device was auto-selected
         const currentTrack = newStream.getVideoTracks()[0]
         const settings = currentTrack.getSettings()
-        if (settings && settings.deviceId && settings.deviceId !== selectedCamera) {
+        if (settings && settings.deviceId && !forceDeviceId) {
             setSelectedCamera(settings.deviceId)
         }
 
     } catch (e) {
-        console.error('Final Camera Error:', e)
-        showToast('Could not start camera. Please check permissions.', 'error')
-        setUseCamera(false)
+        console.error('Camera Error:', e)
+        if (deviceIdToUse) {
+            console.warn('Retrying without specific deviceId...')
+            // One fallback attempt with no ID
+            try {
+                const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true })
+                setStream(fallbackStream)
+                if (videoRef.current) videoRef.current.srcObject = fallbackStream
+            } catch (innerE) {
+                showToast('Could not access any camera source', 'error')
+                setUseCamera(false)
+            }
+        } else {
+            showToast('Camera error: ' + e.message, 'error')
+            setUseCamera(false)
+        }
     }
+  }
+
+  const flipCamera = async () => {
+    if (availableCameras.length < 2) return
+
+    const currentIndex = availableCameras.findIndex(c => c.deviceId === selectedCamera)
+    const nextIndex = (currentIndex + 1) % availableCameras.length
+    const nextDeviceId = availableCameras[nextIndex].deviceId
+
+    setSelectedCamera(nextDeviceId)
+    // Manually trigger restart with the new ID
+    await startCamera(nextDeviceId)
   }
 
   useEffect(() => {
@@ -554,11 +576,7 @@ export default function LiveMatch() {
                             />
                             {availableCameras.length > 1 && (
                                 <button
-                                    onClick={() => {
-                                        const currentIndex = availableCameras.findIndex(c => c.deviceId === selectedCamera)
-                                        const nextIndex = (currentIndex + 1) % availableCameras.length
-                                        setSelectedCamera(availableCameras[nextIndex].deviceId)
-                                    }}
+                                    onClick={flipCamera}
                                     style={{
                                         position: 'absolute',
                                         bottom: '10px',
