@@ -59,6 +59,7 @@ export default function LiveMatch() {
   const [availableCameras, setAvailableCameras] = useState([])
   const [selectedCamera, setSelectedCamera] = useState('')
   const [stream, setStream] = useState(null)
+  const [zoomLevel, setZoomLevel] = useState(1)
 
   useEffect(() => {
     if (location && location.state && location.state.invitePlayer) {
@@ -586,27 +587,48 @@ export default function LiveMatch() {
                                 autoPlay
                                 playsInline
                                 muted
-                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'cover',
+                                    transform: `scale(${zoomLevel})`,
+                                    transition: 'transform 0.2s ease'
+                                }}
                             />
-                            {availableCameras.length > 1 && (
-                                <button
-                                    onClick={flipCamera}
-                                    style={{
-                                        position: 'absolute',
-                                        bottom: '10px',
-                                        right: '10px',
-                                        background: 'rgba(0,0,0,0.6)',
-                                        border: '1px solid var(--accent-cyan)',
-                                        color: 'white',
-                                        padding: '8px 12px',
-                                        borderRadius: '8px',
-                                        fontSize: '0.8rem',
-                                        zIndex: 10
-                                    }}
-                                >
-                                    🔄 Flip Camera
-                                </button>
-                            )}
+
+                            <div style={{
+                                position: 'absolute',
+                                bottom: '15px',
+                                left: '15px',
+                                right: '15px',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                zIndex: 10
+                            }}>
+                                <div style={{ display: 'flex', gap: '8px', background: 'rgba(0,0,0,0.6)', padding: '5px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                                    <button onClick={() => setZoomLevel(prev => Math.max(1, prev - 0.2))} className="btn btn-sm" style={{ padding: '8px 12px' }}>➖</button>
+                                    <span style={{ display: 'flex', alignItems: 'center', fontSize: '0.8rem', fontWeight: 700 }}>{Math.round(zoomLevel * 100)}%</span>
+                                    <button onClick={() => setZoomLevel(prev => Math.min(3, prev + 0.2))} className="btn btn-sm" style={{ padding: '8px 12px' }}>➕</button>
+                                </div>
+
+                                {availableCameras.length > 1 && (
+                                    <button
+                                        onClick={flipCamera}
+                                        style={{
+                                            background: 'rgba(0,0,0,0.6)',
+                                            border: '1px solid var(--accent-cyan)',
+                                            color: 'white',
+                                            padding: '8px 16px',
+                                            borderRadius: '8px',
+                                            fontSize: '0.85rem',
+                                            fontWeight: 700
+                                        }}
+                                    >
+                                        🔄 Flip Camera
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     ) : turn !== 'player' && isVsBot ? (
                         <div className="animate-fade-in" style={{ padding: '20px', textAlign: 'center' }}>
