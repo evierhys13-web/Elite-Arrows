@@ -31,6 +31,7 @@ class DartDetectionActivity : AppCompatActivity() {
     private lateinit var previewView: PreviewView
     private lateinit var overlayView: DartboardOverlayView
     private lateinit var scoreNotification: TextView
+    private var cameraControl: CameraControl? = null
     private val scoringEngine = ScoringEngine()
 
     private var centerX = 0f
@@ -38,6 +39,7 @@ class DartDetectionActivity : AppCompatActivity() {
     private var radius = 0f
     private var calibrationStep = 0
     private var isLiveMode = false
+    private var currentZoom = 1f
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,11 +52,12 @@ class DartDetectionActivity : AppCompatActivity() {
         
         // Large Score Notification (Scolia Style)
         scoreNotification = TextView(this).apply {
-            textSize = 60f
-            setTextColor(Color.CYAN)
+            textSize = 70f
+            setTextColor(Color.WHITE)
+            setTypeface(null, android.graphics.Typeface.BOLD)
             gravity = Gravity.CENTER
-            setBackgroundColor(Color.parseColor("#80000000"))
-            setPadding(40, 20, 40, 20)
+            setBackgroundColor(Color.parseColor("#CC00D4FF"))
+            setPadding(60, 30, 60, 30)
             visibility = android.view.View.GONE
         }
 
@@ -65,7 +68,7 @@ class DartDetectionActivity : AppCompatActivity() {
             topToTop = ConstraintLayout.LayoutParams.PARENT_ID
             startToStart = ConstraintLayout.LayoutParams.PARENT_ID
             endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
-            setMargins(0, 150, 0, 0)
+            setMargins(0, 100, 0, 0)
         }
         root.addView(scoreNotification, scoreParams)
 
@@ -73,12 +76,15 @@ class DartDetectionActivity : AppCompatActivity() {
         val controls = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-            setPadding(0, 0, 0, 80)
+            setPadding(0, 0, 0, 100)
         }
 
-        val closeButton = Button(this).apply {
-            text = "Close"
-            setOnClickListener { finish() }
+        val zoomInButton = Button(this).apply {
+            text = "Zoom +"
+            setOnClickListener { 
+                currentZoom = (currentZoom + 0.5f).coerceAtMost(5f)
+                cameraControl?.setZoomRatio(currentZoom)
+            }
         }
 
         val submitButton = Button(this).apply {
@@ -89,6 +95,12 @@ class DartDetectionActivity : AppCompatActivity() {
             }
         }
 
+        val closeButton = Button(this).apply {
+            text = "Close"
+            setOnClickListener { finish() }
+        }
+
+        controls.addView(zoomInButton)
         controls.addView(submitButton)
         controls.addView(closeButton)
 
@@ -213,7 +225,8 @@ class DartDetectionActivity : AppCompatActivity() {
 
             try {
                 cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageAnalyzer)
+                val camera = cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageAnalyzer)
+                cameraControl = camera.cameraControl
             } catch (exc: Exception) {
                 Log.e("DartDetection", "Use case binding failed", exc)
             }
