@@ -505,7 +505,7 @@ export function AuthProvider({ children }) {
     // Instead of listening to ALL results, we only listen to PENDING results for admins
     // or RECENT results for everyone.
     const resultsQuery = user?.isAdmin
-      ? query(collection(db, 'results'), orderBy('submittedAt', 'desc'))
+      ? query(collection(db, 'results'), orderBy('submittedAt', 'desc'), limit(100))
       : query(collection(db, 'results'), where('status', '==', 'approved'), orderBy('submittedAt', 'desc'), limit(50))
 
     // Targeted listener for user's own results to ensure Home page accuracy
@@ -615,17 +615,7 @@ export function AuthProvider({ children }) {
       })
     }
     
-    const unsubscribeCups = onSnapshot(collection(db, 'cups'), (snapshot) => {
-      const cupsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-      setCups(cupsData)
-      try {
-        localStorage.setItem('eliteArrowsCups', JSON.stringify(cupsData))
-      } catch (e) {}
-    }, (error) => {
-      // console.log('Cups listener error:', error)
-    })
-
-    // We fetch supportRequests and seasons on-demand now instead of full listeners
+    // We fetch cups, supportRequests and seasons on-demand now instead of full listeners
     // but we can keep a small one for seasons as it's small and controls logic
     const unsubscribeSeasons = onSnapshot(collection(db, 'seasons'), (snapshot) => {
       const seasonsData = snapshot.docs
@@ -665,7 +655,6 @@ export function AuthProvider({ children }) {
       if (unsubscribeUserResults2) unsubscribeUserResults2()
       unsubscribeFixtures()
       if (unsubscribeFixtures2) unsubscribeFixtures2()
-      unsubscribeCups()
       unsubscribeSeasons()
       unsubscribeBets()
       unsubscribeNews()
@@ -673,6 +662,23 @@ export function AuthProvider({ children }) {
       if (unsubscribeInvites) unsubscribeInvites()
     }
   }, [user?.id, triggerDataRefresh, publishResults])
+
+  // Re-fetch cups from Firestore when dataRefreshTrigger changes
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+    const fetchCups = async () => {
+      try {
+        const snap = await getDocs(collection(db, 'cups'))
+        if (cancelled) return
+        const cupsData = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        setCups(cupsData)
+        localStorage.setItem('eliteArrowsCups', JSON.stringify(cupsData))
+      } catch (e) {}
+    }
+    fetchCups()
+    return () => { cancelled = true }
+  }, [dataRefreshTrigger, user])
 
   // Auto-launch scheduled seasons
   useEffect(() => {
