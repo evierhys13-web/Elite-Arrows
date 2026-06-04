@@ -478,25 +478,18 @@ export function AuthProvider({ children }) {
       return true
     }
 
-    const unsubscribeUsers = onSnapshot(query(collection(db, 'users'), where('isOnline', '==', true)), (snapshot) => {
-      const onlineUsers = snapshot.docs.map(doc => {
+    const unsubscribeUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
+      const allFetchedUsers = snapshot.docs.map(doc => {
         const data = doc.data()
         SENSITIVE_FIELDS.forEach(field => delete data[field])
         return { id: doc.id, ...data }
       })
 
-      setAllUsers(prev => {
-        const existing = Array.isArray(prev) ? prev : []
-        const merged = [...existing]
-        onlineUsers.forEach(ou => {
-          const idx = merged.findIndex(u => u.id === ou.id)
-          if (idx !== -1) merged[idx] = ou
-          else merged.push(ou)
-        })
-        return merged
-      })
+      setAllUsers(allFetchedUsers)
 
-      const currentUser = onlineUsers.find(item => String(item.id) === String(user.id))
+      localStorage.setItem('eliteArrowsUsers', JSON.stringify(allFetchedUsers))
+
+      const currentUser = allFetchedUsers.find(item => String(item.id) === String(user.id))
       if (currentUser && currentUser.isBanned) {
         firebaseSignOut(auth)
         setUser(null)
