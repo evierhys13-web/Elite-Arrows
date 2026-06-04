@@ -63,8 +63,6 @@ export default function LiveMatch() {
   const [isAutoScoringActive, setIsAutoScoringActive] = useState(false);
 
   const [boardCalibration, setBoardCalibration] = useState(null);
-  const [calibrating, setCalibrating] = useState(false);
-  const [calibrationPoint, setCalibrationPoint] = useState(0);
 
   const prevFrameRef = useRef(null);
   const streamRef = useRef(null);
@@ -156,6 +154,12 @@ export default function LiveMatch() {
     };
   }, [useCamera, selectedCamera]);
 
+  useEffect(() => {
+    if (videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+    }
+  });
+
   const startGame = async () => {
     if (isOnline && (location.state?.invitePlayer || selectedFriend)) {
         const target = location.state?.invitePlayer || selectedFriend;
@@ -191,7 +195,7 @@ export default function LiveMatch() {
     detectionPhaseRef.current = 'idle';
 
     const saved = localStorage.getItem('eliteArrowsBoardCalibration');
-    if (saved) setBoardCalibration(JSON.parse(saved));
+    setBoardCalibration(saved ? JSON.parse(saved) : { centerX: 50, centerY: 50, radius: 30 });
 
     if (isVsBot) {
         setBot(new DartBot({ targetAverage: botLevel.avg, checkoutRate: botLevel.check / 100 }));
@@ -203,30 +207,6 @@ export default function LiveMatch() {
     }
 
     showToast('Match Started!', 'info');
-  };
-
-  const handleBoardClick = (e) => {
-    if (!calibrating || !videoRef.current) return;
-
-    const rect = videoRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-
-    if (calibrationPoint === 0) {
-        setBoardCalibration({ centerX: x, centerY: y, radius: 0 });
-        setCalibrationPoint(1);
-        showToast('Now tap the outer double wire', 'info');
-    } else {
-        const dx = x - boardCalibration.centerX;
-        const dy = y - boardCalibration.centerY;
-        const radius = Math.sqrt(dx * dx + dy * dy);
-        const finalCal = { centerX: boardCalibration.centerX, centerY: boardCalibration.centerY, radius };
-        setBoardCalibration(finalCal);
-        setCalibrating(false);
-        setCalibrationPoint(0);
-        showToast('Calibration complete!', 'success');
-        localStorage.setItem('eliteArrowsBoardCalibration', JSON.stringify(finalCal));
-    }
   };
 
   const processTurn = useCallback((who, score) => {
@@ -605,27 +585,15 @@ export default function LiveMatch() {
         <div className="match-workspace">
             <div className="match-stage card glass">
                 {turn === 'player' && useCamera ? (
-                    <div className="live-cam-container" onClick={handleBoardClick}>
+                    <div className="live-cam-container">
                         <video ref={videoRef} autoPlay playsInline muted style={{ transform: `scale(${zoomLevel})` }} />
                         <div className="stage-overlay">
                              <div className="status-top-left">
-                                {boardCalibration ? (
-                                    <div className="status-badge active">
-                                        <span className="camera-dot active" />
-                                        AUTO-SCORING ACTIVE
-                                    </div>
-                                ) : (
-                                    <div className="status-badge">
-                                        <span className="camera-dot" />
-                                        CAMERA READY
-                                    </div>
-                                )}
-                             </div>
-                             {!boardCalibration && (
-                                <div className="calibration-alert animate-pulse">
-                                    {calibrationPoint === 0 ? "TAP CENTER OF BULLSEYE" : "TAP OUTER DOUBLE WIRE"}
+                                <div className="status-badge active">
+                                    <span className="camera-dot active" />
+                                    AUTO-SCORING ACTIVE
                                 </div>
-                             )}
+                             </div>
                              <div className="hud-controls">
                                 <div className="zoom-ctrl">
                                     <button onClick={(e) => {e.stopPropagation(); setZoomLevel(p => Math.min(5, p + 0.5))}} className="hud-btn">+</button>
@@ -633,7 +601,6 @@ export default function LiveMatch() {
                                     <button onClick={(e) => {e.stopPropagation(); setZoomLevel(p => Math.max(1, p - 0.5))}} className="hud-btn">-</button>
                                 </div>
                                 <button onClick={(e) => {e.stopPropagation(); flipCamera()}} className="hud-btn flip">🔄</button>
-                                <button onClick={(e) => {e.stopPropagation(); setBoardCalibration(null)}} className="hud-btn">⚙️</button>
                              </div>
                         </div>
                     </div>
@@ -697,7 +664,6 @@ export default function LiveMatch() {
             .live-cam-container { width: 100%; height: 100%; position: relative; cursor: crosshair; }
             .live-cam-container video { width: 100%; height: 100%; object-fit: cover; transition: 0.3s; }
             .stage-overlay { position: absolute; inset: 0; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; }
-            .calibration-alert { align-self: center; margin-top: 100px; background: #ff0044; color: white; padding: 15px 30px; border-radius: 40px; font-weight: 900; font-size: 1.2rem; box-shadow: 0 0 30px rgba(255,0,68,0.5); }
             .status-badge { align-self: flex-start; display: flex; align-items: center; gap: 8px; background: rgba(0, 212, 255, 0.2); backdrop-filter: blur(10px); padding: 8px 16px; border-radius: 30px; border: 1px solid var(--accent-cyan); font-weight: 900; font-size: 0.75rem; color: white; }
             .camera-dot { width: 10px; height: 10px; border-radius: 50%; background: #555; display: inline-block; }
             .camera-dot.active { background: #00ff88; box-shadow: 0 0 12px #00ff88; animation: pulse-dot 1.5s ease-in-out infinite; }
