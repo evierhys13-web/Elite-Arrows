@@ -262,11 +262,11 @@ export default function LiveMatch() {
     detectionPhaseRef.current = 'idle';
   }, [processTurn]);
 
-  const autoCalibrate = (gray, PW, PH) => {
+  const autoCalibrate = (gray, PW, PH, darkFraction = 0.30) => {
     const hist = new Uint32Array(256);
     for (let i = 0; i < gray.length; i++) hist[gray[i]]++;
 
-    const target = gray.length * 0.30;
+    const target = gray.length * darkFraction;
     let cumulative = 0, threshold = 0;
     for (let i = 0; i < 256; i++) { cumulative += hist[i]; if (cumulative >= target) { threshold = i; break; } }
 
@@ -333,9 +333,9 @@ export default function LiveMatch() {
 
     const segments = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
     const PW = 160, PH = 120;
-    const MOTION_THRESH = 150;
+    const MOTION_THRESH = 20;
     const DART_DIFF_THRESH = 12;
-    const STABILITY_FRAMES = 3;
+    const STABILITY_FRAMES = 2;
     const FRAMES_WARMUP = 30;
     let warmup = FRAMES_WARMUP;
     let requestRef;
@@ -373,6 +373,16 @@ export default function LiveMatch() {
             id.data[i*4+3] = 255;
         }
         dctx.putImageData(id, 0, 0);
+        // Draw calibration board scope circle
+        const cal = calibrationRef.current || { centerX: 50, centerY: 50, radius: 30 };
+        const cx = (cal.centerX / 100) * PW;
+        const cy = (cal.centerY / 100) * PH;
+        const r = ((cal.radius * 1.3) / 100) * PW;
+        dctx.strokeStyle = 'cyan';
+        dctx.lineWidth = 2;
+        dctx.beginPath();
+        dctx.arc(cx, cy, r, 0, Math.PI * 2);
+        dctx.stroke();
     };
 
     const findBlobs = (changed) => {
@@ -402,12 +412,14 @@ export default function LiveMatch() {
     let consistentDartCount = 0, consistentDartX = 0, consistentDartY = 0;
     const detectDart = () => {
         if (!cleanValid) return null;
-        if (Date.now() - lastDetectTime < 400) return null;
+        if (Date.now() - lastDetectTime < 150) return null;
 
         const { centerX, centerY, radius } = calibrationRef.current || { centerX: 50, centerY: 50, radius: 30 };
+        const isDefaultCal = centerX === 50 && centerY === 50 && radius === 30;
+        const scopeMul = isDefaultCal ? 4 : 1.3;
         const ccx = (centerX / 100) * PW;
         const ccy = (centerY / 100) * PH;
-        const maxDistPx = ((radius * 1.2) / 100) * PW;
+        const maxDistPx = ((radius * scopeMul) / 100) * PW;
         const maxDistSq = maxDistPx * maxDistPx;
 
         const changed = [];
@@ -425,7 +437,7 @@ export default function LiveMatch() {
         let best = blobs.reduce((a, b) => b.length > a.length ? b : a);
         if (best.length < 15) return null;
 
-        // Compactness check: blob must fill at least 25% of its bounding box
+        // Compactness check: blob must fill at least 20% of its bounding box
         let bMinX = PW, bMaxX = 0, bMinY = PH, bMaxY = 0;
         for (const p of best) {
             const x = p % PW, y = (p / PW) | 0;
@@ -435,14 +447,23 @@ export default function LiveMatch() {
             if (y > bMaxY) bMaxY = y;
         }
         const bboxArea = (bMaxX - bMinX + 1) * (bMaxY - bMinY + 1);
-        if (best.length / bboxArea < 0.25) return null;
+        if (best.length / bboxArea < 0.2) return null;
+
+        // Reject blobs where fewer than 50% of pixels are within the board area
+        let onBoard = 0;
+        for (const p of best) {
+            const x = p % PW, y = (p / PW) | 0;
+            const dx = x - ccx, dy = y - ccy;
+            if (dx * dx + dy * dy <= maxDistSq) onBoard++;
+        }
+        if (onBoard / best.length < 0.5) return null;
 
         // Reject blobs too far from board center
         let sumX = 0, sumY = 0, count = 0;
         for (const p of best) { sumX += p % PW; sumY += (p / PW) | 0; count++; }
         const cxPct = (sumX / count / PW) * 100;
         const cyPct = (sumY / count / PH) * 100;
-        if (Math.sqrt((cxPct - centerX) ** 2 + (cyPct - centerY) ** 2) > radius * 1.2) return null;
+        if (Math.sqrt((cxPct - centerX) ** 2 + (cyPct - centerY) ** 2) > radius * 1.3) return null;
 
         // Use bottom portion of blob for tip estimation
         const ph = PH;
@@ -516,7 +537,8 @@ export default function LiveMatch() {
         // Auto-calibrate on game start
         if (!calibratedThisSessionRef.current) {
             calibratedThisSessionRef.current = true;
-            const calResult = autoCalibrate(gray, PW, PH);
+            let calResult = autoCalibrate(gray, PW, PH, 0.30);
+            if (!calResult) calResult = autoCalibrate(gray, PW, PH, 0.40);
             if (calResult) {
                 calibrationRef.current = calResult;
                 localStorage.setItem('eliteArrowsBoardCalibration', JSON.stringify(calResult));
@@ -527,7 +549,8 @@ export default function LiveMatch() {
         // Re-calibrate on user request
         if (calibrationNeededRef.current) {
             calibrationNeededRef.current = false;
-            const calResult = autoCalibrate(gray, PW, PH);
+            let calResult = autoCalibrate(gray, PW, PH, 0.30);
+            if (!calResult) calResult = autoCalibrate(gray, PW, PH, 0.40);
             if (calResult) {
                 calibrationRef.current = calResult;
                 localStorage.setItem('eliteArrowsBoardCalibration', JSON.stringify(calResult));
