@@ -12,12 +12,9 @@ const FORMATS = [
   { id: 'bestOf', label: 'Best Of', icon: '🏆' },
   { id: 'firstTo', label: 'First To', icon: '🎯' }
 ];
-const BOT_LEVELS = [
-  { name: 'Amateur', avg: 35, check: 10, icon: '🌱' },
-  { name: 'Club', avg: 50, check: 20, icon: '🎯' },
-  { name: 'Pro', avg: 75, check: 35, icon: '🔥' },
-  { name: 'Elite', avg: 95, check: 50, icon: '👑' }
-];
+
+const DEFAULT_CUSTOM_AVG = 50;
+const DEFAULT_CUSTOM_CHECK = 20;
 
 export default function LiveMatch() {
   const { user, sendGameInvite, allUsers } = useAuth();
@@ -30,7 +27,9 @@ export default function LiveMatch() {
   const [isVsBot, setIsVsBot] = useState(true);
   const [gameFormat, setGameFormat] = useState('bestOf');
   const [legsToWin, setLegsCount] = useState(3);
-  const [botLevel, setBotLevel] = useState(BOT_LEVELS[1]);
+  const [selectedProBot, setSelectedProBot] = useState(DartBot.getProBots()[1]);
+  const [customAvg, setCustomAvg] = useState(DEFAULT_CUSTOM_AVG);
+  const [customCheck, setCustomCheck] = useState(DEFAULT_CUSTOM_CHECK);
 
   // Online State
   const [onlineGameId, setOnlineGameId] = useState(null);
@@ -92,7 +91,16 @@ export default function LiveMatch() {
     setCurrentInput('');
 
     if (isVsBot) {
-        setBot(new DartBot({ targetAverage: botLevel.avg, checkoutRate: botLevel.check / 100 }));
+        const isCustom = selectedProBot.id === 'custom';
+        const effectiveAvg = isCustom ? customAvg : selectedProBot.avg;
+        const effectiveCheck = isCustom ? customCheck : selectedProBot.check;
+        setBot(new DartBot({
+            id: selectedProBot.id,
+            name: selectedProBot.name,
+            targetAverage: effectiveAvg,
+            checkoutRate: effectiveCheck / 100,
+            setupRate: effectiveCheck / 120,
+        }));
     }
 
     showToast('Match Started!', 'info');
@@ -209,18 +217,33 @@ export default function LiveMatch() {
 
                         {isVsBot && (
                             <section className="setup-section difficulty-section animate-fade-in">
-                                <label>BOT LEVEL</label>
-                                <div className="diff-grid">
-                                    {BOT_LEVELS.map(lvl => (
-                                        <button key={lvl.name} className={`diff-btn ${botLevel.name === lvl.name ? 'active' : ''}`} onClick={() => setBotLevel(lvl)}>
-                                            <span className="icon">{lvl.icon}</span>
+                                <label>SELECT PRO BOT</label>
+                                <div className="pro-bot-grid">
+                                    {DartBot.getProBots().map(p => (
+                                        <button key={p.id} className={`pro-bot-btn ${selectedProBot.id === p.id ? 'active' : ''}`} onClick={() => setSelectedProBot(p)}>
+                                            <span className="icon">{p.icon}</span>
                                             <div className="info">
-                                                <span className="name">{lvl.name}</span>
-                                                <span className="stats">{lvl.avg} avg</span>
+                                                <span className="name">{p.name}</span>
+                                                <span className="stats">{p.avg} avg · {p.check}%</span>
                                             </div>
                                         </button>
                                     ))}
                                 </div>
+                                {selectedProBot.id === 'custom' && (
+                                    <div className="custom-bot-controls animate-fade-in">
+                                        <div className="slider-group">
+                                            <label>AVERAGE: <strong>{customAvg}</strong></label>
+                                            <input type="range" min="20" max="110" value={customAvg} onChange={e => setCustomAvg(Number(e.target.value))} />
+                                        </div>
+                                        <div className="slider-group">
+                                            <label>CHECKOUT %: <strong>{customCheck}%</strong></label>
+                                            <input type="range" min="5" max="60" value={customCheck} onChange={e => setCustomCheck(Number(e.target.value))} />
+                                        </div>
+                                    </div>
+                                )}
+                                {selectedProBot.id !== 'custom' && (
+                                    <div className="pro-bot-desc">{selectedProBot.desc}</div>
+                                )}
                             </section>
                         )}
                     </div>
@@ -247,7 +270,23 @@ export default function LiveMatch() {
                 .diff-btn.active { border-color: var(--accent-cyan); background: rgba(0, 212, 255, 0.1); }
                 .setup-footer { border-top: 1px solid var(--border); padding-top: 40px; display: flex; justify-content: space-between; align-items: flex-end; gap: 40px; }
                 .confirm-start-btn { background: linear-gradient(135deg, #00d4ff 0%, #0080ff 100%); color: black; font-weight: 900; font-size: 1.4rem; padding: 22px 50px; border-radius: 20px; border: none; cursor: pointer; box-shadow: 0 10px 40px rgba(0, 212, 255, 0.4); }
-                @media (max-width: 900px) { .setup-grid { grid-template-columns: 1fr; gap: 30px; } .setup-footer { flex-direction: column; align-items: stretch; } }
+                .pro-bot-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; max-height: 300px; overflow-y: auto; padding-right: 4px; scrollbar-width: thin; }
+                .pro-bot-grid::-webkit-scrollbar { width: 4px; }
+                .pro-bot-grid::-webkit-scrollbar-thumb { background: var(--accent-cyan); border-radius: 4px; }
+                .pro-bot-btn { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 10px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); cursor: pointer; text-align: left; transition: 0.2s; }
+                .pro-bot-btn.active { border-color: var(--accent-cyan); background: rgba(0, 212, 255, 0.12); box-shadow: 0 0 12px var(--accent-cyan-glow); }
+                .pro-bot-btn .icon { font-size: 1.2rem; }
+                .pro-bot-btn .info { display: flex; flex-direction: column; line-height: 1.2; }
+                .pro-bot-btn .name { font-size: 0.7rem; font-weight: 900; color: white; }
+                .pro-bot-btn .stats { font-size: 0.6rem; color: var(--accent-cyan); font-weight: 700; }
+                .pro-bot-desc { font-size: 0.65rem; color: var(--text-muted); text-align: center; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 8px; margin-top: 8px; }
+                .custom-bot-controls { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+                .slider-group { display: flex; flex-direction: column; gap: 4px; }
+                .slider-group label { font-size: 0.7rem; margin-bottom: 0; }
+                .slider-group label strong { color: white; }
+                .slider-group input[type=range] { width: 100%; height: 6px; border-radius: 4px; background: var(--border); outline: none; -webkit-appearance: none; appearance: none; }
+                .slider-group input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--accent-cyan); cursor: pointer; border: 2px solid white; }
+                @media (max-width: 900px) { .setup-grid { grid-template-columns: 1fr; gap: 30px; } .setup-footer { flex-direction: column; align-items: stretch; } .pro-bot-grid { grid-template-columns: repeat(2, 1fr); } }
             `}</style>
         </div>
     );
@@ -273,7 +312,7 @@ export default function LiveMatch() {
 
             <div className={`player-panel ${turn !== 'player' ? 'active' : ''}`}>
                 <div className="panel-info">
-                    <span className="name">{isVsBot ? `BOT (${botLevel.name})` : (selectedFriend?.username || 'OPPONENT')}</span>
+                    <span className="name">{isVsBot ? selectedProBot.name : (selectedFriend?.username || 'OPPONENT')}</span>
                     <span className="legs">LEGS: {opponentLegs}</span>
                 </div>
                 <div className="score-val">{isBotThinking ? '...' : opponentScore}</div>
