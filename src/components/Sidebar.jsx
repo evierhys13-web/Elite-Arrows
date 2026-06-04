@@ -64,7 +64,7 @@ export default function Sidebar() {
     {
       title: 'Compete',
       items: [
-        { path: '/live-match', label: 'Live Scoring', icon: TargetIcon },
+        { path: '/live-match', label: 'Play Online/Local', icon: TargetIcon },
         { path: '/submit-result', label: 'Submit Score', icon: PlusCircleIcon },
         { path: '/fixtures', label: 'Arrangements', icon: HistoryIcon },
         { path: '/calendar', label: 'Calendar', icon: CalendarIcon },

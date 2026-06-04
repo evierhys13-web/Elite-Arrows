@@ -969,14 +969,9 @@ export default function LiveMatch() {
                              </div>
                         </div>
                     </div>
-                ) : turn !== 'player' && isVsBot ? (
+                ) : (
                     <div className="scolia-view animate-fade-in">
                         <ScoliaBoard lastDarts={lastBotDarts} size={window.innerWidth < 1200 ? 380 : 550} />
-                    </div>
-                ) : (
-                    <div className="empty-stage">
-                        <div className="huge-target">🎯</div>
-                        <p>Waiting for next player...</p>
                     </div>
                 )}
             </div>
