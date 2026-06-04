@@ -334,8 +334,8 @@ export default function LiveMatch() {
     const segments = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
     const PW = 160, PH = 120;
     const MOTION_THRESH = 150;
-    const DART_DIFF_THRESH = 18;
-    const STABILITY_FRAMES = 5;
+    const DART_DIFF_THRESH = 12;
+    const STABILITY_FRAMES = 3;
     const FRAMES_WARMUP = 30;
     let warmup = FRAMES_WARMUP;
     let requestRef;
@@ -364,10 +364,10 @@ export default function LiveMatch() {
         const dctx = diag.getContext('2d');
         const id = dctx.createImageData(PW, PH);
         for (let i = 0; i < gray.length; i++) {
-            const isDark = cleanValid && (cleanGray[i] - gray[i]) > DART_DIFF_THRESH;
+            const isDiff = cleanValid && Math.abs(gray[i] - cleanGray[i]) > DART_DIFF_THRESH;
             const isMotion = Math.abs(gray[i] - prevGray[i]) > 12;
-            if (isDark && isMotion) { id.data[i*4]=255; id.data[i*4+1]=255; id.data[i*4+2]=0; }  // yellow = both
-            else if (isDark) { id.data[i*4]=0; id.data[i*4+1]=255; id.data[i*4+2]=0; }            // green = dart
+            if (isDiff && isMotion) { id.data[i*4]=255; id.data[i*4+1]=255; id.data[i*4+2]=0; }  // yellow = both
+            else if (isDiff) { id.data[i*4]=0; id.data[i*4+1]=255; id.data[i*4+2]=0; }            // green = dart
             else if (isMotion) { id.data[i*4]=255; id.data[i*4+1]=0; id.data[i*4+2]=0; }          // red = motion
             else { const v = gray[i]*0.35|0; id.data[i*4]=v; id.data[i*4+1]=v; id.data[i*4+2]=v; }
             id.data[i*4+3] = 255;
@@ -387,11 +387,11 @@ export default function LiveMatch() {
                 const p = q.shift();
                 blob.push(p);
                 const x = p % PW, y = (p / PW) | 0;
-                const darkerNeighbor = (ni) => (cleanGray[ni] - gray[ni]) > DART_DIFF_THRESH;
-                if (x > 0 && !visited[p-1] && darkerNeighbor(p-1)) { visited[p-1]=1; q.push(p-1); }
-                if (x < PW-1 && !visited[p+1] && darkerNeighbor(p+1)) { visited[p+1]=1; q.push(p+1); }
-                if (y > 0 && !visited[p-PW] && darkerNeighbor(p-PW)) { visited[p-PW]=1; q.push(p-PW); }
-                if (y < PH-1 && !visited[p+PW] && darkerNeighbor(p+PW)) { visited[p+PW]=1; q.push(p+PW); }
+                const isChanged = (ni) => Math.abs(gray[ni] - cleanGray[ni]) > DART_DIFF_THRESH;
+                if (x > 0 && !visited[p-1] && isChanged(p-1)) { visited[p-1]=1; q.push(p-1); }
+                if (x < PW-1 && !visited[p+1] && isChanged(p+1)) { visited[p+1]=1; q.push(p+1); }
+                if (y > 0 && !visited[p-PW] && isChanged(p-PW)) { visited[p-PW]=1; q.push(p-PW); }
+                if (y < PH-1 && !visited[p+PW] && isChanged(p+PW)) { visited[p+PW]=1; q.push(p+PW); }
             }
             if (blob.length >= 20) blobs.push(blob);
         }
@@ -402,20 +402,30 @@ export default function LiveMatch() {
     let consistentDartCount = 0, consistentDartX = 0, consistentDartY = 0;
     const detectDart = () => {
         if (!cleanValid) return null;
-        if (Date.now() - lastDetectTime < 800) return null;
+        if (Date.now() - lastDetectTime < 400) return null;
+
+        const { centerX, centerY, radius } = calibrationRef.current || { centerX: 50, centerY: 50, radius: 30 };
+        const ccx = (centerX / 100) * PW;
+        const ccy = (centerY / 100) * PH;
+        const maxDistPx = ((radius * 1.2) / 100) * PW;
+        const maxDistSq = maxDistPx * maxDistPx;
 
         const changed = [];
-        for (let i = 0; i < gray.length; i++)
-            if ((cleanGray[i] - gray[i]) > DART_DIFF_THRESH) changed.push(i);
-        if (changed.length < 15 || changed.length > 1500) return null;
+        for (let i = 0; i < gray.length; i++) {
+            const x = i % PW, y = (i / PW) | 0;
+            const dx = x - ccx, dy = y - ccy;
+            if (dx * dx + dy * dy > maxDistSq) continue;
+            if (Math.abs(gray[i] - cleanGray[i]) > DART_DIFF_THRESH) changed.push(i);
+        }
+        if (changed.length < 10) return null;
 
         const blobs = findBlobs(changed);
         if (!blobs.length) return null;
 
         let best = blobs.reduce((a, b) => b.length > a.length ? b : a);
-        if (best.length < 20) return null;
+        if (best.length < 15) return null;
 
-        // Compactness check: blob must fill at least 30% of its bounding box
+        // Compactness check: blob must fill at least 25% of its bounding box
         let bMinX = PW, bMaxX = 0, bMinY = PH, bMaxY = 0;
         for (const p of best) {
             const x = p % PW, y = (p / PW) | 0;
@@ -425,15 +435,14 @@ export default function LiveMatch() {
             if (y > bMaxY) bMaxY = y;
         }
         const bboxArea = (bMaxX - bMinX + 1) * (bMaxY - bMinY + 1);
-        if (best.length / bboxArea < 0.3) return null;
+        if (best.length / bboxArea < 0.25) return null;
 
-        // Reject blobs too far from board center (hand/arm entering frame)
-        const { centerX, centerY, radius } = calibrationRef.current || { centerX: 50, centerY: 50, radius: 30 };
+        // Reject blobs too far from board center
         let sumX = 0, sumY = 0, count = 0;
         for (const p of best) { sumX += p % PW; sumY += (p / PW) | 0; count++; }
         const cxPct = (sumX / count / PW) * 100;
         const cyPct = (sumY / count / PH) * 100;
-        if (Math.sqrt((cxPct - centerX) ** 2 + (cyPct - centerY) ** 2) > radius * 1.15) return null;
+        if (Math.sqrt((cxPct - centerX) ** 2 + (cyPct - centerY) ** 2) > radius * 1.2) return null;
 
         // Use bottom portion of blob for tip estimation
         const ph = PH;
@@ -563,7 +572,7 @@ export default function LiveMatch() {
                             consistentDartX = pos.xPct;
                             consistentDartY = pos.yPct;
                         }
-                        if (consistentDartCount >= 3) {
+                        if (consistentDartCount >= 2) {
                             consistentDartCount = 0;
                             calculateWebScore(pos.xPct, pos.yPct);
                             detectionPhaseRef.current = 'idle';
