@@ -72,6 +72,9 @@ export default function LiveMatch() {
   const detectionPhaseRef = useRef('idle');
   const currentInputRef = useRef('');
   const diagnosticCanvasRef = useRef(null);
+  const calibrationRef = useRef(null);
+  const calibratedThisSessionRef = useRef(false);
+  const calibrationNeededRef = useRef(false);
   const [showDiagnostic, setShowDiagnostic] = useState(false);
 
   useEffect(() => {
@@ -161,6 +164,10 @@ export default function LiveMatch() {
       videoRef.current.srcObject = streamRef.current;
     }
   });
+
+  useEffect(() => {
+    calibrationRef.current = boardCalibration;
+  }, [boardCalibration]);
 
   const startGame = async () => {
     if (isOnline && (location.state?.invitePlayer || selectedFriend)) {
@@ -255,9 +262,44 @@ export default function LiveMatch() {
     detectionPhaseRef.current = 'idle';
   }, [processTurn]);
 
+  const autoCalibrate = (gray, PW, PH) => {
+    const hist = new Uint32Array(256);
+    for (let i = 0; i < gray.length; i++) hist[gray[i]]++;
+
+    const target = gray.length * 0.25;
+    let cumulative = 0, threshold = 0;
+    for (let i = 0; i < 256; i++) { cumulative += hist[i]; if (cumulative >= target) { threshold = i; break; } }
+
+    let minX = PW, maxX = 0, minY = PH, maxY = 0, count = 0;
+    for (let i = 0; i < gray.length; i++) {
+      if (gray[i] <= threshold) {
+        const x = i % PW, y = (i / PW) | 0;
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+        count++;
+      }
+    }
+    if (count < 100) return null;
+
+    const cx = ((minX + maxX) / 2 / PW) * 100;
+    const cy = ((minY + maxY) / 2 / PH) * 100;
+    const radiusH = ((maxX - minX) / 2 / PW) * 100;
+    const radiusV = ((maxY - minY) / 2 / PH) * 100;
+    const radius = (radiusH + radiusV) / 2;
+    if (radius < 10 || radius > 45) return null;
+
+    return {
+      centerX: Math.round(cx * 10) / 10,
+      centerY: Math.round(cy * 10) / 10,
+      radius: Math.round(radius * 10) / 10
+    };
+  };
+
   // Web JS Analyzer Logic — grayscale downsampled + blob detection + clean baseline
   useEffect(() => {
-    if (!gameStarted || !useCamera || turn !== 'player' || !boardCalibration || Capacitor.isNativePlatform()) return;
+    if (!gameStarted || !useCamera || turn !== 'player' || Capacitor.isNativePlatform()) return;
 
     dartDetectedThisTurnRef.current = 0;
     currentInputRef.current = '';
@@ -268,6 +310,8 @@ export default function LiveMatch() {
     const MOTION_THRESH = 150;
     const DART_DIFF_THRESH = 18;
     const STABILITY_FRAMES = 5;
+    const FRAMES_WARMUP = 30;
+    let warmup = FRAMES_WARMUP;
     let requestRef;
 
     const pc = document.createElement('canvas');
@@ -344,7 +388,7 @@ export default function LiveMatch() {
         if (best.length < 10) return false;
 
         // Reject blobs too far from board center (hand/arm entering frame)
-        const { centerX, centerY, radius } = boardCalibration;
+        const { centerX, centerY, radius } = calibrationRef.current || { centerX: 50, centerY: 50, radius: 30 };
         let sumX = 0, sumY = 0, count = 0;
         for (const p of best) { sumX += p % PW; sumY += (p / PW) | 0; count++; }
         const cxPct = (sumX / count / PW) * 100;
@@ -370,7 +414,7 @@ export default function LiveMatch() {
     };
 
     const calculateWebScore = (x, y) => {
-        const { centerX, centerY, radius } = boardCalibration;
+        const { centerX, centerY, radius } = calibrationRef.current || { centerX: 50, centerY: 50, radius: 30 };
         const dx = x - centerX;
         const dy = centerY - y;
         const dist = Math.sqrt(dx * dx + dy * dy);
@@ -411,6 +455,39 @@ export default function LiveMatch() {
 
         pctx.drawImage(videoRef.current, 0, 0, PW, PH);
         toGray(pctx.getImageData(0, 0, PW, PH));
+
+        // Warmup: let camera AE/AWB settle before any detection
+        if (warmup > 0) {
+            warmup--;
+            prevGray.set(gray);
+            hasPrev = true;
+            requestRef = requestAnimationFrame(analyzeFrame);
+            return;
+        }
+
+        // Auto-calibrate on game start
+        if (!calibratedThisSessionRef.current) {
+            calibratedThisSessionRef.current = true;
+            const calResult = autoCalibrate(gray, PW, PH);
+            if (calResult) {
+                calibrationRef.current = calResult;
+                localStorage.setItem('eliteArrowsBoardCalibration', JSON.stringify(calResult));
+                showToast('Board auto-calibrated!', 'success');
+            }
+        }
+
+        // Re-calibrate on user request
+        if (calibrationNeededRef.current) {
+            calibrationNeededRef.current = false;
+            const calResult = autoCalibrate(gray, PW, PH);
+            if (calResult) {
+                calibrationRef.current = calResult;
+                localStorage.setItem('eliteArrowsBoardCalibration', JSON.stringify(calResult));
+                showToast('Board recalibrated!', 'success');
+            } else {
+                showToast('Calibration failed. Ensure board is visible.', 'warning');
+            }
+        }
 
         if (hasPrev) {
             const motionPx = countDiff(gray, prevGray, 12);
@@ -689,11 +766,12 @@ export default function LiveMatch() {
                              <div className="hud-controls">
                                 <div className="zoom-ctrl">
                                     <button onClick={(e) => {e.stopPropagation(); setZoomLevel(p => Math.min(5, p + 0.5))}} className="hud-btn">+</button>
-                                    <span className="zoom-val">{Math.round(zoomLevel*100)}%</span>
-                                    <button onClick={(e) => {e.stopPropagation(); setZoomLevel(p => Math.max(1, p - 0.5))}} className="hud-btn">-</button>
-                                </div>
-                                 <button onClick={(e) => {e.stopPropagation(); flipCamera()}} className="hud-btn flip">🔄</button>
-                                 <button onClick={(e) => {e.stopPropagation(); setShowDiagnostic(p => !p)}} className="hud-btn" style={{opacity: showDiagnostic ? 1 : 0.5}}>🔍</button>
+                            <span className="zoom-val">{Math.round(zoomLevel*100)}%</span>
+                                     <button onClick={(e) => {e.stopPropagation(); setZoomLevel(p => Math.max(1, p - 0.5))}} className="hud-btn">-</button>
+                                 </div>
+                                  <button onClick={(e) => {e.stopPropagation(); flipCamera()}} className="hud-btn flip">🔄</button>
+                                  <button onClick={(e) => {e.stopPropagation(); calibrationNeededRef.current = true; showToast('Recalibrating...', 'info')}} className="hud-btn">📐</button>
+                                  <button onClick={(e) => {e.stopPropagation(); setShowDiagnostic(p => !p)}} className="hud-btn" style={{opacity: showDiagnostic ? 1 : 0.5}}>🔍</button>
                              </div>
                         </div>
                     </div>
