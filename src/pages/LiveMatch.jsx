@@ -65,6 +65,7 @@ export default function LiveMatch() {
   const [boardCalibration, setBoardCalibration] = useState(null);
 
   const prevFrameRef = useRef(null);
+  const cleanFrameRef = useRef(null);
   const streamRef = useRef(null);
   const isProcessingRef = useRef(false);
   const stabilityCounterRef = useRef(0);
@@ -253,16 +254,26 @@ export default function LiveMatch() {
     detectionPhaseRef.current = 'idle';
   }, [processTurn]);
 
-  // Web JS Analyzer Logic - phase-based with removal detection
+  // Web JS Analyzer Logic - dense pixel scanning with clean frame baseline
   useEffect(() => {
     if (!gameStarted || !useCamera || turn !== 'player' || !boardCalibration || Capacitor.isNativePlatform()) return;
 
     dartDetectedThisTurnRef.current = 0;
     currentInputRef.current = '';
     detectionPhaseRef.current = 'idle';
+    cleanFrameRef.current = null;
 
     const segments = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
+    const CHANGED_THRESHOLD = 8;
     let requestRef;
+
+    const countChangedPixels = (a, b, threshold) => {
+        let changed = 0;
+        for (let i = 0; i < a.data.length; i += 4) {
+            if (Math.abs(a.data[i] - b.data[i]) > threshold) changed++;
+        }
+        return changed;
+    };
 
     const analyzeFrame = () => {
         if (!videoRef.current || videoRef.current.paused || videoRef.current.ended) {
@@ -278,27 +289,26 @@ export default function LiveMatch() {
         const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
         if (prevFrameRef.current) {
-            let diff = 0;
-            for (let i = 0; i < frame.data.length; i += 32) {
-                diff += Math.abs(frame.data[i] - prevFrameRef.current.data[i]);
-            }
+            const changedPixels = countChangedPixels(frame, prevFrameRef.current, 25);
 
-            const motionValue = diff / (canvas.width * canvas.height / 8);
-
-            if (motionValue > 20) {
+            if (changedPixels > 150) {
                 stabilityCounterRef.current = 0;
                 if (detectionPhaseRef.current === 'idle') {
+                    cleanFrameRef.current = prevFrameRef.current;
                     detectionPhaseRef.current = 'dart_thrown';
                 } else if (detectionPhaseRef.current === 'dart_landed') {
                     detectionPhaseRef.current = 'removing';
                 }
             } else {
                 stabilityCounterRef.current++;
-                if (detectionPhaseRef.current === 'dart_thrown' && stabilityCounterRef.current > 15) {
-                    detectDartPosition(frame, prevFrameRef.current);
+                if (detectionPhaseRef.current === 'dart_thrown' && stabilityCounterRef.current > 8) {
+                    if (cleanFrameRef.current) {
+                        detectDartPosition(frame, cleanFrameRef.current);
+                    }
                 }
-                if (detectionPhaseRef.current === 'removing' && stabilityCounterRef.current > 10) {
+                if (detectionPhaseRef.current === 'removing' && stabilityCounterRef.current > 8) {
                     detectionPhaseRef.current = 'idle';
+                    cleanFrameRef.current = null;
                     if (dartDetectedThisTurnRef.current >= 3) {
                         handleScoreInput(currentInputRef.current);
                     }
@@ -312,22 +322,22 @@ export default function LiveMatch() {
         requestRef = requestAnimationFrame(analyzeFrame);
     };
 
-    const detectDartPosition = (current, prev) => {
-        let bestX = 0, bestY = 0, count = 0;
+    const detectDartPosition = (current, baseline) => {
+        let bestX = 0, bestY = 0, changedCount = 0;
         for (let i = 0; i < current.data.length; i += 4) {
-            const d = Math.abs(current.data[i] - prev.data[i]);
-            if (d > 50) {
+            const d = Math.abs(current.data[i] - baseline.data[i]);
+            if (d > 40) {
                 const x = (i / 4) % current.width;
                 const y = Math.floor((i / 4) / current.width);
                 bestX += x;
                 bestY += y;
-                count++;
+                changedCount++;
             }
         }
 
-        if (count > 10 && count < 1000) {
-            const xPct = (bestX / count / current.width) * 100;
-            const yPct = (bestY / count / current.height) * 100;
+        if (changedCount > CHANGED_THRESHOLD && changedCount < 2000) {
+            const xPct = (bestX / changedCount / current.width) * 100;
+            const yPct = (bestY / changedCount / current.height) * 100;
             calculateWebScore(xPct, yPct);
         }
     };
@@ -557,7 +567,7 @@ export default function LiveMatch() {
 
   return (
     <div className="page animate-fade-in match-theater-view" style={{ maxWidth: '100%', margin: '0', padding: '10px', height: '100vh', display: 'flex', flexDirection: 'column', background: '#000' }}>
-        <canvas ref={canvasRef} width="160" height="120" style={{ display: 'none' }} />
+        <canvas ref={canvasRef} width="640" height="480" style={{ display: 'none' }} />
 
         <div className="match-header-scores">
             <div className={`player-panel ${turn === 'player' ? 'active' : ''}`}>
