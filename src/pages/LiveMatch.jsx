@@ -51,6 +51,7 @@ export default function LiveMatch() {
   const [bot, setBot] = useState(null);
   const [isBotThinking, setIsBotThinking] = useState(false);
   const [lastBotDarts, setLastBotDarts] = useState([]);
+  const [currentTurnDarts, setCurrentTurnDarts] = useState([]);
 
   // Camera State
   const [useCamera, setUseCamera] = useState(false);
@@ -58,6 +59,7 @@ export default function LiveMatch() {
   const [selectedCamera, setSelectedCamera] = useState('');
   const [stream, setStream] = useState(null);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [isAutoScoringActive, setIsAutoScoringActive] = useState(false);
 
   useEffect(() => {
     if (location.state && location.state.invitePlayer) {
@@ -82,22 +84,25 @@ export default function LiveMatch() {
             const videoDevices = devices.filter(device => device.kind === 'videoinput');
             setAvailableCameras(videoDevices);
             if (videoDevices.length > 0) {
-                setSelectedCamera(prev => prev || videoDevices[0].deviceId);
+                const lastUsed = localStorage.getItem('eliteArrowsPreferredCamera');
+                const matched = videoDevices.find(d => d.deviceId === lastUsed);
+                setSelectedCamera(matched ? matched.deviceId : videoDevices[0].deviceId);
             }
         } catch (e) { console.error(e); }
     };
     getCameras();
-  }, [allUsers]);
+  }, []);
 
   const startCamera = async (forceDeviceId = null) => {
     if (typeof navigator === 'undefined' || !navigator.mediaDevices) return;
     const deviceIdToUse = forceDeviceId || selectedCamera;
+
     if (stream) {
         stream.getTracks().forEach(t => t.stop());
         setStream(null);
     }
     if (videoRef.current) videoRef.current.srcObject = null;
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise(r => setTimeout(r, 200));
 
     try {
         const constraints = {
@@ -107,24 +112,11 @@ export default function LiveMatch() {
                 height: { ideal: 1080 }
             }
         };
-        if (!deviceIdToUse) constraints.video.facingMode = { ideal: 'environment' };
         const newStream = await navigator.mediaDevices.getUserMedia(constraints);
         setStream(newStream);
         if (videoRef.current) videoRef.current.srcObject = newStream;
     } catch (e) {
-        if (deviceIdToUse) {
-            try {
-                const fallback = await navigator.mediaDevices.getUserMedia({ video: true });
-                setStream(fallback);
-                if (videoRef.current) videoRef.current.srcObject = fallback;
-            } catch (innerE) {
-                showToast('Camera error: ' + innerE.message, 'error');
-                setUseCamera(false);
-            }
-        } else {
-            showToast('Camera error: ' + e.message, 'error');
-            setUseCamera(false);
-        }
+        showToast('Camera error: ' + e.message, 'error');
     }
   };
 
@@ -133,13 +125,13 @@ export default function LiveMatch() {
     const idx = availableCameras.findIndex(c => c.deviceId === selectedCamera);
     const nextId = availableCameras[(idx + 1) % availableCameras.length].deviceId;
     setSelectedCamera(nextId);
+    localStorage.setItem('eliteArrowsPreferredCamera', nextId);
     await startCamera(nextId);
   };
 
   useEffect(() => {
-    if (useCamera && gameStarted && turn === 'player') {
-        startCamera();
-    } else if (stream) {
+    if (useCamera && gameStarted && turn === 'player') startCamera();
+    else if (stream) {
         stream.getTracks().forEach(t => t.stop());
         setStream(null);
     }
@@ -159,6 +151,7 @@ export default function LiveMatch() {
                 setIsWaitingForAccept(false);
                 if (useCamera && Capacitor.isNativePlatform()) {
                     Capacitor.Plugins['DartDetection']?.startDetection();
+                    setIsAutoScoringActive(true);
                 }
             }
         });
@@ -173,12 +166,14 @@ export default function LiveMatch() {
     setTurn('player');
     setGameStarted(true);
     setLastBotDarts([]);
+    setCurrentTurnDarts([]);
     if (isVsBot) {
         setBot(new DartBot({ targetAverage: botLevel.avg, checkoutRate: botLevel.check / 100 }));
     }
 
     if (useCamera && Capacitor.isNativePlatform()) {
         Capacitor.Plugins['DartDetection']?.startDetection();
+        setIsAutoScoringActive(true);
     }
 
     showToast('Match Started!', 'info');
@@ -217,6 +212,14 @@ export default function LiveMatch() {
     setTurn(isPlayer ? (isVsBot ? 'bot' : 'opponent') : 'player');
   }, [playerScore, opponentScore, playerLegs, opponentLegs, gameFormat, legsToWin, startScore, isVsBot, showToast]);
 
+  const handleScoreInput = (score) => {
+    const val = parseInt(score);
+    if (isNaN(val) || val > 180) return;
+    processTurn('player', val);
+    setCurrentInput('');
+    setCurrentTurnDarts([]);
+  };
+
   useEffect(() => {
     if (gameStarted && turn === 'bot' && bot) {
         const runBot = async () => {
@@ -235,15 +238,15 @@ export default function LiveMatch() {
     const handleNative = (e) => {
         if (gameStarted && turn === 'player' && e.detail) {
             const { scoreLabel, scoreValue } = e.detail;
-            showToast(`Hit: ${scoreLabel}`, 'info');
-            setCurrentInput(prev => Math.min(180, (parseInt(prev || '0') + scoreValue)).toString());
+            showToast(`Detected: ${scoreLabel}`, 'info');
+            setCurrentTurnDarts(prev => [...prev, scoreLabel]);
+            setCurrentInput(prev => (parseInt(prev || '0') + scoreValue).toString());
         }
     };
     const handleSubmit = () => {
         if (gameStarted && turn === 'player') {
-            showToast('Turn Submitted', 'success');
-            processTurn('player', parseInt(currentInput || '0'));
-            setCurrentInput('');
+            showToast('Darts Removed - Auto Submitting', 'success');
+            handleScoreInput(currentInput);
         }
     };
     window.addEventListener('dartDetectionScore', handleNative);
@@ -252,14 +255,14 @@ export default function LiveMatch() {
         window.removeEventListener('dartDetectionScore', handleNative);
         window.removeEventListener('dartDetectionSubmit', handleSubmit);
     };
-  }, [gameStarted, turn, currentInput, processTurn, showToast]);
+  }, [gameStarted, turn, currentInput, handleScoreInput, showToast]);
 
   if (isWaitingForAccept) {
     return (
         <div className="page">
             <div className="card glass" style={{ maxWidth: '400px', margin: '100px auto', textAlign: 'center', padding: '40px' }}>
                 <div className="spinner" style={{ width: '50px', height: '50px', margin: '0 auto 20px' }}></div>
-                <h3 style={{ fontWeight: 800 }}>Challenging {selectedFriend?.username}...</h3>
+                <h3 style={{ fontWeight: 800 }}>Challenging Friend...</h3>
                 <button className="btn btn-secondary btn-block" style={{ marginTop: '20px' }} onClick={() => setIsWaitingForAccept(false)}>Cancel</button>
             </div>
         </div>
@@ -268,269 +271,280 @@ export default function LiveMatch() {
 
   if (!gameStarted) {
     return (
-        <div className="page animate-fade-in" style={{ maxWidth: '800px', margin: '0 auto' }}>
-            <Breadcrumbs items={[{ label: 'Home', path: '/home' }, { label: 'Live Scoring' }]} />
+        <div className="page animate-fade-in" style={{ maxWidth: '1000px', margin: '0 auto' }}>
+            <Breadcrumbs items={[{ label: 'Home', path: '/home' }, { label: 'Match Setup' }]} />
 
-            <div className="card glass" style={{ padding: '40px', borderRadius: '30px', border: '1px solid var(--accent-cyan)' }}>
-                <h1 className="text-gradient" style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '40px', fontWeight: 900 }}>MATCH SETUP</h1>
+            <div className="card glass pro-setup-card">
+                <h1 className="setup-title">PRE-MATCH SETUP</h1>
 
-                <div className="setup-section" style={{ marginBottom: '30px' }}>
-                    <label style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '2px', color: 'var(--text-muted)', marginBottom: '15px', display: 'block' }}>1. Select Mode</label>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
-                        {START_SCORES.map(s => (
-                            <button key={s} className={`btn ${startScore === s ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setStartScore(s)} style={{ fontSize: '1.1rem' }}>{s}</button>
-                        ))}
+                <div className="setup-grid">
+                    {/* Left Column */}
+                    <div className="setup-col">
+                        <section className="setup-section">
+                            <label>1. GAME MODE</label>
+                            <div className="setup-btn-group">
+                                {START_SCORES.map(s => (
+                                    <button key={s} className={`setup-btn ${startScore === s ? 'active' : ''}`} onClick={() => setStartScore(s)}>{s}</button>
+                                ))}
+                            </div>
+                        </section>
+
+                        <section className="setup-section">
+                            <label>2. OPPONENT</label>
+                            <div className="setup-btn-group">
+                                <button className={`setup-btn ${isVsBot ? 'active' : ''}`} onClick={() => {setIsVsBot(true); setIsOnline(false)}}>🤖 BOT</button>
+                                <button className={`setup-btn ${!isVsBot && !isOnline ? 'active' : ''}`} onClick={() => {setIsVsBot(false); setIsOnline(false)}}>👥 LOCAL</button>
+                                <button className={`setup-btn ${isOnline ? 'active' : ''}`} onClick={() => {setIsVsBot(false); setIsOnline(true)}}>🌐 ONLINE</button>
+                            </div>
+                        </section>
+
+                        {isOnline && (
+                            <section className="setup-section animate-fade-in">
+                                <label>CHALLENGE FRIEND</label>
+                                <select className="glass wide-select" value={selectedFriend?.id || ''} onChange={e => setSelectedFriend(onlineFriends.find(f => f.id === e.target.value))}>
+                                    <option value="">-- Choose Online Friend --</option>
+                                    {onlineFriends.map(f => <option key={f.id} value={f.id}>{f.username}</option>)}
+                                </select>
+                            </section>
+                        )}
+                    </div>
+
+                    {/* Right Column */}
+                    <div className="setup-col">
+                        <section className="setup-section">
+                            <label>3. FORMAT</label>
+                            <div className="setup-btn-group split">
+                                {FORMATS.map(f => (
+                                    <button key={f.id} className={`setup-btn ${gameFormat === f.id ? 'active' : ''}`} onClick={() => setGameFormat(f.id)}>{f.label}</button>
+                                ))}
+                            </div>
+                            <div className="setup-btn-group legs">
+                                {[1, 3, 5, 7, 9, 11, 21].map(n => (
+                                    <button key={n} className={`setup-btn sm ${legsToWin === n ? 'active' : ''}`} onClick={() => setLegsCount(n)}>{n}</button>
+                                ))}
+                            </div>
+                        </section>
+
+                        {isVsBot && (
+                            <section className="setup-section difficulty-section animate-fade-in">
+                                <label>BOT LEVEL</label>
+                                <div className="diff-grid">
+                                    {BOT_LEVELS.map(lvl => (
+                                        <button key={lvl.name} className={`diff-btn ${botLevel.name === lvl.name ? 'active' : ''}`} onClick={() => setBotLevel(lvl)}>
+                                            <span className="icon">{lvl.icon}</span>
+                                            <div className="info">
+                                                <span className="name">{lvl.name}</span>
+                                                <span className="stats">{lvl.avg} avg</span>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </section>
+                        )}
                     </div>
                 </div>
 
-                <div className="setup-section" style={{ marginBottom: '30px' }}>
-                    <label style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '2px', color: 'var(--text-muted)', marginBottom: '15px', display: 'block' }}>2. Opponent</label>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
-                        <button className={`btn ${isVsBot ? 'btn-primary' : 'btn-secondary'}`} onClick={() => {setIsVsBot(true); setIsOnline(false)}}>🤖 Bot</button>
-                        <button className={`btn ${!isVsBot && !isOnline ? 'btn-primary' : 'btn-secondary'}`} onClick={() => {setIsVsBot(false); setIsOnline(false)}}>👥 Local</button>
-                        <button className={`btn ${isOnline ? 'btn-primary' : 'btn-secondary'}`} onClick={() => {setIsVsBot(false); setIsOnline(true)}}>🌐 Online</button>
-                    </div>
-                </div>
+                <div className="setup-footer">
+                    <div className="camera-setup-block">
+                        <label className="checkbox-label">
+                            <input type="checkbox" checked={useCamera} onChange={e => setUseCamera(e.target.checked)} />
+                            <div className="checkbox-text">
+                                <strong>ENABLE LIVE CAMERA & AUTOSCORER</strong>
+                                <small>Use high-performance native detection</small>
+                            </div>
+                        </label>
 
-                {isVsBot && (
-                    <div className="setup-section animate-fade-in" style={{ marginBottom: '30px', padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '20px' }}>
-                        <label style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', marginBottom: '15px', display: 'block' }}>Bot Difficulty</label>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                            {BOT_LEVELS.map(lvl => (
-                                <button key={lvl.name} className={`btn ${botLevel.name === lvl.name ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setBotLevel(lvl)} style={{ justifyContent: 'flex-start', padding: '15px' }}>
-                                    <span style={{ fontSize: '1.2rem' }}>{lvl.icon}</span>
-                                    <div style={{ textAlign: 'left', marginLeft: '10px' }}>
-                                        <div style={{ fontSize: '0.9rem' }}>{lvl.name}</div>
-                                        <div style={{ fontSize: '0.65rem', opacity: 0.6 }}>Avg: {lvl.avg} | Chk: {lvl.check}%</div>
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {isOnline && (
-                    <div className="setup-section animate-fade-in" style={{ marginBottom: '30px' }}>
-                        <label style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', marginBottom: '15px', display: 'block' }}>Select Online Friend</label>
-                        {onlineFriends.length === 0 ? (
-                            <p style={{ color: 'var(--error)', fontSize: '0.8rem', textAlign: 'center' }}>No friends currently online.</p>
-                        ) : (
-                            <select className="glass" value={selectedFriend?.id || ''} onChange={e => setSelectedFriend(onlineFriends.find(f => f.id === e.target.value))} style={{ width: '100%', height: '50px', borderRadius: '15px' }}>
-                                <option value="">-- Choose Player --</option>
-                                {onlineFriends.map(f => <option key={f.id} value={f.id}>{f.username} ({f.division})</option>)}
+                        {useCamera && (
+                            <select className="glass camera-select animate-fade-in" value={selectedCamera} onChange={e => setSelectedCamera(e.target.value)}>
+                                {availableCameras.map(cam => (
+                                    <option key={cam.deviceId} value={cam.deviceId}>{cam.label || 'Webcam'}</option>
+                                ))}
                             </select>
                         )}
                     </div>
-                )}
 
-                <div className="setup-section" style={{ marginBottom: '40px' }}>
-                    <label style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '2px', color: 'var(--text-muted)', marginBottom: '15px', display: 'block' }}>3. Format</label>
-                    <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
-                        {FORMATS.map(f => (
-                            <button key={f.id} className={`btn ${gameFormat === f.id ? 'btn-primary' : 'btn-secondary'} flex-1`} onClick={() => setGameFormat(f.id)}>{f.icon} {f.label}</button>
-                        ))}
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
-                        {[1, 3, 5, 7, 9, 11, 21].map(n => (
-                            <button key={n} className={`btn btn-sm ${legsToWin === n ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setLegsCount(n)}>{n}</button>
-                        ))}
-                    </div>
+                    <button className="confirm-start-btn" onClick={startGame}>START MATCH 🎯</button>
                 </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '30px', padding: '15px', background: 'rgba(56, 189, 248, 0.05)', borderRadius: '15px', border: '1px solid var(--accent-cyan)' }}>
-                    <input type="checkbox" checked={useCamera} onChange={e => setUseCamera(e.target.checked)} style={{ width: '25px', height: '25px', cursor: 'pointer' }} />
-                    <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>ENABLE LIVE CAMERA / AUTOSCORER</div>
-                        <div style={{ fontSize: '0.7rem', opacity: 0.7 }}>Show your board and use native detection</div>
-                    </div>
-                </div>
-
-                <button className="btn btn-primary btn-block" style={{ height: '70px', fontSize: '1.4rem', fontWeight: 900, borderRadius: '20px', boxShadow: '0 10px 30px rgba(124, 92, 252, 0.4)' }} onClick={startGame}>START MATCH</button>
             </div>
+
+            <style>{`
+                .pro-setup-card { padding: 40px; border-radius: 32px; border: 2px solid var(--accent-cyan); background: rgba(15, 23, 42, 0.98); box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
+                .setup-title { text-align: center; color: white; font-weight: 900; letter-spacing: 4px; margin-bottom: 40px; font-size: 1.5rem; opacity: 0.8; }
+                .setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; margin-bottom: 40px; }
+                .setup-section label { display: block; font-size: 0.7rem; font-weight: 900; color: var(--accent-cyan); margin-bottom: 15px; letter-spacing: 2px; }
+
+                .setup-btn-group { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+                .setup-btn-group.split { grid-template-columns: 1fr 1fr; }
+                .setup-btn-group.legs { grid-template-columns: repeat(7, 1fr); }
+
+                .setup-btn { background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: white; padding: 14px; border-radius: 12px; font-weight: 800; cursor: pointer; transition: 0.2s; font-size: 0.85rem; }
+                .setup-btn.active { background: var(--accent-cyan); color: black; border-color: white; box-shadow: 0 0 20px var(--accent-cyan-glow); }
+                .setup-btn.sm { padding: 10px 5px; font-size: 0.75rem; }
+
+                .wide-select { width: 100%; border-radius: 12px; padding: 14px; font-weight: 700; color: white; }
+                .diff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+                .diff-btn { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 14px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); cursor: pointer; text-align: left; }
+                .diff-btn.active { border-color: var(--accent-cyan); background: rgba(0, 212, 255, 0.1); }
+                .diff-btn .icon { font-size: 1.5rem; }
+                .diff-btn .name { display: block; font-weight: 800; color: white; font-size: 0.9rem; }
+                .diff-btn .stats { display: block; font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; }
+
+                .setup-footer { border-top: 1px solid var(--border); padding-top: 40px; display: flex; justify-content: space-between; align-items: flex-end; gap: 40px; }
+                .checkbox-label { display: flex; align-items: center; gap: 15px; cursor: pointer; }
+                .checkbox-label input { width: 28px; height: 28px; accent-color: var(--accent-cyan); }
+                .checkbox-text strong { display: block; font-size: 0.9rem; color: white; }
+                .checkbox-text small { color: var(--text-muted); font-size: 0.7rem; }
+                .camera-select { width: 100%; margin-top: 15px; border-radius: 10px; padding: 10px; }
+
+                .confirm-start-btn { background: linear-gradient(135deg, #00d4ff 0%, #0080ff 100%); color: black; font-weight: 900; font-size: 1.4rem; padding: 22px 50px; border-radius: 20px; border: none; cursor: pointer; box-shadow: 0 10px 40px rgba(0, 212, 255, 0.4); transition: transform 0.2s; }
+                .confirm-start-btn:active { transform: scale(0.98); }
+
+                @media (max-width: 900px) {
+                    .setup-grid { grid-template-columns: 1fr; gap: 30px; }
+                    .setup-footer { flex-direction: column; align-items: stretch; }
+                }
+            `}</style>
         </div>
     );
   }
 
   return (
-    <div className="page animate-fade-in" style={{ maxWidth: '1800px', margin: '0 auto', padding: '10px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
-            <div className={`card ${turn === 'player' ? 'glass active-turn' : 'glass'}`} style={{
-                padding: '20px',
-                textAlign: 'center',
-                border: turn === 'player' ? '3px solid var(--accent-cyan)' : '1px solid var(--border)',
-                background: turn === 'player' ? 'rgba(0, 212, 255, 0.15)' : 'rgba(15, 23, 42, 0.6)'
-            }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                    <span style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>{user?.username || 'You'}</span>
-                    <span style={{ background: 'var(--accent-cyan)', color: '#000', padding: '4px 12px', borderRadius: '6px', fontSize: '0.9rem', fontWeight: 900 }}>LEGS: {playerLegs}</span>
+    <div className="page animate-fade-in match-theater-view" style={{ maxWidth: '100%', margin: '0', padding: '10px', height: '100vh', display: 'flex', flexDirection: 'column', background: '#000' }}>
+        {/* Pro Scoreboard */}
+        <div className="match-header-scores">
+            <div className={`player-panel ${turn === 'player' ? 'active' : ''}`}>
+                <div className="panel-info">
+                    <span className="name">{user?.username || 'YOU'}</span>
+                    <span className="legs">LEGS: {playerLegs}</span>
                 </div>
-                <div style={{ fontSize: '6rem', fontWeight: 900, lineHeight: 1, letterSpacing: '-2px' }}>{playerScore}</div>
+                <div className="score-val">{playerScore}</div>
+                {currentTurnDarts.length > 0 && turn === 'player' && (
+                    <div className="turn-darts">
+                        {currentTurnDarts.map((d, i) => <span key={i} className="dart-pill">{d}</span>)}
+                    </div>
+                )}
             </div>
 
-            <div className={`card ${turn !== 'player' ? 'glass active-turn' : 'glass'}`} style={{
-                padding: '20px',
-                textAlign: 'center',
-                border: turn !== 'player' ? '3px solid var(--accent-cyan)' : '1px solid var(--border)',
-                background: turn !== 'player' ? 'rgba(0, 212, 255, 0.15)' : 'rgba(15, 23, 42, 0.6)'
-            }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                    <span style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>{isVsBot ? 'DartBot' : (selectedFriend?.username || 'Opponent')}</span>
-                    <span style={{ background: 'var(--accent-cyan)', color: '#000', padding: '4px 12px', borderRadius: '6px', fontSize: '0.9rem', fontWeight: 900 }}>LEGS: {opponentLegs}</span>
+            <div className={`player-panel ${turn !== 'player' ? 'active' : ''}`}>
+                <div className="panel-info">
+                    <span className="name">{isVsBot ? `BOT (${botLevel.name})` : (selectedFriend?.username || 'OPPONENT')}</span>
+                    <span className="legs">LEGS: {opponentLegs}</span>
                 </div>
-                <div style={{ fontSize: '6rem', fontWeight: 900, lineHeight: 1, letterSpacing: '-2px' }}>{opponentScore}</div>
+                <div className="score-val">{isBotThinking ? '...' : opponentScore}</div>
             </div>
         </div>
 
-        <div className="live-match-main-grid" style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 400px',
-            gap: '15px',
-            height: 'calc(100vh - 280px)',
-            minHeight: '650px'
-        }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', height: '100%' }}>
-                {/* Massive Board Area */}
-                <div className="card glass board-container" style={{
-                    padding: 0,
-                    overflow: 'hidden',
-                    background: '#000',
-                    border: '3px solid var(--accent-cyan)',
-                    borderRadius: '32px',
-                    position: 'relative',
-                    flex: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 0 50px rgba(0, 212, 255, 0.3)'
-                }}>
-                    {turn === 'player' && useCamera ? (
-                        <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-                            <video
-                                ref={videoRef}
-                                autoPlay
-                                playsInline
-                                muted
-                                style={{
-                                    width: '100%',
-                                    height: '100%',
-                                    objectFit: 'cover',
-                                    transform: `scale(${zoomLevel})`,
-                                    transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                                }}
-                            />
-
-                            {/* HUD Controls */}
-                            <div style={{
-                                position: 'absolute',
-                                top: '20px',
-                                right: '20px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '10px',
-                                zIndex: 10
-                            }}>
-                                <div style={{
-                                    background: 'rgba(0,0,0,0.8)',
-                                    padding: '10px',
-                                    borderRadius: '16px',
-                                    border: '1px solid var(--accent-cyan)',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    gap: '15px'
-                                }}>
-                                    <button onClick={() => setZoomLevel(prev => Math.min(4, prev + 0.2))} className="btn btn-sm glass" style={{ width: '44px', height: '44px', borderRadius: '12px' }}>➕</button>
-                                    <span style={{ fontWeight: 900, fontSize: '0.7rem', color: 'var(--accent-cyan)' }}>{Math.round(zoomLevel*100)}%</span>
-                                    <button onClick={() => setZoomLevel(prev => Math.max(1, prev - 0.2))} className="btn btn-sm glass" style={{ width: '44px', height: '44px', borderRadius: '12px' }}>➖</button>
+        <div className="match-workspace">
+            {/* Main Stage: Camera / Scolia Board */}
+            <div className="match-stage card glass">
+                {turn === 'player' && useCamera ? (
+                    <div className="live-cam-container">
+                        <video ref={videoRef} autoPlay playsInline muted style={{ transform: `scale(${zoomLevel})` }} />
+                        <div className="stage-overlay">
+                             <div className="status-badge">📡 AUTO-SCORING: {isAutoScoringActive ? 'ACTIVE' : 'READY'}</div>
+                             <div className="hud-controls">
+                                <div className="zoom-ctrl">
+                                    <button onClick={() => setZoomLevel(p => Math.min(5, p + 0.5))} className="hud-btn">+</button>
+                                    <span className="zoom-val">{Math.round(zoomLevel*100)}%</span>
+                                    <button onClick={() => setZoomLevel(p => Math.max(1, p - 0.5))} className="hud-btn">-</button>
                                 </div>
-                                <button onClick={flipCamera} className="btn btn-secondary glass" style={{ width: '44px', height: '44px', padding: 0, borderRadius: '12px' }}>🔄</button>
-                            </div>
-
-                            <div style={{
-                                position: 'absolute',
-                                top: '20px',
-                                left: '20px',
-                                background: 'rgba(0, 212, 255, 0.1)',
-                                padding: '8px 16px',
-                                borderRadius: '30px',
-                                border: '1px solid var(--accent-cyan)',
-                                backdropFilter: 'blur(10px)',
-                                color: 'white',
-                                fontSize: '0.8rem',
-                                fontWeight: 800
-                            }}>
-                                🔴 LIVE FEED
-                            </div>
+                                <button onClick={flipCamera} className="hud-btn flip">🔄</button>
+                             </div>
                         </div>
-                    ) : turn !== 'player' && isVsBot ? (
-                        <div className="animate-fade-in" style={{ padding: '40px', textAlign: 'center', width: '100%', height: '100%', background: 'radial-gradient(circle, #0a0a2a 0%, #000 100%)' }}>
-                            <h4 style={{ color: 'var(--accent-cyan)', fontWeight: 900, textTransform: 'uppercase', marginBottom: '30px', letterSpacing: '4px' }}>DARTBOT IS THROWING...</h4>
-                            <ScoliaBoard lastDarts={lastBotDarts} size={window.innerWidth < 1200 ? 400 : 550} />
-                        </div>
-                    ) : (
-                        <div style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
-                            <div style={{ fontSize: '4rem', marginBottom: '20px' }}>🎯</div>
-                            <p style={{ fontSize: '1.2rem', fontWeight: 800 }}>CAMERA READY</p>
-                            <p style={{ opacity: 0.6 }}>Detection will start when match begins</p>
-                        </div>
-                    )}
-                </div>
-
-                {/* Score Input Overlay (Desktop only maybe?) - Let's keep it consistent */}
+                    </div>
+                ) : turn !== 'player' && isVsBot ? (
+                    <div className="scolia-view animate-fade-in">
+                        <ScoliaBoard lastDarts={lastBotDarts} size={window.innerWidth < 1200 ? 380 : 550} />
+                    </div>
+                ) : (
+                    <div className="empty-stage">
+                        <div className="huge-target">🎯</div>
+                        <p>Waiting for next player...</p>
+                    </div>
+                )}
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                <div className={`card glass ${turn !== 'player' ? 'opacity-30' : ''}`} style={{ padding: '20px', background: 'rgba(15, 23, 42, 0.9)', border: '1px solid var(--border)' }}>
-                    <div style={{
-                        background: '#000',
-                        padding: '15px',
-                        borderRadius: '20px',
-                        fontSize: '4rem',
-                        textAlign: 'center',
-                        fontWeight: 900,
-                        color: 'var(--accent-cyan)',
-                        border: '3px solid var(--accent-cyan)',
-                        marginBottom: '20px',
-                        textShadow: '0 0 20px var(--accent-cyan-glow)'
-                    }}>
-                        {currentInput || '0'}
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+            {/* Controls Side */}
+            <aside className="match-controls">
+                <div className={`scoring-panel card glass ${turn !== 'player' ? 'disabled' : ''}`}>
+                    <div className="input-lcd">{currentInput || '0'}</div>
+                    <div className="pro-keypad">
                         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 'DEL', 0, 'ENTER'].map(key => (
-                            <button key={key} className={`btn ${key === 'ENTER' ? 'btn-primary' : 'btn-secondary'}`} style={{ height: '70px', fontSize: '1.5rem', fontWeight: 900, borderRadius: '16px' }} onClick={() => {
+                            <button key={key} className={`k-btn ${key === 'ENTER' ? 'k-enter' : ''}`} onClick={() => {
                                 if (key === 'DEL') setCurrentInput(p => p.slice(0, -1));
-                                else if (key === 'ENTER') { handleScoreInput(currentInput); setCurrentInput(''); }
+                                else if (key === 'ENTER') handleScoreInput(currentInput);
                                 else if (currentInput.length < 3) setCurrentInput(p => p + key);
                             }}>{key}</button>
                         ))}
                     </div>
+                    {Capacitor.isNativePlatform() && (
+                        <button className="recal-btn" onClick={() => Capacitor.Plugins['DartDetection']?.startDetection()}>
+                            ⚡ RE-CALIBRATE BOARD
+                        </button>
+                    )}
                 </div>
 
-                <div className="card glass" style={{ flex: 1, maxHeight: '400px', overflowY: 'auto', padding: '20px', background: 'rgba(0,0,0,0.5)', borderRadius: '24px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                        <h4 style={{ color: 'var(--accent-cyan)', fontWeight: 900, textTransform: 'uppercase', fontSize: '0.8rem' }}>Log</h4>
-                        <button className="btn btn-sm btn-secondary" style={{ color: '#ef4444', fontSize: '0.6rem' }} onClick={() => {if(window.confirm('Quit?')) setGameStarted(false)}}>QUIT</button>
+                <div className="log-panel card glass">
+                    <div className="log-header">
+                        <span>MATCH HISTORY</span>
+                        <button className="quit-btn" onClick={() => {if(window.confirm('Quit?')) setGameStarted(false)}}>EXIT</button>
                     </div>
-                    {history.map((e, i) => (
-                        <div key={i} style={{ padding: '15px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', fontSize: '1rem' }}>
-                            <span style={{ fontWeight: 900, color: e.who === 'player' ? 'var(--accent-cyan)' : '#fff' }}>{e.who === 'player' ? 'YOU' : 'OPP'}</span>
-                            <span style={{ fontWeight: 900, fontSize: '1.2rem' }}>{e.score}</span>
-                            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', width: '60px', textAlign: 'right' }}>{e.remaining}</span>
-                        </div>
-                    ))}
+                    <div className="log-rows">
+                        {history.map((e, i) => (
+                            <div key={i} className={`log-row ${e.who}`}>
+                                <span className="who">{e.who === 'player' ? 'YOU' : 'OPP'}</span>
+                                <span className="pts">{e.score}</span>
+                                <span className="rem">{e.remaining}</span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
-            </div>
+            </aside>
         </div>
 
         <style>{`
-            .live-match-main-grid { height: calc(100vh - 240px); }
+            .match-theater-view .main-content { padding: 0 !important; margin: 0 !important; max-width: 100vw !important; }
+            .match-header-scores { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; height: 130px; }
+            .player-panel { background: rgba(15, 23, 42, 0.9); border: 2px solid var(--border); border-radius: 20px; padding: 15px; position: relative; transition: 0.3s; display: flex; flex-direction: column; justify-content: center; }
+            .player-panel.active { border-color: var(--accent-cyan); box-shadow: 0 0 40px var(--accent-cyan-glow); background: rgba(0, 212, 255, 0.1); }
+            .player-panel .name { font-weight: 900; color: var(--accent-cyan); font-size: 0.9rem; letter-spacing: 1px; }
+            .player-panel .legs { font-size: 0.7rem; font-weight: 900; background: #000; padding: 2px 8px; border-radius: 5px; }
+            .player-panel .score-val { font-size: 5rem; font-weight: 900; line-height: 1; text-align: center; }
+            .turn-darts { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 5px; }
+            .dart-pill { background: var(--accent-cyan); color: black; font-size: 0.6rem; font-weight: 900; padding: 2px 8px; border-radius: 4px; border: 1px solid white; }
+
+            .match-workspace { display: grid; grid-template-columns: 1.6fr 1fr; gap: 10px; flex: 1; min-height: 0; }
+            .match-stage { padding: 0; background: #000; border: 2px solid var(--border); border-radius: 24px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+            .live-cam-container { width: 100%; height: 100%; position: relative; }
+            .live-cam-container video { width: 100%; height: 100%; object-fit: cover; transition: 0.3s; }
+            .stage-overlay { position: absolute; inset: 0; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; }
+            .status-badge { align-self: flex-start; background: rgba(0, 212, 255, 0.2); backdrop-filter: blur(10px); padding: 8px 16px; border-radius: 30px; border: 1px solid var(--accent-cyan); font-weight: 900; font-size: 0.75rem; color: white; }
+            .hud-controls { align-self: flex-end; display: flex; gap: 10px; pointer-events: auto; }
+            .zoom-ctrl { background: rgba(0,0,0,0.8); padding: 8px; border-radius: 14px; border: 1px solid var(--accent-cyan); display: flex; align-items: center; gap: 15px; }
+            .hud-btn { width: 44px; height: 44px; border-radius: 10px; background: rgba(255,255,255,0.1); border: 1px solid var(--border); color: white; font-weight: 900; cursor: pointer; }
+            .zoom-val { font-size: 0.8rem; font-weight: 900; color: var(--accent-cyan); }
+
+            .match-controls { display: flex; flex-direction: column; gap: 10px; }
+            .scoring-panel { padding: 20px; background: rgba(15, 23, 42, 0.95); display: flex; flex-direction: column; gap: 15px; }
+            .scoring-panel.disabled { opacity: 0.2; pointer-events: none; }
+            .input-lcd { background: #000; padding: 15px; border-radius: 16px; border: 3px solid var(--accent-cyan); font-size: 4rem; font-weight: 900; color: var(--accent-cyan); text-align: center; text-shadow: 0 0 20px var(--accent-cyan-glow); }
+            .pro-keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+            .k-btn { height: 65px; border-radius: 12px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: white; font-weight: 900; font-size: 1.5rem; cursor: pointer; }
+            .k-enter { background: var(--accent-cyan); color: black; }
+            .recal-btn { background: linear-gradient(135deg, #FF00E5, #B000FF); border: none; padding: 15px; border-radius: 12px; color: white; font-weight: 900; font-size: 0.8rem; letter-spacing: 1px; }
+
+            .log-panel { flex: 1; display: flex; flex-direction: column; padding: 20px; min-height: 0; }
+            .log-rows { flex: 1; overflow-y: auto; }
+            .log-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-weight: 800; font-size: 1rem; }
+            .log-row.player .who { color: var(--accent-cyan); }
+            .log-row .pts { flex: 1; text-align: center; font-size: 1.2rem; }
+            .log-row .rem { width: 60px; text-align: right; color: var(--text-muted); font-size: 0.8rem; }
+
             @media (max-width: 1200px) {
-                .live-match-main-grid { grid-template-columns: 1fr !important; height: auto !important; }
-                .board-container { min-height: 500px !important; }
-                .active-turn { transform: none !important; }
+                .match-workspace { grid-template-columns: 1fr; overflow-y: auto; }
+                .match-stage { height: 450px; flex: none; }
+                .match-controls { height: auto; }
             }
-            .active-turn { box-shadow: 0 0 40px var(--accent-cyan-glow) !important; border-width: 4px !important; }
-            .btn:active { transform: scale(0.95); }
         `}</style>
     </div>
   );
