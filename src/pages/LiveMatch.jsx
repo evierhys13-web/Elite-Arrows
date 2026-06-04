@@ -275,52 +275,53 @@ export default function LiveMatch() {
       if (gray[i] <= threshold) isDark[i] = 1;
     }
 
-    const cX = PW >> 1, cY = PH >> 1;
-    const maxSearch = Math.min(PW, PH) * 0.35;
-    let startIdx = -1;
-    for (let r = 0; r < maxSearch && startIdx < 0; r++) {
-      for (let dy = -r; dy <= r && startIdx < 0; dy++) {
-        for (let dx = -r; dx <= r && startIdx < 0; dx++) {
-          if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
-          const px = cX + dx, py = cY + dy;
-          if (px < 0 || px >= PW || py < 0 || py >= PH) continue;
-          if (isDark[py * PW + px]) startIdx = py * PW + px;
-        }
+    // Scan entire frame: flood-fill every dark region, keep the best one
+    const visited = new Uint8Array(gray.length);
+    let best = null;
+    let bestScore = -1;
+
+    for (let i = 0; i < gray.length; i++) {
+      if (!isDark[i] || visited[i]) continue;
+
+      const q = [i];
+      visited[i] = 1;
+      let minX = PW, maxX = 0, minY = PH, maxY = 0, pixelCount = 0;
+      while (q.length) {
+        const p = q.shift();
+        const x = p % PW, y = (p / PW) | 0;
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+        pixelCount++;
+        if (x > 0 && !visited[p-1] && isDark[p-1]) { visited[p-1] = 1; q.push(p-1); }
+        if (x < PW-1 && !visited[p+1] && isDark[p+1]) { visited[p+1] = 1; q.push(p+1); }
+        if (y > 0 && !visited[p-PW] && isDark[p-PW]) { visited[p-PW] = 1; q.push(p-PW); }
+        if (y < PH-1 && !visited[p+PW] && isDark[p+PW]) { visited[p+PW] = 1; q.push(p+PW); }
+      }
+      if (pixelCount < 200) continue;
+
+      const cx = ((minX + maxX) / 2 / PW) * 100;
+      const cy = ((minY + maxY) / 2 / PH) * 100;
+      const radiusH = ((maxX - minX) / 2 / PW) * 100;
+      const radiusV = ((maxY - minY) / 2 / PH) * 100;
+      const radius = (radiusH + radiusV) / 2;
+      if (radius < 10 || radius > 50) continue;
+
+      const distFromCenter = Math.sqrt((cx - 50) ** 2 + (cy - 50) ** 2);
+      const circularity = radiusH > 0 ? 1 - Math.abs(radiusH - radiusV) / (radiusH + radiusV) : 0;
+      const score = pixelCount * circularity - distFromCenter * 5;
+
+      if (score > bestScore) {
+        bestScore = score;
+        best = {
+          centerX: Math.round(cx * 10) / 10,
+          centerY: Math.round(cy * 10) / 10,
+          radius: Math.round(radius * 10) / 10
+        };
       }
     }
-    if (startIdx < 0) return null;
-
-    const visited = new Uint8Array(gray.length);
-    const q = [startIdx];
-    visited[startIdx] = 1;
-    let minX = PW, maxX = 0, minY = PH, maxY = 0, pixelCount = 0;
-    while (q.length) {
-      const p = q.shift();
-      const x = p % PW, y = (p / PW) | 0;
-      if (x < minX) minX = x;
-      if (x > maxX) maxX = x;
-      if (y < minY) minY = y;
-      if (y > maxY) maxY = y;
-      pixelCount++;
-      if (x > 0 && !visited[p-1] && isDark[p-1]) { visited[p-1] = 1; q.push(p-1); }
-      if (x < PW-1 && !visited[p+1] && isDark[p+1]) { visited[p+1] = 1; q.push(p+1); }
-      if (y > 0 && !visited[p-PW] && isDark[p-PW]) { visited[p-PW] = 1; q.push(p-PW); }
-      if (y < PH-1 && !visited[p+PW] && isDark[p+PW]) { visited[p+PW] = 1; q.push(p+PW); }
-    }
-    if (pixelCount < 200) return null;
-
-    const cx = ((minX + maxX) / 2 / PW) * 100;
-    const cy = ((minY + maxY) / 2 / PH) * 100;
-    const radiusH = ((maxX - minX) / 2 / PW) * 100;
-    const radiusV = ((maxY - minY) / 2 / PH) * 100;
-    const radius = (radiusH + radiusV) / 2;
-    if (radius < 10 || radius > 45) return null;
-
-    return {
-      centerX: Math.round(cx * 10) / 10,
-      centerY: Math.round(cy * 10) / 10,
-      radius: Math.round(radius * 10) / 10
-    };
+    return best;
   };
 
   // Web JS Analyzer Logic — grayscale downsampled + blob detection + clean baseline
@@ -334,7 +335,7 @@ export default function LiveMatch() {
     const segments = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
     const PW = 160, PH = 120;
     const MOTION_THRESH = 20;
-    const DART_DIFF_THRESH = 12;
+    const DART_DIFF_THRESH = 8;
     const STABILITY_FRAMES = 2;
     const FRAMES_WARMUP = 30;
     let warmup = FRAMES_WARMUP;
@@ -383,6 +384,10 @@ export default function LiveMatch() {
         dctx.beginPath();
         dctx.arc(cx, cy, r, 0, Math.PI * 2);
         dctx.stroke();
+        // Draw motion/diff text
+        dctx.fillStyle = 'lime';
+        dctx.font = 'bold 10px monospace';
+        dctx.fillText(`M:${motionPx} D:${diffPx} ${detectionPhaseRef.current}`, 2, 10);
     };
 
     const findBlobs = (changed) => {
@@ -543,6 +548,8 @@ export default function LiveMatch() {
                 calibrationRef.current = calResult;
                 localStorage.setItem('eliteArrowsBoardCalibration', JSON.stringify(calResult));
                 showToast('Board auto-calibrated!', 'success');
+            } else {
+                showToast('Board not found. Using default — point camera at board or tap 📐.', 'warning');
             }
         }
 
