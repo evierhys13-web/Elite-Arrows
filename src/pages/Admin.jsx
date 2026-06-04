@@ -787,6 +787,47 @@ export default function Admin() {
     setIsApproving(false);
   };
 
+  const handleFixSeasons = async () => {
+    const approvedMatches = allResults.filter(r =>
+      String(r.status).toLowerCase() === 'approved'
+    )
+    const target = approvedMatches.filter(r => {
+      const d = new Date(r.date || r.submittedAt || 0).getTime()
+      const cutoff = new Date('2026-06-01T00:00:00').getTime()
+      const isLeague = ['league', 'super league'].includes(String(r.gameType).toLowerCase())
+      return d >= cutoff && isLeague && String(r.season || '') !== 'Season 2'
+    })
+    if (target.length === 0) return showToast('No results to update', 'info')
+    if (!window.confirm(`Update ${target.length} approved league results from June 1 onward to Season 2?`)) return
+    setIsApproving(true)
+    try {
+      let count = 0
+      let batch = writeBatch(db)
+      let ops = 0
+      for (const r of target) {
+        const targetId = r.firestoreId || String(r.id)
+        batch.update(doc(db, 'results', targetId), { season: 'Season 2' })
+        count++
+        ops++
+        if (ops >= 450) {
+          await batch.commit()
+          batch = writeBatch(db)
+          ops = 0
+        }
+      }
+      if (ops > 0) await batch.commit()
+      await logAudit('FIX_SEASONS', `Updated ${count} results to Season 2`)
+      const updatedResults = allResults.map(r => {
+        const match = target.find(t => (t.firestoreId || String(t.id)) === (r.firestoreId || String(r.id)))
+        return match ? { ...r, season: 'Season 2' } : r
+      })
+      updateResults(updatedResults)
+      triggerDataRefresh('all')
+      showToast(`Updated ${count} results to Season 2`, 'success')
+    } catch (e) { showToast('Failed: ' + e.message, 'error') }
+    setIsApproving(false)
+  }
+
   const handleSoftResetStandings = async () => {
     if (!window.confirm("Soft Reset will hide all current results from the standings table without deleting them. This allows you to start a fresh phase while keeping history. Proceed?")) return;
     try {
@@ -2002,6 +2043,16 @@ export default function Admin() {
                     </button>
                   )}
                 </div>
+              </div>
+
+              <div className="glass" style={{ padding: '24px', borderRadius: '16px', border: '1px solid var(--accent-cyan)' }}>
+                <h4 style={{ marginBottom: '12px' }}>Season 2 Migration</h4>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                  Mark all approved League/Super League results from 1 June 2026 onwards as Season 2.
+                </p>
+                <button className="btn btn-primary btn-sm" onClick={handleFixSeasons} disabled={isApproving} style={{ width: '100%' }}>
+                  {isApproving ? 'Processing...' : 'Fix Seasons'}
+                </button>
               </div>
 
               <div className="glass" style={{
