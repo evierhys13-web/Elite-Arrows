@@ -61,6 +61,16 @@ export default function LiveMatch() {
   const [zoomLevel, setZoomLevel] = useState(1);
   const [isAutoScoringActive, setIsAutoScoringActive] = useState(false);
 
+  // Web Detection State
+  const [boardCalibration, setBoardCalibration] = useState(null); // { centerX, centerY, radius }
+  const [calibrating, setCalibrating] = useState(false);
+  const [calibrationPoint, setCalibrationPoint] = useState(0); // 0: Bull, 1: Outer
+  const canvasRef = useRef(null);
+  const prevFrameRef = useRef(null);
+  const isProcessingRef = useRef(false);
+  const stabilityCounterRef = useRef(0);
+  const dartDetectedThisTurnRef = useRef(0);
+
   useEffect(() => {
     if (location.state && location.state.invitePlayer) {
         setIsVsBot(false);
@@ -167,6 +177,12 @@ export default function LiveMatch() {
     setGameStarted(true);
     setLastBotDarts([]);
     setCurrentTurnDarts([]);
+    dartDetectedThisTurnRef.current = 0;
+
+    // Load calibration
+    const saved = localStorage.getItem('eliteArrowsBoardCalibration');
+    if (saved) setBoardCalibration(JSON.parse(saved));
+
     if (isVsBot) {
         setBot(new DartBot({ targetAverage: botLevel.avg, checkoutRate: botLevel.check / 100 }));
     }
@@ -177,6 +193,29 @@ export default function LiveMatch() {
     }
 
     showToast('Match Started!', 'info');
+  };
+
+  const handleBoardClick = (e) => {
+    if (!calibrating || !videoRef.current) return;
+
+    const rect = videoRef.current.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+
+    if (calibrationPoint === 0) {
+        setBoardCalibration({ centerX: x, centerY: y, radius: 0 });
+        setCalibrationPoint(1);
+        showToast('Now tap the outer double 20 wire', 'info');
+    } else {
+        const dx = x - boardCalibration.centerX;
+        const dy = y - boardCalibration.centerY;
+        const radius = Math.sqrt(dx * dx + dy * dy);
+        setBoardCalibration({ ...boardCalibration, radius });
+        setCalibrating(false);
+        setCalibrationPoint(0);
+        showToast('Calibration complete! Auto-scoring active.', 'success');
+        localStorage.setItem('eliteArrowsBoardCalibration', JSON.stringify({ centerX: boardCalibration.centerX, centerY: boardCalibration.centerY, radius }));
+    }
   };
 
   const processTurn = useCallback((who, score) => {
@@ -212,13 +251,13 @@ export default function LiveMatch() {
     setTurn(isPlayer ? (isVsBot ? 'bot' : 'opponent') : 'player');
   }, [playerScore, opponentScore, playerLegs, opponentLegs, gameFormat, legsToWin, startScore, isVsBot, showToast]);
 
-  const handleScoreInput = (score) => {
+  const handleScoreInput = useCallback((score) => {
     const val = parseInt(score);
     if (isNaN(val) || val > 180) return;
     processTurn('player', val);
     setCurrentInput('');
     setCurrentTurnDarts([]);
-  };
+  }, [processTurn]);
 
   useEffect(() => {
     if (gameStarted && turn === 'bot' && bot) {
