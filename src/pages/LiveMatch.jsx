@@ -67,9 +67,12 @@ export default function LiveMatch() {
   const [calibrationPoint, setCalibrationPoint] = useState(0);
 
   const prevFrameRef = useRef(null);
+  const streamRef = useRef(null);
   const isProcessingRef = useRef(false);
   const stabilityCounterRef = useRef(0);
   const dartDetectedThisTurnRef = useRef(0);
+  const detectionPhaseRef = useRef('idle');
+  const currentInputRef = useRef('');
 
   useEffect(() => {
     if (location.state && location.state.invitePlayer) {
@@ -107,8 +110,9 @@ export default function LiveMatch() {
     if (typeof navigator === 'undefined' || !navigator.mediaDevices) return;
     const deviceIdToUse = forceDeviceId || selectedCamera;
 
-    if (stream) {
-        stream.getTracks().forEach(t => t.stop());
+    if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
         setStream(null);
     }
     if (videoRef.current) videoRef.current.srcObject = null;
@@ -123,6 +127,7 @@ export default function LiveMatch() {
             }
         };
         const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+        streamRef.current = newStream;
         setStream(newStream);
         if (videoRef.current) videoRef.current.srcObject = newStream;
     } catch (e) {
@@ -140,13 +145,16 @@ export default function LiveMatch() {
   };
 
   useEffect(() => {
-    if (useCamera && gameStarted && turn === 'player') startCamera();
-    else if (stream) {
-        stream.getTracks().forEach(t => t.stop());
+    if (useCamera) startCamera();
+    else if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
         setStream(null);
     }
-    return () => stream?.getTracks().forEach(t => t.stop());
-  }, [useCamera, gameStarted, turn, selectedCamera]);
+    return () => {
+        if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+    };
+  }, [useCamera, selectedCamera]);
 
   const startGame = async () => {
     if (isOnline && (location.state?.invitePlayer || selectedFriend)) {
@@ -177,7 +185,10 @@ export default function LiveMatch() {
     setGameStarted(true);
     setLastBotDarts([]);
     setCurrentTurnDarts([]);
+    setCurrentInput('');
+    currentInputRef.current = '';
     dartDetectedThisTurnRef.current = 0;
+    detectionPhaseRef.current = 'idle';
 
     const saved = localStorage.getItem('eliteArrowsBoardCalibration');
     if (saved) setBoardCalibration(JSON.parse(saved));
@@ -256,13 +267,19 @@ export default function LiveMatch() {
     if (isNaN(val) || val > 180) return;
     processTurn('player', val);
     setCurrentInput('');
+    currentInputRef.current = '';
     setCurrentTurnDarts([]);
     dartDetectedThisTurnRef.current = 0;
+    detectionPhaseRef.current = 'idle';
   }, [processTurn]);
 
-  // Web JS Analyzer Logic
+  // Web JS Analyzer Logic - phase-based with removal detection
   useEffect(() => {
     if (!gameStarted || !useCamera || turn !== 'player' || !boardCalibration || Capacitor.isNativePlatform()) return;
+
+    dartDetectedThisTurnRef.current = 0;
+    currentInputRef.current = '';
+    detectionPhaseRef.current = 'idle';
 
     const segments = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
     let requestRef;
@@ -282,7 +299,7 @@ export default function LiveMatch() {
 
         if (prevFrameRef.current) {
             let diff = 0;
-            for (let i = 0; i < frame.data.length; i += 32) { // sparse check for speed
+            for (let i = 0; i < frame.data.length; i += 32) {
                 diff += Math.abs(frame.data[i] - prevFrameRef.current.data[i]);
             }
 
@@ -290,12 +307,23 @@ export default function LiveMatch() {
 
             if (motionValue > 20) {
                 stabilityCounterRef.current = 0;
-                isProcessingRef.current = true;
-            } else if (isProcessingRef.current) {
+                if (detectionPhaseRef.current === 'idle') {
+                    detectionPhaseRef.current = 'dart_thrown';
+                } else if (detectionPhaseRef.current === 'dart_landed') {
+                    detectionPhaseRef.current = 'removing';
+                }
+            } else {
                 stabilityCounterRef.current++;
-                if (stabilityCounterRef.current > 15) { // Frame is stable, dart has likely landed
-                    isProcessingRef.current = false;
+                if (detectionPhaseRef.current === 'dart_thrown' && stabilityCounterRef.current > 15) {
                     detectDartPosition(frame, prevFrameRef.current);
+                }
+                if (detectionPhaseRef.current === 'removing' && stabilityCounterRef.current > 10) {
+                    detectionPhaseRef.current = 'idle';
+                    if (dartDetectedThisTurnRef.current >= 3) {
+                        handleScoreInput(currentInputRef.current);
+                    }
+                    dartDetectedThisTurnRef.current = 0;
+                    currentInputRef.current = '';
                 }
             }
         }
@@ -317,7 +345,7 @@ export default function LiveMatch() {
             }
         }
 
-        if (count > 10 && count < 1000) { // Valid dart size
+        if (count > 10 && count < 1000) {
             const xPct = (bestX / count / current.width) * 100;
             const yPct = (bestY / count / current.height) * 100;
             calculateWebScore(xPct, yPct);
@@ -331,7 +359,7 @@ export default function LiveMatch() {
         const dist = Math.sqrt(dx * dx + dy * dy);
         const relDist = dist / radius;
 
-        if (relDist > 1.1) return; // Ignore far misses
+        if (relDist > 1.1) return;
 
         let sVal = 0, sLab = "";
         if (relDist <= 0.05) { sVal = 50; sLab = "BULL"; }
@@ -351,18 +379,22 @@ export default function LiveMatch() {
         setCurrentTurnDarts(prev => [...prev, sLab]);
         setCurrentInput(prev => {
             const next = (parseInt(prev || '0') + sVal);
-            return Math.min(180, next).toString();
+            const result = Math.min(180, next).toString();
+            currentInputRef.current = result;
+            return result;
         });
         dartDetectedThisTurnRef.current++;
 
         if (dartDetectedThisTurnRef.current >= 3) {
-            setTimeout(() => handleScoreInput(currentInput), 2000);
+            detectionPhaseRef.current = 'dart_landed';
+        } else {
+            detectionPhaseRef.current = 'idle';
         }
     };
 
     requestRef = requestAnimationFrame(analyzeFrame);
     return () => cancelAnimationFrame(requestRef);
-  }, [gameStarted, useCamera, turn, boardCalibration, handleScoreInput, currentInput, showToast]);
+  }, [gameStarted, useCamera, turn, boardCalibration, handleScoreInput, showToast]);
 
   useEffect(() => {
     if (gameStarted && turn === 'bot' && bot) {
@@ -485,11 +517,22 @@ export default function LiveMatch() {
                         </label>
 
                         {useCamera && (
-                            <select className="glass camera-select animate-fade-in" value={selectedCamera} onChange={e => setSelectedCamera(e.target.value)}>
-                                {availableCameras.map(cam => (
-                                    <option key={cam.deviceId} value={cam.deviceId}>{cam.label || 'Webcam'}</option>
-                                ))}
-                            </select>
+                            <div className="camera-preview-area">
+                                <div className="camera-indicator">
+                                    <span className={`camera-dot ${stream ? 'active' : 'offline'}`} />
+                                    {stream ? 'CAMERA ACTIVE' : 'STARTING CAMERA...'}
+                                </div>
+                                {stream && (
+                                    <div className="camera-mini-preview">
+                                        <video ref={videoRef} autoPlay playsInline muted />
+                                    </div>
+                                )}
+                                <select className="glass camera-select animate-fade-in" value={selectedCamera} onChange={e => setSelectedCamera(e.target.value)}>
+                                    {availableCameras.map(cam => (
+                                        <option key={cam.deviceId} value={cam.deviceId}>{cam.label || 'Webcam'}</option>
+                                    ))}
+                                </select>
+                            </div>
                         )}
                     </div>
 
@@ -515,6 +558,17 @@ export default function LiveMatch() {
                 .checkbox-label { display: flex; align-items: center; gap: 15px; cursor: pointer; }
                 .checkbox-label input { width: 28px; height: 28px; accent-color: var(--accent-cyan); }
                 .confirm-start-btn { background: linear-gradient(135deg, #00d4ff 0%, #0080ff 100%); color: black; font-weight: 900; font-size: 1.4rem; padding: 22px 50px; border-radius: 20px; border: none; cursor: pointer; box-shadow: 0 10px 40px rgba(0, 212, 255, 0.4); }
+                .camera-preview-area { display: flex; flex-direction: column; gap: 12px; margin-top: 15px; }
+                .camera-indicator { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; font-weight: 800; color: var(--accent-cyan); letter-spacing: 1px; }
+                .camera-dot { width: 10px; height: 10px; border-radius: 50%; background: #555; display: inline-block; }
+                .camera-dot.active { background: #00ff88; box-shadow: 0 0 12px #00ff88; animation: pulse-dot 1.5s ease-in-out infinite; }
+                .camera-dot.offline { background: #ff8800; box-shadow: 0 0 12px #ff8800; animation: pulse-dot 1s ease-in-out infinite; }
+                .camera-mini-preview { border-radius: 12px; overflow: hidden; border: 2px solid var(--accent-cyan); background: #000; max-height: 160px; }
+                .camera-mini-preview video { width: 100%; height: 100%; object-fit: cover; display: block; }
+                .status-top-left { position: absolute; top: 15px; left: 15px; z-index: 10; }
+                .status-badge { display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); padding: 8px 16px; border-radius: 30px; border: 1px solid var(--border); font-weight: 900; font-size: 0.7rem; color: white; }
+                .status-badge.active { border-color: var(--accent-cyan); }
+                @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
                 @media (max-width: 900px) { .setup-grid { grid-template-columns: 1fr; gap: 30px; } .setup-footer { flex-direction: column; align-items: stretch; } }
             `}</style>
         </div>
@@ -554,12 +608,23 @@ export default function LiveMatch() {
                     <div className="live-cam-container" onClick={handleBoardClick}>
                         <video ref={videoRef} autoPlay playsInline muted style={{ transform: `scale(${zoomLevel})` }} />
                         <div className="stage-overlay">
-                             {!boardCalibration ? (
+                             <div className="status-top-left">
+                                {boardCalibration ? (
+                                    <div className="status-badge active">
+                                        <span className="camera-dot active" />
+                                        AUTO-SCORING ACTIVE
+                                    </div>
+                                ) : (
+                                    <div className="status-badge">
+                                        <span className="camera-dot" />
+                                        CAMERA READY
+                                    </div>
+                                )}
+                             </div>
+                             {!boardCalibration && (
                                 <div className="calibration-alert animate-pulse">
                                     {calibrationPoint === 0 ? "TAP CENTER OF BULLSEYE" : "TAP OUTER DOUBLE WIRE"}
                                 </div>
-                             ) : (
-                                <div className="status-badge">📡 AUTO-SCORING ACTIVE</div>
                              )}
                              <div className="hud-controls">
                                 <div className="zoom-ctrl">
@@ -633,7 +698,10 @@ export default function LiveMatch() {
             .live-cam-container video { width: 100%; height: 100%; object-fit: cover; transition: 0.3s; }
             .stage-overlay { position: absolute; inset: 0; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; }
             .calibration-alert { align-self: center; margin-top: 100px; background: #ff0044; color: white; padding: 15px 30px; border-radius: 40px; font-weight: 900; font-size: 1.2rem; box-shadow: 0 0 30px rgba(255,0,68,0.5); }
-            .status-badge { align-self: flex-start; background: rgba(0, 212, 255, 0.2); backdrop-filter: blur(10px); padding: 8px 16px; border-radius: 30px; border: 1px solid var(--accent-cyan); font-weight: 900; font-size: 0.75rem; color: white; }
+            .status-badge { align-self: flex-start; display: flex; align-items: center; gap: 8px; background: rgba(0, 212, 255, 0.2); backdrop-filter: blur(10px); padding: 8px 16px; border-radius: 30px; border: 1px solid var(--accent-cyan); font-weight: 900; font-size: 0.75rem; color: white; }
+            .camera-dot { width: 10px; height: 10px; border-radius: 50%; background: #555; display: inline-block; }
+            .camera-dot.active { background: #00ff88; box-shadow: 0 0 12px #00ff88; animation: pulse-dot 1.5s ease-in-out infinite; }
+            @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
             .hud-controls { align-self: flex-end; display: flex; gap: 10px; pointer-events: auto; }
             .zoom-ctrl { background: rgba(0,0,0,0.8); padding: 8px; border-radius: 14px; border: 1px solid var(--accent-cyan); display: flex; align-items: center; gap: 15px; }
             .hud-btn { width: 44px; height: 44px; border-radius: 10px; background: rgba(255,255,255,0.1); border: 1px solid var(--border); color: white; font-weight: 900; cursor: pointer; }
