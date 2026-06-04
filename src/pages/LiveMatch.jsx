@@ -404,6 +404,16 @@ export default function LiveMatch() {
     };
 
     const countDiff = (a, b, t) => { let n = 0; for (let i = 0; i < a.length; i++) { if (Math.abs(a[i] - b[i]) > t) n++; } return n; };
+    const countColorDiff = (a, b, t) => {
+        let n = 0;
+        for (let i = 0; i < a.length; i += 3) {
+            const dr = Math.abs(a[i] - b[i]);
+            const dg = Math.abs(a[i+1] - b[i+1]);
+            const db = Math.abs(a[i+2] - b[i+2]);
+            if (Math.max(dr, dg, db) > t) n++;
+        }
+        return n;
+     };
 
     const drawDiagnostic = (motionPx, diffPx) => {
         const diag = diagnosticCanvasRef.current;
@@ -411,8 +421,10 @@ export default function LiveMatch() {
         const dctx = diag.getContext('2d');
         const id = dctx.createImageData(PW, PH);
         for (let i = 0; i < gray.length; i++) {
-            const isDiff = cleanValid && Math.abs(gray[i] - cleanGray[i]) > DART_DIFF_THRESH;
-            const isMotion = Math.abs(gray[i] - prevGray[i]) > 12;
+            const dr = cleanValid ? Math.max(Math.abs(color[i*3] - cleanColor[i*3]), Math.abs(color[i*3+1] - cleanColor[i*3+1]), Math.abs(color[i*3+2] - cleanColor[i*3+2])) : 0;
+            const mr = Math.max(Math.abs(color[i*3] - prevColor[i*3]), Math.abs(color[i*3+1] - prevColor[i*3+1]), Math.abs(color[i*3+2] - prevColor[i*3+2]));
+            const isDiff = dr > DART_DIFF_THRESH * 2;
+            const isMotion = mr > 8;
             if (isDiff && isMotion) { id.data[i*4]=255; id.data[i*4+1]=255; id.data[i*4+2]=0; }  // yellow = both
             else if (isDiff) { id.data[i*4]=0; id.data[i*4+1]=255; id.data[i*4+2]=0; }            // green = dart
             else if (isMotion) { id.data[i*4]=255; id.data[i*4+1]=0; id.data[i*4+2]=0; }          // red = motion
@@ -498,7 +510,7 @@ export default function LiveMatch() {
         if (!blobs.length) return null;
 
         let best = blobs.reduce((a, b) => b.length > a.length ? b : a);
-        if (best.length < 15) return null;
+        if (best.length < 15 || best.length > 300) return null;
 
         // Use blob centroid directly (no bottom-portion assumption — angle-invariant)
         let sumX = 0, sumY = 0;
@@ -601,8 +613,14 @@ export default function LiveMatch() {
         }
 
         if (hasPrev) {
-            const motionPx = countDiff(gray, prevGray, 12);
+            const motionPx = countColorDiff(color, prevColor, 8);
             const diffPx = cleanValid ? countDiff(gray, cleanGray, DART_DIFF_THRESH) : 0;
+
+            // During idle, gradually blend clean baseline to prevent drift
+            if (detectionPhaseRef.current === 'idle' && cleanValid && motionPx < MOTION_THRESH) {
+                for (let i = 0; i < gray.length; i++) cleanGray[i] = (cleanGray[i] * 255 + gray[i]) >> 8;
+                for (let i = 0; i < color.length; i++) cleanColor[i] = (cleanColor[i] * 255 + color[i]) >> 8;
+            }
 
             if (motionPx > MOTION_THRESH) {
                 stabilityCounterRef.current = 0;
