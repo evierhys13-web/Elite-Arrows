@@ -266,22 +266,48 @@ export default function LiveMatch() {
     const hist = new Uint32Array(256);
     for (let i = 0; i < gray.length; i++) hist[gray[i]]++;
 
-    const target = gray.length * 0.25;
+    const target = gray.length * 0.30;
     let cumulative = 0, threshold = 0;
     for (let i = 0; i < 256; i++) { cumulative += hist[i]; if (cumulative >= target) { threshold = i; break; } }
 
-    let minX = PW, maxX = 0, minY = PH, maxY = 0, count = 0;
+    const isDark = new Uint8Array(gray.length);
     for (let i = 0; i < gray.length; i++) {
-      if (gray[i] <= threshold) {
-        const x = i % PW, y = (i / PW) | 0;
-        if (x < minX) minX = x;
-        if (x > maxX) maxX = x;
-        if (y < minY) minY = y;
-        if (y > maxY) maxY = y;
-        count++;
+      if (gray[i] <= threshold) isDark[i] = 1;
+    }
+
+    const cX = PW >> 1, cY = PH >> 1;
+    const maxSearch = Math.min(PW, PH) * 0.35;
+    let startIdx = -1;
+    for (let r = 0; r < maxSearch && startIdx < 0; r++) {
+      for (let dy = -r; dy <= r && startIdx < 0; dy++) {
+        for (let dx = -r; dx <= r && startIdx < 0; dx++) {
+          if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
+          const px = cX + dx, py = cY + dy;
+          if (px < 0 || px >= PW || py < 0 || py >= PH) continue;
+          if (isDark[py * PW + px]) startIdx = py * PW + px;
+        }
       }
     }
-    if (count < 100) return null;
+    if (startIdx < 0) return null;
+
+    const visited = new Uint8Array(gray.length);
+    const q = [startIdx];
+    visited[startIdx] = 1;
+    let minX = PW, maxX = 0, minY = PH, maxY = 0, pixelCount = 0;
+    while (q.length) {
+      const p = q.shift();
+      const x = p % PW, y = (p / PW) | 0;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+      pixelCount++;
+      if (x > 0 && !visited[p-1] && isDark[p-1]) { visited[p-1] = 1; q.push(p-1); }
+      if (x < PW-1 && !visited[p+1] && isDark[p+1]) { visited[p+1] = 1; q.push(p+1); }
+      if (y > 0 && !visited[p-PW] && isDark[p-PW]) { visited[p-PW] = 1; q.push(p-PW); }
+      if (y < PH-1 && !visited[p+PW] && isDark[p+PW]) { visited[p+PW] = 1; q.push(p+PW); }
+    }
+    if (pixelCount < 200) return null;
 
     const cx = ((minX + maxX) / 2 / PW) * 100;
     const cy = ((minY + maxY) / 2 / PH) * 100;
@@ -338,10 +364,10 @@ export default function LiveMatch() {
         const dctx = diag.getContext('2d');
         const id = dctx.createImageData(PW, PH);
         for (let i = 0; i < gray.length; i++) {
-            const isDiff = cleanValid && Math.abs(gray[i] - cleanGray[i]) > DART_DIFF_THRESH;
+            const isDark = cleanValid && (cleanGray[i] - gray[i]) > DART_DIFF_THRESH;
             const isMotion = Math.abs(gray[i] - prevGray[i]) > 12;
-            if (isDiff && isMotion) { id.data[i*4]=255; id.data[i*4+1]=255; id.data[i*4+2]=0; }  // yellow = both
-            else if (isDiff) { id.data[i*4]=0; id.data[i*4+1]=255; id.data[i*4+2]=0; }            // green = dart
+            if (isDark && isMotion) { id.data[i*4]=255; id.data[i*4+1]=255; id.data[i*4+2]=0; }  // yellow = both
+            else if (isDark) { id.data[i*4]=0; id.data[i*4+1]=255; id.data[i*4+2]=0; }            // green = dart
             else if (isMotion) { id.data[i*4]=255; id.data[i*4+1]=0; id.data[i*4+2]=0; }          // red = motion
             else { const v = gray[i]*0.35|0; id.data[i*4]=v; id.data[i*4+1]=v; id.data[i*4+2]=v; }
             id.data[i*4+3] = 255;
@@ -361,31 +387,45 @@ export default function LiveMatch() {
                 const p = q.shift();
                 blob.push(p);
                 const x = p % PW, y = (p / PW) | 0;
-                if (x > 0 && !visited[p-1] && Math.abs(gray[p-1] - cleanGray[p-1]) > DART_DIFF_THRESH) { visited[p-1]=1; q.push(p-1); }
-                if (x < PW-1 && !visited[p+1] && Math.abs(gray[p+1] - cleanGray[p+1]) > DART_DIFF_THRESH) { visited[p+1]=1; q.push(p+1); }
-                if (y > 0 && !visited[p-PW] && Math.abs(gray[p-PW] - cleanGray[p-PW]) > DART_DIFF_THRESH) { visited[p-PW]=1; q.push(p-PW); }
-                if (y < PH-1 && !visited[p+PW] && Math.abs(gray[p+PW] - cleanGray[p+PW]) > DART_DIFF_THRESH) { visited[p+PW]=1; q.push(p+PW); }
+                const darkerNeighbor = (ni) => (cleanGray[ni] - gray[ni]) > DART_DIFF_THRESH;
+                if (x > 0 && !visited[p-1] && darkerNeighbor(p-1)) { visited[p-1]=1; q.push(p-1); }
+                if (x < PW-1 && !visited[p+1] && darkerNeighbor(p+1)) { visited[p+1]=1; q.push(p+1); }
+                if (y > 0 && !visited[p-PW] && darkerNeighbor(p-PW)) { visited[p-PW]=1; q.push(p-PW); }
+                if (y < PH-1 && !visited[p+PW] && darkerNeighbor(p+PW)) { visited[p+PW]=1; q.push(p+PW); }
             }
-            if (blob.length >= 10) blobs.push(blob);
+            if (blob.length >= 20) blobs.push(blob);
         }
         return blobs;
     };
 
     let lastDetectTime = 0;
+    let consistentDartCount = 0, consistentDartX = 0, consistentDartY = 0;
     const detectDart = () => {
-        if (!cleanValid) return false;
-        if (Date.now() - lastDetectTime < 800) return false;
+        if (!cleanValid) return null;
+        if (Date.now() - lastDetectTime < 800) return null;
 
         const changed = [];
         for (let i = 0; i < gray.length; i++)
-            if (Math.abs(gray[i] - cleanGray[i]) > DART_DIFF_THRESH) changed.push(i);
-        if (changed.length < 15 || changed.length > 1500) return false;
+            if ((cleanGray[i] - gray[i]) > DART_DIFF_THRESH) changed.push(i);
+        if (changed.length < 15 || changed.length > 1500) return null;
 
         const blobs = findBlobs(changed);
-        if (!blobs.length) return false;
+        if (!blobs.length) return null;
 
         let best = blobs.reduce((a, b) => b.length > a.length ? b : a);
-        if (best.length < 10) return false;
+        if (best.length < 20) return null;
+
+        // Compactness check: blob must fill at least 30% of its bounding box
+        let bMinX = PW, bMaxX = 0, bMinY = PH, bMaxY = 0;
+        for (const p of best) {
+            const x = p % PW, y = (p / PW) | 0;
+            if (x < bMinX) bMinX = x;
+            if (x > bMaxX) bMaxX = x;
+            if (y < bMinY) bMinY = y;
+            if (y > bMaxY) bMaxY = y;
+        }
+        const bboxArea = (bMaxX - bMinX + 1) * (bMaxY - bMinY + 1);
+        if (best.length / bboxArea < 0.3) return null;
 
         // Reject blobs too far from board center (hand/arm entering frame)
         const { centerX, centerY, radius } = calibrationRef.current || { centerX: 50, centerY: 50, radius: 30 };
@@ -393,7 +433,7 @@ export default function LiveMatch() {
         for (const p of best) { sumX += p % PW; sumY += (p / PW) | 0; count++; }
         const cxPct = (sumX / count / PW) * 100;
         const cyPct = (sumY / count / PH) * 100;
-        if (Math.sqrt((cxPct - centerX) ** 2 + (cyPct - centerY) ** 2) > radius * 1.15) return false;
+        if (Math.sqrt((cxPct - centerX) ** 2 + (cyPct - centerY) ** 2) > radius * 1.15) return null;
 
         // Use bottom portion of blob for tip estimation
         const ph = PH;
@@ -409,8 +449,7 @@ export default function LiveMatch() {
         const xPct = (sx / n / PW) * 100;
         const yPct = (sy / n / PH) * 100;
         lastDetectTime = Date.now();
-        calculateWebScore(xPct, yPct);
-        return true;
+        return { xPct, yPct };
     };
 
     const calculateWebScore = (x, y) => {
@@ -506,10 +545,30 @@ export default function LiveMatch() {
                 stabilityCounterRef.current++;
 
                 if (detectionPhaseRef.current === 'dart_thrown' && stabilityCounterRef.current > STABILITY_FRAMES) {
-                    const found = detectDart();
-                    if (!found) { detectionPhaseRef.current = 'idle'; }
-                    else if (dartDetectedThisTurnRef.current >= 3) { detectionPhaseRef.current = 'dart_landed'; }
-                    else { detectionPhaseRef.current = 'idle'; }
+                    const pos = detectDart();
+                    if (!pos) {
+                        detectionPhaseRef.current = 'idle';
+                        consistentDartCount = 0;
+                    } else if (dartDetectedThisTurnRef.current >= 3) {
+                        detectionPhaseRef.current = 'dart_landed';
+                        consistentDartCount = 0;
+                    } else {
+                        const samePos = consistentDartCount > 0 &&
+                            Math.abs(pos.xPct - consistentDartX) < 3 &&
+                            Math.abs(pos.yPct - consistentDartY) < 3;
+                        if (samePos) {
+                            consistentDartCount++;
+                        } else {
+                            consistentDartCount = 1;
+                            consistentDartX = pos.xPct;
+                            consistentDartY = pos.yPct;
+                        }
+                        if (consistentDartCount >= 3) {
+                            consistentDartCount = 0;
+                            calculateWebScore(pos.xPct, pos.yPct);
+                            detectionPhaseRef.current = 'idle';
+                        }
+                    }
                 }
 
                 if (detectionPhaseRef.current === 'removing' && stabilityCounterRef.current > STABILITY_FRAMES) {
