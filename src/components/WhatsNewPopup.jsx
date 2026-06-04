@@ -2,6 +2,16 @@ import React, { useState, useEffect } from 'react';
 
 const CHANGELOG = [
   {
+    version: '2.3.0',
+    date: 'June 2026',
+    changes: [
+      { type: 'feature', title: 'Play Online & Pro Bots', description: 'Challenge any player globally or practise against 20 pro AI bots with realistic playing styles and shot-by-shot dart throwing.' },
+      { type: 'feature', title: 'Live Match Scoring', description: 'Full manual scoring with an LCD keypad, glass shot cards, camera preview, and real-time score display — no auto-scoring needed.' },
+      { type: 'improvement', title: 'Admin Upgrades', description: 'Delete results, bulk season migration tools, mobile-friendly layout, and better bet winner verification.' },
+      { type: 'improvement', title: 'Real-Time Sync', description: 'Cup brackets, disputes, and all league data now sync instantly across all users.' }
+    ]
+  },
+  {
     version: '2.2.1',
     date: 'May 2026',
     changes: [
