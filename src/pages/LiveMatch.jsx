@@ -251,10 +251,18 @@ export default function LiveMatch() {
         const runBot = async () => {
             setIsBotThinking(true);
             setLastBotDarts([]);
-            const darts = await bot.takeTurn(opponentScore, (_, all) => setLastBotDarts([...all]));
-            await new Promise(r => setTimeout(r, 1000));
+            const allDarts = [];
+            let remaining = opponentScore;
+            for (let i = 0; i < 3; i++) {
+                await new Promise(r => setTimeout(r, 1200 + Math.random() * 800));
+                const dart = bot.calculateDart(remaining, i);
+                allDarts.push(dart);
+                setLastBotDarts([...allDarts]);
+                remaining -= dart.value;
+                if (remaining <= 0) break;
+            }
             setIsBotThinking(false);
-            processTurn('bot', darts.reduce((a, d) => a + d.value, 0));
+            processTurn('bot', allDarts.reduce((a, d) => a + d.value, 0));
         };
         runBot();
     }
