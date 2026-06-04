@@ -564,13 +564,15 @@ export default function Admin() {
     } catch (e) { showToast(e.message, 'error') }
   }
 
+  const [betResults, setBetResults] = useState(null)
+
   const handleCheckBetWinners = async () => {
     if (isApproving) return
     setIsApproving(true)
     try {
       const allResults = getResults().filter(r => String(r.status).toLowerCase() === 'approved')
       const batch = writeBatch(db)
-      let winCount = 0
+      const resolved = []
 
       for (const bet of bets) {
         if (bet.won !== null) continue
@@ -590,7 +592,6 @@ export default function Admin() {
         const predictedScore1 = Number(bet.predictedScore1)
         const predictedScore2 = Number(bet.predictedScore2)
 
-        // Exact score check
         const isExactScore = (String(game.player1Id) === String(bet.fixturePlayer1Id))
           ? (score1 === predictedScore1 && score2 === predictedScore2)
           : (score2 === predictedScore1 && score1 === predictedScore2)
@@ -599,21 +600,33 @@ export default function Admin() {
 
         batch.update(doc(db, 'bets', bet.id), { won })
 
+        resolved.push({
+          username: bet.username,
+          match: `${bet.player1Name} vs ${bet.player2Name}`,
+          prediction: `${bet.predictedWinner} (${bet.predictedScore1}-${bet.predictedScore2})`,
+          actual: `${game.player1Name || 'P1'} ${score1} - ${score2} ${game.player2Name || 'P2'}`,
+          won,
+          amount: bet.amount || 0
+        })
+
         if (won) {
-          winCount++
           const userDoc = doc(db, 'users', bet.userId)
           const userData = allPlayers.find(u => u.id === bet.userId)
           const currentDraw = userData?.promotionDraw || []
-          if (!currentDraw.includes(true)) { // Just a flag that they won a bet
+          if (!currentDraw.includes(true)) {
              batch.update(userDoc, { promotionDraw: true })
           }
         }
       }
 
       await batch.commit()
-      await logAudit('CHECK_BETS', `Processed ${bets.length} bets, found ${winCount} new winners`)
-      triggerDataRefresh('bets')
-      showToast(`Checked bets! Found ${winCount} winners.`, 'success')
+      await logAudit('CHECK_BETS', `Processed ${bets.length} bets, found ${resolved.filter(r => r.won).length} new winners`)
+
+      if (resolved.length > 0) {
+        setBetResults(resolved)
+      } else {
+        showToast('No pending bets found with matching approved results.', 'info')
+      }
     } catch (e) { showToast(e.message, 'error') }
     setIsApproving(false)
   }
@@ -1675,6 +1688,44 @@ export default function Admin() {
               </button>
             </div>
 
+            {betResults && (
+              <div className="glass" style={{ padding: '20px', borderRadius: '12px', marginBottom: '24px', background: 'rgba(15,23,42,0.95)', border: '1px solid var(--border)', position: 'relative' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <h4 style={{ margin: 0 }}>Bet Results ({betResults.filter(r => r.won).length} won / {betResults.filter(r => !r.won).length} lost)</h4>
+                  <button className="btn btn-sm" style={{ padding: '4px 12px' }} onClick={() => setBetResults(null)}>✕</button>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '400px', overflowY: 'auto' }}>
+                  {betResults.map((r, i) => (
+                    <div key={i} style={{
+                      padding: '12px',
+                      borderRadius: '8px',
+                      border: r.won ? '1px solid var(--success)' : '1px solid var(--border)',
+                      background: r.won ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.02)'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                        <span style={{ fontWeight: 700, color: 'var(--accent-cyan)' }}>{r.username}</span>
+                        <span style={{
+                          padding: '2px 10px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 800,
+                          color: r.won ? 'var(--success)' : 'var(--error)',
+                          background: r.won ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
+                          textTransform: 'uppercase'
+                        }}>
+                          {r.won ? 'Won' : 'Lost'} {r.amount ? `(${r.amount} tokens)` : ''}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '2px' }}>
+                        Match: <strong style={{ color: 'white' }}>{r.match}</strong>
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        Predicted: <span style={{ color: r.won ? 'var(--success)' : 'var(--error)' }}>{r.prediction}</span>
+                        {' → '}Actual: <span style={{ color: 'white' }}>{r.actual}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="glass" style={{ padding: '20px', borderRadius: '12px', marginBottom: '24px', background: 'rgba(56, 189, 248, 0.05)' }}>
               <h4 style={{ marginBottom: '12px' }}>Manually Add to Promotion Draw</h4>
               <div style={{ display: 'flex', gap: '12px' }}>
@@ -1690,7 +1741,7 @@ export default function Admin() {
                   <div key={bet.id} className="glass" style={{ padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.02)', border: bet.won === true ? '1px solid var(--success)' : bet.won === false ? '1px solid var(--error)' : '1px solid var(--border)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                       <span style={{ fontWeight: 700, color: 'var(--accent-cyan)' }}>{bet.username}</span>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{new Date(bet.createdAt).toLocaleDateString()}</span>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{bet.amount ? `${bet.amount} tokens · ` : ''}{new Date(bet.createdAt).toLocaleDateString()}</span>
                     </div>
                     <div style={{ fontSize: '0.9rem', marginBottom: '8px' }}>
                       Bet on: <strong>{bet.player1Name} vs {bet.player2Name}</strong>

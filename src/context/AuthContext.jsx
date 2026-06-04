@@ -636,6 +636,17 @@ export function AuthProvider({ children }) {
     }, (error) => {
       // console.log('Seasons listener error:', error)
     })
+
+    const unsubscribeBets = onSnapshot(collection(db, 'bets'), (snapshot) => {
+      const betsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      setBets(betsData)
+      try {
+        localStorage.setItem('eliteArrowsBets', JSON.stringify(betsData))
+      } catch (e) {}
+      announceAfterHydration('bets')
+    }, (error) => {
+      // console.log('Bets listener error:', error)
+    })
     
     return () => {
       unsubscribeUsers()
@@ -645,6 +656,7 @@ export function AuthProvider({ children }) {
       unsubscribeFixtures()
       if (unsubscribeFixtures2) unsubscribeFixtures2()
       unsubscribeSeasons()
+      unsubscribeBets()
       unsubscribeNews()
       unsubscribeAdmin()
       if (unsubscribeInvites) unsubscribeInvites()
