@@ -218,15 +218,6 @@ export default function LiveMatch() {
     }
   };
 
-  const handleScoreInput = useCallback((score) => {
-    const val = parseInt(score);
-    if (isNaN(val) || val > 180) return;
-    processTurn('player', val);
-    setCurrentInput('');
-    setCurrentTurnDarts([]);
-    dartDetectedThisTurnRef.current = 0;
-  }, [processTurn]);
-
   const processTurn = useCallback((who, score) => {
     const isPlayer = who === 'player';
     let current = isPlayer ? playerScore : opponentScore;
@@ -259,6 +250,15 @@ export default function LiveMatch() {
     }
     setTurn(isPlayer ? (isVsBot ? 'bot' : 'opponent') : 'player');
   }, [playerScore, opponentScore, playerLegs, opponentLegs, gameFormat, legsToWin, startScore, isVsBot, showToast]);
+
+  const handleScoreInput = useCallback((score) => {
+    const val = parseInt(score);
+    if (isNaN(val) || val > 180) return;
+    processTurn('player', val);
+    setCurrentInput('');
+    setCurrentTurnDarts([]);
+    dartDetectedThisTurnRef.current = 0;
+  }, [processTurn]);
 
   // Web JS Analyzer Logic
   useEffect(() => {
