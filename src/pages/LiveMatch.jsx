@@ -306,11 +306,11 @@ export default function LiveMatch() {
       const radiusH = ((maxX - minX) / 2 / PW) * 100;
       const radiusV = ((maxY - minY) / 2 / PH) * 100;
       const radius = (radiusH + radiusV) / 2;
-      if (radius < 10 || radius > 50) continue;
+      if (radius < 8 || radius > 55) continue;
 
       const distFromCenter = Math.sqrt((cx - 50) ** 2 + (cy - 50) ** 2);
       const circularity = radiusH > 0 ? 1 - Math.abs(radiusH - radiusV) / (radiusH + radiusV) : 0;
-      const score = pixelCount * circularity - distFromCenter * 5;
+      const score = pixelCount * circularity - distFromCenter * 2;
 
       if (score > bestScore) {
         bestScore = score;
@@ -326,6 +326,42 @@ export default function LiveMatch() {
     return best;
   };
 
+  const brightCalibrate = (gray, PW, PH) => {
+    const hist = new Uint32Array(256);
+    for (let i = 0; i < gray.length; i++) hist[gray[i]]++;
+    const target = gray.length * 0.92;
+    let cumulative = 0, threshold = 255;
+    for (let i = 255; i >= 0; i--) { cumulative += hist[i]; if (cumulative >= target) { threshold = i; break; } }
+
+    let sx = 0, sy = 0, count = 0;
+    let minX = PW, maxX = 0, minY = PH, maxY = 0;
+    for (let i = 0; i < gray.length; i++) {
+      if (gray[i] < threshold) continue;
+      const x = i % PW, y = (i / PW) | 0;
+      sx += x; sy += y; count++;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+    if (count < 100) return null;
+
+    const cx = (sx / count / PW) * 100;
+    const cy = (sy / count / PH) * 100;
+    const radiusH = ((maxX - minX) / 2 / PW) * 100;
+    const radiusV = ((maxY - minY) / 2 / PH) * 100;
+    const radius = (radiusH + radiusV) / 2;
+    if (radius < 8 || radius > 55) return null;
+
+    return {
+      centerX: Math.round(cx * 10) / 10,
+      centerY: Math.round(cy * 10) / 10,
+      radius: Math.round(radius * 10) / 10,
+      radiusH: Math.round(radiusH * 10) / 10,
+      radiusV: Math.round(radiusV * 10) / 10
+    };
+  };
+
   // Web JS Analyzer Logic — grayscale downsampled + blob detection + clean baseline
   useEffect(() => {
     if (!gameStarted || !useCamera || turn !== 'player' || Capacitor.isNativePlatform()) return;
@@ -335,11 +371,11 @@ export default function LiveMatch() {
     detectionPhaseRef.current = 'idle';
 
     const segments = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
-    const PW = 160, PH = 120;
-    const MOTION_THRESH = 20;
+    const PW = 320, PH = 240;
+    const MOTION_THRESH = 8;
     const DART_DIFF_THRESH = 8;
     const STABILITY_FRAMES = 2;
-    const FRAMES_WARMUP = 30;
+    const FRAMES_WARMUP = 60;
     let warmup = FRAMES_WARMUP;
     let requestRef;
 
@@ -394,6 +430,13 @@ export default function LiveMatch() {
         dctx.lineWidth = 2;
         dctx.beginPath();
         dctx.ellipse(cx, cy, rhPx, rvPx, 0, 0, Math.PI * 2);
+        dctx.stroke();
+        // Draw center crosshair
+        dctx.strokeStyle = 'red';
+        dctx.lineWidth = 1;
+        dctx.beginPath();
+        dctx.moveTo(cx - 6, cy); dctx.lineTo(cx + 6, cy);
+        dctx.moveTo(cx, cy - 6); dctx.lineTo(cx, cy + 6);
         dctx.stroke();
         // Draw motion/diff text
         dctx.fillStyle = 'lime';
@@ -528,8 +571,10 @@ export default function LiveMatch() {
         // Auto-calibrate on game start
         if (!calibratedThisSessionRef.current) {
             calibratedThisSessionRef.current = true;
-            let calResult = autoCalibrate(gray, PW, PH, 0.30);
-            if (!calResult) calResult = autoCalibrate(gray, PW, PH, 0.40);
+            let calResult = autoCalibrate(gray, PW, PH, 0.25);
+            if (!calResult) calResult = autoCalibrate(gray, PW, PH, 0.35);
+            if (!calResult) calResult = autoCalibrate(gray, PW, PH, 0.45);
+            if (!calResult) calResult = brightCalibrate(gray, PW, PH);
             if (calResult) {
                 calibrationRef.current = calResult;
                 localStorage.setItem('eliteArrowsBoardCalibration', JSON.stringify(calResult));
@@ -542,8 +587,10 @@ export default function LiveMatch() {
         // Re-calibrate on user request
         if (calibrationNeededRef.current) {
             calibrationNeededRef.current = false;
-            let calResult = autoCalibrate(gray, PW, PH, 0.30);
-            if (!calResult) calResult = autoCalibrate(gray, PW, PH, 0.40);
+            let calResult = autoCalibrate(gray, PW, PH, 0.25);
+            if (!calResult) calResult = autoCalibrate(gray, PW, PH, 0.35);
+            if (!calResult) calResult = autoCalibrate(gray, PW, PH, 0.45);
+            if (!calResult) calResult = brightCalibrate(gray, PW, PH);
             if (calResult) {
                 calibrationRef.current = calResult;
                 localStorage.setItem('eliteArrowsBoardCalibration', JSON.stringify(calResult));
@@ -829,7 +876,7 @@ export default function LiveMatch() {
 
         {showDiagnostic && (
             <div className="diagnostic-bar">
-                <canvas ref={diagnosticCanvasRef} width="160" height="120" className="diag-canvas" />
+                <canvas ref={diagnosticCanvasRef} width="320" height="240" className="diag-canvas" />
                 <div className="diag-info">
                     <span>Phase: <strong id="diag-phase">{detectionPhaseRef.current}</strong></span>
                     <span>Darts: <strong>{dartDetectedThisTurnRef.current}/3</strong></span>
@@ -945,7 +992,7 @@ export default function LiveMatch() {
             .log-row .rem { width: 60px; text-align: right; color: var(--text-muted); font-size: 0.8rem; }
 
             .diagnostic-bar { display: flex; align-items: center; gap: 15px; padding: 8px 15px; background: rgba(0,0,0,0.85); border-radius: 12px; margin-bottom: 6px; border: 1px solid #333; }
-            .diag-canvas { width: 160px; height: 120px; border-radius: 6px; border: 1px solid #555; image-rendering: pixelated; flex-shrink: 0; }
+            .diag-canvas { width: 213px; height: 160px; border-radius: 6px; border: 1px solid #555; image-rendering: pixelated; flex-shrink: 0; }
             .diag-info { display: flex; flex-direction: column; gap: 4px; font-size: 0.7rem; color: #aaa; }
             .diag-info strong { color: white; }
             .diag-hint { font-size: 0.6rem; color: #666; margin-top: 4px; }
