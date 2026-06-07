@@ -366,12 +366,13 @@ export function AuthProvider({ children }) {
     resultStatusOverridesRef.current = overrides
 
     // 1. Apply status overrides
-    const resultRows = resultRowsRef.current.map(row => {
+    const resultRows = (resultRowsRef.current || []).map(row => {
+      if (!row) return null
       const override = getResultOverrideKeys(row)
         .map(key => overrides[key])
         .find(Boolean)
       return override ? { ...row, status: override.status } : row
-    })
+    }).filter(Boolean)
 
     // 2. Merge duplicates based on Logical ID (Fixture > signature > ID)
     const byLogicalId = new Map()
@@ -539,9 +540,10 @@ export function AuthProvider({ children }) {
         .map(c => c.doc.data()?.id || c.doc.id)
 
       const existing = resultRowsRef.current || []
-      const merged = [...existing].filter(r => !removedIds.includes(r.id) && !removedIds.includes(r.firestoreId))
+      const merged = [...existing].filter(r => r && !removedIds.includes(r.id) && !removedIds.includes(r.firestoreId))
       newRows.forEach(row => {
-        const idx = merged.findIndex(r => r.id === row.id)
+        if (!row) return
+        const idx = merged.findIndex(r => r && (r.id === row.id))
         if (idx !== -1) merged[idx] = row
         else merged.push(row)
       })
@@ -567,9 +569,10 @@ export function AuthProvider({ children }) {
           .filter(c => c.type === 'removed')
           .map(c => c.doc.data()?.id || c.doc.id)
         const existing = resultRowsRef.current || []
-        const merged = [...existing].filter(r => !removedIds.includes(r.id) && !removedIds.includes(r.firestoreId))
+        const merged = [...existing].filter(r => r && !removedIds.includes(r.id) && !removedIds.includes(r.firestoreId))
         data.forEach(row => {
-          const idx = merged.findIndex(r => r.id === row.id)
+          if (!row) return
+          const idx = merged.findIndex(r => r && (r.id === row.id))
           if (idx !== -1) merged[idx] = row
           else merged.push(row)
         })
@@ -587,9 +590,10 @@ export function AuthProvider({ children }) {
           .filter(c => c.type === 'removed')
           .map(c => c.doc.data()?.id || c.doc.id)
         const existing = resultRowsRef.current || []
-        const merged = [...existing].filter(r => !removedIds.includes(r.id) && !removedIds.includes(r.firestoreId))
+        const merged = [...existing].filter(r => r && !removedIds.includes(r.id) && !removedIds.includes(r.firestoreId))
         data.forEach(row => {
-          const idx = merged.findIndex(r => r.id === row.id)
+          if (!row) return
+          const idx = merged.findIndex(r => r && (r.id === row.id))
           if (idx !== -1) merged[idx] = row
           else merged.push(row)
         })
@@ -611,10 +615,11 @@ export function AuthProvider({ children }) {
           .map(c => c.doc.data()?.id || c.doc.id)
 
         const existing = resultRowsRef.current || []
-        const merged = [...existing].filter(r => !removedIds.includes(r.id) && !removedIds.includes(r.firestoreId))
+        const merged = [...existing].filter(r => r && !removedIds.includes(r.id) && !removedIds.includes(r.firestoreId))
 
         data.forEach(row => {
-          const idx = merged.findIndex(r => r.id === row.id)
+          if (!row) return
+          const idx = merged.findIndex(r => r && (r.id === row.id))
           if (idx !== -1) merged[idx] = row
           else merged.push(row)
         })
@@ -1278,9 +1283,10 @@ const cleanUserData = (users) => {
 
     // Merge instead of simple overwrite to preserve any results from other listeners
     const existing = resultRowsRef.current || []
-    const merged = [...existing]
+    const merged = [...existing].filter(Boolean)
     nextResults.forEach(row => {
-      const idx = merged.findIndex(r => r.id === row.id)
+      if (!row) return
+      const idx = merged.findIndex(r => r && (r.id === row.id))
       if (idx !== -1) merged[idx] = row
       else merged.push(row)
     })
@@ -1335,9 +1341,10 @@ const cleanUserData = (users) => {
       })
 
       const existing = resultRowsRef.current || []
-      const merged = [...existing]
+      const merged = [...existing].filter(Boolean)
       seasonResults.forEach(row => {
-        const idx = merged.findIndex(r => r.id === row.id)
+        if (!row) return
+        const idx = merged.findIndex(r => r && (r.id === row.id))
         if (idx !== -1) merged[idx] = row
         else merged.push(row)
       })
