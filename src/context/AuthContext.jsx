@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
-import { db, auth, usersCollection, adminDataCollection, fcmTokensCollection, liveGamesCollection, gameInvitesCollection, doc, setDoc, getDoc, getDocs, getDocsFromServer, query, where, collection, orderBy, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, updateDoc, deleteDoc, runTransaction, FieldValue, getMessagingInstance, getToken, onMessage, isSupported, limit } from '../firebase'
+import { db, auth, usersCollection, adminDataCollection, fcmTokensCollection, liveGamesCollection, gameInvitesCollection, doc, setDoc, getDoc, getDocFromServer, getDocs, getDocsFromServer, query, where, collection, orderBy, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, updateDoc, deleteDoc, runTransaction, FieldValue, getMessagingInstance, getToken, onMessage, isSupported, limit } from '../firebase'
 import { ADMIN_EMAILS } from '../config'
 import SeasonOneWelcomeModal from '../components/SeasonOneWelcomeModal'
 import { getResultIdentityKey, getResultOverrideKeys } from '../utils/resultIdentity'
@@ -1469,7 +1469,7 @@ const cleanUserData = (users) => {
       })
 
       // 3. Fetch Admin Data
-      const adminSnap = await getDocsFromServer(doc(db, 'adminData', 'main'))
+      const adminSnap = await getDocFromServer(doc(db, 'adminData', 'main'))
       if (adminSnap.exists()) {
         const data = adminSnap.data()
         setAdminData(prev => ({ ...prev, ...data }))
