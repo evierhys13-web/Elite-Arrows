@@ -685,6 +685,7 @@ export default function Admin() {
         const s2 = Number(match.score2) || 0;
         const totalLegs = s1 + s2;
         const isStandardFormat = totalLegs <= 8;
+        const isSuperFormat = (s1 === 6 || s2 === 6) && totalLegs <= 11 && totalLegs >= 6;
 
         // Check fixture context to identify hidden cup games
         let isCupGame = Boolean(match.cupId || match.matchId || match.tournamentId);
@@ -700,10 +701,15 @@ export default function Admin() {
             updates.gameType = 'Cup';
           }
         } else {
+          const currentType = String(match.gameType || '').toLowerCase();
+          const isExplicitSuper = currentType.includes('super league');
+
           if (!match.gameType || ['unknown', '', 'undefined', 'null'].includes(String(match.gameType))) {
-            updates.gameType = isStandardFormat ? 'League' : 'Friendly';
+            if (isSuperFormat) updates.gameType = 'Super League';
+            else updates.gameType = isStandardFormat ? 'League' : 'Friendly';
           } else if (match.gameType === 'League' && !isStandardFormat) {
-            updates.gameType = 'Friendly';
+            if (isSuperFormat) updates.gameType = 'Super League';
+            else updates.gameType = 'Friendly';
           }
         }
 
@@ -1026,7 +1032,10 @@ export default function Admin() {
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}> Standings are updated automatically from Approved League results.</p>
               </div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <button className="btn btn-sm btn-secondary glass" onClick={() => { triggerDataRefresh('all'); showToast('Standings sync triggered', 'info'); }} title="Force refresh of all league data">
+                <button className="btn btn-sm btn-secondary glass" onClick={async () => {
+                  const ok = await forceFetchResults();
+                  showToast(ok ? 'Deep Sync Complete' : 'Sync Failed', ok ? 'success' : 'warning');
+                }} title="Force refresh of all league data from server">
                   🔄 Sync Standings
                 </button>
                 {resultFilter === 'pending' && selectedResults.length > 0 && (

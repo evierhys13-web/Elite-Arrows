@@ -364,6 +364,8 @@ export function AuthProvider({ children }) {
     }
     const overrides = { ...(resultStatusOverridesRef.current || {}), ...storedOverrides }
     resultStatusOverridesRef.current = overrides
+
+    // 1. Apply status overrides
     const resultRows = resultRowsRef.current.map(row => {
       const override = getResultOverrideKeys(row)
         .map(key => overrides[key])
@@ -371,32 +373,41 @@ export function AuthProvider({ children }) {
       return override ? { ...row, status: override.status } : row
     })
 
-    const resultsData = Array.from(resultRows.reduce((byId, row) => {
+    // 2. Merge duplicates based on Logical ID (Fixture > signature > ID)
+    const byLogicalId = new Map()
+    resultRows.forEach(row => {
       const logicalId = getResultIdentityKey(row)
-      const existing = byId.get(logicalId)
+      if (!logicalId) return
+
+      const existing = byLogicalId.get(logicalId)
       if (!existing) {
-        byId.set(logicalId, row)
-        return byId
+        byLogicalId.set(logicalId, row)
+        return
       }
 
+      // Merge logic: prefer version with players, then prefer higher status rank
       const existingHasPlayers = existing.player1 || existing.player2
       const rowHasPlayers = row.player1 || row.player2
-      const base = rowHasPlayers && !existingHasPlayers ? row : existing
-      const overlay = base === row ? existing : row
+
+      // Determine which one is the "better" base
+      const useRowAsBase = rowHasPlayers && !existingHasPlayers
+      const base = useRowAsBase ? row : existing
+      const overlay = useRowAsBase ? existing : row
+
       const preferredStatus = (statusRank[overlay.status] || 0) > (statusRank[base.status] || 0)
         ? overlay.status
         : base.status
 
-      byId.set(logicalId, {
+      byLogicalId.set(logicalId, {
         ...overlay,
         ...base,
         id: base.id || overlay.id,
         status: preferredStatus,
-        firestoreId: rowHasPlayers ? row.firestoreId : existing.firestoreId
+        firestoreId: base.firestoreId || overlay.firestoreId
       })
-      return byId
-    }, new Map()).values())
+    })
 
+    const resultsData = Array.from(byLogicalId.values())
     setResults(resultsData)
     saveResultsCache(resultsData)
     if (announce) {
@@ -548,7 +559,10 @@ export function AuthProvider({ children }) {
 
     if (userResultsQuery1) {
       unsubscribeUserResults1 = onSnapshot(userResultsQuery1, (snapshot) => {
-        const data = snapshot.docs.map(docSnap => ({ ...docSnap.data(), id: docSnap.id, firestoreId: docSnap.id }))
+        const data = snapshot.docs.map(docSnap => {
+          const d = docSnap.data()
+          return { ...d, id: d.id || docSnap.id, firestoreId: docSnap.id }
+        })
         const removedIds = snapshot.docChanges()
           .filter(c => c.type === 'removed')
           .map(c => c.doc.data()?.id || c.doc.id)
@@ -565,7 +579,10 @@ export function AuthProvider({ children }) {
     }
     if (userResultsQuery2) {
       unsubscribeUserResults2 = onSnapshot(userResultsQuery2, (snapshot) => {
-        const data = snapshot.docs.map(docSnap => ({ ...docSnap.data(), id: docSnap.id, firestoreId: docSnap.id }))
+        const data = snapshot.docs.map(docSnap => {
+          const d = docSnap.data()
+          return { ...d, id: d.id || docSnap.id, firestoreId: docSnap.id }
+        })
         const removedIds = snapshot.docChanges()
           .filter(c => c.type === 'removed')
           .map(c => c.doc.data()?.id || c.doc.id)
@@ -584,7 +601,10 @@ export function AuthProvider({ children }) {
     let unsubscribeSeasonResults = null
     if (seasonResultsQuery) {
       unsubscribeSeasonResults = onSnapshot(seasonResultsQuery, (snapshot) => {
-        const data = snapshot.docs.map(docSnap => ({ ...docSnap.data(), id: docSnap.id, firestoreId: docSnap.id }))
+        const data = snapshot.docs.map(docSnap => {
+          const d = docSnap.data()
+          return { ...d, id: d.id || docSnap.id, firestoreId: docSnap.id }
+        })
 
         const removedIds = snapshot.docChanges()
           .filter(c => c.type === 'removed')
@@ -1255,11 +1275,20 @@ const cleanUserData = (users) => {
 
   const updateResults = useCallback((updatedResults) => {
     const nextResults = Array.isArray(updatedResults) ? updatedResults : []
-    resultRowsRef.current = nextResults
-    setResults(nextResults)
-    saveResultsCache(nextResults)
-    triggerDataRefresh('results')
-  }, [triggerDataRefresh])
+
+    // Merge instead of simple overwrite to preserve any results from other listeners
+    const existing = resultRowsRef.current || []
+    const merged = [...existing]
+    nextResults.forEach(row => {
+      const idx = merged.findIndex(r => r.id === row.id)
+      if (idx !== -1) merged[idx] = row
+      else merged.push(row)
+    })
+
+    resultRowsRef.current = merged
+    publishResults({ announce: true })
+    saveResultsCache(merged)
+  }, [publishResults])
 
   const fetchMoreResults = useCallback(async (lastResult = null, limitCount = 50) => {
     try {
