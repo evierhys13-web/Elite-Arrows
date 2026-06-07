@@ -71,13 +71,29 @@ export default function SuperLeague() {
       })
   }, [activeDivision, allUsers, playerStats])
 
+  const handleRefresh = async () => {
+    triggerDataRefresh('all')
+    setRefreshKey(prev => prev + 1)
+    showToast('Refreshing Super League data...', 'info')
+    const ok = await forceFetchResults()
+    setRefreshKey(prev => prev + 1)
+    showToast(ok ? 'Standings synced!' : 'Sync failed — using cached data', ok ? 'success' : 'warning')
+  }
+
   return (
     <div className="page animate-fade-in" style={{ maxWidth: '1200px', margin: '0 auto' }}>
       <Breadcrumbs items={[{ label: 'Home', path: '/home' }, { label: 'Super League' }]} />
 
       <div className="page-header" style={{ marginBottom: '32px' }}>
-        <h1 className="page-title text-gradient" style={{ fontSize: '2.5rem' }}>Elite Super League</h1>
-        <p style={{ color: 'var(--accent-cyan)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '0.8rem' }}>Premier Darts Competition</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+          <div>
+            <h1 className="page-title text-gradient" style={{ fontSize: '2.5rem', marginBottom: '4px' }}>Elite Super League</h1>
+            <p style={{ color: 'var(--accent-cyan)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '0.8rem' }}>Premier Darts Competition</p>
+          </div>
+          <button className="btn btn-secondary btn-sm glass" onClick={handleRefresh} style={{ padding: '8px 12px' }}>
+            🔄 Sync Data
+          </button>
+        </div>
       </div>
 
       <div className="division-tabs" style={{ marginBottom: '24px' }}>

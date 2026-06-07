@@ -513,7 +513,7 @@ export function AuthProvider({ children }) {
     const userResultsQuery2 = !user?.isAdmin ? query(collection(db, 'results'), where('player2Id', '==', user.id), limit(50)) : null
 
     // Targeted listener for all approved results in current season to ensure tables update live
-    const seasonResultsQuery = (adminData?.currentSeason && !user?.isAdmin)
+    const seasonResultsQuery = (adminData?.currentSeason)
       ? query(collection(db, 'results'), where('status', '==', 'approved'), where('season', '==', adminData.currentSeason))
       : null
 
@@ -585,8 +585,14 @@ export function AuthProvider({ children }) {
     if (seasonResultsQuery) {
       unsubscribeSeasonResults = onSnapshot(seasonResultsQuery, (snapshot) => {
         const data = snapshot.docs.map(docSnap => ({ ...docSnap.data(), id: docSnap.id, firestoreId: docSnap.id }))
+
+        const removedIds = snapshot.docChanges()
+          .filter(c => c.type === 'removed')
+          .map(c => c.doc.data()?.id || c.doc.id)
+
         const existing = resultRowsRef.current || []
-        const merged = [...existing]
+        const merged = [...existing].filter(r => !removedIds.includes(r.id) && !removedIds.includes(r.firestoreId))
+
         data.forEach(row => {
           const idx = merged.findIndex(r => r.id === row.id)
           if (idx !== -1) merged[idx] = row
