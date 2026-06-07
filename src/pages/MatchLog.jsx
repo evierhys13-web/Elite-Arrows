@@ -1,7 +1,7 @@
 import { useState, useMemo, Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getResultPlayerId, isLeagueResult, isPlayoffResult } from '../utils/leagueResults'
+import { getResultPlayerId, isLeagueResult, isPlayoffResult, isSuperLeagueResult } from '../utils/leagueResults'
 import UserSearchSelect from '../components/UserSearchSelect'
 import { db, doc, setDoc } from '../firebase'
 import { useToast } from '../context/ToastContext'
@@ -11,6 +11,7 @@ export default function MatchLog() {
   const navigate = useNavigate()
   const { showToast } = useToast()
   const [activeTab, setActiveTab] = useState('toPlay')
+  const [competition, setCompetition] = useState('League') // 'League' or 'Super League'
   const [targetPlayerId, setTargetPlayerId] = useState(user?.id)
   const [showBetForm, setShowBetForm] = useState(null)
   const [betAmount, setBetAmount] = useState(10)
@@ -42,7 +43,7 @@ export default function MatchLog() {
     // Identify if a fixture already exists for this match
     const existingFixture = fixtures.find(f =>
       !f._deleted &&
-      String(f.gameType || '').toLowerCase() === 'league' &&
+      String(f.gameType || '').toLowerCase() === (competition === 'League' ? 'league' : 'super league') &&
       ((String(f.player1Id) === String(targetUser.id) && String(f.player2Id) === String(opponent.id)) ||
        (String(f.player1Id) === String(opponent.id) && String(f.player2Id) === String(targetUser.id)))
     )
@@ -69,7 +70,7 @@ export default function MatchLog() {
       username: user.username,
       gameId: gameId,
       fixtureId: existingFixture?.id || null,
-      fixtureType: 'League',
+      fixtureType: competition,
       fixturePlayer1Id: targetUser.id,
       fixturePlayer2Id: opponent.id,
       player1Name,
@@ -107,7 +108,7 @@ export default function MatchLog() {
 
   const isMe = String(targetUser.id) === String(user?.id)
 
-  const leagueResults = useMemo(() => {
+  const competitionResults = useMemo(() => {
     if (!targetUser.id) return []
     return allResults
       .filter(r => {
@@ -120,12 +121,13 @@ export default function MatchLog() {
         const resSeason = String(r.season || '').trim()
         const isSeasonMatch = resSeason === currentSeasonName || (!resSeason && currentSeasonName === 'Season 1')
 
-        return (
-          isApproved &&
-          isSeasonMatch &&
-          isTargetMatch &&
-          (isLeagueResult(r, fixturesById) || isPlayoffResult(r, fixturesById))
-        )
+        if (!isApproved || !isSeasonMatch || !isTargetMatch) return false
+
+        if (competition === 'League') {
+          return isLeagueResult(r, fixturesById) || isPlayoffResult(r, fixturesById)
+        } else {
+          return isSuperLeagueResult(r, fixturesById)
+        }
       })
       .map(r => {
         const player1Id = getResultPlayerId(r, 1, allUsers)
@@ -147,16 +149,24 @@ export default function MatchLog() {
           result: resultLabel,
           score: isPlayer1 ? `${r.score1}-${r.score2}` : `${r.score2}-${r.score1}`,
           date: r.date,
-          season: r.season
+          season: r.season,
+          gameType: r.gameType
         }
       })
       .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
-  }, [allResults, allUsers, fixturesById, targetUser.id])
+  }, [allResults, allUsers, fixturesById, targetUser.id, competition, currentSeasonName])
 
-  const playedOpponentIds = useMemo(() => leagueResults.map(m => String(m.opponentId)), [leagueResults])
+  const playedOpponentCounts = useMemo(() => {
+    const counts = {}
+    competitionResults.forEach(m => {
+      const oid = String(m.opponentId)
+      counts[oid] = (counts[oid] || 0) + 1
+    })
+    return counts
+  }, [competitionResults])
   
   const getPlayoffOpponent = () => {
-    if (!targetUser.id) return null
+    if (!targetUser.id || competition !== 'League') return null
     const allPlayoffs = fixtures.filter(f => {
       if (f._deleted) return false
       return String(f.gameType || '').toLowerCase() === 'playoff'
@@ -190,30 +200,47 @@ export default function MatchLog() {
   const opponentsToPlay = useMemo(() => {
     if (!targetUser.id) return []
 
-    const divisionOpponents = targetUser.division && targetUser.division !== 'Unassigned'
-      ? allUsers.map(u => {
-          const sDiv = activeSeasonDoc?.stagedDivisions?.[String(u.id)]
-          return { ...u, effectiveDiv: sDiv || u.division || 'Unassigned' }
-        }).filter(u =>
-          String(u.id) !== String(targetUser.id) &&
-          u.effectiveDiv === targetUser.division &&
-          !playedOpponentIds.includes(String(u.id))
-        )
-      : []
+    if (competition === 'League') {
+      const divisionOpponents = targetUser.division && targetUser.division !== 'Unassigned'
+        ? allUsers.map(u => {
+            const sDiv = activeSeasonDoc?.stagedDivisions?.[String(u.id)]
+            return { ...u, effectiveDiv: sDiv || u.division || 'Unassigned' }
+          }).filter(u =>
+            String(u.id) !== String(targetUser.id) &&
+            u.effectiveDiv === targetUser.division &&
+            !playedOpponentCounts[String(u.id)]
+          )
+        : []
 
-    const seen = new Set()
-    return [...divisionOpponents, ...(playoffOpponent && !playoffAlreadyPlayed ? [playoffOpponent] : [])].filter(u => {
-      if (seen.has(String(u.id))) return false
-      seen.add(String(u.id))
-      return true
-    })
-  }, [allUsers, targetUser.id, targetUser.division, playedOpponentIds, playoffOpponent, playoffAlreadyPlayed, activeSeasonDoc])
+      const seen = new Set()
+      return [...divisionOpponents, ...(playoffOpponent && !playoffAlreadyPlayed ? [playoffOpponent] : [])].filter(u => {
+        if (seen.has(String(u.id))) return false
+        seen.add(String(u.id))
+        return true
+      })
+    } else {
+      // Super League: play each opponent 2x
+      const slDivision = targetUser.superLeagueDivision
+      if (!slDivision) return []
+
+      return allUsers
+        .filter(u =>
+          String(u.id) !== String(targetUser.id) &&
+          u.superLeagueDivision === slDivision
+        )
+        .map(u => {
+          const playedCount = playedOpponentCounts[String(u.id)] || 0
+          return { ...u, _playedCount: playedCount, _remaining: 2 - playedCount }
+        })
+        .filter(u => u._remaining > 0)
+    }
+  }, [allUsers, targetUser.id, targetUser.division, targetUser.superLeagueDivision, playedOpponentCounts, playoffOpponent, playoffAlreadyPlayed, activeSeasonDoc, competition])
 
   return (
     <div className="page animate-fade-in">
       <div className="page-header" style={{ marginBottom: '24px' }}>
-        <h1 className="page-title text-gradient">Season Schedule</h1>
-        <p style={{ color: 'var(--text-muted)' }}>Track your progress and remaining fixtures for {currentSeasonName}</p>
+        <h1 className="page-title text-gradient">Match Log</h1>
+        <p style={{ color: 'var(--text-muted)' }}>Track progress and remaining fixtures for {currentSeasonName}</p>
       </div>
 
       <div className="card glass" style={{ marginBottom: '24px', padding: '16px' }}>
@@ -226,12 +253,29 @@ export default function MatchLog() {
         />
       </div>
 
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', overflowX: 'auto', paddingBottom: '4px' }}>
+        <button
+          className={`btn btn-sm ${competition === 'League' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setCompetition('League')}
+          style={{ borderRadius: '99px', minWidth: '120px' }}
+        >
+          Standard League
+        </button>
+        <button
+          className={`btn btn-sm ${competition === 'Super League' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setCompetition('Super League')}
+          style={{ borderRadius: '99px', minWidth: '120px' }}
+        >
+          Super League
+        </button>
+      </div>
+
       <div className="division-tabs" style={{ marginBottom: '20px' }}>
         <button 
           className={`division-tab ${activeTab === 'played' ? 'active' : ''}`}
           onClick={() => setActiveTab('played')}
         >
-          Played ({leagueResults.length})
+          Played ({competitionResults.length})
         </button>
         <button 
           className={`division-tab ${activeTab === 'toPlay' ? 'active' : ''}`}
@@ -243,12 +287,12 @@ export default function MatchLog() {
 
       {activeTab === 'played' && (
         <div className="card glass" style={{ padding: '10px' }}>
-          {leagueResults.length === 0 ? (
+          {competitionResults.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-              <p>No league games recorded for this player.</p>
+              <p>No {competition} games recorded for this player.</p>
             </div>
           ) : (
-            leagueResults.map(match => (
+            competitionResults.map(match => (
               <div key={match.id} style={{
                 padding: '16px',
                 borderBottom: '1px solid rgba(255,255,255,0.05)',
@@ -259,7 +303,7 @@ export default function MatchLog() {
                 <div>
                   <div style={{ fontWeight: '700', fontSize: '1rem' }}>vs {match.opponent}</div>
                   <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                    {match.season} • {match.date}
+                    {match.season} • {match.date} {competition === 'Super League' ? `(SL)` : ''}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
@@ -283,7 +327,7 @@ export default function MatchLog() {
         <div className="card glass" style={{ padding: '10px' }}>
           {opponentsToPlay.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px' }}>
-              <p style={{ color: 'var(--success)', fontWeight: 700 }}>Season schedule complete!</p>
+              <p style={{ color: 'var(--success)', fontWeight: 700 }}>{competition} schedule complete!</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -310,7 +354,14 @@ export default function MatchLog() {
                     </div>
                     <div>
                       <div style={{ fontWeight: '700', fontSize: '0.95rem' }}>{player.username}</div>
-                      <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{player.division} Division</div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                        {competition === 'League' ? `${player.division} Division` : `${player.superLeagueDivision} Super Rank`}
+                      </div>
+                      {competition === 'Super League' && (
+                        <div style={{ fontSize: '0.65rem', color: 'var(--accent-cyan)' }}>
+                          Played: {player._playedCount}/2
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -319,7 +370,7 @@ export default function MatchLog() {
                       <button
                         className="btn btn-primary btn-sm"
                         style={{ padding: '6px 12px', fontSize: '0.75rem' }}
-                        onClick={() => navigate(`/submit-result?opponent=${player.id}&gameType=${player._playoff ? 'Playoff' : 'League'}&season=${currentSeasonName}`)}
+                        onClick={() => navigate(`/submit-result?opponent=${player.id}&gameType=${player._playoff ? 'Playoff' : competition}&season=${currentSeasonName}`)}
                       >
                         Submit Score
                       </button>
@@ -353,7 +404,7 @@ export default function MatchLog() {
                       padding: '4px 8px',
                       borderRadius: '4px',
                       border: `1px solid ${player._playoff ? 'rgba(245, 158, 11, 0.2)' : 'rgba(0, 212, 255, 0.2)'}`
-                    }}>{player._playoff ? 'Playoff' : 'League'}</span>
+                    }}>{player._playoff ? 'Playoff' : competition}</span>
                   </div>
                 </div>
 

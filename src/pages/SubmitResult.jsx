@@ -96,11 +96,12 @@ export default function SubmitResult() {
   })
   const cups = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
 
-  const opponentUser = availablePlayers.find(p => p.id === formData.opponent)
-
   const getDisplayName = (profile, fallback = 'Unknown player') => (
     profile?.username || profile?.name || profile?.displayName || profile?.email || fallback
   )
+
+  const currentUserName = getDisplayName(user, 'You')
+
   const selectedFixture = fixtureIdParam && String(fixtureIdParam) !== String(submittedFixtureId)
     ? allFixtures.find((fixture) => String(fixture.id) === String(fixtureIdParam))
     : null
@@ -139,7 +140,7 @@ export default function SubmitResult() {
   }, [selectedFixture, opponentParam, gameTypeParam, user.id])
 
   const checkExistingLeagueMatch = (opponentId) => {
-    const existingMatch = allResults.find(r => {
+    const existingMatches = allResults.filter(r => {
       const isSameSeason = r.season === currentSeasonLabel
       const isLeagueGame = r.gameType === 'League'
       const sameDivision = r.division === user.division
@@ -149,7 +150,7 @@ export default function SubmitResult() {
       return isSameSeason && isLeagueGame && sameDivision && isBetweenPlayers && isNotRejected
     })
     
-    return existingMatch
+    return existingMatches.length > 0 ? existingMatches[0] : null
   }
 
   const handleChange = (e) => {
@@ -272,7 +273,6 @@ export default function SubmitResult() {
       return
     }
     
-    const allUsers = getAllUsers()
     const opponentUser = allUsers.find(u => u.id === formData.opponent)
     const submitterName = getDisplayName(user, 'You')
     const opponentName = getDisplayName(opponentUser, formData.opponent || 'Selected opponent')
@@ -326,7 +326,7 @@ export default function SubmitResult() {
       }
     }
 
-    const duplicateResult = allResults.find((result) => {
+    const matchingResults = allResults.filter((result) => {
       if (formData.gameType === 'Cup' && cupId && matchId) {
         return result.cupId === cupId && result.matchId === matchId && String(result.status).toLowerCase() !== 'rejected'
       }
@@ -335,22 +335,22 @@ export default function SubmitResult() {
         return String(result.fixtureId || '') === String(selectedFixture.id) && String(result.status).toLowerCase() !== 'rejected'
       }
 
-      // General check for League and Super League to prevent multiple entries for the same matchup
-      if (formData.gameType === 'League' || formData.gameType === 'Super League') {
-        const isSameSeason = result.season === formData.season
-        const isSameType = result.gameType === formData.gameType
-        const isBetweenPlayers = (String(result.player1Id) === String(user.id) && String(result.player2Id) === String(formData.opponent)) ||
-                                   (String(result.player2Id) === String(user.id) && String(result.player1Id) === String(formData.opponent))
-        const isNotRejected = String(result.status).toLowerCase() !== 'rejected'
-        return isSameSeason && isSameType && isBetweenPlayers && isNotRejected
-      }
-
-      return false
+      const isSameSeason = result.season === currentSeasonLabel
+      const isSameType = result.gameType === formData.gameType
+      const isBetweenPlayers = (String(result.player1Id) === String(user.id) && String(result.player2Id) === String(formData.opponent)) ||
+                                 (String(result.player2Id) === String(user.id) && String(result.player1Id) === String(formData.opponent))
+      const isNotRejected = String(result.status).toLowerCase() !== 'rejected'
+      return isSameSeason && isSameType && isBetweenPlayers && isNotRejected
     })
 
-    if (duplicateResult) {
-      setError(`A ${formData.gameType} result for this matchup has already been submitted and is currently ${duplicateResult.status}.`)
-      return
+    if (formData.gameType === 'Super League') {
+      if (matchingResults.length >= 2) {
+        setError(`You've already played ${opponentName} 2 times in the Super League this season. No more matches allowed.`)
+        return
+      }
+    } else if (formData.gameType === 'League' && matchingResults.length >= 1) {
+       setError(`A ${formData.gameType} result for this matchup has already been submitted and is currently ${matchingResults[0].status}.`)
+       return
     }
 
     try {
@@ -477,7 +477,7 @@ export default function SubmitResult() {
     }
   }
 
-  const getOpponentStatus = (opponentId, opponentName) => {
+  const getOpponentStatus = (opponentId) => {
     if (formData.gameType === 'Friendly') return null
     const existingMatch = checkExistingLeagueMatch(opponentId)
     if (existingMatch) {
@@ -625,26 +625,7 @@ export default function SubmitResult() {
                       const cup = cups.find(c => c.id === f.cupId)
                       const opponentId = getFixtureOpponentId(f)
                       const opponent = allUsers.find(u => u.id === opponentId)
-                      if (submitted) {
-    return (
-      <div className="page" style={{ maxWidth: '600px', margin: '100px auto', textAlign: 'center' }}>
-        <div className="card glass animate-bounce-in" style={{ padding: '40px' }}>
-          <div style={{ fontSize: '4rem', marginBottom: '20px' }}>✅</div>
-          <h2 className="text-gradient" style={{ fontSize: '2rem', marginBottom: '16px' }}>Result Submitted!</h2>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '30px' }}>
-            Your match result has been sent for admin approval.
-            You will be redirected shortly...
-          </p>
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-            <button className="btn btn-primary" onClick={() => navigate('/home')}>Go to Home</button>
-            <button className="btn btn-secondary" onClick={() => navigate('/table')}>View Standings</button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  return (
+                      return (
                         <option key={f.id} value={opponentId}>
                           {cup?.name || 'Cup'} - vs {getDisplayName(opponent, 'Unknown')}
                         </option>
@@ -661,27 +642,8 @@ export default function SubmitResult() {
                   >
                     <option value="">Select opponent</option>
                     {opponentOptions.map(p => {
-                      const status = getOpponentStatus(p.id, getDisplayName(p))
-                      if (submitted) {
-    return (
-      <div className="page" style={{ maxWidth: '600px', margin: '100px auto', textAlign: 'center' }}>
-        <div className="card glass animate-bounce-in" style={{ padding: '40px' }}>
-          <div style={{ fontSize: '4rem', marginBottom: '20px' }}>✅</div>
-          <h2 className="text-gradient" style={{ fontSize: '2rem', marginBottom: '16px' }}>Result Submitted!</h2>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '30px' }}>
-            Your match result has been sent for admin approval.
-            You will be redirected shortly...
-          </p>
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-            <button className="btn btn-primary" onClick={() => navigate('/home')}>Go to Home</button>
-            <button className="btn btn-secondary" onClick={() => navigate('/table')}>View Standings</button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  return (
+                      const status = getOpponentStatus(p.id)
+                      return (
                         <option key={p.id} value={p.id}>
                           {getDisplayName(p)} ({p.division}){formData.gameType === 'League' && status?.played ? ' - Played' : ''}
                         </option>
@@ -957,26 +919,7 @@ export default function SubmitResult() {
             {userSubmittedResults.map(result => {
               const statusDisplay = getResultStatusDisplay(result.status)
               const proofUploaded = Boolean(result.proofImage || result.hasProofImage)
-              if (submitted) {
-    return (
-      <div className="page" style={{ maxWidth: '600px', margin: '100px auto', textAlign: 'center' }}>
-        <div className="card glass animate-bounce-in" style={{ padding: '40px' }}>
-          <div style={{ fontSize: '4rem', marginBottom: '20px' }}>✅</div>
-          <h2 className="text-gradient" style={{ fontSize: '2rem', marginBottom: '16px' }}>Result Submitted!</h2>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '30px' }}>
-            Your match result has been sent for admin approval.
-            You will be redirected shortly...
-          </p>
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-            <button className="btn btn-primary" onClick={() => navigate('/home')}>Go to Home</button>
-            <button className="btn btn-secondary" onClick={() => navigate('/table')}>View Standings</button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  return (
+              return (
                 <div
                   key={result.id || result.firestoreId}
                   style={{
