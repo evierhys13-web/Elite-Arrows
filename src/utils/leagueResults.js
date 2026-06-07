@@ -58,9 +58,12 @@ export const isSuperLeagueResult = (result, fixturesById = {}) => {
 
   // Also catch results that don't have the explicit 'super league' gameType
   // but were submitted with 11 legs total (Super League format)
+  // Or at least one player reached 6 legs (First to 6)
   const s1 = Number(result.score1) || 0
   const s2 = Number(result.score2) || 0
-  if ((s1 === 6 || s2 === 6) && (s1 + s2) <= 11 && (s1 + s2) > 6) {
+
+  // Format: One player has 6, and total legs is 6 to 11
+  if ((s1 === 6 || s2 === 6) && (s1 + s2) <= 11 && (s1 + s2) >= 6) {
     return true
   }
 

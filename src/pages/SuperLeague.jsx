@@ -48,7 +48,8 @@ export default function SuperLeague() {
     return derivePlayerStatsFromResults(allUsers, results, {
       fixtures,
       adminData,
-      superLeagueOnly: true
+      superLeagueOnly: true,
+      currentSeason: adminData?.currentSeason || 'Season 1'
     })
   }, [allUsers, results, fixtures, adminData, refreshKey])
 
