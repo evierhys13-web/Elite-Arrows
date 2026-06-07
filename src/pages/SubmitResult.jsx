@@ -17,11 +17,12 @@ const INITIAL_RESULT_FORM = {
   opponentHighestCheckout: '',
   yourDoubleSuccess: '',
   opponentDoubleSuccess: '',
-  proofImage: ''
+  proofImage: '',
+  season: ''
 }
 
 export default function SubmitResult() {
-  const { user, getAllUsers, getFixtures, getResults, updateResults, updateFixtures, addTokens, triggerDataRefresh, notifyAdmins, adminData } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, updateResults, updateFixtures, addTokens, triggerDataRefresh, notifyAdmins, adminData, getSeasons } = useAuth()
   const { showToast } = useToast()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -47,15 +48,21 @@ export default function SubmitResult() {
   const seasonParam = searchParams.get('season')
   const allFixtures = getFixtures()
   const allResults = getResults()
+  const seasons = getSeasons()
 
-  const currentSeasonLabel = seasonParam || adminData?.currentSeason || 'Season 1'
-  const seasonsData = JSON.parse(localStorage.getItem('eliteArrowsSeasons') || '[]')
-  const targetSeasonDoc = seasonsData.find(s => s.name === currentSeasonLabel)
+  const currentSeasonLabel = formData.season || seasonParam || adminData?.currentSeason || 'Season 1'
+  const targetSeasonDoc = seasons.find(s => s.name === currentSeasonLabel)
   const stagedDiv = targetSeasonDoc?.stagedDivisions?.[String(user.id)] || targetSeasonDoc?.stagedDivisions?.[user.id]
 
   const effectiveDivision = formData.gameType === 'Super League'
     ? (user.superLeagueDivision || 'Amateur')
     : (stagedDiv || user.division || 'Unassigned')
+
+  useEffect(() => {
+    if (!formData.season && adminData?.currentSeason) {
+      setFormData(prev => ({ ...prev, season: adminData.currentSeason }))
+    }
+  }, [adminData?.currentSeason])
 
   const userSubmittedResults = allResults
     .filter(result => (
@@ -94,10 +101,19 @@ export default function SubmitResult() {
   const getDisplayName = (profile, fallback = 'Unknown player') => (
     profile?.username || profile?.name || profile?.displayName || profile?.email || fallback
   )
-  const currentUserName = getDisplayName(user, 'You')
   const selectedFixture = fixtureIdParam && String(fixtureIdParam) !== String(submittedFixtureId)
     ? allFixtures.find((fixture) => String(fixture.id) === String(fixtureIdParam))
     : null
+
+  const isFixtureResultSent = selectedFixture && (
+    allResults.some(r => String(r.fixtureId || '') === String(selectedFixture.id) && String(r.status).toLowerCase() !== 'rejected')
+  )
+
+  useEffect(() => {
+    if (isFixtureResultSent) {
+      setError('A result has already been submitted for this fixture.')
+    }
+  }, [isFixtureResultSent])
 
   useEffect(() => {
     if (selectedFixture) {
@@ -123,15 +139,14 @@ export default function SubmitResult() {
   }, [selectedFixture, opponentParam, gameTypeParam, user.id])
 
   const checkExistingLeagueMatch = (opponentId) => {
-    const approvedResults = allResults.filter(r => String(r.status).toLowerCase() === 'approved')
-
-    const existingMatch = approvedResults.find(r => {
+    const existingMatch = allResults.find(r => {
       const isSameSeason = r.season === currentSeasonLabel
       const isLeagueGame = r.gameType === 'League'
       const sameDivision = r.division === user.division
       const isBetweenPlayers = (String(r.player1Id) === String(user.id) && String(r.player2Id) === String(opponentId)) ||
                                  (String(r.player2Id) === String(user.id) && String(r.player1Id) === String(opponentId))
-      return isSameSeason && isLeagueGame && sameDivision && isBetweenPlayers
+      const isNotRejected = String(r.status).toLowerCase() !== 'rejected'
+      return isSameSeason && isLeagueGame && sameDivision && isBetweenPlayers && isNotRejected
     })
     
     return existingMatch
@@ -320,11 +335,21 @@ export default function SubmitResult() {
         return String(result.fixtureId || '') === String(selectedFixture.id) && String(result.status).toLowerCase() !== 'rejected'
       }
 
+      // General check for League and Super League to prevent multiple entries for the same matchup
+      if (formData.gameType === 'League' || formData.gameType === 'Super League') {
+        const isSameSeason = result.season === formData.season
+        const isSameType = result.gameType === formData.gameType
+        const isBetweenPlayers = (String(result.player1Id) === String(user.id) && String(result.player2Id) === String(formData.opponent)) ||
+                                   (String(result.player2Id) === String(user.id) && String(result.player1Id) === String(formData.opponent))
+        const isNotRejected = String(result.status).toLowerCase() !== 'rejected'
+        return isSameSeason && isSameType && isBetweenPlayers && isNotRejected
+      }
+
       return false
     })
 
     if (duplicateResult) {
-      setError('A result for this fixture has already been submitted.')
+      setError(`A ${formData.gameType} result for this matchup has already been submitted and is currently ${duplicateResult.status}.`)
       return
     }
 
@@ -344,7 +369,7 @@ export default function SubmitResult() {
         score2: parseInt(formData.opponentScore),
         division: effectiveDivision,
         gameType: formData.gameType,
-        season: currentSeasonLabel,
+        season: formData.season || adminData?.currentSeason || 'Season 1',
         date: new Date().toISOString().split('T')[0],
         submittedAt: new Date().toISOString(),
         bestOf: formData.bestOf,
@@ -420,9 +445,14 @@ export default function SubmitResult() {
 
     // Notify user and navigate back
     showToast?.('Result submitted!', 'success')
+
     setTimeout(() => {
-      navigate(-1)
-    }, 1500)
+      if (window.history.length > 1) {
+        navigate(-1)
+      } else {
+        navigate('/home')
+      }
+    }, 2000)
 
     window.scrollTo({ top: 0, behavior: 'smooth' })
 
@@ -463,6 +493,25 @@ export default function SubmitResult() {
     return { label: 'Pending admin approval', color: 'var(--warning)' }
   }
 
+  if (submitted) {
+    return (
+      <div className="page" style={{ maxWidth: '600px', margin: '100px auto', textAlign: 'center' }}>
+        <div className="card glass animate-bounce-in" style={{ padding: '40px' }}>
+          <div style={{ fontSize: '4rem', marginBottom: '20px' }}>✅</div>
+          <h2 className="text-gradient" style={{ fontSize: '2rem', marginBottom: '16px' }}>Result Submitted!</h2>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '30px' }}>
+            Your match result has been sent for admin approval.
+            You will be redirected shortly...
+          </p>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+            <button className="btn btn-primary" onClick={() => navigate('/home')}>Go to Home</button>
+            <button className="btn btn-secondary" onClick={() => navigate('/table')}>View Standings</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="page" style={{ maxWidth: '800px', margin: '0 auto', padding: '15px' }}>
       <div className="page-header" style={{ marginBottom: '25px', textAlign: 'center' }}>
@@ -487,6 +536,20 @@ export default function SubmitResult() {
                 </button>
               ))}
             </div>
+          </div>
+
+          <div className="form-group" style={{ marginBottom: '25px' }}>
+            <label style={{ fontWeight: '600', marginBottom: '8px', display: 'block' }}>Season</label>
+            <select
+              name="season"
+              value={formData.season}
+              onChange={handleChange}
+              className="glass"
+              style={{ width: '100%', padding: '12px', borderRadius: '8px' }}
+            >
+              {seasons.map(s => <option key={s.id} value={s.name}>{s.name} {s.isArchived ? '(Archived)' : s.name === adminData?.currentSeason ? '(Active)' : ''}</option>)}
+              {!seasons.find(s => s.name === 'Season 1') && <option value="Season 1">Season 1</option>}
+            </select>
           </div>
 
           {error && (
@@ -562,7 +625,26 @@ export default function SubmitResult() {
                       const cup = cups.find(c => c.id === f.cupId)
                       const opponentId = getFixtureOpponentId(f)
                       const opponent = allUsers.find(u => u.id === opponentId)
-                      return (
+                      if (submitted) {
+    return (
+      <div className="page" style={{ maxWidth: '600px', margin: '100px auto', textAlign: 'center' }}>
+        <div className="card glass animate-bounce-in" style={{ padding: '40px' }}>
+          <div style={{ fontSize: '4rem', marginBottom: '20px' }}>✅</div>
+          <h2 className="text-gradient" style={{ fontSize: '2rem', marginBottom: '16px' }}>Result Submitted!</h2>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '30px' }}>
+            Your match result has been sent for admin approval.
+            You will be redirected shortly...
+          </p>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+            <button className="btn btn-primary" onClick={() => navigate('/home')}>Go to Home</button>
+            <button className="btn btn-secondary" onClick={() => navigate('/table')}>View Standings</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
                         <option key={f.id} value={opponentId}>
                           {cup?.name || 'Cup'} - vs {getDisplayName(opponent, 'Unknown')}
                         </option>
@@ -580,7 +662,26 @@ export default function SubmitResult() {
                     <option value="">Select opponent</option>
                     {opponentOptions.map(p => {
                       const status = getOpponentStatus(p.id, getDisplayName(p))
-                      return (
+                      if (submitted) {
+    return (
+      <div className="page" style={{ maxWidth: '600px', margin: '100px auto', textAlign: 'center' }}>
+        <div className="card glass animate-bounce-in" style={{ padding: '40px' }}>
+          <div style={{ fontSize: '4rem', marginBottom: '20px' }}>✅</div>
+          <h2 className="text-gradient" style={{ fontSize: '2rem', marginBottom: '16px' }}>Result Submitted!</h2>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '30px' }}>
+            Your match result has been sent for admin approval.
+            You will be redirected shortly...
+          </p>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+            <button className="btn btn-primary" onClick={() => navigate('/home')}>Go to Home</button>
+            <button className="btn btn-secondary" onClick={() => navigate('/table')}>View Standings</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
                         <option key={p.id} value={p.id}>
                           {getDisplayName(p)} ({p.division}){formData.gameType === 'League' && status?.played ? ' - Played' : ''}
                         </option>
@@ -856,7 +957,26 @@ export default function SubmitResult() {
             {userSubmittedResults.map(result => {
               const statusDisplay = getResultStatusDisplay(result.status)
               const proofUploaded = Boolean(result.proofImage || result.hasProofImage)
-              return (
+              if (submitted) {
+    return (
+      <div className="page" style={{ maxWidth: '600px', margin: '100px auto', textAlign: 'center' }}>
+        <div className="card glass animate-bounce-in" style={{ padding: '40px' }}>
+          <div style={{ fontSize: '4rem', marginBottom: '20px' }}>✅</div>
+          <h2 className="text-gradient" style={{ fontSize: '2rem', marginBottom: '16px' }}>Result Submitted!</h2>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '30px' }}>
+            Your match result has been sent for admin approval.
+            You will be redirected shortly...
+          </p>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+            <button className="btn btn-primary" onClick={() => navigate('/home')}>Go to Home</button>
+            <button className="btn btn-secondary" onClick={() => navigate('/table')}>View Standings</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
                 <div
                   key={result.id || result.firestoreId}
                   style={{

@@ -73,10 +73,10 @@ const getCachedResults = () => {
 
 const saveResultsCache = (results) => {
   const resultList = Array.isArray(results) ? results : []
-  // Only cache recent results or user's own results to save space
+  // Cache up to 1000 results to ensure standings accuracy across refreshes
   const limitedResults = resultList
     .sort((a, b) => new Date(b.date || b.submittedAt || 0) - new Date(a.date || a.submittedAt || 0))
-    .slice(0, 100)
+    .slice(0, 1000)
 
   try {
     localStorage.setItem(RESULT_CACHE_KEY, JSON.stringify(limitedResults.map(stripResultProofForCache)))
@@ -512,6 +512,11 @@ export function AuthProvider({ children }) {
     const userResultsQuery1 = !user?.isAdmin ? query(collection(db, 'results'), where('player1Id', '==', user.id), limit(50)) : null
     const userResultsQuery2 = !user?.isAdmin ? query(collection(db, 'results'), where('player2Id', '==', user.id), limit(50)) : null
 
+    // Targeted listener for all approved results in current season to ensure tables update live
+    const seasonResultsQuery = (adminData?.currentSeason && !user?.isAdmin)
+      ? query(collection(db, 'results'), where('status', '==', 'approved'), where('season', '==', adminData.currentSeason))
+      : null
+
     const unsubscribeResults = onSnapshot(resultsQuery, (snapshot) => {
       const newRows = snapshot.docs.map(docSnap => {
         const data = docSnap.data()
@@ -566,6 +571,22 @@ export function AuthProvider({ children }) {
           .map(c => c.doc.data()?.id || c.doc.id)
         const existing = resultRowsRef.current || []
         const merged = [...existing].filter(r => !removedIds.includes(r.id) && !removedIds.includes(r.firestoreId))
+        data.forEach(row => {
+          const idx = merged.findIndex(r => r.id === row.id)
+          if (idx !== -1) merged[idx] = row
+          else merged.push(row)
+        })
+        resultRowsRef.current = merged
+        publishResults({ announce: true })
+      })
+    }
+
+    let unsubscribeSeasonResults = null
+    if (seasonResultsQuery) {
+      unsubscribeSeasonResults = onSnapshot(seasonResultsQuery, (snapshot) => {
+        const data = snapshot.docs.map(docSnap => ({ ...docSnap.data(), id: docSnap.id, firestoreId: docSnap.id }))
+        const existing = resultRowsRef.current || []
+        const merged = [...existing]
         data.forEach(row => {
           const idx = merged.findIndex(r => r.id === row.id)
           if (idx !== -1) merged[idx] = row
@@ -662,6 +683,7 @@ export function AuthProvider({ children }) {
       unsubscribeResults()
       if (unsubscribeUserResults1) unsubscribeUserResults1()
       if (unsubscribeUserResults2) unsubscribeUserResults2()
+      if (unsubscribeSeasonResults) unsubscribeSeasonResults()
       unsubscribeFixtures()
       if (unsubscribeFixtures2) unsubscribeFixtures2()
       unsubscribeSeasons()
@@ -1242,52 +1264,57 @@ const cleanUserData = (users) => {
         limit(limitCount)
       )
 
-      // If we had startAfter support I'd use it here, but for now we'll just fetch more
       const snapshot = await getDocsFromServer(q)
       const data = snapshot.docs.map(docSnap => {
         const d = docSnap.data()
         return { ...d, id: d.id || docSnap.id, firestoreId: docSnap.id }
       })
 
-      setResults(prev => {
-        const merged = [...prev]
-        data.forEach(item => {
-          const idx = merged.findIndex(r => r.id === item.id)
-          if (idx === -1) merged.push(item)
-        })
-        return merged
+      const existing = resultRowsRef.current || []
+      const merged = [...existing]
+      data.forEach(item => {
+        const idx = merged.findIndex(r => r.id === item.id)
+        if (idx === -1) merged.push(item)
       })
+      resultRowsRef.current = merged
+      publishResults({ announce: true })
+
       return data
     } catch (e) {
       console.error('fetchMoreResults error:', e)
       return []
     }
-  }, [])
+  }, [publishResults])
 
   const fetchResultsBySeason = useCallback(async (seasonName) => {
     try {
-      const q = query(collection(db, 'results'), where('season', '==', seasonName), where('status', '==', 'approved'))
+      // For Season 1, we fetch more broadly to catch legacy results that might not have the 'season' field set
+      const q = seasonName === 'Season 1'
+        ? query(collection(db, 'results'), where('status', '==', 'approved'))
+        : query(collection(db, 'results'), where('season', '==', seasonName), where('status', '==', 'approved'))
+
       const snapshot = await getDocsFromServer(q)
       const seasonResults = snapshot.docs.map(docSnap => {
         const data = docSnap.data()
         return { ...data, id: data.id || docSnap.id, firestoreId: docSnap.id }
       })
 
-      setResults(prev => {
-        const merged = [...prev]
-        seasonResults.forEach(row => {
-          const idx = merged.findIndex(r => r.id === row.id)
-          if (idx !== -1) merged[idx] = row
-          else merged.push(row)
-        })
-        return merged
+      const existing = resultRowsRef.current || []
+      const merged = [...existing]
+      seasonResults.forEach(row => {
+        const idx = merged.findIndex(r => r.id === row.id)
+        if (idx !== -1) merged[idx] = row
+        else merged.push(row)
       })
+      resultRowsRef.current = merged
+      publishResults({ announce: true })
+
       return seasonResults
     } catch (e) {
       console.error('fetchResultsBySeason error:', e)
       return []
     }
-  }, [])
+  }, [publishResults])
 
   const fetchFixturesBySeason = useCallback(async (seasonName) => {
     try {

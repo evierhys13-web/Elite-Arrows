@@ -2,6 +2,16 @@ import React, { useState, useEffect } from 'react';
 
 const CHANGELOG = [
   {
+    version: '2.4.0',
+    date: 'June 2026',
+    changes: [
+      { type: 'feature', title: 'Premium Super League', description: 'The Elite Super League is now available for all subscribed members with full standings and regulation tracking.' },
+      { type: 'feature', title: 'Play Online & Local', description: 'Challenge any player globally or play locally with full manual scoring, glass shot cards, and camera support.' },
+      { type: 'improvement', title: 'Google Play Integration', description: 'Direct subscription management via Google Play Store for seamless Elite Pass activation.' },
+      { type: 'improvement', title: 'Real-Time Sync', description: 'Cup brackets, disputes, and all league data now sync instantly across all users.' }
+    ]
+  },
+  {
     version: '2.3.0',
     date: 'June 2026',
     changes: [

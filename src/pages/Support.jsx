@@ -1,13 +1,104 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { db, supportRequestsCollection, doc, setDoc } from '../firebase'
+import { DiagnosticBot } from '../utils/DiagnosticBot'
 
 export default function Support() {
-  const { user, getAllUsers } = useAuth()
-  const [activeTab, setActiveTab] = useState('support')
+  const { user, getAllUsers, getResults, getCups, advanceCupBracket, triggerDataRefresh } = useAuth()
+  const [activeTab, setActiveTab] = useState('bot')
   const [supportForm, setSupportForm] = useState({ issue: '', description: '' })
   const [reportForm, setReportForm] = useState({ reportType: '', targetUser: '', description: '' })
   const [submitted, setSubmitted] = useState(false)
+
+  // AI Assistant State
+  const [messages, setMessages] = useState([
+    { text: `Hello ${user?.username || ''}! I'm your Elite Arrows Assistant. How can I help you today?`, isBot: true }
+  ])
+  const [input, setInput] = useState('')
+  const [isTyping, setIsTyping] = useState(false)
+  const chatEndRef = useRef(null)
+
+  const scrollToBottom = () => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault()
+    if (!input.trim()) return
+
+    const userMsg = input
+    setMessages(prev => [...prev, { text: userMsg, isBot: false }])
+    setInput('')
+    setIsTyping(true)
+
+    const canFix = user.isAdmin || user.isSubscribed
+
+    // Simulate bot delay
+    setTimeout(async () => {
+      let botResponse = DiagnosticBot.getResponseFor(userMsg, canFix)
+
+      const lowerMsg = userMsg.toLowerCase()
+
+      // Handle Admin/Subscriber Fixes
+      if (canFix && (lowerMsg.includes('duplicate') || lowerMsg.includes('double')) && lowerMsg.includes('result')) {
+        setMessages(prev => [...prev, { text: "Scanning for duplicates...", isBot: true }])
+        const res = await DiagnosticBot.fixDuplicatedLeagueResults(getResults())
+        botResponse = res.message
+        if (res.fixed > 0) triggerDataRefresh('results')
+      }
+      else if (canFix && (lowerMsg.includes('bracket') || lowerMsg.includes('cup')) && (lowerMsg.includes('fix') || lowerMsg.includes('sync'))) {
+        setMessages(prev => [...prev, { text: "Synchronizing cup brackets...", isBot: true }])
+        const res = await DiagnosticBot.fixCupBrackets(getCups(), getResults(), advanceCupBracket)
+        botResponse = res.message
+        if (res.fixed > 0) triggerDataRefresh('all')
+      }
+      // Standard Diagnostic
+      else if (lowerMsg.includes('diagnostic') || lowerMsg.includes('fix') || lowerMsg.includes('check')) {
+        setMessages(prev => [...prev, { text: "Running diagnostics...", isBot: true }])
+        const results = await DiagnosticBot.runFullCheck()
+
+        let report = "Diagnostics Complete:\n"
+        report += `• Network: ${results.network.connected ? '✅ Online' : '❌ Offline'}\n`
+        report += `• Camera: ${results.camera.status === 'granted' ? '✅ Ready' : '⚠️ ' + results.camera.status}\n`
+
+        if (results.camera.action) {
+          botResponse = report + "\n" + results.camera.action
+        } else if (!results.network.connected) {
+          botResponse = report + "\n" + results.network.action
+        } else {
+          botResponse = report + "\nEverything seems to be working correctly! If you're still having trouble, please describe the issue."
+        }
+      }
+
+      setMessages(prev => [...prev, { text: botResponse, isBot: true }])
+      setIsTyping(false)
+    }, 1000)
+  }
+
+  const runQuickFix = async () => {
+    setMessages(prev => [...prev, { text: "Starting quick fix...", isBot: false }])
+    setIsTyping(true)
+
+    const results = await DiagnosticBot.runFullCheck()
+    let fixApplied = false
+
+    if (results.camera.status !== 'granted') {
+      await DiagnosticBot.checkCamera().then(c => c.fix?.())
+      fixApplied = true
+    }
+
+    setTimeout(() => {
+      setMessages(prev => [...prev, {
+        text: fixApplied ? "I've attempted to fix your camera permissions. Please try again!" : "I checked everything and it looks good. If you're still having issues, try restarting the app.",
+        isBot: true
+      }])
+      setIsTyping(false)
+    }, 1500)
+  }
 
   const admins = getAllUsers().filter(u => u.isAdmin)
   const allUsers = getAllUsers().filter(u => u.id !== user.id)
@@ -83,20 +174,78 @@ export default function Support() {
         <h1 className="page-title">Support</h1>
       </div>
 
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', overflowX: 'auto', paddingBottom: '5px' }}>
+        <button
+          className={`division-tab ${activeTab === 'bot' ? 'active' : ''}`}
+          onClick={() => setActiveTab('bot')}
+        >
+          AI Assistant
+        </button>
         <button
           className={`division-tab ${activeTab === 'support' ? 'active' : ''}`}
           onClick={() => setActiveTab('support')}
         >
-          Get Help
+          Submit Ticket
         </button>
         <button
           className={`division-tab ${activeTab === 'report' ? 'active' : ''}`}
           onClick={() => setActiveTab('report')}
         >
-          Report User/Content
+          Report
         </button>
       </div>
+
+      {activeTab === 'bot' && (
+        <div className="card" style={{ height: '500px', display: 'flex', flexDirection: 'column', padding: '0' }}>
+          <div style={{ padding: '15px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h3 className="card-title" style={{ margin: 0 }}>Elite Assistant</h3>
+              <p style={{ fontSize: '12px', color: 'var(--success)', margin: 0 }}>● Online & Ready to Fix</p>
+            </div>
+            <button className="btn btn-outline btn-sm" onClick={runQuickFix} style={{ fontSize: '12px' }}>
+              Run Quick Fix
+            </button>
+          </div>
+
+          <div style={{ flex: 1, overflowY: 'auto', padding: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {messages.map((m, i) => (
+              <div key={i} style={{
+                alignSelf: m.isBot ? 'flex-start' : 'flex-end',
+                background: m.isBot ? 'var(--card-bg)' : 'var(--primary)',
+                color: m.isBot ? 'var(--text-main)' : 'white',
+                padding: '10px 15px',
+                borderRadius: m.isBot ? '15px 15px 15px 0' : '15px 15px 0 15px',
+                maxWidth: '85%',
+                fontSize: '14px',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                whiteSpace: 'pre-line'
+              }}>
+                {m.text}
+              </div>
+            ))}
+            {isTyping && (
+              <div style={{ alignSelf: 'flex-start', background: 'var(--card-bg)', padding: '10px 15px', borderRadius: '15px 15px 15px 0', fontSize: '14px' }}>
+                Assistant is thinking...
+              </div>
+            )}
+            <div ref={chatEndRef} />
+          </div>
+
+          <form onSubmit={handleSendMessage} style={{ padding: '15px', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '10px' }}>
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Type your problem here..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              style={{ marginBottom: 0 }}
+            />
+            <button type="submit" className="btn btn-primary" style={{ padding: '0 20px' }}>
+              Send
+            </button>
+          </form>
+        </div>
+      )}
 
       {activeTab === 'support' && (
         <div className="card" style={{ marginBottom: '20px' }}>

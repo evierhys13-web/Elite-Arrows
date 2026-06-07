@@ -16,13 +16,24 @@ const DIVISION_COLORS = {
 export default function SuperLeague() {
   const [activeTab, setActiveTab] = useState('table')
   const [activeDivision, setActiveDivision] = useState('Premier')
-  const { user, getAllUsers, getFixtures, getResults, triggerDataRefresh, dataRefreshTrigger, adminData } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, triggerDataRefresh, dataRefreshTrigger, adminData, fetchResultsBySeason } = useAuth()
   const { showToast } = useToast()
   const [refreshKey, setRefreshKey] = useState(0)
+  const [loadingData, setLoadingData] = useState(false)
   const [editingManual, setEditingManual] = useState(null)
   const [manualForm, setManualForm] = useState({ played: 0, wins: 0, losses: 0, points: 0, legsWon: 0, legsLost: 0 })
 
   const isAdmin = user?.isAdmin === true || user?.isTournamentAdmin === true || user?.isCupAdmin === true
+
+  useEffect(() => {
+    const syncData = async () => {
+      setLoadingData(true)
+      const currentSeason = adminData?.currentSeason || 'Season 1'
+      await fetchResultsBySeason(currentSeason)
+      setLoadingData(false)
+    }
+    syncData()
+  }, [adminData?.currentSeason, fetchResultsBySeason])
 
   useEffect(() => {
     setRefreshKey(prev => prev + 1)
@@ -103,7 +114,14 @@ export default function SuperLeague() {
                   </tr>
                 </thead>
                 <tbody>
-                  {playersInDivision.length === 0 ? (
+                  {loadingData ? (
+                    <tr>
+                      <td colSpan={7} style={{ textAlign: 'center', padding: '60px' }}>
+                        <div className="spinner" style={{ margin: '0 auto 10px', width: '30px', height: '30px' }}></div>
+                        <span style={{ color: 'var(--text-muted)' }}>Syncing Super League standings...</span>
+                      </td>
+                    </tr>
+                  ) : playersInDivision.length === 0 ? (
                     <tr>
                       <td colSpan={7} style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>No players assigned to {activeDivision} yet.</td>
                     </tr>

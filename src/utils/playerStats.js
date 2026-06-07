@@ -101,10 +101,9 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
       const gt = String(result.gameType || '').toLowerCase().trim()
       const nonLeague = ['cup', 'friendly', 'playoff', 'tournament', 'super league']
       if (nonLeague.some(t => gt.includes(t))) return false
-      // Reject unlabeled results (no gameType or gameType doesn't contain 'league')
-      // This closes the legacy fallback gap where cup/friendly results with <=8 legs
-      // could slip through isLeagueResult. Run Deep Sync to label all results properly.
-      if (!gt.includes('league')) return false
+
+      // Removed the strict !gt.includes('league') check to allow legacy/unlabeled Season 1 results.
+      // isLeagueResult already performs the necessary validation for these cases.
     }
 
     // Fallback check if playoffs are explicitly wanted

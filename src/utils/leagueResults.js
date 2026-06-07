@@ -54,11 +54,19 @@ export const isLeagueResult = (result, fixturesById = {}) => {
 
 export const isSuperLeagueResult = (result, fixturesById = {}) => {
   const gameType = normalizeText(result.gameType)
-  if (gameType === 'super league') return true
+  if (gameType.includes('super league')) return true
+
+  // Also catch results that don't have the explicit 'super league' gameType
+  // but were submitted with 11 legs total (Super League format)
+  const s1 = Number(result.score1) || 0
+  const s2 = Number(result.score2) || 0
+  if ((s1 === 6 || s2 === 6) && (s1 + s2) <= 11 && (s1 + s2) > 6) {
+    return true
+  }
 
   const fixture = result.fixtureId ? fixturesById[String(result.fixtureId)] : null
   const fixtureGameType = normalizeText(fixture?.gameType)
-  return fixtureGameType === 'super league'
+  return fixtureGameType.includes('super league')
 }
 
 export const isPlayoffResult = (result, fixturesById = {}) => {
