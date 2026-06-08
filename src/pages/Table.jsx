@@ -35,7 +35,7 @@ export default function Table() {
   const [selectedSeason, setSelectedSeason] = useState(
     adminData?.currentSeason || "Season 1",
   );
-  const [loadingSeason, setLoadingSeason] = useState(false);
+  const [loadingSeason, setLoadingSeason] = useState(true);
   const [hasInitializedSeason, setHasInitializedSeason] = useState(false);
 
   useEffect(() => {
