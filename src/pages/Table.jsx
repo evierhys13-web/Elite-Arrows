@@ -98,9 +98,6 @@ export default function Table() {
 
   useEffect(() => {
     setRefreshKey((prev) => prev + 1);
-    // Re-fetch season results when data changes (e.g. admin approves a result)
-    // since we no longer have the live seasonResultsQuery listener
-    fetchResultsBySeason(selectedSeason);
   }, [dataRefreshTrigger]);
 
   const allUsers = getAllUsers();
