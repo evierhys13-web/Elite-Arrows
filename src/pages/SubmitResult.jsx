@@ -18,6 +18,10 @@ const INITIAL_RESULT_FORM = {
   yourDoubleSuccess: '',
   opponentDoubleSuccess: '',
   proofImage: '',
+  proofVideo: '',
+  highlightUrl: '',
+  isHighlight: false,
+  highlightTitle: '',
   season: ''
 }
 
@@ -228,6 +232,28 @@ export default function SubmitResult() {
     }
   }
 
+  const handleVideoUpload = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        setError('Video must be less than 10MB. Please use a link for larger videos.')
+        return
+      }
+
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setFormData(prev => ({ ...prev, proofVideo: reader.result, proofImage: '' }))
+      }
+      reader.onerror = () => setError('Could not read that video file.')
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const removeVideo = () => {
+    setFormData(prev => ({ ...prev, proofVideo: '' }))
+    clearProofInputs()
+  }
+
   const clearProofInputs = () => {
     if (cameraInputRef.current) {
       cameraInputRef.current.value = ''
@@ -268,8 +294,8 @@ export default function SubmitResult() {
       return
     }
 
-    if (!formData.proofImage) {
-      setError('Proof of result (screenshot or photo) is required for all match submissions.')
+    if (!formData.proofImage && !formData.proofVideo) {
+      setError('Proof of result (screenshot, photo, or video) is required for all match submissions.')
       return
     }
     
@@ -393,7 +419,28 @@ export default function SubmitResult() {
         ...(cupFixture?.startScore && { startScore: cupFixture.startScore })
       }
 
+      if (formData.proofVideo) {
+        newResult.proofVideo = formData.proofVideo
+      }
+
       await setDoc(doc(db, 'results', resultId), newResult, { merge: true })
+
+      // If it's a highlight, also save to highlights collection
+      if (formData.isHighlight || formData.proofVideo || formData.highlightUrl) {
+        const highlightId = `hl_${resultId}`
+        await setDoc(doc(db, 'highlights', highlightId), {
+          id: highlightId,
+          userId: user.id,
+          username: submitterName,
+          title: formData.highlightTitle || `${formData.gameType} Highlight vs ${opponentName}`,
+          videoUrl: formData.proofVideo || formData.highlightUrl || '',
+          imageUrl: formData.proofImage || '',
+          resultId: resultId,
+          likes: 0,
+          createdAt: new Date().toISOString(),
+          type: formData.your180s > 0 ? '180' : 'High Checkout'
+        })
+      }
 
       results.push(newResult)
       try {
@@ -819,9 +866,9 @@ export default function SubmitResult() {
           </div>
 
           <div className="form-group" style={{ marginBottom: '30px' }}>
-            <label style={{ fontSize: '0.9rem', fontWeight: '600', display: 'block', marginBottom: '12px' }}>Proof of Result (Photo/Screenshot)</label>
+            <label style={{ fontSize: '0.9rem', fontWeight: '600', display: 'block', marginBottom: '12px' }}>Proof of Result (Photo/Screenshot/Video)</label>
             
-            {!formData.proofImage ? (
+            {!formData.proofImage && !formData.proofVideo ? (
               <div
                 className="result-proof-picker"
                 style={{ 
@@ -835,9 +882,9 @@ export default function SubmitResult() {
                   color: 'var(--text)'
                 }}
               >
-                <div className="result-proof-actions" style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-                  <div className="result-proof-native-button result-proof-camera" style={{ flex: 1, maxWidth: '150px' }}>
-                    <span style={{ fontSize: '0.85rem' }}>📷 Take Photo</span>
+                <div className="result-proof-actions" style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <div className="result-proof-native-button result-proof-camera" style={{ flex: 1, minWidth: '120px' }}>
+                    <span style={{ fontSize: '0.85rem' }}>📷 Photo</span>
                     <input
                       ref={cameraInputRef}
                       type="file"
@@ -849,8 +896,8 @@ export default function SubmitResult() {
                       className="result-proof-input"
                     />
                   </div>
-                  <div className="result-proof-native-button result-proof-upload" style={{ flex: 1, maxWidth: '150px' }}>
-                    <span style={{ fontSize: '0.85rem' }}>📁 Upload</span>
+                  <div className="result-proof-native-button result-proof-upload" style={{ flex: 1, minWidth: '120px' }}>
+                    <span style={{ fontSize: '0.85rem' }}>📁 Image</span>
                     <input
                       ref={uploadInputRef}
                       type="file"
@@ -861,9 +908,20 @@ export default function SubmitResult() {
                       className="result-proof-input"
                     />
                   </div>
+                  <div className="result-proof-native-button result-proof-video" style={{ flex: 1, minWidth: '120px', background: 'var(--accent-primary)' }}>
+                    <span style={{ fontSize: '0.85rem' }}>🎬 Video</span>
+                    <input
+                      type="file"
+                      accept="video/*"
+                      aria-label="Upload Video"
+                      onClick={(e) => { e.currentTarget.value = '' }}
+                      onChange={handleVideoUpload}
+                      className="result-proof-input"
+                    />
+                  </div>
                 </div>
               </div>
-            ) : (
+            ) : formData.proofImage ? (
               <div style={{ position: 'relative', textAlign: 'center' }}>
                 <img 
                   src={formData.proofImage} 
@@ -893,6 +951,66 @@ export default function SubmitResult() {
                 >
                   ×
                 </button>
+              </div>
+            ) : (
+              <div style={{ position: 'relative', textAlign: 'center' }}>
+                <video
+                  src={formData.proofVideo}
+                  controls
+                  style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '12px', border: '1px solid var(--border)' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeVideo()}
+                  style={{
+                    position: 'absolute',
+                    top: '10px',
+                    right: '10px',
+                    background: '#ef4444',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '32px',
+                    height: '32px',
+                    cursor: 'pointer',
+                    fontSize: '20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.3)'
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="card glass" style={{ marginBottom: '30px', padding: '20px', border: '1px solid var(--accent-cyan)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+              <input
+                type="checkbox"
+                id="isHighlight"
+                checked={formData.isHighlight}
+                onChange={(e) => setFormData(prev => ({ ...prev, isHighlight: e.target.checked }))}
+                style={{ width: '20px', height: '20px' }}
+              />
+              <label htmlFor="isHighlight" style={{ fontWeight: 'bold', color: 'var(--accent-cyan)' }}>Add to my Highlight Reel 🎬</label>
+            </div>
+            {formData.isHighlight && (
+              <div style={{ display: 'grid', gap: '12px' }}>
+                <input
+                  placeholder="Highlight Title (e.g. My first 180!)"
+                  value={formData.highlightTitle}
+                  onChange={(e) => setFormData(prev => ({ ...prev, highlightTitle: e.target.value }))}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border)' }}
+                />
+                <input
+                  placeholder="Video URL (YouTube/TikTok/Spotify) - Optional"
+                  value={formData.highlightUrl}
+                  onChange={(e) => setFormData(prev => ({ ...prev, highlightUrl: e.target.value }))}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border)' }}
+                />
               </div>
             )}
           </div>

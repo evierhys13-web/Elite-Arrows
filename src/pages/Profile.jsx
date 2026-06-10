@@ -7,6 +7,7 @@ import { derivePlayerStatsFromResults } from '../utils/playerStats'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
 import { getResultPlayerId, isLeagueResult, isPlayoffResult } from '../utils/leagueResults'
+import HighlightReel from '../components/HighlightReel'
 
 const AVAILABLE_BADGES = [
   { id: 'competitive', label: 'Competitive', icon: '🏆', color: '#FFD700' },
@@ -44,6 +45,7 @@ export default function Profile() {
   const [newTag, setNewTag] = useState('')
   const [selectedBadges, setSelectedBadges] = useState([])
   const [showBadgeSelector, setShowBadgeSelector] = useState(false)
+  const [activeTab, setActiveTab] = useState('stats')
 
   useEffect(() => {
     if (displayUser) {
@@ -243,325 +245,341 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* Integrated Stats Grid */}
-      <div className="home-stats-grid" style={{ marginBottom: '32px' }}>
-        {[
-          { label: 'Played', value: displayStats?.played || 0 },
-          { label: 'Wins', value: displayStats?.wins || 0, color: 'var(--success)' },
-          { label: 'Avg Legs', value: displayStats?.played > 0 ? displayStats.average?.toFixed(2) : '-', color: 'var(--accent-cyan)' },
-          { label: 'Total 180s', value: displayStats?.['180s'] || 0, color: 'var(--warning)' },
-          { label: 'Best CO', value: displayStats?.highestCheckout || 0, color: 'var(--accent-cyan)' },
-          { label: 'Doubles %', value: displayStats?.doubleSuccess ? (displayStats.doubleSuccess).toFixed(2) + '%' : '-', color: '#10b981' },
-          { label: '3-Dart Avg', value: typeof displayAverage === 'number' ? displayAverage.toFixed(2) : displayAverage, color: 'var(--accent-primary)' }
-        ].map(stat => (
-          <div key={stat.label} className="stat-card glass" style={{ background: 'rgba(15, 23, 42, 0.3)', border: '1px solid rgba(255,255,255,0.05)' }}>
-            <div className="stat-value" style={{ color: stat.color }}>{stat.value}</div>
-            <div className="stat-label" style={{ opacity: 0.8 }}>{stat.label}</div>
-          </div>
-        ))}
+      {/* Profile Tabs */}
+      <div className="division-tabs" style={{ marginBottom: '32px' }}>
+        <button className={`division-tab ${activeTab === 'stats' ? 'active' : ''}`} onClick={() => setActiveTab('stats')}>
+          📊 Stats & Bio
+        </button>
+        <button className={`division-tab ${activeTab === 'reel' ? 'active' : ''}`} onClick={() => setActiveTab('reel')}>
+          🎬 Highlight Reel
+        </button>
       </div>
 
-      {/* Form & Trend Section */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '32px', marginBottom: '32px' }}>
-        <div className="card glass" style={{ padding: '24px' }}>
-          <h3 className="card-title" style={{ fontSize: '1.1rem', marginBottom: '20px' }}>📉 Performance Trend</h3>
-          <div style={{ height: '200px', width: '100%' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="colorAvg" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--accent-cyan)" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="var(--accent-cyan)" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={10} tickLine={false} axisLine={false} />
-                <YAxis hide />
-                <ChartTooltip
-                  contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '8px' }}
-                  itemStyle={{ color: 'var(--accent-cyan)' }}
-                />
-                <Area type="monotone" dataKey="legs" stroke="var(--accent-cyan)" fillOpacity={1} fill="url(#colorAvg)" strokeWidth={2} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="card glass" style={{ padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          <h3 className="card-title" style={{ fontSize: '1.1rem', marginBottom: '16px' }}>🏃 Recent Form</h3>
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
-            {formGuide.length > 0 ? formGuide.map((res, i) => (
-              <div key={i} style={{
-                width: '42px',
-                height: '42px',
-                borderRadius: '10px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 900,
-                fontSize: '1.1rem',
-                background: res === 'W' ? 'var(--success-bg)' : res === 'L' ? 'var(--error-bg)' : 'rgba(255,255,255,0.05)',
-                color: res === 'W' ? 'var(--success)' : res === 'L' ? 'var(--error)' : 'var(--text-muted)',
-                border: `1px solid ${res === 'W' ? 'var(--success)' : res === 'L' ? 'var(--error)' : 'var(--border)'}`,
-                boxShadow: res === 'W' ? '0 0 15px rgba(16, 185, 129, 0.2)' : 'none'
-              }}>
-                {res}
-              </div>
-            )) : <p style={{ color: 'var(--text-muted)' }}>No matches played yet.</p>}
-          </div>
-          <p style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Last {formGuide.length} matches</p>
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '32px', marginBottom: '40px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-          {/* Bio Section */}
-          <div className="card glass">
-            <h3 className="card-title">📖 Player Bio</h3>
-            {!isViewingOther ? (
-              <div className="profile-form">
-                <div className="form-group">
-                  <label>Display Name</label>
-                  <input name="username" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} />
-                </div>
-                <div className="form-group">
-                  <label>Nickname</label>
-                  <input name="nickname" value={formData.nickname} onChange={e => setFormData({...formData, nickname: e.target.value})} placeholder="Optional" />
-                </div>
-                <div className="form-group">
-                  <label>About You</label>
-                  <textarea name="bio" value={formData.bio} onChange={e => setFormData({...formData, bio: e.target.value})} rows={5} placeholder="Tell us about your setup..." />
-                </div>
-
-                <div className="form-group">
-                  <label>Walk-on Song (Link)</label>
-                  <input name="walkOnSong" value={formData.walkOnSong} onChange={e => setFormData({...formData, walkOnSong: e.target.value})} placeholder="Spotify or YouTube URL" />
-                </div>
-
-                <div className="form-group">
-                  <label>3-Dart Average</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    name="threeDartAverage"
-                    value={formData.threeDartAverage}
-                    onChange={e => setFormData({...formData, threeDartAverage: e.target.value})}
-                    placeholder="e.g. 45.5"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Gear Setup Photo</label>
-                  <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                    {gearPhoto && <img src={gearPhoto} alt="Gear" style={{ width: '80px', height: '60px', borderRadius: '8px', objectFit: 'cover' }} />}
-                    <label className="btn btn-secondary btn-sm" style={{ flex: 1 }}>
-                      {gearPhoto ? 'Change Photo' : 'Upload Setup Photo'}
-                      <input type="file" accept="image/*" onChange={handleGearPhotoChange} style={{ display: 'none' }} />
-                    </label>
-                  </div>
-                </div>
-
-                <button className="btn btn-primary btn-block" onClick={handleSave} disabled={saving}>
-                  {saving ? 'Syncing...' : 'Save Profile Details'}
-                </button>
-              </div>
-            ) : (
-              <div style={{ color: 'var(--text-secondary)' }}>
-                <p style={{ marginBottom: '24px', lineHeight: '1.8', fontSize: '1.05rem', opacity: 0.9 }}>
-                  {displayUser.bio || "No biography provided."}
-                </p>
-
-                {displayUser.walkOnSong && (
-                  <div style={{ marginBottom: '24px' }}>
-                    <h4 style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>Walk-on Song</h4>
-                    <a href={displayUser.walkOnSong} target="_blank" rel="noreferrer" style={{ color: 'var(--accent-cyan)', textDecoration: 'none', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      🎵 Listen to Theme
-                    </a>
-                  </div>
-                )}
-
-                {displayUser.gearPhoto && (
-                  <div style={{ marginBottom: '24px' }}>
-                    <h4 style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '12px' }}>Darts Setup</h4>
-                    <img src={displayUser.gearPhoto} alt="Darts Gear" style={{ width: '100%', borderRadius: '16px', border: '1px solid var(--border)' }} />
-                  </div>
-                )}
-
-                <div style={{ padding: '24px', background: 'rgba(0,0,0,0.2)', borderRadius: '20px', display: 'grid', gap: '16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Location</span>
-                    <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{displayUser.country || 'Unknown'}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Joined</span>
-                    <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{displayUser.createdAt ? new Date(displayUser.createdAt).toLocaleDateString() : 'N/A'}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-          {/* Tags & Reputation Section */}
-          <div className="card glass">
-            <h3 className="card-title">✨ Tags & Reputation</h3>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '24px' }}>
-              {tags.map((tag, i) => (
-                <span key={i} style={{ padding: '8px 18px', background: 'var(--accent-primary)', borderRadius: '99px', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {tag}
-                  {!isViewingOther && (
-                    <button onClick={() => handleRemoveTag(tag)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '1.2rem', padding: 0, lineScale: 1 }}>×</button>
-                  )}
-                </span>
-              ))}
-            </div>
-            {!isViewingOther && tags.length < 10 && (
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <input placeholder="Add skill/style tag..." value={newTag} onChange={e => setNewTag(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleAddTag()} />
-                <button className="btn btn-secondary btn-sm" onClick={handleAddTag}>Add</button>
-              </div>
-            )}
-          </div>
-
-          {/* Connectivity Section */}
-          <div className="card glass" style={{ borderLeft: '4px solid var(--accent-cyan)' }}>
-            <h3 className="card-title">🚀 Connectivity</h3>
-            <div style={{ display: 'grid', gap: '16px' }}>
-              {(displayUser.dartCounterUsername || displayUser.dartCounterLink) ? (
-                <a
-                  href={displayUser.dartCounterLink || `https://dartcounter.app/profile/${displayUser.dartCounterUsername}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn btn-secondary btn-block"
-                  style={{ background: 'rgba(0, 212, 255, 0.05)', borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)' }}
-                >
-                  🎯 DartCounter Statistics
-                </a>
-              ) : (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textAlign: 'center' }}>No external apps connected.</p>
-              )}
-
-              {!isViewingOther && (
-                <div style={{ marginTop: '8px' }}>
-                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '8px', display: 'block' }}>DartCounter Username</label>
-                  <input
-                    placeholder="Enter username"
-                    value={formData.dartCounterUsername}
-                    onChange={e => setFormData({...formData, dartCounterUsername: e.target.value})}
-                  />
-                </div>
-              )}
-
-              {isViewingOther && (
-                <button className="btn btn-primary btn-block" onClick={() => addFriend(displayUser.id)}>
-                  ➕ Add to Friends
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Badge Selector */}
-          {!isViewingOther && (
-            <div className="card glass">
-              <h3 className="card-title">🎖️ My Badges</h3>
-              <button className="btn btn-secondary btn-block" onClick={() => setShowBadgeSelector(!showBadgeSelector)}>
-                {showBadgeSelector ? 'Close Badge Shop' : 'Select Profile Badges'}
-              </button>
-
-              {showBadgeSelector && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px', marginTop: '24px' }}>
-                  {AVAILABLE_BADGES.map(badge => (
-                    <button
-                      key={badge.id}
-                      onClick={() => handleToggleBadge(badge.id)}
-                      style={{
-                        padding: '16px 12px',
-                        background: selectedBadges.includes(badge.id) ? badge.color + '20' : 'rgba(255,255,255,0.02)',
-                        border: `1px solid ${selectedBadges.includes(badge.id) ? badge.color : 'rgba(255,255,255,0.1)'}`,
-                        borderRadius: '16px',
-                        color: 'white',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: '8px',
-                        fontSize: '0.8rem'
-                      }}
-                    >
-                      <span style={{ fontSize: '1.6rem' }}>{badge.icon}</span>
-                      <span style={{ fontWeight: 600 }}>{badge.label}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Match Log Section */}
-      <div className="card glass" style={{ marginBottom: '32px' }}>
-        <h3 className="card-title">🎯 League Match Log</h3>
-        {matchLog.length === 0 ? (
-          <p style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>No league matches recorded.</p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {matchLog.map(match => (
-              <div key={match.id} style={{
-                padding: '16px',
-                background: 'rgba(255,255,255,0.03)',
-                borderRadius: '12px',
-                border: '1px solid var(--border)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontWeight: 600 }}>vs {match.opponent}</span>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{match.season}</span>
-                  </div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{match.date}</div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{
-                    fontWeight: 900,
-                    color: match.result === 'Win' ? 'var(--success)' : match.result === 'Draw' ? 'var(--warning)' : 'var(--error)'
-                  }}>
-                    {match.result}
-                  </div>
-                  <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>{match.score}</div>
-                </div>
+      {activeTab === 'stats' ? (
+        <>
+          {/* Integrated Stats Grid */}
+          <div className="home-stats-grid" style={{ marginBottom: '32px' }}>
+            {[
+              { label: 'Played', value: displayStats?.played || 0 },
+              { label: 'Wins', value: displayStats?.wins || 0, color: 'var(--success)' },
+              { label: 'Avg Legs', value: displayStats?.played > 0 ? displayStats.average?.toFixed(2) : '-', color: 'var(--accent-cyan)' },
+              { label: 'Total 180s', value: displayStats?.['180s'] || 0, color: 'var(--warning)' },
+              { label: 'Best CO', value: displayStats?.highestCheckout || 0, color: 'var(--accent-cyan)' },
+              { label: 'Doubles %', value: displayStats?.doubleSuccess ? (displayStats.doubleSuccess).toFixed(2) + '%' : '-', color: '#10b981' },
+              { label: '3-Dart Avg', value: typeof displayAverage === 'number' ? displayAverage.toFixed(2) : displayAverage, color: 'var(--accent-primary)' }
+            ].map(stat => (
+              <div key={stat.label} className="stat-card glass" style={{ background: 'rgba(15, 23, 42, 0.3)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <div className="stat-value" style={{ color: stat.color }}>{stat.value}</div>
+                <div className="stat-label" style={{ opacity: 0.8 }}>{stat.label}</div>
               </div>
             ))}
           </div>
-        )}
-      </div>
 
-      {/* Trophy Cabinet Section */}
-      <div className="card glass" style={{ marginBottom: '60px' }}>
-        <h3 className="card-title">🏆 Trophy Cabinet</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '20px' }}>
-          {(displayUser.trophies || []).length > 0 ? displayUser.trophies.map((trophy, i) => (
-            <div key={i} style={{
-              textAlign: 'center',
-              padding: '20px',
-              background: 'rgba(255,255,255,0.03)',
-              borderRadius: '16px',
-              border: '1px solid var(--border)'
-            }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: '12px' }}>{trophy.icon || '🏆'}</div>
-              <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-primary)' }}>{trophy.name}</div>
-              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '4px' }}>{trophy.season || 'Season 1'}</div>
+          {/* Form & Trend Section */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '32px', marginBottom: '32px' }}>
+            <div className="card glass" style={{ padding: '24px' }}>
+              <h3 className="card-title" style={{ fontSize: '1.1rem', marginBottom: '20px' }}>📉 Performance Trend</h3>
+              <div style={{ height: '200px', width: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData}>
+                    <defs>
+                      <linearGradient id="colorAvg" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="var(--accent-cyan)" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="var(--accent-cyan)" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                    <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={10} tickLine={false} axisLine={false} />
+                    <YAxis hide />
+                    <ChartTooltip
+                      contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                      itemStyle={{ color: 'var(--accent-cyan)' }}
+                    />
+                    <Area type="monotone" dataKey="legs" stroke="var(--accent-cyan)" fillOpacity={1} fill="url(#colorAvg)" strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-          )) : (
-            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px', color: 'var(--text-muted)', border: '2px dashed var(--border)', borderRadius: '20px' }}>
-              <p>No trophies in the cabinet yet. Start winning to earn them!</p>
+
+            <div className="card glass" style={{ padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              <h3 className="card-title" style={{ fontSize: '1.1rem', marginBottom: '16px' }}>🏃 Recent Form</h3>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
+                {formGuide.length > 0 ? formGuide.map((res, i) => (
+                  <div key={i} style={{
+                    width: '42px',
+                    height: '42px',
+                    borderRadius: '10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 900,
+                    fontSize: '1.1rem',
+                    background: res === 'W' ? 'var(--success-bg)' : res === 'L' ? 'var(--error-bg)' : 'rgba(255,255,255,0.05)',
+                    color: res === 'W' ? 'var(--success)' : res === 'L' ? 'var(--error)' : 'var(--text-muted)',
+                    border: `1px solid ${res === 'W' ? 'var(--success)' : res === 'L' ? 'var(--error)' : 'var(--border)'}`,
+                    boxShadow: res === 'W' ? '0 0 15px rgba(16, 185, 129, 0.2)' : 'none'
+                  }}>
+                    {res}
+                  </div>
+                )) : <p style={{ color: 'var(--text-muted)' }}>No matches played yet.</p>}
+              </div>
+              <p style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Last {formGuide.length} matches</p>
             </div>
-          )}
-        </div>
-      </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '32px', marginBottom: '40px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+              {/* Bio Section */}
+              <div className="card glass">
+                <h3 className="card-title">📖 Player Bio</h3>
+                {!isViewingOther ? (
+                  <div className="profile-form">
+                    <div className="form-group">
+                      <label>Display Name</label>
+                      <input name="username" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} />
+                    </div>
+                    <div className="form-group">
+                      <label>Nickname</label>
+                      <input name="nickname" value={formData.nickname} onChange={e => setFormData({...formData, nickname: e.target.value})} placeholder="Optional" />
+                    </div>
+                    <div className="form-group">
+                      <label>About You</label>
+                      <textarea name="bio" value={formData.bio} onChange={e => setFormData({...formData, bio: e.target.value})} rows={5} placeholder="Tell us about your setup..." />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Walk-on Song (Link)</label>
+                      <input name="walkOnSong" value={formData.walkOnSong} onChange={e => setFormData({...formData, walkOnSong: e.target.value})} placeholder="Spotify or YouTube URL" />
+                    </div>
+
+                    <div className="form-group">
+                      <label>3-Dart Average</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        name="threeDartAverage"
+                        value={formData.threeDartAverage}
+                        onChange={e => setFormData({...formData, threeDartAverage: e.target.value})}
+                        placeholder="e.g. 45.5"
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Gear Setup Photo</label>
+                      <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                        {gearPhoto && <img src={gearPhoto} alt="Gear" style={{ width: '80px', height: '60px', borderRadius: '8px', objectFit: 'cover' }} />}
+                        <label className="btn btn-secondary btn-sm" style={{ flex: 1 }}>
+                          {gearPhoto ? 'Change Photo' : 'Upload Setup Photo'}
+                          <input type="file" accept="image/*" onChange={handleGearPhotoChange} style={{ display: 'none' }} />
+                        </label>
+                      </div>
+                    </div>
+
+                    <button className="btn btn-primary btn-block" onClick={handleSave} disabled={saving}>
+                      {saving ? 'Syncing...' : 'Save Profile Details'}
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ color: 'var(--text-secondary)' }}>
+                    <p style={{ marginBottom: '24px', lineHeight: '1.8', fontSize: '1.05rem', opacity: 0.9 }}>
+                      {displayUser.bio || "No biography provided."}
+                    </p>
+
+                    {displayUser.walkOnSong && (
+                      <div style={{ marginBottom: '24px' }}>
+                        <h4 style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>Walk-on Song</h4>
+                        <a href={displayUser.walkOnSong} target="_blank" rel="noreferrer" style={{ color: 'var(--accent-cyan)', textDecoration: 'none', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          🎵 Listen to Theme
+                        </a>
+                      </div>
+                    )}
+
+                    {displayUser.gearPhoto && (
+                      <div style={{ marginBottom: '24px' }}>
+                        <h4 style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '12px' }}>Darts Setup</h4>
+                        <img src={displayUser.gearPhoto} alt="Darts Gear" style={{ width: '100%', borderRadius: '16px', border: '1px solid var(--border)' }} />
+                      </div>
+                    )}
+
+                    <div style={{ padding: '24px', background: 'rgba(0,0,0,0.2)', borderRadius: '20px', display: 'grid', gap: '16px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Location</span>
+                        <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{displayUser.country || 'Unknown'}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Joined</span>
+                        <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{displayUser.createdAt ? new Date(displayUser.createdAt).toLocaleDateString() : 'N/A'}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+              {/* Tags & Reputation Section */}
+              <div className="card glass">
+                <h3 className="card-title">✨ Tags & Reputation</h3>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '24px' }}>
+                  {tags.map((tag, i) => (
+                    <span key={i} style={{ padding: '8px 18px', background: 'var(--accent-primary)', borderRadius: '99px', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {tag}
+                      {!isViewingOther && (
+                        <button onClick={() => handleRemoveTag(tag)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '1.2rem', padding: 0, lineScale: 1 }}>×</button>
+                      )}
+                    </span>
+                  ))}
+                </div>
+                {!isViewingOther && tags.length < 10 && (
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <input placeholder="Add skill/style tag..." value={newTag} onChange={e => setNewTag(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleAddTag()} />
+                    <button className="btn btn-secondary btn-sm" onClick={handleAddTag}>Add</button>
+                  </div>
+                )}
+              </div>
+
+              {/* Connectivity Section */}
+              <div className="card glass" style={{ borderLeft: '4px solid var(--accent-cyan)' }}>
+                <h3 className="card-title">🚀 Connectivity</h3>
+                <div style={{ display: 'grid', gap: '16px' }}>
+                  {(displayUser.dartCounterUsername || displayUser.dartCounterLink) ? (
+                    <a
+                      href={displayUser.dartCounterLink || `https://dartcounter.app/profile/${displayUser.dartCounterUsername}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-secondary btn-block"
+                      style={{ background: 'rgba(0, 212, 255, 0.05)', borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)' }}
+                    >
+                      🎯 DartCounter Statistics
+                    </a>
+                  ) : (
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textAlign: 'center' }}>No external apps connected.</p>
+                  )}
+
+                  {!isViewingOther && (
+                    <div style={{ marginTop: '8px' }}>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '8px', display: 'block' }}>DartCounter Username</label>
+                      <input
+                        placeholder="Enter username"
+                        value={formData.dartCounterUsername}
+                        onChange={e => setFormData({...formData, dartCounterUsername: e.target.value})}
+                      />
+                    </div>
+                  )}
+
+                  {isViewingOther && (
+                    <button className="btn btn-primary btn-block" onClick={() => addFriend(displayUser.id)}>
+                      ➕ Add to Friends
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Badge Selector */}
+              {!isViewingOther && (
+                <div className="card glass">
+                  <h3 className="card-title">🎖️ My Badges</h3>
+                  <button className="btn btn-secondary btn-block" onClick={() => setShowBadgeSelector(!showBadgeSelector)}>
+                    {showBadgeSelector ? 'Close Badge Shop' : 'Select Profile Badges'}
+                  </button>
+
+                  {showBadgeSelector && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px', marginTop: '24px' }}>
+                      {AVAILABLE_BADGES.map(badge => (
+                        <button
+                          key={badge.id}
+                          onClick={() => handleToggleBadge(badge.id)}
+                          style={{
+                            padding: '16px 12px',
+                            background: selectedBadges.includes(badge.id) ? badge.color + '20' : 'rgba(255,255,255,0.02)',
+                            border: `1px solid ${selectedBadges.includes(badge.id) ? badge.color : 'rgba(255,255,255,0.1)'}`,
+                            borderRadius: '16px',
+                            color: 'white',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '8px',
+                            fontSize: '0.8rem'
+                          }}
+                        >
+                          <span style={{ fontSize: '1.6rem' }}>{badge.icon}</span>
+                          <span style={{ fontWeight: 600 }}>{badge.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Match Log Section */}
+          <div className="card glass" style={{ marginBottom: '32px' }}>
+            <h3 className="card-title">🎯 League Match Log</h3>
+            {matchLog.length === 0 ? (
+              <p style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>No league matches recorded.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {matchLog.map(match => (
+                  <div key={match.id} style={{
+                    padding: '16px',
+                    background: 'rgba(255,255,255,0.03)',
+                    borderRadius: '12px',
+                    border: '1px solid var(--border)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontWeight: 600 }}>vs {match.opponent}</span>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{match.season}</span>
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{match.date}</div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{
+                        fontWeight: 900,
+                        color: match.result === 'Win' ? 'var(--success)' : match.result === 'Draw' ? 'var(--warning)' : 'var(--error)'
+                      }}>
+                        {match.result}
+                      </div>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>{match.score}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Trophy Cabinet Section */}
+          <div className="card glass" style={{ marginBottom: '60px' }}>
+            <h3 className="card-title">🏆 Trophy Cabinet</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '20px' }}>
+              {(displayUser.trophies || []).length > 0 ? displayUser.trophies.map((trophy, i) => (
+                <div key={i} style={{
+                  textAlign: 'center',
+                  padding: '20px',
+                  background: 'rgba(255,255,255,0.03)',
+                  borderRadius: '16px',
+                  border: '1px solid var(--border)'
+                }}>
+                  <div style={{ fontSize: '2.5rem', marginBottom: '12px' }}>{trophy.icon || '🏆'}</div>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-primary)' }}>{trophy.name}</div>
+                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '4px' }}>{trophy.season || 'Season 1'}</div>
+                </div>
+              )) : (
+                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px', color: 'var(--text-muted)', border: '2px dashed var(--border)', borderRadius: '20px' }}>
+                  <p>No trophies in the cabinet yet. Start winning to earn them!</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      ) : (
+        <HighlightReel userId={displayUser.id} isAdmin={user.isAdmin} />
+      )}
     </div>
   )
 }

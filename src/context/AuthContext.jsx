@@ -1645,26 +1645,48 @@ export function AuthProvider({ children }) {
     return getCachedResults();
   }, [results]);
 
-  const updateResults = useCallback(
-    (updatedResults) => {
-      const nextResults = Array.isArray(updatedResults) ? updatedResults : [];
+  const updateResults = useCallback((updatedResults, purgeScope = null) => {
+    const nextResults = Array.isArray(updatedResults) ? updatedResults : []
 
-      // Merge instead of simple overwrite to preserve any results from other listeners
-      const existing = resultRowsRef.current || [];
-      const merged = [...existing].filter(Boolean);
-      nextResults.forEach((row) => {
-        if (!row) return;
-        const idx = merged.findIndex((r) => r && r.id === row.id);
-        if (idx !== -1) merged[idx] = row;
-        else merged.push(row);
-      });
+    // If purgeScope is provided, remove any results that match the scope criteria
+    // but are NOT in the fresh nextResults set.
+    let existing = resultRowsRef.current || []
 
-      resultRowsRef.current = merged;
-      publishResults({ announce: true });
-      saveResultsCache(merged);
-    },
-    [publishResults],
-  );
+    if (purgeScope) {
+      existing = existing.filter(r => {
+        if (!r) return false
+
+        // Scope logic: e.g., { season: 'Season 2', status: 'approved' }
+        const matchesScope = Object.keys(purgeScope).every(key => {
+          if (key === 'season' && purgeScope[key] === 'Season 1') {
+             return !r.season || r.season === 'Season 1'
+          }
+          return String(r[key]) === String(purgeScope[key])
+        })
+
+        if (matchesScope) {
+          // Keep only if it's in the nextResults (fresh from server)
+          // or if it's the user's own result (to preserve local pending/un-synced stuff)
+          const isFresh = nextResults.some(nr => (nr.id === r.id || nr.firestoreId === r.firestoreId))
+          const isMine = r.player1Id === user?.id || r.player2Id === user?.id || r.submittedBy === user?.id
+          return isFresh || isMine
+        }
+        return true
+      })
+    }
+
+    const merged = [...existing].filter(Boolean)
+    nextResults.forEach(row => {
+      if (!row) return
+      const idx = merged.findIndex(r => r && (r.id === row.id))
+      if (idx !== -1) merged[idx] = row
+      else merged.push(row)
+    })
+
+    resultRowsRef.current = merged
+    publishResults({ announce: true })
+    saveResultsCache(merged)
+  }, [publishResults, user?.id])
 
   const fetchMoreResults = useCallback(
     async (lastResult = null, limitCount = 50) => {
@@ -1726,25 +1748,15 @@ export function AuthProvider({ children }) {
           };
         });
 
-        const existing = resultRowsRef.current || [];
-        const merged = [...existing].filter(Boolean);
-        seasonResults.forEach((row) => {
-          if (!row) return;
-          const idx = merged.findIndex((r) => r && r.id === row.id);
-          if (idx !== -1) merged[idx] = row;
-          else merged.push(row);
-        });
-        resultRowsRef.current = merged;
-        publishResults({ announce: true });
+      // Update results and purge any 'approved' results for this season that weren't in the fetch
+      updateResults(seasonResults, { season: seasonName, status: "approved" });
 
-        return seasonResults;
-      } catch (e) {
-        console.error("fetchResultsBySeason error:", e);
-        return [];
-      }
-    },
-    [publishResults],
-  );
+      return seasonResults;
+    } catch (e) {
+      console.error("fetchResultsBySeason error:", e);
+      return [];
+    }
+  }, [updateResults]);
 
   const fetchFixturesBySeason = useCallback(async (seasonName) => {
     try {
@@ -1903,7 +1915,8 @@ export function AuthProvider({ children }) {
     try {
       showToast?.("Performing deep sync with server...", "info");
 
-      // 1. Fetch Results
+      // 1. Fetch Results - Get all results for current season + user's recent ones
+      const currentSeason = adminData?.currentSeason || "Season 1";
       const resultsSnap = await getDocsFromServer(collection(db, "results"));
       const freshResults = resultsSnap.docs.map((docSnap) => {
         const data = docSnap.data();
@@ -1929,7 +1942,25 @@ export function AuthProvider({ children }) {
       setAllUsers(freshUsers);
       localStorage.setItem("eliteArrowsUsers", JSON.stringify(freshUsers));
 
-      updateResults(freshResults);
+      // When force fetching, we replace the ENTIRE approved result set to clear stale data
+      // but we keep our own non-approved results.
+      const existing = resultRowsRef.current || [];
+      const myPending = existing.filter(
+        (r) =>
+          (r.player1Id === user?.id || r.player2Id === user?.id) &&
+          String(r.status).toLowerCase() !== "approved",
+      );
+
+      const merged = [...myPending];
+      freshResults.forEach((row) => {
+        const idx = merged.findIndex((r) => r.id === row.id);
+        if (idx !== -1) merged[idx] = row;
+        else merged.push(row);
+      });
+
+      resultRowsRef.current = merged;
+      publishResults({ announce: true });
+      saveResultsCache(merged);
 
       // Trigger update for current user if changed
       const current = freshUsers.find((u) => u.id === user?.id);
@@ -1944,7 +1975,7 @@ export function AuthProvider({ children }) {
       console.warn("forceFetchResults failed:", e);
       return false;
     }
-  }, [updateResults, user?.id, triggerDataRefresh, showToast]);
+  }, [publishResults, user, triggerDataRefresh, showToast, adminData?.currentSeason]);
 
   const getFixtures = useCallback(() => {
     if (fixtures.length > 0) return fixtures;
@@ -2075,6 +2106,13 @@ export function AuthProvider({ children }) {
 
         const match = updatedMatches[matchIdx];
 
+        // 1. Validation: Ensure both players are present before advancing.
+        // This prevents "ghost" wins where a player advances without an opponent.
+        if (!match.player1 || !match.player2) {
+           console.warn(`advanceCupBracket: Aborted advancement for match ${matchId}. Missing opponent: p1=${match.player1}, p2=${match.player2}`);
+           return;
+        }
+
         // Correct score mapping based on who is player1 in the bracket
         const isPlayer1Submitter =
           String(result.player1Id) === String(match.player1);
@@ -2148,7 +2186,7 @@ export function AuthProvider({ children }) {
                     };
                     transaction.set(fixtureRef, {
                       id: fixtureId,
-                      cupId: parseInt(cupId),
+                      cupId: isNaN(parseInt(cupId)) ? cupId : parseInt(cupId),
                       cupName: cupData.name,
                       startScore: format.startScore,
                       bestOf: format.bestOf,

@@ -1,5 +1,6 @@
 import { getLeaguePoints } from './leagueScoring'
 import { getResultEffectiveTime, getResultPlayerId, isLeagueResult, isSuperLeagueResult, isPlayoffResult } from './leagueResults'
+import { getResultIdentityKey } from './resultIdentity'
 
 export const DEFAULT_LEAGUE_TABLE_RESET_AT = '2020-01-01T00:00:00.000Z'
 
@@ -54,7 +55,7 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
   const fixturesById = Object.fromEntries(fixtures.map(fixture => [String(fixture.id), fixture]))
   const resetTime = includeReset ? getResetTime(adminData) : 0
 
-  return results.filter(result => {
+  const approvedResults = results.filter(result => {
     if (String(result.status || '').toLowerCase() !== 'approved') return false
     if (result.excludeFromLeague) return false
     if (requireProof && !resultHasProof(result)) return false
@@ -101,9 +102,6 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
       const gt = String(result.gameType || '').toLowerCase().trim()
       const nonLeague = ['cup', 'friendly', 'playoff', 'tournament', 'super league']
       if (nonLeague.some(t => gt.includes(t))) return false
-
-      // Removed the strict !gt.includes('league') check to allow legacy/unlabeled Season 1 results.
-      // isLeagueResult already performs the necessary validation for these cases.
     }
 
     // Fallback check if playoffs are explicitly wanted
@@ -111,6 +109,27 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
 
     return isWithinPeriod(result, timePeriod)
   })
+
+  // 2. Merge duplicates based on logical identity as a fallback
+  const uniqueResults = []
+  const seenIdentities = new Set()
+
+  // Process in reverse (newest first) to keep the most recent version of a result if identity matches
+  const sortedByRecency = [...approvedResults].sort((a, b) => {
+    const timeA = new Date(a.date || a.submittedAt || 0).getTime()
+    const timeB = new Date(b.date || b.submittedAt || 0).getTime()
+    return timeB - timeA
+  })
+
+  sortedByRecency.forEach(result => {
+    const identity = getResultIdentityKey(result)
+    if (!seenIdentities.has(identity)) {
+      seenIdentities.add(identity)
+      uniqueResults.push(result)
+    }
+  })
+
+  return uniqueResults
 }
 
 export const createEmptyPlayerStats = (player = {}) => ({

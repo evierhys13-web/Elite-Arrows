@@ -10,9 +10,24 @@ export default function Leaderboards() {
   const { showToast } = useToast()
   const navigate = useNavigate()
   const [selectedDivision, setSelectedDivision] = useState('all')
+  const [activeTab, setActiveTab] = useState('league') // 'league' or 'practice'
   const [timeFilter, setTimeFilter] = useState('all')
   const [refreshKey, setRefreshKey] = useState(0)
   const [isSyncing, setIsSyncing] = useState(false)
+  const [practiceLeaderboard, setPracticeLeaderboard] = useState([])
+
+  useEffect(() => {
+    const fetchPracticeData = async () => {
+      try {
+        const q = query(collection(db, 'practiceLeaderboard'), orderBy('score', 'desc'), limit(50))
+        const snap = await getDocs(q)
+        setPracticeLeaderboard(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      } catch (e) {
+        console.error('Error fetching practice leaderboard:', e)
+      }
+    }
+    if (activeTab === 'practice') fetchPracticeData()
+  }, [activeTab, refreshKey])
 
   useEffect(() => {
     setRefreshKey(prev => prev + 1)
@@ -131,88 +146,149 @@ export default function Leaderboards() {
         </div>
       </div>
 
+      <div className="division-tabs" style={{ marginBottom: '24px' }}>
+        <button className={`division-tab ${activeTab === 'league' ? 'active' : ''}`} onClick={() => setActiveTab('league')}>
+          🏆 League Rankings
+        </button>
+        <button className={`division-tab ${activeTab === 'practice' ? 'active' : ''}`} onClick={() => setActiveTab('practice')}>
+          🎯 Practice Drills
+        </button>
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '32px', alignItems: 'start' }} className="leaderboard-grid">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <div className="card glass" style={{ padding: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
-               <h3 className="card-title" style={{ margin: 0 }}>📊 Performance Tables</h3>
-               <div style={{ display: 'flex', gap: '8px' }}>
-                  {['week', 'month', 'quarter', 'all'].map(f => (
+            {activeTab === 'league' ? (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+                   <h3 className="card-title" style={{ margin: 0 }}>📊 Performance Tables</h3>
+                   <div style={{ display: 'flex', gap: '8px' }}>
+                      {['week', 'month', 'quarter', 'all'].map(f => (
+                        <button
+                          key={f}
+                          className={`btn btn-sm ${timeFilter === f ? 'btn-primary' : 'btn-secondary'}`}
+                          onClick={() => setTimeFilter(f)}
+                          style={{ fontSize: '0.7rem', padding: '6px 12px' }}
+                        >
+                          {f === 'quarter' ? '3M' : f.toUpperCase()}
+                        </button>
+                      ))}
+                   </div>
+                </div>
+
+                <div className="division-tabs" style={{ marginBottom: '20px', overflowX: 'auto', paddingBottom: '4px' }}>
+                  {divisions.map(div => (
                     <button
-                      key={f}
-                      className={`btn btn-sm ${timeFilter === f ? 'btn-primary' : 'btn-secondary'}`}
-                      onClick={() => setTimeFilter(f)}
-                      style={{ fontSize: '0.7rem', padding: '6px 12px' }}
+                      key={div}
+                      className={`division-tab ${selectedDivision === div ? 'active' : ''}`}
+                      onClick={() => setSelectedDivision(div)}
+                      style={{ fontSize: '0.75rem', padding: '8px 14px' }}
                     >
-                      {f === 'quarter' ? '3M' : f.toUpperCase()}
+                      {div === 'all' ? 'All' : div}
                     </button>
                   ))}
-               </div>
-            </div>
-
-            <div className="division-tabs" style={{ marginBottom: '20px', overflowX: 'auto', paddingBottom: '4px' }}>
-              {divisions.map(div => (
-                <button
-                  key={div}
-                  className={`division-tab ${selectedDivision === div ? 'active' : ''}`}
-                  onClick={() => setSelectedDivision(div)}
-                  style={{ fontSize: '0.75rem', padding: '8px 14px' }}
-                >
-                  {div === 'all' ? 'All' : div}
-                </button>
-              ))}
-            </div>
-
-            <div style={{ overflowX: 'auto' }}>
-              {leaderboard.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-                   <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>No matches played in this period.</p>
-                   {timeFilter !== 'all' && (
-                     <button className="btn btn-secondary btn-sm" onClick={() => setTimeFilter('all')}>Show All Time</button>
-                   )}
                 </div>
-              ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)', fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                      <th style={{ padding: '12px 8px' }}>Rank</th>
-                      <th style={{ padding: '12px 8px' }}>Player</th>
-                      <th style={{ padding: '12px 8px', textAlign: 'center' }}>Pts</th>
-                      <th style={{ padding: '12px 8px', textAlign: 'center' }}>W-L</th>
-                      <th style={{ padding: '12px 8px', textAlign: 'center' }}>GP</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {leaderboard.map((player, index) => (
-                      <tr key={player.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', fontSize: '0.9rem' }}>
-                        <td style={{ padding: '12px 8px', fontWeight: 900, color: index === 0 ? '#fbbf24' : index === 1 ? '#94a3b8' : index === 2 ? '#d97706' : 'inherit' }}>
-                          #{index + 1}
-                        </td>
-                        <td style={{ padding: '12px 8px' }}>
-                          <div
-                            style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
-                            onClick={() => navigate(`/profile/${player.id}`)}
-                          >
-                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)', overflow: 'hidden' }}>
-                              {player.profilePicture ? <img src={player.profilePicture} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontWeight: 800, fontSize: '0.8rem' }}>{player.username.charAt(0)}</span>}
-                            </div>
-                            <div>
-                               <div style={{ fontWeight: 700 }}>{player.username}</div>
-                               <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{player.division}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 900, color: 'var(--accent-cyan)' }}>{player.points}</td>
-                        <td style={{ padding: '12px 8px', textAlign: 'center', fontSize: '0.8rem' }}>
-                          <span style={{ color: 'var(--success)' }}>{player.wins}</span>-<span style={{ color: 'var(--error)' }}>{player.losses}</span>
-                        </td>
-                        <td style={{ padding: '12px 8px', textAlign: 'center', color: 'var(--text-muted)' }}>{player.played}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
+
+                <div style={{ overflowX: 'auto' }}>
+                  {leaderboard.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+                       <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>No matches played in this period.</p>
+                       {timeFilter !== 'all' && (
+                         <button className="btn btn-secondary btn-sm" onClick={() => setTimeFilter('all')}>Show All Time</button>
+                       )}
+                    </div>
+                  ) : (
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)', fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                          <th style={{ padding: '12px 8px' }}>Rank</th>
+                          <th style={{ padding: '12px 8px' }}>Player</th>
+                          <th style={{ padding: '12px 8px', textAlign: 'center' }}>Pts</th>
+                          <th style={{ padding: '12px 8px', textAlign: 'center' }}>W-L</th>
+                          <th style={{ padding: '12px 8px', textAlign: 'center' }}>GP</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {leaderboard.map((player, index) => (
+                          <tr key={player.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', fontSize: '0.9rem' }}>
+                            <td style={{ padding: '12px 8px', fontWeight: 900, color: index === 0 ? '#fbbf24' : index === 1 ? '#94a3b8' : index === 2 ? '#d97706' : 'inherit' }}>
+                              #{index + 1}
+                            </td>
+                            <td style={{ padding: '12px 8px' }}>
+                              <div
+                                style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+                                onClick={() => navigate(`/profile/${player.id}`)}
+                              >
+                                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)', overflow: 'hidden' }}>
+                                  {player.profilePicture ? <img src={player.profilePicture} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontWeight: 800, fontSize: '0.8rem' }}>{player.username.charAt(0)}</span>}
+                                </div>
+                                <div>
+                                   <div style={{ fontWeight: 700 }}>{player.username}</div>
+                                   <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{player.division}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 900, color: 'var(--accent-cyan)' }}>{player.points}</td>
+                            <td style={{ padding: '12px 8px', textAlign: 'center', fontSize: '0.8rem' }}>
+                              <span style={{ color: 'var(--success)' }}>{player.wins}</span>-<span style={{ color: 'var(--error)' }}>{player.losses}</span>
+                            </td>
+                            <td style={{ padding: '12px 8px', textAlign: 'center', color: 'var(--text-muted)' }}>{player.played}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                  <h3 className="card-title" style={{ margin: 0 }}>🎯 Practice Drills Leaderboard</h3>
+                </div>
+
+                <div style={{ overflowX: 'auto' }}>
+                  {practiceLeaderboard.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+                       <p style={{ color: 'var(--text-muted)' }}>No practice sessions recorded yet.</p>
+                       <button className="btn btn-primary" style={{ marginTop: '16px' }} onClick={() => navigate('/practice')}>Go to Practice Hub</button>
+                    </div>
+                  ) : (
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)', fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                          <th style={{ padding: '12px 8px' }}>Rank</th>
+                          <th style={{ padding: '12px 8px' }}>Player</th>
+                          <th style={{ padding: '12px 8px' }}>Drill</th>
+                          <th style={{ padding: '12px 8px', textAlign: 'center' }}>Score/Acc</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {practiceLeaderboard.map((entry, index) => (
+                          <tr key={entry.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', fontSize: '0.9rem' }}>
+                            <td style={{ padding: '12px 8px', fontWeight: 900 }}>#{index + 1}</td>
+                            <td style={{ padding: '12px 8px', fontWeight: 700 }}>{entry.username}</td>
+                            <td style={{ padding: '12px 8px' }}>
+                              <span style={{
+                                padding: '4px 8px',
+                                background: 'rgba(255,255,255,0.05)',
+                                borderRadius: '4px',
+                                fontSize: '0.75rem',
+                                color: entry.modeId === 'atc' ? 'var(--accent-cyan)' : entry.modeId === '170' ? '#ef4444' : '#fbbf24'
+                              }}>
+                                {entry.modeId === 'atc' ? 'Around Clock' : entry.modeId === '170' ? '170 Drill' : 'Scoring'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 900, color: 'var(--accent-primary)' }}>
+                              {entry.modeId === 'atc' ? `${entry.accuracy?.toFixed(1)}%` : entry.modeId === '170' ? `${entry.dartsThrown} darts` : entry.score}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
 
