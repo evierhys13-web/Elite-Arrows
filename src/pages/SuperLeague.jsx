@@ -16,7 +16,7 @@ const DIVISION_COLORS = {
 export default function SuperLeague() {
   const [activeTab, setActiveTab] = useState('table')
   const [activeDivision, setActiveDivision] = useState('Premier')
-  const { user, getAllUsers, getFixtures, getResults, triggerDataRefresh, dataRefreshTrigger, adminData, fetchResultsBySeason } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, triggerDataRefresh, dataRefreshTrigger, adminData, fetchResultsBySeason, forceFetchResults } = useAuth()
   const { showToast } = useToast()
   const [refreshKey, setRefreshKey] = useState(0)
   const [loadingData, setLoadingData] = useState(false)

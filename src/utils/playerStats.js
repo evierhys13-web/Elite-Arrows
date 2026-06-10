@@ -88,7 +88,8 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
     }
 
     if (superLeagueOnly) {
-      return isSuperLeagueResult(result, fixturesById)
+      if (!isSuperLeagueResult(result, fixturesById)) return false
+      return isWithinPeriod(result, timePeriod)
     }
 
     const leagueResult = isLeagueResult(result, fixturesById)

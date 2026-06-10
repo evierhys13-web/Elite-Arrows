@@ -13,6 +13,7 @@ import OnboardingTour, { useOnboarding } from './components/OnboardingTour'
 import WhatsNewPopup, { useWhatsNew } from './components/WhatsNewPopup'
 import AverageUpdateModal from './components/AverageUpdateModal'
 import SurveyPopup from './components/SurveyPopup'
+import PullToRefresh from './components/PullToRefresh'
 import ErrorBoundary from './components/ErrorBoundary'
 import { Skeleton } from './components/Skeleton'
 import { Capacitor } from '@capacitor/core'
@@ -207,7 +208,7 @@ function AdminRoute({ children }) {
 }
 
 function AppLayout({ children }) {
-  const { user, dataRefreshTrigger, adminData } = useAuth()
+  const { user, dataRefreshTrigger, adminData, forceFetchResults } = useAuth()
   const { showOnboarding, completeOnboarding } = useOnboarding()
   const { showWhatsNew } = useWhatsNew()
   const [whatsNewOpen, setWhatsNewOpen] = useState(showWhatsNew)
@@ -230,9 +231,13 @@ function AppLayout({ children }) {
     <div className="app-layout">
       <Sidebar />
       <main id="main-content" className="main-content" tabIndex={-1}>
-        <Suspense fallback={<PageLoader />}>
-          {children}
-        </Suspense>
+        <PullToRefresh onRefresh={async () => {
+          if (forceFetchResults) await forceFetchResults()
+        }}>
+          <Suspense fallback={<PageLoader />}>
+            {children}
+          </Suspense>
+        </PullToRefresh>
       </main>
 
       {hasMaintenance && (

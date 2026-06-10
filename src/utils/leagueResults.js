@@ -54,22 +54,29 @@ export const isLeagueResult = (result, fixturesById = {}) => {
 
 export const isSuperLeagueResult = (result, fixturesById = {}) => {
   const gameType = normalizeText(result.gameType)
-  if (gameType.includes('super league')) return true
+  // Match 'super league' or 'superleague'
+  if (gameType.includes('super league') || gameType.includes('superleague')) return true
 
-  // Also catch results that don't have the explicit 'super league' gameType
-  // but were submitted with 11 legs total (Super League format)
-  // Or at least one player reached 6 legs (First to 6)
   const s1 = Number(result.score1) || 0
   const s2 = Number(result.score2) || 0
 
   // Format: One player has 6, and total legs is 6 to 11
+  // We exclude results that are explicitly marked as other types
+  const otherTypes = ['cup', 'friendly', 'playoff', 'tournament']
+  if (otherTypes.some(type => gameType.includes(type))) return false
+  if (result.cupId || result.matchId || result.tournamentId) return false
+
   if ((s1 === 6 || s2 === 6) && (s1 + s2) <= 11 && (s1 + s2) >= 6) {
     return true
   }
 
   const fixture = result.fixtureId ? fixturesById[String(result.fixtureId)] : null
-  const fixtureGameType = normalizeText(fixture?.gameType)
-  return fixtureGameType.includes('super league')
+  if (fixture) {
+    const fixtureGameType = normalizeText(fixture.gameType)
+    if (fixtureGameType.includes('super league') || fixtureGameType.includes('superleague')) return true
+  }
+
+  return false
 }
 
 export const isPlayoffResult = (result, fixturesById = {}) => {
