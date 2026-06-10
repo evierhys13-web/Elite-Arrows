@@ -130,24 +130,76 @@ export default function Admin() {
     try {
       const res = allResults.find(r => String(r.id) === String(resultId))
       if (!res) throw new Error('Result not found')
-      const targetId = res.firestoreId || String(resultId)
-      const approvedResult = { ...res, status: 'approved', approvedAt: new Date().toISOString() }
-      await setDoc(doc(db, 'results', targetId), approvedResult, { merge: true })
-      logMatchApproved(res)
 
-      if (res.gameType === 'Cup') {
+      const updates = { status: 'approved', approvedAt: new Date().toISOString() };
+
+      // --- AUTO-HEALING & ENRICHMENT ---
+      // 1. Fix Missing Player IDs
+      let p1Id = res.player1Id;
+      let p2Id = res.player2Id;
+      if (!p1Id && res.player1) {
+        const found = allPlayers.find(u => u.username?.toLowerCase() === String(res.player1).toLowerCase());
+        if (found) { p1Id = found.id; updates.player1Id = found.id; }
+      }
+      if (!p2Id && res.player2) {
+        const found = allPlayers.find(u => u.username?.toLowerCase() === String(res.player2).toLowerCase());
+        if (found) { p2Id = found.id; updates.player2Id = found.id; }
+      }
+
+      // 2. Fix Game Type (League vs Super League vs Friendly)
+      const s1 = Number(res.score1) || 0;
+      const s2 = Number(res.score2) || 0;
+      const totalLegs = s1 + s2;
+      const isSuperFormat = (s1 === 6 || s2 === 6) && totalLegs <= 11 && totalLegs >= 6;
+      const isStandardFormat = totalLegs <= 8;
+
+      // New: Check if players are in Super League
+      const p1Data = allPlayers.find(u => String(u.id) === String(p1Id));
+      const p2Data = allPlayers.find(u => String(u.id) === String(p2Id));
+      const isSuperMatch = p1Data?.superLeagueDivision || p2Data?.superLeagueDivision;
+
+      if (!res.gameType || ['league', 'friendly', 'unknown', ''].includes(String(res.gameType).toLowerCase())) {
+        if (isSuperFormat || (isSuperMatch && totalLegs > 8)) updates.gameType = 'Super League';
+        else if (isStandardFormat && totalLegs > 0) updates.gameType = 'League';
+      }
+
+      // 3. Fix Season Label
+      if (!res.season || ['2026', 'legacy', ''].includes(String(res.season).toLowerCase())) {
+        const matchTime = new Date(res.date || res.submittedAt || Date.now()).getTime();
+        const s2Start = new Date('2026-06-01T00:00:00').getTime();
+        updates.season = matchTime >= s2Start ? 'Season 2' : 'Season 1';
+      }
+
+      // 4. Fix Division (if missing)
+      if (!res.division || res.division === 'Unassigned') {
+        const p1 = allPlayers.find(u => String(u.id) === String(p1Id));
+        const p2 = allPlayers.find(u => String(u.id) === String(p2Id));
+        const division = p1?.division || p2?.division;
+        if (division && division !== 'Unassigned') updates.division = division;
+      }
+
+      const targetId = res.firestoreId || String(resultId)
+      const approvedResult = { ...res, ...updates }
+      await setDoc(doc(db, 'results', targetId), approvedResult, { merge: true })
+      logMatchApproved(approvedResult)
+
+      if (res.gameType === 'Cup' || updates.gameType === 'Cup') {
         await advanceCupBracket(approvedResult)
       }
 
-      // Update local state immediately so the UI reflects the change
+      // Update local state immediately
       const updatedResults = allResults.map(r =>
-        String(r.id) === String(resultId) ? { ...r, status: 'approved', approvedAt: approvedResult.approvedAt } : r
+        String(r.id) === String(resultId) ? { ...r, ...updates } : r
       )
       updateResults(updatedResults)
 
-      await logAudit('APPROVE_RESULT', `Approved match: ${res.player1} vs ${res.player2}`)
-      showToast('Result Approved!', 'success')
-    } catch (e) { showToast(e.message, 'error') }
+      await logAudit('APPROVE_RESULT', `Approved/Healed match: ${res.player1} vs ${res.player2}`)
+      showToast('Result Approved & Standings Updated!', 'success')
+      triggerDataRefresh('all')
+    } catch (e) {
+      console.error(e)
+      showToast(e.message, 'error')
+    }
     setIsApproving(false)
   }
 
@@ -157,14 +209,35 @@ export default function Admin() {
     try {
       const batch = writeBatch(db)
       const cupResults = []
+      const resultsToUpdate = []
+
       selectedResults.forEach(id => {
         const res = allResults.find(r => String(r.id) === String(id))
         if (res) {
+          const updates = { status: 'approved', approvedAt: new Date().toISOString() };
+
+          // Healing in bulk too
+          const s1 = Number(res.score1) || 0;
+          const s2 = Number(res.score2) || 0;
+          const totalLegs = s1 + s2;
+          if (!res.gameType || ['league', 'friendly', ''].includes(String(res.gameType).toLowerCase())) {
+            if ((s1 === 6 || s2 === 6) && totalLegs <= 11) updates.gameType = 'Super League';
+            else if (totalLegs <= 8) updates.gameType = 'League';
+          }
+
+          if (!res.season) {
+            const matchTime = new Date(res.date || res.submittedAt || Date.now()).getTime();
+            const s2Start = new Date('2026-06-01T00:00:00').getTime();
+            updates.season = matchTime >= s2Start ? 'Season 2' : 'Season 1';
+          }
+
           const targetId = res.firestoreId || String(id)
-          const approvedResult = { ...res, status: 'approved', approvedAt: new Date().toISOString() }
-          batch.update(doc(db, 'results', targetId), { status: 'approved', approvedAt: approvedResult.approvedAt })
-          logMatchApproved(res)
-          if (res.gameType === 'Cup') {
+          batch.update(doc(db, 'results', targetId), updates)
+
+          const approvedResult = { ...res, ...updates }
+          logMatchApproved(approvedResult)
+          resultsToUpdate.push(approvedResult)
+          if (res.gameType === 'Cup' || updates.gameType === 'Cup') {
             cupResults.push(approvedResult)
           }
         }
@@ -177,13 +250,16 @@ export default function Admin() {
 
       await logAudit('BULK_APPROVE', `Approved ${selectedResults.length} matches`)
       setSelectedResults([])
+
       // Update local state immediately
-      const approvedIds = new Set(selectedResults)
-      const updatedResults = allResults.map(r =>
-        approvedIds.has(String(r.id)) ? { ...r, status: 'approved', approvedAt: new Date().toISOString() } : r
-      )
+      const updatedIds = new Set(selectedResults)
+      const updatedResults = allResults.map(r => {
+        const match = resultsToUpdate.find(u => String(u.id) === String(r.id))
+        return match ? match : r
+      })
       updateResults(updatedResults)
-      showToast(`Approved ${selectedResults.length} matches!`, 'success')
+      showToast(`Approved & Fixed ${selectedResults.length} matches!`, 'success')
+      triggerDataRefresh('all')
     } catch (e) { showToast(e.message, 'error') }
     setIsApproving(false)
   }

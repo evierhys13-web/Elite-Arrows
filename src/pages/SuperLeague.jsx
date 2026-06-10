@@ -52,7 +52,11 @@ export default function SuperLeague() {
       currentSeason: selectedSeason,
       includePlayoffs: false
     })
-  }, [allUsers, results, fixtures, adminData, selectedSeason, refreshKey])
+  }, [allUsers, results, fixtures, adminData, selectedSeason, refreshKey, dataRefreshTrigger])
+
+  useEffect(() => {
+    setRefreshKey(prev => prev + 1)
+  }, [dataRefreshTrigger])
 
   const playersInDivision = useMemo(() => {
     const source = allUsers.filter(u => u.superLeagueDivision === activeDivision)

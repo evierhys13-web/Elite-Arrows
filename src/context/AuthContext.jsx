@@ -1790,10 +1790,13 @@ export function AuthProvider({ children }) {
 
   const fetchUsersByDivision = useCallback(async (division) => {
     try {
+      const isSuperDivision = ['Premier', 'Pro', 'Amateur'].includes(division);
       const q =
         division === "Overall"
           ? query(collection(db, "users"), limit(500))
-          : query(collection(db, "users"), where("division", "==", division));
+          : isSuperDivision
+            ? query(collection(db, "users"), where("superLeagueDivision", "==", division))
+            : query(collection(db, "users"), where("division", "==", division));
 
       const snapshot = await getDocsFromServer(q);
       const users = snapshot.docs.map((docSnap) => {
