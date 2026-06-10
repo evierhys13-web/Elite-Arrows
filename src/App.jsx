@@ -222,6 +222,8 @@ function AppLayout({ children }) {
     const oneDay = 24 * 60 * 60 * 1000
     if ((Date.now() - lastUpdate) > oneDay) {
       setShowAvgModal(true)
+    } else {
+      setShowAvgModal(false)
     }
   }, [user])
 

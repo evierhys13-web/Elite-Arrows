@@ -22,12 +22,13 @@ export default function AverageUpdateModal({ isOpen, onClose }) {
         threeDartAverage: numAvg,
         averageLastUpdated: new Date().toISOString()
       }, false)
-      onClose()
     } catch (error) {
       alert('Failed to update: ' + error.message)
+      return
     } finally {
       setIsSubmitting(false)
     }
+    onClose()
   }
 
   return (

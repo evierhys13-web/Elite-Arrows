@@ -8,7 +8,7 @@ import Tooltip from '../components/Tooltip'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { getLeaguePoints } from '../utils/leagueScoring'
 import { getResultEffectiveTime, getResultPlayerId, isLeagueResult } from '../utils/leagueResults'
-import AverageUpdateModal from '../components/AverageUpdateModal'
+
 
 const DEFAULT_LEAGUE_TABLE_RESET_AT = '2026-04-29T16:14:21.338+01:00'
 
@@ -21,7 +21,7 @@ export default function Home() {
   const [visible, setVisible] = useState(false)
   const [surveyAnswers, setSurveyAnswers] = useState({})
   const [submittingSurvey, setSubmittingSurvey] = useState(null)
-  const [showAverageModal, setShowAverageModal] = useState(false)
+
 
   const activeSeason = useMemo(() => {
     const seasons = typeof getSeasons === 'function' ? getSeasons() : []
@@ -74,15 +74,6 @@ export default function Home() {
     setVisible(true)
   }, [])
 
-  useEffect(() => {
-    if (user && (!user.threeDartAverage || user.threeDartAverage === 0)) {
-      const lastUpdate = user.averageLastUpdated ? new Date(user.averageLastUpdated).getTime() : 0
-      const oneDay = 24 * 60 * 60 * 1000
-      if ((Date.now() - lastUpdate) > oneDay) {
-        setShowAverageModal(true)
-      }
-    }
-  }, [user])
 
   useEffect(() => {
     const calculateTimeLeft = () => {
@@ -504,8 +495,6 @@ export default function Home() {
         </a>
       </div>
     </div>
-
-      <AverageUpdateModal isOpen={showAverageModal} onClose={() => setShowAverageModal(false)} />
     </>
   )
 }
