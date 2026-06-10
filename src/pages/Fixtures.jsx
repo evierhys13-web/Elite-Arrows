@@ -7,7 +7,7 @@ import UserSearchSelect from '../components/UserSearchSelect'
 import { useToast } from '../context/ToastContext'
 
 export default function Fixtures() {
-  const { user, getAllUsers, getFixtures, getResults, updateResults, updateFixtures, triggerDataRefresh, notifyUser, notifyAdmins, useTokens, bets: allBetsData, adminData, getSeasons, fetchFixturesBySeason, searchUsers } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, updateResults, removeResult, updateFixtures, triggerDataRefresh, notifyUser, notifyAdmins, useTokens, bets: allBetsData, adminData, getSeasons, fetchFixturesBySeason, searchUsers } = useAuth()
   const { showToast } = useToast()
   const navigate = useNavigate()
 
@@ -938,8 +938,10 @@ const [counterFixture, setCounterFixture] = useState(null)
     const remainingResults = results.filter(result => !resultMatchesFixture(result))
     const remainingFixtures = getFixtures().filter(item => String(item.id) !== fixtureId)
 
-    updateResults(remainingResults)
     saveFixtures(remainingFixtures)
+
+    // Correctly remove all results linked to this fixture from local state
+    matchingResults.forEach(r => removeResult(r.id))
 
     try {
       await deleteDoc(doc(db, 'fixtures', fixtureId))

@@ -21,17 +21,9 @@ export default function SuperLeague() {
   const [loadingData, setLoadingData] = useState(false)
   const [editingManual, setEditingManual] = useState(null)
   const [manualForm, setManualForm] = useState({ played: 0, wins: 0, draws: 0, losses: 0, points: 0, legsWon: 0, legsLost: 0 })
-  const [selectedSeason, setSelectedSeason] = useState(adminData?.currentSeason || 'Season 1')
-  const [hasInitializedSeason, setHasInitializedSeason] = useState(false)
+  const [selectedSeason] = useState('Season 2')
 
   const isAdmin = user?.isAdmin === true
-
-  useEffect(() => {
-    if (adminData?.currentSeason && !hasInitializedSeason) {
-      setSelectedSeason(adminData.currentSeason)
-      setHasInitializedSeason(true)
-    }
-  }, [adminData?.currentSeason, hasInitializedSeason])
 
   useEffect(() => {
     const syncData = async () => {
@@ -45,7 +37,7 @@ export default function SuperLeague() {
     syncData()
   }, [selectedSeason, activeDivision, fetchResultsBySeason, fetchUsersByDivision])
 
-  const seasonsList = getSeasons()
+  const seasonsList = getSeasons().filter(s => s.name === 'Season 2')
 
   // All data is derived from AuthContext
   const allUsers = getAllUsers()
@@ -136,16 +128,7 @@ export default function SuperLeague() {
             <h1 className="page-title text-gradient" style={{ fontSize: '2.2rem', marginBottom: '4px' }}>Elite Super League</h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Season:</span>
-              <select
-                className="glass"
-                value={selectedSeason}
-                onChange={(e) => setSelectedSeason(e.target.value)}
-                style={{ padding: '4px 12px', borderRadius: '8px', fontSize: '0.85rem', border: '1px solid rgba(255,255,255,0.1)' }}
-              >
-                {seasonsList.map(s => (
-                  <option key={s.id} value={s.name}>{s.name}</option>
-                ))}
-              </select>
+              <span style={{ fontWeight: 800, color: 'var(--accent-cyan)', fontSize: '0.9rem' }}>Season 2</span>
             </div>
           </div>
           <button className="btn btn-secondary btn-sm glass" onClick={handleRefresh} style={{ padding: '8px 12px' }}>

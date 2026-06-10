@@ -1689,6 +1689,17 @@ export function AuthProvider({ children }) {
     saveResultsCache(merged)
   }, [publishResults, user?.id])
 
+  const removeResult = useCallback((resultId) => {
+    const existing = resultRowsRef.current || []
+    const updated = existing.filter(r =>
+      String(r.id) !== String(resultId) &&
+      String(r.firestoreId) !== String(resultId)
+    )
+    resultRowsRef.current = updated
+    publishResults({ announce: true })
+    saveResultsCache(updated)
+  }, [publishResults])
+
   const fetchMoreResults = useCallback(
     async (lastResult = null, limitCount = 50) => {
       try {
@@ -2631,6 +2642,7 @@ export function AuthProvider({ children }) {
         searchUsers,
         forceFetchResults,
         updateResults,
+        removeResult,
         getFixtures,
         updateFixtures,
         getCups,
