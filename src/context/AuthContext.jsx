@@ -2011,8 +2011,6 @@ export function AuthProvider({ children }) {
       return false;
     }
   }, [publishResults, user, triggerDataRefresh, showToast, adminData?.currentSeason]);
-    }
-  }, [publishResults, user, triggerDataRefresh, showToast, adminData?.currentSeason]);
 
   const getFixtures = useCallback(() => {
     if (fixtures.length > 0) return fixtures;
