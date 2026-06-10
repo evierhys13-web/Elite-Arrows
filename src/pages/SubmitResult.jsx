@@ -54,7 +54,18 @@ export default function SubmitResult() {
   const allResults = getResults()
   const seasons = getSeasons()
 
-  const currentSeasonLabel = formData.season || seasonParam || adminData?.currentSeason || 'Season 1'
+  // Robust season detection
+  const getDefaultSeason = () => {
+    const baseSeason = formData.season || seasonParam || adminData?.currentSeason || 'Season 1'
+    if (formData.gameType === 'Super League' && (baseSeason === 'Season 1' || baseSeason === '2026')) {
+      const now = new Date().getTime()
+      const s2Start = new Date('2026-06-01T00:00:00').getTime()
+      if (now >= s2Start) return 'Season 2'
+    }
+    return baseSeason
+  }
+
+  const currentSeasonLabel = getDefaultSeason()
   const targetSeasonDoc = seasons.find(s => s.name === currentSeasonLabel)
   const stagedDiv = targetSeasonDoc?.stagedDivisions?.[String(user.id)] || targetSeasonDoc?.stagedDivisions?.[user.id]
 

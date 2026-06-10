@@ -102,14 +102,25 @@ export const getResultPlayerId = (result, playerNumber, users = []) => {
   const playerName = normalizeText(result[`player${playerNumber}`])
   if (!playerName) return ''
 
-  const matchedUser = users.find(user => (
-    normalizeText(user.id) === playerName ||
-    normalizeText(user.username) === playerName ||
-    normalizeText(user.dartCounterUsername) === playerName ||
-    normalizeText(user.name) === playerName ||
-    normalizeText(user.displayName) === playerName ||
-    normalizeText(user.email) === playerName
-  ))
+  const matchedUser = users.find(user => {
+    const uid = normalizeText(user.id)
+    const uname = normalizeText(user.username)
+    const dname = normalizeText(user.dartCounterUsername)
+    const rname = normalizeText(user.name)
+    const dispname = normalizeText(user.displayName)
+    const email = normalizeText(user.email)
+    const nick = normalizeText(user.nickname)
+
+    return uid === playerName ||
+           uname === playerName ||
+           dname === playerName ||
+           rname === playerName ||
+           dispname === playerName ||
+           email === playerName ||
+           nick === playerName ||
+           (uname && playerName.includes(uname)) ||
+           (nick && playerName.includes(nick))
+  })
 
   return matchedUser?.id ? String(matchedUser.id) : ''
 }

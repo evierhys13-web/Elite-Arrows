@@ -265,6 +265,14 @@ export default function SuperLeague() {
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
               <button className="btn btn-primary" style={{ flex: 1 }} onClick={saveAdminAdjustments}>Save Changes</button>
+              <button className="btn btn-danger" style={{ flex: 1 }} onClick={async () => {
+                if (confirm('Clear all manual overrides for this player?')) {
+                  await setDoc(doc(db, 'users', editingManual.id), { manualSuperStats: null }, { merge: true })
+                  showToast('Adjustments cleared!', 'info')
+                  setEditingManual(null)
+                  triggerDataRefresh('all')
+                }
+              }}>Clear Overrides</button>
               <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setEditingManual(null)}>Cancel</button>
             </div>
           </div>

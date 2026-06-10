@@ -136,15 +136,27 @@ export default function Admin() {
       const updates = { status: 'approved', approvedAt: new Date().toISOString() };
 
       // --- AUTO-HEALING & ENRICHMENT ---
-      // 1. Fix Missing Player IDs
+      // 1. Fix Missing Player IDs (Improved Fuzzy Matching)
+      const findUser = (name) => {
+        if (!name) return null;
+        const n = String(name).toLowerCase().trim();
+        return allPlayers.find(u =>
+          u.username?.toLowerCase() === n ||
+          u.nickname?.toLowerCase() === n ||
+          String(u.id) === n ||
+          (u.username && n.includes(u.username.toLowerCase())) ||
+          (u.nickname && n.includes(u.nickname.toLowerCase()))
+        );
+      }
+
       let p1Id = res.player1Id;
       let p2Id = res.player2Id;
       if (!p1Id && res.player1) {
-        const found = allPlayers.find(u => u.username?.toLowerCase() === String(res.player1).toLowerCase());
+        const found = findUser(res.player1);
         if (found) { p1Id = found.id; updates.player1Id = found.id; }
       }
       if (!p2Id && res.player2) {
-        const found = allPlayers.find(u => u.username?.toLowerCase() === String(res.player2).toLowerCase());
+        const found = findUser(res.player2);
         if (found) { p2Id = found.id; updates.player2Id = found.id; }
       }
 
@@ -339,6 +351,16 @@ export default function Admin() {
       const isSuper = f.gameType === 'Super League'
       const isLeague = f.gameType === 'League'
 
+      // Robust season detection for manual submissions
+      let targetSeason = f.season || adminData?.currentSeason || 'Season 1'
+      const matchTime = new Date().getTime()
+      const s2Start = new Date('2026-06-01T00:00:00').getTime()
+
+      // If "Auto" or legacy season name is used, and it's June 2026+, force Season 2 for Super League
+      if (isSuper && (!f.season || f.season === 'Season 1' || f.season === '2026')) {
+        if (matchTime >= s2Start) targetSeason = 'Season 2'
+      }
+
       const newMatch = {
         id: resultId,
         player1: p1.username,
@@ -348,7 +370,7 @@ export default function Admin() {
         score1: s1, score2: s2,
         gameType: f.gameType,
         status: 'approved',
-        season: f.season || adminData?.currentSeason || 'Season 1',
+        season: targetSeason,
         division: isSuper ? (p1.superLeagueDivision || '') : (isLeague ? (p1.division || '') : ''),
         date: new Date().toISOString().split('T')[0],
         submittedAt: new Date().toISOString(),
