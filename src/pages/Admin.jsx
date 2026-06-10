@@ -936,6 +936,76 @@ export default function Admin() {
     setIsApproving(false)
   }
 
+  const handleResetSuperLeagueTable = async () => {
+    if (!window.confirm("DANGER: This will WIPE all manual adjustments/overrides from the Super League standings and force a deep re-sync of all approved Super League matches to Season 2. Proceed?")) return;
+
+    setIsApproving(true);
+    try {
+      const users = getAllUsers();
+      const results = getResults();
+      let batch = writeBatch(db);
+      let ops = 0;
+      let userCount = 0;
+      let resultCount = 0;
+
+      // 1. Clear manual overrides for all users
+      for (const u of users) {
+        if (u.manualSuperStats) {
+          batch.update(doc(db, 'users', u.id), { manualSuperStats: null });
+          userCount++;
+          ops++;
+          if (ops >= 450) { await batch.commit(); batch = writeBatch(db); ops = 0; }
+        }
+      }
+
+      // 2. Sync all Super League results to Season 2
+      const cutoff = new Date('2026-06-01T00:00:00').getTime();
+      const updatesById = {};
+
+      for (const r of results) {
+        if (String(r.status).toLowerCase() !== 'approved') continue;
+
+        const d = new Date(r.date || r.submittedAt || 0).getTime();
+        const s1 = Number(r.score1) || 0;
+        const s2 = Number(r.score2) || 0;
+        const isSuperFormat = (s1 === 6 || s2 === 6) && (s1 + s2) <= 11;
+        const isLabeledSuper = String(r.gameType || '').toLowerCase().includes('super');
+
+        if (d >= cutoff && (isSuperFormat || isLabeledSuper)) {
+          const updates = {};
+          if (r.season !== 'Season 2') updates.season = 'Season 2';
+          if (r.gameType !== 'Super League') updates.gameType = 'Super League';
+
+          if (Object.keys(updates).length > 0) {
+            const tid = r.firestoreId || String(r.id);
+            batch.update(doc(db, 'results', tid), updates);
+            updatesById[tid] = updates;
+            resultCount++;
+            ops++;
+            if (ops >= 450) { await batch.commit(); batch = writeBatch(db); ops = 0; }
+          }
+        }
+      }
+
+      if (ops > 0) await batch.commit();
+
+      await logAudit('RESET_SUPER_LEAGUE', `Wiped overrides for ${userCount} users and synced ${resultCount} SL results.`);
+
+      // Update local state
+      const updatedResults = results.map(r => {
+        const key = r.firestoreId || String(r.id);
+        return updatesById[key] ? { ...r, ...updatesById[key] } : r;
+      });
+      updateResults(updatedResults);
+
+      triggerDataRefresh('all');
+      showToast(`Super League Reset: ${userCount} users cleared, ${resultCount} matches synced.`, 'success');
+    } catch (e) {
+      showToast('Reset failed: ' + e.message, 'error');
+    }
+    setIsApproving(false);
+  }
+
   const handleSoftResetStandings = async () => {
     if (!window.confirm("Soft Reset will hide all current results from the standings table without deleting them. This allows you to start a fresh phase while keeping history. Proceed?")) return;
     try {
@@ -2168,9 +2238,14 @@ export default function Admin() {
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
                   Mark all approved League/Super League results from 1 June 2026 onwards as Season 2.
                 </p>
-                <button className="btn btn-primary btn-sm" onClick={handleFixSeasons} disabled={isApproving} style={{ width: '100%' }}>
-                  {isApproving ? 'Processing...' : 'Fix Seasons'}
-                </button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <button className="btn btn-primary btn-sm" onClick={handleFixSeasons} disabled={isApproving} style={{ width: '100%' }}>
+                    {isApproving ? 'Processing...' : 'Fix Seasons'}
+                  </button>
+                  <button className="btn btn-warning btn-sm" onClick={handleResetSuperLeagueTable} disabled={isApproving} style={{ width: '100%', color: 'black' }}>
+                    Reset & Sync Super League
+                  </button>
+                </div>
               </div>
 
               <div className="glass" style={{
