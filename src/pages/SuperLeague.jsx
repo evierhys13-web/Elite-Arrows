@@ -43,7 +43,7 @@ export default function SuperLeague() {
       setLoadingData(false)
     }
     syncData()
-  }, [selectedSeason, activeDivision, fetchResultsBySeason, fetchUsersByDivision, dataRefreshTrigger])
+  }, [selectedSeason, activeDivision, fetchResultsBySeason, fetchUsersByDivision])
 
   const seasonsList = getSeasons()
 
@@ -60,11 +60,7 @@ export default function SuperLeague() {
       currentSeason: selectedSeason,
       includePlayoffs: false
     })
-  }, [allUsers, results, fixtures, adminData, selectedSeason, refreshKey, dataRefreshTrigger])
-
-  useEffect(() => {
-    setRefreshKey(prev => prev + 1)
-  }, [dataRefreshTrigger])
+  }, [allUsers, results, fixtures, adminData, selectedSeason])
 
   const playersInDivision = useMemo(() => {
     const source = allUsers.filter(u => u.superLeagueDivision === activeDivision)

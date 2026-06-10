@@ -32,6 +32,7 @@ export default function Table() {
     fetchUsersByDivision,
   } = useAuth();
   const { showToast } = useToast();
+  const [refreshKey, setRefreshKey] = useState(0);
   const [selectedSeason, setSelectedSeason] = useState(
     adminData?.currentSeason || "Season 1",
   );
@@ -53,7 +54,6 @@ export default function Table() {
     activeDivision,
     fetchResultsBySeason,
     fetchUsersByDivision,
-    dataRefreshTrigger,
   ]);
   const [editingManual, setEditingManual] = useState(null);
   const [manualForm, setManualForm] = useState({
