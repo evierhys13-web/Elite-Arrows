@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Breadcrumbs from '../components/Breadcrumbs'
@@ -10,12 +10,21 @@ export default function PracticeHub() {
   const [dailyStats, setDailyStats] = useState({ count: 0, goal: 5 })
 
   useEffect(() => {
-    // In a real app, we'd fetch this from Firebase
-    // For now, let's look at localStorage or just simulate
-    const sessions = JSON.parse(localStorage.getItem(`practice_sessions_${user?.id}`) || '[]')
-    const today = new Date().toISOString().split('T')[0]
-    const todaysSessions = sessions.filter(s => s.date === today)
-    setDailyStats(prev => ({ ...prev, count: todaysSessions.length }))
+    if (!user?.id) return
+
+    try {
+      const localKey = `practice_sessions_${user.id}`
+      const saved = localStorage.getItem(localKey)
+      const sessions = saved ? JSON.parse(saved) : []
+
+      if (Array.isArray(sessions)) {
+        const today = new Date().toISOString().split('T')[0]
+        const todaysSessions = sessions.filter(s => s.date === today)
+        setDailyStats(prev => ({ ...prev, count: todaysSessions.length }))
+      }
+    } catch (e) {
+      console.error("Failed to load practice stats", e)
+    }
   }, [user?.id])
 
   return (

@@ -93,13 +93,13 @@ export default function PracticeGame() {
   }
 
   useEffect(() => {
-    if (gameState.finished) {
+    if (gameState.finished && user?.id) {
       const tokens = calculatePracticeTokens(modeId, gameState)
       savePracticeSession(user.id, user.username, modeId, gameState)
       addTokens(tokens)
       showToast(`Practice Complete! Awarded ${tokens} Elite Tokens.`, 'success')
     }
-  }, [gameState.finished, modeId, user, addTokens, showToast])
+  }, [gameState.finished, modeId, user?.id, addTokens, showToast])
 
   if (!mode) return <div className="page">Invalid practice mode</div>
 
