@@ -35,6 +35,7 @@ import {
   updateDoc,
   deleteDoc,
   runTransaction,
+  writeBatch,
   FieldValue,
   getMessagingInstance,
   getToken,
@@ -1918,16 +1919,22 @@ export function AuthProvider({ children }) {
     try {
       showToast?.("Performing deep sync with server...", "info");
 
-      // 1. Fetch Results - Get all results for current season + user's recent ones
+      // 1. Fetch Results - Get approved results for current season
       const currentSeason = adminData?.currentSeason || "Season 1";
-      const resultsSnap = await getDocsFromServer(collection(db, "results"));
+
+      // OPTIMIZATION: Fetch season-specific approved results to avoid resource exhaustion
+      const q = (currentSeason === "Season 1" || !currentSeason)
+        ? query(collection(db, "results"), where("status", "==", "approved"))
+        : query(collection(db, "results"), where("season", "==", currentSeason), where("status", "==", "approved"));
+
+      const resultsSnap = await getDocsFromServer(q);
       const freshResults = resultsSnap.docs.map((docSnap) => {
         const data = docSnap.data();
         return { ...data, id: data.id || docSnap.id, firestoreId: docSnap.id };
       });
 
-      // 2. Fetch Users
-      const usersSnap = await getDocsFromServer(collection(db, "users"));
+      // 2. Fetch Users - Limit to 500 to avoid resource exhaustion
+      const usersSnap = await getDocsFromServer(query(collection(db, "users"), limit(500)));
       const freshUsers = usersSnap.docs.map((docSnap) => {
         const data = docSnap.data();
         SENSITIVE_FIELDS.forEach((f) => delete data[f]);
