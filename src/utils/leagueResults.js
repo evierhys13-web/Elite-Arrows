@@ -54,26 +54,33 @@ export const isLeagueResult = (result, fixturesById = {}) => {
 
 export const isSuperLeagueResult = (result, fixturesById = {}) => {
   const gameType = normalizeText(result.gameType)
-  // Match 'super league' or 'superleague'
+
+  // 1. Explicit labels
   if (gameType.includes('super league') || gameType.includes('superleague')) return true
+
+  // 2. Division-specific labels
+  const superDivisions = ['premier', 'pro', 'amateur']
+  if (superDivisions.some(div => gameType.includes(div)) && !gameType.includes('cup')) return true
 
   const s1 = Number(result.score1) || 0
   const s2 = Number(result.score2) || 0
 
-  // Format: One player has 6, and total legs is 6 to 11
-  // We exclude results that are explicitly marked as other types
+  // 3. Score-based detection (First to 6 / Best of 11 format)
   const otherTypes = ['cup', 'friendly', 'playoff', 'tournament']
   if (otherTypes.some(type => gameType.includes(type))) return false
   if (result.cupId || result.matchId || result.tournamentId) return false
 
+  // Standard Super League is First to 6
   if ((s1 === 6 || s2 === 6) && (s1 + s2) <= 11 && (s1 + s2) >= 6) {
     return true
   }
 
+  // 4. Fixture-based detection
   const fixture = result.fixtureId ? fixturesById[String(result.fixtureId)] : null
   if (fixture) {
     const fixtureGameType = normalizeText(fixture.gameType)
     if (fixtureGameType.includes('super league') || fixtureGameType.includes('superleague')) return true
+    if (superDivisions.some(div => fixtureGameType.includes(div))) return true
   }
 
   return false

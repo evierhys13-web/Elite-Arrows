@@ -28,12 +28,18 @@ export default function SuperLeague() {
   useEffect(() => {
     const syncData = async () => {
       setLoadingData(true)
-      const currentSeason = adminData?.currentSeason || 'Season 1'
-      await fetchResultsBySeason(currentSeason)
-      setLoadingData(false)
+      try {
+        if (forceFetchResults) await forceFetchResults()
+        const currentSeason = adminData?.currentSeason || 'Season 1'
+        await fetchResultsBySeason(currentSeason)
+      } catch (e) {
+        console.error("Sync error", e)
+      } finally {
+        setLoadingData(false)
+      }
     }
     syncData()
-  }, [adminData?.currentSeason, fetchResultsBySeason])
+  }, [adminData?.currentSeason, fetchResultsBySeason, forceFetchResults])
 
   useEffect(() => {
     setRefreshKey(prev => prev + 1)
@@ -49,7 +55,7 @@ export default function SuperLeague() {
       fixtures,
       adminData,
       superLeagueOnly: true,
-      currentSeason: adminData?.currentSeason || 'Season 1'
+      currentSeason: null // Show all Super League games regardless of season label
     })
   }, [allUsers, results, fixtures, adminData, refreshKey])
 
@@ -72,12 +78,19 @@ export default function SuperLeague() {
   }, [activeDivision, allUsers, playerStats])
 
   const handleRefresh = async () => {
-    triggerDataRefresh('all')
-    setRefreshKey(prev => prev + 1)
-    showToast('Refreshing Super League data...', 'info')
-    const ok = await forceFetchResults()
-    setRefreshKey(prev => prev + 1)
-    showToast(ok ? 'Standings synced!' : 'Sync failed — using cached data', ok ? 'success' : 'warning')
+    setLoadingData(true)
+    showToast('Performing deep sync with server...', 'info')
+
+    try {
+      const ok = await forceFetchResults()
+      triggerDataRefresh('all')
+      setRefreshKey(prev => prev + 1)
+      showToast(ok ? 'Super League standings updated!' : 'Sync completed with cache', 'success')
+    } catch (e) {
+      showToast('Sync failed: ' + e.message, 'error')
+    } finally {
+      setLoadingData(false)
+    }
   }
 
   return (
