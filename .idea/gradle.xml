@@ -13,6 +13,10 @@
             <option value="$PROJECT_DIR$/android/app" />
             <option value="$PROJECT_DIR$/android/capacitor-cordova-android-plugins" />
             <option value="$PROJECT_DIR$/node_modules/@capacitor/android/capacitor" />
+            <option value="$PROJECT_DIR$/node_modules/@capacitor/app/android" />
+            <option value="$PROJECT_DIR$/node_modules/@capacitor/camera/android" />
+            <option value="$PROJECT_DIR$/node_modules/@capacitor/device/android" />
+            <option value="$PROJECT_DIR$/node_modules/@capacitor/network/android" />
           </set>
         </option>
       </GradleProjectSettings>

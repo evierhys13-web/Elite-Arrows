@@ -1922,12 +1922,21 @@ export function AuthProvider({ children }) {
       // 1. Fetch Results - Get approved results for current season
       const currentSeason = adminData?.currentSeason || "Season 1";
 
-      // OPTIMIZATION: Fetch season-specific approved results to avoid resource exhaustion
-      const q = (currentSeason === "Season 1" || !currentSeason)
-        ? query(collection(db, "results"), where("status", "==", "approved"))
-        : query(collection(db, "results"), where("season", "==", currentSeason), where("status", "==", "approved"));
+      // Try fetching with season filter first
+      let resultsSnap;
+      try {
+        const q = (currentSeason === "Season 1" || !currentSeason)
+          ? query(collection(db, "results"), where("status", "==", "approved"))
+          : query(collection(db, "results"), where("season", "==", currentSeason), where("status", "==", "approved"));
 
-      const resultsSnap = await getDocsFromServer(q);
+        resultsSnap = await getDocsFromServer(q);
+      } catch (queryErr) {
+        console.warn("Season-specific query failed, falling back to broad fetch:", queryErr);
+        // Fallback: fetch all approved results if season query fails (likely index issue)
+        const fallbackQ = query(collection(db, "results"), where("status", "==", "approved"));
+        resultsSnap = await getDocsFromServer(fallbackQ);
+      }
+
       const freshResults = resultsSnap.docs.map((docSnap) => {
         const data = docSnap.data();
         return { ...data, id: data.id || docSnap.id, firestoreId: docSnap.id };
@@ -1942,10 +1951,14 @@ export function AuthProvider({ children }) {
       });
 
       // 3. Fetch Admin Data
-      const adminSnap = await getDocFromServer(doc(db, "adminData", "main"));
-      if (adminSnap.exists()) {
-        const data = adminSnap.data();
-        setAdminData((prev) => ({ ...prev, ...data }));
+      try {
+        const adminSnap = await getDocFromServer(doc(db, "adminData", "main"));
+        if (adminSnap.exists()) {
+          const data = adminSnap.data();
+          setAdminData((prev) => ({ ...prev, ...data }));
+        }
+      } catch (adminErr) {
+        console.warn("Admin data fetch failed during sync:", adminErr);
       }
 
       // Update state and cache
@@ -1982,8 +1995,11 @@ export function AuthProvider({ children }) {
       triggerDataRefresh("all");
       return true;
     } catch (e) {
-      console.warn("forceFetchResults failed:", e);
+      console.error("forceFetchResults failed:", e);
+      showToast?.("Sync failed: " + (e.message || "Network Error"), "error");
       return false;
+    }
+  }, [publishResults, user, triggerDataRefresh, showToast, adminData?.currentSeason]);
     }
   }, [publishResults, user, triggerDataRefresh, showToast, adminData?.currentSeason]);
 
