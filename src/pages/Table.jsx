@@ -53,6 +53,7 @@ export default function Table() {
     activeDivision,
     fetchResultsBySeason,
     fetchUsersByDivision,
+    dataRefreshTrigger,
   ]);
   const [editingManual, setEditingManual] = useState(null);
   const [manualForm, setManualForm] = useState({

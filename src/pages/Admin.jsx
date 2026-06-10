@@ -721,14 +721,14 @@ export default function Admin() {
   const handleBulkSyncAnalytics = async () => {
     const approvedMatches = allResults.filter(r => String(r.status).toLowerCase() === 'approved');
     const users = getAllUsers();
+    const currentSeason = adminData?.currentSeason || 'Season 1';
 
     if (approvedMatches.length === 0) return showToast('No approved matches to sync', 'info');
 
-    if (!window.confirm(`DEEP SYNC ${approvedMatches.length} approved games? This will force historical data to "Season 1", link missing IDs, and set game types to "League" ONLY for non-cup games.`)) return;
+    if (!window.confirm(`DEEP SYNC ${approvedMatches.length} approved games? This will force missing/legacy seasons to "${currentSeason}", link missing IDs, and categorize "League" vs "Super League" games correctly.`)) return;
 
     setIsApproving(true);
     try {
-      const currentSeason = adminData?.currentSeason || 'Season 1';
       let updatedCount = 0;
       let currentBatch = writeBatch(db);
       let opCount = 0;
@@ -736,60 +736,23 @@ export default function Admin() {
       // Track per-result updates so we can merge into local state after batch commit
       const updatesByTargetId = {};
 
-      // Strictly Season 1 window
-      const season1Start = new Date('2026-05-01T00:00:00').getTime();
-      const season1End = new Date('2026-06-01T23:59:59').getTime();
-
       for (const match of approvedMatches) {
         const updates = {};
         const targetId = match.firestoreId || String(match.id);
-        const matchTime = new Date(match.date || match.submittedAt || 0).getTime();
 
-        // 1. Force Season label
+        // 1. Force Season label for legacy/missing records
         const currentResSeason = String(match.season || '').trim();
-        const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null'].includes(currentResSeason);
-        const isInWindow = matchTime >= season1Start && matchTime <= season1End;
+        const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Season 1'].includes(currentResSeason);
 
-        if (isLegacyLabel || isInWindow) {
-          if (currentResSeason !== 'Season 1') {
-            updates.season = 'Season 1';
+        // If it's a legacy label OR missing season, assign it to the ACTIVE season
+        // Note: The user explicitly asked for this to be for the active season, not Season 1.
+        if (isLegacyLabel) {
+          if (currentResSeason !== currentSeason) {
+            updates.season = currentSeason;
           }
         }
 
-        // 2. Fix Game Type
-        const s1 = Number(match.score1) || 0;
-        const s2 = Number(match.score2) || 0;
-        const totalLegs = s1 + s2;
-        const isStandardFormat = totalLegs <= 8;
-        const isSuperFormat = (s1 === 6 || s2 === 6) && totalLegs <= 11 && totalLegs >= 6;
-
-        // Check fixture context to identify hidden cup games
-        let isCupGame = Boolean(match.cupId || match.matchId || match.tournamentId);
-        if (!isCupGame && match.fixtureId) {
-          const fx = allFixtures.find(f => String(f.id) === String(match.fixtureId));
-          if (fx && (fx.cupId || fx.tournamentId || String(fx.gameType).toLowerCase().includes('cup'))) {
-            isCupGame = true;
-          }
-        }
-
-        if (isCupGame) {
-          if (match.gameType !== 'Cup') {
-            updates.gameType = 'Cup';
-          }
-        } else {
-          const currentType = String(match.gameType || '').toLowerCase();
-          const isExplicitSuper = currentType.includes('super league');
-
-          if (!match.gameType || ['unknown', '', 'undefined', 'null'].includes(String(match.gameType))) {
-            if (isSuperFormat) updates.gameType = 'Super League';
-            else updates.gameType = isStandardFormat ? 'League' : 'Friendly';
-          } else if (match.gameType === 'League' && !isStandardFormat) {
-            if (isSuperFormat) updates.gameType = 'Super League';
-            else updates.gameType = 'Friendly';
-          }
-        }
-
-        // 3. Fix missing Player IDs
+        // 2. Fix missing Player IDs (needed for game type detection)
         let p1Id = match.player1Id;
         let p2Id = match.player2Id;
 
@@ -806,6 +769,42 @@ export default function Admin() {
             u.email?.toLowerCase() === String(match.player2).toLowerCase()
           );
           if (found) { p2Id = found.id; updates.player2Id = found.id; }
+        }
+
+        // 3. Fix Game Type (League vs Super League vs Cup)
+        const s1 = Number(match.score1) || 0;
+        const s2 = Number(match.score2) || 0;
+        const totalLegs = s1 + s2;
+        const isStandardFormat = totalLegs <= 8 && totalLegs > 0;
+        const isSuperFormat = (s1 === 6 || s2 === 6) && totalLegs <= 11 && totalLegs >= 6;
+
+        // Check fixture context to identify hidden cup games
+        let isCupGame = Boolean(match.cupId || match.matchId || match.tournamentId);
+        if (!isCupGame && match.fixtureId) {
+          const fx = allFixtures.find(f => String(f.id) === String(match.fixtureId));
+          if (fx && (fx.cupId || fx.tournamentId || String(fx.gameType).toLowerCase().includes('cup'))) {
+            isCupGame = true;
+          }
+        }
+
+        if (isCupGame) {
+          if (match.gameType !== 'Cup') {
+            updates.gameType = 'Cup';
+          }
+        } else {
+          let targetType = match.gameType;
+
+          if (isSuperFormat) {
+             targetType = 'Super League';
+          } else if (isStandardFormat) {
+             targetType = 'League';
+          } else if (!match.gameType || match.gameType === 'Unknown') {
+             targetType = 'Friendly';
+          }
+
+          if (match.gameType !== targetType) {
+            updates.gameType = targetType;
+          }
         }
 
         // 4. Fix missing division data
@@ -841,7 +840,7 @@ export default function Admin() {
         await currentBatch.commit();
       }
 
-      await logAudit('BULK_SYNC_ANALYTICS', `Deep Sync ${approvedMatches.length} games. Fixed ${updatedCount} records.`);
+      await logAudit('BULK_SYNC_ANALYTICS', `Deep Sync ${approvedMatches.length} games to ${currentSeason}. Fixed ${updatedCount} records.`);
 
       // Merge updates into local state directly — avoids silent failure of forceFetchResults
       if (updatedCount > 0) {
@@ -851,7 +850,7 @@ export default function Admin() {
           return merge ? { ...r, ...merge } : r
         })
         updateResults(updatedResults)
-        showToast(`Fixed ${updatedCount} records. Table updated!`, 'success');
+        showToast(`Fixed ${updatedCount} records for ${currentSeason}. Table updated!`, 'success');
       } else {
         showToast('All records already correct. No changes needed.', 'info');
       }
