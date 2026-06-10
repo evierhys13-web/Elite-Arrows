@@ -35,7 +35,7 @@ export default function SuperLeague() {
       setLoadingData(false)
     }
     syncData()
-  }, [selectedSeason, activeDivision, fetchResultsBySeason, fetchUsersByDivision])
+  }, [selectedSeason, activeDivision, fetchResultsBySeason, fetchUsersByDivision, dataRefreshTrigger])
 
   const seasonsList = getSeasons().filter(s => s.name === 'Season 2')
 

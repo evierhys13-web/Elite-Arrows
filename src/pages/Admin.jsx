@@ -50,6 +50,7 @@ export default function Admin() {
     player1: '', player2: '',
     score1: '', score2: '',
     gameType: 'Friendly',
+    season: '',
     p1_180s: '', p2_180s: '',
     p1_checkout: '', p2_checkout: '',
     p1_doubles: '', p2_doubles: ''
@@ -347,7 +348,7 @@ export default function Admin() {
         score1: s1, score2: s2,
         gameType: f.gameType,
         status: 'approved',
-        season: adminData?.currentSeason || 'Season 1',
+        season: f.season || adminData?.currentSeason || 'Season 1',
         division: isSuper ? (p1.superLeagueDivision || '') : (isLeague ? (p1.division || '') : ''),
         date: new Date().toISOString().split('T')[0],
         submittedAt: new Date().toISOString(),
@@ -1259,6 +1260,13 @@ export default function Admin() {
                     <option value="League">League</option>
                     <option value="Super League">Super League</option>
                     <option value="Cup">Cup</option>
+                  </select>
+                </div>
+                <div className="form-group" style={{ marginBottom: '16px' }}>
+                  <label>Season</label>
+                  <select value={adminGameForm.season} onChange={e => setAdminGameForm({...adminGameForm, season: e.target.value})}>
+                    <option value="">Auto ({adminData?.currentSeason || 'Season 1'})</option>
+                    {getSeasons().map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                   </select>
                 </div>
                 <details style={{ marginBottom: '16px', cursor: 'pointer' }}>
