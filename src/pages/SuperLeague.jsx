@@ -163,7 +163,6 @@ export default function SuperLeague() {
                 <th style={{ textAlign: 'left', padding: '12px 4px' }}>Player</th>
                 <th style={{ width: '22px', padding: '12px 2px', textAlign: 'center' }}>P</th>
                 <th style={{ width: '22px', padding: '12px 2px', textAlign: 'center' }}>W</th>
-                <th style={{ width: '22px', padding: '12px 2px', textAlign: 'center' }}>D</th>
                 <th style={{ width: '22px', padding: '12px 2px', textAlign: 'center' }}>L</th>
                 <th style={{ width: '30px', padding: '12px 2px', textAlign: 'center' }}>+/-</th>
                 <th style={{ width: '35px', padding: '12px 2px', textAlign: 'center' , color: 'var(--accent-cyan)' }}>Pts</th>
@@ -227,7 +226,6 @@ export default function SuperLeague() {
                       </td>
                       <td style={{ textAlign: 'center' }}>{player.stats.played}</td>
                       <td style={{ textAlign: 'center' }}>{player.stats.wins}</td>
-                      <td style={{ textAlign: 'center' }}>{player.stats.draws}</td>
                       <td style={{ textAlign: 'center' }}>{player.stats.losses}</td>
                       <td style={{ textAlign: 'center', fontWeight: '700', color: legDiff > 0 ? '#10b981' : legDiff < 0 ? '#ef4444' : 'rgba(255,255,255,0.4)' }}>
                         {legDiff > 0 ? `+${legDiff}` : legDiff}
@@ -252,7 +250,7 @@ export default function SuperLeague() {
             <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '20px' }}>Super League table overrides</p>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              {['played', 'wins', 'draws', 'losses', 'points', 'legsWon', 'legsLost'].map(field => (
+              {['played', 'wins', 'losses', 'points', 'legsWon', 'legsLost'].map(field => (
                 <div key={field} className="form-group" style={{ marginBottom: 0 }}>
                   <label>{field.charAt(0).toUpperCase() + field.slice(1)}</label>
                   <input
