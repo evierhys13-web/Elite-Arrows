@@ -260,7 +260,7 @@ export const derivePlayerStatsFromResults = (users = [], results = [], options =
     if (isPlayoff && !includePlayoffs) return
 
     const countsForPoints = (isSuper || isLeagueResult(result, fixturesById)) && !isPlayoff
-    const scoringOptions = { noDrawBonus: isSuper || isPlayoff, noWinBonus: false }
+    const scoringOptions = { noDrawBonus: isSuper || isPlayoff, noWinBonus: isSuper }
 
     if (player1Id && statsByPlayerId[player1Id]) {
       addResultToPlayer(statsByPlayerId[player1Id], result, 1, score2, score1, countsForPoints, scoringOptions)

@@ -34,8 +34,10 @@ export default function SuperLeague() {
       ])
       setLoadingData(false)
     }
-    syncData()
-  }, [selectedSeason, activeDivision, fetchResultsBySeason, fetchUsersByDivision, dataRefreshTrigger])
+    const timeout = setTimeout(syncData, 100)
+    return () => clearTimeout(timeout)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSeason, activeDivision])
 
   const seasonsList = getSeasons().filter(s => s.name === 'Season 2')
 
