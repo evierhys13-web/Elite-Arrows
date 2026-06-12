@@ -1946,7 +1946,7 @@ export function AuthProvider({ children }) {
       // 1. Fetch Results - Get approved results for current season
       const currentSeason = adminData?.currentSeason || "Season 1";
 
-      // Try fetching with season filter first
+      // IMPORTANT: Using getDocsFromServer to bypass local cache entirely
       let resultsSnap;
       try {
         const q = (currentSeason === "Season 1" || !currentSeason)
@@ -1956,7 +1956,6 @@ export function AuthProvider({ children }) {
         resultsSnap = await getDocsFromServer(q);
       } catch (queryErr) {
         console.warn("Season-specific query failed, falling back to broad fetch:", queryErr);
-        // Fallback: fetch all approved results if season query fails (likely index issue)
         const fallbackQ = query(collection(db, "results"), where("status", "==", "approved"));
         resultsSnap = await getDocsFromServer(fallbackQ);
       }
@@ -1966,50 +1965,24 @@ export function AuthProvider({ children }) {
         return { ...data, id: data.id || docSnap.id, firestoreId: docSnap.id };
       });
 
-      // 2. Fetch Users - Limit to 500 to avoid resource exhaustion
-      const usersSnap = await getDocsFromServer(query(collection(db, "users"), limit(500)));
+      // 2. Fetch Users
+      const usersSnap = await getDocsFromServer(query(collection(db, "users"), limit(1000)));
       const freshUsers = usersSnap.docs.map((docSnap) => {
         const data = docSnap.data();
         SENSITIVE_FIELDS.forEach((f) => delete data[f]);
         return { id: docSnap.id, ...data };
       });
 
-      // 3. Fetch Admin Data
-      try {
-        const adminSnap = await getDocFromServer(doc(db, "adminData", "main"));
-        if (adminSnap.exists()) {
-          const data = adminSnap.data();
-          setAdminData((prev) => ({ ...prev, ...data }));
-        }
-      } catch (adminErr) {
-        console.warn("Admin data fetch failed during sync:", adminErr);
-      }
-
-      // Update state and cache
+      // 3. Update state and REPLACE local cache
       setAllUsers(freshUsers);
       localStorage.setItem("eliteArrowsUsers", JSON.stringify(freshUsers));
 
-      // When force fetching, we replace the ENTIRE approved result set to clear stale data
-      // but we keep our own non-approved results.
-      const existing = resultRowsRef.current || [];
-      const myPending = existing.filter(
-        (r) =>
-          (r.player1Id === user?.id || r.player2Id === user?.id) &&
-          String(r.status).toLowerCase() !== "approved",
-      );
+      // Replace resultRowsRef with fresh data only
+      resultRowsRef.current = freshResults;
 
-      const merged = [...myPending];
-      freshResults.forEach((row) => {
-        const idx = merged.findIndex((r) => r.id === row.id);
-        if (idx !== -1) merged[idx] = row;
-        else merged.push(row);
-      });
-
-      resultRowsRef.current = merged;
       publishResults({ announce: true });
-      saveResultsCache(merged);
+      saveResultsCache(freshResults);
 
-      // Trigger update for current user if changed
       const current = freshUsers.find((u) => u.id === user?.id);
       if (current) {
         setUser(current);

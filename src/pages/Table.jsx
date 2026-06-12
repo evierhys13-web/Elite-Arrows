@@ -172,15 +172,27 @@ export default function Table() {
   }, [activeDivision, usersWithCorrectDivisions, playerStats]);
 
   const handleRefresh = async () => {
-    triggerDataRefresh("all");
-    setRefreshKey((prev) => prev + 1);
-    showToast("Refreshing table data...", "info");
-    const ok = await forceFetchResults();
-    setRefreshKey((prev) => prev + 1);
-    showToast(
-      ok ? "Table data synced!" : "Sync failed — using cached data",
-      ok ? "success" : "warning",
-    );
+    setLoadingSeason(true);
+    showToast("Performing Deep Sync with server...", "info");
+    try {
+      // 1. Force clear result cache to eliminate 'ghost' results
+      localStorage.removeItem("eliteArrowsResults");
+      localStorage.removeItem("eliteArrowsFixtures");
+
+      // 2. Fresh download
+      const ok = await forceFetchResults();
+
+      triggerDataRefresh("all");
+      setRefreshKey((prev) => prev + 1);
+      showToast(
+        ok ? "Table data synced!" : "Sync failed — check connection",
+        ok ? "success" : "warning",
+      );
+    } catch (e) {
+      console.error("Table Sync Error:", e);
+      showToast("Sync Error", "error");
+    }
+    setLoadingSeason(false);
   };
 
   const openManualEditor = (player) => {
