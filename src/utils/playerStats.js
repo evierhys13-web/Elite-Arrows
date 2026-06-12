@@ -68,18 +68,17 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
 
     // Season filtering logic - robust matching
     if (currentSeason) {
-      const resSeason = String(result.season || '').trim().toLowerCase()
-      const actSeason = String(currentSeason).trim().toLowerCase()
+      const resSeason = String(result.season || '').replace(/\s+/g, '').toLowerCase()
+      const actSeason = String(currentSeason).replace(/\s+/g, '').toLowerCase()
 
-      // 1. Exact match
+      // 1. Exact match (normalized)
       if (resSeason === actSeason) {
-         // Matched successfully, proceed to other checks
+         // Matched successfully
       }
       // 2. Legacy/Window fallback for Season 1
-      else if (actSeason === 'season 1' || actSeason === '2026' || actSeason === 'legacy') {
-        const isLegacyMatch = ['season 1', '2026', 'legacy', '', 'undefined', 'null'].includes(resSeason)
+      else if (actSeason === 'season1' || actSeason === '2026' || actSeason === 'legacy') {
+        const isLegacyMatch = ['season1', '2026', 'legacy', '', 'undefined', 'null'].includes(resSeason)
         if (!isLegacyMatch) return false
-        // Matched legacy successfully, proceed to other checks
       }
       // 3. Mismatch
       else {

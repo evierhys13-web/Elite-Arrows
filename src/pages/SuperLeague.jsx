@@ -21,7 +21,7 @@ export default function SuperLeague() {
   const [loadingData, setLoadingData] = useState(false)
   const [editingManual, setEditingManual] = useState(null)
   const [manualForm, setManualForm] = useState({ played: 0, wins: 0, draws: 0, losses: 0, points: 0, legsWon: 0, legsLost: 0 })
-  const [selectedSeason] = useState('Season 2')
+  const selectedSeason = adminData?.currentSeason || 'Season 2'
 
   const isAdmin = user?.isAdmin === true
 
@@ -130,7 +130,7 @@ export default function SuperLeague() {
             <h1 className="page-title text-gradient" style={{ fontSize: '2.2rem', marginBottom: '4px' }}>Elite Super League</h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Season:</span>
-              <span style={{ fontWeight: 800, color: 'var(--accent-cyan)', fontSize: '0.9rem' }}>Season 2</span>
+              <span style={{ fontWeight: 800, color: 'var(--accent-cyan)', fontSize: '0.9rem' }}>{selectedSeason}</span>
             </div>
           </div>
           <button className="btn btn-secondary btn-sm glass" onClick={handleRefresh} style={{ padding: '8px 12px' }}>
