@@ -124,6 +124,40 @@ const minimizeResultForCache = (result) => {
   return cached;
 };
 
+const MINIMAL_USER_CACHE_FIELDS = [
+  "id",
+  "username",
+  "nickname",
+  "division",
+  "superLeagueDivision",
+  "isSubscribed",
+  "isAdmin",
+  "isTournamentAdmin",
+  "isCupAdmin",
+  "eliteTokens",
+  "threeDartAverage",
+  "subscribedSeasons"
+];
+
+const minimizeUserForCache = (user) => {
+  const cached = {};
+  MINIMAL_USER_CACHE_FIELDS.forEach((field) => {
+    if (user[field] !== undefined) cached[field] = user[field];
+  });
+  return cached;
+};
+
+const saveUsersCache = (users) => {
+  try {
+    const minimalUsers = (users || []).map(minimizeUserForCache);
+    localStorage.setItem("eliteArrowsUsers", JSON.stringify(minimalUsers));
+  } catch (error) {
+    console.warn("Could not cache users locally (quota exceeded):", error);
+    // If it still fails, clear some space
+    localStorage.removeItem("eliteArrowsUsers");
+  }
+};
+
 const getCachedResults = () => {
   try {
     return JSON.parse(localStorage.getItem(RESULT_CACHE_KEY) || "[]");
@@ -695,11 +729,7 @@ export function AuthProvider({ children }) {
         });
 
         setAllUsers(allFetchedUsers);
-
-        localStorage.setItem(
-          "eliteArrowsUsers",
-          JSON.stringify(allFetchedUsers),
-        );
+        saveUsersCache(allFetchedUsers);
 
         const currentUserData = allFetchedUsers.find(
           (item) => String(item.id) === String(user.id),
@@ -1258,7 +1288,7 @@ export function AuthProvider({ children }) {
       const cleanedUsers = cleanUserData(users);
       if (users.length > 0) {
         setAllUsers(cleanedUsers);
-        localStorage.setItem("eliteArrowsUsers", JSON.stringify(cleanedUsers));
+        saveUsersCache(cleanedUsers);
       }
       console.log("Cleanup complete - password fields removed from Firestore");
     } catch (e) {
@@ -1318,7 +1348,7 @@ export function AuthProvider({ children }) {
         return rest;
       });
       setAllUsers(cleanedUpdated);
-      localStorage.setItem("eliteArrowsUsers", JSON.stringify(cleanedUpdated));
+      saveUsersCache(cleanedUpdated);
 
       return newUser;
     } catch (error) {
@@ -1381,7 +1411,7 @@ export function AuthProvider({ children }) {
         const updated = currentUsers.map((u) =>
           u.id === user.id ? { ...u, ...cleanUpdates } : u,
         );
-        localStorage.setItem("eliteArrowsUsers", JSON.stringify(updated));
+        saveUsersCache(updated);
         return updated;
       });
 
@@ -1430,7 +1460,7 @@ export function AuthProvider({ children }) {
         const updated = sourceUsers.map((u) =>
           u.id === userId ? { ...u, ...cleanUpdates } : u,
         );
-        localStorage.setItem("eliteArrowsUsers", JSON.stringify(updated));
+        saveUsersCache(updated);
         return updated;
       });
     } catch (error) {
@@ -1975,7 +2005,7 @@ export function AuthProvider({ children }) {
 
       // 3. Update state and REPLACE local cache
       setAllUsers(freshUsers);
-      localStorage.setItem("eliteArrowsUsers", JSON.stringify(freshUsers));
+      saveUsersCache(freshUsers);
 
       // Replace resultRowsRef with fresh data only
       resultRowsRef.current = freshResults;
