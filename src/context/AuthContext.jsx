@@ -701,15 +701,25 @@ export function AuthProvider({ children }) {
           JSON.stringify(allFetchedUsers),
         );
 
-        const currentUser = allFetchedUsers.find(
+        const currentUserData = allFetchedUsers.find(
           (item) => String(item.id) === String(user.id),
         );
-        if (currentUser && currentUser.isBanned) {
-          firebaseSignOut(auth);
-          setUser(null);
-          localStorage.removeItem("eliteArrowsCurrentUser");
-          window.location.href = "/auth";
-          return;
+
+        // Sync the current user state if changed on another device
+        if (currentUserData) {
+          setUser(prev => {
+             if (JSON.stringify(prev) === JSON.stringify(currentUserData)) return prev;
+             return currentUserData;
+          });
+          localStorage.setItem("eliteArrowsCurrentUser", JSON.stringify(currentUserData));
+
+          if (currentUserData.isBanned) {
+            firebaseSignOut(auth);
+            setUser(null);
+            localStorage.removeItem("eliteArrowsCurrentUser");
+            window.location.href = "/auth";
+            return;
+          }
         }
         announceAfterHydration("users");
       },
@@ -724,13 +734,13 @@ export function AuthProvider({ children }) {
       ? query(
           collection(db, "results"),
           orderBy("submittedAt", "desc"),
-          limit(100),
+          limit(200),
         )
       : query(
           collection(db, "results"),
           where("status", "==", "approved"),
           orderBy("submittedAt", "desc"),
-          limit(50),
+          limit(500),
         );
 
     // Targeted listener for user's own results to ensure Home page accuracy
