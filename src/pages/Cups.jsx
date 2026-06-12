@@ -7,7 +7,7 @@ import UserSearchSelect from '../components/UserSearchSelect'
 import { useToast } from '../context/ToastContext'
 
 export default function CupTournaments() {
-  const { user, getAllUsers, getCups, getFixtures, triggerDataRefresh } = useAuth()
+  const { user, getAllUsers, getCups, getFixtures, triggerDataRefresh, searchUsers } = useAuth()
   const { showToast } = useToast()
   const [showCreate, setShowCreate] = useState(false)
   const [formData, setFormData] = useState({ name: '', entryFee: 5, maxPlayers: 8 })
@@ -311,7 +311,8 @@ export default function CupTournaments() {
               onSelect={handlePlayerSelect}
               placeholder="Search by name, nickname, or DartCounter..."
               label=""
-              maxResults={allUsers.length}
+              maxResults={50}
+              onQueryChange={searchUsers}
             />
           ) : (
             <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
@@ -594,6 +595,7 @@ export default function CupTournaments() {
                 onSelect={setPlayerToAdd}
                 label=""
                 placeholder="Search for new player..."
+                onQueryChange={searchUsers}
               />
             </div>
 

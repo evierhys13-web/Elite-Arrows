@@ -26,7 +26,8 @@ export default function Admin() {
     dataRefreshTrigger,
     updateResults,
     removeResult,
-    forceFetchResults
+    forceFetchResults,
+    searchUsers
   } = useAuth()
 
   const navigate = useNavigate()
@@ -1691,7 +1692,7 @@ export default function Admin() {
             <div style={{ marginTop: '30px', paddingTop: '20px', borderTop: '1px solid var(--border)' }}>
                <h4>Add New Staff Member</h4>
                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                  <UserSearchSelect users={allPlayers.filter(p => !p.isAdmin)} selectedId={''} onSelect={id => handleUpdateAdminRole(id, 'isTournamentAdmin', true)} label="Select User to Promote" />
+                  <UserSearchSelect users={allPlayers.filter(p => !p.isAdmin)} selectedId={''} onSelect={id => handleUpdateAdminRole(id, 'isTournamentAdmin', true)} label="Select User to Promote" onQueryChange={searchUsers} />
                </div>
             </div>
           </div>
@@ -1709,11 +1710,11 @@ export default function Admin() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                 <div className="form-group">
                   <label>Player 1</label>
-                  <UserSearchSelect users={allPlayers} selectedId={playoffForm.player1} onSelect={id => setPlayoffForm({...playoffForm, player1: id})} label="Select Player 1" />
+                  <UserSearchSelect users={allPlayers} selectedId={playoffForm.player1} onSelect={id => setPlayoffForm({...playoffForm, player1: id})} label="Select Player 1" onQueryChange={searchUsers} />
                 </div>
                 <div className="form-group">
                   <label>Player 2</label>
-                  <UserSearchSelect users={allPlayers} selectedId={playoffForm.player2} onSelect={id => setPlayoffForm({...playoffForm, player2: id})} label="Select Player 2" />
+                  <UserSearchSelect users={allPlayers} selectedId={playoffForm.player2} onSelect={id => setPlayoffForm({...playoffForm, player2: id})} label="Select Player 2" onQueryChange={searchUsers} />
                 </div>
               </div>
 
@@ -1794,7 +1795,7 @@ export default function Admin() {
                 <h4>Manage Super League</h4>
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '12px' }}>Assign player to Premier, Pro or Amateur rank.</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <UserSearchSelect users={allPlayers} selectedId={superRankForm.player} onSelect={id => setSuperRankForm({...superRankForm, player: id})} label="Player" />
+                  <UserSearchSelect users={allPlayers} selectedId={superRankForm.player} onSelect={id => setSuperRankForm({...superRankForm, player: id})} label="Player" onQueryChange={searchUsers} />
                   <select className="glass" style={{ padding: '10px' }} value={superRankForm.rank} onChange={e => setSuperRankForm({...superRankForm, rank: e.target.value})}>
                     <option value="">Select Rank...</option>
                     <option value="Premier">Premier</option>
@@ -1809,7 +1810,7 @@ export default function Admin() {
               <div className="glass" style={{ padding: '20px', borderRadius: '15px' }}>
                 <h4>Manually Grant Elite Pass</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
-                    <UserSearchSelect users={allPlayers} selectedId={grantSubForm.player} onSelect={id => setGrantSubForm({...grantSubForm, player: id})} label="Target Player" />
+                    <UserSearchSelect users={allPlayers} selectedId={grantSubForm.player} onSelect={id => setGrantSubForm({...grantSubForm, player: id})} label="Target Player" onQueryChange={searchUsers} />
                     <div style={{ display: 'flex', gap: '10px' }}>
                       <select className="glass" style={{ flex: 1, padding: '10px' }} value={grantSubForm.season} onChange={e => setGrantSubForm({...grantSubForm, season: e.target.value})}>
                         <option value="">Current Season</option>
@@ -1824,7 +1825,7 @@ export default function Admin() {
               <div className="glass" style={{ padding: '20px', borderRadius: '15px' }}>
                 <h4>Move Player Division</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
-                    <UserSearchSelect users={allPlayers} selectedId={divisionForm.player} onSelect={id => setDivisionForm({...divisionForm, player: id})} label="Target Player" />
+                    <UserSearchSelect users={allPlayers} selectedId={divisionForm.player} onSelect={id => setDivisionForm({...divisionForm, player: id})} label="Target Player" onQueryChange={searchUsers} />
                     <div style={{ display: 'flex', gap: '10px' }}>
                       <select className="glass" style={{ flex: 1, padding: '10px' }} value={divisionForm.division} onChange={e => setDivisionForm({...divisionForm, division: e.target.value})}>
                         <option value="">Select Division...</option>
@@ -1958,7 +1959,7 @@ export default function Admin() {
             <div className="glass" style={{ padding: '20px', borderRadius: '12px', marginBottom: '24px', background: 'rgba(56, 189, 248, 0.05)' }}>
               <h4 style={{ marginBottom: '12px' }}>Manually Add to Promotion Draw</h4>
               <div style={{ display: 'flex', gap: '12px' }}>
-                <UserSearchSelect users={allPlayers.filter(u => u.promotionDraw !== true)} selectedId={''} onSelect={handleManualDrawEntry} label="Select Player" />
+                <UserSearchSelect users={allPlayers.filter(u => u.promotionDraw !== true)} selectedId={''} onSelect={handleManualDrawEntry} label="Select Player" onQueryChange={searchUsers} />
               </div>
             </div>
 
@@ -2003,7 +2004,7 @@ export default function Admin() {
           <div className="card glass">
             <h3>Elite Token Disbursement</h3>
             <div style={{ marginTop: '20px' }}>
-               <UserSearchSelect users={allPlayers} selectedId={tokenForm.player} onSelect={id => setTokenForm({...tokenForm, player: id})} label="Recipient" />
+               <UserSearchSelect users={allPlayers} selectedId={tokenForm.player} onSelect={id => setTokenForm({...tokenForm, player: id})} label="Recipient" onQueryChange={searchUsers} />
                <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
                   <input type="number" className="glass" style={{ flex: 1, padding: '12px' }} placeholder="Amount" onChange={e => setTokenForm({...tokenForm, amount: parseInt(e.target.value) || 0})} />
                   <select className="glass" style={{ padding: '10px' }} value={tokenForm.action} onChange={e => setTokenForm({...tokenForm, action: e.target.value})}>
@@ -2033,7 +2034,7 @@ export default function Admin() {
             <div className="glass" style={{ padding: '24px', borderRadius: '16px' }}>
               <div className="form-group">
                 <label>Select Player</label>
-                <UserSearchSelect users={allPlayers} selectedId={trophyForm.player} onSelect={id => setTrophyForm({...trophyForm, player: id})} label="Recipient" />
+                <UserSearchSelect users={allPlayers} selectedId={trophyForm.player} onSelect={id => setTrophyForm({...trophyForm, player: id})} label="Recipient" onQueryChange={searchUsers} />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 3fr', gap: '16px' }}>

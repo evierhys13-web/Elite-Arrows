@@ -9,7 +9,7 @@ import { derivePlayerStatsFromResults } from '../utils/playerStats'
 const SUPER_LEAGUE_DIVISIONS = ['Premier', 'Pro', 'Amateur']
 
 export default function SeasonManagement() {
-  const { user, getAllUsers, getResults, updateResults, getSeasons, adminData, updateAdminData, triggerDataRefresh } = useAuth()
+  const { user, getAllUsers, getResults, updateResults, getSeasons, adminData, updateAdminData, triggerDataRefresh, searchUsers } = useAuth()
   const { showToast } = useToast()
 
   const [showCreateForm, setShowCreateForm] = useState(false)
@@ -521,7 +521,7 @@ export default function SeasonManagement() {
               ))}
             </select>
 
-            <UserSearchSelect users={allPlayers} selectedId={selectedPlayer} onSelect={setSelectedPlayer} label="Player" />
+            <UserSearchSelect users={allPlayers} selectedId={selectedPlayer} onSelect={setSelectedPlayer} label="Player" onQueryChange={searchUsers} />
 
             <select value={newDivision} onChange={e => setNewDivision(e.target.value)} className="glass">
               <option value="">Select Division...</option>
@@ -544,7 +544,7 @@ export default function SeasonManagement() {
           <h3 className="card-title">Super League Seeding</h3>
           <p style={{ color: 'var(--text-muted)', marginBottom: '20px', fontSize: '0.85rem' }}>Add/remove players from Super League.</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <UserSearchSelect users={allPlayers} selectedId={selectedSuperPlayer} onSelect={setSelectedSuperPlayer} label="Player" />
+            <UserSearchSelect users={allPlayers} selectedId={selectedSuperPlayer} onSelect={setSelectedSuperPlayer} label="Player" onQueryChange={searchUsers} />
             <select value={newSuperDivision} onChange={e => setNewSuperDivision(e.target.value)} className="glass">
               <option value="">Select Super Division...</option>
               {SUPER_LEAGUE_DIVISIONS.map(div => <option key={div} value={div}>{div}</option>)}
