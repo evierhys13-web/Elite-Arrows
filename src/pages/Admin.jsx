@@ -938,7 +938,8 @@ export default function Admin() {
   }
 
   const handleResetSuperLeagueTable = async () => {
-    if (!window.confirm("DANGER: This will WIPE all manual adjustments/overrides from the Super League standings and force a deep re-sync of all approved Super League matches to Season 2. Proceed?")) return;
+    const currentSeason = adminData?.currentSeason || 'Season 2'
+    if (!window.confirm(`DANGER: This will WIPE all manual adjustments/overrides from the Super League standings and force a deep re-sync of all approved Super League matches to ${currentSeason}. Proceed?`)) return;
 
     setIsApproving(true);
     try {
@@ -959,22 +960,21 @@ export default function Admin() {
         }
       }
 
-      // 2. Sync all Super League results to Season 2
-      const cutoff = new Date('2026-06-01T00:00:00').getTime();
+      // 2. Sync all Super League results to Current Season
       const updatesById = {};
 
       for (const r of results) {
         if (String(r.status).toLowerCase() !== 'approved') continue;
 
-        const d = new Date(r.date || r.submittedAt || 0).getTime();
         const s1 = Number(r.score1) || 0;
         const s2 = Number(r.score2) || 0;
         const isSuperFormat = (s1 === 6 || s2 === 6) && (s1 + s2) <= 11;
         const isLabeledSuper = String(r.gameType || '').toLowerCase().includes('super');
 
-        if (d >= cutoff && (isSuperFormat || isLabeledSuper)) {
+        // If it looks like a Super League match, ensure it's labeled correctly and in the current season
+        if (isSuperFormat || isLabeledSuper) {
           const updates = {};
-          if (r.season !== 'Season 2') updates.season = 'Season 2';
+          if (r.season !== currentSeason) updates.season = currentSeason;
           if (r.gameType !== 'Super League') updates.gameType = 'Super League';
 
           if (Object.keys(updates).length > 0) {
@@ -990,7 +990,7 @@ export default function Admin() {
 
       if (ops > 0) await batch.commit();
 
-      await logAudit('RESET_SUPER_LEAGUE', `Wiped overrides for ${userCount} users and synced ${resultCount} SL results.`);
+      await logAudit('RESET_SUPER_LEAGUE', `Wiped overrides for ${userCount} users and synced ${resultCount} SL results to ${currentSeason}.`);
 
       // Update local state
       const updatedResults = results.map(r => {

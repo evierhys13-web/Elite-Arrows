@@ -76,17 +76,17 @@ export default function SuperLeague() {
 
   const handleRefresh = async () => {
     setLoadingData(true)
-    showToast('Refreshing Super League data...', 'info')
+    showToast('Performing Deep Sync with server...', 'info')
     try {
-      // Use targeted fetchers instead of global forceFetchResults to avoid timeouts/quota issues
-      const [resultsOk, usersOk] = await Promise.all([
-        fetchResultsBySeason(selectedSeason),
-        fetchUsersByDivision(activeDivision)
-      ])
+      // 1. Clear local cache for results to force fresh download
+      localStorage.removeItem('eliteArrowsResults')
+
+      // 2. Perform fresh fetch
+      await forceFetchResults()
 
       triggerDataRefresh('all')
       setRefreshKey(prev => prev + 1)
-      showToast('Standings synced!', 'success')
+      showToast('Global standings synced!', 'success')
     } catch (e) {
       console.error('Super League Sync Error:', e)
       showToast('Sync failed — using cached data', 'warning')
