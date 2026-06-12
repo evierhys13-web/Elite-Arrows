@@ -1669,8 +1669,11 @@ export function AuthProvider({ children }) {
 
         // Scope logic: e.g., { season: 'Season 2', status: 'approved' }
         const matchesScope = Object.keys(purgeScope).every(key => {
-          if (key === 'season' && purgeScope[key] === 'Season 1') {
-             return !r.season || r.season === 'Season 1'
+          if (key === 'season') {
+             const rSeason = String(r.season || '').replace(/\s+/g, '').toLowerCase()
+             const pSeason = String(purgeScope[key] || '').replace(/\s+/g, '').toLowerCase()
+             if (pSeason === 'season1') return rSeason === 'season1' || rSeason === '' || rSeason === '2026' || rSeason === 'legacy'
+             return rSeason === pSeason
           }
           return String(r[key]) === String(purgeScope[key])
         })

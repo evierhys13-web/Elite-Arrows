@@ -56,13 +56,7 @@ export default function SubmitResult() {
 
   // Robust season detection
   const getDefaultSeason = () => {
-    const baseSeason = formData.season || seasonParam || adminData?.currentSeason || 'Season 1'
-    if (formData.gameType === 'Super League' && (baseSeason === 'Season 1' || baseSeason === '2026')) {
-      const now = new Date().getTime()
-      const s2Start = new Date('2026-06-01T00:00:00').getTime()
-      if (now >= s2Start) return 'Season 2'
-    }
-    return baseSeason
+    return formData.season || seasonParam || adminData?.currentSeason || 'Season 1'
   }
 
   const currentSeasonLabel = getDefaultSeason()
