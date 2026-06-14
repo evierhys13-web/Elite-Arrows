@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { db, doc, setDoc } from '../firebase'
 import { useToast } from '../context/ToastContext'
+import { logResultSubmitted } from '../utils/analytics'
 
 const INITIAL_RESULT_FORM = {
   gameType: 'Friendly',
@@ -489,7 +490,8 @@ export default function SubmitResult() {
       triggerDataRefresh('results')
       triggerDataRefresh('fixtures')
     }
-    
+
+    logResultSubmitted(formData.gameType, user.division)
     setSubmitted(true)
     setError('')
     setSuccessMessage('Result submitted for admin approval.')

@@ -1,4 +1,30 @@
-import { analytics, logEvent } from '../firebase';
+import { analytics, logEvent, perf, trace } from '../firebase';
+
+/**
+ * Creates and starts a Firebase Performance trace.
+ * Returns a stop function — call it when the operation completes.
+ * Usage:
+ *   const stop = startTrace('fetch_results_by_season')
+ *   await doSomething()
+ *   stop()
+ */
+export const startTrace = (traceName) => {
+  if (!perf) return () => {};
+  try {
+    const t = trace(perf, traceName);
+    t.start();
+    return (attributes = {}) => {
+      try {
+        Object.entries(attributes).forEach(([key, value]) => {
+          t.putAttribute(key, String(value));
+        });
+        t.stop();
+      } catch (e) {}
+    };
+  } catch (e) {
+    return () => {};
+  }
+};
 
 /**
  * Logs a match approval event to Firebase Analytics.
@@ -43,5 +69,28 @@ export const logPageView = (pageName) => {
 
   logEvent(analytics, 'page_view', {
     page_name: pageName
+  });
+};
+
+/**
+ * Logs a result submission event.
+ */
+export const logResultSubmitted = (gameType, division) => {
+  if (!analytics) return;
+  logEvent(analytics, 'result_submitted', {
+    game_type: gameType,
+    division: division,
+    timestamp: new Date().toISOString()
+  });
+};
+
+/**
+ * Logs a user login event.
+ */
+export const logUserLogin = (userId) => {
+  if (!analytics) return;
+  logEvent(analytics, 'login', {
+    user_id: userId,
+    method: 'email'
   });
 };

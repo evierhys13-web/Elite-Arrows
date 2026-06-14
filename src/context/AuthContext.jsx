@@ -49,7 +49,7 @@ import {
   getResultIdentityKey,
   getResultOverrideKeys,
 } from "../utils/resultIdentity";
-import { logSubscriptionActivated } from "../utils/analytics";
+import { logSubscriptionActivated, logUserLogin, startTrace } from "../utils/analytics";
 import { useToast } from "./ToastContext";
 
 const AuthContext = createContext(null);
@@ -1282,14 +1282,18 @@ export function AuthProvider({ children }) {
   };
 
   const signIn = async (email, password, rememberMe = false) => {
+    const stopTrace = startTrace('user_sign_in');
     try {
       await setPersistence(
         auth,
         rememberMe ? browserLocalPersistence : browserSessionPersistence,
       );
-      await signInWithEmailAndPassword(auth, email, password);
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      stopTrace({ success: 'true' });
+      logUserLogin(result.user.uid);
       return;
     } catch (error) {
+      stopTrace({ success: 'false', error: error.code || 'unknown' });
       throw new Error(error.message);
     }
   };
@@ -1704,6 +1708,7 @@ export function AuthProvider({ children }) {
 
   const fetchResultsBySeason = useCallback(
     async (seasonName) => {
+      const stopTrace = startTrace('fetch_results_by_season');
       try {
         // For Season 1, we fetch more broadly to catch legacy results that might not have the 'season' field set
         const q =
@@ -1730,10 +1735,12 @@ export function AuthProvider({ children }) {
 
       // Update results and purge any 'approved' results for this season that weren't in the fetch
       updateResults(seasonResults, { season: seasonName, status: "approved" });
+      stopTrace({ season: seasonName, result_count: String(seasonResults.length) });
 
       return seasonResults;
     } catch (e) {
       console.error("fetchResultsBySeason error:", e);
+      stopTrace({ season: seasonName, error: 'true' });
       return [];
     }
   }, [updateResults]);
