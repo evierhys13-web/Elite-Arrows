@@ -56,7 +56,8 @@ const LiveMatch = lazy(() => import('./pages/LiveMatch'))
 const PracticeHub = lazy(() => import('./pages/PracticeHub'))
 const PracticeGame = lazy(() => import('./pages/PracticeGame'))
 
-function PageLoader() {
+function PageLoader() {  const hasMaintenance = adminData?.isMaintenanceMode && adminData?.maintenanceMessage
+
   return (
     <div className="loading" style={{
       padding: '40px',
@@ -211,6 +212,7 @@ function AppLayout({ children }) {
   const { showOnboarding, completeOnboarding } = useOnboarding()
   const { showWhatsNew } = useWhatsNew()
   const [whatsNewOpen, setWhatsNewOpen] = useState(showWhatsNew)
+  const hasMaintenance = adminData?.isMaintenanceMode && adminData?.maintenanceMessage
 
   return (
     <div className="app-layout">
@@ -261,7 +263,8 @@ function AppLayout({ children }) {
   )
 }
 
-function AppRoutes() {
+function AppRoutes() {  const hasMaintenance = adminData?.isMaintenanceMode && adminData?.maintenanceMessage
+
   return (
     <Routes>
       <Route path="/auth" element={<Suspense fallback={<PageLoader />}><Auth /></Suspense>} />
@@ -316,6 +319,7 @@ function AppShell() {
     document.body.classList.remove('nav-mode-bottom', 'nav-mode-sidebar')
     document.body.classList.add(`nav-mode-${navMode}`)
   }, [navMode])
+  const hasMaintenance = adminData?.isMaintenanceMode && adminData?.maintenanceMessage
 
   return (
     <>
@@ -325,7 +329,8 @@ function AppShell() {
   )
 }
 
-export default function App() {
+export default function App() {  const hasMaintenance = adminData?.isMaintenanceMode && adminData?.maintenanceMessage
+
   return (
     <ThemeProvider>
       <ToastProvider>
