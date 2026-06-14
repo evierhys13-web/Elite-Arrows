@@ -124,12 +124,46 @@ const minimizeResultForCache = (result) => {
   return cached;
 };
 
+// Only cache the fields actually needed from allUsers to prevent localStorage quota errors.
+// Large per-user arrays (tokenHistory, matchHistory, stats sub-docs, etc.) are intentionally
+// excluded. The current user is already stored in full under eliteArrowsCurrentUser.
+const USER_CACHE_FIELDS = [
+  "id",
+  "username",
+  "name",
+  "displayName",
+  "email",
+  "profilePicture",
+  "division",
+  "superLeagueDivision",
+  "isAdmin",
+  "isTournamentAdmin",
+  "isSubscribed",
+  "isBanned",
+  "subscribedSeasons",
+  "manualStats",
+  "friends",
+  "tokens",
+  "isBot",
+];
+
+const stripUserForCache = (u) => {
+  const stripped = {};
+  USER_CACHE_FIELDS.forEach((field) => {
+    if (u[field] !== undefined) stripped[field] = u[field];
+  });
+  return stripped;
+};
+
 const saveUsersCache = (users) => {
   try {
-    localStorage.setItem("eliteArrowsUsers", JSON.stringify(users || []));
+    localStorage.setItem(
+      "eliteArrowsUsers",
+      JSON.stringify((users || []).map(stripUserForCache)),
+    );
   } catch (error) {
     console.warn("Could not cache users locally (quota exceeded):", error);
-    // If it still fails, clear some space
+    // Clear rather than leave a partial / stale blob
     localStorage.removeItem("eliteArrowsUsers");
   }
 };
