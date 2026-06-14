@@ -251,13 +251,30 @@ function CupManagement() {
         if (String(m.id) === String(match.id)) {
           return { ...m, winner: null, score1: null, score2: null, resultId: null }
         }
+
+        const newM = { ...m }
         if (m.round > match.round) {
            const matchPlayer1 = String(match.player1)
            const matchPlayer2 = String(match.player2)
-           if (String(m.player1) === matchPlayer1 || String(m.player1) === matchPlayer2) m.player1 = null
-           if (String(m.player2) === matchPlayer1 || String(m.player2) === matchPlayer2) m.player2 = null
+
+           let changed = false
+           if (String(m.player1) === matchPlayer1 || String(m.player1) === matchPlayer2) {
+              newM.player1 = null
+              changed = true
+           }
+           if (String(m.player2) === matchPlayer1 || String(m.player2) === matchPlayer2) {
+              newM.player2 = null
+              changed = true
+           }
+
+           if (changed) {
+              newM.winner = null
+              newM.score1 = null
+              newM.score2 = null
+              newM.resultId = null
+           }
         }
-        return m
+        return newM
       })
 
       const updatedCup = { ...cupData, matches: updatedMatches }

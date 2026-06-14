@@ -678,7 +678,7 @@ export default function Admin() {
       const batch = writeBatch(db)
       const resolved = []
 
-      for (const bet of bets) {
+      for (const bet of betsList) {
         if (bet.won !== null) continue
 
         const game = allResults.find(r =>
@@ -724,7 +724,7 @@ export default function Admin() {
       }
 
       await batch.commit()
-      await logAudit('CHECK_BETS', `Processed ${bets.length} bets, found ${resolved.filter(r => r.won).length} new winners`)
+      await logAudit('CHECK_BETS', `Processed ${betsList.length} bets, found ${resolved.filter(r => r.won).length} new winners`)
 
       if (resolved.length > 0) {
         setBetResults(resolved)
@@ -1045,6 +1045,8 @@ export default function Admin() {
 
     return list.sort((a, b) => new Date(b.date || b.submittedAt) - new Date(a.date || a.submittedAt))
   }, [allResults, resultFilter, resultSearch, resultTypeFilter])
+
+  const betsList = useMemo(() => bets || [], [bets])
 
   const stats = useMemo(() => {
     const lastWeek = new Date()
@@ -1964,10 +1966,10 @@ export default function Admin() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {bets.length === 0 ? (
+              {betsList.length === 0 ? (
                 <p style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No bets placed yet.</p>
               ) : (
-                [...bets].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).map(bet => (
+                [...betsList].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).map(bet => (
                   <div key={bet.id} className="glass" style={{ padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.02)', border: bet.won === true ? '1px solid var(--success)' : bet.won === false ? '1px solid var(--error)' : '1px solid var(--border)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                       <span style={{ fontWeight: 700, color: 'var(--accent-cyan)' }}>{bet.username}</span>
