@@ -124,33 +124,9 @@ const minimizeResultForCache = (result) => {
   return cached;
 };
 
-const MINIMAL_USER_CACHE_FIELDS = [
-  "id",
-  "username",
-  "nickname",
-  "division",
-  "superLeagueDivision",
-  "isSubscribed",
-  "isAdmin",
-  "isTournamentAdmin",
-  "isCupAdmin",
-  "eliteTokens",
-  "threeDartAverage",
-  "subscribedSeasons"
-];
-
-const minimizeUserForCache = (user) => {
-  const cached = {};
-  MINIMAL_USER_CACHE_FIELDS.forEach((field) => {
-    if (user[field] !== undefined) cached[field] = user[field];
-  });
-  return cached;
-};
-
 const saveUsersCache = (users) => {
   try {
-    const minimalUsers = (users || []).map(minimizeUserForCache);
-    localStorage.setItem("eliteArrowsUsers", JSON.stringify(minimalUsers));
+    localStorage.setItem("eliteArrowsUsers", JSON.stringify(users || []));
   } catch (error) {
     console.warn("Could not cache users locally (quota exceeded):", error);
     // If it still fails, clear some space
@@ -1240,66 +1216,8 @@ export function AuthProvider({ children }) {
     return () => unsubscribeAuth();
   }, []);
 
-  const cleanUserData = (users) => {
-    return users.map((u) => {
-      const cleaned = { ...u };
-      SENSITIVE_FIELDS.forEach((field) => delete cleaned[field]);
-      return cleaned;
-    });
-  };
-
-  const removeSensitiveFieldsFromFirestore = async (users) => {
-    const userToDelete = users.find(
-      (u) => u.email?.toLowerCase() === "brentedwards87@gmail.com",
-    );
-    if (userToDelete && userToDelete.id) {
-      try {
-        await deleteDoc(doc(db, "users", userToDelete.id));
-        console.log("Deleted user document for brentedwards87@gmail.com");
-      } catch (e) {
-        console.log("Error deleting user:", e);
-      }
-    }
-
-    for (const user of users) {
-      if (user.id) {
-        const updates = {};
-        SENSITIVE_FIELDS.forEach(
-          (field) => (updates[field] = FieldValue.delete()),
-        );
-        try {
-          await updateDoc(doc(db, "users", user.id), updates);
-        } catch (e) {
-          console.log("Error removing fields for", user.id, e);
-        }
-      }
-    }
-  };
-
-  const runCleanup = async () => {
-    try {
-      const snapshot = await getDocs(collection(db, "users"));
-      const users = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-
-      await removeSensitiveFieldsFromFirestore(users);
-      await removeSensitiveFieldsFromFirestore(users);
-      await removeSensitiveFieldsFromFirestore(users);
-
-      const cleanedUsers = cleanUserData(users);
-      if (users.length > 0) {
-        setAllUsers(cleanedUsers);
-        saveUsersCache(cleanedUsers);
-      }
-      console.log("Cleanup complete - password fields removed from Firestore");
-    } catch (e) {
-      console.log("Cleanup error:", e);
-    }
-  };
-
   useEffect(() => {
-    // runCleanup()
-    // const timer = setTimeout(runCleanup, 2000)
-    // return () => clearTimeout(timer)
+    // Cleanup of any legacy field removal logic
   }, []);
 
   const signUp = async (userData, rememberMe = false) => {

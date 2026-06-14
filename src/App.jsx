@@ -11,7 +11,6 @@ import BackgroundDecor from './components/BackgroundDecor'
 import NotificationPermissionPrompt from './components/NotificationPermissionPrompt'
 import OnboardingTour, { useOnboarding } from './components/OnboardingTour'
 import WhatsNewPopup, { useWhatsNew } from './components/WhatsNewPopup'
-import AverageUpdateModal from './components/AverageUpdateModal'
 import SurveyPopup from './components/SurveyPopup'
 import PullToRefresh from './components/PullToRefresh'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -213,22 +212,6 @@ function AppLayout({ children }) {
   const { showWhatsNew } = useWhatsNew()
   const [whatsNewOpen, setWhatsNewOpen] = useState(showWhatsNew)
 
-  // Force average update logic
-  const [showAvgModal, setShowAvgModal] = useState(false)
-
-  useEffect(() => {
-    if (!user) return
-    const lastUpdate = user.averageLastUpdated ? new Date(user.averageLastUpdated).getTime() : 0
-    const oneDay = 24 * 60 * 60 * 1000
-    if ((Date.now() - lastUpdate) > oneDay) {
-      setShowAvgModal(true)
-    } else {
-      setShowAvgModal(false)
-    }
-  }, [user])
-
-  const hasMaintenance = adminData?.isMaintenanceMode && adminData?.maintenanceMessage
-
   return (
     <div className="app-layout">
       <Sidebar />
@@ -273,7 +256,6 @@ function AppLayout({ children }) {
       <NotificationPermissionPrompt />
       {showOnboarding && <OnboardingTour onComplete={completeOnboarding} />}
       <WhatsNewPopup isOpen={whatsNewOpen} onClose={() => setWhatsNewOpen(false)} />
-      <AverageUpdateModal isOpen={showAvgModal} onClose={() => setShowAvgModal(false)} />
       <SurveyPopup />
     </div>
   )

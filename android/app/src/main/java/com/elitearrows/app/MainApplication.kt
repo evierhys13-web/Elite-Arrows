@@ -1,8 +1,8 @@
 package com.elitearrows.app
 
-import android.app.Application
+import androidx.multidex.MultiDexApplication
 
-class MainApplication : Application() {
+class MainApplication : MultiDexApplication() {
     override fun onCreate() {
         super.onCreate()
     }
