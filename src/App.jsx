@@ -57,6 +57,15 @@ const PracticeHub = lazy(() => import('./pages/PracticeHub'))
 const PracticeGame = lazy(() => import('./pages/PracticeGame'))
 
 function PageLoader() {
+  const [showRefresh, setShowRefresh] = useState(false)
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowRefresh(true)
+    }, 8000) // Show refresh after 8s
+    return () => clearTimeout(timer)
+  }, [])
+
   return (
     <div className="loading" style={{
       padding: '40px',
@@ -70,6 +79,20 @@ function PageLoader() {
     }}>
       <div className="spinner" style={{ width: '40px', height: '40px', marginBottom: '20px' }}></div>
       <h2 style={{ color: 'white' }}>Loading Elite Arrows...</h2>
+
+      {showRefresh && (
+        <div className="animate-fade-in" style={{ marginTop: '30px' }}>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '15px', maxWidth: '300px' }}>
+            Taking longer than usual? Stale data might be causing a delay.
+          </p>
+          <button
+            className="btn btn-primary"
+            onClick={() => window.location.reload(true)}
+          >
+            Refresh App
+          </button>
+        </div>
+      )}
     </div>
   )
 }

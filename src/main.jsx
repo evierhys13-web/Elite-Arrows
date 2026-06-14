@@ -19,9 +19,9 @@ if ('serviceWorker' in navigator) {
           if (newWorker) {
             newWorker.addEventListener('statechange', () => {
               if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                // Silently skip waiting and reload when a new version is installed
+                // A new version is available, skip waiting and notify
+                console.log('New version found, updating...');
                 newWorker.postMessage({ type: 'SKIP_WAITING' });
-                window.location.reload();
               }
             });
           }
@@ -30,6 +30,16 @@ if ('serviceWorker' in navigator) {
       .catch((error) => {
         console.log('SW registration failed:', error);
       });
+
+    // Reload when the new service worker has taken over
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!refreshing) {
+        refreshing = true;
+        console.log('Service worker changed, reloading page...');
+        window.location.reload();
+      }
+    });
   });
 }
 
