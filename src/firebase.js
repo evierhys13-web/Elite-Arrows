@@ -13,14 +13,26 @@ const firebaseConfig = {
   projectId: "elitearrowsapp",
   storageBucket: "elitearrowsapp.firebasestorage.app",
   messagingSenderId: "848326452210",
-  appId: "1:848326452210:web:3626c7f4214167d51ec16b"
+  appId: "1:848326452210:web:3626c7f4214167d51ec16b",
+  measurementId: "G-6BPQKR71P5"
 }
 
 const app = initializeApp(firebaseConfig)
 export const db = getFirestore(app)
 export const auth = getAuth(app)
-export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null
-export const perf = typeof window !== 'undefined' ? getPerformance(app) : null
+
+// Analytics and Performance require a linked Google Analytics property (measurementId).
+// Wrap in try/catch so a missing property doesn't crash the whole firebase module.
+export let analytics = null
+export let perf = null
+if (typeof window !== 'undefined') {
+  try { analytics = getAnalytics(app) } catch (e) {
+    console.warn('Firebase Analytics not available:', e.message)
+  }
+  try { perf = getPerformance(app) } catch (e) {
+    console.warn('Firebase Performance not available:', e.message)
+  }
+}
 export { trace }
 
 let messaging = null
