@@ -941,10 +941,19 @@ export default function Admin() {
     if (!window.confirm("This will scan ALL approved match results to determine each player's correct division and restore them. It will also restore Admin status for known staff. Proceed?")) return
     setIsApproving(true)
     try {
-      const results = allResults.filter(r => String(r.status).toLowerCase() === 'approved')
-      const users = getAllUsers()
-      const divisionMap = {} // { userId: { divisionName: count } }
+      const results = allResults
+        .filter(r => String(r.status).toLowerCase() === 'approved')
+        .sort((a, b) => new Date(b.date || b.submittedAt || 0) - new Date(a.date || a.submittedAt || 0))
 
+      const users = getAllUsers()
+      const seasons = getSeasons()
+      const currentSeasonName = adminData?.currentSeason || 'Season 1'
+      const currentSeasonDoc = seasons.find(s => s.name === currentSeasonName)
+      const stagedDivisions = currentSeasonDoc?.stagedDivisions || {}
+
+      const userDivisionMap = {} // { userId: divisionName }
+
+      // 1. First, build map from most recent matches
       results.forEach(r => {
         const div = r.division
         if (!div || div === 'Unassigned' || div === 'Friendly' || div === 'Friendly Match') return
@@ -952,9 +961,17 @@ export default function Admin() {
         [r.player1Id, r.player2Id].forEach(id => {
           if (!id) return
           const uid = String(id)
-          if (!divisionMap[uid]) divisionMap[uid] = {}
-          divisionMap[uid][div] = (divisionMap[uid][div] || 0) + 1
+          if (!userDivisionMap[uid]) {
+            userDivisionMap[uid] = div
+          }
         })
+      })
+
+      // 2. Override with staged divisions from current season (highest priority source of truth)
+      Object.entries(stagedDivisions).forEach(([uid, div]) => {
+        if (div && div !== 'Unassigned') {
+          userDivisionMap[uid] = div
+        }
       })
 
       const batch = writeBatch(db)
@@ -963,14 +980,10 @@ export default function Admin() {
 
       for (const u of users) {
         let updates = {}
-        const counts = divisionMap[u.id]
+        const detectedDiv = userDivisionMap[u.id] || userDivisionMap[String(u.id)]
 
-        if (counts) {
-          // Find division with max matches
-          const bestDiv = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0]
-          if (u.division !== bestDiv) {
-            updates.division = bestDiv
-          }
+        if (detectedDiv && u.division !== detectedDiv) {
+          updates.division = detectedDiv
         }
 
         // Special recovery for diplexicto87 / brentedwards87@gmail.com
