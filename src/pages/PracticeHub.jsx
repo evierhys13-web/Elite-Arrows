@@ -43,9 +43,14 @@ export default function PracticeHub() {
     <div className="page animate-fade-in">
       <Breadcrumbs items={[{ label: 'Home', path: '/home' }, { label: 'Practice Hub' }]} />
 
-      <div className="page-header" style={{ marginBottom: '32px' }}>
-        <h1 className="page-title text-gradient">Practice Hub</h1>
-        <p style={{ color: 'var(--text-muted)' }}>Sharpen your skills with dedicated solo drills.</p>
+      <div className="page-header" style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1 className="page-title text-gradient">Practice Hub</h1>
+          <p style={{ color: 'var(--text-muted)' }}>Sharpen your skills with dedicated solo drills.</p>
+        </div>
+        <button className="btn btn-secondary btn-sm glass" onClick={() => navigate('/leaderboards?tab=practice')}>
+          🏆 Leaderboards
+        </button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>

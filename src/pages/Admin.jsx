@@ -68,6 +68,25 @@ export default function Admin() {
   const [surveyQuestions, setSurveyQuestions] = useState([{ id: 'q1', text: '', type: 'text', options: '' }])
   const [viewSurveyResponses, setViewSurveyResponses] = useState(null)
   const [previewImage, setPreviewImage] = useState(null)
+  const [auditLogs, setAuditLogs] = useState([])
+  const [loadingLogs, setLoadingLogs] = useState(false)
+
+  useEffect(() => {
+    if (activeTab === 'audit') {
+      const fetchLogs = async () => {
+        setLoadingLogs(true)
+        try {
+          const q = query(collection(db, 'auditLogs'), orderBy('timestamp', 'desc'), limit(100))
+          const snap = await getDocs(q)
+          setAuditLogs(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+        } catch (e) {
+          console.error("Failed to fetch audit logs", e)
+        }
+        setLoadingLogs(false)
+      }
+      fetchLogs()
+    }
+  }, [activeTab, refreshKey])
 
   // Guard: wait for auth
   if (authLoading) return <div className="page glass"><div style={{ padding: '60px', textAlign: 'center', color: 'var(--accent-cyan)', fontWeight: 800 }}>Validating Admin Access...</div></div>
@@ -1164,6 +1183,7 @@ export default function Admin() {
     { id: 'bets', label: 'Bets' },
     { id: 'tokens', label: 'Tokens' },
     { id: 'practice', label: 'Practice Hub' },
+    { id: 'audit', label: 'Audit Logs' },
     { id: 'maintenance', label: 'System' }
   ]
 
@@ -1277,6 +1297,42 @@ export default function Admin() {
                   )}
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: AUDIT LOGS */}
+        {activeTab === 'audit' && (
+          <div className="card glass animate-fade-in">
+            <h3 className="card-title">System Audit Log</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
+              Track administrative actions and system updates.
+            </p>
+
+            <div className="glass" style={{ maxHeight: '600px', overflowY: 'auto', borderRadius: '12px' }}>
+               {loadingLogs ? (
+                 <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <div className="spinner" style={{ margin: '0 auto 15px' }}></div>
+                    <p style={{ color: 'var(--text-muted)' }}>Fetching logs...</p>
+                 </div>
+               ) : auditLogs.length === 0 ? (
+                 <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <p style={{ color: 'var(--text-muted)' }}>No audit logs found.</p>
+                 </div>
+               ) : (
+                 <div style={{ display: 'flex', flexDirection: 'column' }}>
+                   {auditLogs.map(log => (
+                     <div key={log.id} style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                           <span style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{log.action}</span>
+                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(log.timestamp).toLocaleString()}</span>
+                        </div>
+                        <div style={{ color: 'white' }}>{log.details}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>Admin: {log.adminName}</div>
+                     </div>
+                   ))}
+                 </div>
+               )}
             </div>
           </div>
         )}
@@ -1496,6 +1552,42 @@ export default function Admin() {
                 </div>
               ))}
               {(filteredResultsList.length === 0) && <p style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No results found matching your criteria.</p>}
+            </div>
+          </div>
+        )}
+
+        {/* TAB: AUDIT LOGS */}
+        {activeTab === 'audit' && (
+          <div className="card glass animate-fade-in">
+            <h3 className="card-title">System Audit Log</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
+              Track administrative actions and system updates.
+            </p>
+
+            <div className="glass" style={{ maxHeight: '600px', overflowY: 'auto', borderRadius: '12px' }}>
+               {loadingLogs ? (
+                 <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <div className="spinner" style={{ margin: '0 auto 15px' }}></div>
+                    <p style={{ color: 'var(--text-muted)' }}>Fetching logs...</p>
+                 </div>
+               ) : auditLogs.length === 0 ? (
+                 <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <p style={{ color: 'var(--text-muted)' }}>No audit logs found.</p>
+                 </div>
+               ) : (
+                 <div style={{ display: 'flex', flexDirection: 'column' }}>
+                   {auditLogs.map(log => (
+                     <div key={log.id} style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                           <span style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{log.action}</span>
+                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(log.timestamp).toLocaleString()}</span>
+                        </div>
+                        <div style={{ color: 'white' }}>{log.details}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>Admin: {log.adminName}</div>
+                     </div>
+                   ))}
+                 </div>
+               )}
             </div>
           </div>
         )}
@@ -1749,6 +1841,42 @@ export default function Admin() {
           </div>
         )}
 
+        {/* TAB: AUDIT LOGS */}
+        {activeTab === 'audit' && (
+          <div className="card glass animate-fade-in">
+            <h3 className="card-title">System Audit Log</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
+              Track administrative actions and system updates.
+            </p>
+
+            <div className="glass" style={{ maxHeight: '600px', overflowY: 'auto', borderRadius: '12px' }}>
+               {loadingLogs ? (
+                 <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <div className="spinner" style={{ margin: '0 auto 15px' }}></div>
+                    <p style={{ color: 'var(--text-muted)' }}>Fetching logs...</p>
+                 </div>
+               ) : auditLogs.length === 0 ? (
+                 <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <p style={{ color: 'var(--text-muted)' }}>No audit logs found.</p>
+                 </div>
+               ) : (
+                 <div style={{ display: 'flex', flexDirection: 'column' }}>
+                   {auditLogs.map(log => (
+                     <div key={log.id} style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                           <span style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{log.action}</span>
+                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(log.timestamp).toLocaleString()}</span>
+                        </div>
+                        <div style={{ color: 'white' }}>{log.details}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>Admin: {log.adminName}</div>
+                     </div>
+                   ))}
+                 </div>
+               )}
+            </div>
+          </div>
+        )}
+
         {/* TAB: STAFF */}
         {activeTab === 'admins' && (
           <div className="card glass">
@@ -1780,6 +1908,42 @@ export default function Admin() {
                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                   <UserSearchSelect users={allPlayers.filter(p => !p.isAdmin)} selectedId={''} onSelect={id => handleUpdateAdminRole(id, 'isTournamentAdmin', true)} label="Select User to Promote" onQueryChange={searchUsers} />
                </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: AUDIT LOGS */}
+        {activeTab === 'audit' && (
+          <div className="card glass animate-fade-in">
+            <h3 className="card-title">System Audit Log</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
+              Track administrative actions and system updates.
+            </p>
+
+            <div className="glass" style={{ maxHeight: '600px', overflowY: 'auto', borderRadius: '12px' }}>
+               {loadingLogs ? (
+                 <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <div className="spinner" style={{ margin: '0 auto 15px' }}></div>
+                    <p style={{ color: 'var(--text-muted)' }}>Fetching logs...</p>
+                 </div>
+               ) : auditLogs.length === 0 ? (
+                 <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <p style={{ color: 'var(--text-muted)' }}>No audit logs found.</p>
+                 </div>
+               ) : (
+                 <div style={{ display: 'flex', flexDirection: 'column' }}>
+                   {auditLogs.map(log => (
+                     <div key={log.id} style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                           <span style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{log.action}</span>
+                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(log.timestamp).toLocaleString()}</span>
+                        </div>
+                        <div style={{ color: 'white' }}>{log.details}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>Admin: {log.adminName}</div>
+                     </div>
+                   ))}
+                 </div>
+               )}
             </div>
           </div>
         )}
@@ -1837,6 +2001,42 @@ export default function Admin() {
           </div>
         )}
 
+        {/* TAB: AUDIT LOGS */}
+        {activeTab === 'audit' && (
+          <div className="card glass animate-fade-in">
+            <h3 className="card-title">System Audit Log</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
+              Track administrative actions and system updates.
+            </p>
+
+            <div className="glass" style={{ maxHeight: '600px', overflowY: 'auto', borderRadius: '12px' }}>
+               {loadingLogs ? (
+                 <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <div className="spinner" style={{ margin: '0 auto 15px' }}></div>
+                    <p style={{ color: 'var(--text-muted)' }}>Fetching logs...</p>
+                 </div>
+               ) : auditLogs.length === 0 ? (
+                 <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <p style={{ color: 'var(--text-muted)' }}>No audit logs found.</p>
+                 </div>
+               ) : (
+                 <div style={{ display: 'flex', flexDirection: 'column' }}>
+                   {auditLogs.map(log => (
+                     <div key={log.id} style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                           <span style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{log.action}</span>
+                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(log.timestamp).toLocaleString()}</span>
+                        </div>
+                        <div style={{ color: 'white' }}>{log.details}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>Admin: {log.adminName}</div>
+                     </div>
+                   ))}
+                 </div>
+               )}
+            </div>
+          </div>
+        )}
+
         {/* TAB: SEASONS */}
         {activeTab === 'seasons' && (
           <div className="card glass">
@@ -1864,6 +2064,42 @@ export default function Admin() {
                   <input type="text" className="glass" placeholder="Season Name (e.g. Summer 2025)" style={{ width: '100%', padding: '12px', marginBottom: '10px' }} onChange={e => setSeasonForm({...seasonForm, name: e.target.value})} />
                   <button className="btn btn-primary btn-block" onClick={handleCreateSeason}>Launch Season</button>
                </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: AUDIT LOGS */}
+        {activeTab === 'audit' && (
+          <div className="card glass animate-fade-in">
+            <h3 className="card-title">System Audit Log</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
+              Track administrative actions and system updates.
+            </p>
+
+            <div className="glass" style={{ maxHeight: '600px', overflowY: 'auto', borderRadius: '12px' }}>
+               {loadingLogs ? (
+                 <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <div className="spinner" style={{ margin: '0 auto 15px' }}></div>
+                    <p style={{ color: 'var(--text-muted)' }}>Fetching logs...</p>
+                 </div>
+               ) : auditLogs.length === 0 ? (
+                 <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <p style={{ color: 'var(--text-muted)' }}>No audit logs found.</p>
+                 </div>
+               ) : (
+                 <div style={{ display: 'flex', flexDirection: 'column' }}>
+                   {auditLogs.map(log => (
+                     <div key={log.id} style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                           <span style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{log.action}</span>
+                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(log.timestamp).toLocaleString()}</span>
+                        </div>
+                        <div style={{ color: 'white' }}>{log.details}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>Admin: {log.adminName}</div>
+                     </div>
+                   ))}
+                 </div>
+               )}
             </div>
           </div>
         )}
@@ -1994,6 +2230,42 @@ export default function Admin() {
           </div>
         )}
 
+        {/* TAB: AUDIT LOGS */}
+        {activeTab === 'audit' && (
+          <div className="card glass animate-fade-in">
+            <h3 className="card-title">System Audit Log</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
+              Track administrative actions and system updates.
+            </p>
+
+            <div className="glass" style={{ maxHeight: '600px', overflowY: 'auto', borderRadius: '12px' }}>
+               {loadingLogs ? (
+                 <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <div className="spinner" style={{ margin: '0 auto 15px' }}></div>
+                    <p style={{ color: 'var(--text-muted)' }}>Fetching logs...</p>
+                 </div>
+               ) : auditLogs.length === 0 ? (
+                 <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <p style={{ color: 'var(--text-muted)' }}>No audit logs found.</p>
+                 </div>
+               ) : (
+                 <div style={{ display: 'flex', flexDirection: 'column' }}>
+                   {auditLogs.map(log => (
+                     <div key={log.id} style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                           <span style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{log.action}</span>
+                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(log.timestamp).toLocaleString()}</span>
+                        </div>
+                        <div style={{ color: 'white' }}>{log.details}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>Admin: {log.adminName}</div>
+                     </div>
+                   ))}
+                 </div>
+               )}
+            </div>
+          </div>
+        )}
+
         {/* TAB: BETS */}
         {activeTab === 'bets' && (
           <div className="card glass">
@@ -2085,6 +2357,42 @@ export default function Admin() {
           </div>
         )}
 
+        {/* TAB: AUDIT LOGS */}
+        {activeTab === 'audit' && (
+          <div className="card glass animate-fade-in">
+            <h3 className="card-title">System Audit Log</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
+              Track administrative actions and system updates.
+            </p>
+
+            <div className="glass" style={{ maxHeight: '600px', overflowY: 'auto', borderRadius: '12px' }}>
+               {loadingLogs ? (
+                 <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <div className="spinner" style={{ margin: '0 auto 15px' }}></div>
+                    <p style={{ color: 'var(--text-muted)' }}>Fetching logs...</p>
+                 </div>
+               ) : auditLogs.length === 0 ? (
+                 <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <p style={{ color: 'var(--text-muted)' }}>No audit logs found.</p>
+                 </div>
+               ) : (
+                 <div style={{ display: 'flex', flexDirection: 'column' }}>
+                   {auditLogs.map(log => (
+                     <div key={log.id} style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                           <span style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{log.action}</span>
+                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(log.timestamp).toLocaleString()}</span>
+                        </div>
+                        <div style={{ color: 'white' }}>{log.details}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>Admin: {log.adminName}</div>
+                     </div>
+                   ))}
+                 </div>
+               )}
+            </div>
+          </div>
+        )}
+
         {/* TAB: TOKENS */}
         {activeTab === 'tokens' && (
           <div className="card glass">
@@ -2107,6 +2415,42 @@ export default function Admin() {
                   triggerDataRefresh('users')
                   showToast('Tokens updated', 'success')
                }}>Update Token Balance</button>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: AUDIT LOGS */}
+        {activeTab === 'audit' && (
+          <div className="card glass animate-fade-in">
+            <h3 className="card-title">System Audit Log</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
+              Track administrative actions and system updates.
+            </p>
+
+            <div className="glass" style={{ maxHeight: '600px', overflowY: 'auto', borderRadius: '12px' }}>
+               {loadingLogs ? (
+                 <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <div className="spinner" style={{ margin: '0 auto 15px' }}></div>
+                    <p style={{ color: 'var(--text-muted)' }}>Fetching logs...</p>
+                 </div>
+               ) : auditLogs.length === 0 ? (
+                 <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <p style={{ color: 'var(--text-muted)' }}>No audit logs found.</p>
+                 </div>
+               ) : (
+                 <div style={{ display: 'flex', flexDirection: 'column' }}>
+                   {auditLogs.map(log => (
+                     <div key={log.id} style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                           <span style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{log.action}</span>
+                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(log.timestamp).toLocaleString()}</span>
+                        </div>
+                        <div style={{ color: 'white' }}>{log.details}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>Admin: {log.adminName}</div>
+                     </div>
+                   ))}
+                 </div>
+               )}
             </div>
           </div>
         )}
@@ -2138,6 +2482,42 @@ export default function Admin() {
                 showToast('Syncing practice data...', 'info')
                 triggerDataRefresh('all')
               }}>Refresh Practice Data</button>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: AUDIT LOGS */}
+        {activeTab === 'audit' && (
+          <div className="card glass animate-fade-in">
+            <h3 className="card-title">System Audit Log</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
+              Track administrative actions and system updates.
+            </p>
+
+            <div className="glass" style={{ maxHeight: '600px', overflowY: 'auto', borderRadius: '12px' }}>
+               {loadingLogs ? (
+                 <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <div className="spinner" style={{ margin: '0 auto 15px' }}></div>
+                    <p style={{ color: 'var(--text-muted)' }}>Fetching logs...</p>
+                 </div>
+               ) : auditLogs.length === 0 ? (
+                 <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <p style={{ color: 'var(--text-muted)' }}>No audit logs found.</p>
+                 </div>
+               ) : (
+                 <div style={{ display: 'flex', flexDirection: 'column' }}>
+                   {auditLogs.map(log => (
+                     <div key={log.id} style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                           <span style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{log.action}</span>
+                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(log.timestamp).toLocaleString()}</span>
+                        </div>
+                        <div style={{ color: 'white' }}>{log.details}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>Admin: {log.adminName}</div>
+                     </div>
+                   ))}
+                 </div>
+               )}
             </div>
           </div>
         )}
@@ -2181,6 +2561,42 @@ export default function Admin() {
               </div>
 
               <button className="btn btn-primary btn-block" onClick={handleAwardTrophy}>Award Trophy to Player</button>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: AUDIT LOGS */}
+        {activeTab === 'audit' && (
+          <div className="card glass animate-fade-in">
+            <h3 className="card-title">System Audit Log</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
+              Track administrative actions and system updates.
+            </p>
+
+            <div className="glass" style={{ maxHeight: '600px', overflowY: 'auto', borderRadius: '12px' }}>
+               {loadingLogs ? (
+                 <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <div className="spinner" style={{ margin: '0 auto 15px' }}></div>
+                    <p style={{ color: 'var(--text-muted)' }}>Fetching logs...</p>
+                 </div>
+               ) : auditLogs.length === 0 ? (
+                 <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <p style={{ color: 'var(--text-muted)' }}>No audit logs found.</p>
+                 </div>
+               ) : (
+                 <div style={{ display: 'flex', flexDirection: 'column' }}>
+                   {auditLogs.map(log => (
+                     <div key={log.id} style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                           <span style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{log.action}</span>
+                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(log.timestamp).toLocaleString()}</span>
+                        </div>
+                        <div style={{ color: 'white' }}>{log.details}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>Admin: {log.adminName}</div>
+                     </div>
+                   ))}
+                 </div>
+               )}
             </div>
           </div>
         )}
@@ -2322,6 +2738,42 @@ export default function Admin() {
           </div>
         )}
 
+        {/* TAB: AUDIT LOGS */}
+        {activeTab === 'audit' && (
+          <div className="card glass animate-fade-in">
+            <h3 className="card-title">System Audit Log</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
+              Track administrative actions and system updates.
+            </p>
+
+            <div className="glass" style={{ maxHeight: '600px', overflowY: 'auto', borderRadius: '12px' }}>
+               {loadingLogs ? (
+                 <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <div className="spinner" style={{ margin: '0 auto 15px' }}></div>
+                    <p style={{ color: 'var(--text-muted)' }}>Fetching logs...</p>
+                 </div>
+               ) : auditLogs.length === 0 ? (
+                 <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <p style={{ color: 'var(--text-muted)' }}>No audit logs found.</p>
+                 </div>
+               ) : (
+                 <div style={{ display: 'flex', flexDirection: 'column' }}>
+                   {auditLogs.map(log => (
+                     <div key={log.id} style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                           <span style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{log.action}</span>
+                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(log.timestamp).toLocaleString()}</span>
+                        </div>
+                        <div style={{ color: 'white' }}>{log.details}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>Admin: {log.adminName}</div>
+                     </div>
+                   ))}
+                 </div>
+               )}
+            </div>
+          </div>
+        )}
+
         {/* TAB: MAINTENANCE */}
         {activeTab === 'maintenance' && (
           <div className="card glass" style={{ padding: '32px' }}>
@@ -2453,6 +2905,42 @@ export default function Admin() {
               >
                 Update Broadcast Message
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: AUDIT LOGS */}
+        {activeTab === 'audit' && (
+          <div className="card glass animate-fade-in">
+            <h3 className="card-title">System Audit Log</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
+              Track administrative actions and system updates.
+            </p>
+
+            <div className="glass" style={{ maxHeight: '600px', overflowY: 'auto', borderRadius: '12px' }}>
+               {loadingLogs ? (
+                 <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <div className="spinner" style={{ margin: '0 auto 15px' }}></div>
+                    <p style={{ color: 'var(--text-muted)' }}>Fetching logs...</p>
+                 </div>
+               ) : auditLogs.length === 0 ? (
+                 <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <p style={{ color: 'var(--text-muted)' }}>No audit logs found.</p>
+                 </div>
+               ) : (
+                 <div style={{ display: 'flex', flexDirection: 'column' }}>
+                   {auditLogs.map(log => (
+                     <div key={log.id} style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                           <span style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{log.action}</span>
+                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(log.timestamp).toLocaleString()}</span>
+                        </div>
+                        <div style={{ color: 'white' }}>{log.details}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>Admin: {log.adminName}</div>
+                     </div>
+                   ))}
+                 </div>
+               )}
             </div>
           </div>
         )}

@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext'
 import { ADMIN_EMAILS } from '../config'
 import NotificationBell from './NotificationBell'
 import RefreshButton from './RefreshButton'
+import GlobalSearch from './GlobalSearch'
 
 /* Icons */
 const HomeIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9,22 9,12 15,12 15,22" /></svg>
@@ -130,7 +131,7 @@ export default function Sidebar() {
         </div>
 
         <div className="sidebar-profile">
-          <div className="avatar-ring">
+          <div className="avatar-ring" onClick={() => navigate('/profile')} style={{ cursor: 'pointer' }}>
             <div className="avatar-inner">
               {user?.profilePicture ? (
                 <img src={user.profilePicture} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -139,12 +140,14 @@ export default function Sidebar() {
               )}
             </div>
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => navigate('/profile')}>
             <div style={{ fontWeight: 700, fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.username}</div>
             <div style={{ color: 'var(--accent-cyan)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{user?.division || 'Member'}</div>
           </div>
           <NotificationBell />
         </div>
+
+        <GlobalSearch />
 
         <nav className="sidebar-nav">
           {navigationGroups.map((group) => (

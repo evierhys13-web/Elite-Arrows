@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { db, collection, query, where, getDocs, orderBy, limit } from '../firebase'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { useToast } from '../context/ToastContext'
@@ -9,8 +10,9 @@ export default function Leaderboards() {
   const { user, getAllUsers, getFixtures, getResults, dataRefreshTrigger, adminData, forceFetchResults, triggerDataRefresh } = useAuth()
   const { showToast } = useToast()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [selectedDivision, setSelectedDivision] = useState('all')
-  const [activeTab, setActiveTab] = useState('league') // 'league' or 'practice'
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') === 'practice' ? 'practice' : 'league')
   const [timeFilter, setTimeFilter] = useState('all')
   const [refreshKey, setRefreshKey] = useState(0)
   const [isSyncing, setIsSyncing] = useState(false)

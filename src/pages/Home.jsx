@@ -8,6 +8,7 @@ import Tooltip from '../components/Tooltip'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { getLeaguePoints } from '../utils/leagueScoring'
 import { getResultEffectiveTime, getResultPlayerId, isLeagueResult } from '../utils/leagueResults'
+import GlobalHighlightReel from '../components/GlobalHighlightReel'
 
 
 const DEFAULT_LEAGUE_TABLE_RESET_AT = '2026-04-29T16:14:21.338+01:00'
@@ -199,6 +200,8 @@ export default function Home() {
       <div className={`animate-fade-in-up stagger-item`}>
         <NewsFeed />
       </div>
+
+      <GlobalHighlightReel />
 
       {/* Surveys */}
       {(() => {
@@ -397,23 +400,26 @@ export default function Home() {
       </div>
 
       <div className="card" style={{ marginBottom: '20px' }}>
-        <h2 className="card-title">Season Review</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+          <h2 className="card-title" style={{ margin: 0 }}>Pro Overview</h2>
+          <Link to="/analytics" style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontWeight: 700, textDecoration: 'none' }}>Full Analytics ➔</Link>
+        </div>
         <div className="home-stats-grid">
           <div className="stat-card">
             <div className="stat-value">{stats.played}</div>
-            <div className="stat-label">Matches Played</div>
+            <div className="stat-label">Played</div>
           </div>
-          <div className="stat-card">
-            <div className="stat-value">{stats.wins}</div>
+          <div className="stat-card" style={{ borderBottom: '2px solid var(--success)' }}>
+            <div className="stat-value" style={{ color: 'var(--success)' }}>{stats.wins}</div>
             <div className="stat-label">Wins</div>
           </div>
-          <div className="stat-card">
-            <div className="stat-value">{stats.losses}</div>
-            <div className="stat-label">Losses</div>
+          <div className="stat-card" style={{ borderBottom: '2px solid #fbbf24' }}>
+            <div className="stat-value" style={{ color: '#fbbf24' }}>{user.threeDartAverage?.toFixed(1) || '0.0'}</div>
+            <div className="stat-label">Avg</div>
           </div>
-          <div className="stat-card">
-            <div className="stat-value">{stats.points}</div>
-            <div className="stat-label">Points</div>
+          <div className="stat-card" style={{ borderBottom: '2px solid var(--accent-cyan)' }}>
+            <div className="stat-value" style={{ color: 'var(--accent-cyan)' }}>{stats.points}</div>
+            <div className="stat-label">Pts</div>
           </div>
         </div>
       </div>
