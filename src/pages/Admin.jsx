@@ -1163,6 +1163,7 @@ export default function Admin() {
     { id: 'surveys', label: 'Surveys' },
     { id: 'bets', label: 'Bets' },
     { id: 'tokens', label: 'Tokens' },
+    { id: 'practice', label: 'Practice Hub' },
     { id: 'maintenance', label: 'System' }
   ]
 
@@ -2106,6 +2107,37 @@ export default function Admin() {
                   triggerDataRefresh('users')
                   showToast('Tokens updated', 'success')
                }}>Update Token Balance</button>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: PRACTICE MONITOR */}
+        {activeTab === 'practice' && (
+          <div className="card glass animate-fade-in">
+            <h3 className="card-title">Practice Hub Activity</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
+              Monitor global practice sessions and leaderboard entries.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div className="glass" style={{ padding: '20px', borderRadius: '12px', background: 'rgba(56, 189, 248, 0.05)', border: '1px solid var(--accent-cyan)' }}>
+                <h4 style={{ marginBottom: '10px' }}>Global Statistics</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                   <div className="stat-card glass" style={{ padding: '15px' }}>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Total Sessions</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>Live Data</div>
+                   </div>
+                   <div className="stat-card glass" style={{ padding: '15px' }}>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Active Practitioners</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>Syncing...</div>
+                   </div>
+                </div>
+              </div>
+
+              <button className="btn btn-primary" onClick={async () => {
+                showToast('Syncing practice data...', 'info')
+                triggerDataRefresh('all')
+              }}>Refresh Practice Data</button>
             </div>
           </div>
         )}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { db, collection, query, where, getDocs, orderBy, limit } from '../firebase'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { PRACTICE_MODES } from '../utils/practiceService'
 
@@ -12,19 +13,30 @@ export default function PracticeHub() {
   useEffect(() => {
     if (!user?.id) return
 
-    try {
-      const localKey = `practice_sessions_${user.id}`
-      const saved = localStorage.getItem(localKey)
-      const sessions = saved ? JSON.parse(saved) : []
-
-      if (Array.isArray(sessions)) {
+    const loadStats = async () => {
+      try {
         const today = new Date().toISOString().split('T')[0]
-        const todaysSessions = sessions.filter(s => s.date === today)
-        setDailyStats(prev => ({ ...prev, count: todaysSessions.length }))
+        const q = query(
+          collection(db, 'practiceSessions'),
+          where('userId', '==', user.id),
+          where('date', '==', today)
+        )
+        const snap = await getDocs(q)
+        setDailyStats(prev => ({ ...prev, count: snap.size }))
+      } catch (e) {
+        console.error("Failed to load practice stats from Firestore", e)
+        // Fallback to local
+        const localKey = `practice_sessions_${user.id}`
+        const saved = localStorage.getItem(localKey)
+        const sessions = saved ? JSON.parse(saved) : []
+        if (Array.isArray(sessions)) {
+          const today = new Date().toISOString().split('T')[0]
+          const todaysSessions = sessions.filter(s => s.date === today)
+          setDailyStats(prev => ({ ...prev, count: todaysSessions.length }))
+        }
       }
-    } catch (e) {
-      console.error("Failed to load practice stats", e)
     }
+    loadStats()
   }, [user?.id])
 
   return (

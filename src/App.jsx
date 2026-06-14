@@ -211,7 +211,6 @@ function AppLayout({ children }) {
   const { showOnboarding, completeOnboarding } = useOnboarding()
   const { showWhatsNew } = useWhatsNew()
   const [whatsNewOpen, setWhatsNewOpen] = useState(showWhatsNew)
-
   const hasMaintenance = adminData?.isMaintenanceMode && adminData?.maintenanceMessage
 
   return (
