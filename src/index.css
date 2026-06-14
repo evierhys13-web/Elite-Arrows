@@ -71,10 +71,15 @@ body {
 /* Enhanced Glassmorphism */
 .glass {
   background: linear-gradient(135deg, rgba(13, 20, 46, 0.7) 0%, rgba(10, 15, 36, 0.8) 100%);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--border);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.glass:hover {
+  border-color: rgba(124, 92, 252, 0.3);
 }
 
 /* Layout */

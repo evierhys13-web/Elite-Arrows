@@ -7,6 +7,8 @@ import UserSearchSelect from '../components/UserSearchSelect'
 import CupManagement from './CupManagement'
 import { useToast } from '../context/ToastContext'
 import { logMatchApproved } from '../utils/analytics'
+import { checkMatchAchievements } from '../utils/achievements'
+import { derivePlayerStatsFromResults } from '../utils/playerStats'
 
 export default function Admin() {
   const {
@@ -217,9 +219,26 @@ export default function Admin() {
       await setDoc(doc(db, 'results', targetId), approvedResult, { merge: true })
       logMatchApproved(approvedResult)
 
-      if (res.gameType === 'Cup' || updates.gameType === 'Cup') {
-        await advanceCupBracket(approvedResult)
+      // --- ACHIEVEMENTS CHECK ---
+      const checkAndAward = async (uid, matchData) => {
+        if (!uid) return
+        const targetUser = allPlayers.find(u => String(u.id) === String(uid))
+        if (!targetUser) return
+
+        // Get full context for this player
+        const fixtures = getFixtures()
+        const results = getResults()
+        const allStats = derivePlayerStatsFromResults(allPlayers, results, { fixtures, adminData })
+        const playerStats = allStats[uid]
+
+        const earned = await checkMatchAchievements(matchData, uid, playerStats, targetUser.achievements || [])
+        if (earned.length > 0) {
+            earned.forEach(a => showToast(`Achievement Unlocked for ${targetUser.username}: ${a.label}!`, 'success'))
+        }
       }
+
+      await checkAndAward(p1Id, approvedResult)
+      await checkAndAward(p2Id, approvedResult)
 
       // Update local state immediately
       const updatedResults = allResults.map(r =>

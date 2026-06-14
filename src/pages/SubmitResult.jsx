@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { db, doc, setDoc } from '../firebase'
+import { db, doc, setDoc, storage, ref, uploadString, getDownloadURL } from '../firebase'
 import { useToast } from '../context/ToastContext'
 import { logResultSubmitted } from '../utils/analytics'
 
@@ -390,6 +390,19 @@ export default function SubmitResult() {
       const results = [...allResults]
       const resultId = Date.now().toString()
       const fixtureForResult = cupFixture || selectedFixture
+
+      let finalProofUrl = ''
+      if (formData.proofImage) {
+        try {
+          const storageRef = ref(storage, `results/${resultId}_proof.jpg`)
+          await uploadString(storageRef, formData.proofImage, 'data_url')
+          finalProofUrl = await getDownloadURL(storageRef)
+        } catch (storageError) {
+          console.error("Storage upload failed, falling back to base64", storageError)
+          finalProofUrl = formData.proofImage
+        }
+      }
+
       const newResult = {
         id: resultId,
         firestoreId: resultId,
@@ -406,7 +419,7 @@ export default function SubmitResult() {
         submittedAt: new Date().toISOString(),
         bestOf: formData.bestOf,
         firstTo: formData.firstTo,
-        proofImage: formData.proofImage,
+        proofImage: finalProofUrl,
         player1Stats: {
           '180s': parseInt(formData.your180s) || 0,
           highestCheckout: parseInt(formData.yourHighestCheckout) || 0,

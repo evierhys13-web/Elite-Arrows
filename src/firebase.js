@@ -4,6 +4,7 @@ import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, si
 import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging'
 import { getAnalytics, logEvent } from 'firebase/analytics'
 import { getPerformance, trace } from 'firebase/performance'
+import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage'
 
 export const FieldValue = deleteFieldFirestore
 
@@ -20,6 +21,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig)
 export const db = getFirestore(app)
 export const auth = getAuth(app)
+export const storage = getStorage(app)
 
 // Analytics and Performance require a linked Google Analytics property (measurementId).
 // Wrap in try/catch so a missing property doesn't crash the whole firebase module.
@@ -69,5 +71,6 @@ export {
   setPersistence, browserSessionPersistence, browserLocalPersistence,
   sendPasswordResetEmail,
   getMessaging, getToken, onMessage, isSupported,
-  logEvent
+  logEvent,
+  ref, uploadString, getDownloadURL
 }

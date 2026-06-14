@@ -8,6 +8,7 @@ import Breadcrumbs from '../components/Breadcrumbs'
 import { XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
 import { getResultPlayerId, isLeagueResult, isPlayoffResult } from '../utils/leagueResults'
 import HighlightReel from '../components/HighlightReel'
+import { storage, ref, uploadString, getDownloadURL } from '../firebase'
 
 const AVAILABLE_BADGES = [
   { id: 'competitive', label: 'Competitive', icon: '🏆', color: '#FFD700' },
@@ -148,6 +149,10 @@ export default function Profile() {
     if (file) {
       const compressed = await compressImage(file, 300, 300, 0.8)
       setProfilePicture(compressed)
+
+      // Upload immediately for better UX or wait for save?
+      // The current handleSave logic expects the base64/URL in state.
+      // Let's improve handleSave to handle the upload.
     }
   }
 
@@ -161,22 +166,39 @@ export default function Profile() {
 
   const handleSave = async () => {
     setSaving(true)
-    const updates = {
-      username: formData.username?.trim(),
-      nickname: formData.nickname?.trim(),
-      bio: formData.bio?.trim(),
-      country: formData.country?.trim(),
-      dartCounterUsername: formData.dartCounterUsername?.trim(),
-      walkOnSong: formData.walkOnSong?.trim(),
-      threeDartAverage: parseFloat(formData.threeDartAverage) || 0,
-      averageLastUpdated: new Date().toISOString(),
-      profilePicture,
-      gearPhoto,
-      tags,
-      badges: selectedBadges
-    }
-
     try {
+      let finalProfilePic = profilePicture
+      let finalGearPhoto = gearPhoto
+
+      // Upload Profile Picture if it's new (base64)
+      if (profilePicture && profilePicture.startsWith('data:')) {
+        const picRef = ref(storage, `profiles/${displayUser.id}_avatar.jpg`)
+        await uploadString(picRef, profilePicture, 'data_url')
+        finalProfilePic = await getDownloadURL(picRef)
+      }
+
+      // Upload Gear Photo if it's new (base64)
+      if (gearPhoto && gearPhoto.startsWith('data:')) {
+        const gearRef = ref(storage, `gears/${displayUser.id}_setup.jpg`)
+        await uploadString(gearRef, gearPhoto, 'data_url')
+        finalGearPhoto = await getDownloadURL(gearRef)
+      }
+
+      const updates = {
+        username: formData.username?.trim(),
+        nickname: formData.nickname?.trim(),
+        bio: formData.bio?.trim(),
+        country: formData.country?.trim(),
+        dartCounterUsername: formData.dartCounterUsername?.trim(),
+        walkOnSong: formData.walkOnSong?.trim(),
+        threeDartAverage: parseFloat(formData.threeDartAverage) || 0,
+        averageLastUpdated: new Date().toISOString(),
+        profilePicture: finalProfilePic,
+        gearPhoto: finalGearPhoto,
+        tags,
+        badges: selectedBadges
+      }
+
       await updateUser(updates, false)
       alert('Profile successfully updated!')
     } catch (e) {
@@ -242,6 +264,48 @@ export default function Profile() {
               ) : null
             })}
           </div>
+
+          {/* Achievement Badges Section */}
+          {displayUser.achievements?.length > 0 && (
+            <div style={{ marginTop: '24px', display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                {displayUser.achievements.map((ach, i) => (
+                    <Tooltip key={i} content={`${ach.label}: ${ach.desc}`}>
+                        <div style={{
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '50%',
+                            background: 'rgba(56, 189, 248, 0.1)',
+                            border: '1px solid var(--accent-cyan)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '1.2rem',
+                            cursor: 'help'
+                        }}>
+                            {ach.icon}
+                        </div>
+                    </Tooltip>
+                ))}
+            </div>
+          )}
+
+          {/* Head-to-Head Section */}
+          {isViewingOther && (
+            <div className="card glass animate-fade-in" style={{ marginTop: '40px', padding: '24px', border: '1px solid var(--accent-cyan)' }}>
+                <h3 className="card-title" style={{ fontSize: '1rem', marginBottom: '20px', color: 'var(--accent-cyan)' }}>⚔️ Head-to-Head: You vs {displayUser.username}</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '20px', alignItems: 'center', textAlign: 'center' }}>
+                    <div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>{matchLog.filter(m => m.result === 'Win').length}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>YOUR WINS</div>
+                    </div>
+                    <div style={{ fontSize: '1.2rem', opacity: 0.3 }}>VS</div>
+                    <div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>{matchLog.filter(m => m.result === 'Loss').length}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>THEIR WINS</div>
+                    </div>
+                </div>
+            </div>
+          )}
         </div>
       </div>
 
