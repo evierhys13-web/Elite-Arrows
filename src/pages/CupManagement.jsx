@@ -66,12 +66,21 @@ function CupManagement() {
               const roundMatches = matches.filter(m => m.round === round)
 
               for (const m of roundMatches) {
-                const mIdx = matches.findIndex(match => match.id === m.id)
+                const mIdx = matches.findIndex(match => String(match.id) === String(m.id))
                 let winnerId = matches[mIdx].winner
 
                 // 1. Check for results if no winner yet
                 if (!winnerId) {
-                  const res = cupResults.find(r => String(r.matchId) === String(m.id))
+                  let res = cupResults.find(r => String(r.matchId) === String(m.id))
+
+                  // Fallback: search by player names if matchId is missing
+                  if (!res && m.player1 && m.player2) {
+                    res = cupResults.find(r =>
+                      (String(r.player1Id) === String(m.player1) && String(r.player2Id) === String(m.player2)) ||
+                      (String(r.player2Id) === String(m.player1) && String(r.player1Id) === String(m.player2))
+                    )
+                  }
+
                   if (res) {
                     winnerId = res.score1 > res.score2 ? res.player1Id : res.player2Id
                     const isP1 = String(res.player1Id) === String(matches[mIdx].player1)
@@ -101,12 +110,17 @@ function CupManagement() {
                   if (nextMIdx !== -1) {
                     const siblings = matches
                       .filter(sm => sm.round === m.round && String(sm.nextMatchId) === String(m.nextMatchId))
-                      .sort((a,b) => (Number(a.matchNum)||0) - (Number(b.matchNum)||0))
+                      .sort((a,b) => {
+                        const diff = (Number(a.matchNum)||0) - (Number(b.matchNum)||0)
+                        if (diff !== 0) return diff
+                        return String(a.id).localeCompare(String(b.id))
+                      })
 
                     const pos = siblings.findIndex(sm => String(sm.id) === String(m.id))
                     const target = pos === 0 ? 'player1' : 'player2'
 
                     if (matches[nextMIdx][target] !== winnerId) {
+                      console.log(`Advancing ${getPlayerName(winnerId)} to ${target} in ${getRoundName(matches[nextMIdx].round, totalRounds)}`)
                       matches[nextMIdx] = { ...matches[nextMIdx], [target]: winnerId }
                       cupChanges++
                     }

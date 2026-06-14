@@ -2126,7 +2126,11 @@ export function AuthProvider({ children }) {
                   String(m.nextMatchId) === String(match.nextMatchId),
               )
               .sort(
-                (a, b) => (Number(a.matchNum) || 0) - (Number(b.matchNum) || 0),
+                (a, b) => {
+                  const diff = (Number(a.matchNum) || 0) - (Number(b.matchNum) || 0);
+                  if (diff !== 0) return diff;
+                  return String(a.id).localeCompare(String(b.id));
+                }
               );
 
             const siblingPos = siblings.findIndex(
