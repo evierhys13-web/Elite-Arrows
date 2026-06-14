@@ -495,6 +495,9 @@ export function AuthProvider({ children }) {
 
   const triggerDataRefresh = useCallback((dataType = "all") => {
     setDataRefreshTrigger((prev) => prev + 1);
+    if (dataType === "all" || dataType === "cups") {
+      setCupsRefreshTrigger((prev) => prev + 1);
+    }
   }, []);
 
   const triggerCupsRefresh = useCallback(() => {
@@ -1058,6 +1061,7 @@ export function AuthProvider({ children }) {
           // 3. Process all users: Reset stats and Sync Season 2 subs
           const batch = writeBatch(db);
           const stagedDivisions = s2Doc?.stagedDivisions || {};
+          const hasStagedData = Object.keys(stagedDivisions).length > 0;
 
           allUsers.forEach((u) => {
             const updates = {};
@@ -1067,9 +1071,12 @@ export function AuthProvider({ children }) {
             if (u.isSubscribed !== isSubscribedForS2)
               updates.isSubscribed = isSubscribedForS2;
 
-            // Apply staged divisions (otherwise they stay unassigned for fresh S2)
-            const nextDiv = stagedDivisions[u.id] || "Unassigned";
-            if (u.division !== nextDiv) updates.division = nextDiv;
+            // Apply staged divisions - ONLY if we actually have some staged data
+            // This prevents accidental wipes if the auto-launch triggers unexpectedly
+            if (hasStagedData) {
+              const nextDiv = stagedDivisions[u.id] || "Unassigned";
+              if (u.division !== nextDiv) updates.division = nextDiv;
+            }
 
             // Clear manual overrides
             if (u.manualStats) updates.manualStats = null;
@@ -2203,6 +2210,8 @@ export function AuthProvider({ children }) {
             status: allComplete ? "completed" : "active",
             currentRound,
           });
+          // Trigger local state refresh
+          triggerCupsRefresh();
         }
       });
     } catch (err) {

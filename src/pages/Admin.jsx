@@ -937,6 +937,76 @@ export default function Admin() {
     setIsApproving(false)
   }
 
+  const handleHealUserDivisions = async () => {
+    if (!window.confirm("This will scan ALL approved match results to determine each player's correct division and restore them. It will also restore Admin status for known staff. Proceed?")) return
+    setIsApproving(true)
+    try {
+      const results = allResults.filter(r => String(r.status).toLowerCase() === 'approved')
+      const users = getAllUsers()
+      const divisionMap = {} // { userId: { divisionName: count } }
+
+      results.forEach(r => {
+        const div = r.division
+        if (!div || div === 'Unassigned' || div === 'Friendly' || div === 'Friendly Match') return
+
+        [r.player1Id, r.player2Id].forEach(id => {
+          if (!id) return
+          const uid = String(id)
+          if (!divisionMap[uid]) divisionMap[uid] = {}
+          divisionMap[uid][div] = (divisionMap[uid][div] || 0) + 1
+        })
+      })
+
+      const batch = writeBatch(db)
+      let count = 0
+      let ops = 0
+
+      for (const u of users) {
+        let updates = {}
+        const counts = divisionMap[u.id]
+
+        if (counts) {
+          // Find division with max matches
+          const bestDiv = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0]
+          if (u.division !== bestDiv) {
+            updates.division = bestDiv
+          }
+        }
+
+        // Special recovery for diplexicto87 / brentedwards87@gmail.com
+        if (u.username?.toLowerCase() === 'diplexicto87' || u.email?.toLowerCase() === 'brentedwards87@gmail.com') {
+          if (!u.isAdmin) updates.isAdmin = true
+          if (u.division !== 'Elite') updates.division = 'Elite'
+        }
+
+        // Restore Admin status for known staff
+        if (ADMIN_EMAILS.includes(u.email?.toLowerCase())) {
+          if (!u.isAdmin) updates.isAdmin = true
+        }
+
+        if (Object.keys(updates).length > 0) {
+          batch.update(doc(db, 'users', u.id), updates)
+          count++
+          ops++
+        }
+
+        if (ops >= 450) {
+          await batch.commit()
+          ops = 0
+        }
+      }
+
+      if (ops > 0) await batch.commit()
+
+      await logAudit('HEAL_DIVISIONS', `Restored ${count} users to their correct divisions and permissions.`)
+      showToast(`Restored ${count} users!`, 'success')
+      triggerDataRefresh('all')
+    } catch (e) {
+      showToast('Heal failed: ' + e.message, 'error')
+    }
+    setIsApproving(false)
+  }
+
   const handleResetSuperLeagueTable = async () => {
     const currentSeason = adminData?.currentSeason || 'Season 2'
     if (!window.confirm(`DANGER: This will WIPE all manual adjustments/overrides from the Super League standings and force a deep re-sync of all approved Super League matches to ${currentSeason}. Proceed?`)) return;
@@ -2222,6 +2292,9 @@ export default function Admin() {
                   Force historical data to "Season 1" and link missing IDs.
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <button className="btn btn-success btn-sm" onClick={handleHealUserDivisions} disabled={isApproving}>
+                    {isApproving ? 'Healing...' : 'Heal User Divisions'}
+                  </button>
                   <button className="btn btn-secondary btn-sm" onClick={handleBulkSyncAnalytics} disabled={isApproving}>
                     {isApproving ? 'Processing...' : 'Run Deep Sync'}
                   </button>
