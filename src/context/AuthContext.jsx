@@ -287,6 +287,7 @@ export function AuthProvider({ children }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [news, setNews] = useState([]);
   const [showSeasonOneWelcome, setShowSeasonOneWelcome] = useState(false);
+  const [pendingGameInvite, setPendingGameInvite] = useState(null);
   const unsubscribeRef = useRef(null);
   const seenNotificationIdsRef = useRef(new Set());
   const resultRowsRef = useRef([]);
@@ -680,7 +681,7 @@ export function AuthProvider({ children }) {
     );
 
     const unsubscribeNews = onSnapshot(
-      query(collection(db, "news"), orderBy("createdAt", "desc")),
+      query(collection(db, "news"), orderBy("createdAt", "desc"), limit(20)),
       (snapshot) => {
         const newsData = snapshot.docs
           .map((doc) => ({ id: doc.id, ...doc.data() }))
@@ -708,13 +709,7 @@ export function AuthProvider({ children }) {
         snapshot.docChanges().forEach((change) => {
           if (change.type === "added") {
             const invite = change.doc.data();
-            if (
-              window.confirm(
-                `${invite.fromUsername} has challenged you to a ${invite.config.startScore} match! Accept?`,
-              )
-            ) {
-              acceptGameInvite(invite);
-            }
+            setPendingGameInvite(invite);
           }
         });
       });
@@ -2577,6 +2572,17 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  const dismissGameInvite = useCallback(() => setPendingGameInvite(null), []);
+
+  const handleAcceptGameInvite = useCallback(async () => {
+    if (!pendingGameInvite) return;
+    const gameId = await acceptGameInvite(pendingGameInvite);
+    setPendingGameInvite(null);
+    if (gameId && typeof window !== "undefined") {
+      window.location.href = `/live-match?gameId=${gameId}`;
+    }
+  }, [pendingGameInvite, acceptGameInvite]);
+
   return (
     <AuthContext.Provider
       value={{
@@ -2656,6 +2662,37 @@ export function AuthProvider({ children }) {
           userName={user.username}
           onAcknowledge={acknowledgeSeasonOneWelcome}
         />
+      )}
+      {pendingGameInvite && (
+        <div
+          className="modal-overlay"
+          onClick={dismissGameInvite}
+          style={{ zIndex: 20000 }}
+        >
+          <div
+            className="modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: "360px", textAlign: "center" }}
+          >
+            <div style={{ fontSize: "2rem", marginBottom: "12px" }}>🎯</div>
+            <h3 style={{ color: "var(--accent-cyan)", marginBottom: "12px" }}>
+              Game Challenge!
+            </h3>
+            <p style={{ color: "var(--text-secondary)", marginBottom: "24px" }}>
+              <strong>{pendingGameInvite.fromUsername}</strong> has challenged
+              you to a <strong>{pendingGameInvite.config?.startScore}</strong>{" "}
+              match!
+            </p>
+            <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+              <button className="btn btn-primary" onClick={handleAcceptGameInvite}>
+                Accept
+              </button>
+              <button className="btn btn-secondary" onClick={dismissGameInvite}>
+                Decline
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       {children}
     </AuthContext.Provider>

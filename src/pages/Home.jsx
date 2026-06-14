@@ -13,9 +13,8 @@ import { getResultEffectiveTime, getResultPlayerId, isLeagueResult } from '../ut
 const DEFAULT_LEAGUE_TABLE_RESET_AT = '2026-04-29T16:14:21.338+01:00'
 
 export default function Home() {
-  const { user, getAllUsers, getFixtures, getResults, dataRefreshTrigger, loading, adminData, updateUser, getSeasons } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, loading, adminData, updateUser, getSeasons } = useAuth()
   
-  const [refreshKey, setRefreshKey] = useState(0)
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
   const [seasonPhase, setSeasonPhase] = useState('upcoming')
   const [visible, setVisible] = useState(false)
@@ -65,10 +64,6 @@ export default function Home() {
 
     return current || { name: 'Off-Season', startDate: now.toISOString(), endDate: now.toISOString() }
   }, [getSeasons, adminData?.currentSeason])
-
-  useEffect(() => {
-    setRefreshKey(prev => prev + 1)
-  }, [dataRefreshTrigger])
 
   useEffect(() => {
     setVisible(true)

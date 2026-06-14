@@ -8,10 +8,9 @@ import { SkeletonList } from '../components/Skeleton'
 import PullToRefresh from '../components/PullToRefresh'
 
 export default function Results() {
-  const { user, getAllUsers, getResults, triggerDataRefresh, dataRefreshTrigger, notifyAdmins, loading, fetchMoreResults } = useAuth()
+  const { user, getAllUsers, getResults, triggerDataRefresh, notifyAdmins, loading, fetchMoreResults } = useAuth()
   const { showToast } = useToast()
   const [activeTab, setActiveTab] = useState('approved')
-  const [refreshKey, setRefreshKey] = useState(0)
   const [fetchingMore, setFetchingMore] = useState(false)
 
   useEffect(() => {
@@ -22,10 +21,6 @@ export default function Results() {
     }
     loadInitial()
   }, [fetchMoreResults])
-
-  useEffect(() => {
-    setRefreshKey(prev => prev + 1)
-  }, [dataRefreshTrigger])
   
   const isAdmin = user?.isAdmin || user?.isTournamentAdmin || ADMIN_EMAILS.includes(user?.email?.toLowerCase())
   const isSubscribed = user?.isSubscribed === true || isAdmin
