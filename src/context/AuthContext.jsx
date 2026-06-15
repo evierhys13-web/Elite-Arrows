@@ -781,11 +781,13 @@ export function AuthProvider({ children }) {
           limit(500),
         );
 
-    // Targeted listener for user's own results to ensure Home page accuracy
+    // Targeted listener for user's own results to ensure Home page accuracy.
+    // orderBy("submittedAt", "desc") ensures we get the MOST RECENT 50, not the oldest.
     const userResultsQuery1 = !user?.isAdmin
       ? query(
           collection(db, "results"),
           where("player1Id", "==", user.id),
+          orderBy("submittedAt", "desc"),
           limit(50),
         )
       : null;
@@ -793,6 +795,7 @@ export function AuthProvider({ children }) {
       ? query(
           collection(db, "results"),
           where("player2Id", "==", user.id),
+          orderBy("submittedAt", "desc"),
           limit(50),
         )
       : null;
@@ -1658,10 +1661,16 @@ export function AuthProvider({ children }) {
         // Scope logic: e.g., { season: 'Season 2', status: 'approved' }
         const matchesScope = Object.keys(purgeScope).every(key => {
           if (key === 'season') {
-             const rSeason = String(r.season || '').replace(/\s+/g, '').toLowerCase()
-             const pSeason = String(purgeScope[key] || '').replace(/\s+/g, '').toLowerCase()
-             if (pSeason === 'season1') return rSeason === 'season1' || rSeason === '' || rSeason === '2026' || rSeason === 'legacy'
-             return rSeason === pSeason
+            const pSeason = String(purgeScope[key] || '')
+            if (pSeason === 'Season 1') {
+              // Season 1 has legacy results with missing/varied season fields — use broad match
+              const rSeason = String(r.season || '').replace(/\s+/g, '').toLowerCase()
+              return rSeason === 'season1' || rSeason === '' || rSeason === '2026' || rSeason === 'legacy'
+            }
+            // All other seasons: exact match only — must align with what the Firestore
+            // query returns (case-sensitive). Avoid purging results that differ only in
+            // case/whitespace since the query would not have returned them.
+            return r.season === pSeason
           }
           return String(r[key]) === String(purgeScope[key])
         })
@@ -1762,8 +1771,13 @@ export function AuthProvider({ children }) {
           };
         });
 
-      // Update results and purge any 'approved' results for this season that weren't in the fetch
-      updateResults(seasonResults, { season: seasonName, status: "approved" });
+      // Only run the purge if we actually got results back. An empty response likely
+      // means a data/index issue — purging on empty would wipe everything from memory.
+      if (seasonResults.length > 0) {
+        updateResults(seasonResults, { season: seasonName, status: "approved" });
+      } else {
+        updateResults(seasonResults); // merge without purge
+      }
       stopTrace({ season: seasonName, result_count: String(seasonResults.length) });
 
       return seasonResults;
