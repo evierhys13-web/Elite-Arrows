@@ -171,6 +171,7 @@ export default function SubmitResult() {
   }
 
   const isLocked = new Date() < new Date("2026-07-01T00:00:00")
+  const isAdmin = user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin
   const isOpenLeague = formData.gameType === 'Open League Singles' || formData.gameType === 'Open League Doubles'
 
   const handleChange = (e) => {
@@ -319,7 +320,7 @@ export default function SubmitResult() {
     setError('')
     setSuccessMessage('')
     
-    if (isOpenLeague && isLocked) {
+    if (isOpenLeague && isLocked && !isAdmin) {
       setError('Open League matches cannot be submitted until 1st July 2026.')
       return
     }
