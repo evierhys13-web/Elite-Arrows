@@ -388,61 +388,65 @@ export default function OpenLeague() {
 
       {showDuoModal && (
         <div className="modal-overlay" onClick={() => setShowDuoModal(false)}>
-          <div className="card glass" style={{ maxWidth: '500px', width: '95%', padding: '30px' }} onClick={e => e.stopPropagation()}>
-            <h2 className="text-gradient" style={{ marginBottom: '20px' }}>Manage Open League Duos</h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '20px' }}>Pair players together to add them to the Doubles Table immediately.</p>
+          <div className="card glass" style={{ maxWidth: '800px', width: '95%', padding: '35px', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+            <h2 className="text-gradient" style={{ marginBottom: '20px', fontSize: '2rem' }}>Manage Open League Duos</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginBottom: '25px' }}>Pair players together to add them to the Doubles Table immediately.</p>
 
-            <div style={{ display: 'grid', gap: '15px', marginBottom: '25px' }}>
-              <div className="form-group">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '15px', marginBottom: '30px', alignItems: 'flex-end' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
                 <label>Player 1</label>
                 <select
                   className="glass"
                   value={duoForm.p1}
                   onChange={e => setDuoModal({ ...duoForm, p1: e.target.value })}
-                  style={{ width: '100%', padding: '10px' }}
+                  style={{ width: '100%', padding: '12px' }}
                 >
                   <option value="">Select Player</option>
                   {allUsers.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
                 </select>
               </div>
-              <div className="form-group">
+              <div className="form-group" style={{ marginBottom: 0 }}>
                 <label>Player 2</label>
                 <select
                   className="glass"
                   value={duoForm.p2}
                   onChange={e => setDuoModal({ ...duoForm, p2: e.target.value })}
-                  style={{ width: '100%', padding: '10px' }}
+                  style={{ width: '100%', padding: '12px' }}
                 >
                   <option value="">Select Player</option>
                   {allUsers.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
                 </select>
               </div>
-              <button className="btn btn-primary btn-block" onClick={handleAddDuo}>
-                ➕ Create Duo Pairing
+              <button className="btn btn-primary" onClick={handleAddDuo} style={{ padding: '12px 25px' }}>
+                ➕ Create Duo
               </button>
             </div>
 
-            <div style={{ maxHeight: '200px', overflowY: 'auto', borderTop: '1px solid var(--border)', paddingTop: '15px' }}>
-              <h4 style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '10px' }}>Active Pairings</h4>
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '20px' }}>
+              <h4 style={{ fontSize: '0.9rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '15px', letterSpacing: '0.05em' }}>Active Pairings ({duos.length})</h4>
               {duos.length === 0 ? (
-                <p style={{ fontSize: '0.8rem', textAlign: 'center', opacity: 0.5 }}>No manual pairings defined yet.</p>
+                <p style={{ padding: '30px', textAlign: 'center', opacity: 0.5, background: 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>No manual pairings defined yet.</p>
               ) : (
-                duos.map(d => {
-                  const u1 = allUsers.find(u => u.id === d.p1Id);
-                  const u2 = allUsers.find(u => u.id === d.p2Id);
-                  return (
-                    <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', marginBottom: '5px' }}>
-                      <span style={{ fontSize: '0.85rem' }}>{u1?.username} & {u2?.username}</span>
-                      <button onClick={() => handleRemoveDuo(d.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5 }}>✕</button>
-                    </div>
-                  );
-                })
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
+                  {duos.map(d => {
+                    const u1 = allUsers.find(u => u.id === d.p1Id);
+                    const u2 = allUsers.find(u => u.id === d.p2Id);
+                    return (
+                      <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{u1?.username} & {u2?.username}</span>
+                        <button onClick={() => handleRemoveDuo(d.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.6, color: 'var(--error)', fontSize: '1.1rem' }}>✕</button>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
 
-            <button className="btn btn-secondary btn-block" style={{ marginTop: '20px' }} onClick={() => setShowDuoModal(false)}>
-              Close
-            </button>
+            <div style={{ marginTop: '35px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button className="btn btn-secondary" style={{ minWidth: '150px' }} onClick={() => setShowDuoModal(false)}>
+                Close Manager
+              </button>
+            </div>
           </div>
         </div>
       )}
