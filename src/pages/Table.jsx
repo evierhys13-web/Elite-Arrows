@@ -464,6 +464,9 @@ export default function Table() {
                 >
                   +/-
                 </th>
+                <th style={{ padding: "12px 4px", textAlign: "center", width: "80px" }}>
+                  Form
+                </th>
                 <th
                   style={{
                     width: "35px",
@@ -649,6 +652,26 @@ export default function Table() {
                         }}
                       >
                         {legDiff > 0 ? `+${legDiff}` : legDiff}
+                      </td>
+                      <td style={{ padding: "10px 2px", textAlign: "center" }}>
+                        <div style={{ display: "flex", gap: "3px", justifyContent: "center" }}>
+                          {(player.stats.form || []).slice(-5).map((f, i) => (
+                            <div
+                              key={i}
+                              style={{
+                                width: "8px",
+                                height: "8px",
+                                borderRadius: "50%",
+                                background: f === 'W' ? 'var(--success)' : f === 'L' ? 'var(--error)' : 'var(--text-muted)',
+                                boxShadow: f === 'W' ? '0 0 5px var(--success)' : 'none'
+                              }}
+                              title={f === 'W' ? 'Win' : f === 'L' ? 'Loss' : 'Draw'}
+                            />
+                          ))}
+                          {(!player.stats.form || player.stats.form.length === 0) && (
+                            <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>-</span>
+                          )}
+                        </div>
                       </td>
                       <td
                         style={{

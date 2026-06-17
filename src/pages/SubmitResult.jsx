@@ -444,6 +444,8 @@ export default function SubmitResult() {
 
       await setDoc(doc(db, 'results', resultId), newResult, { merge: true })
 
+      setSuccessMessage('Result data saved... Finalizing upload...')
+
       // If it's a highlight, also save to highlights collection
       if (formData.isHighlight || formData.proofVideo || formData.highlightUrl) {
         const highlightId = `hl_${resultId}`
@@ -1039,9 +1041,14 @@ export default function SubmitResult() {
             type="submit"
             className={`btn ${submitted ? 'btn-success' : 'btn-primary'} btn-block`}
             disabled={submitted || isSubmitting}
-            style={{ padding: '18px', fontSize: '1.1rem', fontWeight: '700', borderRadius: '12px' }}
+            style={{ padding: '18px', fontSize: '1.1rem', fontWeight: '700', borderRadius: '12px', position: 'relative', overflow: 'hidden' }}
           >
-            {isSubmitting ? '🔄 Submitting...' : submitted ? '✅ Submitted Successfully!' : '🚀 Submit for Approval'}
+            {isSubmitting ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+                <div className="spinner" style={{ width: '20px', height: '20px' }}></div>
+                <span>{formData.proofImage ? 'Uploading Image & Saving...' : 'Submitting...'}</span>
+              </div>
+            ) : submitted ? '✅ Submitted Successfully!' : '🚀 Submit for Approval'}
           </button>
 
           <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '15px' }}>

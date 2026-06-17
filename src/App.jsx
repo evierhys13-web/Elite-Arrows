@@ -39,7 +39,6 @@ const Leaderboards = lazy(() => import('./pages/Leaderboards'))
 const Rewards = lazy(() => import('./pages/Rewards'))
 const Fixtures = lazy(() => import('./pages/Fixtures'))
 const CupFixtures = lazy(() => import('./pages/CupFixtures'))
-const Calendar = lazy(() => import('./pages/Calendar'))
 const Guide = lazy(() => import('./pages/Guide'))
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
 const DeleteAccount = lazy(() => import('./pages/DeleteAccount'))
@@ -309,7 +308,6 @@ function AppRoutes() {
       <Route path="/rewards" element={<ProtectedRoute><AppLayout><Rewards /></AppLayout></ProtectedRoute>} />
       <Route path="/fixtures" element={<ProtectedRoute><AppLayout><Fixtures /></AppLayout></ProtectedRoute>} />
       <Route path="/cup-fixtures" element={<ProtectedRoute><AppLayout><CupFixtures /></AppLayout></ProtectedRoute>} />
-      <Route path="/calendar" element={<ProtectedRoute><AppLayout><Calendar /></AppLayout></ProtectedRoute>} />
       <Route path="/guide" element={<ProtectedRoute><AppLayout><Guide /></AppLayout></ProtectedRoute>} />
       <Route path="/privacy-policy" element={<ProtectedRoute><AppLayout><PrivacyPolicy /></AppLayout></ProtectedRoute>} />
       <Route path="/delete-account" element={<ProtectedRoute><AppLayout><DeleteAccount /></AppLayout></ProtectedRoute>} />

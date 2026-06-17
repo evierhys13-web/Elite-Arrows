@@ -69,7 +69,6 @@ export default function Sidebar() {
         { path: '/live-match', label: 'Play Online/Local', icon: TargetIcon },
         { path: '/submit-result', label: 'Submit Score', icon: PlusCircleIcon },
         { path: '/fixtures', label: 'Arrangements', icon: HistoryIcon },
-        { path: '/calendar', label: 'Calendar', icon: CalendarIcon },
         { path: '/cups', label: 'Cups', icon: TrophyIcon },
         { path: '/tournaments', label: 'Tournaments', icon: TournamentIcon },
         { path: '/rewards', label: 'Rewards', icon: GiftIcon },
