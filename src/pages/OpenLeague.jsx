@@ -171,7 +171,7 @@ export default function OpenLeague() {
     setLoading(false);
   };
 
-  if (isLocked) {
+  if (isLocked && !isAdmin) {
     return (
       <div className="page animate-fade-in" style={{ textAlign: 'center', padding: '100px 20px' }}>
         <h1 className="text-gradient" style={{ fontSize: '3rem', marginBottom: '20px' }}>Open League</h1>
