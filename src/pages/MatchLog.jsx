@@ -1,9 +1,9 @@
 import { useState, useMemo, Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getResultPlayerId, isLeagueResult, isPlayoffResult, isSuperLeagueResult } from '../utils/leagueResults'
+import { getResultPlayerId, isLeagueResult, isPlayoffResult, isSuperLeagueResult, isOpenLeagueResult, isOpenLeagueDoublesResult } from '../utils/leagueResults'
 import UserSearchSelect from '../components/UserSearchSelect'
-import { db, doc, setDoc } from '../firebase'
+import { db, doc, setDoc, getDocs, collection } from '../firebase'
 import { useToast } from '../context/ToastContext'
 
 export default function MatchLog() {
@@ -11,13 +11,30 @@ export default function MatchLog() {
   const navigate = useNavigate()
   const { showToast } = useToast()
   const [activeTab, setActiveTab] = useState('toPlay')
-  const [competition, setCompetition] = useState('League') // 'League' or 'Super League'
+  const [competition, setCompetition] = useState('League') // 'League', 'Super League', 'Open Singles', 'Open Doubles'
   const [targetPlayerId, setTargetPlayerId] = useState(user?.id)
   const [showBetForm, setShowBetForm] = useState(null)
   const [betAmount, setBetAmount] = useState(10)
   const [predictedWinner, setPredictedWinner] = useState('')
   const [predictedScore1, setPredictedScore1] = useState('')
   const [predictedScore2, setPredictedScore2] = useState('')
+
+  const [openSinglesEntries, setOpenSinglesEntries] = useState([])
+  const [openDuoEntries, setOpenDuoEntries] = useState([])
+
+  useMemo(() => {
+    const fetchData = async () => {
+      try {
+        const [sSnap, dSnap] = await Promise.all([
+          getDocs(collection(db, 'openLeagueSingles')),
+          getDocs(collection(db, 'openLeagueDuos'))
+        ])
+        setOpenSinglesEntries(sSnap.docs.map(d => ({ id: d.id, ...d.data() })))
+        setOpenDuoEntries(dSnap.docs.map(d => ({ id: d.id, ...d.data() })))
+      } catch (e) { console.error(e) }
+    }
+    fetchData()
+  }, [])
 
   const allResults = getResults()
   const allUsers = getAllUsers()
@@ -125,9 +142,14 @@ export default function MatchLog() {
 
         if (competition === 'League') {
           return isLeagueResult(r, fixturesById) || isPlayoffResult(r, fixturesById)
-        } else {
+        } else if (competition === 'Super League') {
           return isSuperLeagueResult(r, fixturesById)
+        } else if (competition === 'Open Singles') {
+          return isOpenLeagueResult(r)
+        } else if (competition === 'Open Doubles') {
+          return isOpenLeagueDoublesResult(r)
         }
+        return false
       })
       .map(r => {
         const player1Id = getResultPlayerId(r, 1, allUsers)
@@ -218,7 +240,7 @@ export default function MatchLog() {
         seen.add(String(u.id))
         return true
       })
-    } else {
+    } else if (competition === 'Super League') {
       // Super League: play each opponent 2x
       const slDivision = targetUser.superLeagueDivision
       if (!slDivision) return []
@@ -233,8 +255,58 @@ export default function MatchLog() {
           return { ...u, _playedCount: playedCount, _remaining: 2 - playedCount }
         })
         .filter(u => u._remaining > 0)
+    } else if (competition === 'Open Singles') {
+      const isInOpenSingles = openSinglesEntries.some(e => String(e.userId) === String(targetUser.id))
+      if (!isInOpenSingles) return []
+
+      return allUsers
+        .filter(u =>
+          String(u.id) !== String(targetUser.id) &&
+          openSinglesEntries.some(e => String(e.userId) === String(u.id)) &&
+          !playedOpponentCounts[String(u.id)]
+        )
+    } else if (competition === 'Open Doubles') {
+      const targetDuo = openDuoEntries.find(e => String(e.p1Id) === String(targetUser.id) || String(e.p2Id) === String(targetUser.id))
+      if (!targetDuo) return []
+
+      const targetDuoIds = [String(targetDuo.p1Id), String(targetDuo.p2Id)].sort()
+      const targetDuoKey = targetDuoIds.join('_')
+
+      // For doubles, playedOpponentCounts uses opponentId as a key.
+      // But in OpenLeague results, we might want to track duo vs duo.
+      // Actually, my isOpenLeagueDoublesResult filtering already gets the results.
+      // I need to filter out duos already played.
+
+      const playedDuoKeys = new Set()
+      allResults
+        .filter(r => isOpenLeagueDoublesResult(r) && r.status === 'approved')
+        .forEach(r => {
+          const duo1 = [String(r.player1Id), String(r.player2Id)].sort().join('_')
+          const duo2 = [String(r.player3Id), String(r.player4Id)].sort().join('_')
+          if (duo1 === targetDuoKey) playedDuoKeys.add(duo2)
+          if (duo2 === targetDuoKey) playedDuoKeys.add(duo1)
+        })
+
+      return openDuoEntries
+        .filter(d => {
+          const ids = [String(d.p1Id), String(d.p2Id)].sort()
+          const key = ids.join('_')
+          return key !== targetDuoKey && !playedDuoKeys.has(key)
+        })
+        .map(d => {
+          const u1 = allUsers.find(u => String(u.id) === String(d.p1Id))
+          const u2 = allUsers.find(u => String(u.id) === String(d.p2Id))
+          return {
+            id: d.id,
+            username: `${u1?.username || '?'} & ${u2?.username || '?'}`,
+            _isDuo: true,
+            p1Id: d.p1Id,
+            p2Id: d.p2Id
+          }
+        })
     }
-  }, [allUsers, targetUser.id, targetUser.division, targetUser.superLeagueDivision, playedOpponentCounts, playoffOpponent, playoffAlreadyPlayed, activeSeasonDoc, competition])
+    return []
+  }, [allUsers, targetUser.id, targetUser.division, targetUser.superLeagueDivision, playedOpponentCounts, playoffOpponent, playoffAlreadyPlayed, activeSeasonDoc, competition, openSinglesEntries, openDuoEntries, allResults])
 
   return (
     <div className="page animate-fade-in">
@@ -267,6 +339,20 @@ export default function MatchLog() {
           style={{ borderRadius: '99px', minWidth: '120px' }}
         >
           Super League
+        </button>
+        <button
+          className={`btn btn-sm ${competition === 'Open Singles' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setCompetition('Open Singles')}
+          style={{ borderRadius: '99px', minWidth: '120px' }}
+        >
+          Open Singles
+        </button>
+        <button
+          className={`btn btn-sm ${competition === 'Open Doubles' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setCompetition('Open Doubles')}
+          style={{ borderRadius: '99px', minWidth: '120px' }}
+        >
+          Open Doubles
         </button>
       </div>
 
@@ -370,7 +456,19 @@ export default function MatchLog() {
                       <button
                         className="btn btn-primary btn-sm"
                         style={{ padding: '6px 12px', fontSize: '0.75rem' }}
-                        onClick={() => navigate(`/submit-result?opponent=${player.id}&gameType=${player._playoff ? 'Playoff' : competition}&season=${currentSeasonName}`)}
+                        onClick={() => {
+                          if (competition === 'Open Singles') {
+                            navigate(`/submit-result?opponent=${player.id}&gameType=Open League Singles&season=${currentSeasonName}`)
+                          } else if (competition === 'Open Doubles') {
+                            // For Open Doubles, we need to pass the duo info
+                            // The submit page handles opponent1 and opponent2
+                            // But here we have a Duo team.
+                            // I'll just navigate to submit result with the first opponent, user can fill the rest
+                            navigate(`/submit-result?opponent=${player.p1Id}&gameType=Open League Doubles&season=${currentSeasonName}`)
+                          } else {
+                            navigate(`/submit-result?opponent=${player.id}&gameType=${player._playoff ? 'Playoff' : competition}&season=${currentSeasonName}`)
+                          }
+                        }}
                       >
                         Submit Score
                       </button>
