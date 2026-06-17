@@ -64,6 +64,7 @@ export const fcmTokensCollection = collection(db, 'fcmTokens')
 export const newsCollection = collection(db, 'news')
 export const liveGamesCollection = collection(db, 'liveGames')
 export const gameInvitesCollection = collection(db, 'gameInvites')
+export const openLeagueDuosCollection = collection(db, 'openLeagueDuos')
 
 export { 
   doc, setDoc, getDoc, getDocFromServer, getDocs, getDocsFromServer, query, where, orderBy, onSnapshot, deleteDoc, collection, addDoc, updateDoc, writeBatch, runTransaction, limit, arrayUnion, serverTimestamp, increment,
