@@ -71,19 +71,25 @@ export default function Admin() {
   const [viewSurveyResponses, setViewSurveyResponses] = useState(null)
   const [previewImage, setPreviewImage] = useState(null)
   const [openLeagueDuos, setOpenLeagueDuos] = useState([])
+  const [openLeagueSingles, setOpenLeagueSingles] = useState([])
   const [duoForm, setDuoForm] = useState({ p1: '', p2: '' })
+  const [singlesPlayerForm, setSinglesPlayerForm] = useState('')
   const [auditLogs, setAuditLogs] = useState([])
   const [loadingLogs, setLoadingLogs] = useState(false)
 
   useEffect(() => {
     if (activeTab === 'openleague') {
-      const fetchDuos = async () => {
+      const fetchData = async () => {
         try {
-          const snap = await getDocs(collection(db, 'openLeagueDuos'))
-          setOpenLeagueDuos(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+          const [duoSnap, singlesSnap] = await Promise.all([
+            getDocs(collection(db, 'openLeagueDuos')),
+            getDocs(collection(db, 'openLeagueSingles'))
+          ])
+          setOpenLeagueDuos(duoSnap.docs.map(d => ({ id: d.id, ...d.data() })))
+          setOpenLeagueSingles(singlesSnap.docs.map(d => ({ id: d.id, ...d.data() })))
         } catch (e) { console.error(e) }
       }
-      fetchDuos()
+      fetchData()
     }
   }, [activeTab, refreshKey])
 
@@ -183,6 +189,31 @@ export default function Admin() {
       setOpenLeagueDuos(openLeagueDuos.filter(d => d.id !== id))
       await logAudit('REMOVE_OPEN_LEAGUE_DUO', `Deleted duo pairing: ${id}`)
       showToast("Duo removed", "info")
+    } catch (e) { showToast(e.message, "error") }
+  }
+
+  const handleAddSinglesPlayer = async () => {
+    if (!singlesPlayerForm) return showToast("Select a player", "error")
+    if (openLeagueSingles.find(p => p.userId === singlesPlayerForm)) return showToast("Player already in table", "warning")
+
+    try {
+      const id = Date.now().toString()
+      const newPlayer = { id, userId: singlesPlayerForm, createdAt: new Date().toISOString() }
+      await setDoc(doc(db, 'openLeagueSingles', id), newPlayer)
+      setOpenLeagueSingles([...openLeagueSingles, newPlayer])
+      setSinglesPlayerForm('')
+      await logAudit('ADD_OPEN_LEAGUE_SINGLES', `Added player to Open League table: ${singlesPlayerForm}`)
+      showToast("Player added to table!", "success")
+    } catch (e) { showToast(e.message, "error") }
+  }
+
+  const handleRemoveSinglesPlayer = async (id) => {
+    if (!window.confirm("Remove this player from the table?")) return
+    try {
+      await deleteDoc(doc(db, 'openLeagueSingles', id))
+      setOpenLeagueSingles(openLeagueSingles.filter(p => p.id !== id))
+      await logAudit('REMOVE_OPEN_LEAGUE_SINGLES', `Removed player from Open League table: ${id}`)
+      showToast("Player removed", "info")
     } catch (e) { showToast(e.message, "error") }
   }
 
@@ -1842,40 +1873,59 @@ export default function Admin() {
         {/* TAB: OPEN LEAGUE */}
         {activeTab === 'openleague' && (
           <div className="card glass animate-fade-in">
-            <h3 className="card-title">Open League Duo Management</h3>
+            <h3 className="card-title">Open League Management</h3>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
-              Pair players together for the Open League Doubles competition. Defined duos will appear in the standings table immediately.
+              Add individual players or pairs to the Open League standings.
             </p>
 
-            <div className="glass" style={{ padding: '24px', borderRadius: '16px', border: '1px solid var(--accent-cyan)', marginBottom: '32px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '20px' }}>
-                <div className="form-group">
-                  <label>Partner 1</label>
-                  <UserSearchSelect users={allPlayers} selectedId={duoForm.p1} onSelect={id => setDuoForm({...duoForm, p1: id})} label="Select Player" onQueryChange={searchUsers} />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '24px', marginBottom: '32px' }}>
+              {/* Singles Management */}
+              <div className="glass" style={{ padding: '24px', borderRadius: '16px', border: '1px solid var(--accent-cyan)' }}>
+                <h4 style={{ marginBottom: '15px' }}>Add Singles Player</h4>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <UserSearchSelect users={allPlayers} selectedId={singlesPlayerForm} onSelect={id => setSinglesPlayerForm(id)} label="Select Player" onQueryChange={searchUsers} />
+                  <button className="btn btn-primary" onClick={handleAddSinglesPlayer} style={{ padding: '12px' }}>➕ Add</button>
                 </div>
-                <div className="form-group">
-                  <label>Partner 2</label>
-                  <UserSearchSelect users={allPlayers} selectedId={duoForm.p2} onSelect={id => setDuoForm({...duoForm, p2: id})} label="Select Player" onQueryChange={searchUsers} />
+
+                <h5 style={{ marginTop: '24px', marginBottom: '12px', fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Registered Singles ({openLeagueSingles.length})</h5>
+                <div style={{ maxHeight: '250px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {openLeagueSingles.map(p => {
+                    const player = allPlayers.find(u => u.id === p.userId)
+                    return (
+                      <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
+                        <span style={{ fontSize: '0.9rem' }}>{player?.username || 'Unknown'}</span>
+                        <button onClick={() => handleRemoveSinglesPlayer(p.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5 }}>✕</button>
+                      </div>
+                    )
+                  })}
+                  {openLeagueSingles.length === 0 && <p style={{ fontSize: '0.8rem', textAlign: 'center', opacity: 0.5 }}>No players added yet.</p>}
                 </div>
               </div>
-              <button className="btn btn-primary btn-block" onClick={handleAddDuo}>➕ Create Duo Pairing</button>
-            </div>
 
-            <h4 style={{ marginBottom: '16px' }}>Existing Duo Teams ({openLeagueDuos.length})</h4>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
-               {openLeagueDuos.map(d => {
-                 const u1 = allPlayers.find(u => u.id === d.p1Id)
-                 const u2 = allPlayers.find(u => u.id === d.p2Id)
-                 return (
-                   <div key={d.id} className="glass" style={{ padding: '16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>
-                        {u1?.username || 'Unknown'} & {u2?.username || 'Unknown'}
+              {/* Duo Management */}
+              <div className="glass" style={{ padding: '24px', borderRadius: '16px', border: '1px solid var(--accent-cyan)' }}>
+                <h4 style={{ marginBottom: '15px' }}>Add Duo Team</h4>
+                <div style={{ display: 'grid', gap: '15px', marginBottom: '15px' }}>
+                  <UserSearchSelect users={allPlayers} selectedId={duoForm.p1} onSelect={id => setDuoForm({...duoForm, p1: id})} label="Partner 1" onQueryChange={searchUsers} />
+                  <UserSearchSelect users={allPlayers} selectedId={duoForm.p2} onSelect={id => setDuoForm({...duoForm, p2: id})} label="Partner 2" onQueryChange={searchUsers} />
+                </div>
+                <button className="btn btn-primary btn-block" onClick={handleAddDuo}>➕ Create Duo</button>
+
+                <h5 style={{ marginTop: '24px', marginBottom: '12px', fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Registered Duos ({openLeagueDuos.length})</h5>
+                <div style={{ maxHeight: '250px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {openLeagueDuos.map(d => {
+                    const u1 = allPlayers.find(u => u.id === d.p1Id)
+                    const u2 = allPlayers.find(u => u.id === d.p2Id)
+                    return (
+                      <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
+                        <span style={{ fontSize: '0.9rem' }}>{u1?.username} & {u2?.username}</span>
+                        <button onClick={() => handleRemoveDuo(d.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5 }}>✕</button>
                       </div>
-                      <button className="btn btn-danger btn-sm" onClick={() => handleRemoveDuo(d.id)} style={{ padding: '6px' }}>🗑️</button>
-                   </div>
-                 )
-               })}
-               {openLeagueDuos.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', gridColumn: '1/-1', padding: '20px' }}>No pairings defined yet.</p>}
+                    )
+                  })}
+                  {openLeagueDuos.length === 0 && <p style={{ fontSize: '0.8rem', textAlign: 'center', opacity: 0.5 }}>No duos added yet.</p>}
+                </div>
+              </div>
             </div>
           </div>
         )}

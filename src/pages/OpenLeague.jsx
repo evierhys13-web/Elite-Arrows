@@ -16,21 +16,37 @@ export default function OpenLeague() {
   const [loading, setLoading] = useState(false);
   const [now, setNow] = useState(new Date());
   const [duos, setDuos] = useState([]);
+  const [singlesPlayers, setSinglesPlayers] = useState([]);
   const [showDuoModal, setShowDuoModal] = useState(false);
   const [duoForm, setDuoModal] = useState({ p1: '', p2: '' });
 
   useEffect(() => {
-    fetchDuos();
+    fetchOpenLeagueData();
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  const fetchDuos = async () => {
+  const fetchOpenLeagueData = async () => {
     try {
-      const snap = await getDocs(collection(db, 'openLeagueDuos'));
-      setDuos(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const [duoSnap, singlesSnap] = await Promise.all([
+        getDocs(collection(db, 'openLeagueDuos')),
+        getDocs(collection(db, 'openLeagueSingles'))
+      ]);
+      setDuos(duoSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setSinglesPlayers(singlesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     } catch (e) {
-      console.error("Error fetching duos:", e);
+      console.error("Error fetching Open League data:", e);
+    }
+  };
+
+  const handleRemoveSinglesPlayer = async (id) => {
+    if (!window.confirm("Remove this player from the Open League table? Their results will still exist.")) return;
+    try {
+      await deleteDoc(doc(db, 'openLeagueSingles', id));
+      setSinglesPlayers(singlesPlayers.filter(p => p.id !== id));
+      showToast("Player removed from table", "info");
+    } catch (e) {
+      showToast("Error removing player", "error");
     }
   };
 
@@ -98,6 +114,26 @@ export default function OpenLeague() {
 
   const singlesStats = useMemo(() => {
     const stats = {};
+
+    // Initialize with pre-defined singles players from admin
+    singlesPlayers.forEach(p => {
+      const user = allUsers.find(u => String(u.id) === String(p.userId));
+      stats[p.id] = {
+        id: p.userId,
+        username: user?.username || "Unknown",
+        played: 0,
+        wins: 0,
+        draws: 0,
+        losses: 0,
+        legsWon: 0,
+        legsLost: 0,
+        points: 0,
+        form: [],
+        isAdminDefined: true,
+        entryDocId: p.id
+      };
+    });
+
     const openResults = results.filter(r => isOpenLeagueResult(r) && r.status === 'approved');
 
     openResults.forEach(r => {
@@ -306,7 +342,18 @@ export default function OpenLeague() {
                       <td style={{ textAlign: 'center', fontWeight: 800, color: index === 0 ? '#fbbf24' : 'inherit' }}>{index + 1}</td>
                       <td style={{ padding: '12px' }}>
                         {activeTab === "singles" ? (
-                          <Link to={`/profile/${row.id}`} style={{ textDecoration: 'none', color: 'white', fontWeight: 600 }}>{row.username}</Link>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <Link to={`/profile/${row.id}`} style={{ textDecoration: 'none', color: 'white', fontWeight: 600 }}>{row.username}</Link>
+                            {isAdmin && row.isAdminDefined && (
+                              <button
+                                onClick={() => handleRemoveSinglesPlayer(row.entryDocId)}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', opacity: 0.5 }}
+                                title="Remove Player"
+                              >
+                                🗑️
+                              </button>
+                            )}
+                          </div>
                         ) : (
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <span style={{ fontWeight: 600 }}>{row.name}</span>
