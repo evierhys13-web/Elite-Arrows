@@ -54,6 +54,7 @@ const Giveaways = lazy(() => import('./pages/Giveaways'))
 const LiveMatch = lazy(() => import('./pages/LiveMatch'))
 const PracticeHub = lazy(() => import('./pages/PracticeHub'))
 const PracticeGame = lazy(() => import('./pages/PracticeGame'))
+const OpenLeague = lazy(() => import('./pages/OpenLeague'))
 
 function PageLoader() {
   const [showRefresh, setShowRefresh] = useState(false)
@@ -290,6 +291,7 @@ function AppRoutes() {
       <Route path="/auth" element={<Suspense fallback={<PageLoader />}><Auth /></Suspense>} />
       <Route path="/home" element={<ProtectedRoute><AppLayout><Home /></AppLayout></ProtectedRoute>} />
       <Route path="/subscription" element={<ProtectedRoute><AppLayout><Subscription /></AppLayout></ProtectedRoute>} />
+      <Route path="/open-league" element={<ProtectedRoute><AppLayout><OpenLeague /></AppLayout></ProtectedRoute>} />
       <Route path="/table" element={<ProtectedRoute><AppLayout><Table /></AppLayout></ProtectedRoute>} />
       <Route path="/match-log" element={<ProtectedRoute><AppLayout><MatchLog /></AppLayout></ProtectedRoute>} />
       <Route path="/results" element={<ProtectedRoute><AppLayout><Results /></AppLayout></ProtectedRoute>} />

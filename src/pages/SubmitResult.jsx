@@ -25,7 +25,11 @@ const INITIAL_RESULT_FORM = {
   highlightUrl: '',
   isHighlight: false,
   highlightTitle: '',
-  season: ''
+  season: '',
+  partner: '',
+  opponent2: '',
+  yourScore2: '',
+  opponentScore2: ''
 }
 
 export default function SubmitResult() {
@@ -166,6 +170,9 @@ export default function SubmitResult() {
     return existingMatches.length > 0 ? existingMatches[0] : null
   }
 
+  const isLocked = new Date() < new Date("2026-07-01T00:00:00")
+  const isOpenLeague = formData.gameType === 'Open League Singles' || formData.gameType === 'Open League Doubles'
+
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
@@ -188,6 +195,12 @@ export default function SubmitResult() {
           opponent: availablePlayers.find(p => p.id === prev.opponent)?.superLeagueDivision === user.superLeagueDivision ? prev.opponent : '',
           bestOf: '11',
           firstTo: '6'
+        }))
+      } else if (value === 'Open League Singles' || value === 'Open League Doubles') {
+        setFormData(prev => ({
+          ...prev,
+          bestOf: '9',
+          firstTo: '5'
         }))
       } else if (value === 'Cup') {
         setFormData(prev => ({ ...prev, opponent: '', bestOf: '3', firstTo: '2' }))
@@ -306,6 +319,11 @@ export default function SubmitResult() {
     setError('')
     setSuccessMessage('')
     
+    if (isOpenLeague && isLocked) {
+      setError('Open League matches cannot be submitted until 1st July 2026.')
+      return
+    }
+
     if (!formData.opponent) {
       setError('Please select an opponent')
       return
@@ -314,6 +332,21 @@ export default function SubmitResult() {
     if (!formData.yourScore || !formData.opponentScore) {
       setError('Please enter both scores')
       return
+    }
+
+    if (formData.gameType === 'Open League Doubles') {
+      if (!formData.partner) {
+        setError('Please select your partner')
+        return
+      }
+      if (!formData.opponent2) {
+        setError('Please select your second opponent')
+        return
+      }
+      if (!formData.yourScore2 || !formData.opponentScore2) {
+        setError('Please enter scores for both games')
+        return
+      }
     }
 
     if (!formData.proofImage && !formData.proofVideo) {
@@ -458,43 +491,69 @@ export default function SubmitResult() {
         }
       }
 
-      const newResult = {
-        id: resultId,
-        firestoreId: resultId,
-        player1: submitterName,
-        player1Id: user.id,
-        player2: opponentName,
-        player2Id: opponentUser?.id || formData.opponent,
-        score1: parseInt(formData.yourScore),
-        score2: parseInt(formData.opponentScore),
-        division: effectiveDivision,
-        gameType: formData.gameType,
-        season: formData.season || adminData?.currentSeason || 'Season 1',
-        date: new Date().toISOString().split('T')[0],
-        submittedAt: new Date().toISOString(),
-        bestOf: formData.bestOf,
-        firstTo: formData.firstTo,
-        proofImage: finalProofUrl,
-        proofVideo: finalVideoUrl,
-        player1Stats: {
-          '180s': parseInt(formData.your180s) || 0,
-          highestCheckout: parseInt(formData.yourHighestCheckout) || 0,
-          doubleSuccess: parseFloat(formData.yourDoubleSuccess) || 0
-        },
-        player2Stats: {
-          '180s': parseInt(formData.opponent180s) || 0,
-          highestCheckout: parseInt(formData.opponentHighestCheckout) || 0,
-          doubleSuccess: parseFloat(formData.opponentDoubleSuccess) || 0
-        },
-        status: 'pending',
-        submittedBy: user.id,
-        ...(fixtureForResult?.id && { fixtureId: fixtureForResult.id }),
-        ...(cupId && { cupId, matchId }),
-        ...(cupFixture?.cupName && { cupName: cupFixture.cupName }),
-        ...(cupFixture?.startScore && { startScore: cupFixture.startScore })
+      const createResultDoc = (s1, s2, idSuffix = '') => {
+        const resId = resultId + idSuffix
+        const docData = {
+          id: resId,
+          firestoreId: resId,
+          player1: submitterName,
+          player1Id: user.id,
+          player2: opponentName,
+          player2Id: opponentUser?.id || formData.opponent,
+          score1: parseInt(s1),
+          score2: parseInt(s2),
+          division: effectiveDivision,
+          gameType: formData.gameType,
+          season: formData.season || adminData?.currentSeason || 'Season 1',
+          date: new Date().toISOString().split('T')[0],
+          submittedAt: new Date().toISOString(),
+          bestOf: formData.bestOf,
+          firstTo: formData.firstTo,
+          proofImage: finalProofUrl,
+          proofVideo: finalVideoUrl,
+          player1Stats: {
+            '180s': parseInt(formData.your180s) || 0,
+            highestCheckout: parseInt(formData.yourHighestCheckout) || 0,
+            doubleSuccess: parseFloat(formData.yourDoubleSuccess) || 0
+          },
+          player2Stats: {
+            '180s': parseInt(formData.opponent180s) || 0,
+            highestCheckout: parseInt(formData.opponentHighestCheckout) || 0,
+            doubleSuccess: parseFloat(formData.opponentDoubleSuccess) || 0
+          },
+          status: 'pending',
+          submittedBy: user.id,
+          ...(fixtureForResult?.id && { fixtureId: fixtureForResult.id }),
+          ...(cupId && { cupId, matchId }),
+          ...(cupFixture?.cupName && { cupName: cupFixture.cupName }),
+          ...(cupFixture?.startScore && { startScore: cupFixture.startScore })
+        }
+
+        if (formData.gameType === 'Open League Doubles') {
+          const partnerUser = allUsers.find(u => u.id === formData.partner)
+          const opp2User = allUsers.find(u => u.id === formData.opponent2)
+          docData.player2Id = partnerUser?.id || formData.partner
+          docData.player2 = getDisplayName(partnerUser, 'Partner')
+          docData.player3Id = opponentUser?.id || formData.opponent
+          docData.player3 = opponentName
+          docData.player4Id = opp2User?.id || formData.opponent2
+          docData.player4 = getDisplayName(opp2User, 'Opponent 2')
+        }
+
+        return docData
       }
 
-      await setDoc(doc(db, 'results', resultId), newResult, { merge: true })
+      if (formData.gameType === 'Open League Doubles') {
+        const res1 = createResultDoc(formData.yourScore, formData.opponentScore, '_1')
+        const res2 = createResultDoc(formData.yourScore2, formData.opponentScore2, '_2')
+        await setDoc(doc(db, 'results', res1.id), res1)
+        await setDoc(doc(db, 'results', res2.id), res2)
+        results.push(res1, res2)
+      } else {
+        const res = createResultDoc(formData.yourScore, formData.opponentScore)
+        await setDoc(doc(db, 'results', res.id), res, { merge: true })
+        results.push(res)
+      }
 
       setSuccessMessage('Result data saved... Finalizing upload...')
 
@@ -645,13 +704,13 @@ export default function SubmitResult() {
           <div className="form-group" style={{ marginBottom: '25px' }}>
             <label style={{ fontWeight: '600', marginBottom: '10px', display: 'block' }}>Match Type</label>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              {['Friendly', 'League', 'Super League', 'Cup', 'Playoff'].map(type => (
+              {['Friendly', 'League', 'Super League', 'Cup', 'Playoff', 'Open League Singles', 'Open League Doubles'].map(type => (
                 <button
                   key={type}
                   type="button"
                   className={`btn ${formData.gameType === type ? 'btn-primary' : 'btn-secondary'}`}
                   onClick={() => handleChange({ target: { name: 'gameType', value: type } })}
-                  style={{ flex: 1, minWidth: '100px' }}
+                  style={{ flex: 1, minWidth: '120px' }}
                 >
                   {type === 'Cup' ? 'Cup Match' : type}
                 </button>
@@ -715,24 +774,44 @@ export default function SubmitResult() {
             border: '1px solid var(--border)'
           }} className="match-players-grid">
             <div style={{ textAlign: 'center' }}>
-              <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>You</label>
-              <div style={{ 
-                padding: '12px', 
-                background: 'var(--bg-primary)',
-                borderRadius: '8px',
-                fontWeight: 'bold',
-                border: '1px solid var(--border)',
-                color: 'var(--accent-cyan)'
-              }}>
-                {currentUserName}
+              <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
+                {formData.gameType === 'Open League Doubles' ? 'Your Team' : 'You'}
+              </label>
+              <div style={{ display: 'grid', gap: '8px' }}>
+                <div style={{
+                  padding: '12px',
+                  background: 'var(--bg-primary)',
+                  borderRadius: '8px',
+                  fontWeight: 'bold',
+                  border: '1px solid var(--border)',
+                  color: 'var(--accent-cyan)'
+                }}>
+                  {currentUserName}
+                </div>
+                {formData.gameType === 'Open League Doubles' && (
+                  <select
+                    name="partner"
+                    value={formData.partner}
+                    onChange={handleChange}
+                    required
+                    style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                  >
+                    <option value="">Select Partner</option>
+                    {availablePlayers.map(p => (
+                      <option key={p.id} value={p.id}>{getDisplayName(p)}</option>
+                    ))}
+                  </select>
+                )}
               </div>
             </div>
 
             <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>VS</div>
 
             <div style={{ textAlign: 'center' }}>
-              <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Opponent</label>
-              <div>
+              <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
+                {formData.gameType === 'Open League Doubles' ? 'Opposing Duo' : 'Opponent'}
+              </label>
+              <div style={{ display: 'grid', gap: '8px' }}>
                 {formData.gameType === 'Cup' ? (
                   <select
                     name="opponent"
@@ -754,23 +833,39 @@ export default function SubmitResult() {
                     })}
                   </select>
                 ) : (
-                  <select
-                    name="opponent"
-                    value={formData.opponent}
-                    onChange={handleChange}
-                    required
-                    style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text)' }}
-                  >
-                    <option value="">Select opponent</option>
-                    {opponentOptions.map(p => {
-                      const status = getOpponentStatus(p.id)
-                      return (
-                        <option key={p.id} value={p.id}>
-                          {getDisplayName(p)} ({p.division}){formData.gameType === 'League' && status?.played ? ' - Played' : ''}
-                        </option>
-                      )
-                    })}
-                  </select>
+                  <>
+                    <select
+                      name="opponent"
+                      value={formData.opponent}
+                      onChange={handleChange}
+                      required
+                      style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                    >
+                      <option value="">{formData.gameType === 'Open League Doubles' ? 'Opponent 1' : 'Select opponent'}</option>
+                      {opponentOptions.map(p => {
+                        const status = getOpponentStatus(p.id)
+                        return (
+                          <option key={p.id} value={p.id}>
+                            {getDisplayName(p)} ({p.division}){formData.gameType === 'League' && status?.played ? ' - Played' : ''}
+                          </option>
+                        )
+                      })}
+                    </select>
+                    {formData.gameType === 'Open League Doubles' && (
+                      <select
+                        name="opponent2"
+                        value={formData.opponent2}
+                        onChange={handleChange}
+                        required
+                        style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                      >
+                        <option value="">Opponent 2</option>
+                        {opponentOptions.filter(p => p.id !== formData.opponent).map(p => (
+                          <option key={p.id} value={p.id}>{getDisplayName(p)}</option>
+                        ))}
+                      </select>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -783,7 +878,9 @@ export default function SubmitResult() {
             marginBottom: '30px'
           }}>
             <div className="form-group">
-              <label style={{ fontWeight: '600', marginBottom: '8px', display: 'block' }}>Your Legs Won</label>
+              <label style={{ fontWeight: '600', marginBottom: '8px', display: 'block' }}>
+                {formData.gameType === 'Open League Doubles' ? 'Game 1: Your Team Legs' : 'Your Legs Won'}
+              </label>
               <input
                 type="number"
                 name="yourScore"
@@ -796,7 +893,9 @@ export default function SubmitResult() {
               />
             </div>
             <div className="form-group">
-              <label style={{ fontWeight: '600', marginBottom: '8px', display: 'block' }}>Opponent Legs Won</label>
+              <label style={{ fontWeight: '600', marginBottom: '8px', display: 'block' }}>
+                {formData.gameType === 'Open League Doubles' ? 'Game 1: Opposing Duo Legs' : 'Opponent Legs Won'}
+              </label>
               <input
                 type="number"
                 name="opponentScore"
@@ -808,6 +907,37 @@ export default function SubmitResult() {
                 placeholder="0"
               />
             </div>
+
+            {formData.gameType === 'Open League Doubles' && (
+              <>
+                <div className="form-group">
+                  <label style={{ fontWeight: '600', marginBottom: '8px', display: 'block' }}>Game 2: Your Team Legs</label>
+                  <input
+                    type="number"
+                    name="yourScore2"
+                    value={formData.yourScore2}
+                    onChange={handleChange}
+                    min="0"
+                    required
+                    style={{ fontSize: '1.2rem', textAlign: 'center', padding: '15px' }}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="form-group">
+                  <label style={{ fontWeight: '600', marginBottom: '8px', display: 'block' }}>Game 2: Opposing Duo Legs</label>
+                  <input
+                    type="number"
+                    name="opponentScore2"
+                    value={formData.opponentScore2}
+                    onChange={handleChange}
+                    min="0"
+                    required
+                    style={{ fontSize: '1.2rem', textAlign: 'center', padding: '15px' }}
+                    placeholder="0"
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           <div style={{

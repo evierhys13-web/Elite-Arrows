@@ -100,7 +100,7 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
       // Defense-in-depth: explicitly exclude any result with cup/tournament markers
       if (result.cupId || result.matchId || result.tournamentId) return false
       const gt = String(result.gameType || '').toLowerCase().trim()
-      const nonLeague = ['cup', 'friendly', 'playoff', 'tournament', 'super league']
+      const nonLeague = ['cup', 'friendly', 'playoff', 'tournament', 'super league', 'open league']
       if (nonLeague.some(t => gt.includes(t))) return false
     }
 

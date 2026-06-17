@@ -1,0 +1,264 @@
+import { useState, useMemo, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import Breadcrumbs from "../components/Breadcrumbs";
+import { useToast } from "../context/ToastContext";
+import { isOpenLeagueResult, isOpenLeagueDoublesResult } from "../utils/leagueResults";
+import { getLeaguePoints } from "../utils/leagueScoring";
+
+const OPEN_LEAGUE_LAUNCH_DATE = new Date("2026-07-01T00:00:00");
+
+export default function OpenLeague() {
+  const [activeTab, setActiveTab] = useState("singles");
+  const { user, getAllUsers, getResults, triggerDataRefresh, forceFetchResults } = useAuth();
+  const { showToast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const isLocked = now < OPEN_LEAGUE_LAUNCH_DATE;
+  const isAdmin = user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin;
+  const timeRemaining = OPEN_LEAGUE_LAUNCH_DATE - now;
+
+  const formatTime = (ms) => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${days}d ${hours}h ${minutes}m ${seconds}s`;
+  };
+
+  const allUsers = getAllUsers();
+  const results = getResults();
+
+  if (isLocked && !isAdmin) {
+    return (
+      <div className="page animate-fade-in" style={{ textAlign: 'center', padding: '100px 20px' }}>
+        <h1 className="text-gradient" style={{ fontSize: '3rem', marginBottom: '20px' }}>Open League</h1>
+        <div className="card glass" style={{ maxWidth: '600px', margin: '0 auto', padding: '40px' }}>
+          <div style={{ fontSize: '4rem', marginBottom: '20px' }}>🔒</div>
+          <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>Coming Soon</h2>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '30px' }}>The Open League will launch on 1st July 2026.</p>
+          <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white', background: 'rgba(0,0,0,0.3)', padding: '15px', borderRadius: '12px' }}>
+            {formatTime(timeRemaining)}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const singlesStats = useMemo(() => {
+    const stats = {};
+    const openResults = results.filter(r => isOpenLeagueResult(r) && r.status === 'approved');
+
+    openResults.forEach(r => {
+      const p1Id = String(r.player1Id);
+      const p2Id = String(r.player2Id);
+      const s1 = Number(r.score1) || 0;
+      const s2 = Number(r.score2) || 0;
+
+      const updateStats = (id, won, lost) => {
+        if (!stats[id]) {
+          const user = allUsers.find(u => String(u.id) === id);
+          stats[id] = {
+            id,
+            username: user?.username || "Unknown",
+            played: 0,
+            wins: 0,
+            draws: 0,
+            losses: 0,
+            legsWon: 0,
+            legsLost: 0,
+            points: 0,
+            form: []
+          };
+        }
+        const s = stats[id];
+        s.played += 1;
+        s.legsWon += won;
+        s.legsLost += lost;
+        const pts = getLeaguePoints(won, lost, { isOpenLeague: true });
+        s.points += pts;
+        if (won > lost) { s.wins += 1; s.form.push('W'); }
+        else if (won < lost) { s.losses += 1; s.form.push('L'); }
+        else { s.draws += 1; s.form.push('D'); }
+      };
+
+      updateStats(p1Id, s1, s2);
+      updateStats(p2Id, s2, s1);
+    });
+
+    return Object.values(stats).sort((a, b) => {
+      if (b.points !== a.points) return b.points - a.points;
+      const aDiff = a.legsWon - a.legsLost;
+      const bDiff = b.legsWon - b.legsLost;
+      if (bDiff !== aDiff) return bDiff - aDiff;
+      return b.legsWon - a.legsWon;
+    });
+  }, [results, allUsers]);
+
+  const doublesStats = useMemo(() => {
+    const stats = {};
+    const openResults = results.filter(r => isOpenLeagueDoublesResult(r) && r.status === 'approved');
+
+    openResults.forEach(r => {
+      // For doubles, we expect player1Id and player2Id for Team 1
+      // and player3Id and player4Id for Team 2 (or stored in some array)
+      // I'll use a unique key for the duo: p1Id_p2Id (sorted)
+      const t1Ids = [String(r.player1Id), String(r.player2Id)].sort();
+      const t2Ids = [String(r.player3Id), String(r.player4Id)].sort();
+      const t1Key = t1Ids.join('_');
+      const t2Key = t2Ids.join('_');
+
+      const s1 = Number(r.score1) || 0;
+      const s2 = Number(r.score2) || 0;
+
+      const updateStats = (key, ids, won, lost) => {
+        if (!stats[key]) {
+          const u1 = allUsers.find(u => String(u.id) === ids[0]);
+          const u2 = allUsers.find(u => String(u.id) === ids[1]);
+          stats[key] = {
+            id: key,
+            name: `${u1?.username || 'Unknown'} & ${u2?.username || 'Unknown'}`,
+            played: 0,
+            wins: 0,
+            draws: 0,
+            losses: 0,
+            legsWon: 0,
+            legsLost: 0,
+            points: 0,
+            form: []
+          };
+        }
+        const s = stats[key];
+        s.played += 1;
+        s.legsWon += won;
+        s.legsLost += lost;
+        const pts = getLeaguePoints(won, lost, { isOpenLeague: true });
+        s.points += pts;
+        if (won > lost) { s.wins += 1; s.form.push('W'); }
+        else if (won < lost) { s.losses += 1; s.form.push('L'); }
+        else { s.draws += 1; s.form.push('D'); }
+      };
+
+      updateStats(t1Key, t1Ids, s1, s2);
+      updateStats(t2Key, t2Ids, s2, s1);
+    });
+
+    return Object.values(stats).sort((a, b) => {
+      if (b.points !== a.points) return b.points - a.points;
+      const aDiff = a.legsWon - a.legsLost;
+      const bDiff = b.legsWon - b.legsLost;
+      if (bDiff !== aDiff) return bDiff - aDiff;
+      return b.legsWon - a.legsWon;
+    });
+  }, [results, allUsers]);
+
+  const handleRefresh = async () => {
+    setLoading(true);
+    try {
+      await forceFetchResults();
+      triggerDataRefresh("all");
+      showToast("Data synced!", "success");
+    } catch (e) {
+      showToast("Sync failed", "error");
+    }
+    setLoading(false);
+  };
+
+  if (isLocked) {
+    return (
+      <div className="page animate-fade-in" style={{ textAlign: 'center', padding: '100px 20px' }}>
+        <h1 className="text-gradient" style={{ fontSize: '3rem', marginBottom: '20px' }}>Open League</h1>
+        <div className="card glass" style={{ maxWidth: '600px', margin: '0 auto', padding: '40px' }}>
+          <div style={{ fontSize: '4rem', marginBottom: '20px' }}>🔒</div>
+          <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>Coming Soon</h2>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '30px' }}>The Open League will launch on 1st July 2026.</p>
+          <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white', background: 'rgba(0,0,0,0.3)', padding: '15px', borderRadius: '12px' }}>
+            {formatTime(timeRemaining)}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const tableData = activeTab === "singles" ? singlesStats : doublesStats;
+
+  return (
+    <div className="page animate-fade-in" style={{ maxWidth: "1200px", margin: "0 auto" }}>
+      <Breadcrumbs items={[{ label: "Home", path: "/home" }, { label: "Open League", path: "/open-league" }]} />
+
+      <div className="page-header" style={{ marginBottom: "24px", display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1 className="page-title text-gradient" style={{ fontSize: "2.5rem" }}>Open League</h1>
+          <p style={{ color: 'var(--text-muted)' }}>Free for all players. Win: 3pts, Draw: 1pt, Loss: -1pt.</p>
+        </div>
+        <button className="btn btn-secondary btn-sm" onClick={handleRefresh} disabled={loading}>
+          {loading ? "Syncing..." : "🔄 Sync"}
+        </button>
+      </div>
+
+      <div className="division-tabs" style={{ marginBottom: '20px' }}>
+        <button className={`division-tab ${activeTab === "singles" ? "active" : ""}`} onClick={() => setActiveTab("singles")}>
+          Singles Table
+        </button>
+        <button className={`division-tab ${activeTab === "doubles" ? "active" : ""}`} onClick={() => setActiveTab("doubles")}>
+          Doubles Table
+        </button>
+      </div>
+
+      <div className="card glass" style={{ padding: 0, overflow: 'hidden' }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ background: "rgba(0,0,0,0.3)", color: "var(--text-muted)", fontSize: "0.7rem", textTransform: "uppercase" }}>
+                <th style={{ width: "40px", padding: "12px" }}>#</th>
+                <th style={{ textAlign: "left", padding: "12px" }}>{activeTab === "singles" ? "Player" : "Duo"}</th>
+                <th style={{ width: "40px", textAlign: "center" }}>P</th>
+                <th style={{ width: "40px", textAlign: "center" }}>W</th>
+                <th style={{ width: "40px", textAlign: "center" }}>D</th>
+                <th style={{ width: "40px", textAlign: "center" }}>L</th>
+                <th style={{ width: "60px", textAlign: "center" }}>+/-</th>
+                <th style={{ width: "60px", textAlign: "center", color: "var(--accent-cyan)" }}>Pts</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tableData.length === 0 ? (
+                <tr><td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No results yet.</td></tr>
+              ) : (
+                tableData.map((row, index) => {
+                  const legDiff = row.legsWon - row.legsLost;
+                  return (
+                    <tr key={row.id} style={{ borderBottom: "1px solid var(--border)", fontSize: '0.9rem' }}>
+                      <td style={{ textAlign: 'center', fontWeight: 800, color: index === 0 ? '#fbbf24' : 'inherit' }}>{index + 1}</td>
+                      <td style={{ padding: '12px' }}>
+                        {activeTab === "singles" ? (
+                          <Link to={`/profile/${row.id}`} style={{ textDecoration: 'none', color: 'white', fontWeight: 600 }}>{row.username}</Link>
+                        ) : (
+                          <span style={{ fontWeight: 600 }}>{row.name}</span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>{row.played}</td>
+                      <td style={{ textAlign: 'center' }}>{row.wins}</td>
+                      <td style={{ textAlign: 'center' }}>{row.draws}</td>
+                      <td style={{ textAlign: 'center' }}>{row.losses}</td>
+                      <td style={{ textAlign: 'center', color: legDiff > 0 ? 'var(--success)' : legDiff < 0 ? 'var(--error)' : 'inherit' }}>
+                        {legDiff > 0 ? `+${legDiff}` : legDiff}
+                      </td>
+                      <td style={{ textAlign: 'center', fontWeight: 900, color: 'var(--accent-cyan)' }}>{row.points}</td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
