@@ -1,0 +1,1 @@
+var e=(e,t,n={})=>{let r=Number(e)||0,i=Number(t)||0,{noDrawBonus:a=!1,noWinBonus:o=!1,isOpenLeague:s=!1}=n;return s?r>i?3:r===i?1:-1:o?0:r>i?3:+(r===i&&!a)},t=(t,n,r={})=>r.isOpenLeague?e(t,n,r):(Number(t)||0)+e(t,n,r);export{t};
