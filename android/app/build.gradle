@@ -71,6 +71,7 @@ android {
     }
 
     compileOptions {
+        coreLibraryDesugaringEnabled true
         sourceCompatibility JavaVersion.VERSION_21
         targetCompatibility JavaVersion.VERSION_21
     }
@@ -90,6 +91,14 @@ dependencies {
     implementation 'androidx.core:core:1.15.0'
     implementation 'androidx.multidex:multidex:2.0.1'
 
+    // Google Play Store Core (In-App Reviews & Updates)
+    implementation 'com.google.android.play:review:2.0.2'
+    implementation 'com.google.android.play:app-update:2.1.0'
+    
+    // Modern Browser and Layout support
+    implementation 'androidx.browser:browser:1.10.0'
+    implementation 'androidx.window:window:1.5.1'
+
     // Firebase
     implementation platform('com.google.firebase:firebase-bom:34.12.0')
     implementation 'com.google.firebase:firebase-analytics'
@@ -104,6 +113,9 @@ dependencies {
     implementation "androidx.camera:camera-lifecycle:${camerax_version}"
     implementation "androidx.camera:camera-view:${camerax_version}"
     implementation "androidx.camera:camera-extensions:${camerax_version}"
+
+    // JDK Desugaring for Java 21 features on older devices
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
 }
 
 apply from: 'capacitor.build.gradle'

@@ -21,6 +21,7 @@ export default function CupTournaments() {
   const [playerToRemove, setPlayerToRemove] = useState('')
   const [playerToAdd, setPlayerToAdd] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [activeTab, setActiveTab] = useState('active')
 
   const toggleCup = (cupId) => {
     setExpandedCups(prev => ({
@@ -430,15 +431,30 @@ export default function CupTournaments() {
         </div>
       )}
 
-      {cups.length === 0 && !showCreate && (
+      <div className="division-tabs" style={{ marginBottom: '24px' }}>
+        <button
+          className={`division-tab ${activeTab === 'active' ? 'active' : ''}`}
+          onClick={() => setActiveTab('active')}
+        >
+          Active Cups
+        </button>
+        <button
+          className={`division-tab ${activeTab === 'played' ? 'active' : ''}`}
+          onClick={() => setActiveTab('played')}
+        >
+          Played Cups
+        </button>
+      </div>
+
+      {cups.filter(c => activeTab === 'active' ? (c.status !== 'completed') : (c.status === 'completed')).length === 0 && !showCreate && (
         <div className="card">
           <p style={{ color: 'var(--text-muted)', textAlign: 'center' }}>
-            No cup tournaments yet. Create one to get started!
+            {activeTab === 'active' ? 'No active cup tournaments.' : 'No completed cup tournaments.'}
           </p>
         </div>
       )}
 
-      {cups.map(cup => {
+      {cups.filter(c => activeTab === 'active' ? (c.status !== 'completed') : (c.status === 'completed')).map(cup => {
         const prizePot = cup.entryFee * (cup.players?.length || 0)
         const isExpanded = expandedCups[cup.id]
 

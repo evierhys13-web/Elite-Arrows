@@ -65,6 +65,11 @@ export default function BottomNav() {
         <span>Table</span>
       </NavLink>
 
+      <NavLink to="/super-league" className={({ isActive }) => `mobile-bottom-nav-item ${isActive ? 'active' : ''}`}>
+        <TrophyIcon />
+        <span>Super</span>
+      </NavLink>
+
       <NavLink to="/practice" className={({ isActive }) => `mobile-bottom-nav-item ${isActive ? 'active' : ''}`}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></svg>
         <span>Practice</span>

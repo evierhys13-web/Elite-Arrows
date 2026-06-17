@@ -1550,6 +1550,24 @@ export default function Admin() {
                       {r.gameType} | {r.date} | Sub: {r.submittedBy || 'Player'}
                       {r.excludeFromLeague && <span style={{ marginLeft: '8px', color: 'var(--error)', fontWeight: 700 }}>🚫 EXCLUDED</span>}
                     </div>
+
+                    {(r.proofImage || r.proofVideo || r.hasProofImage) && (
+                      <div style={{ marginBottom: '10px' }}>
+                        {r.proofImage ? (
+                          <img
+                            src={r.proofImage}
+                            alt="Proof"
+                            style={{ maxWidth: '100px', maxHeight: '60px', borderRadius: '4px', cursor: 'pointer', border: '1px solid var(--border)' }}
+                            onClick={() => setPreviewImage(r.proofImage)}
+                          />
+                        ) : r.proofVideo ? (
+                          <video src={r.proofVideo} style={{ maxWidth: '100px', maxHeight: '60px', borderRadius: '4px' }} />
+                        ) : (
+                          <span style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)' }}>🖼️ Proof Attached (Legacy)</span>
+                        )}
+                      </div>
+                    )}
+
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                       {resultFilter === 'pending' && <button className="btn btn-primary btn-sm" style={{ flex: '1 1 auto', minWidth: '0' }} onClick={() => handleApproveResult(r.id)}>Approve</button>}
                       {resultFilter === 'pending' && <button className="btn btn-danger btn-sm" style={{ flex: '1 1 auto', minWidth: '0' }} onClick={() => handleRejectResult(r.id)}>Reject</button>}

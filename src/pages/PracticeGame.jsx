@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { PRACTICE_MODES, savePracticeSession, calculatePracticeTokens } from '../utils/practiceService'
+import { Capacitor } from '@capacitor/core'
 
 export default function PracticeGame() {
   const { modeId } = useParams()
@@ -25,6 +26,37 @@ export default function PracticeGame() {
   })
 
   const [currentInput, setCurrentInput] = useState('')
+
+  const isAndroid = Capacitor.getPlatform() === 'android'
+
+  useEffect(() => {
+    const handleScore = (event) => {
+      const { scoreValue } = event.detail
+      processTurn(scoreValue)
+    }
+
+    const handleSubmit = () => {
+      // Handle turn completion if needed, though processTurn already adds 3 darts
+    }
+
+    window.addEventListener('dartDetectionScore', handleScore)
+    window.addEventListener('dartDetectionSubmit', handleSubmit)
+    return () => {
+      window.removeEventListener('dartDetectionScore', handleScore)
+      window.removeEventListener('dartDetectionSubmit', handleSubmit)
+    }
+  }, [])
+
+  const launchNativeDetection = async () => {
+    try {
+      const { registerPlugin } = await import('@capacitor/core')
+      const DartDetection = registerPlugin('DartDetection')
+      await DartDetection.startDetection()
+    } catch (e) {
+      console.error('Failed to launch native detection:', e)
+      showToast('Native detection not available', 'error')
+    }
+  }
 
   const handleInput = (val) => {
     if (val === 'DEL') {
@@ -202,6 +234,16 @@ export default function PracticeGame() {
             <button className="btn btn-secondary btn-block" onClick={() => navigate('/practice')}>
               Quit Session
             </button>
+
+            {isAndroid && (
+              <button
+                className="btn btn-primary btn-block"
+                onClick={launchNativeDetection}
+                style={{ marginTop: '12px', background: 'linear-gradient(135deg, #00D4FF, #0055FF)', border: 'none' }}
+              >
+                🎥 Launch AI Dart Detection
+              </button>
+            )}
           </div>
         )}
       </div>

@@ -144,6 +144,33 @@ export default function Results() {
           </div>
         )}
 
+        {/* Proof of Result */}
+        {(result.proofImage || result.proofVideo || result.hasProofImage) && (
+          <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+            <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Verification Proof:
+            </p>
+            {result.proofImage ? (
+              <img
+                src={result.proofImage}
+                alt="Match Proof"
+                style={{ width: '100%', borderRadius: '8px', cursor: 'pointer', border: '1px solid var(--border)' }}
+                onClick={() => window.open(result.proofImage, '_blank')}
+              />
+            ) : result.proofVideo ? (
+              <video
+                src={result.proofVideo}
+                controls
+                style={{ width: '100%', borderRadius: '8px', border: '1px solid var(--border)' }}
+              />
+            ) : (
+              <div style={{ padding: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', fontSize: '0.8rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                Proof attached (Legacy Reference)
+              </div>
+            )}
+          </div>
+        )}
+
         <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
           {isMe && !isPending && (
             <button className="btn btn-secondary btn-sm btn-block" style={{ color: 'var(--error)' }} onClick={() => handleDispute(result)}>Dispute Result</button>
