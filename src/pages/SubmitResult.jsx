@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { db, doc, setDoc, storage, ref, uploadString, getDownloadURL } from '../firebase'
+import { db, doc, setDoc, storage, ref, uploadString, uploadBytesResumable, getDownloadURL } from '../firebase'
 import { useToast } from '../context/ToastContext'
 import { logResultSubmitted } from '../utils/analytics'
 
@@ -19,7 +19,9 @@ const INITIAL_RESULT_FORM = {
   yourDoubleSuccess: '',
   opponentDoubleSuccess: '',
   proofImage: '',
+  proofImageBlob: null,
   proofVideo: '',
+  proofVideoFile: null,
   highlightUrl: '',
   isHighlight: false,
   highlightTitle: '',
@@ -36,6 +38,7 @@ export default function SubmitResult() {
   const [formData, setFormData] = useState(INITIAL_RESULT_FORM)
   const [submitted, setSubmitted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
   const [error, setError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [submittedFixtureId, setSubmittedFixtureId] = useState(null)
@@ -229,7 +232,15 @@ export default function SubmitResult() {
             return
           }
 
-          setFormData(prev => ({ ...prev, proofImage: compressed }))
+          canvas.toBlob((blob) => {
+            setFormData(prev => ({
+              ...prev,
+              proofImage: compressed,
+              proofImageBlob: blob,
+              proofVideo: '',
+              proofVideoFile: null
+            }))
+          }, 'image/jpeg', quality)
         }
         image.onerror = () => setError('Could not read that image. Please try another photo.')
         image.src = reader.result
@@ -241,22 +252,27 @@ export default function SubmitResult() {
   const handleVideoUpload = (e) => {
     const file = e.target.files[0]
     if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        setError('Video must be less than 10MB. Please use a link for larger videos.')
+      if (file.size > 20 * 1024 * 1024) {
+        setError('Video must be less than 20MB. Please use a link for larger videos.')
         return
       }
 
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, proofVideo: reader.result, proofImage: '' }))
-      }
-      reader.onerror = () => setError('Could not read that video file.')
-      reader.readAsDataURL(file)
+      const videoUrl = URL.createObjectURL(file)
+      setFormData(prev => ({
+        ...prev,
+        proofVideo: videoUrl,
+        proofVideoFile: file,
+        proofImage: '',
+        proofImageBlob: null
+      }))
     }
   }
 
   const removeVideo = () => {
-    setFormData(prev => ({ ...prev, proofVideo: '' }))
+    if (formData.proofVideo && formData.proofVideo.startsWith('blob:')) {
+      URL.revokeObjectURL(formData.proofVideo)
+    }
+    setFormData(prev => ({ ...prev, proofVideo: '', proofVideoFile: null }))
     clearProofInputs()
   }
 
@@ -270,7 +286,7 @@ export default function SubmitResult() {
   }
 
   const removeImage = () => {
-    setFormData(prev => ({ ...prev, proofImage: '' }))
+    setFormData(prev => ({ ...prev, proofImage: '', proofImageBlob: null }))
     clearProofInputs()
   }
 
@@ -387,19 +403,58 @@ export default function SubmitResult() {
 
     try {
       setIsSubmitting(true)
+      setUploadProgress(0)
       const results = [...allResults]
       const resultId = Date.now().toString()
       const fixtureForResult = cupFixture || selectedFixture
 
       let finalProofUrl = ''
-      if (formData.proofImage) {
+      let finalVideoUrl = ''
+
+      // Helper for resumable binary upload with progress tracking
+      const uploadWithProgress = (file, path) => {
+        return new Promise((resolve, reject) => {
+          const storageRef = ref(storage, path)
+          const uploadTask = uploadBytesResumable(storageRef, file)
+
+          uploadTask.on('state_changed',
+            (snapshot) => {
+              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+              setUploadProgress(Math.round(progress))
+            },
+            (error) => reject(error),
+            () => {
+              getDownloadURL(uploadTask.snapshot.ref).then(resolve)
+            }
+          )
+        })
+      }
+
+      if (formData.proofImageBlob) {
+        setSuccessMessage('Uploading image proof...')
         try {
+          finalProofUrl = await uploadWithProgress(formData.proofImageBlob, `results/${resultId}_proof.jpg`)
+        } catch (storageError) {
+          console.error("Storage binary upload failed, falling back to base64 string upload", storageError)
           const storageRef = ref(storage, `results/${resultId}_proof.jpg`)
           await uploadString(storageRef, formData.proofImage, 'data_url')
           finalProofUrl = await getDownloadURL(storageRef)
-        } catch (storageError) {
-          console.error("Storage upload failed, falling back to base64", storageError)
-          finalProofUrl = formData.proofImage
+        }
+      } else if (formData.proofImage) {
+        const storageRef = ref(storage, `results/${resultId}_proof.jpg`)
+        await uploadString(storageRef, formData.proofImage, 'data_url')
+        finalProofUrl = await getDownloadURL(storageRef)
+      }
+
+      if (formData.proofVideoFile) {
+        setSuccessMessage('Uploading video proof...')
+        try {
+          finalVideoUrl = await uploadWithProgress(formData.proofVideoFile, `results/${resultId}_video.mp4`)
+        } catch (videoError) {
+          console.error("Video upload failed:", videoError)
+          setError('Video upload failed. Please try again or use a smaller file.')
+          setIsSubmitting(false)
+          return
         }
       }
 
@@ -420,6 +475,7 @@ export default function SubmitResult() {
         bestOf: formData.bestOf,
         firstTo: formData.firstTo,
         proofImage: finalProofUrl,
+        proofVideo: finalVideoUrl,
         player1Stats: {
           '180s': parseInt(formData.your180s) || 0,
           highestCheckout: parseInt(formData.yourHighestCheckout) || 0,
@@ -438,24 +494,20 @@ export default function SubmitResult() {
         ...(cupFixture?.startScore && { startScore: cupFixture.startScore })
       }
 
-      if (formData.proofVideo) {
-        newResult.proofVideo = formData.proofVideo
-      }
-
       await setDoc(doc(db, 'results', resultId), newResult, { merge: true })
 
       setSuccessMessage('Result data saved... Finalizing upload...')
 
       // If it's a highlight, also save to highlights collection
-      if (formData.isHighlight || formData.proofVideo || formData.highlightUrl) {
+      if (formData.isHighlight || finalVideoUrl || formData.highlightUrl) {
         const highlightId = `hl_${resultId}`
         await setDoc(doc(db, 'highlights', highlightId), {
           id: highlightId,
           userId: user.id,
           username: submitterName,
           title: formData.highlightTitle || `${formData.gameType} Highlight vs ${opponentName}`,
-          videoUrl: formData.proofVideo || formData.highlightUrl || '',
-          imageUrl: formData.proofImage || '',
+          videoUrl: finalVideoUrl || formData.highlightUrl || '',
+          imageUrl: finalProofUrl || '',
           resultId: resultId,
           likes: 0,
           createdAt: new Date().toISOString(),
@@ -1044,9 +1096,16 @@ export default function SubmitResult() {
             style={{ padding: '18px', fontSize: '1.1rem', fontWeight: '700', borderRadius: '12px', position: 'relative', overflow: 'hidden' }}
           >
             {isSubmitting ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
-                <div className="spinner" style={{ width: '20px', height: '20px' }}></div>
-                <span>{formData.proofImage ? 'Uploading Image & Saving...' : 'Submitting...'}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div className="spinner" style={{ width: '20px', height: '20px' }}></div>
+                  <span>{uploadProgress > 0 ? `Uploading... ${uploadProgress}%` : 'Preparing...'}</span>
+                </div>
+                {uploadProgress > 0 && (
+                  <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{ width: `${uploadProgress}%`, height: '100%', background: 'var(--accent-cyan)', transition: 'width 0.3s' }}></div>
+                  </div>
+                )}
               </div>
             ) : submitted ? '✅ Submitted Successfully!' : '🚀 Submit for Approval'}
           </button>

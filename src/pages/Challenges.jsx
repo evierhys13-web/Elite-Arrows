@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { db, doc, setDoc, getDocs, collection, deleteDoc, updateDoc } from '../firebase'
+import { db, doc, setDoc, getDocs, collection, deleteDoc, updateDoc, storage, ref, uploadBytesResumable, getDownloadURL } from '../firebase'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { useToast } from '../context/ToastContext'
 import { ADMIN_EMAILS } from '../config'
@@ -15,8 +15,9 @@ export default function Challenges() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showSubmitModal, setShowSubmitModal] = useState(null)
 
-  const [newChallenge, setNewChallenge] = useState({ title: '', description: '', reward: 'Entry into Christmas Giveaway Draw', challengeImage: '' })
-  const [submissionProofs, setSubmissionProofs] = useState([])
+  const [newChallenge, setNewChallenge] = useState({ title: '', description: '', reward: 'Entry into Christmas Giveaway Draw', challengeImage: '', challengeImageFile: null })
+  const [submissionProofs, setSubmissionProofs] = useState([]) // Preview URLs
+  const [submissionProofFiles, setSubmissionProofFiles] = useState([]) // Actual files
   const [previewImage, setPreviewImage] = useState(null)
 
   const isAdmin = useMemo(() => {
@@ -44,17 +45,34 @@ export default function Challenges() {
 
   const handleCreateChallenge = async () => {
     if (!newChallenge.title || !newChallenge.description) return
+
+    let finalImageUrl = newChallenge.challengeImage
+    if (newChallenge.challengeImageFile) {
+      showToast('Uploading challenge image...', 'info')
+      const storageRef = ref(storage, `challenges/${Date.now()}_${newChallenge.challengeImageFile.name}`)
+      const uploadTask = uploadBytesResumable(storageRef, newChallenge.challengeImageFile)
+
+      finalImageUrl = await new Promise((resolve, reject) => {
+        uploadTask.on('state_changed', null, reject, async () => {
+          resolve(await getDownloadURL(uploadTask.snapshot.ref))
+        })
+      })
+    }
+
     const id = Date.now().toString()
     const challenge = {
       ...newChallenge,
       id,
+      challengeImage: finalImageUrl,
       isActive: true,
       createdAt: new Date().toISOString()
     }
+    delete challenge.challengeImageFile
+
     await setDoc(doc(db, 'challenges', id), challenge)
     setChallenges([...challenges, challenge])
     setShowCreateModal(false)
-    setNewChallenge({ title: '', description: '', reward: 'Entry into Christmas Giveaway Draw', challengeImage: '' })
+    setNewChallenge({ title: '', description: '', reward: 'Entry into Christmas Giveaway Draw', challengeImage: '', challengeImageFile: null })
     showToast('Challenge created!', 'success')
   }
 
@@ -75,7 +93,15 @@ export default function Challenges() {
             canvas.height = image.height * scale
             const ctx = canvas.getContext('2d')
             ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
-            resolve(canvas.toDataURL('image/jpeg', 0.7))
+
+            // Return both dataURL for preview and a Blob for upload
+            canvas.toBlob((blob) => {
+              resolve({
+                dataUrl: canvas.toDataURL('image/jpeg', 0.7),
+                blob: blob,
+                name: file.name
+              })
+            }, 'image/jpeg', 0.7)
           }
           image.src = reader.result
         }
@@ -86,17 +112,38 @@ export default function Challenges() {
     if (mode === 'submission') {
       const promises = Array.from(files).map(processFile)
       Promise.all(promises).then(results => {
-        setSubmissionProofs(prev => [...prev, ...results])
+        setSubmissionProofs(prev => [...prev, ...results.map(r => r.dataUrl)])
+        setSubmissionProofFiles(prev => [...prev, ...results.map(r => ({ blob: r.blob, name: r.name }))])
       })
     } else if (mode === 'challenge') {
       processFile(files[0]).then(result => {
-        setNewChallenge(prev => ({ ...prev, challengeImage: result }))
+        setNewChallenge(prev => ({
+          ...prev,
+          challengeImage: result.dataUrl,
+          challengeImageFile: result.blob
+        }))
       })
     }
   }
 
   const handleSubmitProof = async () => {
-    if (submissionProofs.length === 0 || !showSubmitModal) return
+    if (submissionProofFiles.length === 0 || !showSubmitModal) return
+
+    showToast('Uploading proofs...', 'info')
+
+    // Upload all images
+    const uploadPromises = submissionProofFiles.map(fileObj => {
+      const storageRef = ref(storage, `challengeSubmissions/${user.id}_${Date.now()}_${fileObj.name}`)
+      const uploadTask = uploadBytesResumable(storageRef, fileObj.blob)
+      return new Promise((resolve, reject) => {
+        uploadTask.on('state_changed', null, reject, async () => {
+          resolve(await getDownloadURL(uploadTask.snapshot.ref))
+        })
+      })
+    })
+
+    const imageUrls = await Promise.all(uploadPromises)
+
     const id = Date.now().toString()
     const submission = {
       id,
@@ -104,7 +151,7 @@ export default function Challenges() {
       challengeTitle: showSubmitModal.title,
       userId: user.id,
       username: user.username,
-      proofImages: submissionProofs,
+      proofImages: imageUrls, // URLs instead of base64
       status: 'pending',
       submittedAt: new Date().toISOString()
     }
@@ -112,6 +159,7 @@ export default function Challenges() {
     setSubmissions([...submissions, submission])
     setShowSubmitModal(null)
     setSubmissionProofs([])
+    setSubmissionProofFiles([])
     showToast('Proof submitted for review!', 'success')
   }
 
@@ -148,6 +196,7 @@ export default function Challenges() {
 
   const removeSubmissionProof = (index) => {
     setSubmissionProofs(prev => prev.filter((_, i) => i !== index))
+    setSubmissionProofFiles(prev => prev.filter((_, i) => i !== index))
   }
 
   return (

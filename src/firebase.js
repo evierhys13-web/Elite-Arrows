@@ -4,7 +4,7 @@ import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, si
 import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging'
 import { getAnalytics, logEvent } from 'firebase/analytics'
 import { getPerformance, trace } from 'firebase/performance'
-import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage'
+import { getStorage, ref, uploadString, uploadBytes, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
 
 export const FieldValue = deleteFieldFirestore
 
@@ -72,5 +72,5 @@ export {
   sendPasswordResetEmail,
   getMessaging, getToken, onMessage, isSupported,
   logEvent,
-  ref, uploadString, getDownloadURL
+  ref, uploadString, uploadBytes, uploadBytesResumable, getDownloadURL
 }

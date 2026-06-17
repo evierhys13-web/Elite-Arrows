@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { initStore, requestPurchase } from "../utils/store";
 import { Capacitor } from "@capacitor/core";
+import { storage, ref, uploadBytesResumable, getDownloadURL } from '../firebase'
 
 const SUBSCRIPTION_PRODUCT_IDS = {
   standard: 'standard_pass',
@@ -61,6 +62,8 @@ export default function Subscription() {
 
   const seasons = getSeasons();
   const currentSeasonName = adminData?.currentSeason || 'Season 1';
+
+  const [proofFile, setProofFile] = useState(null);
 
   // Find upcoming seasons that are not the current one
   const upcomingSeasons = seasons.filter(s =>
@@ -137,8 +140,10 @@ export default function Subscription() {
     if (!file) return;
     setUploading(true);
     try {
+      // For preview, we still compress or just use blob URL
       const dataUrl = await compressImage(file);
       setProofImage(dataUrl);
+      setProofFile(file); // Store original or we could compress to blob
     } catch (err) {
       alert(err.message);
     } finally {
@@ -147,11 +152,11 @@ export default function Subscription() {
   };
 
   const handleSubmitPayment = async () => {
-    if (!isNativeApp && !proofImage) return alert("Please upload proof of payment.");
+    if (!isNativeApp && !proofFile) return alert("Please upload proof of payment.");
     setSubmitting(true);
     try {
       if (isNativeApp) {
-        // App logic: Simply notify admins of the request
+        // ... (existing native logic)
         await updateUser({
           adminRequestPending: true,
           requestedPlan: paymentMethod,
@@ -160,11 +165,24 @@ export default function Subscription() {
         }, false);
         alert(`Request sent for ${targetSeason}! An admin will contact you to arrange payment and activate your pass.`);
       } else {
-        // Web logic: Usual flow with proof
+        // Web logic: Upload to Storage first
+        let finalProofUrl = proofImage;
+        if (proofFile) {
+          const storageRef = ref(storage, `payments/${user.id}_${Date.now()}_proof.jpg`);
+          const uploadTask = uploadBytesResumable(storageRef, proofFile);
+
+          await new Promise((resolve, reject) => {
+            uploadTask.on('state_changed', null, reject, async () => {
+              finalProofUrl = await getDownloadURL(uploadTask.snapshot.ref);
+              resolve();
+            });
+          });
+        }
+
         await updateUser({
           paymentPending: true,
           paymentMethod,
-          paymentProof: proofImage,
+          paymentProof: finalProofUrl, // URL instead of base64
           paymentDate: new Date().toISOString(),
           requestedSeason: targetSeason,
           requestedPlan: paymentMethod
@@ -173,6 +191,7 @@ export default function Subscription() {
       }
       setPaymentMethod("");
       setProofImage("");
+      setProofFile(null);
     } catch (err) {
       alert("Submission failed: " + err.message);
     } finally {

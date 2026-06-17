@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { db, chatMessagesCollection, doc, setDoc, deleteDoc, query, where, onSnapshot } from '../firebase'
+import { db, chatMessagesCollection, doc, setDoc, deleteDoc, query, where, onSnapshot, storage, ref, uploadBytesResumable, getDownloadURL } from '../firebase'
 import { useToast } from '../context/ToastContext'
 
 export default function Chat() {
@@ -159,21 +159,39 @@ export default function Chat() {
     const file = e.target.files[0]
     if (!file) return
 
-    const reader = new FileReader()
-    reader.onload = async () => {
-      const msg = {
-        chatKey: getChatKey(activeChat),
-        sender: user.username,
-        senderId: user.id,
-        text: '',
-        timestamp: new Date().toISOString(),
-        media: reader.result,
-        mediaType: file.type.startsWith('video') ? 'video' : 'photo',
-        type: 'media'
-      }
-      await setDoc(doc(db, 'chatMessages', Date.now().toString()), msg)
+    if (file.size > 20 * 1024 * 1024) {
+      showToast('File too large (max 20MB)', 'error')
+      return
     }
-    reader.readAsDataURL(file)
+
+    const messageId = Date.now().toString()
+    const storageRef = ref(storage, `chat/${activeChat}/${messageId}_${file.name}`)
+
+    showToast('Uploading media...', 'info')
+
+    const uploadTask = uploadBytesResumable(storageRef, file)
+
+    uploadTask.on('state_changed',
+      null,
+      (error) => {
+        console.error('Upload error:', error)
+        showToast('Media upload failed', 'error')
+      },
+      async () => {
+        const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref)
+        const msg = {
+          chatKey: getChatKey(activeChat),
+          sender: user.username,
+          senderId: user.id,
+          text: '',
+          timestamp: new Date().toISOString(),
+          media: downloadUrl,
+          mediaType: file.type.startsWith('video') ? 'video' : 'photo',
+          type: 'media'
+        }
+        await setDoc(doc(db, 'chatMessages', messageId), msg)
+      }
+    )
   }
 
   const handleReply = (msg) => setReplyTo(msg)
