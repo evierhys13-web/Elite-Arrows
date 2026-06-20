@@ -223,8 +223,8 @@ export default function SubmitResult() {
   const handleImageUpload = (e) => {
     const file = e.target.files[0]
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Image must be less than 5MB')
+      if (file.size > 10 * 1024 * 1024) { // Increased limit but we compress heavily
+        setError('Image is too large. Please pick a smaller one.')
         return
       }
 
@@ -232,14 +232,14 @@ export default function SubmitResult() {
       setUploadedProofUrl('')
       setUploadedVideoUrl('')
       setIsUploadingProof(true)
-      setUploadProgress(0)
+      setUploadProgress(1)
 
       const reader = new FileReader()
       reader.onloadend = () => {
         const image = new Image()
         image.onload = async () => {
           const canvas = document.createElement('canvas')
-          const maxDimension = 800 // Reduced from 1000
+          const maxDimension = 600 // Compact size for speed
           const scale = Math.min(1, maxDimension / Math.max(image.width, image.height))
           canvas.width = Math.max(1, Math.round(image.width * scale))
           canvas.height = Math.max(1, Math.round(image.height * scale))
@@ -247,14 +247,20 @@ export default function SubmitResult() {
           const ctx = canvas.getContext('2d')
           ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
 
-          let quality = 0.60 // Reduced from 0.7
+          let quality = 0.40 // Low quality for high speed
           let compressed = canvas.toDataURL('image/jpeg', quality)
-          while (compressed.length > 250000 && quality > 0.25) { // Targeted 250KB
-            quality -= 0.1
+          while (compressed.length > 150000 && quality > 0.15) {
+            quality -= 0.05
             compressed = canvas.toDataURL('image/jpeg', quality)
           }
 
-      canvas.toBlob(async (blob) => {
+          canvas.toBlob(async (blob) => {
+            if (!blob) {
+              setUploadError("Image processing failed.")
+              setIsUploadingProof(false)
+              return
+            }
+
             setFormData(prev => ({
               ...prev,
               proofImage: compressed,
@@ -263,46 +269,42 @@ export default function SubmitResult() {
               proofVideoFile: null
             }))
 
-            // Start Uploading Immediately using the most robust method for images
             try {
               const resultId = Date.now().toString()
-              const path = `results/${resultId}_proof.jpg`
-              const storageRef = ref(storage, path)
-
+              const storageRef = ref(storage, `results/${resultId}_proof.jpg`)
               currentUploadTaskId.current = resultId
 
-              // uploadString with data_url is extremely reliable in WebViews
-              const uploadTask = uploadString(storageRef, compressed, 'data_url')
+              setUploadProgress(5)
 
-              // uploadString doesn't give progress like resumable, so we simulate it
-              setUploadProgress(20)
+              // Use Resumable for progress updates
+              const uploadTask = uploadBytesResumable(storageRef, blob)
 
-              uploadTask.then(async (snapshot) => {
-                setUploadProgress(90)
-                const url = await getDownloadURL(storageRef)
-                setUploadedProofUrl(url)
-                setUploadProgress(100)
-                setIsUploadingProof(false)
-              }).catch((err) => {
-                console.error("Proof upload error (string):", err)
-                // Fallback to binary if string fails for some reason
-                const binaryTask = uploadBytesResumable(storageRef, blob)
-                binaryTask.on('state_changed',
-                  (snap) => {
-                    const p = (snap.bytesTransferred / snap.totalBytes) * 100
-                    setUploadProgress(Math.round(p))
-                  },
-                  (binErr) => {
-                    setUploadError("Upload failed. Please try another photo.")
-                    setIsUploadingProof(false)
-                  },
-                  async () => {
-                    const url = await getDownloadURL(binaryTask.snapshot.ref)
+              uploadTask.on('state_changed',
+                (snapshot) => {
+                  const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+                  setUploadProgress(Math.max(5, Math.round(progress)))
+                },
+                (err) => {
+                  console.error("Binary upload failed, using fallback uploadString...", err)
+                  // Fallback: uploadString is extremely reliable for small data
+                  uploadString(storageRef, compressed, 'data_url').then(async () => {
+                    const url = await getDownloadURL(storageRef)
                     setUploadedProofUrl(url)
+                    setUploadProgress(100)
                     setIsUploadingProof(false)
-                  }
-                )
-              })
+                  }).catch((fallbackErr) => {
+                    console.error("All upload methods failed:", fallbackErr)
+                    setUploadError("Upload failed. Check your connection.")
+                    setIsUploadingProof(false)
+                  })
+                },
+                async () => {
+                  const url = await getDownloadURL(uploadTask.snapshot.ref)
+                  setUploadedProofUrl(url)
+                  setUploadProgress(100)
+                  setIsUploadingProof(false)
+                }
+              )
             } catch (err) {
               setUploadError("Could not start upload.")
               setIsUploadingProof(false)
@@ -310,7 +312,7 @@ export default function SubmitResult() {
           }, 'image/jpeg', quality)
         }
         image.onerror = () => {
-          setError('Could not read that image.')
+          setError('Invalid image.')
           setIsUploadingProof(false)
         }
         image.src = reader.result
@@ -331,7 +333,7 @@ export default function SubmitResult() {
       setUploadedProofUrl('')
       setUploadedVideoUrl('')
       setIsUploadingProof(true)
-      setUploadProgress(0)
+      setUploadProgress(1)
 
       const videoUrl = URL.createObjectURL(file)
       setFormData(prev => ({
@@ -342,13 +344,11 @@ export default function SubmitResult() {
         proofImageBlob: null
       }))
 
-      // Start Uploading Immediately
       const resultId = Date.now().toString()
-      const path = `results/${resultId}_video.mp4`
-      const storageRef = ref(storage, path)
-      const uploadTask = uploadBytesResumable(storageRef, file)
+      const storageRef = ref(storage, `results/${resultId}_video.mp4`)
       currentUploadTaskId.current = resultId
 
+      const uploadTask = uploadBytesResumable(storageRef, file)
       uploadTask.on('state_changed',
         (snapshot) => {
           const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
@@ -522,8 +522,8 @@ export default function SubmitResult() {
 
       // If we are still uploading the proof in the background, we need to wait for it.
       if (isUploadingProof) {
-        setSuccessMessage('Still uploading proof... please wait.')
-        // Poll for completion (max 30 seconds wait here)
+        setSuccessMessage('Finishing upload... please wait.')
+        // Poll for completion (max 60 seconds wait)
         let waitCount = 0
         const checkUpload = async () => {
           return new Promise((resolve, reject) => {
@@ -533,9 +533,9 @@ export default function SubmitResult() {
                 clearInterval(interval)
                 resolve()
               }
-              if (waitCount > 60) { // 30 seconds
+              if (waitCount > 120) { // 60 seconds
                 clearInterval(interval)
-                reject(new Error("Upload is taking too long. Please check your connection."))
+                reject(new Error("The upload is taking too long. Try a smaller photo or check your connection."))
               }
             }, 500)
           })
@@ -553,23 +553,23 @@ export default function SubmitResult() {
 
       if (!finalProofUrl && !finalVideoUrl) {
         if (formData.proofImage) {
-          setSuccessMessage('Finalizing image upload...')
+          setSuccessMessage('Attempting emergency upload...')
           const resId = Date.now().toString()
           const storageRef = ref(storage, `results/${resId}_proof.jpg`)
           await uploadString(storageRef, formData.proofImage, 'data_url')
           finalProofUrl = await getDownloadURL(storageRef)
         } else if (formData.proofVideoFile) {
-          setSuccessMessage('Finalizing video upload...')
+          setSuccessMessage('Attempting emergency upload...')
           const resId = Date.now().toString()
           const storageRef = ref(storage, `results/${resId}_video.mp4`)
           const snapshot = await uploadBytes(storageRef, formData.proofVideoFile)
           finalVideoUrl = await getDownloadURL(snapshot.ref)
         } else {
-          throw new Error("Proof of result is required. Please select a photo or video.")
+          throw new Error("Match proof is required. Please select a photo or video.")
         }
       }
 
-      setSuccessMessage('Saving match to database...')
+      setSuccessMessage('Recording match scores...')
 
       const resultId = Date.now().toString()
       const fixtureForResult = cupFixture || selectedFixture
