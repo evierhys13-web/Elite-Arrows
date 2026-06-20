@@ -446,33 +446,56 @@ export default function SubmitResult() {
       let finalProofUrl = ''
       let finalVideoUrl = ''
 
-      if (formData.proofImageBlob) {
+      if (formData.proofImage) {
         setSuccessMessage('Uploading image proof...')
-        console.log('Uploading image blob using uploadBytes...')
+        console.log('Uploading image using uploadString...')
         setUploadProgress(10)
         try {
           const storageRef = ref(storage, `results/${resultId}_proof.jpg`)
-          const snapshot = await uploadBytes(storageRef, formData.proofImageBlob)
-          finalProofUrl = await getDownloadURL(snapshot.ref)
+
+          // Wrap in a promise to allow for a timeout
+          await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => reject(new Error("Image upload timed out after 40 seconds")), 40000)
+            uploadString(storageRef, formData.proofImage, 'data_url')
+              .then(() => {
+                clearTimeout(timeout)
+                resolve()
+              })
+              .catch((err) => {
+                clearTimeout(timeout)
+                reject(err)
+              })
+          })
+
+          setSuccessMessage('Finalizing image data...')
+          finalProofUrl = await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => reject(new Error("Getting image URL timed out")), 20000)
+            getDownloadURL(storageRef)
+              .then((url) => {
+                clearTimeout(timeout)
+                resolve(url)
+              })
+              .catch((err) => {
+                clearTimeout(timeout)
+                reject(err)
+              })
+          })
           setUploadProgress(100)
           console.log('Image upload successful:', finalProofUrl)
         } catch (storageError) {
-          console.error("Storage binary upload failed, falling back to base64 string upload", storageError)
-          setUploadProgress(15)
-          setSuccessMessage('Retrying image upload...')
-          const storageRef = ref(storage, `results/${resultId}_proof.jpg`)
-          await uploadString(storageRef, formData.proofImage, 'data_url')
-          finalProofUrl = await getDownloadURL(storageRef)
-          setUploadProgress(100)
+          console.error("Image upload failed:", storageError)
+          // Fallback to uploadBytes only if we have a blob and string failed
+          if (formData.proofImageBlob) {
+            console.log('Trying uploadBytes fallback...')
+            setUploadProgress(15)
+            const storageRef = ref(storage, `results/${resultId}_proof.jpg`)
+            const snapshot = await uploadBytes(storageRef, formData.proofImageBlob)
+            finalProofUrl = await getDownloadURL(snapshot.ref)
+            setUploadProgress(100)
+          } else {
+            throw storageError
+          }
         }
-      } else if (formData.proofImage) {
-        setUploadProgress(10)
-        setSuccessMessage('Uploading image data...')
-        console.log('Uploading image string...')
-        const storageRef = ref(storage, `results/${resultId}_proof.jpg`)
-        await uploadString(storageRef, formData.proofImage, 'data_url')
-        finalProofUrl = await getDownloadURL(storageRef)
-        setUploadProgress(100)
       }
 
       if (formData.proofVideoFile) {
