@@ -1879,28 +1879,30 @@ export default function Admin() {
 
         {/* TAB: OPEN LEAGUE */}
         {activeTab === 'openleague' && (
-          <div className="card glass animate-fade-in" style={{ padding: '32px' }}>
-            <h3 className="card-title" style={{ fontSize: '1.8rem', marginBottom: '8px' }}>Open League Management</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '32px' }}>
+          <div className="card glass animate-fade-in" style={{ padding: '20px' }}>
+            <h3 className="card-title" style={{ fontSize: '1.5rem', marginBottom: '8px' }}>Open League Management</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
               Add individual players or pairs to the Open League standings.
             </p>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               {/* Singles Management */}
-              <div className="glass" style={{ padding: '24px', borderRadius: '16px', border: '1px solid var(--accent-cyan)' }}>
-                <h4 style={{ marginBottom: '20px' }}>Add Singles Player</h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '15px', alignItems: 'flex-end' }}>
-                  <UserSearchSelect users={allPlayers} selectedId={singlesPlayerForm} onSelect={id => setSinglesPlayerForm(id)} label="Select Player" onQueryChange={searchUsers} />
-                  <button className="btn btn-primary" onClick={handleAddSinglesPlayer} style={{ padding: '12px 30px' }}>➕ Add Player</button>
+              <div className="glass" style={{ padding: '20px', borderRadius: '16px', border: '1px solid var(--accent-cyan)' }}>
+                <h4 style={{ marginBottom: '15px' }}>Add Singles Player</h4>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', alignItems: 'flex-end' }}>
+                  <div style={{ flex: '1 1 200px' }}>
+                    <UserSearchSelect users={allPlayers} selectedId={singlesPlayerForm} onSelect={id => setSinglesPlayerForm(id)} label="Select Player" onQueryChange={searchUsers} />
+                  </div>
+                  <button className="btn btn-primary" onClick={handleAddSinglesPlayer} style={{ padding: '12px 24px', flex: '0 0 auto' }}>➕ Add Player</button>
                 </div>
 
-                <h5 style={{ marginTop: '32px', marginBottom: '16px', fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.05em' }}>Registered Singles ({openLeagueSingles.length})</h5>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px', maxHeight: '300px', overflowY: 'auto', paddingRight: '5px' }}>
+                <h5 style={{ marginTop: '24px', marginBottom: '12px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.05em' }}>Registered Singles ({openLeagueSingles.length})</h5>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '10px', maxHeight: '300px', overflowY: 'auto', paddingRight: '5px' }}>
                   {openLeagueSingles.map(p => {
                     const player = allPlayers.find(u => u.id === p.userId)
                     return (
-                      <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{player?.username || 'Unknown'}</span>
+                      <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{player?.username || 'Unknown'}</span>
                         <button onClick={() => handleRemoveSinglesPlayer(p.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, color: 'var(--error)' }}>✕</button>
                       </div>
                     )
@@ -1910,65 +1912,65 @@ export default function Admin() {
               </div>
 
               {/* Duo Management */}
-              <div className="glass" style={{ padding: '32px', borderRadius: '20px', border: '1px solid var(--accent-cyan)' }}>
-                <h4 style={{ marginBottom: '20px', fontSize: '1.4rem' }}>Duo Team Manager</h4>
+              <div className="glass" style={{ padding: '20px', borderRadius: '20px', border: '1px solid var(--accent-cyan)' }}>
+                <h4 style={{ marginBottom: '15px', fontSize: '1.2rem' }}>Duo Team Manager</h4>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr auto', gap: '15px', marginBottom: '32px', alignItems: 'flex-end', background: 'rgba(0,0,0,0.2)', padding: '20px', borderRadius: '16px' }}>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label style={{ fontSize: '0.8rem', opacity: 0.8 }}>Player 1</label>
-                    <UserSearchSelect users={allPlayers} selectedId={duoForm.p1} onSelect={id => setDuoForm({...duoForm, p1: id, captainId: duoForm.captainId === duoForm.p1 ? id : duoForm.captainId})} label="Partner 1" onQueryChange={searchUsers} />
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', marginBottom: '24px', alignItems: 'flex-end', background: 'rgba(0,0,0,0.2)', padding: '15px', borderRadius: '16px' }}>
+                  <div className="form-group" style={{ marginBottom: 0, flex: '1 1 200px' }}>
+                    <label style={{ fontSize: '0.75rem', opacity: 0.8 }}>Partner 1</label>
+                    <UserSearchSelect users={allPlayers} selectedId={duoForm.p1} onSelect={id => setDuoForm({...duoForm, p1: id, captainId: duoForm.captainId === duoForm.p1 ? id : duoForm.captainId})} label="Select Partner 1" onQueryChange={searchUsers} />
                   </div>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label style={{ fontSize: '0.8rem', opacity: 0.8 }}>Player 2</label>
-                    <UserSearchSelect users={allPlayers} selectedId={duoForm.p2} onSelect={id => setDuoForm({...duoForm, p2: id, captainId: duoForm.captainId === duoForm.p2 ? id : duoForm.captainId})} label="Partner 2" onQueryChange={searchUsers} />
+                  <div className="form-group" style={{ marginBottom: 0, flex: '1 1 200px' }}>
+                    <label style={{ fontSize: '0.75rem', opacity: 0.8 }}>Partner 2</label>
+                    <UserSearchSelect users={allPlayers} selectedId={duoForm.p2} onSelect={id => setDuoForm({...duoForm, p2: id, captainId: duoForm.captainId === duoForm.p2 ? id : duoForm.captainId})} label="Select Partner 2" onQueryChange={searchUsers} />
                   </div>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label style={{ fontSize: '0.8rem', opacity: 0.8 }}>Team Captain</label>
+                  <div className="form-group" style={{ marginBottom: 0, flex: '1 1 200px' }}>
+                    <label style={{ fontSize: '0.75rem', opacity: 0.8 }}>Team Captain</label>
                     <select
                       className="glass"
                       value={duoForm.captainId}
                       onChange={e => setDuoForm({ ...duoForm, captainId: e.target.value })}
-                      style={{ width: '100%', padding: '12px', borderRadius: '8px' }}
+                      style={{ width: '100%', padding: '10px', borderRadius: '8px' }}
                       disabled={!duoForm.p1 && !duoForm.p2}
                     >
                       <option value="">No Captain</option>
-                      {duoForm.p1 && <option value={duoForm.p1}>{allPlayers.find(u => u.id === duoForm.p1)?.username} (P1)</option>}
-                      {duoForm.p2 && <option value={duoForm.p2}>{allPlayers.find(u => u.id === duoForm.p2)?.username} (P2)</option>}
+                      {duoForm.p1 && <option value={duoForm.p1}>{allPlayers.find(u => u.id === duoForm.p1)?.username}</option>}
+                      {duoForm.p2 && <option value={duoForm.p2}>{allPlayers.find(u => u.id === duoForm.p2)?.username}</option>}
                     </select>
                   </div>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label style={{ fontSize: '0.8rem', opacity: 0.8 }}>Team Name (Optional)</label>
+                  <div className="form-group" style={{ marginBottom: 0, flex: '1 1 200px' }}>
+                    <label style={{ fontSize: '0.75rem', opacity: 0.8 }}>Team Name (Optional)</label>
                     <input
                       type="text"
                       className="glass"
                       placeholder="e.g. The Bullseyes"
                       value={duoForm.teamName}
                       onChange={e => setDuoForm({ ...duoForm, teamName: e.target.value })}
-                      style={{ width: '100%', padding: '12px', borderRadius: '8px' }}
+                      style={{ width: '100%', padding: '10px', borderRadius: '8px' }}
                     />
                   </div>
-                  <button className="btn btn-primary" onClick={handleAddDuo} style={{ padding: '12px 25px', borderRadius: '8px' }}>
+                  <button className="btn btn-primary" onClick={handleAddDuo} style={{ padding: '12px 24px', borderRadius: '8px', flex: '1 1 auto' }}>
                     ➕ Create Duo
                   </button>
                 </div>
 
-                <h5 style={{ marginBottom: '16px', fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.05em' }}>Registered Duos ({openLeagueDuos.length})</h5>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px', maxHeight: '500px', overflowY: 'auto', paddingRight: '10px' }}>
+                <h5 style={{ marginBottom: '12px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.05em' }}>Registered Duos ({openLeagueDuos.length})</h5>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '15px', maxHeight: '500px', overflowY: 'auto', paddingRight: '10px' }}>
                   {openLeagueDuos.map(d => {
                     const u1 = allPlayers.find(u => u.id === d.p1Id)
                     const u2 = allPlayers.find(u => u.id === d.p2Id)
                     return (
-                      <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 25px', background: 'rgba(255,255,255,0.05)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                      <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', background: 'rgba(255,255,255,0.05)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)' }}>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          {d.teamName && <span style={{ fontWeight: 800, color: 'var(--accent-cyan)', fontSize: '1.2rem', marginBottom: '4px' }}>{d.teamName}</span>}
-                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                            <span style={{ fontSize: d.teamName ? '0.9rem' : '1.1rem', opacity: d.teamName ? 0.7 : 1, fontWeight: 600 }}>{u1?.username} & {u2?.username}</span>
+                          {d.teamName && <span style={{ fontWeight: 800, color: 'var(--accent-cyan)', fontSize: '1.1rem', marginBottom: '2px' }}>{d.teamName}</span>}
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                            <span style={{ fontSize: d.teamName ? '0.85rem' : '1rem', opacity: d.teamName ? 0.7 : 1, fontWeight: 600 }}>{u1?.username} & {u2?.username}</span>
                             {d.captainId && (
-                              <span title={`Captain: ${allPlayers.find(u => u.id === d.captainId)?.username}`} style={{ fontSize: '0.9rem', cursor: 'help' }}>⭐</span>
+                              <span title={`Captain: ${allPlayers.find(u => u.id === d.captainId)?.username}`} style={{ fontSize: '0.8rem', cursor: 'help' }}>⭐</span>
                             )}
                           </div>
                         </div>
-                        <button onClick={() => handleRemoveDuo(d.id)} style={{ background: 'rgba(239, 68, 68, 0.1)', border: 'none', cursor: 'pointer', padding: '10px', borderRadius: '50%', color: 'var(--error)', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                        <button onClick={() => handleRemoveDuo(d.id)} style={{ background: 'rgba(239, 68, 68, 0.1)', border: 'none', cursor: 'pointer', padding: '8px', borderRadius: '50%', color: 'var(--error)', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
                       </div>
                     )
                   })}
