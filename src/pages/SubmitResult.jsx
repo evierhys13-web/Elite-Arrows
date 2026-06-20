@@ -231,26 +231,15 @@ export default function SubmitResult() {
       setUploadError('')
       setUploadedProofUrl('')
       setUploadedVideoUrl('')
-      setIsUploadingProof(true)
-      setUploadProgress(1)
+      setUploadProgress(0)
 
-      // 1. Instant local preview (Zero wait)
-      const previewUrl = URL.createObjectURL(file)
-      setFormData(prev => ({
-        ...prev,
-        proofImage: previewUrl,
-        proofImageBlob: file,
-        proofVideo: '',
-        proofVideoFile: null
-      }))
-
-      // 2. Background processing and upload
+      // 1. Instant local preview
       const reader = new FileReader()
       reader.onloadend = () => {
         const image = new Image()
         image.onload = async () => {
           const canvas = document.createElement('canvas')
-          const maxDimension = 600
+          const maxDimension = 800 // Optimized for Firestore storage
           const scale = Math.min(1, maxDimension / Math.max(image.width, image.height))
           canvas.width = Math.max(1, Math.round(image.width * scale))
           canvas.height = Math.max(1, Math.round(image.height * scale))
@@ -259,48 +248,24 @@ export default function SubmitResult() {
           ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
 
           const quality = 0.50
-          const compressedDataUrl = canvas.toDataURL('image/jpeg', quality)
+          let compressedDataUrl = canvas.toDataURL('image/jpeg', quality)
 
-          setFormData(prev => ({ ...prev, proofImage: compressedDataUrl }))
-
-          try {
-            const resultId = Date.now().toString()
-            const storageRef = ref(storage, `results/${resultId}_proof.jpg`)
-            currentUploadTaskId.current = resultId
-
-            setUploadProgress(10)
-
-            // Use uploadString directly (skipping Blob conversion for speed)
-            uploadString(storageRef, compressedDataUrl, 'data_url').then(async () => {
-              setUploadProgress(90)
-              const url = await getDownloadURL(storageRef)
-              setUploadedProofUrl(url)
-              setUploadProgress(100)
-              setIsUploadingProof(false)
-            }).catch((err) => {
-              console.error("Background upload failed:", err)
-              // Fallback to binary if needed
-              canvas.toBlob((blob) => {
-                if (!blob) {
-                  setUploadError("Processing failed.")
-                  setIsUploadingProof(false)
-                  return
-                }
-                uploadBytes(storageRef, blob).then(async (snapshot) => {
-                  const url = await getDownloadURL(snapshot.ref)
-                  setUploadedProofUrl(url)
-                  setUploadProgress(100)
-                  setIsUploadingProof(false)
-                }).catch(() => {
-                  setUploadError("Upload failed. Check signal.")
-                  setIsUploadingProof(false)
-                })
-              }, 'image/jpeg', quality)
-            })
-          } catch (err) {
-            setUploadError("Could not start upload.")
-            setIsUploadingProof(false)
+          // Ensure it's under 400KB to safely fit in Firestore 1MB document
+          while (compressedDataUrl.length > 400000 && quality > 0.15) {
+            quality -= 0.1
+            compressedDataUrl = canvas.toDataURL('image/jpeg', quality)
           }
+
+          setFormData(prev => ({
+            ...prev,
+            proofImage: compressedDataUrl,
+            proofImageBlob: null,
+            proofVideo: '',
+            proofVideoFile: null
+          }))
+
+          setIsUploadingProof(false) // No more background upload for images
+          setSuccessMessage('Image ready!')
         }
         image.src = reader.result
       }
@@ -507,14 +472,12 @@ export default function SubmitResult() {
     try {
       setIsSubmitting(true)
 
-      // We no longer wait for the background upload to finish.
-      // If proofUrl is ready, we use the Storage link.
-      // If NOT ready, we use the Base64 image data directly in Firestore.
-      // This makes the submission process INSTANT.
+      // Use either the Storage URL (for videos) or the Base64 data (for images)
+      // Images are now saved directly in Firestore for immediate submission.
       let finalProofUrl = proofUrl || formData.proofImage
       let finalVideoUrl = proofVideoUrl
 
-      // Videos are too large for Firestore, so we must wait for them specifically
+      // Videos are too large for Firestore, so we MUST wait for them specifically
       if (!finalProofUrl && formData.proofVideoFile && !finalVideoUrl) {
         setSuccessMessage('Finishing video upload...')
         let videoWait = 0
@@ -540,7 +503,7 @@ export default function SubmitResult() {
         throw new Error("Match proof is required. Please select a photo or video.")
       }
 
-      setSuccessMessage('Recording match scores...')
+      setSuccessMessage('Saving match results...')
 
       const resultId = Date.now().toString()
       const fixtureForResult = cupFixture || selectedFixture
@@ -1338,19 +1301,25 @@ export default function SubmitResult() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div className="spinner" style={{ width: '24px', height: '24px', border: '3px solid rgba(255,255,255,0.3)', borderTopColor: '#fff' }}></div>
                   <div style={{ textAlign: 'left' }}>
-                    <div style={{ fontSize: '1rem', lineHeight: 1.2 }}>{isUploadingProof ? `Uploading Proof... ${uploadProgress}%` : 'Processing Match...'}</div>
-                    <div style={{ fontSize: '0.75rem', opacity: 0.8, fontWeight: '400', marginTop: '2px' }}>{successMessage || 'Saving details...'}</div>
+                    <div style={{ fontSize: '1rem', lineHeight: 1.2 }}>
+                      {uploadProgress > 0 && uploadProgress < 100 ? `Sending Video... ${uploadProgress}%` : 'Saving Results...'}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', opacity: 0.8, fontWeight: '400', marginTop: '2px' }}>
+                      {successMessage || (uploadProgress > 0 ? 'This may take a moment' : 'Finalizing match data')}
+                    </div>
                   </div>
                 </div>
-                <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.15)', borderRadius: '3px', overflow: 'hidden' }}>
-                  <div style={{
-                    width: `${uploadProgress > 0 ? uploadProgress : 5}%`,
-                    height: '100%',
-                    background: 'var(--accent-cyan)',
-                    boxShadow: '0 0 10px var(--accent-cyan)',
-                    transition: 'width 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
-                  }}></div>
-                </div>
+                {uploadProgress > 0 && uploadProgress < 100 && (
+                  <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.15)', borderRadius: '3px', overflow: 'hidden' }}>
+                    <div style={{
+                      width: `${uploadProgress}%`,
+                      height: '100%',
+                      background: 'var(--accent-cyan)',
+                      boxShadow: '0 0 10px var(--accent-cyan)',
+                      transition: 'width 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+                    }}></div>
+                  </div>
+                )}
               </div>
             ) : submitted ? (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
