@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { db, doc, setDoc, storage, ref, uploadString, uploadBytesResumable, getDownloadURL } from '../firebase'
+import { db, doc, setDoc, storage, ref, uploadString, uploadBytes, uploadBytesResumable, getDownloadURL } from '../firebase'
 import { useToast } from '../context/ToastContext'
 import { logResultSubmitted } from '../utils/analytics'
 
@@ -446,39 +446,20 @@ export default function SubmitResult() {
       let finalProofUrl = ''
       let finalVideoUrl = ''
 
-      // Helper for resumable binary upload with progress tracking
-      const uploadWithProgress = (file, path) => {
-        return new Promise((resolve, reject) => {
-          console.log(`Starting upload to ${path}...`)
-          setUploadProgress(1)
-          const storageRef = ref(storage, path)
-          const uploadTask = uploadBytesResumable(storageRef, file)
-
-          uploadTask.on('state_changed',
-            (snapshot) => {
-              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
-              setUploadProgress(Math.max(1, Math.round(progress)))
-            },
-            (error) => {
-              console.error("Upload error details:", error);
-              reject(error);
-            },
-            () => {
-              getDownloadURL(uploadTask.snapshot.ref).then(resolve).catch(reject)
-            }
-          )
-        })
-      }
-
       if (formData.proofImageBlob) {
         setSuccessMessage('Uploading image proof...')
-        console.log('Uploading image blob...')
+        console.log('Uploading image blob using uploadBytes...')
+        setUploadProgress(10)
         try {
-          finalProofUrl = await uploadWithProgress(formData.proofImageBlob, `results/${resultId}_proof.jpg`)
+          const storageRef = ref(storage, `results/${resultId}_proof.jpg`)
+          const snapshot = await uploadBytes(storageRef, formData.proofImageBlob)
+          finalProofUrl = await getDownloadURL(snapshot.ref)
+          setUploadProgress(100)
+          console.log('Image upload successful:', finalProofUrl)
         } catch (storageError) {
           console.error("Storage binary upload failed, falling back to base64 string upload", storageError)
-          setUploadProgress(10)
-          setSuccessMessage('Retrying image upload (alternative method)...')
+          setUploadProgress(15)
+          setSuccessMessage('Retrying image upload...')
           const storageRef = ref(storage, `results/${resultId}_proof.jpg`)
           await uploadString(storageRef, formData.proofImage, 'data_url')
           finalProofUrl = await getDownloadURL(storageRef)
@@ -496,9 +477,34 @@ export default function SubmitResult() {
 
       if (formData.proofVideoFile) {
         setSuccessMessage('Uploading video proof (this may take a minute)...')
-        console.log('Uploading video file...')
+        console.log('Uploading video file using uploadBytesResumable...')
         try {
-          finalVideoUrl = await uploadWithProgress(formData.proofVideoFile, `results/${resultId}_video.mp4`)
+          finalVideoUrl = await new Promise((resolve, reject) => {
+            const storageRef = ref(storage, `results/${resultId}_video.mp4`)
+            const uploadTask = uploadBytesResumable(storageRef, formData.proofVideoFile)
+
+            const timeout = setTimeout(() => {
+              uploadTask.cancel()
+              reject(new Error("Upload timed out after 60 seconds"))
+            }, 60000)
+
+            uploadTask.on('state_changed',
+              (snapshot) => {
+                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+                setUploadProgress(Math.max(1, Math.round(progress)))
+              },
+              (error) => {
+                clearTimeout(timeout)
+                console.error("Video upload task error:", error)
+                reject(error)
+              },
+              async () => {
+                clearTimeout(timeout)
+                const url = await getDownloadURL(uploadTask.snapshot.ref)
+                resolve(url)
+              }
+            )
+          })
         } catch (videoError) {
           console.error("Video upload failed details:", videoError)
           setError('Video upload failed: ' + (videoError.message || 'Please try again or use a smaller file.'))
