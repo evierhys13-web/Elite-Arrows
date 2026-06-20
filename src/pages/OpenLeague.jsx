@@ -17,8 +17,6 @@ export default function OpenLeague() {
   const [now, setNow] = useState(new Date());
   const [duos, setDuos] = useState([]);
   const [singlesPlayers, setSinglesPlayers] = useState([]);
-  const [showDuoModal, setShowDuoModal] = useState(false);
-  const [duoForm, setDuoModal] = useState({ p1: '', p2: '', teamName: '', captainId: '' });
 
   useEffect(() => {
     fetchOpenLeagueData();
@@ -305,11 +303,6 @@ export default function OpenLeague() {
           <p style={{ color: 'var(--text-muted)' }}>Free for all players. Win: 3pts, Draw: 1pt, Loss: -1pt.</p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
-          {isAdmin && (
-            <button className="btn btn-primary btn-sm" onClick={() => setShowDuoModal(true)}>
-              👥 Manage Duos
-            </button>
-          )}
           <button className="btn btn-secondary btn-sm" onClick={handleRefresh} disabled={loading}>
             {loading ? "Syncing..." : "🔄 Sync"}
           </button>
@@ -353,15 +346,6 @@ export default function OpenLeague() {
                         {activeTab === "singles" ? (
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <Link to={`/profile/${row.id}`} style={{ textDecoration: 'none', color: 'white', fontWeight: 600 }}>{row.username}</Link>
-                            {isAdmin && row.isAdminDefined && (
-                              <button
-                                onClick={() => handleRemoveSinglesPlayer(row.entryDocId)}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', opacity: 0.5 }}
-                                title="Remove Player"
-                              >
-                                🗑️
-                              </button>
-                            )}
                           </div>
                         ) : (
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -374,15 +358,6 @@ export default function OpenLeague() {
                                 )}
                               </div>
                             </div>
-                            {isAdmin && row.isAdminDefined && (
-                              <button
-                                onClick={() => handleRemoveDuo(row.id)}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', opacity: 0.5 }}
-                                title="Remove Duo"
-                              >
-                                🗑️
-                              </button>
-                            )}
                           </div>
                         )}
                       </td>
@@ -403,103 +378,6 @@ export default function OpenLeague() {
         </div>
       </div>
 
-      {showDuoModal && (
-        <div className="modal-overlay" onClick={() => setShowDuoModal(false)}>
-          <div className="card glass" style={{ maxWidth: '1600px', width: '99%', padding: '50px', height: '95vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
-            <h2 className="text-gradient" style={{ marginBottom: '15px', fontSize: '2.8rem' }}>Manage Open League Duos</h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', marginBottom: '35px' }}>Pair players together to add them to the Doubles Table immediately.</p>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr auto', gap: '15px', marginBottom: '25px', alignItems: 'flex-end', background: 'rgba(0,0,0,0.2)', padding: '20px', borderRadius: '16px' }}>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label style={{ fontSize: '0.8rem', opacity: 0.8 }}>Player 1</label>
-                <select
-                  className="glass"
-                  value={duoForm.p1}
-                  onChange={e => setDuoModal({ ...duoForm, p1: e.target.value, captainId: duoForm.captainId === duoForm.p1 ? e.target.value : duoForm.captainId })}
-                  style={{ width: '100%', padding: '10px' }}
-                >
-                  <option value="">Select Player</option>
-                  {allUsers.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
-                </select>
-              </div>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label style={{ fontSize: '0.8rem', opacity: 0.8 }}>Player 2</label>
-                <select
-                  className="glass"
-                  value={duoForm.p2}
-                  onChange={e => setDuoModal({ ...duoForm, p2: e.target.value, captainId: duoForm.captainId === duoForm.p2 ? e.target.value : duoForm.captainId })}
-                  style={{ width: '100%', padding: '10px' }}
-                >
-                  <option value="">Select Player</option>
-                  {allUsers.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
-                </select>
-              </div>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label style={{ fontSize: '0.8rem', opacity: 0.8 }}>Team Captain</label>
-                <select
-                  className="glass"
-                  value={duoForm.captainId}
-                  onChange={e => setDuoModal({ ...duoForm, captainId: e.target.value })}
-                  style={{ width: '100%', padding: '10px' }}
-                  disabled={!duoForm.p1 && !duoForm.p2}
-                >
-                  <option value="">No Captain</option>
-                  {duoForm.p1 && <option value={duoForm.p1}>{allUsers.find(u => u.id === duoForm.p1)?.username} (P1)</option>}
-                  {duoForm.p2 && <option value={duoForm.p2}>{allUsers.find(u => u.id === duoForm.p2)?.username} (P2)</option>}
-                </select>
-              </div>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label style={{ fontSize: '0.8rem', opacity: 0.8 }}>Team Name (Optional)</label>
-                <input
-                  type="text"
-                  className="glass"
-                  placeholder="e.g. The Bullseyes"
-                  value={duoForm.teamName}
-                  onChange={e => setDuoModal({ ...duoForm, teamName: e.target.value })}
-                  style={{ width: '100%', padding: '10px' }}
-                />
-              </div>
-              <button className="btn btn-primary" onClick={handleAddDuo} style={{ padding: '10px 20px' }}>
-                ➕ Create Duo
-              </button>
-            </div>
-
-            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '20px', flex: 1, overflowY: 'auto', paddingRight: '10px' }}>
-              <h4 style={{ fontSize: '1rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '20px', letterSpacing: '0.05em' }}>Active Pairings ({duos.length})</h4>
-              {duos.length === 0 ? (
-                <p style={{ padding: '60px', textAlign: 'center', opacity: 0.5, background: 'rgba(255,255,255,0.02)', borderRadius: '16px', fontSize: '1.2rem' }}>No manual pairings defined yet.</p>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
-                  {duos.map(d => {
-                    const u1 = allUsers.find(u => u.id === d.p1Id);
-                    const u2 = allUsers.find(u => u.id === d.p2Id);
-                    return (
-                      <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 25px', background: 'rgba(255,255,255,0.05)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)', transition: 'transform 0.2s' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          {d.teamName && <span style={{ fontWeight: 800, color: 'var(--accent-cyan)', fontSize: '1.2rem', marginBottom: '4px' }}>{d.teamName}</span>}
-                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                            <span style={{ fontSize: d.teamName ? '0.9rem' : '1.1rem', opacity: d.teamName ? 0.7 : 1, fontWeight: 600 }}>{u1?.username} & {u2?.username}</span>
-                            {d.captainId && (
-                              <span title={`Captain: ${allUsers.find(u => u.id === d.captainId)?.username}`} style={{ fontSize: '0.9rem' }}>⭐</span>
-                            )}
-                          </div>
-                        </div>
-                        <button onClick={() => handleRemoveDuo(d.id)} style={{ background: 'rgba(239, 68, 68, 0.1)', border: 'none', cursor: 'pointer', padding: '10px', borderRadius: '50%', color: 'var(--error)', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            <div style={{ marginTop: '25px', display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: '20px' }}>
-              <button className="btn btn-secondary" style={{ minWidth: '150px' }} onClick={() => setShowDuoModal(false)}>
-                Close Manager
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
