@@ -507,53 +507,37 @@ export default function SubmitResult() {
     try {
       setIsSubmitting(true)
 
-      // If we are still uploading the proof in the background, we need to wait for it.
-      if (isUploadingProof) {
-        setSuccessMessage('Finishing upload... please wait.')
-        // Poll for completion (max 60 seconds wait)
-        let waitCount = 0
-        const checkUpload = async () => {
-          return new Promise((resolve, reject) => {
+      // We no longer wait for the background upload to finish.
+      // If proofUrl is ready, we use the Storage link.
+      // If NOT ready, we use the Base64 image data directly in Firestore.
+      // This makes the submission process INSTANT.
+      let finalProofUrl = proofUrl || formData.proofImage
+      let finalVideoUrl = proofVideoUrl
+
+      // Videos are too large for Firestore, so we must wait for them specifically
+      if (!finalProofUrl && formData.proofVideoFile && !finalVideoUrl) {
+        setSuccessMessage('Finishing video upload...')
+        let videoWait = 0
+        const videoCheck = async () => {
+          return new Promise((resolve) => {
             const interval = setInterval(() => {
-              waitCount++
-              if (!isUploadingProof) {
+              videoWait++
+              if (proofVideoUrl || videoWait > 40) { // 20s
                 clearInterval(interval)
                 resolve()
-              }
-              if (waitCount > 120) { // 60 seconds
-                clearInterval(interval)
-                reject(new Error("The upload is taking too long. Try a smaller photo or check your connection."))
               }
             }, 500)
           })
         }
-        await checkUpload()
+        await videoCheck()
+        finalVideoUrl = proofVideoUrl
+        if (!finalVideoUrl) {
+          throw new Error("Video upload is taking too long. Use a photo for an instant submission.")
+        }
       }
-
-      if (uploadError) {
-        throw new Error(uploadError)
-      }
-
-      // FINAL FALLBACK: If background upload didn't finish or never started but we have data
-      let finalProofUrl = proofUrl
-      let finalVideoUrl = proofVideoUrl
 
       if (!finalProofUrl && !finalVideoUrl) {
-        if (formData.proofImage) {
-          setSuccessMessage('Attempting emergency upload...')
-          const resId = Date.now().toString()
-          const storageRef = ref(storage, `results/${resId}_proof.jpg`)
-          await uploadString(storageRef, formData.proofImage, 'data_url')
-          finalProofUrl = await getDownloadURL(storageRef)
-        } else if (formData.proofVideoFile) {
-          setSuccessMessage('Attempting emergency upload...')
-          const resId = Date.now().toString()
-          const storageRef = ref(storage, `results/${resId}_video.mp4`)
-          const snapshot = await uploadBytes(storageRef, formData.proofVideoFile)
-          finalVideoUrl = await getDownloadURL(snapshot.ref)
-        } else {
-          throw new Error("Match proof is required. Please select a photo or video.")
-        }
+        throw new Error("Match proof is required. Please select a photo or video.")
       }
 
       setSuccessMessage('Recording match scores...')
@@ -614,7 +598,7 @@ export default function SubmitResult() {
         return docData
       }
 
-      let finalResult;
+      let finalResultObj;
       if (formData.gameType === 'Open League Doubles') {
         const res1 = createResultDoc(formData.yourScore, formData.opponentScore, '_1')
         const res2 = createResultDoc(formData.yourScore2, formData.opponentScore2, '_2')
@@ -623,16 +607,16 @@ export default function SubmitResult() {
           setDoc(doc(db, 'results', res2.id), res2)
         ])
         currentResults.push(res1, res2)
-        finalResult = res1;
+        finalResultObj = res1;
       } else {
-        finalResult = createResultDoc(formData.yourScore, formData.opponentScore)
-        await setDoc(doc(db, 'results', finalResult.id), finalResult)
-        currentResults.push(finalResult)
+        finalResultObj = createResultDoc(formData.yourScore, formData.opponentScore)
+        await setDoc(doc(db, 'results', finalResultObj.id), finalResultObj)
+        currentResults.push(finalResultObj)
       }
 
-      setSuccessMessage('Finalizing...')
+      setSuccessMessage('Done!')
 
-      // Perform non-critical updates in the background (no await)
+      // Background updates
       if (formData.isHighlight || finalVideoUrl || formData.highlightUrl) {
         const highlightId = `hl_${resultId}`
         setDoc(doc(db, 'highlights', highlightId), {
@@ -646,7 +630,7 @@ export default function SubmitResult() {
           likes: 0,
           createdAt: new Date().toISOString(),
           type: formData.your180s > 0 ? '180' : 'High Checkout'
-        }).catch(e => console.error("Highlight save error:", e))
+        }).catch(() => {})
       }
 
       try {
@@ -665,8 +649,7 @@ export default function SubmitResult() {
             updatedAt: new Date().toISOString()
           }
           updateFixtures(updatedFixtures)
-          setDoc(doc(db, 'fixtures', updatedFixtures[fixtureIndex].id.toString()), updatedFixtures[fixtureIndex], { merge: true })
-            .catch(e => console.error("Fixture status update error:", e))
+          setDoc(doc(db, 'fixtures', updatedFixtures[fixtureIndex].id.toString()), updatedFixtures[fixtureIndex], { merge: true }).catch(() => {})
         }
       }
 
@@ -684,13 +667,12 @@ export default function SubmitResult() {
       setTimeout(() => {
         if (window.history.length > 1) navigate(-1)
         else navigate('/home')
-      }, 2000)
+      }, 1000)
 
-      // Background notifications
       notifyAdmins(
         'New Result Pending',
-        `${submitterName} submitted a result: ${finalResult.player1} ${finalResult.score1}-${finalResult.score2} ${finalResult.player2}`,
-        { type: 'result_submitted', resultId: finalResult.id, url: '/admin?tab=results' }
+        `${submitterName} submitted a result: ${finalResultObj.player1} ${finalResultObj.score1}-${finalResultObj.score2} ${finalResultObj.player2}`,
+        { type: 'result_submitted', resultId: finalResultObj.id, url: '/admin?tab=results' }
       ).catch(() => {})
 
       if (parseInt(formData.yourScore) > parseInt(formData.opponentScore)) {
