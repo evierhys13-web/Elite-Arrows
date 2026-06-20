@@ -438,91 +438,14 @@ export default function SubmitResult() {
     try {
       setIsSubmitting(true)
       setUploadProgress(0)
-      setSuccessMessage('Initializing submission...')
-      const results = [...allResults]
+      setSuccessMessage('Saving match details...')
+
       const resultId = Date.now().toString()
       const fixtureForResult = cupFixture || selectedFixture
+      const results = [...allResults]
 
-      let finalProofUrl = ''
-      let finalVideoUrl = ''
-
-      // Helper for resumable binary upload with progress tracking
-      const uploadWithProgress = (file, path, timeoutMs = 60000) => {
-        return new Promise((resolve, reject) => {
-          console.log(`Starting upload to ${path}...`)
-          setUploadProgress(1)
-          const storageRef = ref(storage, path)
-          const uploadTask = uploadBytesResumable(storageRef, file)
-
-          const timeout = setTimeout(() => {
-            uploadTask.cancel()
-            reject(new Error("Upload timed out. Please check your connection and try again."))
-          }, timeoutMs)
-
-          uploadTask.on('state_changed',
-            (snapshot) => {
-              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
-              setUploadProgress(Math.max(1, Math.round(progress)))
-            },
-            (error) => {
-              clearTimeout(timeout)
-              console.error("Upload task error:", error)
-              reject(error)
-            },
-            async () => {
-              clearTimeout(timeout)
-              try {
-                const url = await getDownloadURL(uploadTask.snapshot.ref)
-                resolve(url)
-              } catch (e) {
-                reject(e)
-              }
-            }
-          )
-        })
-      }
-
-      if (formData.proofImageBlob) {
-        setSuccessMessage('Uploading image proof...')
-        try {
-          finalProofUrl = await uploadWithProgress(formData.proofImageBlob, `results/${resultId}_proof.jpg`, 45000)
-        } catch (storageError) {
-          console.error("Binary upload failed, trying string upload...", storageError)
-          setUploadProgress(15)
-          setSuccessMessage('Retrying image upload (method 2)...')
-          try {
-            const storageRef = ref(storage, `results/${resultId}_proof.jpg`)
-            await uploadString(storageRef, formData.proofImage, 'data_url')
-            finalProofUrl = await getDownloadURL(storageRef)
-            setUploadProgress(100)
-          } catch (stringError) {
-            throw new Error("Both upload methods failed. Please check your internet connection.")
-          }
-        }
-      } else if (formData.proofImage) {
-        // Fallback for cases where only data URL is present
-        setSuccessMessage('Uploading image data...')
-        const storageRef = ref(storage, `results/${resultId}_proof.jpg`)
-        await uploadString(storageRef, formData.proofImage, 'data_url')
-        finalProofUrl = await getDownloadURL(storageRef)
-        setUploadProgress(100)
-      }
-
-      if (formData.proofVideoFile) {
-        setSuccessMessage('Uploading video proof...')
-        try {
-          finalVideoUrl = await uploadWithProgress(formData.proofVideoFile, `results/${resultId}_video.mp4`, 90000)
-        } catch (videoError) {
-          console.error("Video upload failed:", videoError)
-          setError('Video upload failed: ' + (videoError.message || 'Please try again.'))
-          setIsSubmitting(false)
-          return
-        }
-      }
-
-      setSuccessMessage('Preparing result records...')
-      console.log('Creating result documents...')
-      const createResultDoc = (s1, s2, idSuffix = '') => {
+      // Helper for creating the document structure
+      const createResultDoc = (s1, s2, idSuffix = '', uploadStatus = 'uploading') => {
         const resId = resultId + idSuffix
         const docData = {
           id: resId,
@@ -540,8 +463,8 @@ export default function SubmitResult() {
           submittedAt: new Date().toISOString(),
           bestOf: formData.bestOf,
           firstTo: formData.firstTo,
-          proofImage: finalProofUrl,
-          proofVideo: finalVideoUrl,
+          proofImage: '', // Will update after upload
+          proofVideo: '', // Will update after upload
           player1Stats: {
             '180s': parseInt(formData.your180s) || 0,
             highestCheckout: parseInt(formData.yourHighestCheckout) || 0,
@@ -552,7 +475,7 @@ export default function SubmitResult() {
             highestCheckout: parseInt(formData.opponentHighestCheckout) || 0,
             doubleSuccess: parseFloat(formData.opponentDoubleSuccess) || 0
           },
-          status: 'pending',
+          status: uploadStatus, // 'uploading' initially so admins know it's not ready
           submittedBy: user.id,
           ...(fixtureForResult?.id && { fixtureId: fixtureForResult.id }),
           ...(cupId && { cupId, matchId }),
@@ -570,29 +493,99 @@ export default function SubmitResult() {
           docData.player4Id = opp2User?.id || formData.opponent2
           docData.player4 = getDisplayName(opp2User, 'Opponent 2')
         }
-
         return docData
       }
 
-      setSuccessMessage('Saving match result to database...')
+      // STEP 1: Save match data to Firestore immediately
+      // This ensures if the upload hangs, the scores are already recorded
       let newResult;
+      let secondResult; // For doubles
       if (formData.gameType === 'Open League Doubles') {
-        const res1 = createResultDoc(formData.yourScore, formData.opponentScore, '_1')
-        const res2 = createResultDoc(formData.yourScore2, formData.opponentScore2, '_2')
-        await setDoc(doc(db, 'results', res1.id), res1)
-        await setDoc(doc(db, 'results', res2.id), res2)
-        results.push(res1, res2)
-        newResult = res1;
+        newResult = createResultDoc(formData.yourScore, formData.opponentScore, '_1')
+        secondResult = createResultDoc(formData.yourScore2, formData.opponentScore2, '_2')
+        await setDoc(doc(db, 'results', newResult.id), newResult)
+        await setDoc(doc(db, 'results', secondResult.id), secondResult)
       } else {
-        const res = createResultDoc(formData.yourScore, formData.opponentScore)
-        await setDoc(doc(db, 'results', res.id), res, { merge: true })
-        results.push(res)
-        newResult = res;
+        newResult = createResultDoc(formData.yourScore, formData.opponentScore)
+        await setDoc(doc(db, 'results', newResult.id), newResult)
       }
 
-      setSuccessMessage('Result data saved... Finalizing...')
+      setSuccessMessage('Details saved! Now uploading proof...')
+      setUploadProgress(5)
 
-      // If it's a highlight, also save to highlights collection
+      // STEP 2: Handle Uploads
+      let finalProofUrl = ''
+      let finalVideoUrl = ''
+
+      // Helper for resumable binary upload with progress tracking
+      const uploadWithProgress = (file, path, timeoutMs = 60000) => {
+        return new Promise((resolve, reject) => {
+          const storageRef = ref(storage, path)
+          const uploadTask = uploadBytesResumable(storageRef, file)
+          const timeout = setTimeout(() => {
+            uploadTask.cancel()
+            reject(new Error("Upload timed out. Please try again with a smaller file or better signal."))
+          }, timeoutMs)
+
+          uploadTask.on('state_changed',
+            (snapshot) => {
+              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+              setUploadProgress(Math.max(5, Math.round(progress)))
+            },
+            (error) => {
+              clearTimeout(timeout)
+              reject(error)
+            },
+            async () => {
+              clearTimeout(timeout)
+              try {
+                const url = await getDownloadURL(uploadTask.snapshot.ref)
+                resolve(url)
+              } catch (e) { reject(e) }
+            }
+          )
+        })
+      }
+
+      try {
+        if (formData.proofImageBlob) {
+          finalProofUrl = await uploadWithProgress(formData.proofImageBlob, `results/${resultId}_proof.jpg`, 45000)
+        } else if (formData.proofImage) {
+          const storageRef = ref(storage, `results/${resultId}_proof.jpg`)
+          await uploadString(storageRef, formData.proofImage, 'data_url')
+          finalProofUrl = await getDownloadURL(storageRef)
+          setUploadProgress(100)
+        }
+
+        if (formData.proofVideoFile) {
+          setSuccessMessage('Uploading video (this may take a moment)...')
+          finalVideoUrl = await uploadWithProgress(formData.proofVideoFile, `results/${resultId}_video.mp4`, 120000)
+        }
+      } catch (uploadError) {
+        console.error("Upload phase failed:", uploadError)
+        setError("Match details were saved, but the photo/video upload failed: " + uploadError.message + ". You can try re-uploading from your history.")
+        setIsSubmitting(false)
+        return
+      }
+
+      // STEP 3: Finalize Records (Update status to pending)
+      setSuccessMessage('Finalizing submission...')
+      const updates = {
+        proofImage: finalProofUrl,
+        proofVideo: finalVideoUrl,
+        status: 'pending' // Now ready for admin review
+      }
+
+      if (formData.gameType === 'Open League Doubles') {
+        await setDoc(doc(db, 'results', newResult.id), { ...newResult, ...updates }, { merge: true })
+        await setDoc(doc(db, 'results', secondResult.id), { ...secondResult, ...updates }, { merge: true })
+        results.push({ ...newResult, ...updates }, { ...secondResult, ...updates })
+      } else {
+        await setDoc(doc(db, 'results', newResult.id), { ...newResult, ...updates }, { merge: true })
+        results.push({ ...newResult, ...updates })
+      }
+
+      // STEP 4: Update Highlights, Fixtures, and UI
       if (formData.isHighlight || finalVideoUrl || formData.highlightUrl) {
         const highlightId = `hl_${resultId}`
         await setDoc(doc(db, 'highlights', highlightId), {
@@ -609,88 +602,54 @@ export default function SubmitResult() {
         })
       }
 
-      setSuccessMessage('Syncing with league data...')
-      console.log('Finalizing records...')
       try {
         updateResults(results)
-      } catch (storageError) {
-        console.log('Result saved to Firestore but local cache update failed:', storageError)
-      }
+      } catch (e) {}
 
-    const fixtureToUpdate = cupFixture || selectedFixture
-    if (fixtureToUpdate) {
-      setSuccessMessage('Updating fixture status...')
-      const updatedFixtures = [...getFixtures()]
-      const fixtureIndex = updatedFixtures.findIndex((fixture) => String(fixture.id) === String(fixtureToUpdate.id))
-      if (fixtureIndex !== -1) {
-        updatedFixtures[fixtureIndex] = {
-          ...updatedFixtures[fixtureIndex],
-          status: 'result_submitted',
-          resultId,
-          submittedResultId: resultId,
-          updatedAt: new Date().toISOString()
-        }
-        try {
+      const fixtureToUpdate = cupFixture || selectedFixture
+      if (fixtureToUpdate) {
+        const updatedFixtures = [...getFixtures()]
+        const fixtureIndex = updatedFixtures.findIndex((fixture) => String(fixture.id) === String(fixtureToUpdate.id))
+        if (fixtureIndex !== -1) {
+          updatedFixtures[fixtureIndex] = {
+            ...updatedFixtures[fixtureIndex],
+            status: 'result_submitted',
+            resultId,
+            updatedAt: new Date().toISOString()
+          }
           updateFixtures(updatedFixtures)
-        } catch (fixtureCacheError) {
-          console.log('Result saved to Firestore but local fixture cache update failed:', fixtureCacheError)
-        }
-        try {
-          await setDoc(
-            doc(db, 'fixtures', updatedFixtures[fixtureIndex].id.toString()),
-            updatedFixtures[fixtureIndex],
-            { merge: true }
-          )
-        } catch (e) {
-          console.log('Error updating fixture in Firestore:', e)
+          await setDoc(doc(db, 'fixtures', updatedFixtures[fixtureIndex].id.toString()), updatedFixtures[fixtureIndex], { merge: true })
         }
       }
-    }
 
-    const isWin = parseInt(formData.yourScore) > parseInt(formData.opponentScore)
-
-    setSuccessMessage('Refreshing standings...')
-    if (typeof triggerDataRefresh === 'function') {
-      triggerDataRefresh('results')
-      triggerDataRefresh('fixtures')
-    }
-
-    logResultSubmitted(formData.gameType, user.division)
-    setSuccessMessage('Success! Finalizing...')
-    setSubmitted(true)
-    setError('')
-    setSuccessMessage('Result submitted for admin approval.')
-    resetFormAfterSuccessfulSubmit(fixtureToUpdate?.id)
-
-    // Notify user and navigate back
-    showToast?.('Result submitted!', 'success')
-
-    console.log('Submission complete. Navigating...')
-    setTimeout(() => {
-      if (window.history.length > 1) {
-        navigate(-1)
-      } else {
-        navigate('/home')
+      if (typeof triggerDataRefresh === 'function') {
+        triggerDataRefresh('results')
+        triggerDataRefresh('fixtures')
       }
-    }, 2000)
 
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+      logResultSubmitted(formData.gameType, user.division)
+      setSubmitted(true)
+      setError('')
+      resetFormAfterSuccessfulSubmit(fixtureToUpdate?.id)
+      showToast?.('Result submitted!', 'success')
 
-    Promise.resolve().then(() => notifyAdmins(
-      'New Result Pending',
-      `${submitterName} submitted a result: ${newResult.player1} ${newResult.score1}-${newResult.score2} ${newResult.player2} (${newResult.gameType})`,
-      { type: 'result_submitted', resultId: newResult.id, url: '/admin?tab=results' }
-    )).catch((notificationError) => {
-      console.log('Result saved, but admin notification failed:', notificationError)
-    })
+      setTimeout(() => {
+        if (window.history.length > 1) navigate(-1)
+        else navigate('/home')
+      }, 2000)
 
-    if (isWin) {
-      Promise.resolve().then(() => addTokens(50)).catch((tokenError) => {
-        console.log('Result saved, but token award failed:', tokenError)
-      })
-    }
+      // Background notifications
+      notifyAdmins(
+        'New Result Pending',
+        `${submitterName} submitted a result: ${newResult.player1} ${newResult.score1}-${newResult.score2} ${newResult.player2}`,
+        { type: 'result_submitted', resultId: newResult.id, url: '/admin?tab=results' }
+      ).catch(() => {})
+
+      if (parseInt(formData.yourScore) > parseInt(formData.opponentScore)) {
+        addTokens(50).catch(() => {})
+      }
     } catch (e) {
-      console.error('FATAL: Error submitting result:', e.code, e.message)
+      console.error('FATAL: Error submitting result:', e)
       setError('Error submitting result: ' + (e.message || 'Please try again.'))
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } finally {
@@ -1264,26 +1223,47 @@ export default function SubmitResult() {
             type="submit"
             className={`btn ${submitted ? 'btn-success' : 'btn-primary'} btn-block`}
             disabled={submitted || isSubmitting}
-            style={{ padding: '18px', fontSize: '1.1rem', fontWeight: '700', borderRadius: '12px', position: 'relative', overflow: 'hidden' }}
+            style={{
+              padding: '20px',
+              fontSize: '1.1rem',
+              fontWeight: '700',
+              borderRadius: '12px',
+              position: 'relative',
+              overflow: 'hidden',
+              minHeight: '80px',
+              transition: 'all 0.3s ease'
+            }}
           >
             {isSubmitting ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div className="spinner" style={{ width: '20px', height: '20px' }}></div>
-                  <span style={{ fontSize: '0.9rem' }}>{uploadProgress > 0 ? `Uploading... ${uploadProgress}%` : (successMessage || 'Preparing Match Data...')}</span>
-                </div>
-                {(uploadProgress > 0 || isSubmitting) && (
-                  <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden' }}>
-                    <div style={{
-                      width: `${uploadProgress > 0 ? uploadProgress : 5}%`,
-                      height: '100%',
-                      background: 'var(--accent-cyan)',
-                      transition: 'width 0.3s'
-                    }}></div>
+                  <div className="spinner" style={{ width: '24px', height: '24px', border: '3px solid rgba(255,255,255,0.3)', borderTopColor: '#fff' }}></div>
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ fontSize: '1rem', lineHeight: 1.2 }}>{uploadProgress > 0 ? `Uploading Proof... ${uploadProgress}%` : 'Processing...'}</div>
+                    <div style={{ fontSize: '0.75rem', opacity: 0.8, fontWeight: '400', marginTop: '2px' }}>{successMessage || 'Please wait...'}</div>
                   </div>
-                )}
+                </div>
+                <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.15)', borderRadius: '3px', overflow: 'hidden' }}>
+                  <div style={{
+                    width: `${uploadProgress > 0 ? uploadProgress : 5}%`,
+                    height: '100%',
+                    background: 'var(--accent-cyan)',
+                    boxShadow: '0 0 10px var(--accent-cyan)',
+                    transition: 'width 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+                  }}></div>
+                </div>
               </div>
-            ) : submitted ? '✅ Submitted Successfully!' : '🚀 Submit for Approval'}
+            ) : submitted ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '1.5rem' }}>✅</span>
+                <span>Submitted Successfully!</span>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '1.2rem' }}>🚀</span>
+                <span>Submit Match Result</span>
+              </div>
+            )}
           </button>
 
           <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '15px' }}>
