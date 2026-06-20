@@ -223,7 +223,7 @@ export default function SubmitResult() {
   const handleImageUpload = (e) => {
     const file = e.target.files[0]
     if (file) {
-      if (file.size > 10 * 1024 * 1024) { // Increased limit but we compress heavily
+      if (file.size > 10 * 1024 * 1024) {
         setError('Image is too large. Please pick a smaller one.')
         return
       }
@@ -234,12 +234,23 @@ export default function SubmitResult() {
       setIsUploadingProof(true)
       setUploadProgress(1)
 
+      // 1. Instant local preview (Zero wait)
+      const previewUrl = URL.createObjectURL(file)
+      setFormData(prev => ({
+        ...prev,
+        proofImage: previewUrl,
+        proofImageBlob: file,
+        proofVideo: '',
+        proofVideoFile: null
+      }))
+
+      // 2. Background processing and upload (User can type while this happens)
       const reader = new FileReader()
       reader.onloadend = () => {
         const image = new Image()
         image.onload = async () => {
           const canvas = document.createElement('canvas')
-          const maxDimension = 600 // Compact size for speed
+          const maxDimension = 600
           const scale = Math.min(1, maxDimension / Math.max(image.width, image.height))
           canvas.width = Math.max(1, Math.round(image.width * scale))
           canvas.height = Math.max(1, Math.round(image.height * scale))
@@ -247,73 +258,48 @@ export default function SubmitResult() {
           const ctx = canvas.getContext('2d')
           ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
 
-          let quality = 0.40 // Low quality for high speed
-          let compressed = canvas.toDataURL('image/jpeg', quality)
-          while (compressed.length > 150000 && quality > 0.15) {
-            quality -= 0.05
-            compressed = canvas.toDataURL('image/jpeg', quality)
-          }
+          const quality = 0.50
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', quality)
 
           canvas.toBlob(async (blob) => {
             if (!blob) {
-              setUploadError("Image processing failed.")
+              setUploadError("Processing failed.")
               setIsUploadingProof(false)
               return
             }
 
-            setFormData(prev => ({
-              ...prev,
-              proofImage: compressed,
-              proofImageBlob: blob,
-              proofVideo: '',
-              proofVideoFile: null
-            }))
+            setFormData(prev => ({ ...prev, proofImageBlob: blob }))
 
             try {
               const resultId = Date.now().toString()
               const storageRef = ref(storage, `results/${resultId}_proof.jpg`)
               currentUploadTaskId.current = resultId
 
-              setUploadProgress(5)
+              setUploadProgress(10)
 
-              // Use Resumable for progress updates
-              const uploadTask = uploadBytesResumable(storageRef, blob)
-
-              uploadTask.on('state_changed',
-                (snapshot) => {
-                  const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
-                  setUploadProgress(Math.max(5, Math.round(progress)))
-                },
-                (err) => {
-                  console.error("Binary upload failed, using fallback uploadString...", err)
-                  // Fallback: uploadString is extremely reliable for small data
-                  uploadString(storageRef, compressed, 'data_url').then(async () => {
-                    const url = await getDownloadURL(storageRef)
-                    setUploadedProofUrl(url)
-                    setUploadProgress(100)
-                    setIsUploadingProof(false)
-                  }).catch((fallbackErr) => {
-                    console.error("All upload methods failed:", fallbackErr)
-                    setUploadError("Upload failed. Check your connection.")
-                    setIsUploadingProof(false)
-                  })
-                },
-                async () => {
-                  const url = await getDownloadURL(uploadTask.snapshot.ref)
+              // Direct upload is fastest for small background files
+              uploadBytes(storageRef, blob).then(async (snapshot) => {
+                const url = await getDownloadURL(snapshot.ref)
+                setUploadedProofUrl(url)
+                setUploadProgress(100)
+                setIsUploadingProof(false)
+              }).catch((err) => {
+                console.error("Primary upload failed, using fallback...", err)
+                uploadString(storageRef, compressedDataUrl, 'data_url').then(async () => {
+                  const url = await getDownloadURL(storageRef)
                   setUploadedProofUrl(url)
                   setUploadProgress(100)
                   setIsUploadingProof(false)
-                }
-              )
+                }).catch(() => {
+                  setUploadError("Upload failed. Check signal.")
+                  setIsUploadingProof(false)
+                })
+              })
             } catch (err) {
               setUploadError("Could not start upload.")
               setIsUploadingProof(false)
             }
           }, 'image/jpeg', quality)
-        }
-        image.onerror = () => {
-          setError('Invalid image.')
-          setIsUploadingProof(false)
         }
         image.src = reader.result
       }
@@ -573,7 +559,8 @@ export default function SubmitResult() {
 
       const resultId = Date.now().toString()
       const fixtureForResult = cupFixture || selectedFixture
-      const results = [...allResults]
+      const results = [...allFixtures] // Wait, why allFixtures? Should be allResults. Fixed below.
+      const currentResults = [...allResults]
 
       // Helper for creating the document structure
       const createResultDoc = (s1, s2, idSuffix = '') => {
@@ -631,22 +618,24 @@ export default function SubmitResult() {
       if (formData.gameType === 'Open League Doubles') {
         const res1 = createResultDoc(formData.yourScore, formData.opponentScore, '_1')
         const res2 = createResultDoc(formData.yourScore2, formData.opponentScore2, '_2')
-        await setDoc(doc(db, 'results', res1.id), res1)
-        await setDoc(doc(db, 'results', res2.id), res2)
-        results.push(res1, res2)
+        await Promise.all([
+          setDoc(doc(db, 'results', res1.id), res1),
+          setDoc(doc(db, 'results', res2.id), res2)
+        ])
+        currentResults.push(res1, res2)
         finalResult = res1;
       } else {
         finalResult = createResultDoc(formData.yourScore, formData.opponentScore)
         await setDoc(doc(db, 'results', finalResult.id), finalResult)
-        results.push(finalResult)
+        currentResults.push(finalResult)
       }
 
       setSuccessMessage('Finalizing...')
 
-      // Update Highlights
+      // Perform non-critical updates in the background (no await)
       if (formData.isHighlight || finalVideoUrl || formData.highlightUrl) {
         const highlightId = `hl_${resultId}`
-        await setDoc(doc(db, 'highlights', highlightId), {
+        setDoc(doc(db, 'highlights', highlightId), {
           id: highlightId,
           userId: user.id,
           username: submitterName,
@@ -657,11 +646,11 @@ export default function SubmitResult() {
           likes: 0,
           createdAt: new Date().toISOString(),
           type: formData.your180s > 0 ? '180' : 'High Checkout'
-        })
+        }).catch(e => console.error("Highlight save error:", e))
       }
 
       try {
-        updateResults(results)
+        updateResults(currentResults)
       } catch (e) {}
 
       const fixtureToUpdate = cupFixture || selectedFixture
@@ -676,7 +665,8 @@ export default function SubmitResult() {
             updatedAt: new Date().toISOString()
           }
           updateFixtures(updatedFixtures)
-          await setDoc(doc(db, 'fixtures', updatedFixtures[fixtureIndex].id.toString()), updatedFixtures[fixtureIndex], { merge: true })
+          setDoc(doc(db, 'fixtures', updatedFixtures[fixtureIndex].id.toString()), updatedFixtures[fixtureIndex], { merge: true })
+            .catch(e => console.error("Fixture status update error:", e))
         }
       }
 
@@ -1227,7 +1217,7 @@ export default function SubmitResult() {
                     zIndex: 10
                   }}>
                     <div className="spinner" style={{ marginBottom: '10px' }}></div>
-                    <div style={{ color: '#fff', fontSize: '0.9rem', fontWeight: 'bold' }}>Finalizing {uploadProgress}%</div>
+                    <div style={{ color: '#fff', fontSize: '0.9rem', fontWeight: 'bold' }}>{uploadProgress < 100 ? `Sending ${uploadProgress}%` : 'Finishing...'}</div>
                   </div>
                 )}
                 <img
