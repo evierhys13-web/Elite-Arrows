@@ -166,5 +166,48 @@ service cloud.firestore {
       allow create: if request.auth != null;
       allow update, delete: if isAdmin();
     }
+
+    match /openLeagueDuos/{duoId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    match /openLeagueSingles/{singlesId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    match /auditLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+    }
+
+    match /highlights/{highlightId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if isAdmin() || (request.auth != null && request.auth.uid == resource.data.userId);
+    }
+
+    match /practiceSessions/{sessionId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+
+    match /practiceLeaderboard/{entryId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null;
+    }
+
+    match /liveGames/{gameId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    match /gameInvites/{inviteId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
   }
 }
