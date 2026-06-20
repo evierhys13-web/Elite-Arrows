@@ -254,7 +254,7 @@ export default function SubmitResult() {
             compressed = canvas.toDataURL('image/jpeg', quality)
           }
 
-          canvas.toBlob(async (blob) => {
+      canvas.toBlob(async (blob) => {
             setFormData(prev => ({
               ...prev,
               proofImage: compressed,
@@ -263,30 +263,46 @@ export default function SubmitResult() {
               proofVideoFile: null
             }))
 
-            // Start Uploading Immediately
+            // Start Uploading Immediately using the most robust method for images
             try {
               const resultId = Date.now().toString()
               const path = `results/${resultId}_proof.jpg`
               const storageRef = ref(storage, path)
-              const uploadTask = uploadBytesResumable(storageRef, blob)
+
               currentUploadTaskId.current = resultId
 
-              uploadTask.on('state_changed',
-                (snapshot) => {
-                  const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
-                  setUploadProgress(Math.round(progress))
-                },
-                (err) => {
-                  console.error("Proof upload error:", err)
-                  setUploadError("Upload failed. Please try again.")
-                  setIsUploadingProof(false)
-                },
-                async () => {
-                  const url = await getDownloadURL(uploadTask.snapshot.ref)
-                  setUploadedProofUrl(url)
-                  setIsUploadingProof(false)
-                }
-              )
+              // uploadString with data_url is extremely reliable in WebViews
+              const uploadTask = uploadString(storageRef, compressed, 'data_url')
+
+              // uploadString doesn't give progress like resumable, so we simulate it
+              setUploadProgress(20)
+
+              uploadTask.then(async (snapshot) => {
+                setUploadProgress(90)
+                const url = await getDownloadURL(storageRef)
+                setUploadedProofUrl(url)
+                setUploadProgress(100)
+                setIsUploadingProof(false)
+              }).catch((err) => {
+                console.error("Proof upload error (string):", err)
+                // Fallback to binary if string fails for some reason
+                const binaryTask = uploadBytesResumable(storageRef, blob)
+                binaryTask.on('state_changed',
+                  (snap) => {
+                    const p = (snap.bytesTransferred / snap.totalBytes) * 100
+                    setUploadProgress(Math.round(p))
+                  },
+                  (binErr) => {
+                    setUploadError("Upload failed. Please try another photo.")
+                    setIsUploadingProof(false)
+                  },
+                  async () => {
+                    const url = await getDownloadURL(binaryTask.snapshot.ref)
+                    setUploadedProofUrl(url)
+                    setIsUploadingProof(false)
+                  }
+                )
+              })
             } catch (err) {
               setUploadError("Could not start upload.")
               setIsUploadingProof(false)
@@ -507,13 +523,19 @@ export default function SubmitResult() {
       // If we are still uploading the proof in the background, we need to wait for it.
       if (isUploadingProof) {
         setSuccessMessage('Still uploading proof... please wait.')
-        // Poll for completion
+        // Poll for completion (max 30 seconds wait here)
+        let waitCount = 0
         const checkUpload = async () => {
-          return new Promise((resolve) => {
+          return new Promise((resolve, reject) => {
             const interval = setInterval(() => {
+              waitCount++
               if (!isUploadingProof) {
                 clearInterval(interval)
                 resolve()
+              }
+              if (waitCount > 60) { // 30 seconds
+                clearInterval(interval)
+                reject(new Error("Upload is taking too long. Please check your connection."))
               }
             }, 500)
           })
@@ -525,8 +547,26 @@ export default function SubmitResult() {
         throw new Error(uploadError)
       }
 
-      if (!proofUrl && !proofVideoUrl) {
-        throw new Error("Proof upload failed or was not completed. Please re-select your photo/video.")
+      // FINAL FALLBACK: If background upload didn't finish or never started but we have data
+      let finalProofUrl = proofUrl
+      let finalVideoUrl = proofVideoUrl
+
+      if (!finalProofUrl && !finalVideoUrl) {
+        if (formData.proofImage) {
+          setSuccessMessage('Finalizing image upload...')
+          const resId = Date.now().toString()
+          const storageRef = ref(storage, `results/${resId}_proof.jpg`)
+          await uploadString(storageRef, formData.proofImage, 'data_url')
+          finalProofUrl = await getDownloadURL(storageRef)
+        } else if (formData.proofVideoFile) {
+          setSuccessMessage('Finalizing video upload...')
+          const resId = Date.now().toString()
+          const storageRef = ref(storage, `results/${resId}_video.mp4`)
+          const snapshot = await uploadBytes(storageRef, formData.proofVideoFile)
+          finalVideoUrl = await getDownloadURL(snapshot.ref)
+        } else {
+          throw new Error("Proof of result is required. Please select a photo or video.")
+        }
       }
 
       setSuccessMessage('Saving match to database...')
@@ -554,8 +594,8 @@ export default function SubmitResult() {
           submittedAt: new Date().toISOString(),
           bestOf: formData.bestOf,
           firstTo: formData.firstTo,
-          proofImage: proofUrl || '',
-          proofVideo: proofVideoUrl || '',
+          proofImage: finalProofUrl || '',
+          proofVideo: finalVideoUrl || '',
           player1Stats: {
             '180s': parseInt(formData.your180s) || 0,
             highestCheckout: parseInt(formData.yourHighestCheckout) || 0,
@@ -604,15 +644,15 @@ export default function SubmitResult() {
       setSuccessMessage('Finalizing...')
 
       // Update Highlights
-      if (formData.isHighlight || proofVideoUrl || formData.highlightUrl) {
+      if (formData.isHighlight || finalVideoUrl || formData.highlightUrl) {
         const highlightId = `hl_${resultId}`
         await setDoc(doc(db, 'highlights', highlightId), {
           id: highlightId,
           userId: user.id,
           username: submitterName,
           title: formData.highlightTitle || `${formData.gameType} Highlight vs ${opponentName}`,
-          videoUrl: proofVideoUrl || formData.highlightUrl || '',
-          imageUrl: proofUrl || '',
+          videoUrl: finalVideoUrl || formData.highlightUrl || '',
+          imageUrl: finalProofUrl || '',
           resultId: resultId,
           likes: 0,
           createdAt: new Date().toISOString(),
