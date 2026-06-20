@@ -226,7 +226,7 @@ export default function SubmitResult() {
         const image = new Image()
         image.onload = () => {
           const canvas = document.createElement('canvas')
-          const maxDimension = 1200
+          const maxDimension = 1000
           const scale = Math.min(1, maxDimension / Math.max(image.width, image.height))
           canvas.width = Math.max(1, Math.round(image.width * scale))
           canvas.height = Math.max(1, Math.round(image.height * scale))
@@ -234,15 +234,15 @@ export default function SubmitResult() {
           const ctx = canvas.getContext('2d')
           ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
 
-          let quality = 0.75
+          let quality = 0.70
           let compressed = canvas.toDataURL('image/jpeg', quality)
-          while (compressed.length > 850000 && quality > 0.35) {
+          while (compressed.length > 400000 && quality > 0.30) {
             quality -= 0.1
             compressed = canvas.toDataURL('image/jpeg', quality)
           }
 
-          if (compressed.length > 950000) {
-            setError('Image is still too large. Please upload a smaller screenshot/photo.')
+          if (compressed.length > 500000) {
+            setError('Image is still quite large. Please try a screenshot instead of a high-res photo.')
             return
           }
 
@@ -446,91 +446,75 @@ export default function SubmitResult() {
       let finalProofUrl = ''
       let finalVideoUrl = ''
 
-      if (formData.proofImage) {
-        setSuccessMessage('Uploading image proof...')
-        console.log('Uploading image using uploadString...')
-        setUploadProgress(10)
-        try {
-          const storageRef = ref(storage, `results/${resultId}_proof.jpg`)
+      // Helper for resumable binary upload with progress tracking
+      const uploadWithProgress = (file, path, timeoutMs = 60000) => {
+        return new Promise((resolve, reject) => {
+          console.log(`Starting upload to ${path}...`)
+          setUploadProgress(1)
+          const storageRef = ref(storage, path)
+          const uploadTask = uploadBytesResumable(storageRef, file)
 
-          // Wrap in a promise to allow for a timeout
-          await new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => reject(new Error("Image upload timed out after 40 seconds")), 40000)
-            uploadString(storageRef, formData.proofImage, 'data_url')
-              .then(() => {
-                clearTimeout(timeout)
-                resolve()
-              })
-              .catch((err) => {
-                clearTimeout(timeout)
-                reject(err)
-              })
-          })
+          const timeout = setTimeout(() => {
+            uploadTask.cancel()
+            reject(new Error("Upload timed out. Please check your connection and try again."))
+          }, timeoutMs)
 
-          setSuccessMessage('Finalizing image data...')
-          finalProofUrl = await new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => reject(new Error("Getting image URL timed out")), 20000)
-            getDownloadURL(storageRef)
-              .then((url) => {
-                clearTimeout(timeout)
+          uploadTask.on('state_changed',
+            (snapshot) => {
+              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+              setUploadProgress(Math.max(1, Math.round(progress)))
+            },
+            (error) => {
+              clearTimeout(timeout)
+              console.error("Upload task error:", error)
+              reject(error)
+            },
+            async () => {
+              clearTimeout(timeout)
+              try {
+                const url = await getDownloadURL(uploadTask.snapshot.ref)
                 resolve(url)
-              })
-              .catch((err) => {
-                clearTimeout(timeout)
-                reject(err)
-              })
-          })
-          setUploadProgress(100)
-          console.log('Image upload successful:', finalProofUrl)
+              } catch (e) {
+                reject(e)
+              }
+            }
+          )
+        })
+      }
+
+      if (formData.proofImageBlob) {
+        setSuccessMessage('Uploading image proof...')
+        try {
+          finalProofUrl = await uploadWithProgress(formData.proofImageBlob, `results/${resultId}_proof.jpg`, 45000)
         } catch (storageError) {
-          console.error("Image upload failed:", storageError)
-          // Fallback to uploadBytes only if we have a blob and string failed
-          if (formData.proofImageBlob) {
-            console.log('Trying uploadBytes fallback...')
-            setUploadProgress(15)
+          console.error("Binary upload failed, trying string upload...", storageError)
+          setUploadProgress(15)
+          setSuccessMessage('Retrying image upload (method 2)...')
+          try {
             const storageRef = ref(storage, `results/${resultId}_proof.jpg`)
-            const snapshot = await uploadBytes(storageRef, formData.proofImageBlob)
-            finalProofUrl = await getDownloadURL(snapshot.ref)
+            await uploadString(storageRef, formData.proofImage, 'data_url')
+            finalProofUrl = await getDownloadURL(storageRef)
             setUploadProgress(100)
-          } else {
-            throw storageError
+          } catch (stringError) {
+            throw new Error("Both upload methods failed. Please check your internet connection.")
           }
         }
+      } else if (formData.proofImage) {
+        // Fallback for cases where only data URL is present
+        setSuccessMessage('Uploading image data...')
+        const storageRef = ref(storage, `results/${resultId}_proof.jpg`)
+        await uploadString(storageRef, formData.proofImage, 'data_url')
+        finalProofUrl = await getDownloadURL(storageRef)
+        setUploadProgress(100)
       }
 
       if (formData.proofVideoFile) {
-        setSuccessMessage('Uploading video proof (this may take a minute)...')
-        console.log('Uploading video file using uploadBytesResumable...')
+        setSuccessMessage('Uploading video proof...')
         try {
-          finalVideoUrl = await new Promise((resolve, reject) => {
-            const storageRef = ref(storage, `results/${resultId}_video.mp4`)
-            const uploadTask = uploadBytesResumable(storageRef, formData.proofVideoFile)
-
-            const timeout = setTimeout(() => {
-              uploadTask.cancel()
-              reject(new Error("Upload timed out after 60 seconds"))
-            }, 60000)
-
-            uploadTask.on('state_changed',
-              (snapshot) => {
-                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
-                setUploadProgress(Math.max(1, Math.round(progress)))
-              },
-              (error) => {
-                clearTimeout(timeout)
-                console.error("Video upload task error:", error)
-                reject(error)
-              },
-              async () => {
-                clearTimeout(timeout)
-                const url = await getDownloadURL(uploadTask.snapshot.ref)
-                resolve(url)
-              }
-            )
-          })
+          finalVideoUrl = await uploadWithProgress(formData.proofVideoFile, `results/${resultId}_video.mp4`, 90000)
         } catch (videoError) {
-          console.error("Video upload failed details:", videoError)
-          setError('Video upload failed: ' + (videoError.message || 'Please try again or use a smaller file.'))
+          console.error("Video upload failed:", videoError)
+          setError('Video upload failed: ' + (videoError.message || 'Please try again.'))
           setIsSubmitting(false)
           return
         }
