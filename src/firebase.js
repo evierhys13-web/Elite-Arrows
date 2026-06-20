@@ -9,7 +9,7 @@ import { getStorage, ref, uploadString, uploadBytes, uploadBytesResumable, getDo
 export const FieldValue = deleteFieldFirestore
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBLuRvmE1UgKvYFw7K0utT11ljjrf52vlA",
+  apiKey: "AIzaSyBRAM_91550mH8OUGiVlaL1ewWjrCWhgkY",
   authDomain: "elitearrowsapp.firebaseapp.com",
   projectId: "elitearrowsapp",
   storageBucket: "elitearrowsapp.firebasestorage.app",

@@ -2,7 +2,7 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { getMessaging } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js'
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBLuRvmE1UgKvYFw7K0utT11ljjrf52vlA",
+  apiKey: "AIzaSyBRAM_91550mH8OUGiVlaL1ewWjrCWhgkY",
   authDomain: "elitearrowsapp.firebaseapp.com",
   projectId: "elitearrowsapp",
   storageBucket: "elitearrowsapp.firebasestorage.app",

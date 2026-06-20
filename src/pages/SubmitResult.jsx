@@ -448,17 +448,21 @@ export default function SubmitResult() {
       // Helper for resumable binary upload with progress tracking
       const uploadWithProgress = (file, path) => {
         return new Promise((resolve, reject) => {
+          setUploadProgress(1)
           const storageRef = ref(storage, path)
           const uploadTask = uploadBytesResumable(storageRef, file)
 
           uploadTask.on('state_changed',
             (snapshot) => {
               const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
-              setUploadProgress(Math.round(progress))
+              setUploadProgress(Math.max(1, Math.round(progress)))
             },
-            (error) => reject(error),
+            (error) => {
+              console.error("Upload error details:", error);
+              reject(error);
+            },
             () => {
-              getDownloadURL(uploadTask.snapshot.ref).then(resolve)
+              getDownloadURL(uploadTask.snapshot.ref).then(resolve).catch(reject)
             }
           )
         })
@@ -470,14 +474,18 @@ export default function SubmitResult() {
           finalProofUrl = await uploadWithProgress(formData.proofImageBlob, `results/${resultId}_proof.jpg`)
         } catch (storageError) {
           console.error("Storage binary upload failed, falling back to base64 string upload", storageError)
+          setUploadProgress(10)
           const storageRef = ref(storage, `results/${resultId}_proof.jpg`)
           await uploadString(storageRef, formData.proofImage, 'data_url')
           finalProofUrl = await getDownloadURL(storageRef)
+          setUploadProgress(100)
         }
       } else if (formData.proofImage) {
+        setUploadProgress(10)
         const storageRef = ref(storage, `results/${resultId}_proof.jpg`)
         await uploadString(storageRef, formData.proofImage, 'data_url')
         finalProofUrl = await getDownloadURL(storageRef)
+        setUploadProgress(100)
       }
 
       if (formData.proofVideoFile) {
@@ -485,8 +493,8 @@ export default function SubmitResult() {
         try {
           finalVideoUrl = await uploadWithProgress(formData.proofVideoFile, `results/${resultId}_video.mp4`)
         } catch (videoError) {
-          console.error("Video upload failed:", videoError)
-          setError('Video upload failed. Please try again or use a smaller file.')
+          console.error("Video upload failed details:", videoError)
+          setError('Video upload failed: ' + (videoError.message || 'Please try again or use a smaller file.'))
           setIsSubmitting(false)
           return
         }
@@ -544,19 +552,23 @@ export default function SubmitResult() {
         return docData
       }
 
+      setSuccessMessage('Saving match result to database...')
+      let newResult;
       if (formData.gameType === 'Open League Doubles') {
         const res1 = createResultDoc(formData.yourScore, formData.opponentScore, '_1')
         const res2 = createResultDoc(formData.yourScore2, formData.opponentScore2, '_2')
         await setDoc(doc(db, 'results', res1.id), res1)
         await setDoc(doc(db, 'results', res2.id), res2)
         results.push(res1, res2)
+        newResult = res1;
       } else {
         const res = createResultDoc(formData.yourScore, formData.opponentScore)
         await setDoc(doc(db, 'results', res.id), res, { merge: true })
         results.push(res)
+        newResult = res;
       }
 
-      setSuccessMessage('Result data saved... Finalizing upload...')
+      setSuccessMessage('Result data saved... Finalizing...')
 
       // If it's a highlight, also save to highlights collection
       if (formData.isHighlight || finalVideoUrl || formData.highlightUrl) {
@@ -575,7 +587,6 @@ export default function SubmitResult() {
         })
       }
 
-      results.push(newResult)
       try {
         updateResults(results)
       } catch (storageError) {
@@ -653,6 +664,7 @@ export default function SubmitResult() {
     } catch (e) {
       console.error('FATAL: Error submitting result:', e.code, e.message)
       setError('Error submitting result: ' + (e.message || 'Please try again.'))
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     } finally {
       setIsSubmitting(false)
     }
