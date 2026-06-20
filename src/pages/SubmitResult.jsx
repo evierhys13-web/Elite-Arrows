@@ -244,7 +244,7 @@ export default function SubmitResult() {
         proofVideoFile: null
       }))
 
-      // 2. Background processing and upload (User can type while this happens)
+      // 2. Background processing and upload
       const reader = new FileReader()
       reader.onloadend = () => {
         const image = new Image()
@@ -261,32 +261,33 @@ export default function SubmitResult() {
           const quality = 0.50
           const compressedDataUrl = canvas.toDataURL('image/jpeg', quality)
 
-          canvas.toBlob(async (blob) => {
-            if (!blob) {
-              setUploadError("Processing failed.")
+          setFormData(prev => ({ ...prev, proofImage: compressedDataUrl }))
+
+          try {
+            const resultId = Date.now().toString()
+            const storageRef = ref(storage, `results/${resultId}_proof.jpg`)
+            currentUploadTaskId.current = resultId
+
+            setUploadProgress(10)
+
+            // Use uploadString directly (skipping Blob conversion for speed)
+            uploadString(storageRef, compressedDataUrl, 'data_url').then(async () => {
+              setUploadProgress(90)
+              const url = await getDownloadURL(storageRef)
+              setUploadedProofUrl(url)
+              setUploadProgress(100)
               setIsUploadingProof(false)
-              return
-            }
-
-            setFormData(prev => ({ ...prev, proofImageBlob: blob }))
-
-            try {
-              const resultId = Date.now().toString()
-              const storageRef = ref(storage, `results/${resultId}_proof.jpg`)
-              currentUploadTaskId.current = resultId
-
-              setUploadProgress(10)
-
-              // Direct upload is fastest for small background files
-              uploadBytes(storageRef, blob).then(async (snapshot) => {
-                const url = await getDownloadURL(snapshot.ref)
-                setUploadedProofUrl(url)
-                setUploadProgress(100)
-                setIsUploadingProof(false)
-              }).catch((err) => {
-                console.error("Primary upload failed, using fallback...", err)
-                uploadString(storageRef, compressedDataUrl, 'data_url').then(async () => {
-                  const url = await getDownloadURL(storageRef)
+            }).catch((err) => {
+              console.error("Background upload failed:", err)
+              // Fallback to binary if needed
+              canvas.toBlob((blob) => {
+                if (!blob) {
+                  setUploadError("Processing failed.")
+                  setIsUploadingProof(false)
+                  return
+                }
+                uploadBytes(storageRef, blob).then(async (snapshot) => {
+                  const url = await getDownloadURL(snapshot.ref)
                   setUploadedProofUrl(url)
                   setUploadProgress(100)
                   setIsUploadingProof(false)
@@ -294,12 +295,12 @@ export default function SubmitResult() {
                   setUploadError("Upload failed. Check signal.")
                   setIsUploadingProof(false)
                 })
-              })
-            } catch (err) {
-              setUploadError("Could not start upload.")
-              setIsUploadingProof(false)
-            }
-          }, 'image/jpeg', quality)
+              }, 'image/jpeg', quality)
+            })
+          } catch (err) {
+            setUploadError("Could not start upload.")
+            setIsUploadingProof(false)
+          }
         }
         image.src = reader.result
       }
@@ -559,7 +560,6 @@ export default function SubmitResult() {
 
       const resultId = Date.now().toString()
       const fixtureForResult = cupFixture || selectedFixture
-      const results = [...allFixtures] // Wait, why allFixtures? Should be allResults. Fixed below.
       const currentResults = [...allResults]
 
       // Helper for creating the document structure
@@ -1217,7 +1217,7 @@ export default function SubmitResult() {
                     zIndex: 10
                   }}>
                     <div className="spinner" style={{ marginBottom: '10px' }}></div>
-                    <div style={{ color: '#fff', fontSize: '0.9rem', fontWeight: 'bold' }}>{uploadProgress < 100 ? `Sending ${uploadProgress}%` : 'Finishing...'}</div>
+                    <div style={{ color: '#fff', fontSize: '0.9rem', fontWeight: 'bold' }}>{uploadProgress < 100 ? `Sending ${uploadProgress}%` : 'Nearly Done...'}</div>
                   </div>
                 )}
                 <img
