@@ -438,6 +438,7 @@ export default function SubmitResult() {
     try {
       setIsSubmitting(true)
       setUploadProgress(0)
+      setSuccessMessage('Initializing submission...')
       const results = [...allResults]
       const resultId = Date.now().toString()
       const fixtureForResult = cupFixture || selectedFixture
@@ -448,6 +449,7 @@ export default function SubmitResult() {
       // Helper for resumable binary upload with progress tracking
       const uploadWithProgress = (file, path) => {
         return new Promise((resolve, reject) => {
+          console.log(`Starting upload to ${path}...`)
           setUploadProgress(1)
           const storageRef = ref(storage, path)
           const uploadTask = uploadBytesResumable(storageRef, file)
@@ -470,11 +472,13 @@ export default function SubmitResult() {
 
       if (formData.proofImageBlob) {
         setSuccessMessage('Uploading image proof...')
+        console.log('Uploading image blob...')
         try {
           finalProofUrl = await uploadWithProgress(formData.proofImageBlob, `results/${resultId}_proof.jpg`)
         } catch (storageError) {
           console.error("Storage binary upload failed, falling back to base64 string upload", storageError)
           setUploadProgress(10)
+          setSuccessMessage('Retrying image upload (alternative method)...')
           const storageRef = ref(storage, `results/${resultId}_proof.jpg`)
           await uploadString(storageRef, formData.proofImage, 'data_url')
           finalProofUrl = await getDownloadURL(storageRef)
@@ -482,6 +486,8 @@ export default function SubmitResult() {
         }
       } else if (formData.proofImage) {
         setUploadProgress(10)
+        setSuccessMessage('Uploading image data...')
+        console.log('Uploading image string...')
         const storageRef = ref(storage, `results/${resultId}_proof.jpg`)
         await uploadString(storageRef, formData.proofImage, 'data_url')
         finalProofUrl = await getDownloadURL(storageRef)
@@ -489,7 +495,8 @@ export default function SubmitResult() {
       }
 
       if (formData.proofVideoFile) {
-        setSuccessMessage('Uploading video proof...')
+        setSuccessMessage('Uploading video proof (this may take a minute)...')
+        console.log('Uploading video file...')
         try {
           finalVideoUrl = await uploadWithProgress(formData.proofVideoFile, `results/${resultId}_video.mp4`)
         } catch (videoError) {
@@ -500,6 +507,8 @@ export default function SubmitResult() {
         }
       }
 
+      setSuccessMessage('Preparing result records...')
+      console.log('Creating result documents...')
       const createResultDoc = (s1, s2, idSuffix = '') => {
         const resId = resultId + idSuffix
         const docData = {
@@ -587,6 +596,8 @@ export default function SubmitResult() {
         })
       }
 
+      setSuccessMessage('Syncing with league data...')
+      console.log('Finalizing records...')
       try {
         updateResults(results)
       } catch (storageError) {
@@ -595,6 +606,7 @@ export default function SubmitResult() {
 
     const fixtureToUpdate = cupFixture || selectedFixture
     if (fixtureToUpdate) {
+      setSuccessMessage('Updating fixture status...')
       const updatedFixtures = [...getFixtures()]
       const fixtureIndex = updatedFixtures.findIndex((fixture) => String(fixture.id) === String(fixtureToUpdate.id))
       if (fixtureIndex !== -1) {
@@ -624,12 +636,14 @@ export default function SubmitResult() {
 
     const isWin = parseInt(formData.yourScore) > parseInt(formData.opponentScore)
 
+    setSuccessMessage('Refreshing standings...')
     if (typeof triggerDataRefresh === 'function') {
       triggerDataRefresh('results')
       triggerDataRefresh('fixtures')
     }
 
     logResultSubmitted(formData.gameType, user.division)
+    setSuccessMessage('Success! Finalizing...')
     setSubmitted(true)
     setError('')
     setSuccessMessage('Result submitted for admin approval.')
@@ -638,6 +652,7 @@ export default function SubmitResult() {
     // Notify user and navigate back
     showToast?.('Result submitted!', 'success')
 
+    console.log('Submission complete. Navigating...')
     setTimeout(() => {
       if (window.history.length > 1) {
         navigate(-1)
@@ -1242,11 +1257,16 @@ export default function SubmitResult() {
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div className="spinner" style={{ width: '20px', height: '20px' }}></div>
-                  <span>{uploadProgress > 0 ? `Uploading... ${uploadProgress}%` : 'Preparing...'}</span>
+                  <span style={{ fontSize: '0.9rem' }}>{uploadProgress > 0 ? `Uploading... ${uploadProgress}%` : (successMessage || 'Preparing Match Data...')}</span>
                 </div>
-                {uploadProgress > 0 && (
+                {(uploadProgress > 0 || isSubmitting) && (
                   <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden' }}>
-                    <div style={{ width: `${uploadProgress}%`, height: '100%', background: 'var(--accent-cyan)', transition: 'width 0.3s' }}></div>
+                    <div style={{
+                      width: `${uploadProgress > 0 ? uploadProgress : 5}%`,
+                      height: '100%',
+                      background: 'var(--accent-cyan)',
+                      transition: 'width 0.3s'
+                    }}></div>
                   </div>
                 )}
               </div>
