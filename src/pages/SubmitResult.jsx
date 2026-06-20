@@ -247,7 +247,7 @@ export default function SubmitResult() {
           const ctx = canvas.getContext('2d')
           ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
 
-          const quality = 0.50
+          let quality = 0.50
           let compressedDataUrl = canvas.toDataURL('image/jpeg', quality)
 
           // Ensure it's under 400KB to safely fit in Firestore 1MB document
