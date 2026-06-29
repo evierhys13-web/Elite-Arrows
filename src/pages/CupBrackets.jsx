@@ -59,6 +59,8 @@ export default function CupBracket() {
     )
   }
 
+  const safeCupMatches = Array.isArray(cup?.matches) ? cup.matches : []
+
   const totalRounds = safeCupMatches.length > 0
     ? Math.max(...safeCupMatches.filter(m => m && m.round).map(m => m.round), 1)
     : 1
@@ -116,8 +118,6 @@ export default function CupBracket() {
 
     return fixtureScores
   }
-
-  const safeCupMatches = Array.isArray(cup?.matches) ? cup.matches : []
 
   const rounds = []
   for (let i = 1; i <= totalRounds; i++) {
