@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { db, doc, getDoc, setDoc, query, collection, where, getDocs, writeBatch } from '../firebase'
@@ -136,7 +136,7 @@ export default function CupBracket() {
   })
 
   const groupStandings = useMemo(() => {
-    if (!cup.matches) return { sortedStandings: {}, bestThirdIds: [], sortedThirdPlaced: [], numThirdNeeded: 0 }
+    if (!cup?.matches) return { sortedStandings: {}, bestThirdIds: [], sortedThirdPlaced: [], numThirdNeeded: 0 }
     const standings = {}
 
     cup.matches.filter(m => m.stage === 'groups').forEach(match => {
@@ -188,7 +188,7 @@ export default function CupBracket() {
     // Calculate how many 3rd placed advance
     const numGroups = Object.keys(sortedStandings).length
     const totalTop2 = numGroups * 2
-    const knockoutSize = Math.pow(2, Math.ceil(Math.log2(totalTop2)))
+    const knockoutSize = totalTop2 > 0 ? Math.pow(2, Math.ceil(Math.log2(totalTop2))) : 0
     const numThirdNeeded = knockoutSize - totalTop2
 
     const sortedThirdPlaced = thirdPlaced
@@ -199,11 +199,19 @@ export default function CupBracket() {
       .map(p => p.id)
 
     return { sortedStandings, bestThirdIds, sortedThirdPlaced, numThirdNeeded }
-  }, [cup.matches, results, fixtures])
+  }, [cup?.matches, results, fixtures])
 
   const { sortedStandings, bestThirdIds, sortedThirdPlaced, numThirdNeeded } = groupStandings
 
-  const [activeStage, setActiveStage] = useState(cup.type === 'knockout' ? 'knockout' : 'groups')
+  const activeStageSetRef = useRef(false)
+  const [activeStage, setActiveStage] = useState('groups')
+
+  useEffect(() => {
+    if (cup && !activeStageSetRef.current) {
+      setActiveStage(cup.type === 'knockout' ? 'knockout' : 'groups')
+      activeStageSetRef.current = true
+    }
+  }, [cup])
 
 
   const handleSwapPlayer = async () => {
@@ -291,20 +299,20 @@ export default function CupBracket() {
         textAlign: 'center', 
         marginBottom: '30px',
         padding: '30px',
-        background: cup.type === 'world_cup'
+        background: (cup.type || 'tournament') === 'world_cup'
           ? 'linear-gradient(135deg, #1e1b4b, #312e81)'
           : 'linear-gradient(135deg, #0f172a, #1e293b)',
         borderRadius: '24px',
-        border: cup.type === 'world_cup'
+        border: (cup.type || 'tournament') === 'world_cup'
           ? '2px solid rgba(251, 191, 36, 0.3)'
           : '1px solid rgba(56, 189, 248, 0.2)',
-        boxShadow: cup.type === 'world_cup'
+        boxShadow: (cup.type || 'tournament') === 'world_cup'
           ? '0 20px 50px rgba(0,0,0,0.5), inset 0 0 20px rgba(251, 191, 36, 0.1)'
           : '0 20px 50px rgba(0,0,0,0.3)',
         position: 'relative',
         overflow: 'hidden'
       }}>
-        {cup.type === 'world_cup' && (
+        {(cup.type || 'tournament') === 'world_cup' && (
           <div style={{
             position: 'absolute',
             top: '-20px',
@@ -315,7 +323,7 @@ export default function CupBracket() {
             pointerEvents: 'none'
           }}>🏆</div>
         )}
-        <h1 className={cup.type === 'world_cup' ? "text-gradient-gold" : "text-gradient"} style={{
+        <h1 className={(cup.type || 'tournament') === 'world_cup' ? "text-gradient-gold" : "text-gradient"} style={{
           margin: '0 0 12px 0',
           fontSize: '3rem',
           fontWeight: 900,
@@ -332,13 +340,13 @@ export default function CupBracket() {
             padding: '8px 20px',
             borderRadius: '30px',
             fontSize: '0.85rem',
-            color: cup.type === 'world_cup' ? '#fbbf24' : 'var(--success)',
+            color: (cup.type || 'tournament') === 'world_cup' ? '#fbbf24' : 'var(--success)',
             fontWeight: 800,
             textTransform: 'uppercase',
-            background: cup.type === 'world_cup' ? 'rgba(251, 191, 36, 0.1)' : 'rgba(34, 197, 94, 0.1)',
-            border: cup.type === 'world_cup' ? '1px solid rgba(251, 191, 36, 0.3)' : '1px solid rgba(34, 197, 94, 0.3)'
+            background: (cup.type || 'tournament') === 'world_cup' ? 'rgba(251, 191, 36, 0.1)' : 'rgba(34, 197, 94, 0.1)',
+            border: (cup.type || 'tournament') === 'world_cup' ? '1px solid rgba(251, 191, 36, 0.3)' : '1px solid rgba(34, 197, 94, 0.3)'
           }}>
-             {cup.type === 'world_cup' ? '🏆 WORLD CUP FORMAT' : (cup.type || 'tournament').replace('_', ' ')}
+             {(cup.type || 'tournament') === 'world_cup' ? '🏆 WORLD CUP FORMAT' : (cup.type || 'tournament').replace('_', ' ')}
           </div>
         </div>
       </div>
@@ -372,7 +380,7 @@ export default function CupBracket() {
           >
             Group Stages
           </button>
-          {cup.type === 'world_cup' && (
+          {(cup.type === 'world_cup' || cup.type === 'knockout') && (
             <button
               className={`division-tab ${activeStage === 'knockout' ? 'active' : ''}`}
               onClick={() => setActiveStage('knockout')}
