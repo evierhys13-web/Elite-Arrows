@@ -438,7 +438,8 @@ export default function CupBracket() {
             </div>
           ))}
         </div>
-      )}
+      </div>
+    )}
 
       {activeStage === 'knockout' && (
         <div className="cup-bracket-scroll animate-fade-in" style={{
@@ -629,6 +630,7 @@ export default function CupBracket() {
           })}
         </div>
       </div>
+    )}
 
       <div className="card" style={{ marginTop: '20px' }}>
         <h3 className="card-title">Upcoming Matches</h3>
