@@ -24,7 +24,8 @@ export default function CupFixtures() {
 
   const getPlayerName = (id) => allUsers.find(u => u.id === id)?.username || 'Unknown'
 
-  const getRoundName = (round, totalRounds) => {
+  const getRoundName = (round, totalRounds, fixture = null) => {
+    if (fixture?.stage === 'groups') return `Group ${fixture.group}`
     if (round === totalRounds) return 'Final'
     if (round === totalRounds - 1) return 'Semi-Final'
     if (round === totalRounds - 2) return 'Quarter-Final'
@@ -340,7 +341,7 @@ export default function CupFixtures() {
             }}>
               <div style={{ marginBottom: '10px' }}>
                 <span style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>
-                  {getCupName(fixture.cupId)} - {getRoundName(fixture.round, getTotalRounds(fixture.cupId))}
+                  {getCupName(fixture.cupId)} - {getRoundName(fixture.round, getTotalRounds(fixture.cupId), fixture)}
                 </span>
                 <div style={{ fontSize: '1rem', marginTop: '5px' }}>
                   <strong>{getPlayerName(fixture.player1)}</strong>
@@ -382,7 +383,7 @@ export default function CupFixtures() {
             }}>
               <div style={{ marginBottom: '10px' }}>
                 <span style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>
-                  {getCupName(fixture.cupId)} - {getRoundName(fixture.round, getTotalRounds(fixture.cupId))}
+                  {getCupName(fixture.cupId)} - {getRoundName(fixture.round, getTotalRounds(fixture.cupId), fixture)}
                 </span>
                 <div style={{ fontSize: '1rem', marginTop: '5px' }}>
                   <strong>{getPlayerName(fixture.player1)}</strong>
@@ -445,7 +446,7 @@ export default function CupFixtures() {
             }}>
               <div style={{ marginBottom: '10px' }}>
                 <span style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>
-                  {getCupName(fixture.cupId)} - {getRoundName(fixture.round, getTotalRounds(fixture.cupId))}
+                  {getCupName(fixture.cupId)} - {getRoundName(fixture.round, getTotalRounds(fixture.cupId), fixture)}
                 </span>
                 <div style={{ fontSize: '1rem', marginTop: '5px' }}>
                   <strong>{getPlayerName(fixture.player1)}</strong>
@@ -494,7 +495,7 @@ export default function CupFixtures() {
             }}>
               <div>
                 <span style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>
-                  {getCupName(fixture.cupId)} - {getRoundName(fixture.round, getTotalRounds(fixture.cupId))}
+                  {getCupName(fixture.cupId)} - {getRoundName(fixture.round, getTotalRounds(fixture.cupId), fixture)}
                 </span>
                 <div style={{ fontSize: '1rem', marginTop: '5px' }}>
                   <strong>{getPlayerName(fixture.player1)}</strong>

@@ -454,6 +454,13 @@ body.nav-mode-bottom .mobile-bottom-nav { display: flex; }
   -webkit-text-fill-color: transparent;
 }
 
+.text-gradient-gold {
+  background: linear-gradient(to right, #ffffff 0%, #fbbf24 50%, #d97706 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.2));
+}
+
 .sidebar-logo.text-gradient {
   background: linear-gradient(to right, var(--accent-primary), var(--accent-cyan));
   -webkit-background-clip: text;

@@ -133,6 +133,58 @@ export default function CupBracket() {
     return !hasResult && !match?.winner
   })
 
+  const groupStandings = useMemo(() => {
+    if (!cup.matches) return {}
+    const standings = {}
+
+    cup.matches.filter(m => m.stage === 'groups').forEach(match => {
+      const gId = match.group
+      if (!standings[gId]) standings[gId] = {}
+
+      const p1 = match.player1
+      const p2 = match.player2
+
+      if (p1 && !standings[gId][p1]) standings[gId][p1] = { id: p1, played: 0, won: 0, lost: 0, legsFor: 0, legsAgainst: 0, points: 0 }
+      if (p2 && !standings[gId][p2]) standings[gId][p2] = { id: p2, played: 0, won: 0, lost: 0, legsFor: 0, legsAgainst: 0, points: 0 }
+
+      const result = getMatchResult(match)
+      if (result && p1 && p2) {
+        standings[gId][p1].played++
+        standings[gId][p2].played++
+        standings[gId][p1].legsFor += result.score1
+        standings[gId][p1].legsAgainst += result.score2
+        standings[gId][p2].legsFor += result.score2
+        standings[gId][p2].legsAgainst += result.score1
+
+        if (result.score1 > result.score2) {
+          standings[gId][p1].won++
+          standings[gId][p1].points += 2
+          standings[gId][p2].lost++
+        } else if (result.score2 > result.score1) {
+          standings[gId][p2].won++
+          standings[gId][p2].points += 2
+          standings[gId][p1].lost++
+        }
+      }
+    })
+
+    const sortedStandings = {}
+    Object.keys(standings).forEach(gId => {
+      sortedStandings[gId] = Object.values(standings[gId]).sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points
+        const diffA = a.legsFor - a.legsAgainst
+        const diffB = b.legsFor - b.legsAgainst
+        if (diffB !== diffA) return diffB - diffA
+        return b.legsFor - a.legsFor
+      })
+    })
+
+    return sortedStandings
+  }, [cup.matches, results, fixtures])
+
+  const [activeStage, setActiveStage] = useState(cup.type === 'knockout' ? 'knockout' : 'groups')
+
+
   const handleSwapPlayer = async () => {
     if (!cup || !playerToRemove || !playerToAdd) return showToast?.('Please select both players', 'error')
 
@@ -217,56 +269,204 @@ export default function CupBracket() {
       <div style={{ 
         textAlign: 'center', 
         marginBottom: '30px',
-        padding: '20px',
-        background: 'linear-gradient(135deg, #1a1a2e, #16213e)',
-        borderRadius: '16px',
-        border: '2px solid var(--accent-cyan)'
+        padding: '30px',
+        background: cup.type === 'world_cup'
+          ? 'linear-gradient(135deg, #1e1b4b, #312e81)'
+          : 'linear-gradient(135deg, #0f172a, #1e293b)',
+        borderRadius: '24px',
+        border: cup.type === 'world_cup'
+          ? '2px solid rgba(251, 191, 36, 0.3)'
+          : '1px solid rgba(56, 189, 248, 0.2)',
+        boxShadow: cup.type === 'world_cup'
+          ? '0 20px 50px rgba(0,0,0,0.5), inset 0 0 20px rgba(251, 191, 36, 0.1)'
+          : '0 20px 50px rgba(0,0,0,0.3)',
+        position: 'relative',
+        overflow: 'hidden'
       }}>
-        <h1 style={{ color: 'var(--accent-cyan)', margin: '0 0 10px 0', fontSize: '2rem' }}>{cup.name}</h1>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '30px', color: 'white', fontSize: '1rem' }}>
-          <span>Entry: £{cup.entryFee}</span>
-          <span>Prize Pot: £{prizePot}</span>
-          <span>{cup.players?.length || 0} Players</span>
+        {cup.type === 'world_cup' && (
+          <div style={{
+            position: 'absolute',
+            top: '-20px',
+            right: '-20px',
+            fontSize: '8rem',
+            opacity: 0.05,
+            transform: 'rotate(-15deg)',
+            pointerEvents: 'none'
+          }}>🏆</div>
+        )}
+        <h1 className={cup.type === 'world_cup' ? "text-gradient-gold" : "text-gradient"} style={{
+          margin: '0 0 12px 0',
+          fontSize: '3rem',
+          fontWeight: 900,
+          letterSpacing: '-1px'
+        }}>{cup.name}</h1>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', flexWrap: 'wrap' }}>
+          <div className="glass" style={{ padding: '8px 20px', borderRadius: '30px', fontSize: '0.85rem', color: 'var(--accent-cyan)', fontWeight: 800, border: '1px solid rgba(255,255,255,0.1)' }}>
+             💰 PRIZE: £{prizePot}
+          </div>
+          <div className="glass" style={{ padding: '8px 20px', borderRadius: '30px', fontSize: '0.85rem', color: 'white', fontWeight: 800, border: '1px solid rgba(255,255,255,0.1)' }}>
+             👥 {cup.players?.length || 0} PLAYERS
+          </div>
+          <div className="glass" style={{
+            padding: '8px 20px',
+            borderRadius: '30px',
+            fontSize: '0.85rem',
+            color: cup.type === 'world_cup' ? '#fbbf24' : 'var(--success)',
+            fontWeight: 800,
+            textTransform: 'uppercase',
+            background: cup.type === 'world_cup' ? 'rgba(251, 191, 36, 0.1)' : 'rgba(34, 197, 94, 0.1)',
+            border: cup.type === 'world_cup' ? '1px solid rgba(251, 191, 36, 0.3)' : '1px solid rgba(34, 197, 94, 0.3)'
+          }}>
+             {cup.type === 'world_cup' ? '🏆 WORLD CUP FORMAT' : cup.type.replace('_', ' ')}
+          </div>
         </div>
       </div>
 
       {cupWinner && (
         <div style={{ 
           textAlign: 'center', 
-          padding: '40px',
-          background: 'linear-gradient(135deg, #f5af19, #f12711)',
-          borderRadius: '16px',
-          marginBottom: '30px',
-          boxShadow: '0 10px 40px rgba(245, 175, 25, 0.4)'
+          padding: '48px',
+          background: 'linear-gradient(135deg, #f59e0b, #ef4444)',
+          borderRadius: '24px',
+          marginBottom: '40px',
+          boxShadow: '0 0 60px rgba(245, 158, 11, 0.3)',
+          position: 'relative',
+          overflow: 'hidden'
         }}>
-          <h2 style={{ color: 'white', margin: 0, fontSize: '1.5rem' }}>🏆 TOURNAMENT WINNER 🏆</h2>
-          <h1 style={{ color: 'white', margin: '15px 0 0 0', fontSize: '3rem', textShadow: '2px 2px 4px rgba(0,0,0,0.3)' }}>
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'url("https://www.transparenttextures.com/patterns/carbon-fibre.png")', opacity: 0.1 }}></div>
+          <h2 style={{ color: 'white', margin: 0, fontSize: '1.2rem', fontWeight: 900, letterSpacing: '4px', textTransform: 'uppercase' }}>World Champion</h2>
+          <h1 style={{ color: 'white', margin: '20px 0 0 0', fontSize: '4.5rem', fontWeight: 900, textShadow: '0 4px 20px rgba(0,0,0,0.4)', lineHeight: 1 }}>
             {getPlayerName(cupWinner)}
           </h1>
+          <div style={{ marginTop: '20px', fontSize: '3rem' }}>🏆🎯🏆</div>
         </div>
       )}
 
-      <div className="cup-bracket-scroll" style={{ 
-        background: '#0f0f23',
-        borderRadius: '16px',
-        padding: '30px',
-        overflowX: 'auto',
-        width: '100%'
-      }}>
-        <h3 style={{ 
-          color: 'white', 
-          textAlign: 'center', 
-          marginBottom: '30px',
-          fontSize: '1.3rem',
-          letterSpacing: '2px'
+      {(cup.type === 'world_cup' || cup.type === 'groups') && (
+        <div className="division-tabs" style={{ marginBottom: '32px', display: 'flex', justifyContent: 'center', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '16px', maxWidth: '400px', margin: '0 auto 32px' }}>
+          <button
+            className={`division-tab ${activeStage === 'groups' ? 'active' : ''}`}
+            onClick={() => setActiveStage('groups')}
+            style={{ flex: 1, margin: 0, borderRadius: '12px' }}
+          >
+            Group Stages
+          </button>
+          {cup.type === 'world_cup' && (
+            <button
+              className={`division-tab ${activeStage === 'knockout' ? 'active' : ''}`}
+              onClick={() => setActiveStage('knockout')}
+              style={{ flex: 1, margin: 0, borderRadius: '12px' }}
+            >
+              Knockout Phase
+            </button>
+          )}
+        </div>
+      )}
+
+      {activeStage === 'groups' && (
+        <div className="animate-fade-in">
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '20px',
+            padding: '0 10px'
+          }}>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 900, letterSpacing: '2px', color: 'white' }}>GROUP STANDINGS</h2>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              Top {cup.advancePerGroup || 2} Advance to Knockout
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '24px', marginBottom: '40px' }}>
+            {Object.keys(groupStandings).sort().map(gId => (
+              <div key={gId} className="card glass" style={{
+                padding: '24px',
+                borderRadius: '20px',
+                border: cup.type === 'world_cup' ? '1px solid rgba(251, 191, 36, 0.2)' : '1px solid rgba(255,255,255,0.05)',
+                boxShadow: cup.type === 'world_cup' ? '0 10px 30px rgba(0,0,0,0.2)' : ''
+              }}>
+                <h3 style={{ color: cup.type === 'world_cup' ? '#fbbf24' : 'var(--accent-cyan)', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: 900, fontSize: '1.5rem' }}>GROUP {gId}</span>
+                  <span style={{ fontSize: '0.7rem', opacity: 0.5, letterSpacing: '1px' }}>ROUND ROBIN</span>
+                </h3>
+
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-muted)' }}>
+                    <th style={{ textAlign: 'left', padding: '10px 5px' }}>PLAYER</th>
+                    <th style={{ padding: '10px 5px' }}>P</th>
+                    <th style={{ padding: '10px 5px' }}>W</th>
+                    <th style={{ padding: '10px 5px' }}>+/-</th>
+                    <th style={{ padding: '10px 5px', color: 'var(--accent-cyan)' }}>PTS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {groupStandings[gId].map((p, idx) => (
+                    <tr key={p.id} style={{
+                      borderBottom: '1px solid rgba(255,255,255,0.03)',
+                      background: idx < (cup.advancePerGroup || 2) ? 'rgba(34, 197, 94, 0.03)' : 'transparent'
+                    }}>
+                      <td style={{ padding: '12px 5px', fontWeight: 700 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                           {idx < (cup.advancePerGroup || 2) && <span title="Qualifying Position" style={{ color: 'var(--success)', fontSize: '0.7rem' }}>●</span>}
+                           {getPlayerName(p.id)}
+                        </div>
+                      </td>
+                      <td style={{ textAlign: 'center', padding: '12px 5px' }}>{p.played}</td>
+                      <td style={{ textAlign: 'center', padding: '12px 5px' }}>{p.won}</td>
+                      <td style={{ textAlign: 'center', padding: '12px 5px', color: (p.legsFor - p.legsAgainst) >= 0 ? 'var(--success)' : 'var(--error)' }}>
+                        {(p.legsFor - p.legsAgainst) > 0 ? `+${p.legsFor - p.legsAgainst}` : p.legsFor - p.legsAgainst}
+                      </td>
+                      <td style={{ textAlign: 'center', padding: '12px 5px', fontWeight: 900, color: 'var(--accent-cyan)' }}>{p.points}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                 {cup.matches.filter(m => m.stage === 'groups' && m.group === gId).map(m => {
+                   const res = getMatchResult(m)
+                   return (
+                     <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', fontSize: '0.75rem' }}>
+                        <span style={{ flex: 1, textAlign: 'right', fontWeight: res?.score1 > res?.score2 ? 800 : 400 }}>{getPlayerName(m.player1)}</span>
+                        <span style={{ margin: '0 12px', fontWeight: 900, color: 'var(--accent-cyan)' }}>{res ? `${res.score1} - ${res.score2}` : 'vs'}</span>
+                        <span style={{ flex: 1, textAlign: 'left', fontWeight: res?.score2 > res?.score1 ? 800 : 400 }}>{getPlayerName(m.player2)}</span>
+                     </div>
+                   )
+                 })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {activeStage === 'knockout' && (
+        <div className="cup-bracket-scroll animate-fade-in" style={{
+          background: 'rgba(15, 23, 42, 0.5)',
+          borderRadius: '24px',
+          padding: '40px',
+          overflowX: 'auto',
+          width: '100%',
+          border: cup.type === 'world_cup' ? '1px solid rgba(251, 191, 36, 0.1)' : '1px solid rgba(255,255,255,0.05)',
+          backdropFilter: 'blur(10px)',
+          boxShadow: 'inset 0 0 40px rgba(0,0,0,0.3)'
         }}>
-          BRACKET
+        <h3 style={{ 
+          color: cup.type === 'world_cup' ? '#fbbf24' : 'white',
+          textAlign: 'center', 
+          marginBottom: '40px',
+          fontSize: '1.5rem',
+          fontWeight: 900,
+          letterSpacing: '4px',
+          textTransform: 'uppercase'
+        }}>
+          {cup.type === 'world_cup' ? 'Knockout Phase' : 'Tournament Bracket'}
         </h3>
         
         <div className="cup-bracket-stage" style={{ 
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'flex-start',
+          justifyContent: 'center',
           gap: '0',
           width: 'max-content',
           minWidth: '100%',
@@ -275,23 +475,27 @@ export default function CupBracket() {
           {roundsData.map((roundData, roundIndex) => {
             const isComplete = roundData.matches.every(m => m.winner)
             const isActive = !isComplete && roundData.matches.some(m => m.player1 && m.player2)
-            
+            const isFinal = roundData.round === totalRounds
+
             return (
               <div key={roundData.round} className="cup-bracket-round" style={{ display: 'flex', alignItems: 'center' }}>
                 <div style={{ 
-                  minWidth: '160px',
-                  padding: '0 8px'
+                  minWidth: '220px',
+                  padding: '0 12px'
                 }}>
                   <div style={{ 
                     textAlign: 'center',
-                    marginBottom: '20px',
-                    padding: '10px',
-                    background: isComplete ? '#22c55e' : isActive ? 'var(--accent-cyan)' : '#333',
-                    color: 'white',
-                    borderRadius: '8px',
-                    fontWeight: 'bold',
-                    fontSize: '0.85rem',
-                    letterSpacing: '1px'
+                    marginBottom: '24px',
+                    padding: '12px',
+                    background: isFinal ? 'linear-gradient(to right, #f59e0b, #d97706)' : isComplete ? 'rgba(34, 197, 94, 0.8)' : isActive ? 'var(--accent-cyan)' : 'rgba(255,255,255,0.05)',
+                    color: isFinal || isComplete || isActive ? 'black' : 'var(--text-muted)',
+                    borderRadius: '12px',
+                    fontWeight: 900,
+                    fontSize: '0.8rem',
+                    letterSpacing: '2px',
+                    textTransform: 'uppercase',
+                    boxShadow: isFinal ? '0 0 20px rgba(245, 158, 11, 0.4)' : 'none',
+                    border: '1px solid rgba(255,255,255,0.1)'
                   }}>
                     {getRoundName(roundData.round)}
                   </div>
@@ -299,7 +503,7 @@ export default function CupBracket() {
                   <div style={{ 
                     display: 'flex', 
                     flexDirection: 'column',
-                    gap: roundData.round === 1 ? '10px' : `${Math.pow(2, roundData.round - 1) * 10}px`
+                    gap: roundData.round === 1 ? '16px' : `${Math.pow(2, roundData.round - 1) * 20}px`
                   }}>
                     {roundData.matches.map((match, matchIndex) => {
                       const result = getMatchResult(match)
@@ -309,76 +513,95 @@ export default function CupBracket() {
 
                       const p1Won = String(match.winner) === String(match.player1) || (result && result.score1 > result.score2)
                       const p2Won = String(match.winner) === String(match.player2) || (result && result.score2 > result.score1)
-                      
-                      const containerHeight = roundData.round === 1 ? 75 : Math.pow(2, roundData.round - 1) * 75
-                      const halfHeight = containerHeight / 2
-                      const matchOffset = halfHeight / 2 + matchIndex * containerHeight
-                      
+
                       return (
                         <div key={match.id} style={{ 
-                          height: '75px',
+                          height: '90px',
                           display: 'flex',
                           flexDirection: 'column',
-                          justifyContent: 'space-between'
+                          justifyContent: 'center',
+                          gap: '4px',
+                          position: 'relative'
                         }}>
+                          {/* Player 1 Slot */}
                           <div style={{
                             display: 'flex',
                             alignItems: 'center',
-                            padding: '10px 12px',
-                            background: p1Won ? 'rgba(34, 197, 94, 0.2)' : hasPlayers ? '#1e1e3f' : '#1a1a2e',
-                            borderRadius: '8px',
-                            border: p1Won ? '2px solid #22c55e' : '2px solid #333',
-                            minHeight: '35px'
+                            padding: '10px 14px',
+                            background: p1Won ? 'rgba(34, 197, 94, 0.15)' : hasPlayers ? 'rgba(30, 41, 59, 0.8)' : 'rgba(15, 23, 42, 0.4)',
+                            borderRadius: '8px 8px 0 0',
+                            border: p1Won ? '1px solid #22c55e' : '1px solid rgba(255,255,255,0.1)',
+                            borderBottom: 'none',
+                            minHeight: '40px',
+                            transition: 'all 0.3s ease',
+                            boxShadow: p1Won ? '0 0 15px rgba(34, 197, 94, 0.1)' : 'none'
                           }}>
                             <span style={{ 
                               flex: 1, 
-                              color: p1Won ? '#22c55e' : p1Name ? 'white' : '#666',
-                              fontWeight: p1Won ? 'bold' : 'normal',
-                              fontSize: '0.85rem'
+                              color: p1Won ? '#4ade80' : p1Name ? 'white' : 'rgba(255,255,255,0.2)',
+                              fontWeight: p1Won ? 900 : 600,
+                              fontSize: '0.85rem',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis'
                             }}>
-                              {p1Name || 'TBD'}
+                              {p1Name || (match.sourceP1 ? `Winner Grp ${match.sourceP1.group}` : 'TBD')}
                             </span>
                             {result && (
                               <span style={{ 
-                                color: p1Won ? '#22c55e' : '#ef4444',
-                                fontWeight: 'bold',
-                                fontSize: '0.9rem',
-                                marginLeft: '8px'
+                                background: p1Won ? '#22c55e' : 'rgba(255,255,255,0.1)',
+                                color: p1Won ? 'black' : 'white',
+                                fontWeight: 900,
+                                fontSize: '0.8rem',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                marginLeft: '8px',
+                                minWidth: '24px',
+                                textAlign: 'center'
                               }}>
                                 {result.score1}
                               </span>
                             )}
-                            {p1Won && <span style={{ color: '#22c55e', marginLeft: '5px' }}>★</span>}
                           </div>
                           
+                          {/* Player 2 Slot */}
                           <div style={{
                             display: 'flex',
                             alignItems: 'center',
-                            padding: '10px 12px',
-                            background: p2Won ? 'rgba(34, 197, 94, 0.2)' : hasPlayers ? '#1e1e3f' : '#1a1a2e',
-                            borderRadius: '8px',
-                            border: p2Won ? '2px solid #22c55e' : '2px solid #333',
-                            minHeight: '35px'
+                            padding: '10px 14px',
+                            background: p2Won ? 'rgba(34, 197, 94, 0.15)' : hasPlayers ? 'rgba(30, 41, 59, 0.8)' : 'rgba(15, 23, 42, 0.4)',
+                            borderRadius: '0 0 8px 8px',
+                            border: p2Won ? '1px solid #22c55e' : '1px solid rgba(255,255,255,0.1)',
+                            minHeight: '40px',
+                            transition: 'all 0.3s ease',
+                            boxShadow: p2Won ? '0 0 15px rgba(34, 197, 94, 0.1)' : 'none'
                           }}>
                             <span style={{ 
                               flex: 1, 
-                              color: p2Won ? '#22c55e' : p2Name ? 'white' : '#666',
-                              fontWeight: p2Won ? 'bold' : 'normal',
-                              fontSize: '0.85rem'
+                              color: p2Won ? '#4ade80' : p2Name ? 'white' : 'rgba(255,255,255,0.2)',
+                              fontWeight: p2Won ? 900 : 600,
+                              fontSize: '0.85rem',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis'
                             }}>
-                              {p2Name || 'TBD'}
+                              {p2Name || (match.sourceP2 ? `Runner-up Grp ${match.sourceP2.group}` : 'TBD')}
                             </span>
                             {result && (
                               <span style={{ 
-                                color: p2Won ? '#22c55e' : '#ef4444',
-                                fontWeight: 'bold',
-                                fontSize: '0.9rem',
-                                marginLeft: '8px'
+                                background: p2Won ? '#22c55e' : 'rgba(255,255,255,0.1)',
+                                color: p2Won ? 'black' : 'white',
+                                fontWeight: 900,
+                                fontSize: '0.8rem',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                marginLeft: '8px',
+                                minWidth: '24px',
+                                textAlign: 'center'
                               }}>
                                 {result.score2}
                               </span>
                             )}
-                            {p2Won && <span style={{ color: '#22c55e', marginLeft: '5px' }}>★</span>}
                           </div>
                         </div>
                       )
@@ -388,15 +611,16 @@ export default function CupBracket() {
                 
                 {roundIndex < roundsData.length - 1 && (
                   <div className="cup-bracket-connector" style={{ 
-                    width: '30px', 
+                    width: '40px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center'
                   }}>
                     <div style={{ 
-                      width: '30px', 
+                      width: '100%',
                       height: '2px', 
-                      background: 'linear-gradient(90deg, #333, var(--accent-cyan))' 
+                      background: 'linear-gradient(90deg, rgba(255,255,255,0.1), var(--accent-cyan), rgba(255,255,255,0.1))',
+                      opacity: isActive || isComplete ? 1 : 0.2
                     }} />
                   </div>
                 )}

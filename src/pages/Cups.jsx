@@ -10,9 +10,17 @@ export default function CupTournaments() {
   const { user, getAllUsers, getCups, getFixtures, triggerDataRefresh, searchUsers } = useAuth()
   const { showToast } = useToast()
   const [showCreate, setShowCreate] = useState(false)
-  const [formData, setFormData] = useState({ name: '', entryFee: 5, maxPlayers: 8 })
+  const [formData, setFormData] = useState({
+    name: '',
+    entryFee: 5,
+    maxPlayers: 8,
+    type: 'knockout', // knockout, groups, world_cup
+    playersPerGroup: 4,
+    advancePerGroup: 2
+  })
   const [selectedPlayers, setSelectedPlayers] = useState([])
   const [matches, setMatches] = useState([])
+  const [groups, setGroups] = useState([])
   const [roundFormats, setRoundFormats] = useState({})
   const [refreshKey, setRefreshKey] = useState(0)
   const [expandedCups, setExpandedCups] = useState({})
@@ -116,53 +124,149 @@ export default function CupTournaments() {
     }
   }
 
-  const createBracket = () => {
+  const generateTournament = () => {
     if (selectedPlayers.length < 2) return alert('Need at least 2 players')
     
     const shuffled = [...selectedPlayers].sort(() => Math.random() - 0.5)
-    const newMatches = []
-    const numRounds = Math.ceil(Math.log2(shuffled.length))
-    
+    let newMatches = []
+    let newGroups = []
+    let numKnockoutRounds = 0
+    let totalPlayersInKnockout = 0
+
     const defaultFormats = {}
-    for (let r = 1; r <= numRounds; r++) {
-      if (r === numRounds) {
-        defaultFormats[r] = { startScore: 501, bestOf: 9, firstTo: 5 }
-      } else if (r === numRounds - 1) {
-        defaultFormats[r] = { startScore: 501, bestOf: 7, firstTo: 4 }
-      } else if (r === numRounds - 2) {
-        defaultFormats[r] = { startScore: 501, bestOf: 5, firstTo: 3 }
-      } else {
-        defaultFormats[r] = { startScore: 501, bestOf: 3, firstTo: 2 }
+
+    if (formData.type === 'knockout') {
+      numKnockoutRounds = Math.ceil(Math.log2(shuffled.length))
+      totalPlayersInKnockout = shuffled.length
+
+      for (let r = 1; r <= numKnockoutRounds; r++) {
+        defaultFormats[r] = getFormatForRound(r, numKnockoutRounds)
+      }
+
+      newMatches = buildKnockoutMatches(shuffled, numKnockoutRounds, 1)
+    }
+    else if (formData.type === 'groups' || formData.type === 'world_cup') {
+      const pPerG = formData.playersPerGroup
+      const numGroups = Math.ceil(shuffled.length / pPerG)
+
+      // Assign players to groups
+      for (let i = 0; i < numGroups; i++) {
+        const groupPlayers = shuffled.slice(i * pPerG, (i + 1) * pPerG)
+        newGroups.push({
+          id: String.fromCharCode(65 + i), // A, B, C...
+          players: groupPlayers
+        })
+
+        // Generate round-robin matches for this group
+        // Stage 0 will be the group stage
+        for (let j = 0; j < groupPlayers.length; j++) {
+          for (let k = j + 1; k < groupPlayers.length; k++) {
+            newMatches.push({
+              id: `g_${newGroups[i].id}_${j}_${k}`,
+              stage: 'groups',
+              group: newGroups[i].id,
+              player1: groupPlayers[j],
+              player2: groupPlayers[k],
+              winner: null,
+              score1: null,
+              score2: null
+            })
+          }
+        }
+      }
+
+      defaultFormats[0] = { startScore: 501, bestOf: 3, firstTo: 2 } // Group stage format
+
+      if (formData.type === 'world_cup') {
+        const advanceCount = formData.advancePerGroup
+        totalPlayersInKnockout = numGroups * advanceCount
+        numKnockoutRounds = Math.ceil(Math.log2(totalPlayersInKnockout))
+
+        for (let r = 1; r <= numKnockoutRounds; r++) {
+          defaultFormats[r] = getFormatForRound(r, numKnockoutRounds)
+        }
+
+        // Build empty knockout bracket starting from round 1
+        // We'll pass null for players as they are determined by groups
+        const knockoutMatches = buildKnockoutMatches(new Array(totalPlayersInKnockout).fill(null), numKnockoutRounds, 1)
+
+        // Label the initial knockout matches with their source (e.g., "Winner Group A")
+        // This helps the UI and advancement logic
+        let kIdx = 0
+        for (let g = 0; kIdx < totalPlayersInKnockout && g < numGroups; g++) {
+          const groupId = String.fromCharCode(65 + g)
+          for (let pos = 1; pos <= advanceCount && kIdx < totalPlayersInKnockout; pos++) {
+             const mIdx = Math.floor(kIdx / 2)
+             const targetPlayer = kIdx % 2 === 0 ? 'sourceP1' : 'sourceP2'
+             if (knockoutMatches[mIdx]) {
+                knockoutMatches[mIdx][targetPlayer] = { group: groupId, position: pos }
+             }
+             kIdx++
+          }
+        }
+
+        newMatches = [...newMatches, ...knockoutMatches]
       }
     }
+
     setRoundFormats(defaultFormats)
+    setMatches(newMatches)
+    setGroups(newGroups)
+  }
+
+  const getFormatForRound = (round, totalRounds) => {
+    if (round === totalRounds) return { startScore: 501, bestOf: 9, firstTo: 5 }
+    if (round === totalRounds - 1 && totalRounds > 1) return { startScore: 501, bestOf: 7, firstTo: 4 }
+    if (round === totalRounds - 2 && totalRounds > 2) return { startScore: 501, bestOf: 5, firstTo: 3 }
+    return { startScore: 501, bestOf: 3, firstTo: 2 }
+  }
+
+  const buildKnockoutMatches = (players, numRounds, startRoundId) => {
+    const knockoutMatches = []
+    let matchId = 1000 // Offset for knockout IDs if needed, or just unique
+    let roundStartId = 1001
     
-    let matchId = 1
-    let roundStartId = 1
-    
+    // We need to know how many matches per round to link them
+    const roundMatchesCount = []
+    for (let r = 1; r <= numRounds; r++) {
+      roundMatchesCount[r] = Math.ceil(players.length / Math.pow(2, r))
+    }
+
+    let globalMatchId = 1000
+    const matchesByRound = {}
+
     for (let round = 1; round <= numRounds; round++) {
-      const matchesInRound = Math.ceil(shuffled.length / Math.pow(2, round))
-      const nextRoundStartId = matchId + matchesInRound
+      const count = roundMatchesCount[round]
+      matchesByRound[round] = []
       
-      for (let i = 0; i < matchesInRound; i++) {
-        const p1Index = i * 2
-        const p2Index = i * 2 + 1
-        
-        newMatches.push({
-          id: matchId,
+      for (let i = 0; i < count; i++) {
+        const m = {
+          id: globalMatchId++,
+          stage: 'knockout',
           round,
           matchNum: i + 1,
-          player1: round === 1 ? (shuffled[p1Index] || null) : null,
-          player2: round === 1 ? (shuffled[p2Index] || null) : null,
+          player1: round === 1 ? (players[i * 2] || null) : null,
+          player2: round === 1 ? (players[i * 2 + 1] || null) : null,
           winner: null,
-          nextMatchId: round < numRounds ? roundStartId + matchesInRound + Math.floor(i / 2) : null
-        })
-        matchId++
+          nextMatchId: null
+        }
+        matchesByRound[round].push(m)
+        knockoutMatches.push(m)
       }
-      roundStartId = nextRoundStartId
     }
-    
-    setMatches(newMatches)
+
+    // Link matches
+    for (let round = 1; round < numRounds; round++) {
+      const currentRoundMatches = matchesByRound[round]
+      const nextRoundMatches = matchesByRound[round + 1]
+
+      currentRoundMatches.forEach((m, idx) => {
+        const nextM = nextRoundMatches[Math.floor(idx / 2)]
+        if (nextM) m.nextMatchId = nextM.id
+      })
+    }
+
+    return knockoutMatches
   }
 
   const updateRoundFormat = (round, field, value) => {
@@ -184,28 +288,31 @@ export default function CupTournaments() {
       ...formData,
       players: selectedPlayers,
       matches,
+      groups,
       roundFormats,
       createdAt: new Date().toISOString(),
       status: 'active',
       currentRound: 1
     }
     
-    const round1Matches = matches.filter(m => m.round === 1)
+    const initialMatches = matches.filter(m => m.stage === 'groups' || (m.stage === 'knockout' && m.round === 1))
     const existingFixtures = getFixtures()
     
-    const newFixtures = round1Matches.map(m => ({
+    const newFixtures = initialMatches.filter(m => m.player1 && m.player2).map(m => ({
       id: Date.now() + m.id,
       cupId: newCup.id,
       cupName: formData.name,
-      startScore: roundFormats[1]?.startScore || 501,
-      bestOf: roundFormats[1]?.bestOf || 3,
-      firstTo: Math.ceil((roundFormats[1]?.bestOf || 3) / 2),
+      startScore: roundFormats[m.round || 0]?.startScore || 501,
+      bestOf: roundFormats[m.round || 0]?.bestOf || 3,
+      firstTo: Math.ceil((roundFormats[m.round || 0]?.bestOf || 3) / 2),
       player1: m.player1,
       player1Id: m.player1,
       player2: m.player2,
       player2Id: m.player2,
       matchId: m.id,
-      round: 1,
+      round: m.round || 0,
+      stage: m.stage,
+      group: m.group || null,
       date: '',
       time: '',
       scheduledBy: m.player1,
@@ -278,32 +385,96 @@ export default function CupTournaments() {
             />
           </div>
           <div className="form-group">
-            <label>Entry Fee (£)</label>
-            <input 
-              type="number" 
-              value={formData.entryFee} 
-              onChange={(e) => setFormData({...formData, entryFee: parseInt(e.target.value)})}
-            />
+            <label>Tournament Style</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginTop: '5px' }}>
+              <button
+                type="button"
+                className={`btn ${formData.type === 'knockout' ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ fontSize: '0.8rem', padding: '10px 5px' }}
+                onClick={() => { setFormData({...formData, type: 'knockout'}); setMatches([]); }}
+              >
+                🎯 Knockout
+              </button>
+              <button
+                type="button"
+                className={`btn ${formData.type === 'groups' ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ fontSize: '0.8rem', padding: '10px 5px' }}
+                onClick={() => { setFormData({...formData, type: 'groups'}); setMatches([]); }}
+              >
+                📊 Groups Only
+              </button>
+              <button
+                type="button"
+                className={`btn ${formData.type === 'world_cup' ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ fontSize: '0.8rem', padding: '10px 5px', border: formData.type === 'world_cup' ? '2px solid gold' : 'none' }}
+                onClick={() => { setFormData({...formData, type: 'world_cup'}); setMatches([]); }}
+              >
+                🏆 World Cup
+              </button>
+            </div>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px' }}>
+              {formData.type === 'knockout' && 'Standard single-elimination bracket. Losers are out instantly.'}
+              {formData.type === 'groups' && 'Players split into groups and play everyone in their group. No knockout phase.'}
+              {formData.type === 'world_cup' && 'The professional format: Group stage followed by a knockout bracket for qualifiers.'}
+            </p>
           </div>
-          <div className="form-group">
-            <label>Max Players</label>
-            <select 
-              value={formData.maxPlayers} 
-              onChange={(e) => {
-                const maxPlayers = parseInt(e.target.value)
-                setFormData({...formData, maxPlayers})
-                setSelectedPlayers(prev => prev.slice(0, maxPlayers))
-                setMatches([])
-              }}
-            >
-              <option value={4}>4</option>
-              <option value={8}>8</option>
-              <option value={16}>16</option>
-              <option value={32}>32</option>
-              <option value={64}>64</option>
-            </select>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+            <div className="form-group">
+              <label>Entry Fee (£)</label>
+              <input
+                type="number"
+                value={formData.entryFee}
+                onChange={(e) => setFormData({...formData, entryFee: parseInt(e.target.value)})}
+              />
+            </div>
+            <div className="form-group">
+              <label>Max Players</label>
+              <select
+                value={formData.maxPlayers}
+                onChange={(e) => {
+                  const maxPlayers = parseInt(e.target.value)
+                  setFormData({...formData, maxPlayers})
+                  setSelectedPlayers(prev => prev.slice(0, maxPlayers))
+                  setMatches([])
+                }}
+              >
+                {[4, 8, 12, 16, 24, 32, 48, 64].map(v => (
+                  <option key={v} value={v}>{v}</option>
+                ))}
+              </select>
+            </div>
           </div>
-          
+
+          {(formData.type === 'groups' || formData.type === 'world_cup') && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+              <div className="form-group">
+                <label>Players per Group</label>
+                <select
+                  value={formData.playersPerGroup}
+                  onChange={(e) => setFormData({...formData, playersPerGroup: parseInt(e.target.value)})}
+                >
+                  <option value={3}>3</option>
+                  <option value={4}>4</option>
+                  <option value={5}>5</option>
+                  <option value={6}>6</option>
+                </select>
+              </div>
+              {formData.type === 'world_cup' && (
+                <div className="form-group">
+                  <label>Advance per Group</label>
+                  <select
+                    value={formData.advancePerGroup}
+                    onChange={(e) => setFormData({...formData, advancePerGroup: parseInt(e.target.value)})}
+                  >
+                    <option value={1}>1 (Winner Only)</option>
+                    <option value={2}>2 (Winner & Runner-up)</option>
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
+
           <h4 style={{ marginTop: '20px', marginBottom: '10px' }}>Select Players ({selectedPlayers.length}/{formData.maxPlayers})</h4>
           {selectedPlayers.length < formData.maxPlayers ? (
             <UserSearchSelect
@@ -359,21 +530,73 @@ export default function CupTournaments() {
           )}
 
           {selectedPlayers.length >= 2 && (
-            <button className="btn btn-primary btn-block" style={{ marginTop: '20px' }} onClick={createBracket}>
+            <button className="btn btn-primary btn-block" style={{ marginTop: '20px' }} onClick={generateTournament}>
               Generate Bracket
             </button>
           )}
 
           {matches.length > 0 && (
             <>
-              <h4 style={{ marginTop: '20px', marginBottom: '15px' }}>Bracket Preview & Round Formats</h4>
+              <h4 style={{ marginTop: '20px', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {formData.type === 'world_cup' ? '🏆 World Cup Structure' : 'Bracket Preview & Round Formats'}
+                {formData.type === 'world_cup' && <span style={{ fontSize: '0.7rem', background: 'gold', color: 'black', padding: '2px 8px', borderRadius: '4px', fontWeight: 900 }}>ELITE FORMAT</span>}
+              </h4>
+
+              {formData.type === 'world_cup' && (
+                <div style={{ background: 'rgba(255,215,0,0.05)', padding: '15px', borderRadius: '12px', border: '1px solid rgba(255,215,0,0.2)', marginBottom: '20px' }}>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    <strong>Phase 1:</strong> {groups.length} Groups of {formData.playersPerGroup} players. Top {formData.advancePerGroup} from each group qualify.<br/>
+                    <strong>Phase 2:</strong> {Math.ceil(Math.log2(groups.length * formData.advancePerGroup))}-round knockout bracket to crown the champion.
+                  </p>
+                </div>
+              )}
+
               <div style={{ display: 'flex', gap: '20px', overflowX: 'auto', padding: '10px' }}>
-                {Array.from(new Set(matches.map(m => m.round))).sort((a, b) => b - a).map(round => (
+                {formData.type !== 'knockout' && (
+                  <div style={{ minWidth: '220px' }}>
+                    <h5 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>Group Stage</h5>
+                    <div style={{ background: 'var(--bg-secondary)', padding: '10px', borderRadius: '8px', marginBottom: '10px' }}>
+                      <div className="form-group" style={{ marginBottom: '8px' }}>
+                        <label style={{ fontSize: '0.75rem' }}>Start Score</label>
+                        <select
+                          value={roundFormats[0]?.startScore || 501}
+                          onChange={(e) => updateRoundFormat(0, 'startScore', e.target.value)}
+                          style={{ fontSize: '0.8rem', padding: '5px' }}
+                        >
+                          <option value={301}>301</option>
+                          <option value={501}>501</option>
+                        </select>
+                      </div>
+                      <div className="form-group" style={{ marginBottom: '0' }}>
+                        <label style={{ fontSize: '0.75rem' }}>Best Of</label>
+                        <select
+                          value={roundFormats[0]?.bestOf || 3}
+                          onChange={(e) => updateRoundFormat(0, 'bestOf', e.target.value)}
+                          style={{ fontSize: '0.8rem', padding: '5px' }}
+                        >
+                          <option value={3}>Best of 3</option>
+                          <option value={5}>Best of 5</option>
+                          <option value={7}>Best of 7</option>
+                        </select>
+                      </div>
+                    </div>
+                    {groups.map(g => (
+                      <div key={g.id} style={{ background: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '8px', marginBottom: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div style={{ fontWeight: 900, fontSize: '0.75rem', color: 'var(--accent-cyan)', marginBottom: '5px' }}>GROUP {g.id}</div>
+                        {g.players.map(pid => (
+                          <div key={pid} style={{ fontSize: '0.75rem', opacity: 0.8 }}>• {allUsers.find(u => u.id === pid)?.username}</div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {Array.from(new Set(matches.filter(m => m.stage === 'knockout').map(m => m.round))).sort((a, b) => a - b).map(round => (
                   <div key={round} style={{ minWidth: '200px' }}>
                     <h5 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>
-                      {round === Math.max(...matches.map(m => m.round)) ? 'Final' : 
-                       round === Math.max(...matches.map(m => m.round)) - 1 ? 'Semi-Final' : 
-                       round === Math.max(...matches.map(m => m.round)) - 2 ? 'Quarter-Final' : `Round ${round}`}
+                      {round === Math.max(...matches.filter(m => m.stage === 'knockout').map(m => m.round)) ? 'Final' :
+                       round === Math.max(...matches.filter(m => m.stage === 'knockout').map(m => m.round)) - 1 ? 'Semi-Final' :
+                       round === Math.max(...matches.filter(m => m.stage === 'knockout').map(m => m.round)) - 2 ? 'Quarter-Final' : `KO Round ${round}`}
                     </h5>
                     
                     <div style={{ background: 'var(--bg-secondary)', padding: '10px', borderRadius: '8px', marginBottom: '10px' }}>
@@ -403,15 +626,18 @@ export default function CupTournaments() {
                       </div>
                     </div>
                     
-                    {matches.filter(m => m.round === round).map(match => (
+                    {matches.filter(m => m.round === round && m.stage === 'knockout').map(match => (
                       <div key={match.id} style={{ 
                         background: 'var(--bg-secondary)', 
                         padding: '10px', 
                         borderRadius: '8px',
-                        marginBottom: '10px'
+                        marginBottom: '10px',
+                        border: '1px solid rgba(255,255,255,0.05)'
                       }}>
                         <div style={{ fontSize: '0.85rem', textAlign: 'center' }}>
-                          {allUsers.find(u => u.id === match.player1)?.username || 'TBD'} vs {allUsers.find(u => u.id === match.player2)?.username || 'TBD'}
+                          {match.sourceP1 ? `Group ${match.sourceP1.group} P${match.sourceP1.position}` : (allUsers.find(u => u.id === match.player1)?.username || 'TBD')}
+                          <br/>vs<br/>
+                          {match.sourceP2 ? `Group ${match.sourceP2.group} P${match.sourceP2.position}` : (allUsers.find(u => u.id === match.player2)?.username || 'TBD')}
                         </div>
                       </div>
                     ))}
@@ -419,8 +645,8 @@ export default function CupTournaments() {
                 ))}
               </div>
 
-              <button className="btn btn-primary btn-block" style={{ marginTop: '20px' }} onClick={saveCup}>
-                Create Cup Tournament
+              <button className="btn btn-primary btn-block" style={{ marginTop: '20px', background: formData.type === 'world_cup' ? 'linear-gradient(45deg, #f59e0b, #d97706)' : '' }} onClick={saveCup}>
+                {formData.type === 'world_cup' ? '🏆 Create World Cup' : 'Create Cup Tournament'}
               </button>
             </>
           )}
@@ -546,11 +772,33 @@ export default function CupTournaments() {
                     >
                       🔄 Swap Participant
                     </button>
+                    {cup.type === 'world_cup' && !cup.groupsAdvanced && (
+                      <Link
+                        to="/cup-management"
+                        className="btn btn-primary btn-sm"
+                        style={{ flex: 1, background: 'linear-gradient(to right, #f59e0b, #d97706)', color: 'black' }}
+                      >
+                        ⚡ Finalize Groups
+                      </Link>
+                    )}
                   </div>
                 )}
-                <p style={{ color: 'var(--text-muted)', marginTop: '15px' }}>
-                  Entry: £{cup.entryFee} | Players: {cup.players?.length || 0} | Prize Pot: £{prizePot}
-                </p>
+                <div style={{
+                  background: cup.type === 'world_cup' ? 'rgba(251, 191, 36, 0.05)' : 'rgba(255,255,255,0.02)',
+                  padding: '15px',
+                  borderRadius: '12px',
+                  marginTop: '15px',
+                  border: cup.type === 'world_cup' ? '1px solid rgba(251, 191, 36, 0.1)' : '1px solid rgba(255,255,255,0.05)'
+                }}>
+                  <p style={{ color: 'var(--text-muted)', margin: 0 }}>
+                    Entry: £{cup.entryFee} | Players: {cup.players?.length || 0} | Prize Pot: £{prizePot}
+                  </p>
+                  {cup.type === 'world_cup' && (
+                    <p style={{ color: '#fbbf24', fontSize: '0.8rem', fontWeight: 800, marginTop: '8px', textTransform: 'uppercase' }}>
+                      {cup.groupsAdvanced ? '✓ Knockout Phase In Progress' : '⏳ Group Stage In Progress'}
+                    </p>
+                  )}
+                </div>
                 {cup.roundFormats && (
                   <div style={{
                     fontSize: '0.85rem',

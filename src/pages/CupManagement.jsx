@@ -34,6 +34,97 @@ function CupManagement() {
   })
   const allUsers = getAllUsers()
 
+  const handleAdvanceGroups = async (cup) => {
+    if (!window.confirm('This will calculate final group standings and advance the top players to the knockout bracket. Ensure all group matches are entered. Continue?')) return
+
+    setIsSubmitting(true)
+    try {
+      const cupRef = doc(db, 'cups', String(cup.id))
+      const cupSnap = await getDoc(cupRef)
+      if (!cupSnap.exists()) throw new Error('Cup not found')
+      const cupData = cupSnap.data()
+
+      const allResults = getResults().filter(r => String(r.cupId) === String(cup.id) && String(r.status).toLowerCase() === 'approved')
+
+      const standings = {}
+      cupData.matches.filter(m => m.stage === 'groups').forEach(match => {
+        const gId = match.group
+        if (!standings[gId]) standings[gId] = {}
+        const p1 = match.player1
+        const p2 = match.player2
+        if (p1 && !standings[gId][p1]) standings[gId][p1] = { id: p1, played: 0, won: 0, lost: 0, legsFor: 0, legsAgainst: 0, points: 0 }
+        if (p2 && !standings[gId][p2]) standings[gId][p2] = { id: p2, played: 0, won: 0, lost: 0, legsFor: 0, legsAgainst: 0, points: 0 }
+
+        const res = allResults.find(r => String(r.matchId) === String(match.id))
+        if (res && p1 && p2) {
+          standings[gId][p1].played++
+          standings[gId][p2].played++
+          standings[gId][p1].legsFor += res.score1
+          standings[gId][p1].legsAgainst += res.score2
+          standings[gId][p2].legsFor += res.score2
+          standings[gId][p2].legsAgainst += res.score1
+          if (res.score1 > res.score2) { standings[gId][p1].won++; standings[gId][p1].points += 2; standings[gId][p2].lost++ }
+          else if (res.score2 > res.score1) { standings[gId][p2].won++; standings[gId][p2].points += 2; standings[gId][p1].lost++ }
+        }
+      })
+
+      const sortedGroups = {}
+      Object.keys(standings).forEach(gId => {
+        sortedGroups[gId] = Object.values(standings[gId]).sort((a,b) => (b.points - a.points) || (b.legsFor - b.legsAgainst) - (a.legsFor - a.legsAgainst))
+      })
+
+      const updatedMatches = [...cupData.matches]
+      const newFixtures = []
+
+      updatedMatches.filter(m => m.stage === 'knockout' && m.round === 1).forEach(m => {
+        const mIdx = updatedMatches.findIndex(um => um.id === m.id)
+        if (m.sourceP1) {
+          const qualified = sortedGroups[m.sourceP1.group]?.[m.sourceP1.position - 1]
+          if (qualified) updatedMatches[mIdx].player1 = qualified.id
+        }
+        if (m.sourceP2) {
+          const qualified = sortedGroups[m.sourceP2.group]?.[m.sourceP2.position - 1]
+          if (qualified) updatedMatches[mIdx].player2 = qualified.id
+        }
+
+        const updatedM = updatedMatches[mIdx]
+        if (updatedM.player1 && updatedM.player2) {
+           const format = cupData.roundFormats?.[1] || { startScore: 501, bestOf: 3 }
+           newFixtures.push({
+             id: `cup_${cup.id}_match_${updatedM.id}`,
+             cupId: isNaN(parseInt(cup.id)) ? cup.id : parseInt(cup.id),
+             cupName: cupData.name,
+             startScore: format.startScore,
+             bestOf: format.bestOf,
+             firstTo: Math.ceil(format.bestOf / 2),
+             player1: updatedM.player1,
+             player1Id: updatedM.player1,
+             player2: updatedM.player2,
+             player2Id: updatedM.player2,
+             matchId: updatedM.id,
+             round: 1,
+             status: 'accepted',
+             proposalStatus: 'accepted',
+             createdAt: new Date().toISOString()
+           })
+        }
+      })
+
+      await setDoc(cupRef, { ...cupData, matches: updatedMatches, groupsAdvanced: true }, { merge: true })
+      const batch = writeBatch(db)
+      newFixtures.forEach(f => batch.set(doc(db, 'fixtures', f.id), f))
+      await batch.commit()
+
+      showToast('Group stage finalized and knockout matches created!', 'success')
+      triggerDataRefresh('all')
+      setRefreshKey(prev => prev + 1)
+    } catch (e) {
+      showToast('Error advancing groups: ' + e.message, 'error')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const handleSyncExistingWinners = async (silent = false) => {
     if (syncInProgressRef.current) return
     if (!silent && !window.confirm('This will scan all approved Cup results and ensure winners are advanced in their brackets and fixtures are created for ready matches. Continue?')) return
@@ -463,7 +554,9 @@ function CupManagement() {
         const totalRounds = Math.max(...(cup.matches?.map(m => m.round) || [1]))
         const isExpanded = expandedCups[cup.id]
         const sortedMatches = [...(cup.matches || [])].sort((a, b) => {
-          if (a.round !== b.round) return a.round - b.round
+          if (a.stage === 'groups' && b.stage === 'knockout') return -1
+          if (a.stage === 'knockout' && b.stage === 'groups') return 1
+          if (a.round !== b.round) return (a.round || 0) - (b.round || 0)
           return (a.matchNum || 0) - (b.matchNum || 0)
         })
         
@@ -500,11 +593,20 @@ function CupManagement() {
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em'
                     }}>{cup.status || 'Planned'}</span>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', opacity: 0.6 }}>ID: {cup.id}</span>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', opacity: 0.6 }}>ID: {cup.id} | {cup.type}</span>
                   </div>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {cup.type === 'world_cup' && !cup.groupsAdvanced && (
+                   <button
+                     className="btn btn-primary btn-sm"
+                     onClick={(e) => { e.stopPropagation(); handleAdvanceGroups(cup); }}
+                     disabled={isSubmitting}
+                   >
+                     ⚡ Finalize Groups
+                   </button>
+                )}
                 <button
                   className="btn btn-secondary btn-sm"
                   style={{ fontSize: '0.75rem', background: 'rgba(56, 189, 248, 0.1)', borderColor: 'var(--accent-cyan)' }}
@@ -539,6 +641,9 @@ function CupManagement() {
                     const p1 = getPlayerName(match.player1)
                     const p2 = getPlayerName(match.player2)
 
+                    let roundLabel = getRoundName(match.round, totalRounds)
+                    if (match.stage === 'groups') roundLabel = `GROUP ${match.group}`
+
                     return (
                       <div key={match.id} style={{
                         padding: '20px',
@@ -550,7 +655,7 @@ function CupManagement() {
                         overflow: 'hidden'
                       }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', alignItems: 'center' }}>
-                           <span style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{getRoundName(match.round, totalRounds)}</span>
+                           <span style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{roundLabel}</span>
                            {isWinnerSet && <span style={{ fontSize: '0.6rem', fontWeight: 900, color: 'var(--success)', background: 'var(--success-bg)', padding: '2px 8px', borderRadius: '4px' }}>COMPLETED</span>}
                         </div>
 
