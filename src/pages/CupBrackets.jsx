@@ -58,10 +58,10 @@ export default function CupBracket() {
   }
 
   const totalRounds = cup.matches?.length > 0
-    ? Math.max(...cup.matches.filter(m => m.round).map(m => m.round), 1)
+    ? Math.max(...cup.matches.filter(m => m && m.round).map(m => m.round), 1)
     : 1
   const prizePot = (cup.entryFee || 0) * (cup.players?.length || 0)
-  const cupWinner = cup.matches?.find(m => m.round === totalRounds)?.winner
+  const cupWinner = cup.matches?.find(m => m && m.round === totalRounds)?.winner
 
   const getRoundName = (round) => {
     if (round === totalRounds) return 'FINAL'
@@ -89,6 +89,7 @@ export default function CupBracket() {
   }
 
   const getMatchResult = (match) => {
+    if (!match) return null
     const fixture = fixtures.find(f => String(f.matchId) === String(match.id))
     const approvedResult = results.find(result => (
       (
@@ -125,12 +126,12 @@ export default function CupBracket() {
   }
 
   const roundsData = rounds.map(round => {
-    const matches = cup.matches?.filter(m => m.round === round).sort((a, b) => a.id - b.id) || []
+    const matches = cup.matches?.filter(m => m && m.round === round).sort((a, b) => (a.id || 0) - (b.id || 0)) || []
     return { round, matches }
   })
 
   const upcomingFixtures = fixtures.filter(fixture => {
-    const match = cup.matches?.find(m => String(m.id) === String(fixture.matchId))
+    const match = cup.matches?.find(m => m && String(m.id) === String(fixture.matchId))
     const hasResult = ['approved', 'result_submitted', 'completed'].includes(fixture.status)
     return !hasResult && !match?.winner
   })
@@ -139,8 +140,9 @@ export default function CupBracket() {
     if (!cup?.matches) return { sortedStandings: {}, bestThirdIds: [], sortedThirdPlaced: [], numThirdNeeded: 0 }
     const standings = {}
 
-    cup.matches.filter(m => m.stage === 'groups').forEach(match => {
+    cup.matches.filter(m => m && m.stage === 'groups').forEach(match => {
       const gId = match.group
+      if (!gId) return
       if (!standings[gId]) standings[gId] = {}
 
       const p1 = match.player1
@@ -464,7 +466,7 @@ export default function CupBracket() {
               </table>
 
               <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                 {cup.matches?.filter(m => m.stage === 'groups' && m.group === gId).map(m => {
+                 {cup.matches?.filter(m => m && m.stage === 'groups' && m.group === gId).map(m => {
                    const res = getMatchResult(m)
                    return (
                      <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', fontSize: '0.75rem' }}>
