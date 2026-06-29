@@ -46,33 +46,8 @@ export default function CupBracket() {
     setRefreshKey(prev => prev + 1)
   }, [dataRefreshTrigger])
 
-  if (!cup) {
-    return (
-      <div className="page">
-        <div className="page-header">
-          <Link to="/cups" className="btn btn-secondary">← Back to Cups</Link>
-        </div>
-        <div className="card">
-          <p style={{ color: 'var(--text-muted)', textAlign: 'center' }}>Cup not found</p>
-        </div>
-      </div>
-    )
-  }
-
-  const safeCupMatches = Array.isArray(cup?.matches) ? cup.matches : []
-
-  const totalRounds = safeCupMatches.length > 0
-    ? Math.max(...safeCupMatches.filter(m => m && m.round).map(m => m.round), 1)
-    : 1
-  const prizePot = (cup.entryFee || 0) * (cup.players?.length || 0)
-  const cupWinner = safeCupMatches.find(m => m && m.round === totalRounds)?.winner
-
-  const getRoundName = (round) => {
-    if (round === totalRounds) return 'FINAL'
-    if (round === totalRounds - 1 && totalRounds > 1) return 'SEMI-FINALS'
-    if (round === totalRounds - 2 && totalRounds > 2) return 'QUARTER-FINALS'
-    return `ROUND ${round}`
-  }
+  const activeStageSetRef = useRef(false)
+  const [activeStage, setActiveStage] = useState('groups')
 
   const hasScore = (score) => score !== undefined && score !== null && score !== ''
 
@@ -96,15 +71,9 @@ export default function CupBracket() {
     if (!match) return null
     const fixture = fixtures.find(f => f && String(f.matchId) === String(match.id))
     const approvedResult = results.find(result => result && (
-      (
-        (
-          String(result.cupId || '') === String(cup.id) &&
-          String(result.matchId || '') === String(match.id)
-        ) ||
-        (fixture?.id && String(result.fixtureId || '') === String(fixture.id))
-      ) &&
-      String(result.status).toLowerCase() === 'approved'
-    ))
+      (String(result.cupId || '') === String(cup.id) && String(result.matchId || '') === String(match.id)) ||
+      (fixture?.id && String(result.fixtureId || '') === String(fixture.id))
+    ) && String(result.status).toLowerCase() === 'approved')
 
     const approvedResultScores = getScoresFromSource(approvedResult, match)
     if (approvedResultScores) return approvedResultScores
@@ -119,32 +88,12 @@ export default function CupBracket() {
     return fixtureScores
   }
 
-  const rounds = []
-  for (let i = 1; i <= totalRounds; i++) {
-    rounds.push(i)
-  }
-
-  const getPlayerName = (id) => {
-    if (!id) return null
-    return allUsers.find(u => String(u.id) === String(id))?.username || 'Unknown'
-  }
-
-  const roundsData = rounds.map(round => {
-    const matches = safeCupMatches.filter(m => m && m.round === round).sort((a, b) => (a.id || 0) - (b.id || 0))
-    return { round, matches }
-  })
-
-  const upcomingFixtures = fixtures.filter(fixture => {
-    const match = safeCupMatches.find(m => m && String(m.id) === String(fixture.matchId))
-    const hasResult = ['approved', 'result_submitted', 'completed'].includes(fixture.status)
-    return !hasResult && !match?.winner
-  })
-
   const groupStandings = useMemo(() => {
-    if (safeCupMatches.length === 0) return { sortedStandings: {}, bestThirdIds: [], sortedThirdPlaced: [], numThirdNeeded: 0 }
+    if (!cup || !Array.isArray(cup?.matches) || cup.matches.length === 0) return { sortedStandings: {}, bestThirdIds: [], sortedThirdPlaced: [], numThirdNeeded: 0 }
+    const safe = cup.matches
     const standings = {}
 
-    safeCupMatches.filter(m => m && m.stage === 'groups').forEach(match => {
+    safe.filter(m => m && m.stage === 'groups').forEach(match => {
       const gId = match.group
       if (!gId) return
       if (!standings[gId]) standings[gId] = {}
@@ -191,26 +140,17 @@ export default function CupBracket() {
       if (sorted[2]) thirdPlaced.push({ ...sorted[2], group: gId })
     })
 
-    // Calculate how many 3rd placed advance
     const numGroups = Object.keys(sortedStandings).length
     const totalTop2 = numGroups * 2
     const knockoutSize = totalTop2 > 0 ? Math.pow(2, Math.ceil(Math.log2(totalTop2))) : 0
     const numThirdNeeded = knockoutSize - totalTop2
 
-    const sortedThirdPlaced = thirdPlaced
-      .sort((a, b) => (b.points - a.points) || (b.legsFor - b.legsAgainst) - (a.legsFor - a.legsAgainst) || (b.legsFor - a.legsFor))
+    const sortedThirdPlaced = thirdPlaced.sort((a, b) => (b.points - a.points) || (b.legsFor - b.legsAgainst) - (a.legsFor - a.legsAgainst) || (b.legsFor - a.legsFor))
 
-    const bestThirdIds = sortedThirdPlaced
-      .slice(0, numThirdNeeded)
-      .map(p => p.id)
+    const bestThirdIds = sortedThirdPlaced.slice(0, numThirdNeeded).map(p => p.id)
 
     return { sortedStandings, bestThirdIds, sortedThirdPlaced, numThirdNeeded }
-  }, [safeCupMatches, results, fixtures])
-
-  const { sortedStandings, bestThirdIds, sortedThirdPlaced, numThirdNeeded } = groupStandings
-
-  const activeStageSetRef = useRef(false)
-  const [activeStage, setActiveStage] = useState('groups')
+  }, [cup, results, fixtures])
 
   useEffect(() => {
     if (cup && !activeStageSetRef.current) {
@@ -218,6 +158,57 @@ export default function CupBracket() {
       activeStageSetRef.current = true
     }
   }, [cup])
+
+  if (!cup) {
+    return (
+      <div className="page">
+        <div className="page-header">
+          <Link to="/cups" className="btn btn-secondary">← Back to Cups</Link>
+        </div>
+        <div className="card">
+          <p style={{ color: 'var(--text-muted)', textAlign: 'center' }}>Cup not found</p>
+        </div>
+      </div>
+    )
+  }
+
+  const safeCupMatches = Array.isArray(cup?.matches) ? cup.matches : []
+
+  const totalRounds = safeCupMatches.length > 0
+    ? Math.max(...safeCupMatches.filter(m => m && m.round).map(m => m.round), 1)
+    : 1
+  const prizePot = (cup.entryFee || 0) * (cup.players?.length || 0)
+  const cupWinner = safeCupMatches.find(m => m && m.round === totalRounds)?.winner
+
+  const getRoundName = (round) => {
+    if (round === totalRounds) return 'FINAL'
+    if (round === totalRounds - 1 && totalRounds > 1) return 'SEMI-FINALS'
+    if (round === totalRounds - 2 && totalRounds > 2) return 'QUARTER-FINALS'
+    return `ROUND ${round}`
+  }
+
+  const rounds = []
+  for (let i = 1; i <= totalRounds; i++) {
+    rounds.push(i)
+  }
+
+  const getPlayerName = (id) => {
+    if (!id) return null
+    return allUsers.find(u => String(u.id) === String(id))?.username || 'Unknown'
+  }
+
+  const roundsData = rounds.map(round => {
+    const matches = safeCupMatches.filter(m => m && m.round === round).sort((a, b) => (a.id || 0) - (b.id || 0))
+    return { round, matches }
+  })
+
+  const upcomingFixtures = fixtures.filter(fixture => {
+    const match = safeCupMatches.find(m => m && String(m.id) === String(fixture.matchId))
+    const hasResult = ['approved', 'result_submitted', 'completed'].includes(fixture.status)
+    return !hasResult && !match?.winner
+  })
+
+  const { sortedStandings, bestThirdIds, sortedThirdPlaced, numThirdNeeded } = groupStandings
 
 
   const handleSwapPlayer = async () => {
