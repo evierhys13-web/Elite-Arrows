@@ -7,6 +7,11 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     target: 'es2015',
-    cssTarget: 'chrome61'
+    cssTarget: 'chrome61',
+    rollupOptions: {
+      output: {
+        inlineDynamicImports: true
+      }
+    }
   }
 })
