@@ -69,9 +69,17 @@ function CupManagement() {
       })
 
       const sortedGroups = {}
+      const thirdPlacedPlayers = []
+
       Object.keys(standings).forEach(gId => {
-        sortedGroups[gId] = Object.values(standings[gId]).sort((a,b) => (b.points - a.points) || (b.legsFor - b.legsAgainst) - (a.legsFor - a.legsAgainst))
+        const sorted = Object.values(standings[gId]).sort((a,b) => (b.points - a.points) || (b.legsFor - b.legsAgainst) - (a.legsFor - a.legsAgainst) || (b.legsFor - a.legsFor))
+        sortedGroups[gId] = sorted
+        if (sorted[2]) {
+          thirdPlacedPlayers.push({ ...sorted[2], group: gId })
+        }
       })
+
+      const bestThirdPlaced = thirdPlacedPlayers.sort((a, b) => (b.points - a.points) || (b.legsFor - b.legsAgainst) - (a.legsFor - a.legsAgainst) || (b.legsFor - a.legsFor))
 
       const updatedMatches = [...cupData.matches]
       const newFixtures = []
@@ -79,12 +87,22 @@ function CupManagement() {
       updatedMatches.filter(m => m.stage === 'knockout' && m.round === 1).forEach(m => {
         const mIdx = updatedMatches.findIndex(um => um.id === m.id)
         if (m.sourceP1) {
-          const qualified = sortedGroups[m.sourceP1.group]?.[m.sourceP1.position - 1]
-          if (qualified) updatedMatches[mIdx].player1 = qualified.id
+          if (m.sourceP1.bestThird) {
+            const qualified = bestThirdPlaced[m.sourceP1.position - 1]
+            if (qualified) updatedMatches[mIdx].player1 = qualified.id
+          } else {
+            const qualified = sortedGroups[m.sourceP1.group]?.[m.sourceP1.position - 1]
+            if (qualified) updatedMatches[mIdx].player1 = qualified.id
+          }
         }
         if (m.sourceP2) {
-          const qualified = sortedGroups[m.sourceP2.group]?.[m.sourceP2.position - 1]
-          if (qualified) updatedMatches[mIdx].player2 = qualified.id
+          if (m.sourceP2.bestThird) {
+            const qualified = bestThirdPlaced[m.sourceP2.position - 1]
+            if (qualified) updatedMatches[mIdx].player2 = qualified.id
+          } else {
+            const qualified = sortedGroups[m.sourceP2.group]?.[m.sourceP2.position - 1]
+            if (qualified) updatedMatches[mIdx].player2 = qualified.id
+          }
         }
 
         const updatedM = updatedMatches[mIdx]

@@ -169,18 +169,35 @@ export default function CupBracket() {
     })
 
     const sortedStandings = {}
+    const thirdPlaced = []
+
     Object.keys(standings).forEach(gId => {
-      sortedStandings[gId] = Object.values(standings[gId]).sort((a, b) => {
+      const sorted = Object.values(standings[gId]).sort((a, b) => {
         if (b.points !== a.points) return b.points - a.points
         const diffA = a.legsFor - a.legsAgainst
         const diffB = b.legsFor - b.legsAgainst
         if (diffB !== diffA) return diffB - diffA
         return b.legsFor - a.legsFor
       })
+      sortedStandings[gId] = sorted
+      if (sorted[2]) thirdPlaced.push({ ...sorted[2], group: gId })
     })
 
-    return sortedStandings
+    // Calculate how many 3rd placed advance
+    const numGroups = Object.keys(sortedStandings).length
+    const totalTop2 = numGroups * 2
+    const knockoutSize = Math.pow(2, Math.ceil(Math.log2(totalTop2)))
+    const numThirdNeeded = knockoutSize - totalTop2
+
+    const bestThirdIds = thirdPlaced
+      .sort((a, b) => (b.points - a.points) || (b.legsFor - b.legsAgainst) - (a.legsFor - a.legsAgainst) || (b.legsFor - a.legsFor))
+      .slice(0, numThirdNeeded)
+      .map(p => p.id)
+
+    return { sortedStandings, bestThirdIds }
   }, [cup.matches, results, fixtures])
+
+  const { sortedStandings, bestThirdIds } = groupStandings
 
   const [activeStage, setActiveStage] = useState(cup.type === 'knockout' ? 'knockout' : 'groups')
 
@@ -374,11 +391,11 @@ export default function CupBracket() {
           }}>
             <h2 style={{ fontSize: '1.2rem', fontWeight: 900, letterSpacing: '2px', color: 'white' }}>GROUP STANDINGS</h2>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              Top {cup.advancePerGroup || 2} Advance to Knockout
+              {cup.type === 'world_cup' ? 'Top 2 + Best 3rd Placed Advance' : `Top ${cup.advancePerGroup || 2} Advance to Knockout`}
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '24px', marginBottom: '40px' }}>
-            {Object.keys(groupStandings).sort().map(gId => (
+            {Object.keys(sortedStandings).sort().map(gId => (
               <div key={gId} className="card glass" style={{
                 padding: '24px',
                 borderRadius: '20px',
@@ -401,25 +418,36 @@ export default function CupBracket() {
                   </tr>
                 </thead>
                 <tbody>
-                  {groupStandings[gId].map((p, idx) => (
-                    <tr key={p.id} style={{
-                      borderBottom: '1px solid rgba(255,255,255,0.03)',
-                      background: idx < (cup.advancePerGroup || 2) ? 'rgba(34, 197, 94, 0.03)' : 'transparent'
-                    }}>
-                      <td style={{ padding: '12px 5px', fontWeight: 700 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                           {idx < (cup.advancePerGroup || 2) && <span title="Qualifying Position" style={{ color: 'var(--success)', fontSize: '0.7rem' }}>●</span>}
-                           {getPlayerName(p.id)}
-                        </div>
-                      </td>
-                      <td style={{ textAlign: 'center', padding: '12px 5px' }}>{p.played}</td>
-                      <td style={{ textAlign: 'center', padding: '12px 5px' }}>{p.won}</td>
-                      <td style={{ textAlign: 'center', padding: '12px 5px', color: (p.legsFor - p.legsAgainst) >= 0 ? 'var(--success)' : 'var(--error)' }}>
-                        {(p.legsFor - p.legsAgainst) > 0 ? `+${p.legsFor - p.legsAgainst}` : p.legsFor - p.legsAgainst}
-                      </td>
-                      <td style={{ textAlign: 'center', padding: '12px 5px', fontWeight: 900, color: 'var(--accent-cyan)' }}>{p.points}</td>
-                    </tr>
-                  ))}
+                  {sortedStandings[gId].map((p, idx) => {
+                    const isTop2 = idx < 2
+                    const isBestThird = idx === 2 && bestThirdIds.includes(p.id)
+                    const isQualifying = isTop2 || isBestThird
+
+                    return (
+                      <tr key={p.id} style={{
+                        borderBottom: '1px solid rgba(255,255,255,0.03)',
+                        background: isQualifying ? 'rgba(34, 197, 94, 0.03)' : 'transparent'
+                      }}>
+                        <td style={{ padding: '12px 5px', fontWeight: 700 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                             {isQualifying && (
+                               <span
+                                 title={isTop2 ? "Automatic Qualifier" : "Best 3rd Placed Qualifier"}
+                                 style={{ color: isTop2 ? 'var(--success)' : 'var(--accent-cyan)', fontSize: '0.7rem' }}
+                               >●</span>
+                             )}
+                             {getPlayerName(p.id)}
+                          </div>
+                        </td>
+                        <td style={{ textAlign: 'center', padding: '12px 5px' }}>{p.played}</td>
+                        <td style={{ textAlign: 'center', padding: '12px 5px' }}>{p.won}</td>
+                        <td style={{ textAlign: 'center', padding: '12px 5px', color: (p.legsFor - p.legsAgainst) >= 0 ? 'var(--success)' : 'var(--error)' }}>
+                          {(p.legsFor - p.legsAgainst) > 0 ? `+${p.legsFor - p.legsAgainst}` : p.legsFor - p.legsAgainst}
+                        </td>
+                        <td style={{ textAlign: 'center', padding: '12px 5px', fontWeight: 900, color: 'var(--accent-cyan)' }}>{p.points}</td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
 
