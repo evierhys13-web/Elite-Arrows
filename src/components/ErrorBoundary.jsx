@@ -12,23 +12,21 @@ export default class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     console.error('ErrorBoundary caught an error', error, errorInfo)
+    try {
+      localStorage.setItem('eliteArrowsLastError', JSON.stringify({
+        name: error?.name,
+        message: error?.message,
+        stack: error?.stack,
+        time: new Date().toISOString()
+      }))
+    } catch (e) {}
 
     const isChunkError = error?.name === 'ChunkLoadError' ||
                          error?.message?.includes('chunk') ||
                          error?.message?.includes('Loading chunk')
 
-    // Auto-refresh logic
-    const crashCount = parseInt(sessionStorage.getItem('crashCount') || '0')
-
-    if (isChunkError || crashCount < 2) {
-      sessionStorage.setItem('crashCount', (crashCount + 1).toString())
-
-      // If it's a chunk error, reload immediately as it's almost always a version mismatch
-      const delay = isChunkError ? 0 : 3000
-
-      setTimeout(() => {
-        window.location.reload()
-      }, delay)
+    if (isChunkError) {
+      setTimeout(() => window.location.reload(), 0)
     }
   }
 
@@ -61,22 +59,16 @@ export default class ErrorBoundary extends React.Component {
               ? 'We found a new version of the app. Refreshing to get the latest features for you...'
               : "The app encountered an unexpected error. We're attempting to reload for you automatically."}
           </p>
+          <div style={{ marginBottom: '30px', fontSize: '0.85rem', color: '#ef4444', background: 'rgba(239,68,68,0.1)', padding: '16px', borderRadius: '12px', maxWidth: '500px', fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+            {this.state.error?.toString()}
+          </div>
+
           <button
             className="btn btn-primary"
-            onClick={() => {
-              sessionStorage.setItem('crashCount', '0')
-              window.location.reload()
-            }}
+            onClick={() => window.location.reload()}
           >
             Refresh Now
           </button>
-
-          <details style={{ marginTop: '40px', opacity: 0.5, fontSize: '0.8rem', textAlign: 'left', width: '100%', maxWidth: '500px' }}>
-            <summary>Error Details (Technical)</summary>
-            <pre style={{ whiteSpace: 'pre-wrap', padding: '10px', background: '#000', borderRadius: '8px' }}>
-              {this.state.error?.toString()}
-            </pre>
-          </details>
         </div>
       )
     }

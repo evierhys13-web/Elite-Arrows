@@ -237,9 +237,9 @@ export default function CupTournaments() {
   }
 
   const getFormatForRound = (round, totalRounds) => {
-    if (round === totalRounds) return { startScore: 501, bestOf: 9, firstTo: 5 }
-    if (round === totalRounds - 1 && totalRounds > 1) return { startScore: 501, bestOf: 7, firstTo: 4 }
-    if (round === totalRounds - 2 && totalRounds > 2) return { startScore: 501, bestOf: 5, firstTo: 3 }
+    if (round === totalRounds) return { startScore: 501, bestOf: 11, firstTo: 6 }
+    if (round === totalRounds - 1 && totalRounds > 1) return { startScore: 501, bestOf: 9, firstTo: 5 }
+    if (round === totalRounds - 2 && totalRounds > 2) return { startScore: 501, bestOf: 7, firstTo: 4 }
     return { startScore: 501, bestOf: 3, firstTo: 2 }
   }
 
@@ -641,6 +641,7 @@ export default function CupTournaments() {
                           <option value={5}>Best of 5</option>
                           <option value={7}>Best of 7</option>
                           <option value={9}>Best of 9</option>
+                          <option value={11}>Best of 11</option>
                         </select>
                       </div>
                     </div>

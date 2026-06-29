@@ -34,7 +34,7 @@ const Contact = lazy(() => import('./pages/Contact'))
 const Support = lazy(() => import('./pages/Support'))
 const Tournaments = lazy(() => import('./pages/Tournaments'))
 const Cups = lazy(() => import('./pages/Cups'))
-const CupBracket = lazy(() => import('./pages/CupBrackets'))
+import CupBracket from './pages/CupBrackets'
 const Leaderboards = lazy(() => import('./pages/Leaderboards'))
 const Rewards = lazy(() => import('./pages/Rewards'))
 const Fixtures = lazy(() => import('./pages/Fixtures'))
