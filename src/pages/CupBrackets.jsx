@@ -57,7 +57,9 @@ export default function CupBracket() {
     )
   }
 
-  const totalRounds = cup.matches?.length > 0 ? Math.max(...cup.matches.map(m => m.round)) : 1
+  const totalRounds = cup.matches?.length > 0
+    ? Math.max(...cup.matches.filter(m => m.round).map(m => m.round), 1)
+    : 1
   const prizePot = (cup.entryFee || 0) * (cup.players?.length || 0)
   const cupWinner = cup.matches?.find(m => m.round === totalRounds)?.winner
 
@@ -134,7 +136,7 @@ export default function CupBracket() {
   })
 
   const groupStandings = useMemo(() => {
-    if (!cup.matches) return {}
+    if (!cup.matches) return { sortedStandings: {}, bestThirdIds: [], sortedThirdPlaced: [], numThirdNeeded: 0 }
     const standings = {}
 
     cup.matches.filter(m => m.stage === 'groups').forEach(match => {
@@ -189,15 +191,17 @@ export default function CupBracket() {
     const knockoutSize = Math.pow(2, Math.ceil(Math.log2(totalTop2)))
     const numThirdNeeded = knockoutSize - totalTop2
 
-    const bestThirdIds = thirdPlaced
+    const sortedThirdPlaced = thirdPlaced
       .sort((a, b) => (b.points - a.points) || (b.legsFor - b.legsAgainst) - (a.legsFor - a.legsAgainst) || (b.legsFor - a.legsFor))
+
+    const bestThirdIds = sortedThirdPlaced
       .slice(0, numThirdNeeded)
       .map(p => p.id)
 
-    return { sortedStandings, bestThirdIds }
+    return { sortedStandings, bestThirdIds, sortedThirdPlaced, numThirdNeeded }
   }, [cup.matches, results, fixtures])
 
-  const { sortedStandings, bestThirdIds } = groupStandings
+  const { sortedStandings, bestThirdIds, sortedThirdPlaced, numThirdNeeded } = groupStandings
 
   const [activeStage, setActiveStage] = useState(cup.type === 'knockout' ? 'knockout' : 'groups')
 
@@ -334,7 +338,7 @@ export default function CupBracket() {
             background: cup.type === 'world_cup' ? 'rgba(251, 191, 36, 0.1)' : 'rgba(34, 197, 94, 0.1)',
             border: cup.type === 'world_cup' ? '1px solid rgba(251, 191, 36, 0.3)' : '1px solid rgba(34, 197, 94, 0.3)'
           }}>
-             {cup.type === 'world_cup' ? '🏆 WORLD CUP FORMAT' : cup.type.replace('_', ' ')}
+             {cup.type === 'world_cup' ? '🏆 WORLD CUP FORMAT' : (cup.type || 'tournament').replace('_', ' ')}
           </div>
         </div>
       </div>
@@ -452,7 +456,7 @@ export default function CupBracket() {
               </table>
 
               <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                 {cup.matches.filter(m => m.stage === 'groups' && m.group === gId).map(m => {
+                 {cup.matches?.filter(m => m.stage === 'groups' && m.group === gId).map(m => {
                    const res = getMatchResult(m)
                    return (
                      <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', fontSize: '0.75rem' }}>

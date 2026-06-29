@@ -569,7 +569,8 @@ function CupManagement() {
       </div>
 
       {cups.map(cup => {
-        const totalRounds = Math.max(...(cup.matches?.map(m => m.round) || [1]))
+        const knockoutMatches = cup.matches?.filter(m => m.round) || []
+        const totalRounds = knockoutMatches.length > 0 ? Math.max(...knockoutMatches.map(m => m.round)) : 1
         const isExpanded = expandedCups[cup.id]
         const sortedMatches = [...(cup.matches || [])].sort((a, b) => {
           if (a.stage === 'groups' && b.stage === 'knockout') return -1
