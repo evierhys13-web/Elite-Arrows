@@ -1631,11 +1631,15 @@ export function AuthProvider({ children }) {
   };
 
   const getAllUsers = useCallback(() => {
-    if (allUsers.length > 0) return allUsers;
-    const localUsers = JSON.parse(
-      localStorage.getItem("eliteArrowsUsers") || "[]",
-    );
-    return localUsers;
+    if (Array.isArray(allUsers) && allUsers.length > 0) return allUsers;
+    try {
+      const localUsers = JSON.parse(
+        localStorage.getItem("eliteArrowsUsers") || "[]",
+      );
+      return Array.isArray(localUsers) ? localUsers : [];
+    } catch (e) {
+      return [];
+    }
   }, [allUsers]);
 
   const getFriends = useCallback(() => {
@@ -1643,8 +1647,9 @@ export function AuthProvider({ children }) {
   }, [allUsers, user?.friends]);
 
   const getResults = useCallback(() => {
-    if (results.length > 0) return results;
-    return getCachedResults();
+    if (Array.isArray(results) && results.length > 0) return results;
+    const cached = getCachedResults();
+    return Array.isArray(cached) ? cached : [];
   }, [results]);
 
   const updateResults = useCallback((updatedResults, purgeScope = null) => {
@@ -2004,11 +2009,15 @@ export function AuthProvider({ children }) {
   }, [publishResults, user, triggerDataRefresh, showToast, adminData?.currentSeason]);
 
   const getFixtures = useCallback(() => {
-    if (fixtures.length > 0) return fixtures;
-    const local = JSON.parse(
-      localStorage.getItem("eliteArrowsFixtures") || "[]",
-    );
-    return local;
+    if (Array.isArray(fixtures) && fixtures.length > 0) return fixtures;
+    try {
+      const local = JSON.parse(
+        localStorage.getItem("eliteArrowsFixtures") || "[]",
+      );
+      return Array.isArray(local) ? local : [];
+    } catch (e) {
+      return [];
+    }
   }, [fixtures]);
 
   useEffect(() => {
@@ -2279,9 +2288,13 @@ export function AuthProvider({ children }) {
   };
 
   const getCups = useCallback(() => {
-    if (cups.length > 0) return cups;
-    const local = JSON.parse(localStorage.getItem("eliteArrowsCups") || "[]");
-    return local;
+    if (Array.isArray(cups) && cups.length > 0) return cups;
+    try {
+      const local = JSON.parse(localStorage.getItem("eliteArrowsCups") || "[]");
+      return Array.isArray(local) ? local : [];
+    } catch (e) {
+      return [];
+    }
   }, [cups]);
 
   const getSupportRequests = useCallback(() => {

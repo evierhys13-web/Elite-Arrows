@@ -29,15 +29,17 @@ export default function CupBracket() {
   const isAdmin = isEmailAdmin || isDbAdmin || isTournamentAdmin || isCupAdmin
 
   useEffect(() => {
-    const cups = getCups()
-    const foundCup = cups.find(c => String(c.id) === String(cupId))
-    if (foundCup) {
-      setCup(foundCup)
+    try {
+      const cups = Array.isArray(getCups()) ? getCups() : []
+      const foundCup = cups.find(c => c && String(c.id) === String(cupId))
+      if (foundCup) setCup(foundCup)
+      
+      const allFixtures = Array.isArray(getFixtures()) ? getFixtures() : []
+      setFixtures(allFixtures.filter(f => f && String(f.cupId) === String(cupId)))
+      setResults(Array.isArray(getResults()) ? getResults() : [])
+    } catch (e) {
+      console.error('CupBracket load error:', e)
     }
-    
-    const allFixtures = getFixtures()
-    setFixtures(allFixtures.filter(f => String(f.cupId) === String(cupId)))
-    setResults(getResults())
   }, [cupId, refreshKey, dataRefreshTrigger])
 
   useEffect(() => {
@@ -90,8 +92,8 @@ export default function CupBracket() {
 
   const getMatchResult = (match) => {
     if (!match) return null
-    const fixture = fixtures.find(f => String(f.matchId) === String(match.id))
-    const approvedResult = results.find(result => (
+    const fixture = fixtures.find(f => f && String(f.matchId) === String(match.id))
+    const approvedResult = results.find(result => result && (
       (
         (
           String(result.cupId || '') === String(cup.id) &&
@@ -108,12 +110,14 @@ export default function CupBracket() {
     const matchScores = getScoresFromSource(match, match)
     if (matchScores) return matchScores
 
-    const fixtureScores = ['approved', 'completed'].includes(String(fixture?.status).toLowerCase())
+    const fixtureScores = fixture && ['approved', 'completed'].includes(String(fixture?.status).toLowerCase())
       ? getScoresFromSource(fixture, match)
       : null
 
     return fixtureScores
   }
+
+  const safeCupMatches = cup?.matches || []
 
   const rounds = []
   for (let i = 1; i <= totalRounds; i++) {
