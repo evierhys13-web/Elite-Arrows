@@ -59,7 +59,7 @@ export const isSuperLeagueResult = (result, fixturesById = {}) => {
   if (gameType.includes('super league') || gameType.includes('superleague') || gameType.includes('champions league') || gameType.includes('championsleague')) return true
 
   // 2. Division-specific labels
-  const superDivisions = ['premier', 'pro', 'amateur']
+  const superDivisions = ['premier', 'pro', 'amateur', 'champions']
   if (superDivisions.some(div => gameType.includes(div)) && !gameType.includes('cup')) return true
 
   const s1 = Number(result.score1) || 0

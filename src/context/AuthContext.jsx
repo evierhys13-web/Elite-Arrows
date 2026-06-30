@@ -1824,7 +1824,7 @@ export function AuthProvider({ children }) {
 
   const fetchUsersByDivision = useCallback(async (division) => {
     try {
-      const isSuperDivision = ['Premier', 'Pro', 'Amateur'].includes(division);
+      const isSuperDivision = ['Champions'].includes(division);
       const q =
         division === "Overall"
           ? query(collection(db, "users"), limit(500))

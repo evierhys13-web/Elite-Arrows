@@ -1509,7 +1509,7 @@ export default function Admin() {
                           {['Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze'].map(d => <option key={d} value={d}>{d}</option>)}
                         </optgroup>
                         <optgroup label="Champions League">
-                          {['Premier', 'Pro', 'Amateur'].map(d => <option key={d} value={d}>{d}</option>)}
+                          {['Champions'].map(d => <option key={d} value={d}>{d}</option>)}
                         </optgroup>
                       </select>
                     </div>
@@ -2341,9 +2341,7 @@ export default function Admin() {
                   <UserSearchSelect users={allPlayers} selectedId={superRankForm.player} onSelect={id => setSuperRankForm({...superRankForm, player: id})} label="Player" onQueryChange={searchUsers} />
                   <select className="glass" style={{ padding: '10px' }} value={superRankForm.rank} onChange={e => setSuperRankForm({...superRankForm, rank: e.target.value})}>
                     <option value="">Select Rank...</option>
-                    <option value="Premier">Premier</option>
-                    <option value="Pro">Pro</option>
-                    <option value="Amateur">Amateur</option>
+                    <option value="Champions">Champions</option>
                     <option value="None">None (Remove)</option>
                   </select>
                   <button className="btn btn-primary btn-block" onClick={handleUpdateSuperRank} disabled={!superRankForm.player || !superRankForm.rank}>Assign Champions Rank</button>

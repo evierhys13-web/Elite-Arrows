@@ -59,7 +59,7 @@ export default function SubmitResult() {
   const opponentOptions = formData.gameType === 'League'
     ? availablePlayers.filter(u => u.division === user.division)
     : formData.gameType === 'Champions League'
-      ? availablePlayers.filter(u => u.superLeagueDivision && u.superLeagueDivision === user.superLeagueDivision)
+      ? availablePlayers.filter(u => u.superLeagueDivision === 'Champions')
       : availablePlayers
   const fixtureIdParam = searchParams.get('fixtureId')
   const opponentParam = searchParams.get('opponent')
@@ -79,7 +79,7 @@ export default function SubmitResult() {
   const stagedDiv = targetSeasonDoc?.stagedDivisions?.[String(user.id)] || targetSeasonDoc?.stagedDivisions?.[user.id]
 
   const effectiveDivision = formData.gameType === 'Champions League'
-    ? (user.superLeagueDivision || 'Amateur')
+    ? 'Champions'
     : (stagedDiv || user.division || 'Unassigned')
 
   useEffect(() => {

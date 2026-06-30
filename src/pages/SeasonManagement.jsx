@@ -6,7 +6,7 @@ import UserSearchSelect from '../components/UserSearchSelect'
 import { useToast } from '../context/ToastContext'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
 
-const CHAMPIONS_LEAGUE_DIVISIONS = ['Premier', 'Pro', 'Amateur']
+const CHAMPIONS_LEAGUE_DIVISIONS = ['Champions']
 
 export default function SeasonManagement() {
   const { user, getAllUsers, getResults, updateResults, getSeasons, adminData, updateAdminData, triggerDataRefresh, searchUsers } = useAuth()

@@ -6,15 +6,13 @@ import Breadcrumbs from '../components/Breadcrumbs'
 import { useToast } from '../context/ToastContext'
 import { db, doc, setDoc } from '../firebase'
 
-const CHAMPIONS_DIVISIONS = ['Premier', 'Pro', 'Amateur']
+const CHAMPIONS_DIVISIONS = ['Champions']
 const DIVISION_COLORS = {
-  'Premier': '#fbbf24',
-  'Pro': '#38bdf8',
-  'Amateur': '#cbd5e1'
+  'Champions': '#fbbf24'
 }
 
 export default function ChampionsLeague() {
-  const [activeDivision, setActiveDivision] = useState('Premier')
+  const [activeDivision, setActiveDivision] = useState('Champions')
   const { user, getAllUsers, getFixtures, getResults, triggerDataRefresh, dataRefreshTrigger, adminData, fetchResultsBySeason, forceFetchResults, getSeasons, fetchUsersByDivision } = useAuth()
   const { showToast } = useToast()
   const [refreshKey, setRefreshKey] = useState(0)

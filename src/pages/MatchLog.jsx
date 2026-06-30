@@ -441,7 +441,7 @@ export default function MatchLog() {
                     <div>
                       <div style={{ fontWeight: '700', fontSize: '0.95rem' }}>{player.username}</div>
                       <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                        {competition === 'League' ? `${player.division} Division` : `${player.superLeagueDivision} Super Rank`}
+                        {competition === 'League' ? `${player.division} Division` : `${player.superLeagueDivision} Champions Rank`}
                       </div>
                       {competition === 'Champions League' && (
                         <div style={{ fontSize: '0.65rem', color: 'var(--accent-cyan)' }}>
