@@ -33,6 +33,8 @@ const HeartIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColo
 const StarIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
 const DownloadIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7,10 12,15 17,10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
 
+const OPEN_LEAGUE_LAUNCH_DATE = new Date('2026-07-01T00:00:00')
+
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false)
   const { signOut, user } = useAuth()
@@ -47,63 +49,68 @@ export default function Sidebar() {
   const isAdmin = user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin || ADMIN_EMAILS.includes(user?.email?.toLowerCase())
   const isSubscribed = user?.isSubscribed === true || isAdmin
   
-  const navigationGroups = useMemo(() => [
-    {
-      title: 'League',
-      items: [
-        { path: '/home', label: 'Home', icon: HomeIcon },
-        { path: '/open-league', label: 'Open League', icon: TrophyIcon },
-        { path: '/table', label: 'Standings', icon: TableIcon },
-        { path: '/super-league', label: 'Super League', icon: TrophyIcon },
-        { path: '/match-log', label: 'Schedule', icon: CalendarIcon },
-        { path: '/notifications', label: 'Notifications', icon: BellIcon },
-        { path: '/players', label: 'Players', icon: UsersIcon },
-        { path: '/challenges', label: 'Challenges', icon: StarIcon },
-        { path: '/giveaways', label: 'Giveaways', icon: GiftIcon },
-        { path: '/results', label: 'Results', icon: TrophyIcon },
-      ]
-    },
-    {
-      title: 'Compete',
-      items: [
-        { path: '/practice', label: 'Practice Hub', icon: TargetIcon },
-        { path: '/live-match', label: 'Play Online/Local', icon: TargetIcon },
-        { path: '/submit-result', label: 'Submit Score', icon: PlusCircleIcon },
-        { path: '/fixtures', label: 'Arrangements', icon: HistoryIcon },
-        { path: '/cups', label: 'Cups', icon: TrophyIcon },
-        { path: '/tournaments', label: 'Tournaments', icon: TournamentIcon },
-        { path: '/rewards', label: 'Rewards', icon: GiftIcon },
-        { path: '/leaderboards', label: 'Leaderboards', icon: TrophyIcon },
-        { path: '/analytics', label: 'Analytics', icon: BarChartIcon },
-      ]
-    },
-    ...(isAdmin ? [{
-      title: 'Admin',
-      items: [
-        { path: '/admin', label: 'Admin Panel', icon: ShieldIcon },
-        { path: '/season-management', label: 'Seasons', icon: CalendarIcon },
-      ]
-    }] : []),
-    {
-      title: 'Support',
-      items: [
-        { path: '/guide', label: 'User Guide', icon: HelpIcon },
-        { path: '/contact', label: 'Contact Us', icon: MailIcon },
-        { path: '/support', label: 'Support', icon: HelpIcon },
-        { path: '/donations', label: 'Donations', icon: HeartIcon },
-      ]
-    },
-    {
-      title: 'Account',
-      items: [
-        { path: '/profile', label: 'My Profile', icon: UsersIcon },
-        { path: '/settings', label: 'Settings', icon: SettingsIcon },
-        { path: '/subscription', label: 'Elite Pass', icon: CreditCardIcon2 },
-        { path: '/privacy-policy', label: 'Privacy Policy', icon: HelpIcon },
-        { path: '/install', label: 'Install App', icon: DownloadIcon },
-      ]
-    },
-  ], [isAdmin])
+  const navigationGroups = useMemo(() => {
+    const now = new Date()
+    const isOpenLeagueVisible = isAdmin || (now >= OPEN_LEAGUE_LAUNCH_DATE && isSubscribed)
+
+    return [
+      {
+        title: 'League',
+        items: [
+          { path: '/home', label: 'Home', icon: HomeIcon },
+          ...(isOpenLeagueVisible ? [{ path: '/open-league', label: 'Open League', icon: TrophyIcon }] : []),
+          { path: '/table', label: 'Standings', icon: TableIcon },
+          { path: '/super-league', label: 'Champions League', icon: TrophyIcon },
+          { path: '/match-log', label: 'Schedule', icon: CalendarIcon },
+          { path: '/notifications', label: 'Notifications', icon: BellIcon },
+          { path: '/players', label: 'Players', icon: UsersIcon },
+          { path: '/challenges', label: 'Challenges', icon: StarIcon },
+          { path: '/giveaways', label: 'Giveaways', icon: GiftIcon },
+          { path: '/results', label: 'Results', icon: TrophyIcon },
+        ]
+      },
+      {
+        title: 'Compete',
+        items: [
+          { path: '/practice', label: 'Practice Hub', icon: TargetIcon },
+          { path: '/live-match', label: 'Play Online/Local', icon: TargetIcon },
+          { path: '/submit-result', label: 'Submit Score', icon: PlusCircleIcon },
+          { path: '/fixtures', label: 'Arrangements', icon: HistoryIcon },
+          { path: '/cups', label: 'Cups', icon: TrophyIcon },
+          { path: '/tournaments', label: 'Tournaments', icon: TournamentIcon },
+          { path: '/rewards', label: 'Rewards', icon: GiftIcon },
+          { path: '/leaderboards', label: 'Leaderboards', icon: TrophyIcon },
+          { path: '/analytics', label: 'Analytics', icon: BarChartIcon },
+        ]
+      },
+      ...(isAdmin ? [{
+        title: 'Admin',
+        items: [
+          { path: '/admin', label: 'Admin Panel', icon: ShieldIcon },
+          { path: '/season-management', label: 'Seasons', icon: CalendarIcon },
+        ]
+      }] : []),
+      {
+        title: 'Support',
+        items: [
+          { path: '/guide', label: 'User Guide', icon: HelpIcon },
+          { path: '/contact', label: 'Contact Us', icon: MailIcon },
+          { path: '/support', label: 'Support', icon: HelpIcon },
+          { path: '/donations', label: 'Donations', icon: HeartIcon },
+        ]
+      },
+      {
+        title: 'Account',
+        items: [
+          { path: '/profile', label: 'My Profile', icon: UsersIcon },
+          { path: '/settings', label: 'Settings', icon: SettingsIcon },
+          { path: '/subscription', label: 'Elite Pass', icon: CreditCardIcon2 },
+          { path: '/privacy-policy', label: 'Privacy Policy', icon: HelpIcon },
+          { path: '/install', label: 'Install App', icon: DownloadIcon },
+        ]
+      },
+    ]
+  }, [isAdmin, isSubscribed])
 
   return (
     <>

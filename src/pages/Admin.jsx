@@ -267,13 +267,13 @@ export default function Admin() {
       const isSuperFormat = (s1 === 6 || s2 === 6) && totalLegs <= 11 && totalLegs >= 6;
       const isStandardFormat = totalLegs <= 8;
 
-      // New: Check if players are in Super League
+      // New: Check if players are in Champions League
       const p1Data = allPlayers.find(u => String(u.id) === String(p1Id));
       const p2Data = allPlayers.find(u => String(u.id) === String(p2Id));
       const isSuperMatch = p1Data?.superLeagueDivision || p2Data?.superLeagueDivision;
 
       if (!res.gameType || ['league', 'friendly', 'unknown', ''].includes(String(res.gameType).toLowerCase())) {
-        if (isSuperFormat || (isSuperMatch && totalLegs > 8)) updates.gameType = 'Super League';
+        if (isSuperFormat || (isSuperMatch && totalLegs > 8)) updates.gameType = 'Champions League';
         else if (isStandardFormat && totalLegs > 0) updates.gameType = 'League';
       }
 
@@ -324,6 +324,10 @@ export default function Admin() {
       )
       updateResults(updatedResults)
 
+      if (approvedResult.gameType === 'Cup') {
+        await advanceCupBracket(approvedResult)
+      }
+
       await logAudit('APPROVE_RESULT', `Approved/Healed match: ${res.player1} vs ${res.player2}`)
       showToast('Result Approved & Standings Updated!', 'success')
       triggerDataRefresh('all')
@@ -352,7 +356,7 @@ export default function Admin() {
           const s2 = Number(res.score2) || 0;
           const totalLegs = s1 + s2;
           if (!res.gameType || ['league', 'friendly', ''].includes(String(res.gameType).toLowerCase())) {
-            if ((s1 === 6 || s2 === 6) && totalLegs <= 11) updates.gameType = 'Super League';
+            if ((s1 === 6 || s2 === 6) && totalLegs <= 11) updates.gameType = 'Champions League';
             else if (totalLegs <= 8) updates.gameType = 'League';
           }
 
@@ -465,7 +469,7 @@ export default function Admin() {
 
     const resultId = `admin_${Date.now()}`
     try {
-      const isSuper = f.gameType === 'Super League'
+      const isSuper = f.gameType === 'Champions League'
       const isLeague = f.gameType === 'League'
 
       // Robust season detection for manual submissions
@@ -473,7 +477,7 @@ export default function Admin() {
       const matchTime = new Date().getTime()
       const s2Start = new Date('2026-06-01T00:00:00').getTime()
 
-      // If "Auto" or legacy season name is used, and it's June 2026+, force Season 2 for Super League
+      // If "Auto" or legacy season name is used, and it's June 2026+, force Season 2 for Champions League
       if (isSuper && (!f.season || f.season === 'Season 1' || f.season === '2026')) {
         if (matchTime >= s2Start) targetSeason = 'Season 2'
       }
@@ -563,7 +567,7 @@ export default function Admin() {
       await setDoc(doc(db, 'users', superRankForm.player), {
         superLeagueDivision: isNone ? null : superRankForm.rank
       }, { merge: true })
-      showToast?.(`Player updated in Super League`, 'success')
+      showToast?.(`Player updated in Champions League`, 'success')
       setSuperRankForm({ player: '', rank: '' })
       triggerDataRefresh('all')
     } catch (e) {
@@ -1174,7 +1178,7 @@ export default function Admin() {
         if (isSuperFormat || isLabeledSuper) {
           const updates = {};
           if (r.season !== currentSeason) updates.season = currentSeason;
-          if (r.gameType !== 'Super League') updates.gameType = 'Super League';
+          if (r.gameType !== 'Champions League') updates.gameType = 'Champions League';
 
           if (Object.keys(updates).length > 0) {
             const tid = r.firestoreId || String(r.id);
@@ -1189,7 +1193,7 @@ export default function Admin() {
 
       if (ops > 0) await batch.commit();
 
-      await logAudit('RESET_SUPER_LEAGUE', `Wiped overrides for ${userCount} users and synced ${resultCount} SL results to ${currentSeason}.`);
+      await logAudit('RESET_CHAMPIONS_LEAGUE', `Wiped overrides for ${userCount} users and synced ${resultCount} CL results to ${currentSeason}.`);
 
       // Update local state
       const updatedResults = results.map(r => {
@@ -1199,7 +1203,7 @@ export default function Admin() {
       updateResults(updatedResults);
 
       triggerDataRefresh('all');
-      showToast(`Super League Reset: ${userCount} users cleared, ${resultCount} matches synced.`, 'success');
+      showToast(`Champions League Reset: ${userCount} users cleared, ${resultCount} matches synced.`, 'success');
     } catch (e) {
       showToast('Reset failed: ' + e.message, 'error');
     }
@@ -1479,7 +1483,7 @@ export default function Admin() {
               >
                 <option value="all">All Types</option>
                 <option value="league">League</option>
-                <option value="super league">Super League</option>
+                <option value="champions league">Champions League</option>
                 <option value="cup">Cup</option>
                 <option value="friendly">Friendly</option>
               </select>
@@ -1502,9 +1506,9 @@ export default function Admin() {
                       <select value={editingResult.division || ''} onChange={e => setEditingResult({...editingResult, division: e.target.value})}>
                         <option value="">Auto (Profile)</option>
                         <optgroup label="League">
-                          {['Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Development'].map(d => <option key={d} value={d}>{d}</option>)}
+                          {['Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze'].map(d => <option key={d} value={d}>{d}</option>)}
                         </optgroup>
-                        <optgroup label="Super League">
+                        <optgroup label="Champions League">
                           {['Premier', 'Pro', 'Amateur'].map(d => <option key={d} value={d}>{d}</option>)}
                         </optgroup>
                       </select>
@@ -1516,7 +1520,7 @@ export default function Admin() {
                       <select value={editingResult.gameType || 'Friendly'} onChange={e => setEditingResult({...editingResult, gameType: e.target.value})}>
                         <option value="Friendly">Friendly</option>
                         <option value="League">League</option>
-                        <option value="Super League">Super League</option>
+                        <option value="Champions League">Champions League</option>
                         <option value="Cup">Cup</option>
                         <option value="Playoff">Playoff</option>
                       </select>
@@ -1588,7 +1592,7 @@ export default function Admin() {
                   <select value={adminGameForm.gameType} onChange={e => setAdminGameForm({...adminGameForm, gameType: e.target.value})}>
                     <option value="Friendly">Friendly</option>
                     <option value="League">League</option>
-                    <option value="Super League">Super League</option>
+                    <option value="Champions League">Champions League</option>
                     <option value="Cup">Cup</option>
                   </select>
                 </div>
@@ -2331,7 +2335,7 @@ export default function Admin() {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '30px' }}>
               <div className="glass" style={{ padding: '20px', borderRadius: '15px' }}>
-                <h4>Manage Super League</h4>
+                <h4>Manage Champions League</h4>
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '12px' }}>Assign player to Premier, Pro or Amateur rank.</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <UserSearchSelect users={allPlayers} selectedId={superRankForm.player} onSelect={id => setSuperRankForm({...superRankForm, player: id})} label="Player" onQueryChange={searchUsers} />
@@ -2342,7 +2346,7 @@ export default function Admin() {
                     <option value="Amateur">Amateur</option>
                     <option value="None">None (Remove)</option>
                   </select>
-                  <button className="btn btn-primary btn-block" onClick={handleUpdateSuperRank} disabled={!superRankForm.player || !superRankForm.rank}>Assign Super Rank</button>
+                  <button className="btn btn-primary btn-block" onClick={handleUpdateSuperRank} disabled={!superRankForm.player || !superRankForm.rank}>Assign Champions Rank</button>
                 </div>
               </div>
 
@@ -2374,7 +2378,6 @@ export default function Admin() {
                         <option value="Gold">Gold</option>
                         <option value="Silver">Silver</option>
                         <option value="Bronze">Bronze</option>
-                        <option value="Development">Development</option>
                         <option value="Unassigned">Unassigned</option>
                       </select>
                       <button className="btn btn-primary" onClick={handleUpdateDivision}>Move</button>
@@ -3033,7 +3036,7 @@ export default function Admin() {
                     {isApproving ? 'Processing...' : 'Fix Seasons'}
                   </button>
                   <button className="btn btn-warning btn-sm" onClick={handleResetSuperLeagueTable} disabled={isApproving} style={{ width: '100%', color: 'black' }}>
-                    Reset & Sync Super League
+                    Reset & Sync Champions League
                   </button>
                 </div>
               </div>

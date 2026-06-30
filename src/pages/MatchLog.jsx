@@ -11,7 +11,7 @@ export default function MatchLog() {
   const navigate = useNavigate()
   const { showToast } = useToast()
   const [activeTab, setActiveTab] = useState('toPlay')
-  const [competition, setCompetition] = useState('League') // 'League', 'Super League', 'Open Singles', 'Open Doubles'
+  const [competition, setCompetition] = useState('League') // 'League', 'Champions League', 'Open Singles', 'Open Doubles'
   const [targetPlayerId, setTargetPlayerId] = useState(user?.id)
   const [showBetForm, setShowBetForm] = useState(null)
   const [betAmount, setBetAmount] = useState(10)
@@ -60,7 +60,7 @@ export default function MatchLog() {
     // Identify if a fixture already exists for this match
     const existingFixture = fixtures.find(f =>
       !f._deleted &&
-      String(f.gameType || '').toLowerCase() === (competition === 'League' ? 'league' : 'super league') &&
+      String(f.gameType || '').toLowerCase() === (competition === 'League' ? 'league' : 'champions league') &&
       ((String(f.player1Id) === String(targetUser.id) && String(f.player2Id) === String(opponent.id)) ||
        (String(f.player1Id) === String(opponent.id) && String(f.player2Id) === String(targetUser.id)))
     )
@@ -142,7 +142,7 @@ export default function MatchLog() {
 
         if (competition === 'League') {
           return isLeagueResult(r, fixturesById) || isPlayoffResult(r, fixturesById)
-        } else if (competition === 'Super League') {
+        } else if (competition === 'Champions League') {
           return isSuperLeagueResult(r, fixturesById)
         } else if (competition === 'Open Singles') {
           return isOpenLeagueResult(r)
@@ -240,8 +240,8 @@ export default function MatchLog() {
         seen.add(String(u.id))
         return true
       })
-    } else if (competition === 'Super League') {
-      // Super League: play each opponent 2x
+    } else if (competition === 'Champions League') {
+      // Champions League: play each opponent 2x
       const slDivision = targetUser.superLeagueDivision
       if (!slDivision) return []
 
@@ -334,11 +334,11 @@ export default function MatchLog() {
           Standard League
         </button>
         <button
-          className={`btn btn-sm ${competition === 'Super League' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setCompetition('Super League')}
+          className={`btn btn-sm ${competition === 'Champions League' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setCompetition('Champions League')}
           style={{ borderRadius: '99px', minWidth: '120px' }}
         >
-          Super League
+          Champions League
         </button>
         <button
           className={`btn btn-sm ${competition === 'Open Singles' ? 'btn-primary' : 'btn-secondary'}`}
@@ -389,7 +389,7 @@ export default function MatchLog() {
                 <div>
                   <div style={{ fontWeight: '700', fontSize: '1rem' }}>vs {match.opponent}</div>
                   <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                    {match.season} • {match.date} {competition === 'Super League' ? `(SL)` : ''}
+                    {match.season} • {match.date} {competition === 'Champions League' ? `(CL)` : ''}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
@@ -443,7 +443,7 @@ export default function MatchLog() {
                       <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
                         {competition === 'League' ? `${player.division} Division` : `${player.superLeagueDivision} Super Rank`}
                       </div>
-                      {competition === 'Super League' && (
+                      {competition === 'Champions League' && (
                         <div style={{ fontSize: '0.65rem', color: 'var(--accent-cyan)' }}>
                           Played: {player._playedCount}/2
                         </div>

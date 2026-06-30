@@ -58,7 +58,7 @@ export default function SubmitResult() {
   const availablePlayers = allUsers.filter(u => u.id !== user.id)
   const opponentOptions = formData.gameType === 'League'
     ? availablePlayers.filter(u => u.division === user.division)
-    : formData.gameType === 'Super League'
+    : formData.gameType === 'Champions League'
       ? availablePlayers.filter(u => u.superLeagueDivision && u.superLeagueDivision === user.superLeagueDivision)
       : availablePlayers
   const fixtureIdParam = searchParams.get('fixtureId')
@@ -78,7 +78,7 @@ export default function SubmitResult() {
   const targetSeasonDoc = seasons.find(s => s.name === currentSeasonLabel)
   const stagedDiv = targetSeasonDoc?.stagedDivisions?.[String(user.id)] || targetSeasonDoc?.stagedDivisions?.[user.id]
 
-  const effectiveDivision = formData.gameType === 'Super League'
+  const effectiveDivision = formData.gameType === 'Champions League'
     ? (user.superLeagueDivision || 'Amateur')
     : (stagedDiv || user.division || 'Unassigned')
 
@@ -197,7 +197,7 @@ export default function SubmitResult() {
           bestOf: '8',
           firstTo: '5'
         }))
-      } else if (value === 'Super League') {
+      } else if (value === 'Champions League') {
         setFormData(prev => ({
           ...prev,
           opponent: availablePlayers.find(p => p.id === prev.opponent)?.superLeagueDivision === user.superLeagueDivision ? prev.opponent : '',
@@ -411,13 +411,13 @@ export default function SubmitResult() {
       return
     }
 
-    if (formData.gameType === 'Super League') {
+    if (formData.gameType === 'Champions League') {
       if (formData.bestOf !== '11' || formData.firstTo !== '6') {
-        setError('Super League games must be First to 6 legs (Best of 11)')
+        setError('Champions League games must be First to 6 legs (Best of 11)')
         return
       }
       if (parseInt(formData.yourScore) === parseInt(formData.opponentScore)) {
-        setError('Draws are not permitted in the Super League. A winner must be decided.')
+        setError('Draws are not permitted in the Champions League. A winner must be decided.')
         return
       }
     }
@@ -459,9 +459,9 @@ export default function SubmitResult() {
       return isSameSeason && isSameType && isBetweenPlayers && isNotRejected
     })
 
-    if (formData.gameType === 'Super League') {
+    if (formData.gameType === 'Champions League') {
       if (matchingResults.length >= 2) {
-        setError(`You've already played ${opponentName} 2 times in the Super League this season. No more matches allowed.`)
+        setError(`You've already played ${opponentName} 2 times in the Champions League this season. No more matches allowed.`)
         return
       }
     } else if (formData.gameType === 'League' && matchingResults.length >= 1) {
@@ -697,7 +697,7 @@ export default function SubmitResult() {
           <div className="form-group" style={{ marginBottom: '25px' }}>
             <label style={{ fontWeight: '600', marginBottom: '10px', display: 'block' }}>Match Type</label>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              {['Friendly', 'League', 'Super League', 'Cup', 'Playoff', 'Open League Singles', 'Open League Doubles'].map(type => (
+              {['Friendly', 'League', 'Champions League', 'Cup', 'Playoff', 'Open League Singles', 'Open League Doubles'].map(type => (
                 <button
                   key={type}
                   type="button"

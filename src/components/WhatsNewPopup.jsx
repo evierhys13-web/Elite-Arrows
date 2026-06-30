@@ -15,7 +15,7 @@ const CHANGELOG = [
     version: '2.4.0',
     date: 'June 2026',
     changes: [
-      { type: 'feature', title: 'Premium Super League', description: 'The Elite Super League is now available for all subscribed members with full standings and regulation tracking.' },
+      { type: 'feature', title: 'Champions League', description: 'The Elite Champions League is now available for all subscribed members with full standings and regulation tracking.' },
       { type: 'feature', title: 'Play Online & Local', description: 'Challenge any player globally or play locally with full manual scoring, glass shot cards, and camera support.' },
       { type: 'improvement', title: 'Google Play Integration', description: 'Direct subscription management via Google Play Store for seamless Elite Pass activation.' },
       { type: 'improvement', title: 'Real-Time Sync', description: 'Cup brackets, disputes, and all league data now sync instantly across all users.' }
@@ -36,7 +36,7 @@ const CHANGELOG = [
     date: 'May 2026',
     changes: [
       { type: 'feature', title: 'Season 2 Ready', description: 'Complete support for Season 2 fixtures, standings, and advance registrations.' },
-      { type: 'feature', title: 'Super League Beta', description: 'The Elite Super League is now open for all members to view and track.' },
+      { type: 'feature', title: 'Champions League Beta', description: 'The Elite Champions League is now open for all members to view and track.' },
       { type: 'improvement', title: 'Simplified Cups', description: 'One-click result submission for cup fixtures without scheduling friction.' },
       { type: 'improvement', title: 'Data Integrity', description: 'Improved division tracking and mandatory result proofing.' }
     ]

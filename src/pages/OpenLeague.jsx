@@ -87,6 +87,7 @@ export default function OpenLeague() {
 
   const isLocked = now < OPEN_LEAGUE_LAUNCH_DATE;
   const isAdmin = user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin;
+  const isSubscribed = user?.isSubscribed === true || isAdmin;
   const timeRemaining = OPEN_LEAGUE_LAUNCH_DATE - now;
 
   const formatTime = (ms) => {
@@ -112,6 +113,20 @@ export default function OpenLeague() {
           <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white', background: 'rgba(0,0,0,0.3)', padding: '15px', borderRadius: '12px' }}>
             {formatTime(timeRemaining)}
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isSubscribed && !isAdmin) {
+    return (
+      <div className="page animate-fade-in" style={{ textAlign: 'center', padding: '100px 20px' }}>
+        <h1 className="text-gradient" style={{ fontSize: '3rem', marginBottom: '20px' }}>Open League</h1>
+        <div className="card glass" style={{ maxWidth: '600px', margin: '0 auto', padding: '40px' }}>
+          <div style={{ fontSize: '4rem', marginBottom: '20px' }}>🏆</div>
+          <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>Elite Pass Required</h2>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '30px' }}>The Open League is exclusive to subscribed Elite Pass holders.</p>
+          <Link to="/subscription" className="btn btn-primary">Get Elite Pass</Link>
         </div>
       </div>
     );

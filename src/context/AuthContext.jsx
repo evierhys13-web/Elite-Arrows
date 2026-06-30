@@ -65,7 +65,6 @@ export const DIVISIONS = [
   "Gold",
   "Silver",
   "Bronze",
-  "Development",
 ];
 
 const RESULT_CACHE_KEY = "eliteArrowsResults";

@@ -21,7 +21,7 @@ export const isLeagueResult = (result, fixturesById = {}) => {
   const gameType = normalizeText(result.gameType)
 
   // 1. Explicitly ignore non-league types in the gameType label
-  const nonLeagueTypes = ['super league', 'cup', 'friendly', 'playoff', 'tournament', 'open league']
+  const nonLeagueTypes = ['super league', 'champions league', 'cup', 'friendly', 'playoff', 'tournament', 'open league']
   if (nonLeagueTypes.some(type => gameType.includes(type))) return false
 
   // 2. If it has a cupId or matchId on the result itself, it's NOT league
@@ -56,7 +56,7 @@ export const isSuperLeagueResult = (result, fixturesById = {}) => {
   const gameType = normalizeText(result.gameType)
 
   // 1. Explicit labels
-  if (gameType.includes('super league') || gameType.includes('superleague')) return true
+  if (gameType.includes('super league') || gameType.includes('superleague') || gameType.includes('champions league') || gameType.includes('championsleague')) return true
 
   // 2. Division-specific labels
   const superDivisions = ['premier', 'pro', 'amateur']
@@ -70,7 +70,7 @@ export const isSuperLeagueResult = (result, fixturesById = {}) => {
   if (otherTypes.some(type => gameType.includes(type))) return false
   if (result.cupId || result.matchId || result.tournamentId) return false
 
-  // Standard Super League is First to 6
+  // Standard Champions League is First to 6
   if ((s1 === 6 || s2 === 6) && (s1 + s2) <= 11 && (s1 + s2) >= 6) {
     return true
   }
@@ -79,7 +79,7 @@ export const isSuperLeagueResult = (result, fixturesById = {}) => {
   const fixture = result.fixtureId ? fixturesById[String(result.fixtureId)] : null
   if (fixture) {
     const fixtureGameType = normalizeText(fixture.gameType)
-    if (fixtureGameType.includes('super league') || fixtureGameType.includes('superleague')) return true
+    if (fixtureGameType.includes('super league') || fixtureGameType.includes('superleague') || fixtureGameType.includes('champions league')) return true
     if (superDivisions.some(div => fixtureGameType.includes(div))) return true
   }
 

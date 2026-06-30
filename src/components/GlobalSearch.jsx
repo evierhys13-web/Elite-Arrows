@@ -23,8 +23,7 @@ const divisionColors = {
   Diamond: '#06b6d4',
   Gold: '#eab308',
   Silver: '#94a3b8',
-  Bronze: '#d97706',
-  Development: '#22c55e'
+  Bronze: '#d97706'
 }
 
 export default function GlobalSearch() {

@@ -651,7 +651,6 @@ export default function Guide() {
                   <li><strong>Gold</strong> - Lower intermediate</li>
                   <li><strong>Silver</strong> - Development level</li>
                   <li><strong>Bronze</strong> - Entry level</li>
-                  <li><strong>Development</strong> - New players</li>
                 </ul>
               </div>
 

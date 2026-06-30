@@ -40,7 +40,7 @@ export default function Chat() {
 
   const allUsers = getAllUsers()
   const currentUser = allUsers.find(u => u.id === user?.id)
-  const divisions = ['Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Development']
+  const divisions = ['Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze']
 
   let friendIds = []
   if (user?.friends) {

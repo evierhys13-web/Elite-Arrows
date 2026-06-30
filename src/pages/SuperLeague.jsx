@@ -6,14 +6,14 @@ import Breadcrumbs from '../components/Breadcrumbs'
 import { useToast } from '../context/ToastContext'
 import { db, doc, setDoc } from '../firebase'
 
-const SUPER_DIVISIONS = ['Premier', 'Pro', 'Amateur']
+const CHAMPIONS_DIVISIONS = ['Premier', 'Pro', 'Amateur']
 const DIVISION_COLORS = {
   'Premier': '#fbbf24',
   'Pro': '#38bdf8',
   'Amateur': '#cbd5e1'
 }
 
-export default function SuperLeague() {
+export default function ChampionsLeague() {
   const [activeDivision, setActiveDivision] = useState('Premier')
   const { user, getAllUsers, getFixtures, getResults, triggerDataRefresh, dataRefreshTrigger, adminData, fetchResultsBySeason, forceFetchResults, getSeasons, fetchUsersByDivision } = useAuth()
   const { showToast } = useToast()
@@ -21,7 +21,7 @@ export default function SuperLeague() {
   const [loadingData, setLoadingData] = useState(false)
   const [editingManual, setEditingManual] = useState(null)
   const [manualForm, setManualForm] = useState({ played: 0, wins: 0, draws: 0, losses: 0, points: 0, legsWon: 0, legsLost: 0 })
-  const selectedSeason = adminData?.currentSeason || 'Season 2'
+  const selectedSeason = adminData?.championsLeagueSeason || adminData?.currentSeason || 'Season 2'
 
   const isAdmin = user?.isAdmin === true
 
@@ -88,7 +88,7 @@ export default function SuperLeague() {
       setRefreshKey(prev => prev + 1)
       showToast('Global standings synced!', 'success')
     } catch (e) {
-      console.error('Super League Sync Error:', e)
+      console.error('Champions League Sync Error:', e)
       showToast('Sync failed — using cached data', 'warning')
     }
     setLoadingData(false)
@@ -111,7 +111,7 @@ export default function SuperLeague() {
         Object.keys(defaultStats).forEach(k => { payload[k] = Number(manualForm[k]) || 0 })
         await setDoc(doc(db, 'users', editingManual.id), { manualSuperStats: payload }, { merge: true })
       }
-      showToast('Super League adjustments saved!', 'success')
+      showToast('Champions League adjustments saved!', 'success')
       setEditingManual(null)
       triggerDataRefresh('all')
       setRefreshKey(prev => prev + 1)
@@ -122,12 +122,12 @@ export default function SuperLeague() {
 
   return (
     <div className="page animate-fade-in" style={{ maxWidth: '1200px', margin: '0 auto' }}>
-      <Breadcrumbs items={[{ label: 'Home', path: '/home' }, { label: 'Super League' }]} />
+      <Breadcrumbs items={[{ label: 'Home', path: '/home' }, { label: 'Champions League' }]} />
 
       <div className="page-header" style={{ marginBottom: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           <div>
-            <h1 className="page-title text-gradient" style={{ fontSize: '2.2rem', marginBottom: '4px' }}>Elite Super League</h1>
+            <h1 className="page-title text-gradient" style={{ fontSize: '2.2rem', marginBottom: '4px' }}>Elite Champions League</h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Season:</span>
               <span style={{ fontWeight: 800, color: 'var(--accent-cyan)', fontSize: '0.9rem' }}>{selectedSeason}</span>
@@ -140,7 +140,7 @@ export default function SuperLeague() {
       </div>
 
       <div className="division-tabs" style={{ display: 'flex', overflowX: 'auto', gap: '8px', marginBottom: '20px', paddingBottom: '8px' }}>
-        {SUPER_DIVISIONS.map(div => (
+        {CHAMPIONS_DIVISIONS.map(div => (
           <button
             key={div}
             className={`division-tab ${activeDivision === div ? 'active' : ''}`}
@@ -250,7 +250,7 @@ export default function SuperLeague() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setEditingManual(null)}>
           <div className="card glass" style={{ padding: '28px', maxWidth: '420px', width: '90%', border: '1px solid var(--accent-cyan)' }} onClick={e => e.stopPropagation()}>
             <h3 style={{ marginBottom: '4px' }}>Admin Adjustments: {editingManual.username}</h3>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '20px' }}>Super League table overrides</p>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '20px' }}>Champions League table overrides</p>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               {['played', 'wins', 'losses', 'points', 'legsWon', 'legsLost'].map(field => (

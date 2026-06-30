@@ -100,7 +100,7 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
       // Defense-in-depth: explicitly exclude any result with cup/tournament markers
       if (result.cupId || result.matchId || result.tournamentId) return false
       const gt = String(result.gameType || '').toLowerCase().trim()
-      const nonLeague = ['cup', 'friendly', 'playoff', 'tournament', 'super league', 'open league']
+      const nonLeague = ['cup', 'friendly', 'playoff', 'tournament', 'super league', 'champions league', 'open league']
       if (nonLeague.some(t => gt.includes(t))) return false
     }
 
@@ -259,7 +259,7 @@ export const derivePlayerStatsFromResults = (users = [], results = [], options =
     if (isPlayoff && !includePlayoffs) return
 
     const countsForPoints = (isSuper || isLeagueResult(result, fixturesById)) && !isPlayoff
-    const scoringOptions = { noDrawBonus: isSuper || isPlayoff, noWinBonus: isSuper }
+    const scoringOptions = { noDrawBonus: isSuper || isPlayoff, noWinBonus: isSuper, isChampionsLeague: isSuper }
 
     if (player1Id && statsByPlayerId[player1Id]) {
       addResultToPlayer(statsByPlayerId[player1Id], result, 1, score2, score1, countsForPoints, scoringOptions)

@@ -13,7 +13,6 @@ const DIVISION_COLORS = {
   Gold: "#fcd34d",
   Silver: "#cbd5e1",
   Bronze: "#d97706",
-  Development: "#4ade80",
   Overall: "#818cf8",
 };
 
@@ -77,7 +76,6 @@ export default function Table() {
     "Gold",
     "Silver",
     "Bronze",
-    "Development",
   ];
   const seasons = getSeasons();
 
