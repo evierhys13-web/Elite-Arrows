@@ -16,6 +16,10 @@ export default function CupBracket() {
   const [refreshKey, setRefreshKey] = useState(0)
 
   const [showSwapModal, setShowSwapModal] = useState(false)
+  const [showSetPlayerModal, setShowSetPlayerModal] = useState(false)
+  const [targetMatch, setTargetMatch] = useState(null)
+  const [targetPosition, setTargetPosition] = useState(null)
+  const [playerToSet, setPlayerToSet] = useState('')
   const [playerToRemove, setPlayerToRemove] = useState('')
   const [playerToAdd, setPlayerToAdd] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -89,7 +93,7 @@ export default function CupBracket() {
   }
 
   const groupStandings = useMemo(() => {
-    if (!cup || !Array.isArray(cup?.matches) || cup.matches.length === 0) return { sortedStandings: {}, bestThirdIds: [], sortedThirdPlaced: [], numThirdNeeded: 0 }
+    if (!cup || !Array.isArray(cup?.matches) || cup.matches.length === 0) return { sortedStandings: {}, bestThirdIds: [], sortedThirdPlaced: [], numThirdNeeded: 0, advanceCount: 2 }
     const safe = cup.matches
     const standings = {}
 
@@ -125,8 +129,10 @@ export default function CupBracket() {
       }
     })
 
+    const hasKnockout = cup.matches.some(m => m.stage === 'knockout')
+    const advanceCount = cup.type === 'group_knockout' ? (cup.advancePerGroup || 2) : (cup.type === 'world_cup' ? 2 : 0)
     const sortedStandings = {}
-    const thirdPlaced = []
+    const extraPlaced = []
 
     Object.keys(standings).forEach(gId => {
       const sorted = Object.values(standings[gId]).sort((a, b) => {
@@ -137,19 +143,19 @@ export default function CupBracket() {
         return b.legsFor - a.legsFor
       })
       sortedStandings[gId] = sorted
-      if (sorted[2]) thirdPlaced.push({ ...sorted[2], group: gId })
+      if (hasKnockout && sorted[advanceCount]) extraPlaced.push({ ...sorted[advanceCount], group: gId })
     })
 
     const numGroups = Object.keys(sortedStandings).length
-    const totalTop2 = numGroups * 2
-    const knockoutSize = totalTop2 > 0 ? Math.pow(2, Math.ceil(Math.log2(totalTop2))) : 0
-    const numThirdNeeded = knockoutSize - totalTop2
+    const totalDirect = numGroups * advanceCount
+    const knockoutSize = totalDirect > 0 ? Math.pow(2, Math.ceil(Math.log2(totalDirect))) : 0
+    const numThirdNeeded = knockoutSize - totalDirect
 
-    const sortedThirdPlaced = thirdPlaced.sort((a, b) => (b.points - a.points) || (b.legsFor - b.legsAgainst) - (a.legsFor - a.legsAgainst) || (b.legsFor - a.legsFor))
+    const sortedThirdPlaced = extraPlaced.sort((a, b) => (b.points - a.points) || (b.legsFor - b.legsAgainst) - (a.legsFor - a.legsAgainst) || (b.legsFor - a.legsFor))
 
     const bestThirdIds = sortedThirdPlaced.slice(0, numThirdNeeded).map(p => p.id)
 
-    return { sortedStandings, bestThirdIds, sortedThirdPlaced, numThirdNeeded }
+    return { sortedStandings, bestThirdIds, sortedThirdPlaced, numThirdNeeded, advanceCount }
   }, [cup, results, fixtures])
 
   useEffect(() => {
@@ -158,6 +164,10 @@ export default function CupBracket() {
       activeStageSetRef.current = true
     }
   }, [cup])
+
+  const isWorldCup = cup?.type === 'world_cup'
+  const isGroupKnockout = cup?.type === 'group_knockout'
+  const isWorldCupOrGroupKO = isWorldCup || isGroupKnockout
 
   if (!cup) {
     return (
@@ -208,7 +218,7 @@ export default function CupBracket() {
     return !hasResult && !match?.winner
   })
 
-  const { sortedStandings, bestThirdIds, sortedThirdPlaced, numThirdNeeded } = groupStandings
+  const { sortedStandings, bestThirdIds, sortedThirdPlaced, numThirdNeeded, advanceCount = 2 } = groupStandings
 
 
   const handleSwapPlayer = async () => {
@@ -281,6 +291,87 @@ export default function CupBracket() {
     }
   }
 
+  const handleSetMatchPlayer = async () => {
+    if (!cup || !targetMatch || !playerToSet) return showToast?.('Please select a player', 'error')
+
+    setIsSubmitting(true)
+    try {
+      const cupRef = doc(db, 'cups', String(cup.id))
+      const cupSnap = await getDoc(cupRef)
+      if (!cupSnap.exists()) throw new Error('Cup not found')
+
+      const cupData = cupSnap.data()
+      const newPlayer = allUsers.find(u => u.id === playerToSet)
+      if (!newPlayer) throw new Error('Player not found')
+
+      // 1. Update the match in cupData.matches
+      const updatedMatches = (cupData.matches || []).map(m => {
+        if (String(m.id) === String(targetMatch.id)) {
+          return {
+            ...m,
+            [targetPosition === 1 ? 'player1' : 'player2']: playerToSet
+          }
+        }
+        return m
+      })
+
+      // 2. Ensure player is in cup.players list
+      const updatedPlayers = [...(cupData.players || [])]
+      if (!updatedPlayers.includes(playerToSet)) {
+        updatedPlayers.push(playerToSet)
+      }
+
+      const nextCupData = { ...cupData, players: updatedPlayers, matches: updatedMatches }
+      await setDoc(cupRef, nextCupData, { merge: true })
+
+      // 3. Create fixture if both players now exist
+      const updatedMatch = updatedMatches.find(m => String(m.id) === String(targetMatch.id))
+      if (updatedMatch.player1 && updatedMatch.player2) {
+        const existingFixture = (fixtures || []).find(f => String(f.matchId) === String(updatedMatch.id))
+        if (!existingFixture) {
+          const roundFormat = cupData.roundFormats?.[updatedMatch.round || 0] || { startScore: 501, bestOf: 3 }
+          const fixtureId = `cup_${cup.id}_match_${updatedMatch.id}`
+
+          const p1 = allUsers.find(u => String(u.id) === String(updatedMatch.player1))
+          const p2 = allUsers.find(u => String(u.id) === String(updatedMatch.player2))
+
+          const newFixture = {
+            id: fixtureId,
+            cupId: isNaN(parseInt(cup.id)) ? cup.id : parseInt(cup.id),
+            cupName: cup.name,
+            startScore: roundFormat.startScore,
+            bestOf: roundFormat.bestOf,
+            firstTo: Math.ceil(roundFormat.bestOf / 2),
+            player1: p1?.username || 'Unknown',
+            player1Id: updatedMatch.player1,
+            player2: p2?.username || 'Unknown',
+            player2Id: updatedMatch.player2,
+            matchId: updatedMatch.id,
+            round: updatedMatch.round || 0,
+            stage: updatedMatch.stage,
+            group: updatedMatch.group || null,
+            status: 'accepted',
+            proposalStatus: 'accepted',
+            createdAt: new Date().toISOString()
+          }
+          await setDoc(doc(db, 'fixtures', fixtureId), newFixture)
+        }
+      }
+
+      showToast?.(`Set player for match.`, 'success')
+      setCup(nextCupData)
+      setShowSetPlayerModal(false)
+      setTargetMatch(null)
+      setPlayerToSet('')
+      triggerDataRefresh('all')
+      setRefreshKey(prev => prev + 1)
+    } catch (e) {
+      showToast?.('Error: ' + e.message, 'error')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   return (
     <div className="page" style={{ padding: '20px' }}>
       <div className="page-header" style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -296,20 +387,20 @@ export default function CupBracket() {
         textAlign: 'center', 
         marginBottom: '30px',
         padding: '30px',
-        background: (cup.type || 'tournament') === 'world_cup'
+        background: isWorldCup
           ? 'linear-gradient(135deg, #1e1b4b, #312e81)'
           : 'linear-gradient(135deg, #0f172a, #1e293b)',
         borderRadius: '24px',
-        border: (cup.type || 'tournament') === 'world_cup'
+        border: isWorldCup
           ? '2px solid rgba(251, 191, 36, 0.3)'
           : '1px solid rgba(56, 189, 248, 0.2)',
-        boxShadow: (cup.type || 'tournament') === 'world_cup'
+        boxShadow: isWorldCup
           ? '0 20px 50px rgba(0,0,0,0.5), inset 0 0 20px rgba(251, 191, 36, 0.1)'
           : '0 20px 50px rgba(0,0,0,0.3)',
         position: 'relative',
         overflow: 'hidden'
       }}>
-        {(cup.type || 'tournament') === 'world_cup' && (
+        {isWorldCup && (
           <div style={{
             position: 'absolute',
             top: '-20px',
@@ -320,7 +411,7 @@ export default function CupBracket() {
             pointerEvents: 'none'
           }}>🏆</div>
         )}
-        <h1 className={(cup.type || 'tournament') === 'world_cup' ? "text-gradient-gold" : "text-gradient"} style={{
+        <h1 className={isWorldCup ? "text-gradient-gold" : "text-gradient"} style={{
           margin: '0 0 12px 0',
           fontSize: '3rem',
           fontWeight: 900,
@@ -337,13 +428,13 @@ export default function CupBracket() {
             padding: '8px 20px',
             borderRadius: '30px',
             fontSize: '0.85rem',
-            color: (cup.type || 'tournament') === 'world_cup' ? '#fbbf24' : 'var(--success)',
+            color: isWorldCup ? '#fbbf24' : 'var(--success)',
             fontWeight: 800,
             textTransform: 'uppercase',
-            background: (cup.type || 'tournament') === 'world_cup' ? 'rgba(251, 191, 36, 0.1)' : 'rgba(34, 197, 94, 0.1)',
-            border: (cup.type || 'tournament') === 'world_cup' ? '1px solid rgba(251, 191, 36, 0.3)' : '1px solid rgba(34, 197, 94, 0.3)'
+            background: isWorldCup ? 'rgba(251, 191, 36, 0.1)' : 'rgba(34, 197, 94, 0.1)',
+            border: isWorldCup ? '1px solid rgba(251, 191, 36, 0.3)' : '1px solid rgba(34, 197, 94, 0.3)'
           }}>
-             {(cup.type || 'tournament') === 'world_cup' ? '🏆 WORLD CUP FORMAT' : (cup.type || 'tournament').replace('_', ' ')}
+             {isWorldCup ? '🏆 WORLD CUP FORMAT' : isGroupKnockout ? '📋 GROUPS → KNOCKOUT' : (cup.type || 'tournament').replace('_', ' ')}
           </div>
         </div>
       </div>
@@ -352,23 +443,25 @@ export default function CupBracket() {
         <div style={{ 
           textAlign: 'center', 
           padding: '48px',
-          background: 'linear-gradient(135deg, #f59e0b, #ef4444)',
+          background: isWorldCup ? 'linear-gradient(135deg, #f59e0b, #ef4444)' : 'linear-gradient(135deg, #0f172a, #1e293b)',
           borderRadius: '24px',
           marginBottom: '40px',
-          boxShadow: '0 0 60px rgba(245, 158, 11, 0.3)',
+          boxShadow: isWorldCup ? '0 0 60px rgba(245, 158, 11, 0.3)' : '0 20px 50px rgba(0,0,0,0.3)',
           position: 'relative',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          border: !isWorldCup ? '2px solid rgba(56, 189, 248, 0.3)' : 'none'
         }}>
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'url("https://www.transparenttextures.com/patterns/carbon-fibre.png")', opacity: 0.1 }}></div>
-          <h2 style={{ color: 'white', margin: 0, fontSize: '1.2rem', fontWeight: 900, letterSpacing: '4px', textTransform: 'uppercase' }}>World Champion</h2>
-          <h1 style={{ color: 'white', margin: '20px 0 0 0', fontSize: '4.5rem', fontWeight: 900, textShadow: '0 4px 20px rgba(0,0,0,0.4)', lineHeight: 1 }}>
+          <h2 style={{ color: isWorldCup ? 'white' : 'var(--accent-cyan)', margin: 0, fontSize: '1.2rem', fontWeight: 900, letterSpacing: '4px', textTransform: 'uppercase' }}>
+            {isWorldCup ? 'World Champion' : '🏆 Champion'}
+          </h2>
+          <h1 style={{ color: isWorldCup ? 'white' : 'white', margin: '20px 0 0 0', fontSize: '4.5rem', fontWeight: 900, textShadow: '0 4px 20px rgba(0,0,0,0.4)', lineHeight: 1 }}>
             {getPlayerName(cupWinner)}
           </h1>
           <div style={{ marginTop: '20px', fontSize: '3rem' }}>🏆🎯🏆</div>
         </div>
       )}
 
-      {(cup.type === 'world_cup' || cup.type === 'groups') && (
+      {(isWorldCupOrGroupKO || cup.type === 'groups') && (
         <div className="division-tabs" style={{ marginBottom: '32px', display: 'flex', justifyContent: 'center', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '16px', maxWidth: '400px', margin: '0 auto 32px' }}>
           <button
             className={`division-tab ${activeStage === 'groups' ? 'active' : ''}`}
@@ -377,7 +470,7 @@ export default function CupBracket() {
           >
             Group Stages
           </button>
-          {(cup.type === 'world_cup' || cup.type === 'knockout') && (
+          {(isWorldCupOrGroupKO || cup.type === 'knockout') && (
             <button
               className={`division-tab ${activeStage === 'knockout' ? 'active' : ''}`}
               onClick={() => setActiveStage('knockout')}
@@ -400,7 +493,7 @@ export default function CupBracket() {
           }}>
             <h2 style={{ fontSize: '1.2rem', fontWeight: 900, letterSpacing: '2px', color: 'white' }}>GROUP STANDINGS</h2>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              {cup.type === 'world_cup' ? 'Top 2 + Best 3rd Placed Advance' : `Top ${cup.advancePerGroup || 2} Advance to Knockout`}
+              {isWorldCup ? 'Top 2 + Best 3rd Placed Advance' : isGroupKnockout ? `Top ${cup.advancePerGroup || 2} + Best Next-Placed Advance` : `Top ${cup.advancePerGroup || 2} Advance to Knockout`}
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '24px', marginBottom: '40px' }}>
@@ -408,10 +501,10 @@ export default function CupBracket() {
               <div key={gId} className="card glass" style={{
                 padding: '24px',
                 borderRadius: '20px',
-                border: cup.type === 'world_cup' ? '1px solid rgba(251, 191, 36, 0.2)' : '1px solid rgba(255,255,255,0.05)',
-                boxShadow: cup.type === 'world_cup' ? '0 10px 30px rgba(0,0,0,0.2)' : ''
+                border: isWorldCup ? '1px solid rgba(251, 191, 36, 0.2)' : '1px solid rgba(255,255,255,0.05)',
+                boxShadow: isWorldCup ? '0 10px 30px rgba(0,0,0,0.2)' : ''
               }}>
-                <h3 style={{ color: cup.type === 'world_cup' ? '#fbbf24' : 'var(--accent-cyan)', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ color: isWorldCup ? '#fbbf24' : 'var(--accent-cyan)', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontWeight: 900, fontSize: '1.5rem' }}>GROUP {gId}</span>
                   <span style={{ fontSize: '0.7rem', opacity: 0.5, letterSpacing: '1px' }}>ROUND ROBIN</span>
                 </h3>
@@ -428,9 +521,9 @@ export default function CupBracket() {
                 </thead>
                 <tbody>
                   {sortedStandings[gId].map((p, idx) => {
-                    const isTop2 = idx < 2
-                    const isBestThird = idx === 2 && bestThirdIds.includes(p.id)
-                    const isQualifying = isTop2 || isBestThird
+                    const isDirectQualifier = idx < advanceCount
+                    const isBestExtra = idx === advanceCount && bestThirdIds.includes(p.id)
+                    const isQualifying = isDirectQualifier || isBestExtra
 
                     return (
                       <tr key={p.id} style={{
@@ -441,8 +534,8 @@ export default function CupBracket() {
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                              {isQualifying && (
                                <span
-                                 title={isTop2 ? "Automatic Qualifier" : "Best 3rd Placed Qualifier"}
-                                 style={{ color: isTop2 ? 'var(--success)' : 'var(--accent-cyan)', fontSize: '0.7rem' }}
+                                 title={isDirectQualifier ? "Automatic Qualifier" : "Best Next-Placed Qualifier"}
+                                 style={{ color: isDirectQualifier ? 'var(--success)' : 'var(--accent-cyan)', fontSize: '0.7rem' }}
                                >●</span>
                              )}
                              {getPlayerName(p.id)}
@@ -485,12 +578,12 @@ export default function CupBracket() {
           padding: '40px',
           overflowX: 'auto',
           width: '100%',
-          border: cup.type === 'world_cup' ? '1px solid rgba(251, 191, 36, 0.1)' : '1px solid rgba(255,255,255,0.05)',
+          border: isWorldCup ? '1px solid rgba(251, 191, 36, 0.1)' : '1px solid rgba(255,255,255,0.05)',
           backdropFilter: 'blur(10px)',
           boxShadow: 'inset 0 0 40px rgba(0,0,0,0.3)'
         }}>
         <h3 style={{ 
-          color: cup.type === 'world_cup' ? '#fbbf24' : 'white',
+          color: isWorldCup ? '#fbbf24' : 'white',
           textAlign: 'center', 
           marginBottom: '40px',
           fontSize: '1.5rem',
@@ -498,7 +591,7 @@ export default function CupBracket() {
           letterSpacing: '4px',
           textTransform: 'uppercase'
         }}>
-          {cup.type === 'world_cup' ? 'Knockout Phase' : 'Tournament Bracket'}
+          {isWorldCup ? 'Knockout Phase' : 'Tournament Bracket'}
         </h3>
         
         <div className="cup-bracket-stage" style={{ 
@@ -562,18 +655,29 @@ export default function CupBracket() {
                           position: 'relative'
                         }}>
                           {/* Player 1 Slot */}
-                          <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            padding: '10px 14px',
-                            background: p1Won ? 'rgba(34, 197, 94, 0.15)' : hasPlayers ? 'rgba(30, 41, 59, 0.8)' : 'rgba(15, 23, 42, 0.4)',
-                            borderRadius: '8px 8px 0 0',
-                            border: p1Won ? '1px solid #22c55e' : '1px solid rgba(255,255,255,0.1)',
-                            borderBottom: 'none',
-                            minHeight: '40px',
-                            transition: 'all 0.3s ease',
-                            boxShadow: p1Won ? '0 0 15px rgba(34, 197, 94, 0.1)' : 'none'
-                          }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              padding: '10px 14px',
+                              background: p1Won ? 'rgba(34, 197, 94, 0.15)' : hasPlayers ? 'rgba(30, 41, 59, 0.8)' : 'rgba(15, 23, 42, 0.4)',
+                              borderRadius: '8px 8px 0 0',
+                              border: p1Won ? '1px solid #22c55e' : '1px solid rgba(255,255,255,0.1)',
+                              borderBottom: 'none',
+                              minHeight: '40px',
+                              transition: 'all 0.3s ease',
+                              boxShadow: p1Won ? '0 0 15px rgba(34, 197, 94, 0.1)' : 'none',
+                              cursor: isAdmin ? 'pointer' : 'default'
+                            }}
+                            onClick={() => {
+                              if (isAdmin) {
+                                setTargetMatch(match)
+                                setTargetPosition(1)
+                                setPlayerToSet(match.player1 || '')
+                                setShowSetPlayerModal(true)
+                              }
+                            }}
+                          >
                             <span style={{ 
                               flex: 1, 
                               color: p1Won ? '#4ade80' : p1Name ? 'white' : 'rgba(255,255,255,0.2)',
@@ -583,7 +687,7 @@ export default function CupBracket() {
                               overflow: 'hidden',
                               textOverflow: 'ellipsis'
                             }}>
-                              {p1Name || (match.sourceP1 ? `Winner Grp ${match.sourceP1.group}` : 'TBD')}
+                              {p1Name || (match.sourceP1 ? (match.sourceP1.bestThird ? `Best 3rd #${match.sourceP1.position}` : match.sourceP1.bestExtra ? `Best Extra #${match.sourceP1.position}` : match.sourceP1.position === 1 ? `Winner Grp ${match.sourceP1.group}` : match.sourceP1.position === 2 ? `Runner-up Grp ${match.sourceP1.group}` : `P${match.sourceP1.position} Grp ${match.sourceP1.group}`) : 'TBD')}
                             </span>
                             {result && (
                               <span style={{ 
@@ -603,17 +707,28 @@ export default function CupBracket() {
                           </div>
                           
                           {/* Player 2 Slot */}
-                          <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            padding: '10px 14px',
-                            background: p2Won ? 'rgba(34, 197, 94, 0.15)' : hasPlayers ? 'rgba(30, 41, 59, 0.8)' : 'rgba(15, 23, 42, 0.4)',
-                            borderRadius: '0 0 8px 8px',
-                            border: p2Won ? '1px solid #22c55e' : '1px solid rgba(255,255,255,0.1)',
-                            minHeight: '40px',
-                            transition: 'all 0.3s ease',
-                            boxShadow: p2Won ? '0 0 15px rgba(34, 197, 94, 0.1)' : 'none'
-                          }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              padding: '10px 14px',
+                              background: p2Won ? 'rgba(34, 197, 94, 0.15)' : hasPlayers ? 'rgba(30, 41, 59, 0.8)' : 'rgba(15, 23, 42, 0.4)',
+                              borderRadius: '0 0 8px 8px',
+                              border: p2Won ? '1px solid #22c55e' : '1px solid rgba(255,255,255,0.1)',
+                              minHeight: '40px',
+                              transition: 'all 0.3s ease',
+                              boxShadow: p2Won ? '0 0 15px rgba(34, 197, 94, 0.1)' : 'none',
+                              cursor: isAdmin ? 'pointer' : 'default'
+                            }}
+                            onClick={() => {
+                              if (isAdmin) {
+                                setTargetMatch(match)
+                                setTargetPosition(2)
+                                setPlayerToSet(match.player2 || '')
+                                setShowSetPlayerModal(true)
+                              }
+                            }}
+                          >
                             <span style={{ 
                               flex: 1, 
                               color: p2Won ? '#4ade80' : p2Name ? 'white' : 'rgba(255,255,255,0.2)',
@@ -623,7 +738,7 @@ export default function CupBracket() {
                               overflow: 'hidden',
                               textOverflow: 'ellipsis'
                             }}>
-                              {p2Name || (match.sourceP2 ? `Runner-up Grp ${match.sourceP2.group}` : 'TBD')}
+                              {p2Name || (match.sourceP2 ? (match.sourceP2.bestThird ? `Best 3rd #${match.sourceP2.position}` : match.sourceP2.bestExtra ? `Best Extra #${match.sourceP2.position}` : match.sourceP2.position === 1 ? `Winner Grp ${match.sourceP2.group}` : match.sourceP2.position === 2 ? `Runner-up Grp ${match.sourceP2.group}` : `P${match.sourceP2.position} Grp ${match.sourceP2.group}`) : 'TBD')}
                             </span>
                             {result && (
                               <span style={{ 
@@ -715,6 +830,39 @@ export default function CupBracket() {
           </div>
         )}
       </div>
+
+      {showSetPlayerModal && (
+        <div className="modal-overlay">
+          <div className="modal-content glass" style={{ maxWidth: '400px' }}>
+            <h3 style={{ marginBottom: '20px' }}>Set Match Participant</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '20px' }}>
+              Manually assign a player to <strong>Position {targetPosition}</strong> in this match.
+            </p>
+
+            <div className="form-group">
+              <label>Select Player</label>
+              <UserSearchSelect
+                users={allUsers}
+                selectedId={playerToSet}
+                onSelect={setPlayerToSet}
+                label=""
+                placeholder="Search for player..."
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '30px' }}>
+              <button className="btn btn-secondary btn-block" onClick={() => { setShowSetPlayerModal(false); setTargetMatch(null); }}>Cancel</button>
+              <button
+                className="btn btn-primary btn-block"
+                onClick={handleSetMatchPlayer}
+                disabled={isSubmitting || !playerToSet}
+              >
+                {isSubmitting ? 'Saving...' : 'Confirm Player'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showSwapModal && (
         <div className="modal-overlay">

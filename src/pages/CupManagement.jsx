@@ -14,6 +14,13 @@ function CupManagement() {
   const [allCupResults, setAllCupResults] = useState([])
   const [showResultModal, setShowResultModal] = useState(false)
   const [showSwapModal, setShowSwapModal] = useState(false)
+  const [showSetPlayerModal, setShowSetPlayerModal] = useState(false)
+  const [setPlayerForm, setSetPlayerForm] = useState({
+    cup: null,
+    match: null,
+    position: 1,
+    playerId: ''
+  })
   const [swapCup, setSwapCup] = useState(null)
   const [playerToRemove, setPlayerToRemove] = useState('')
   const [playerToAdd, setPlayerToAdd] = useState('')
@@ -68,18 +75,21 @@ function CupManagement() {
         }
       })
 
+      const advanceCount = cupData.type === 'group_knockout' ? (cupData.advancePerGroup || 2) : 2
+
       const sortedGroups = {}
-      const thirdPlacedPlayers = []
+      const extraPlacedPlayers = []
 
       Object.keys(standings).forEach(gId => {
         const sorted = Object.values(standings[gId]).sort((a,b) => (b.points - a.points) || (b.legsFor - b.legsAgainst) - (a.legsFor - a.legsAgainst) || (b.legsFor - a.legsFor))
         sortedGroups[gId] = sorted
-        if (sorted[2]) {
-          thirdPlacedPlayers.push({ ...sorted[2], group: gId })
+        // Collect the next-placed player beyond the direct qualifiers
+        if (sorted[advanceCount]) {
+          extraPlacedPlayers.push({ ...sorted[advanceCount], group: gId })
         }
       })
 
-      const bestThirdPlaced = thirdPlacedPlayers.sort((a, b) => (b.points - a.points) || (b.legsFor - b.legsAgainst) - (a.legsFor - a.legsAgainst) || (b.legsFor - a.legsFor))
+      const bestExtraPlaced = extraPlacedPlayers.sort((a, b) => (b.points - a.points) || (b.legsFor - b.legsAgainst) - (a.legsFor - a.legsAgainst) || (b.legsFor - a.legsFor))
 
       const updatedMatches = [...cupData.matches]
       const newFixtures = []
@@ -87,8 +97,8 @@ function CupManagement() {
       updatedMatches.filter(m => m.stage === 'knockout' && m.round === 1).forEach(m => {
         const mIdx = updatedMatches.findIndex(um => um.id === m.id)
         if (m.sourceP1) {
-          if (m.sourceP1.bestThird) {
-            const qualified = bestThirdPlaced[m.sourceP1.position - 1]
+          if (m.sourceP1.bestThird || m.sourceP1.bestExtra) {
+            const qualified = bestExtraPlaced[m.sourceP1.position - 1]
             if (qualified) updatedMatches[mIdx].player1 = qualified.id
           } else {
             const qualified = sortedGroups[m.sourceP1.group]?.[m.sourceP1.position - 1]
@@ -96,8 +106,8 @@ function CupManagement() {
           }
         }
         if (m.sourceP2) {
-          if (m.sourceP2.bestThird) {
-            const qualified = bestThirdPlaced[m.sourceP2.position - 1]
+          if (m.sourceP2.bestThird || m.sourceP2.bestExtra) {
+            const qualified = bestExtraPlaced[m.sourceP2.position - 1]
             if (qualified) updatedMatches[mIdx].player2 = qualified.id
           } else {
             const qualified = sortedGroups[m.sourceP2.group]?.[m.sourceP2.position - 1]
@@ -551,6 +561,83 @@ function CupManagement() {
     }
   }
 
+  const handleSetMatchPlayer = async () => {
+    const { cup, match, position, playerId } = setPlayerForm
+    if (!cup || !match || !playerId) return showToast('Please select a player', 'error')
+
+    setIsSubmitting(true)
+    try {
+      const cupRef = doc(db, 'cups', String(cup.id))
+      const cupSnap = await getDoc(cupRef)
+      if (!cupSnap.exists()) throw new Error('Cup not found')
+
+      const cupData = cupSnap.data()
+      const newPlayer = allUsers.find(u => u.id === playerId)
+      if (!newPlayer) throw new Error('Player not found')
+
+      const updatedMatches = (cupData.matches || []).map(m => {
+        if (String(m.id) === String(match.id)) {
+          return {
+            ...m,
+            [position === 1 ? 'player1' : 'player2']: playerId
+          }
+        }
+        return m
+      })
+
+      const updatedPlayers = [...(cupData.players || [])]
+      if (!updatedPlayers.includes(playerId)) {
+        updatedPlayers.push(playerId)
+      }
+
+      const nextCupData = { ...cupData, players: updatedPlayers, matches: updatedMatches }
+      await setDoc(cupRef, nextCupData, { merge: true })
+
+      // Create fixture if both players now exist
+      const updatedMatch = updatedMatches.find(m => String(m.id) === String(match.id))
+      if (updatedMatch.player1 && updatedMatch.player2) {
+        const existingFixture = (getFixtures() || []).find(f => String(f.matchId) === String(updatedMatch.id))
+        if (!existingFixture) {
+          const roundFormat = cupData.roundFormats?.[updatedMatch.round || 0] || { startScore: 501, bestOf: 3 }
+          const fixtureId = `cup_${cup.id}_match_${updatedMatch.id}`
+
+          const p1 = allUsers.find(u => String(u.id) === String(updatedMatch.player1))
+          const p2 = allUsers.find(u => String(u.id) === String(updatedMatch.player2))
+
+          const newFixture = {
+            id: fixtureId,
+            cupId: isNaN(parseInt(cup.id)) ? cup.id : parseInt(cup.id),
+            cupName: cup.name,
+            startScore: roundFormat.startScore,
+            bestOf: roundFormat.bestOf,
+            firstTo: Math.ceil(roundFormat.bestOf / 2),
+            player1: p1?.username || 'Unknown',
+            player1Id: updatedMatch.player1,
+            player2: p2?.username || 'Unknown',
+            player2Id: updatedMatch.player2,
+            matchId: updatedMatch.id,
+            round: updatedMatch.round || 0,
+            stage: updatedMatch.stage,
+            group: updatedMatch.group || null,
+            status: 'accepted',
+            proposalStatus: 'accepted',
+            createdAt: new Date().toISOString()
+          }
+          await setDoc(doc(db, 'fixtures', fixtureId), newFixture)
+        }
+      }
+
+      showToast('Set player for match.', 'success')
+      setShowSetPlayerModal(false)
+      triggerDataRefresh('all')
+      setRefreshKey(prev => prev + 1)
+    } catch (e) {
+      showToast('Error: ' + e.message, 'error')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingBottom: '100px' }}>
       <div className="card glass" style={{ padding: '20px', border: '1px solid var(--accent-cyan)' }}>
@@ -617,6 +704,15 @@ function CupManagement() {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {cup.type === 'group_knockout' && !cup.groupsAdvanced && (
+                   <button
+                     className="btn btn-primary btn-sm"
+                     onClick={(e) => { e.stopPropagation(); handleAdvanceGroups(cup); }}
+                     disabled={isSubmitting}
+                   >
+                     ⚡ Finalize Groups
+                   </button>
+                )}
                 {cup.type === 'world_cup' && !cup.groupsAdvanced && (
                    <button
                      className="btn btn-primary btn-sm"
@@ -680,28 +776,52 @@ function CupManagement() {
 
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '20px' }}>
                           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            <div style={{
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              padding: '8px 12px',
-                              background: isWinnerSet && match.winner === match.player1 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(0,0,0,0.2)',
-                              borderRadius: '8px',
-                              border: isWinnerSet && match.winner === match.player1 ? '1px solid var(--success)' : '1px solid transparent'
-                            }}>
+                            <div
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                padding: '8px 12px',
+                                background: isWinnerSet && match.winner === match.player1 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(0,0,0,0.2)',
+                                borderRadius: '8px',
+                                border: isWinnerSet && match.winner === match.player1 ? '1px solid var(--success)' : '1px solid transparent',
+                                cursor: 'pointer'
+                              }}
+                              onClick={() => {
+                                setSetPlayerForm({
+                                  cup,
+                                  match,
+                                  position: 1,
+                                  playerId: match.player1 || ''
+                                })
+                                setShowSetPlayerModal(true)
+                              }}
+                            >
                                <span style={{ fontWeight: isWinnerSet && match.winner === match.player1 ? 800 : 500, fontSize: '0.9rem' }}>{p1}</span>
                                {isWinnerSet && <span style={{ fontWeight: 900, color: 'var(--success)' }}>{match.score1}</span>}
                             </div>
 
-                            <div style={{
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              padding: '8px 12px',
-                              background: isWinnerSet && match.winner === match.player2 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(0,0,0,0.2)',
-                              borderRadius: '8px',
-                              border: isWinnerSet && match.winner === match.player2 ? '1px solid var(--success)' : '1px solid transparent'
-                            }}>
+                            <div
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                padding: '8px 12px',
+                                background: isWinnerSet && match.winner === match.player2 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(0,0,0,0.2)',
+                                borderRadius: '8px',
+                                border: isWinnerSet && match.winner === match.player2 ? '1px solid var(--success)' : '1px solid transparent',
+                                cursor: 'pointer'
+                              }}
+                              onClick={() => {
+                                setSetPlayerForm({
+                                  cup,
+                                  match,
+                                  position: 2,
+                                  playerId: match.player2 || ''
+                                })
+                                setShowSetPlayerModal(true)
+                              }}
+                            >
                                <span style={{ fontWeight: isWinnerSet && match.winner === match.player2 ? 800 : 500, fontSize: '0.9rem' }}>{p2}</span>
                                {isWinnerSet && <span style={{ fontWeight: 900, color: 'var(--success)' }}>{match.score2}</span>}
                             </div>
@@ -791,6 +911,39 @@ function CupManagement() {
                     </span>
                  ) : 'Save & Advance'}
                </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSetPlayerModal && (
+        <div className="modal-overlay">
+          <div className="modal-content glass" style={{ maxWidth: '400px' }}>
+            <h3 style={{ marginBottom: '20px' }}>Set Match Participant</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '20px' }}>
+              Manually assign a player to <strong>Position {setPlayerForm.position}</strong> in this match.
+            </p>
+
+            <div className="form-group">
+              <label>Select Player</label>
+              <UserSearchSelect
+                users={allUsers}
+                selectedId={setPlayerForm.playerId}
+                onSelect={(id) => setSetPlayerForm({...setPlayerForm, playerId: id})}
+                label=""
+                placeholder="Search for player..."
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '30px' }}>
+              <button className="btn btn-secondary btn-block" onClick={() => setShowSetPlayerModal(false)}>Cancel</button>
+              <button
+                className="btn btn-primary btn-block"
+                onClick={handleSetMatchPlayer}
+                disabled={isSubmitting || !setPlayerForm.playerId}
+              >
+                {isSubmitting ? 'Saving...' : 'Confirm Player'}
+              </button>
             </div>
           </div>
         </div>
