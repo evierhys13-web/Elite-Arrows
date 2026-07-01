@@ -78,7 +78,7 @@ export default function SeedData() {
 
       localStorage.setItem('eliteArrowsUsers', JSON.stringify(seedUsers))
       localStorage.setItem('eliteArrowsSeason', JSON.stringify({
-        startDate: '2026-06-01',
+        startDate: '2026-08-01',
         endDate: '2026-07-01',
         name: 'Season 1'
       }))
@@ -151,7 +151,7 @@ export default function SeedData() {
 
     localStorage.setItem('eliteArrowsUsers', JSON.stringify(seedUsers))
     localStorage.setItem('eliteArrowsSeason', JSON.stringify({
-      startDate: '2026-06-01',
+      startDate: '2026-08-01',
       endDate: '2026-07-01',
       name: 'Season 1'
     }))

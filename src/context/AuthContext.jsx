@@ -1107,7 +1107,7 @@ export function AuthProvider({ children }) {
       const nowTime = now.getTime();
 
       // Hardcoded Season 2 Auto-Launch Trigger
-      const s1End = new Date("2026-06-01T00:00:00").getTime();
+      const s1End = new Date("2026-08-01T00:00:00").getTime();
       if (nowTime >= s1End && adminData.currentSeason === "Season 1") {
         console.log("Season 1 finished. Triggering Season 2 launch...");
 
@@ -1124,7 +1124,7 @@ export function AuthProvider({ children }) {
             await updateDoc(doc(db, "seasons", s2Id), {
               isLaunched: true,
               status: "active",
-              startDate: new Date("2026-06-01T00:00:00").toISOString(),
+              startDate: new Date("2026-08-01T00:00:00").toISOString(),
               endDate: new Date("2026-07-01T00:00:00").toISOString(),
             });
           } else {
@@ -1133,7 +1133,7 @@ export function AuthProvider({ children }) {
               name: "Season 2",
               isLaunched: true,
               status: "active",
-              startDate: new Date("2026-06-01T00:00:00").toISOString(),
+              startDate: new Date("2026-08-01T00:00:00").toISOString(),
               endDate: new Date("2026-07-01T00:00:00").toISOString(),
               createdAt: new Date().toISOString(),
             });

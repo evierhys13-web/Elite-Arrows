@@ -30,7 +30,7 @@ export default function Home() {
 
     // Season 1 & 2 Hardcoded Thresholds
     const s1Start = new Date('2026-05-01T00:00:00').getTime()
-    const s1End = new Date('2026-06-01T00:00:00').getTime()
+    const s1End = new Date('2026-08-01T00:00:00').getTime()
     const s2End = new Date('2026-07-01T00:00:00').getTime()
 
     // 1. Try to find the season that matches adminData.currentSeason
@@ -43,13 +43,13 @@ export default function Home() {
           id: 'season1_legacy',
           name: 'Season 1',
           startDate: '2026-05-01T00:00:00',
-          endDate: '2026-06-01T00:00:00'
+          endDate: '2026-08-01T00:00:00'
         }
       } else if (nowTime < s2End) {
         return {
           id: 'season2_auto',
           name: 'Season 2',
-          startDate: '2026-06-01T00:00:00',
+          startDate: '2026-08-01T00:00:00',
           endDate: '2026-07-01T00:00:00'
         }
       }

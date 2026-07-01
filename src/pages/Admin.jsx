@@ -280,7 +280,7 @@ export default function Admin() {
 
       if (!res.season || ['2026', 'legacy', ''].includes(String(res.season).toLowerCase())) {
         const matchTime = new Date(res.date || res.submittedAt || Date.now()).getTime();
-        const s2Start = new Date('2026-06-01T00:00:00').getTime();
+        const s2Start = new Date('2026-08-01T00:00:00').getTime();
         updates.season = matchTime >= s2Start ? 'Season 2' : 'Season 1';
       }
 
@@ -353,7 +353,7 @@ export default function Admin() {
           }
           if (!res.season) {
             const matchTime = new Date(res.date || res.submittedAt || Date.now()).getTime();
-            const s2Start = new Date('2026-06-01T00:00:00').getTime();
+            const s2Start = new Date('2026-08-01T00:00:00').getTime();
             updates.season = matchTime >= s2Start ? 'Season 2' : 'Season 1';
           }
           const targetId = res.firestoreId || String(id)
@@ -449,7 +449,7 @@ export default function Admin() {
       const isLeague = f.gameType === 'League'
       let targetSeason = f.season || adminData?.currentSeason || 'Season 1'
       const matchTime = new Date().getTime()
-      const s2Start = new Date('2026-06-01T00:00:00').getTime()
+      const s2Start = new Date('2026-08-01T00:00:00').getTime()
       if (isSuper && (!f.season || f.season === 'Season 1' || f.season === '2026')) {
         if (matchTime >= s2Start) targetSeason = 'Season 2'
       }
@@ -893,7 +893,7 @@ export default function Admin() {
   const handleFixSeasons = async () => {
     const approvedMatches = allResults.filter(r => String(r.status).toLowerCase() === 'approved')
     const target = approvedMatches.filter(r => {
-      const d = new Date(r.date || r.submittedAt || 0).getTime(); const cutoff = new Date('2026-06-01T00:00:00').getTime()
+      const d = new Date(r.date || r.submittedAt || 0).getTime(); const cutoff = new Date('2026-08-01T00:00:00').getTime()
       const isLeague = ['league', 'super league'].includes(String(r.gameType).toLowerCase())
       return d >= cutoff && isLeague && String(r.season || '') !== 'Season 2'
     })
