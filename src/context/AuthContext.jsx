@@ -137,6 +137,7 @@ const USER_CACHE_FIELDS = [
   "superLeagueDivision",
   "isAdmin",
   "isTournamentAdmin",
+  "isCupAdmin",
   "isSubscribed",
   "isBanned",
   "subscribedSeasons",
@@ -1278,6 +1279,7 @@ export function AuthProvider({ children }) {
         division: isAdmin ? "Admin" : null,
         isAdmin: isAdmin,
         isTournamentAdmin: false,
+        isCupAdmin: false,
         isSubscribed: isAdmin || userData.isSubscribed || false,
         freeAdminSubscription: isAdmin || false,
         adminRequestPending: false,
@@ -1858,18 +1860,38 @@ export function AuthProvider({ children }) {
   const searchUsers = useCallback(async (searchTerm) => {
     if (!searchTerm || searchTerm.length < 2) return [];
     try {
-      const q = query(
+      const term = searchTerm.toLowerCase();
+      // Since we can't do true case-insensitive search easily in Firestore without extra fields,
+      // we'll try to find users where username starts with the term or capitalized term.
+      const capitalizedTerm = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
+
+      const q1 = query(
         collection(db, "users"),
         where("username", ">=", searchTerm),
         where("username", "<=", searchTerm + "\uf8ff"),
-        limit(20),
+        limit(20)
       );
-      const snapshot = await getDocsFromServer(q);
-      const users = snapshot.docs.map((docSnap) => {
+
+      const q2 = query(
+        collection(db, "users"),
+        where("username", ">=", capitalizedTerm),
+        where("username", "<=", capitalizedTerm + "\uf8ff"),
+        limit(20)
+      );
+
+      const [snap1, snap2] = await Promise.all([
+        getDocsFromServer(q1),
+        getDocsFromServer(q2)
+      ]);
+
+      const usersMap = new Map();
+      [...snap1.docs, ...snap2.docs].forEach(docSnap => {
         const data = docSnap.data();
-        SENSITIVE_FIELDS.forEach((f) => delete data[f]);
-        return { id: docSnap.id, ...data };
+        SENSITIVE_FIELDS.forEach(f => delete data[f]);
+        usersMap.set(docSnap.id, { id: docSnap.id, ...data });
       });
+
+      const users = Array.from(usersMap.values());
 
       // Merge into allUsers state to keep profile data available
       setAllUsers((prev) => {

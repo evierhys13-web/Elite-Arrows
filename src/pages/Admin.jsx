@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { db, doc, setDoc, getDoc, getDocs, collection, deleteDoc, updateDoc, writeBatch, addDoc } from '../firebase'
+import { db, doc, setDoc, getDoc, getDocs, collection, deleteDoc, updateDoc, writeBatch, addDoc, query, orderBy, limit } from '../firebase'
 import { ADMIN_EMAILS } from '../config'
 import UserSearchSelect from '../components/UserSearchSelect'
 import CupManagement from './CupManagement'
@@ -146,7 +146,7 @@ export default function Admin() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    const allowed = ['dashboard', 'results', 'payments', 'moneypot', 'cups', 'playoffs', 'players', 'admins', 'seasons', 'trophies', 'tokens', 'surveys', 'maintenance']
+    const allowed = ['dashboard', 'results', 'payments', 'moneypot', 'cups', 'playoffs', 'players', 'admins', 'seasons', 'trophies', 'tokens', 'surveys', 'maintenance', 'audit', 'openleague', 'new', 'bets', 'practice']
     if (tab && allowed.includes(tab)) setActiveTab(tab)
   }, [searchParams])
 
@@ -235,8 +235,6 @@ export default function Admin() {
 
       const updates = { status: 'approved', approvedAt: new Date().toISOString() };
 
-      // --- AUTO-HEALING & ENRICHMENT ---
-      // 1. Fix Missing Player IDs (Improved Fuzzy Matching)
       const findUser = (name) => {
         if (!name) return null;
         const n = String(name).toLowerCase().trim();
@@ -260,14 +258,12 @@ export default function Admin() {
         if (found) { p2Id = found.id; updates.player2Id = found.id; }
       }
 
-      // 2. Fix Game Type (League vs Super League vs Friendly)
       const s1 = Number(res.score1) || 0;
       const s2 = Number(res.score2) || 0;
       const totalLegs = s1 + s2;
       const isSuperFormat = (s1 === 6 || s2 === 6) && totalLegs <= 11 && totalLegs >= 6;
       const isStandardFormat = totalLegs <= 8;
 
-      // New: Check if players are in Champions League
       const p1Data = allPlayers.find(u => String(u.id) === String(p1Id));
       const p2Data = allPlayers.find(u => String(u.id) === String(p2Id));
       const isSuperMatch = p1Data?.superLeagueDivision || p2Data?.superLeagueDivision;
@@ -277,14 +273,12 @@ export default function Admin() {
         else if (isStandardFormat && totalLegs > 0) updates.gameType = 'League';
       }
 
-      // 3. Fix Season Label
       if (!res.season || ['2026', 'legacy', ''].includes(String(res.season).toLowerCase())) {
         const matchTime = new Date(res.date || res.submittedAt || Date.now()).getTime();
         const s2Start = new Date('2026-06-01T00:00:00').getTime();
         updates.season = matchTime >= s2Start ? 'Season 2' : 'Season 1';
       }
 
-      // 4. Fix Division (if missing)
       if (!res.division || res.division === 'Unassigned') {
         const p1 = allPlayers.find(u => String(u.id) === String(p1Id));
         const p2 = allPlayers.find(u => String(u.id) === String(p2Id));
@@ -297,18 +291,14 @@ export default function Admin() {
       await setDoc(doc(db, 'results', targetId), approvedResult, { merge: true })
       logMatchApproved(approvedResult)
 
-      // --- ACHIEVEMENTS CHECK ---
       const checkAndAward = async (uid, matchData) => {
         if (!uid) return
         const targetUser = allPlayers.find(u => String(u.id) === String(uid))
         if (!targetUser) return
-
-        // Get full context for this player
         const fixtures = getFixtures()
         const results = getResults()
         const allStats = derivePlayerStatsFromResults(allPlayers, results, { fixtures, adminData })
         const playerStats = allStats[uid]
-
         const earned = await checkMatchAchievements(matchData, uid, playerStats, targetUser.achievements || [])
         if (earned.length > 0) {
             earned.forEach(a => showToast(`Achievement Unlocked for ${targetUser.username}: ${a.label}!`, 'success'))
@@ -318,7 +308,6 @@ export default function Admin() {
       await checkAndAward(p1Id, approvedResult)
       await checkAndAward(p2Id, approvedResult)
 
-      // Update local state immediately
       const updatedResults = allResults.map(r =>
         String(r.id) === String(resultId) ? { ...r, ...updates } : r
       )
@@ -350,8 +339,6 @@ export default function Admin() {
         const res = allResults.find(r => String(r.id) === String(id))
         if (res) {
           const updates = { status: 'approved', approvedAt: new Date().toISOString() };
-
-          // Healing in bulk too
           const s1 = Number(res.score1) || 0;
           const s2 = Number(res.score2) || 0;
           const totalLegs = s1 + s2;
@@ -359,16 +346,13 @@ export default function Admin() {
             if ((s1 === 6 || s2 === 6) && totalLegs <= 11) updates.gameType = 'Champions League';
             else if (totalLegs <= 8) updates.gameType = 'League';
           }
-
           if (!res.season) {
             const matchTime = new Date(res.date || res.submittedAt || Date.now()).getTime();
             const s2Start = new Date('2026-06-01T00:00:00').getTime();
             updates.season = matchTime >= s2Start ? 'Season 2' : 'Season 1';
           }
-
           const targetId = res.firestoreId || String(id)
           batch.update(doc(db, 'results', targetId), updates)
-
           const approvedResult = { ...res, ...updates }
           logMatchApproved(approvedResult)
           resultsToUpdate.push(approvedResult)
@@ -378,16 +362,9 @@ export default function Admin() {
         }
       })
       await batch.commit()
-
-      for (const res of cupResults) {
-        await advanceCupBracket(res)
-      }
-
+      for (const res of cupResults) { await advanceCupBracket(res) }
       await logAudit('BULK_APPROVE', `Approved ${selectedResults.length} matches`)
       setSelectedResults([])
-
-      // Update local state immediately
-      const updatedIds = new Set(selectedResults)
       const updatedResults = allResults.map(r => {
         const match = resultsToUpdate.find(u => String(u.id) === String(r.id))
         return match ? match : r
@@ -409,9 +386,7 @@ export default function Admin() {
       )
       updateResults(updatedResults)
       showToast(newVal ? 'Excluded from league table' : 'Included in league table', 'success')
-    } catch (e) {
-      showToast('Failed to update: ' + e.message, 'error')
-    }
+    } catch (e) { showToast('Failed to update: ' + e.message, 'error') }
   }
 
   const handleRejectResult = async (resultId) => {
@@ -432,9 +407,7 @@ export default function Admin() {
       const res = allResults.find(r => String(r.id) === String(resultId))
       const targetId = res?.firestoreId || String(resultId)
       await deleteDoc(doc(db, 'results', targetId))
-
       removeResult(resultId)
-
       await logAudit('DELETE_RESULT', `Deleted result: ${res?.player1} vs ${res?.player2}`)
       showToast('Result Deleted', 'info')
       triggerDataRefresh('results')
@@ -462,26 +435,19 @@ export default function Admin() {
     if (!f.score1 || !f.score2) return showToast('Enter both scores.', 'error')
     const s1 = parseInt(f.score1); const s2 = parseInt(f.score2)
     if (isNaN(s1) || isNaN(s2)) return showToast('Invalid scores.', 'error')
-
     const p1 = allPlayers.find(u => String(u.id) === String(f.player1))
     const p2 = allPlayers.find(u => String(u.id) === String(f.player2))
     if (!p1 || !p2) return showToast('Players not found.', 'error')
-
     const resultId = `admin_${Date.now()}`
     try {
       const isSuper = f.gameType === 'Champions League'
       const isLeague = f.gameType === 'League'
-
-      // Robust season detection for manual submissions
       let targetSeason = f.season || adminData?.currentSeason || 'Season 1'
       const matchTime = new Date().getTime()
       const s2Start = new Date('2026-06-01T00:00:00').getTime()
-
-      // If "Auto" or legacy season name is used, and it's June 2026+, force Season 2 for Champions League
       if (isSuper && (!f.season || f.season === 'Season 1' || f.season === '2026')) {
         if (matchTime >= s2Start) targetSeason = 'Season 2'
       }
-
       const newMatch = {
         id: resultId,
         player1: p1.username,
@@ -514,26 +480,20 @@ export default function Admin() {
       const finalSeason = isOverriding ? approvalOverride.season : (u.requestedSeason || adminData?.currentSeason || 'Season 1')
       const paymentAmount = 5.99
       const currentSeasonName = adminData?.currentSeason || 'Season 1'
-
       const currentSeasons = Array.isArray(u.subscribedSeasons) ? u.subscribedSeasons : []
       const nextSeasons = Array.from(new Set([...currentSeasons, finalSeason]))
-
       const updates = {
         paymentPending: false,
         subscriptionDate: new Date().toISOString(),
         subscriptionTier: 'elite',
         subscribedSeasons: nextSeasons,
-        // Only make them "active" if they are paying for the current live season
-        // OR if they were already active (don't downgrade them)
         isSubscribed: u.isSubscribed || (finalSeason === currentSeasonName)
       }
       await setDoc(doc(db, 'users', u.id), updates, { merge: true })
-
       const currentPot = adminData?.subscriptionPot || 0
       await updateAdminData({ subscriptionPot: currentPot + paymentAmount })
       addToMoneyHistory('subscription', paymentAmount, `Approved payment: ${u.username} for ${finalSeason}`)
       await logAudit('APPROVE_PAYMENT', `Approved payment for ${u.username} (£${paymentAmount}) - ${finalSeason}`)
-
       setApprovingPaymentId(null)
       triggerDataRefresh('users')
       showToast(`Subscription Approved for ${finalSeason}!`, 'success')
@@ -543,17 +503,13 @@ export default function Admin() {
   const handleUpdateApprovedSubscription = async (u) => {
     try {
       const finalSeason = approvalOverride.season
-
       const currentSeasons = Array.isArray(u.subscribedSeasons) ? u.subscribedSeasons : []
       const nextSeasons = Array.from(new Set([...currentSeasons, finalSeason]))
-
       await setDoc(doc(db, 'users', u.id), {
         subscriptionTier: 'elite',
         subscribedSeasons: nextSeasons
       }, { merge: true })
-
       await logAudit('UPDATE_SUBSCRIPTION', `Admin updated ${u.username} sub to Elite Pass, seasons: ${nextSeasons.join(', ')}`)
-
       setApprovingPaymentId(null)
       triggerDataRefresh('users')
       showToast(`Subscription updated for ${u.username}`, 'success')
@@ -570,9 +526,7 @@ export default function Admin() {
       showToast?.(`Player updated in Champions League`, 'success')
       setSuperRankForm({ player: '', rank: '' })
       triggerDataRefresh('all')
-    } catch (e) {
-      showToast?.('Error updating rank: ' + e.message, 'error')
-    }
+    } catch (e) { showToast?.('Error updating rank: ' + e.message, 'error') }
   }
 
   const handleGrantSubscription = async () => {
@@ -581,17 +535,14 @@ export default function Admin() {
       const target = allPlayers.find(p => p.id === grantSubForm.player)
       const selectedSeason = grantSubForm.season || adminData?.currentSeason || 'Season 1'
       const currentSeasonName = adminData?.currentSeason || 'Season 1'
-
       const currentSeasons = Array.isArray(target.subscribedSeasons) ? target.subscribedSeasons : []
       const nextSeasons = Array.from(new Set([...currentSeasons, selectedSeason]))
-
       await setDoc(doc(db, 'users', target.id), {
         isSubscribed: target.isSubscribed || (selectedSeason === currentSeasonName),
         subscriptionDate: new Date().toISOString(),
         subscriptionTier: 'elite',
         subscribedSeasons: nextSeasons
       }, { merge: true })
-
       await logAudit('GRANT_SUBSCRIPTION', `Manually granted ${grantSubForm.tier} sub to ${target.username} for ${selectedSeason}`)
       triggerDataRefresh('users')
       showToast(`Granted ${grantSubForm.tier} subscription to ${target.username} for ${selectedSeason}`, 'success')
@@ -607,7 +558,6 @@ export default function Admin() {
       const p1 = allPlayers.find(p => p.id === playoffForm.player1)
       const p2 = allPlayers.find(p => p.id === playoffForm.player2)
       const fixtureId = `playoff_${Date.now()}`
-
       const newFixture = {
         id: fixtureId,
         player1Id: p1.id,
@@ -625,10 +575,8 @@ export default function Admin() {
         status: 'accepted',
         proposalStatus: 'accepted'
       }
-
       await setDoc(doc(db, 'fixtures', fixtureId), newFixture)
       await logAudit('CREATE_PLAYOFF', `Created playoff match: ${p1.username} vs ${p2.username}`)
-
       setPlayoffForm({ player1: '', player2: '', division: '', date: '', time: '', bestOf: '3' })
       triggerDataRefresh('fixtures')
       showToast('Playoff match created!', 'success')
@@ -641,7 +589,6 @@ export default function Admin() {
       const target = allPlayers.find(p => String(p.id) === String(divisionForm.player))
       if (!target) return showToast('Player not found', 'error')
       await setDoc(doc(db, 'users', target.id), { division: divisionForm.division }, { merge: true })
-      // Also clear any staged division for this player in the current season
       try {
         const seasons = getSeasons()
         const currentSeasonName = adminData?.currentSeason || 'Season 1'
@@ -651,9 +598,7 @@ export default function Admin() {
           delete updated[target.id]
           await setDoc(doc(db, 'seasons', currentSeason.id), { stagedDivisions: updated }, { merge: true })
         }
-      } catch (stagingError) {
-        console.log('Could not clear staged division:', stagingError)
-      }
+      } catch (stagingError) { console.log('Could not clear staged division:', stagingError) }
       await logAudit('MOVE_DIVISION', `Moved ${target.username} to ${divisionForm.division}`)
       triggerDataRefresh('users')
       triggerDataRefresh('seasons')
@@ -664,11 +609,11 @@ export default function Admin() {
 
   const handleUpdateAdminRole = async (targetId, role, value) => {
     try {
-      const target = allPlayers.find(p => p.id === targetId)
+      const target = allPlayers.find(p => String(p.id) === String(targetId))
       await setDoc(doc(db, 'users', targetId), { [role]: value }, { merge: true })
-      await logAudit('UPDATE_ROLE', `Updated ${role} to ${value} for ${target?.username}`)
+      await logAudit('UPDATE_ROLE', `Updated ${role} to ${value} for ${target?.username || targetId}`)
       triggerDataRefresh('users')
-      showToast('Permissions updated', 'success')
+      showToast(`Permissions updated for ${target?.username || 'user'}`, 'success')
     } catch (e) { showToast(e.message, 'error') }
   }
 
@@ -676,7 +621,6 @@ export default function Admin() {
     try {
       const target = allPlayers.find(p => p.id === targetId)
       if (targetId === user.id) return showToast('You cannot ban yourself.', 'error')
-
       const newStatus = !currentStatus
       await setDoc(doc(db, 'users', targetId), { isBanned: newStatus }, { merge: true })
       await logAudit(newStatus ? 'BAN_USER' : 'UNBAN_USER', `${newStatus ? 'Banned' : 'Unbanned'} user: ${target?.username}`)
@@ -719,11 +663,7 @@ export default function Admin() {
         season: trophyForm.season || localStorage.getItem('eliteArrowsCurrentSeason') || 'Season 1',
         awardedAt: new Date().toISOString()
       }
-
-      await setDoc(doc(db, 'users', target.id), {
-        trophies: [...currentTrophies, newTrophy]
-      }, { merge: true })
-
+      await setDoc(doc(db, 'users', target.id), { trophies: [...currentTrophies, newTrophy] }, { merge: true })
       await logAudit('AWARD_TROPHY', `Awarded "${trophyForm.name}" to ${target.username}`)
       triggerDataRefresh('users')
       showToast(`Awarded "${trophyForm.name}" to ${target.username}`, 'success')
@@ -734,7 +674,6 @@ export default function Admin() {
   const handleCreateSurvey = async () => {
     if (!surveyForm.title) return showToast('Survey title required', 'error')
     if (!surveyQuestions[0]?.text) return showToast('At least one question required', 'error')
-
     const surveys = adminData?.surveys || []
     const newSurvey = {
       id: Date.now().toString(),
@@ -750,7 +689,6 @@ export default function Admin() {
       active: true,
       responses: []
     }
-
     try {
       await updateAdminData({ surveys: [...surveys, newSurvey] })
       await logAudit('CREATE_SURVEY', `Created survey: ${surveyForm.title}`)
@@ -772,14 +710,11 @@ export default function Admin() {
   const handleDeleteUser = async (targetId) => {
     const target = allPlayers.find(p => p.id === targetId)
     if (!target) return
-
     if (targetId === user.id) return showToast('You cannot delete your own account.', 'error')
     if (!isFullAdmin && (target.isAdmin || target.isTournamentAdmin)) {
       return showToast('You do not have permission to delete another staff member.', 'error')
     }
-
     if (!window.confirm(`PERMANENTLY DELETE user "${target.username}"? This will remove their profile and league presence. This cannot be undone.`)) return
-
     try {
       await deleteDoc(doc(db, 'users', targetId))
       await logAudit('DELETE_USER', `Permanently deleted user: ${target.username} (${target.email})`)
@@ -797,60 +732,33 @@ export default function Admin() {
       const allResults = getResults().filter(r => String(r.status).toLowerCase() === 'approved')
       const batch = writeBatch(db)
       const resolved = []
-
       for (const bet of betsList) {
         if (bet.won !== null) continue
-
         const game = allResults.find(r =>
           (bet.fixtureId && String(r.fixtureId) === String(bet.fixtureId)) ||
           (bet.cupId && bet.matchId && String(r.cupId) === String(bet.cupId) && String(r.matchId) === String(bet.matchId)) ||
           (String(r.id) === String(bet.gameId))
         )
-
         if (!game) continue
-
-        const score1 = Number(game.score1)
-        const score2 = Number(game.score2)
+        const score1 = Number(game.score1); const score2 = Number(game.score2)
         const actualWinnerId = score1 > score2 ? game.player1Id : game.player2Id
-
-        const predictedScore1 = Number(bet.predictedScore1)
-        const predictedScore2 = Number(bet.predictedScore2)
-
+        const predictedScore1 = Number(bet.predictedScore1); const predictedScore2 = Number(bet.predictedScore2)
         const isExactScore = (String(game.player1Id) === String(bet.fixturePlayer1Id))
           ? (score1 === predictedScore1 && score2 === predictedScore2)
           : (score2 === predictedScore1 && score1 === predictedScore2)
-
         const won = String(actualWinnerId) === String(bet.predictedWinnerId) && isExactScore
-
         batch.update(doc(db, 'bets', bet.id), { won })
-
-        resolved.push({
-          username: bet.username,
-          match: `${bet.player1Name} vs ${bet.player2Name}`,
-          prediction: `${bet.predictedWinner} (${bet.predictedScore1}-${bet.predictedScore2})`,
-          actual: `${game.player1Name || 'P1'} ${score1} - ${score2} ${game.player2Name || 'P2'}`,
-          won,
-          amount: bet.amount || 0
-        })
-
+        resolved.push({ username: bet.username, match: `${bet.player1Name} vs ${bet.player2Name}`, prediction: `${bet.predictedWinner} (${bet.predictedScore1}-${bet.predictedScore2})`, actual: `${game.player1Name || 'P1'} ${score1} - ${score2} ${game.player2Name || 'P2'}`, won, amount: bet.amount || 0 })
         if (won) {
           const userDoc = doc(db, 'users', bet.userId)
           const userData = allPlayers.find(u => u.id === bet.userId)
-          const currentDraw = userData?.promotionDraw || []
-          if (!currentDraw.includes(true)) {
-             batch.update(userDoc, { promotionDraw: true })
-          }
+          if (!(userData?.promotionDraw || []).includes(true)) { batch.update(userDoc, { promotionDraw: true }) }
         }
       }
-
       await batch.commit()
       await logAudit('CHECK_BETS', `Processed ${betsList.length} bets, found ${resolved.filter(r => r.won).length} new winners`)
-
-      if (resolved.length > 0) {
-        setBetResults(resolved)
-      } else {
-        showToast('No pending bets found with matching approved results.', 'info')
-      }
+      if (resolved.length > 0) setBetResults(resolved)
+      else showToast('No pending bets found with matching approved results.', 'info')
     } catch (e) { showToast(e.message, 'error') }
     setIsApproving(false)
   }
@@ -869,403 +777,166 @@ export default function Admin() {
     const approvedMatches = allResults.filter(r => String(r.status).toLowerCase() === 'approved');
     const users = getAllUsers();
     const currentSeason = adminData?.currentSeason || 'Season 1';
-
     if (approvedMatches.length === 0) return showToast('No approved matches to sync', 'info');
-
-    if (!window.confirm(`DEEP SYNC ${approvedMatches.length} approved games? This will force missing/legacy seasons to "${currentSeason}", link missing IDs, and categorize "League" vs "Super League" games correctly.`)) return;
-
+    if (!window.confirm(`DEEP SYNC ${approvedMatches.length} approved games?`)) return;
     setIsApproving(true);
     try {
-      let updatedCount = 0;
-      let currentBatch = writeBatch(db);
-      let opCount = 0;
-
-      // Track per-result updates so we can merge into local state after batch commit
+      let updatedCount = 0; let currentBatch = writeBatch(db); let opCount = 0;
       const updatesByTargetId = {};
-
       for (const match of approvedMatches) {
-        const updates = {};
-        const targetId = match.firestoreId || String(match.id);
-
-        // 1. Force Season label for legacy/missing records
+        const updates = {}; const targetId = match.firestoreId || String(match.id);
         const currentResSeason = String(match.season || '').trim();
         const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Season 1'].includes(currentResSeason);
-
-        // If it's a legacy label OR missing season, assign it to the ACTIVE season
-        // Note: The user explicitly asked for this to be for the active season, not Season 1.
-        if (isLegacyLabel) {
-          if (currentResSeason !== currentSeason) {
-            updates.season = currentSeason;
-          }
-        }
-
-        // 2. Fix missing Player IDs (needed for game type detection)
-        let p1Id = match.player1Id;
-        let p2Id = match.player2Id;
-
+        if (isLegacyLabel && currentResSeason !== currentSeason) updates.season = currentSeason;
+        let p1Id = match.player1Id; let p2Id = match.player2Id;
         if (!p1Id && match.player1) {
-          const found = users.find(u =>
-            u.username?.toLowerCase() === String(match.player1).toLowerCase() ||
-            u.email?.toLowerCase() === String(match.player1).toLowerCase()
-          );
+          const found = users.find(u => u.username?.toLowerCase() === String(match.player1).toLowerCase() || u.email?.toLowerCase() === String(match.player1).toLowerCase());
           if (found) { p1Id = found.id; updates.player1Id = found.id; }
         }
         if (!p2Id && match.player2) {
-          const found = users.find(u =>
-            u.username?.toLowerCase() === String(match.player2).toLowerCase() ||
-            u.email?.toLowerCase() === String(match.player2).toLowerCase()
-          );
+          const found = users.find(u => u.username?.toLowerCase() === String(match.player2).toLowerCase() || u.email?.toLowerCase() === String(match.player2).toLowerCase());
           if (found) { p2Id = found.id; updates.player2Id = found.id; }
         }
-
-        // 3. Fix Game Type (League vs Super League vs Cup)
-        const s1 = Number(match.score1) || 0;
-        const s2 = Number(match.score2) || 0;
+        const s1 = Number(match.score1) || 0; const s2 = Number(match.score2) || 0;
         const totalLegs = s1 + s2;
         const isStandardFormat = totalLegs <= 8 && totalLegs > 0;
         const isSuperFormat = (s1 === 6 || s2 === 6) && totalLegs <= 11 && totalLegs >= 6;
-
-        // Check fixture context to identify hidden cup games
         let isCupGame = Boolean(match.cupId || match.matchId || match.tournamentId);
         if (!isCupGame && match.fixtureId) {
           const fx = allFixtures.find(f => String(f.id) === String(match.fixtureId));
-          if (fx && (fx.cupId || fx.tournamentId || String(fx.gameType).toLowerCase().includes('cup'))) {
-            isCupGame = true;
-          }
+          if (fx && (fx.cupId || fx.tournamentId || String(fx.gameType).toLowerCase().includes('cup'))) isCupGame = true;
         }
-
-        if (isCupGame) {
-          if (match.gameType !== 'Cup') {
-            updates.gameType = 'Cup';
-          }
-        } else {
+        if (isCupGame) { if (match.gameType !== 'Cup') updates.gameType = 'Cup'; }
+        else {
           let targetType = match.gameType;
-
-          if (isSuperFormat) {
-             targetType = 'Super League';
-          } else if (isStandardFormat) {
-             targetType = 'League';
-          } else if (!match.gameType || match.gameType === 'Unknown') {
-             targetType = 'Friendly';
-          }
-
-          if (match.gameType !== targetType) {
-            updates.gameType = targetType;
-          }
+          if (isSuperFormat) targetType = 'Super League';
+          else if (isStandardFormat) targetType = 'League';
+          else if (!match.gameType || match.gameType === 'Unknown') targetType = 'Friendly';
+          if (match.gameType !== targetType) updates.gameType = targetType;
         }
-
-        // 4. Fix missing division data
         if (!match.division || match.division === 'Unassigned') {
           const p1 = users.find(u => String(u.id) === String(p1Id));
           const p2 = users.find(u => String(u.id) === String(p2Id));
           const division = p1?.division || p2?.division;
-          if (division && division !== 'Unassigned') {
-            updates.division = division;
-          }
+          if (division && division !== 'Unassigned') updates.division = division;
         }
-
-        // 5. Ensure approvedAt exists
-        if (!match.approvedAt) {
-          updates.approvedAt = match.date ? new Date(match.date).toISOString() : new Date().toISOString();
-        }
-
+        if (!match.approvedAt) updates.approvedAt = match.date ? new Date(match.date).toISOString() : new Date().toISOString();
         if (Object.keys(updates).length > 0) {
-          updatesByTargetId[targetId] = updates;
-          currentBatch.update(doc(db, 'results', targetId), updates);
-          updatedCount++;
-          opCount++;
-
-          if (opCount >= 450) {
-            await currentBatch.commit();
-            currentBatch = writeBatch(db);
-            opCount = 0;
-          }
+          updatesByTargetId[targetId] = updates; currentBatch.update(doc(db, 'results', targetId), updates); updatedCount++; opCount++;
+          if (opCount >= 450) { await currentBatch.commit(); currentBatch = writeBatch(db); opCount = 0; }
         }
       }
-
-      if (opCount > 0) {
-        await currentBatch.commit();
-      }
-
-      await logAudit('BULK_SYNC_ANALYTICS', `Deep Sync ${approvedMatches.length} games to ${currentSeason}. Fixed ${updatedCount} records.`);
-
-      // Merge updates into local state directly — avoids silent failure of forceFetchResults
+      if (opCount > 0) await currentBatch.commit();
+      await logAudit('BULK_SYNC_ANALYTICS', `Deep Sync ${approvedMatches.length} games. Fixed ${updatedCount} records.`);
       if (updatedCount > 0) {
-        const updatedResults = allResults.map(r => {
-          const key = r.firestoreId || String(r.id)
-          const merge = updatesByTargetId[key]
-          return merge ? { ...r, ...merge } : r
-        })
-        updateResults(updatedResults)
-        showToast(`Fixed ${updatedCount} records for ${currentSeason}. Table updated!`, 'success');
-      } else {
-        showToast('All records already correct. No changes needed.', 'info');
-      }
-
-      // If Soft Reset is active, clear it so the labeled data actually shows in the table
-      if (adminData?.leagueTableResetAt) {
-        await updateAdminData({ leagueTableResetAt: null })
-        triggerDataRefresh('all')
-        showToast('Soft Reset cleared — all results now visible in the table.', 'success')
-      }
-
-    } catch (e) {
-      console.error('Sync error:', e);
-      showToast('Sync failed: ' + e.message, 'error');
-    }
+        const updatedResults = allResults.map(r => { const key = r.firestoreId || String(r.id); const merge = updatesByTargetId[key]; return merge ? { ...r, ...merge } : r })
+        updateResults(updatedResults); showToast(`Fixed ${updatedCount} records. Table updated!`, 'success');
+      } else showToast('All records already correct.', 'info');
+      if (adminData?.leagueTableResetAt) { await updateAdminData({ leagueTableResetAt: null }); triggerDataRefresh('all'); showToast('Soft Reset cleared.', 'success') }
+    } catch (e) { console.error('Sync error:', e); showToast('Sync failed: ' + e.message, 'error'); }
     setIsApproving(false);
   };
 
   const handleFixSeasons = async () => {
-    const approvedMatches = allResults.filter(r =>
-      String(r.status).toLowerCase() === 'approved'
-    )
+    const approvedMatches = allResults.filter(r => String(r.status).toLowerCase() === 'approved')
     const target = approvedMatches.filter(r => {
-      const d = new Date(r.date || r.submittedAt || 0).getTime()
-      const cutoff = new Date('2026-06-01T00:00:00').getTime()
+      const d = new Date(r.date || r.submittedAt || 0).getTime(); const cutoff = new Date('2026-06-01T00:00:00').getTime()
       const isLeague = ['league', 'super league'].includes(String(r.gameType).toLowerCase())
       return d >= cutoff && isLeague && String(r.season || '') !== 'Season 2'
     })
     if (target.length === 0) return showToast('No results to update', 'info')
-    if (!window.confirm(`Update ${target.length} approved league results from June 1 onward to Season 2?`)) return
+    if (!window.confirm(`Update ${target.length} results to Season 2?`)) return
     setIsApproving(true)
     try {
-      let count = 0
-      let batch = writeBatch(db)
-      let ops = 0
+      let count = 0; let batch = writeBatch(db); let ops = 0
       for (const r of target) {
-        const targetId = r.firestoreId || String(r.id)
-        batch.update(doc(db, 'results', targetId), { season: 'Season 2' })
-        count++
-        ops++
-        if (ops >= 450) {
-          await batch.commit()
-          batch = writeBatch(db)
-          ops = 0
-        }
+        const targetId = r.firestoreId || String(r.id); batch.update(doc(db, 'results', targetId), { season: 'Season 2' }); count++; ops++;
+        if (ops >= 450) { await batch.commit(); batch = writeBatch(db); ops = 0; }
       }
       if (ops > 0) await batch.commit()
       await logAudit('FIX_SEASONS', `Updated ${count} results to Season 2`)
-      const updatedResults = allResults.map(r => {
-        const match = target.find(t => (t.firestoreId || String(t.id)) === (r.firestoreId || String(r.id)))
-        return match ? { ...r, season: 'Season 2' } : r
-      })
-      updateResults(updatedResults)
-      triggerDataRefresh('all')
-      showToast(`Updated ${count} results to Season 2`, 'success')
+      const updatedResults = allResults.map(r => { const match = target.find(t => (t.firestoreId || String(t.id)) === (r.firestoreId || String(r.id))); return match ? { ...r, season: 'Season 2' } : r })
+      updateResults(updatedResults); triggerDataRefresh('all'); showToast(`Updated ${count} results to Season 2`, 'success')
     } catch (e) { showToast('Failed: ' + e.message, 'error') }
     setIsApproving(false)
   }
 
   const handleHealUserDivisions = async () => {
-    if (!window.confirm("This will scan ALL approved match results to determine each player's correct division and restore them. It will also restore Admin status for known staff. Proceed?")) return
+    if (!window.confirm("Restore divisions and permissions from match history?")) return
     setIsApproving(true)
     try {
-      const results = allResults
-        .filter(r => String(r.status).toLowerCase() === 'approved')
-        .sort((a, b) => new Date(b.date || b.submittedAt || 0) - new Date(a.date || a.submittedAt || 0))
-
-      const users = getAllUsers()
-      const seasons = getSeasons()
-      const currentSeasonName = adminData?.currentSeason || 'Season 1'
-      const currentSeasonDoc = seasons.find(s => s.name === currentSeasonName)
-      const stagedDivisions = currentSeasonDoc?.stagedDivisions || {}
-
-      const userDivisionMap = {} // { userId: divisionName }
-
-      // 1. First, build map from most recent matches
-      results.forEach(r => {
-        const div = r.division
-        if (!div || div === 'Unassigned' || div === 'Friendly' || div === 'Friendly Match') return
-
-        [r.player1Id, r.player2Id].forEach(id => {
-          if (!id) return
-          const uid = String(id)
-          if (!userDivisionMap[uid]) {
-            userDivisionMap[uid] = div
-          }
-        })
-      })
-
-      // 2. Override with staged divisions from current season (highest priority source of truth)
-      Object.entries(stagedDivisions).forEach(([uid, div]) => {
-        if (div && div !== 'Unassigned') {
-          userDivisionMap[uid] = div
-        }
-      })
-
-      const batch = writeBatch(db)
-      let count = 0
-      let ops = 0
-
+      const results = allResults.filter(r => String(r.status).toLowerCase() === 'approved').sort((a, b) => new Date(b.date || b.submittedAt || 0) - new Date(a.date || a.submittedAt || 0))
+      const users = getAllUsers(); const seasons = getSeasons(); const currentSeasonName = adminData?.currentSeason || 'Season 1'; const currentSeasonDoc = seasons.find(s => s.name === currentSeasonName); const stagedDivisions = currentSeasonDoc?.stagedDivisions || {}
+      const userDivisionMap = {}
+      results.forEach(r => { const div = r.division; if (!div || div === 'Unassigned' || div === 'Friendly') return; [r.player1Id, r.player2Id].forEach(id => { if (id && !userDivisionMap[String(id)]) userDivisionMap[String(id)] = div }) })
+      Object.entries(stagedDivisions).forEach(([uid, div]) => { if (div && div !== 'Unassigned') userDivisionMap[uid] = div })
+      const batch = writeBatch(db); let count = 0; let ops = 0
       for (const u of users) {
-        let updates = {}
-        const detectedDiv = userDivisionMap[u.id] || userDivisionMap[String(u.id)]
-
-        if (detectedDiv && u.division !== detectedDiv) {
-          updates.division = detectedDiv
-        }
-
-        // Special recovery for diplexicto87 / brentedwards87@gmail.com
-        if (u.username?.toLowerCase() === 'diplexicto87' || u.email?.toLowerCase() === 'brentedwards87@gmail.com') {
-          if (!u.isAdmin) updates.isAdmin = true
-          if (u.division !== 'Elite') updates.division = 'Elite'
-        }
-
-        // Restore Admin status for known staff
-        if (ADMIN_EMAILS.includes(u.email?.toLowerCase())) {
-          if (!u.isAdmin) updates.isAdmin = true
-        }
-
-        if (Object.keys(updates).length > 0) {
-          batch.update(doc(db, 'users', u.id), updates)
-          count++
-          ops++
-        }
-
-        if (ops >= 450) {
-          await batch.commit()
-          ops = 0
-        }
+        let updates = {}; const detectedDiv = userDivisionMap[u.id] || userDivisionMap[String(u.id)]
+        if (detectedDiv && u.division !== detectedDiv) updates.division = detectedDiv
+        if (u.username?.toLowerCase() === 'diplexicto87' || u.email?.toLowerCase() === 'brentedwards87@gmail.com') { if (!u.isAdmin) updates.isAdmin = true; if (u.division !== 'Elite') updates.division = 'Elite' }
+        if (ADMIN_EMAILS.includes(u.email?.toLowerCase())) { if (!u.isAdmin) updates.isAdmin = true }
+        if (Object.keys(updates).length > 0) { batch.update(doc(db, 'users', u.id), updates); count++; ops++; }
+        if (ops >= 450) { await batch.commit(); ops = 0; }
       }
-
       if (ops > 0) await batch.commit()
-
-      await logAudit('HEAL_DIVISIONS', `Restored ${count} users to their correct divisions and permissions.`)
-      showToast(`Restored ${count} users!`, 'success')
-      triggerDataRefresh('all')
-    } catch (e) {
-      showToast('Heal failed: ' + e.message, 'error')
-    }
+      await logAudit('HEAL_DIVISIONS', `Restored ${count} users.`)
+      showToast(`Restored ${count} users!`, 'success'); triggerDataRefresh('all')
+    } catch (e) { showToast('Heal failed: ' + e.message, 'error') }
     setIsApproving(false)
   }
 
   const handleResetSuperLeagueTable = async () => {
     const currentSeason = adminData?.currentSeason || 'Season 2'
-    if (!window.confirm(`DANGER: This will WIPE all manual adjustments/overrides from the Super League standings and force a deep re-sync of all approved Super League matches to ${currentSeason}. Proceed?`)) return;
-
+    if (!window.confirm(`Reset Champions League standings?`)) return
     setIsApproving(true);
     try {
-      const users = getAllUsers();
-      const results = getResults();
-      let batch = writeBatch(db);
-      let ops = 0;
-      let userCount = 0;
-      let resultCount = 0;
-
-      // 1. Clear manual overrides for all users
-      for (const u of users) {
-        if (u.manualSuperStats) {
-          batch.update(doc(db, 'users', u.id), { manualSuperStats: null });
-          userCount++;
-          ops++;
-          if (ops >= 450) { await batch.commit(); batch = writeBatch(db); ops = 0; }
-        }
-      }
-
-      // 2. Sync all Super League results to Current Season
-      const updatesById = {};
-
+      const users = getAllUsers(); const results = getResults(); let batch = writeBatch(db); let ops = 0; let userCount = 0; let resultCount = 0
+      for (const u of users) { if (u.manualSuperStats) { batch.update(doc(db, 'users', u.id), { manualSuperStats: null }); userCount++; ops++; if (ops >= 450) { await batch.commit(); batch = writeBatch(db); ops = 0 } } }
+      const updatesById = {}
       for (const r of results) {
-        if (String(r.status).toLowerCase() !== 'approved') continue;
-
-        const s1 = Number(r.score1) || 0;
-        const s2 = Number(r.score2) || 0;
-        const isSuperFormat = (s1 === 6 || s2 === 6) && (s1 + s2) <= 11;
-        const isLabeledSuper = String(r.gameType || '').toLowerCase().includes('super');
-
-        // If it looks like a Super League match, ensure it's labeled correctly and in the current season
+        if (String(r.status).toLowerCase() !== 'approved') continue
+        const s1 = Number(r.score1); const s2 = Number(r.score2); const isSuperFormat = (s1 === 6 || s2 === 6) && (s1 + s2) <= 11; const isLabeledSuper = String(r.gameType || '').toLowerCase().includes('super')
         if (isSuperFormat || isLabeledSuper) {
-          const updates = {};
-          if (r.season !== currentSeason) updates.season = currentSeason;
-          if (r.gameType !== 'Champions League') updates.gameType = 'Champions League';
-
-          if (Object.keys(updates).length > 0) {
-            const tid = r.firestoreId || String(r.id);
-            batch.update(doc(db, 'results', tid), updates);
-            updatesById[tid] = updates;
-            resultCount++;
-            ops++;
-            if (ops >= 450) { await batch.commit(); batch = writeBatch(db); ops = 0; }
-          }
+          const updates = {}; if (r.season !== currentSeason) updates.season = currentSeason; if (r.gameType !== 'Champions League') updates.gameType = 'Champions League'
+          if (Object.keys(updates).length > 0) { const tid = r.firestoreId || String(r.id); batch.update(doc(db, 'results', tid), updates); updatesById[tid] = updates; resultCount++; ops++; if (ops >= 450) { await batch.commit(); batch = writeBatch(db); ops = 0 } }
         }
       }
-
-      if (ops > 0) await batch.commit();
-
-      await logAudit('RESET_CHAMPIONS_LEAGUE', `Wiped overrides for ${userCount} users and synced ${resultCount} CL results to ${currentSeason}.`);
-
-      // Update local state
-      const updatedResults = results.map(r => {
-        const key = r.firestoreId || String(r.id);
-        return updatesById[key] ? { ...r, ...updatesById[key] } : r;
-      });
-      updateResults(updatedResults);
-
-      triggerDataRefresh('all');
-      showToast(`Champions League Reset: ${userCount} users cleared, ${resultCount} matches synced.`, 'success');
-    } catch (e) {
-      showToast('Reset failed: ' + e.message, 'error');
-    }
-    setIsApproving(false);
+      if (ops > 0) await batch.commit()
+      await logAudit('RESET_CHAMPIONS_LEAGUE', `Reset CL for ${userCount} users and ${resultCount} matches.`)
+      const updatedResults = results.map(r => { const key = r.firestoreId || String(r.id); return updatesById[key] ? { ...r, ...updatesById[key] } : r })
+      updateResults(updatedResults); triggerDataRefresh('all'); showToast(`CL Reset Complete`, 'success')
+    } catch (e) { showToast('Reset failed: ' + e.message, 'error') }
+    setIsApproving(false)
   }
 
   const handleSoftResetStandings = async () => {
-    if (!window.confirm("Soft Reset will hide all current results from the standings table without deleting them. This allows you to start a fresh phase while keeping history. Proceed?")) return;
+    if (!window.confirm("Soft Reset will hide current results from standings. Proceed?")) return;
     try {
-      const now = new Date().toISOString();
-      await updateAdminData({ leagueTableResetAt: now });
-      await logAudit('SOFT_RESET_TABLE', `Set table reset timestamp to ${now}`);
-      triggerDataRefresh('all');
-      showToast('Standings table reset!', 'success');
-    } catch (e) { showToast(e.message, 'error'); }
+      const now = new Date().toISOString(); await updateAdminData({ leagueTableResetAt: now }); await logAudit('SOFT_RESET_TABLE', `Reset at ${now}`); triggerDataRefresh('all'); showToast('Standings table reset!', 'success')
+    } catch (e) { showToast(e.message, 'error') }
   };
 
   const handleClearTableReset = async () => {
-    if (!window.confirm("This will restore ALL historical league matches to the standings table. Proceed?")) return;
+    if (!window.confirm("Restore all historical matches?")) return;
     try {
-      await updateAdminData({ leagueTableResetAt: null });
-      await logAudit('CLEAR_TABLE_RESET', 'Cleared table reset timestamp');
-      triggerDataRefresh('all');
-      showToast('Full history restored to standings!', 'success');
-    } catch (e) { showToast(e.message, 'error'); }
+      await updateAdminData({ leagueTableResetAt: null }); await logAudit('CLEAR_TABLE_RESET', 'Cleared reset'); triggerDataRefresh('all'); showToast('Full history restored!', 'success')
+    } catch (e) { showToast(e.message, 'error') }
   };
 
   const filteredResultsList = useMemo(() => {
     let list = allResults.filter(r => String(r.status).toLowerCase() === resultFilter)
-
-    if (resultSearch) {
-      const s = resultSearch.toLowerCase()
-      list = list.filter(r =>
-        String(r.player1).toLowerCase().includes(s) ||
-        String(r.player2).toLowerCase().includes(s)
-      )
-    }
-
-    if (resultTypeFilter !== 'all') {
-      list = list.filter(r => String(r.gameType).toLowerCase() === resultTypeFilter.toLowerCase())
-    }
-
+    if (resultSearch) { const s = resultSearch.toLowerCase(); list = list.filter(r => String(r.player1).toLowerCase().includes(s) || String(r.player2).toLowerCase().includes(s)) }
+    if (resultTypeFilter !== 'all') { list = list.filter(r => String(r.gameType).toLowerCase() === resultTypeFilter.toLowerCase()) }
     return list.sort((a, b) => new Date(b.date || b.submittedAt) - new Date(a.date || a.submittedAt))
   }, [allResults, resultFilter, resultSearch, resultTypeFilter])
 
   const betsList = useMemo(() => bets || [], [bets])
 
   const stats = useMemo(() => {
-    const lastWeek = new Date()
-    lastWeek.setDate(lastWeek.getDate() - 7)
-
-    const newMembersList = allPlayers
-      .filter(u => new Date(u.createdAt || 0) > lastWeek)
-      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
-
-    return {
-      newUsers: newMembersList.length,
-      newMembers: newMembersList,
-      pendingResults: pendingResults.length,
-      pendingPayments: pendingPayments.length + entryRequests.length,
-      totalPot: subscriptionPot + subscriptionPot10
-    }
+    const lastWeek = new Date(); lastWeek.setDate(lastWeek.getDate() - 7)
+    const newMembersList = allPlayers.filter(u => new Date(u.createdAt || 0) > lastWeek).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+    return { newUsers: newMembersList.length, newMembers: newMembersList, pendingResults: pendingResults.length, pendingPayments: pendingPayments.length + entryRequests.length, totalPot: subscriptionPot + subscriptionPot10 }
   }, [allPlayers, pendingResults, pendingPayments, entryRequests, subscriptionPot, subscriptionPot10])
 
   const tabs = [
@@ -1286,9 +957,7 @@ export default function Admin() {
     { id: 'maintenance', label: 'System' }
   ]
 
-  const toggleSelectResult = (id) => {
-    setSelectedResults(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
-  }
+  const toggleSelectResult = (id) => { setSelectedResults(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]) }
 
   return (
     <div className="page animate-fade-in" style={{ maxWidth: '1200px', margin: '0 auto' }}>
@@ -1297,22 +966,9 @@ export default function Admin() {
         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Comprehensive League Management</p>
       </div>
 
-      <div style={{
-        display: 'flex',
-        overflowX: 'auto',
-        gap: '10px',
-        marginBottom: '24px',
-        paddingBottom: '12px',
-        WebkitOverflowScrolling: 'touch',
-        borderBottom: '1px solid rgba(255,255,255,0.05)'
-      }}>
+      <div style={{ display: 'flex', overflowX: 'auto', gap: '10px', marginBottom: '24px', paddingBottom: '12px', WebkitOverflowScrolling: 'touch', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
         {tabs.map(tab => (
-          <button
-            key={tab.id}
-            className={`division-tab ${activeTab === tab.id ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab.id)}
-            style={{ whiteSpace: 'nowrap', padding: '10px 18px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}
-          >
+          <button key={tab.id} className={`division-tab ${activeTab === tab.id ? 'active' : ''}`} onClick={() => setActiveTab(tab.id)} style={{ whiteSpace: 'nowrap', padding: '10px 18px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
             {tab.label}
             {tab.count > 0 && <span style={{ background: 'white', color: 'black', padding: '2px 6px', borderRadius: '10px', fontSize: '0.65rem', fontWeight: 900 }}>{tab.count}</span>}
           </button>
@@ -1325,113 +981,40 @@ export default function Admin() {
         {activeTab === 'dashboard' && (
           <div className="animate-fade-in">
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '24px', marginBottom: '32px' }}>
-              <div className="stat-card glass" onClick={() => setActiveTab('results')} style={{ cursor: 'pointer', transition: 'transform 0.2s', padding: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <div className="stat-label" style={{ margin: 0 }}>Pending Results</div>
-                  <div style={{ fontSize: '1.5rem' }}>🎯</div>
-                </div>
+              <div className="stat-card glass" onClick={() => setActiveTab('results')} style={{ cursor: 'pointer', padding: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}><div className="stat-label">Pending Results</div><div>🎯</div></div>
                 <div className="stat-value" style={{ color: stats.pendingResults > 0 ? 'var(--warning)' : 'var(--success)', fontSize: '2.5rem' }}>{stats.pendingResults}</div>
               </div>
-              <div className="stat-card glass" onClick={() => setActiveTab('payments')} style={{ cursor: 'pointer', transition: 'transform 0.2s', padding: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <div className="stat-label" style={{ margin: 0 }}>Pending Payments</div>
-                  <div style={{ fontSize: '1.5rem' }}>💳</div>
-                </div>
+              <div className="stat-card glass" onClick={() => setActiveTab('payments')} style={{ cursor: 'pointer', padding: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}><div className="stat-label">Pending Payments</div><div>💳</div></div>
                 <div className="stat-value" style={{ color: stats.pendingPayments > 0 ? 'var(--error)' : 'var(--success)', fontSize: '2.5rem' }}>{stats.pendingPayments}</div>
               </div>
-              <div className="stat-card glass" onClick={() => setActiveTab('new')} style={{ cursor: 'pointer', transition: 'transform 0.2s', padding: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <div className="stat-label" style={{ margin: 0 }}>New Users (7d)</div>
-                  <div style={{ fontSize: '1.5rem' }}>👤</div>
-                </div>
+              <div className="stat-card glass" onClick={() => setActiveTab('new')} style={{ cursor: 'pointer', padding: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}><div className="stat-label">New Users (7d)</div><div>👤</div></div>
                 <div className="stat-value" style={{ color: 'var(--accent-cyan)', fontSize: '2.5rem' }}>{stats.newUsers}</div>
               </div>
               <div className="stat-card glass" style={{ padding: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <div className="stat-label" style={{ margin: 0 }}>League Prize Pot</div>
-                  <div style={{ fontSize: '1.5rem' }}>💰</div>
-                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}><div className="stat-label">League Prize Pot</div><div>💰</div></div>
                 <div className="stat-value" style={{ fontSize: '2.5rem' }}>£{adminData?.subscriptionPot?.toFixed(2) || '0.00'}</div>
               </div>
             </div>
-
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
               <div className="card glass" style={{ padding: '24px' }}>
-                <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span>📊</span> Analytics Sync
-                </h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px', lineHeight: '1.6' }}>
-                  Synchronize all approved match results and player data with the Analytics engine. This ensures all charts and historical stats are correctly categorized by season and division.
-                </p>
-                <button className="btn btn-primary btn-block" onClick={handleBulkSyncAnalytics} disabled={isApproving} style={{ padding: '14px' }}>
-                  {isApproving ? 'Syncing...' : 'Bulk Sync All Approved Games'}
-                </button>
+                <h3 className="card-title">📊 Analytics Sync</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>Sync match results with Analytics engine.</p>
+                <button className="btn btn-primary btn-block" onClick={handleBulkSyncAnalytics} disabled={isApproving}>{isApproving ? 'Syncing...' : 'Bulk Sync All Approved Games'}</button>
               </div>
-
               <div className="card glass" style={{ padding: '24px' }}>
-                <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span>🚨</span> Urgent Actions
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '16px' }}>
+                <h3 className="card-title">🚨 Urgent Actions</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   {(stats.pendingResults > 0 || stats.pendingPayments > 0) ? (
                     <>
-                      {stats.pendingResults > 0 && (
-                        <div className="glass" style={{ padding: '16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: '4px solid var(--warning)', background: 'rgba(245, 158, 11, 0.05)' }}>
-                          <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{stats.pendingResults} matches awaiting review.</span>
-                          <button className="btn btn-secondary btn-sm" onClick={() => setActiveTab('results')}>Review</button>
-                        </div>
-                      )}
-                      {stats.pendingPayments > 0 && (
-                        <div className="glass" style={{ padding: '16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: '4px solid var(--error)', background: 'rgba(239, 68, 68, 0.05)' }}>
-                          <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{stats.pendingPayments} payments to verify.</span>
-                          <button className="btn btn-secondary btn-sm" onClick={() => setActiveTab('payments')}>Verify</button>
-                        </div>
-                      )}
+                      {stats.pendingResults > 0 && <div className="glass" style={{ padding: '16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: '4px solid var(--warning)' }}><span>{stats.pendingResults} matches awaiting review.</span><button className="btn btn-secondary btn-sm" onClick={() => setActiveTab('results')}>Review</button></div>}
+                      {stats.pendingPayments > 0 && <div className="glass" style={{ padding: '16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: '4px solid var(--error)' }}><span>{stats.pendingPayments} payments to verify.</span><button className="btn btn-secondary btn-sm" onClick={() => setActiveTab('payments')}>Verify</button></div>}
                     </>
-                  ) : (
-                    <div style={{ textAlign: 'center', padding: '20px' }}>
-                      <div style={{ fontSize: '2rem', marginBottom: '10px' }}>✅</div>
-                      <p style={{ color: 'var(--text-muted)', margin: 0 }}>System is healthy. No urgent tasks.</p>
-                    </div>
-                  )}
+                  ) : <div style={{ textAlign: 'center', padding: '20px' }}><p style={{ color: 'var(--text-muted)' }}>System is healthy.</p></div>}
                 </div>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB: AUDIT LOGS */}
-        {activeTab === 'audit' && (
-          <div className="card glass animate-fade-in">
-            <h3 className="card-title">System Audit Log</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
-              Track administrative actions and system updates.
-            </p>
-
-            <div className="glass" style={{ maxHeight: '600px', overflowY: 'auto', borderRadius: '12px' }}>
-               {loadingLogs ? (
-                 <div style={{ padding: '40px', textAlign: 'center' }}>
-                    <div className="spinner" style={{ margin: '0 auto 15px' }}></div>
-                    <p style={{ color: 'var(--text-muted)' }}>Fetching logs...</p>
-                 </div>
-               ) : auditLogs.length === 0 ? (
-                 <div style={{ padding: '40px', textAlign: 'center' }}>
-                    <p style={{ color: 'var(--text-muted)' }}>No audit logs found.</p>
-                 </div>
-               ) : (
-                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                   {auditLogs.map(log => (
-                     <div key={log.id} style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                           <span style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{log.action}</span>
-                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(log.timestamp).toLocaleString()}</span>
-                        </div>
-                        <div style={{ color: 'white' }}>{log.details}</div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>Admin: {log.adminName}</div>
-                     </div>
-                   ))}
-                 </div>
-               )}
             </div>
           </div>
         )}
@@ -1440,271 +1023,48 @@ export default function Admin() {
         {activeTab === 'results' && (
           <div className="card glass">
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-              <div>
-                <h3>Match History & Review</h3>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}> Standings are updated automatically from Approved League results.</p>
-              </div>
+              <div><h3>Match History & Review</h3></div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <button className="btn btn-sm btn-secondary glass" onClick={async () => {
-                  const ok = await forceFetchResults();
-                  showToast(ok ? 'Deep Sync Complete' : 'Sync Failed', ok ? 'success' : 'warning');
-                }} title="Force refresh of all league data from server">
-                  🔄 Sync Standings
-                </button>
-                {resultFilter === 'pending' && selectedResults.length > 0 && (
-                  <button className="btn btn-sm btn-primary" onClick={handleBulkApprove} disabled={isApproving}>
-                    Approve Selected ({selectedResults.length})
-                  </button>
-                )}
-                <button className={`btn btn-sm ${showSubmitGame ? 'btn-success' : 'btn-secondary'}`} onClick={() => setShowSubmitGame(!showSubmitGame)}>
-                  {showSubmitGame ? 'Close' : '+ Submit Game'}
-                </button>
-                {['pending', 'approved', 'rejected'].map(f => (
-                  <button key={f} className={`btn btn-sm ${resultFilter === f ? 'btn-primary' : 'btn-secondary'}`} onClick={() => { setResultFilter(f); setSelectedResults([]); }}>{f.toUpperCase()}</button>
-                ))}
+                <button className="btn btn-sm btn-secondary glass" onClick={async () => { const ok = await forceFetchResults(); showToast(ok ? 'Sync Complete' : 'Sync Failed', ok ? 'success' : 'warning'); }}>🔄 Sync Standings</button>
+                {resultFilter === 'pending' && selectedResults.length > 0 && <button className="btn btn-sm btn-primary" onClick={handleBulkApprove} disabled={isApproving}>Approve Selected ({selectedResults.length})</button>}
+                <button className={`btn btn-sm ${showSubmitGame ? 'btn-success' : 'btn-secondary'}`} onClick={() => setShowSubmitGame(!showSubmitGame)}>{showSubmitGame ? 'Close' : '+ Submit Game'}</button>
+                {['pending', 'approved', 'rejected'].map(f => <button key={f} className={`btn btn-sm ${resultFilter === f ? 'btn-primary' : 'btn-secondary'}`} onClick={() => { setResultFilter(f); setSelectedResults([]); }}>{f.toUpperCase()}</button>)}
               </div>
             </div>
-
-            {/* Search and Filter Bar */}
             <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
-              <input
-                type="text"
-                className="glass"
-                placeholder="🔍 Search players..."
-                style={{ flex: 2, minWidth: '200px', padding: '10px' }}
-                value={resultSearch}
-                onChange={e => setResultSearch(e.target.value)}
-              />
-              <select
-                className="glass"
-                style={{ flex: 1, minWidth: '150px', padding: '10px' }}
-                value={resultTypeFilter}
-                onChange={e => setResultTypeFilter(e.target.value)}
-              >
-                <option value="all">All Types</option>
-                <option value="league">League</option>
-                <option value="champions league">Champions League</option>
-                <option value="cup">Cup</option>
-                <option value="friendly">Friendly</option>
-              </select>
+              <input type="text" className="glass" placeholder="🔍 Search players..." style={{ flex: 2, padding: '10px' }} value={resultSearch} onChange={e => setResultSearch(e.target.value)} />
+              <select className="glass" style={{ flex: 1, padding: '10px' }} value={resultTypeFilter} onChange={e => setResultTypeFilter(e.target.value)}><option value="all">All Types</option><option value="league">League</option><option value="champions league">Champions League</option><option value="cup">Cup</option><option value="friendly">Friendly</option></select>
             </div>
-
             {editingResult && (
               <div className="card glass" style={{ marginBottom: '24px', padding: '24px', border: '1px solid var(--accent-cyan)' }}>
-                <h4 style={{ marginBottom: '16px', color: 'var(--accent-cyan)' }}>Edit Match Record</h4>
                 <form onSubmit={handleUpdateResult}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                    <div className="form-group">
-                      <label>Season</label>
-                      <select value={editingResult.season || ''} onChange={e => setEditingResult({...editingResult, season: e.target.value})}>
-                        <option value="">Legacy (Season 1)</option>
-                        {getSeasons().map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label>Division</label>
-                      <select value={editingResult.division || ''} onChange={e => setEditingResult({...editingResult, division: e.target.value})}>
-                        <option value="">Auto (Profile)</option>
-                        <optgroup label="League">
-                          {['Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze'].map(d => <option key={d} value={d}>{d}</option>)}
-                        </optgroup>
-                        <optgroup label="Champions League">
-                          {['Champions'].map(d => <option key={d} value={d}>{d}</option>)}
-                        </optgroup>
-                      </select>
-                    </div>
+                    <div className="form-group"><label>Season</label><select value={editingResult.season || ''} onChange={e => setEditingResult({...editingResult, season: e.target.value})}><option value="">Legacy</option>{getSeasons().map(s => <option key={s.id} value={s.name}>{s.name}</option>)}</select></div>
+                    <div className="form-group"><label>Division</label><select value={editingResult.division || ''} onChange={e => setEditingResult({...editingResult, division: e.target.value})}><option value="">Auto</option>{['Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Champions'].map(d => <option key={d} value={d}>{d}</option>)}</select></div>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                    <div className="form-group">
-                      <label>Game Type</label>
-                      <select value={editingResult.gameType || 'Friendly'} onChange={e => setEditingResult({...editingResult, gameType: e.target.value})}>
-                        <option value="Friendly">Friendly</option>
-                        <option value="League">League</option>
-                        <option value="Champions League">Champions League</option>
-                        <option value="Cup">Cup</option>
-                        <option value="Playoff">Playoff</option>
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label>Date</label>
-                      <input type="date" value={editingResult.date || ''} onChange={e => setEditingResult({...editingResult, date: e.target.value})} />
-                    </div>
+                    <div className="form-group"><label>Score 1 ({editingResult.player1})</label><input type="number" value={editingResult.score1} onChange={e => setEditingResult({...editingResult, score1: parseInt(e.target.value)})} /></div>
+                    <div className="form-group"><label>Score 2 ({editingResult.player2})</label><input type="number" value={editingResult.score2} onChange={e => setEditingResult({...editingResult, score2: parseInt(e.target.value)})} /></div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                    <div className="form-group">
-                      <label>Score 1 ({editingResult.player1})</label>
-                      <input type="number" value={editingResult.score1} onChange={e => setEditingResult({...editingResult, score1: parseInt(e.target.value)})} />
-                    </div>
-                    <div className="form-group">
-                      <label>Score 2 ({editingResult.player2})</label>
-                      <input type="number" value={editingResult.score2} onChange={e => setEditingResult({...editingResult, score2: parseInt(e.target.value)})} />
-                    </div>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                    <div className="form-group">
-                      <label>P1 180s</label>
-                      <input type="number" value={editingResult.player1Stats?.['180s'] || 0} onChange={e => setEditingResult({...editingResult, player1Stats: {...(editingResult.player1Stats||{}), '180s': parseInt(e.target.value)}})} />
-                    </div>
-                    <div className="form-group">
-                      <label>P2 180s</label>
-                      <input type="number" value={editingResult.player2Stats?.['180s'] || 0} onChange={e => setEditingResult({...editingResult, player2Stats: {...(editingResult.player2Stats||{}), '180s': parseInt(e.target.value)}})} />
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Save Changes</button>
-                    <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setEditingResult(null)}>Cancel</button>
-                  </div>
+                  <div style={{ display: 'flex', gap: '10px' }}><button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Save</button><button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setEditingResult(null)}>Cancel</button></div>
                 </form>
               </div>
             )}
-
-            {showSubmitGame && (
-              <div className="card glass" style={{ marginBottom: '24px', padding: '24px', background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-                <h4 style={{ marginBottom: '16px', color: 'var(--success)' }}>Submit Game (No Proof Required)</h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label>Player 1</label>
-                    <select value={adminGameForm.player1} onChange={e => setAdminGameForm({...adminGameForm, player1: e.target.value})}>
-                      <option value="">Select player...</option>
-                      {allPlayers.map(p => <option key={p.id} value={p.id}>{p.username}</option>)}
-                    </select>
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label>Player 2</label>
-                    <select value={adminGameForm.player2} onChange={e => setAdminGameForm({...adminGameForm, player2: e.target.value})}>
-                      <option value="">Select player...</option>
-                      {allPlayers.map(p => <option key={p.id} value={p.id}>{p.username}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label>Score 1</label>
-                    <input type="number" placeholder="0" value={adminGameForm.score1} onChange={e => setAdminGameForm({...adminGameForm, score1: e.target.value})} />
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label>Score 2</label>
-                    <input type="number" placeholder="0" value={adminGameForm.score2} onChange={e => setAdminGameForm({...adminGameForm, score2: e.target.value})} />
-                  </div>
-                </div>
-                <div className="form-group" style={{ marginBottom: '16px' }}>
-                  <label>Game Type</label>
-                  <select value={adminGameForm.gameType} onChange={e => setAdminGameForm({...adminGameForm, gameType: e.target.value})}>
-                    <option value="Friendly">Friendly</option>
-                    <option value="League">League</option>
-                    <option value="Champions League">Champions League</option>
-                    <option value="Cup">Cup</option>
-                  </select>
-                </div>
-                <div className="form-group" style={{ marginBottom: '16px' }}>
-                  <label>Season</label>
-                  <select value={adminGameForm.season} onChange={e => setAdminGameForm({...adminGameForm, season: e.target.value})}>
-                    <option value="">Auto ({adminData?.currentSeason || 'Season 1'})</option>
-                    {getSeasons().map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                  </select>
-                </div>
-                <details style={{ marginBottom: '16px', cursor: 'pointer' }}>
-                  <summary style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Stats (optional)</summary>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '12px' }}>
-                    <div className="form-group" style={{ marginBottom: 0 }}><label style={{ fontSize: '0.75rem' }}>P1 180s</label><input type="number" value={adminGameForm.p1_180s} onChange={e => setAdminGameForm({...adminGameForm, p1_180s: e.target.value})} /></div>
-                    <div className="form-group" style={{ marginBottom: 0 }}><label style={{ fontSize: '0.75rem' }}>P2 180s</label><input type="number" value={adminGameForm.p2_180s} onChange={e => setAdminGameForm({...adminGameForm, p2_180s: e.target.value})} /></div>
-                    <div className="form-group" style={{ marginBottom: 0 }}><label style={{ fontSize: '0.75rem' }}>P1 Checkout</label><input type="number" value={adminGameForm.p1_checkout} onChange={e => setAdminGameForm({...adminGameForm, p1_checkout: e.target.value})} /></div>
-                    <div className="form-group" style={{ marginBottom: 0 }}><label style={{ fontSize: '0.75rem' }}>P2 Checkout</label><input type="number" value={adminGameForm.p2_checkout} onChange={e => setAdminGameForm({...adminGameForm, p2_checkout: e.target.value})} /></div>
-                    <div className="form-group" style={{ marginBottom: 0 }}><label style={{ fontSize: '0.75rem' }}>P1 Doubles %</label><input type="number" step="0.1" value={adminGameForm.p1_doubles} onChange={e => setAdminGameForm({...adminGameForm, p1_doubles: e.target.value})} /></div>
-                    <div className="form-group" style={{ marginBottom: 0 }}><label style={{ fontSize: '0.75rem' }}>P2 Doubles %</label><input type="number" step="0.1" value={adminGameForm.p2_doubles} onChange={e => setAdminGameForm({...adminGameForm, p2_doubles: e.target.value})} /></div>
-                  </div>
-                </details>
-                <button className="btn btn-success" onClick={handleAdminSubmitGame} style={{ width: '100%' }}>Submit Game (Approved)</button>
-              </div>
-            )}
-
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {filteredResultsList.map(r => (
-                <div key={r.id} className="result-item glass" style={{ padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  {resultFilter === 'pending' && (
-                    <input type="checkbox" checked={selectedResults.includes(r.id)} onChange={() => toggleSelectResult(r.id)} style={{ width: '20px', height: '20px' }} />
-                  )}
+                <div key={r.id} className="result-item glass" style={{ padding: '16px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  {resultFilter === 'pending' && <input type="checkbox" checked={selectedResults.includes(r.id)} onChange={() => toggleSelectResult(r.id)} style={{ width: '20px', height: '20px' }} />}
                   <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                      <span style={{ fontWeight: 700 }}>{r.player1} <span style={{ color: 'var(--accent-cyan)' }}>vs</span> {r.player2}</span>
-                      <span style={{ fontWeight: 900, color: 'var(--accent-cyan)' }}>{r.score1}-{r.score2}</span>
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '10px' }}>
-                      {r.gameType} | {r.date} | Sub: {r.submittedBy || 'Player'}
-                      {r.excludeFromLeague && <span style={{ marginLeft: '8px', color: 'var(--error)', fontWeight: 700 }}>🚫 EXCLUDED</span>}
-                    </div>
-
-                    {(r.proofImage || r.proofVideo || r.hasProofImage) && (
-                      <div style={{ marginBottom: '10px' }}>
-                        {r.proofImage ? (
-                          <img
-                            src={r.proofImage}
-                            alt="Proof"
-                            style={{ maxWidth: '100px', maxHeight: '60px', borderRadius: '4px', cursor: 'pointer', border: '1px solid var(--border)' }}
-                            onClick={() => setPreviewImage(r.proofImage)}
-                          />
-                        ) : r.proofVideo ? (
-                          <video src={r.proofVideo} style={{ maxWidth: '100px', maxHeight: '60px', borderRadius: '4px' }} />
-                        ) : (
-                          <span style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)' }}>🖼️ Proof Attached (Legacy)</span>
-                        )}
-                      </div>
-                    )}
-
-                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                      {resultFilter === 'pending' && <button className="btn btn-primary btn-sm" style={{ flex: '1 1 auto', minWidth: '0' }} onClick={() => handleApproveResult(r.id)}>Approve</button>}
-                      {resultFilter === 'pending' && <button className="btn btn-danger btn-sm" style={{ flex: '1 1 auto', minWidth: '0' }} onClick={() => handleRejectResult(r.id)}>Reject</button>}
-                      {resultFilter !== 'pending' && (
-                        <>
-                          <button className="btn btn-secondary btn-sm" style={{ flex: '1 1 auto', minWidth: '0' }} onClick={() => setEditingResult({...r})}>✏️ Edit</button>
-                          <button className="btn btn-secondary btn-sm" style={{ flex: '1 1 auto', minWidth: '0' }} onClick={() => handleApproveResult(r.id)}>Re-Approve</button>
-                          <button className={`btn btn-sm ${r.excludeFromLeague ? 'btn-warning' : 'btn-secondary'}`} style={{ flex: '1 1 auto', minWidth: '0' }} onClick={() => handleToggleExcludeFromLeague(r)}>
-                            {r.excludeFromLeague ? 'Include' : 'Exclude'}
-                          </button>
-                        </>
-                      )}
-                      <button className="btn btn-danger btn-sm" style={{ padding: '6px 10px' }} onClick={() => handleDeleteResult(r.id)}>🗑️</button>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ fontWeight: 700 }}>{r.player1} <span style={{ color: 'var(--accent-cyan)' }}>vs</span> {r.player2}</span><span style={{ fontWeight: 900, color: 'var(--accent-cyan)' }}>{r.score1}-{r.score2}</span></div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{r.gameType} | {r.date} {r.excludeFromLeague && <span style={{ color: 'var(--error)' }}>🚫 EXCLUDED</span>}</div>
+                    <div style={{ display: 'flex', gap: '6px', marginTop: '10px' }}>
+                      {resultFilter === 'pending' && <><button className="btn btn-primary btn-sm" onClick={() => handleApproveResult(r.id)}>Approve</button><button className="btn btn-danger btn-sm" onClick={() => handleRejectResult(r.id)}>Reject</button></>}
+                      {resultFilter !== 'pending' && <><button className="btn btn-secondary btn-sm" onClick={() => setEditingResult({...r})}>✏️</button><button className="btn btn-secondary btn-sm" onClick={() => handleApproveResult(r.id)}>🔄</button></>}
+                      <button className="btn btn-danger btn-sm" onClick={() => handleDeleteResult(r.id)}>🗑️</button>
                     </div>
                   </div>
                 </div>
               ))}
-              {(filteredResultsList.length === 0) && <p style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No results found matching your criteria.</p>}
-            </div>
-          </div>
-        )}
-
-        {/* TAB: AUDIT LOGS */}
-        {activeTab === 'audit' && (
-          <div className="card glass animate-fade-in">
-            <h3 className="card-title">System Audit Log</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
-              Track administrative actions and system updates.
-            </p>
-
-            <div className="glass" style={{ maxHeight: '600px', overflowY: 'auto', borderRadius: '12px' }}>
-               {loadingLogs ? (
-                 <div style={{ padding: '40px', textAlign: 'center' }}>
-                    <div className="spinner" style={{ margin: '0 auto 15px' }}></div>
-                    <p style={{ color: 'var(--text-muted)' }}>Fetching logs...</p>
-                 </div>
-               ) : auditLogs.length === 0 ? (
-                 <div style={{ padding: '40px', textAlign: 'center' }}>
-                    <p style={{ color: 'var(--text-muted)' }}>No audit logs found.</p>
-                 </div>
-               ) : (
-                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                   {auditLogs.map(log => (
-                     <div key={log.id} style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                           <span style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{log.action}</span>
-                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(log.timestamp).toLocaleString()}</span>
-                        </div>
-                        <div style={{ color: 'white' }}>{log.details}</div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>Admin: {log.adminName}</div>
-                     </div>
-                   ))}
-                 </div>
-               )}
             </div>
           </div>
         )}
@@ -1712,274 +1072,46 @@ export default function Admin() {
         {/* TAB: PAYMENTS */}
         {activeTab === 'payments' && (
           <div className="card glass">
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-              <div>
-                <h3 style={{ margin: 0 }}>League Subscriptions</h3>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>Verify and manage player access payments.</p>
-              </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}>
+              <div><h3>League Subscriptions</h3></div>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  className={`btn btn-sm ${paymentSubTab === 'pending' ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => setPaymentSubTab('pending')}
-                >
-                  Pending ({pendingPayments.length})
-                </button>
-                <button
-                  className={`btn btn-sm ${paymentSubTab === 'approved' ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => setPaymentSubTab('approved')}
-                >
-                  Approved ({subscribers.length})
-                </button>
+                <button className={`btn btn-sm ${paymentSubTab === 'pending' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setPaymentSubTab('pending')}>Pending ({pendingPayments.length})</button>
+                <button className={`btn btn-sm ${paymentSubTab === 'approved' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setPaymentSubTab('approved')}>Approved ({subscribers.length})</button>
               </div>
             </div>
-
             {paymentSubTab === 'pending' ? (
-              <div className="animate-fade-in">
-                {pendingPayments.map(u => (
-                  <div key={u.id} className="glass" style={{ padding: '20px', borderRadius: '12px', marginBottom: '15px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', flexWrap: 'wrap', gap: '12px' }}>
-                       <div>
-                          <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>{u.username}</div>
-                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{u.email}</div>
-                          <div style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)', marginTop: '4px', fontWeight: 600 }}>
-                            Method: {u.paymentMethod || 'Unknown'} | Plan: {u.requestedPlan || 'Standard'} | Season: {u.requestedSeason || adminData?.currentSeason || 'TBC'}
-                          </div>
-                       </div>
-
-                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                         {approvingPaymentId === u.id ? (
-                           <div className="glass" style={{ display: 'flex', gap: '8px', padding: '8px', borderRadius: '8px', border: '1px solid var(--accent-cyan)' }}>
-                             <select
-                               className="glass"
-                               style={{ fontSize: '0.75rem', padding: '4px' }}
-                               value={approvalOverride.season}
-                               onChange={e => setApprovalOverride({...approvalOverride, season: e.target.value})}
-                             >
-                               {getSeasons().map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                               {!getSeasons().find(s => s.name === 'Season 1') && <option value="Season 1">Season 1</option>}
-                             </select>
-                             <button className="btn btn-primary btn-sm" onClick={() => handleApprovePayment(u)}>Confirm Elite Pass</button>
-                             <button className="btn btn-secondary btn-sm" onClick={() => setApprovingPaymentId(null)}>×</button>
-                           </div>
-                         ) : (
-                           <>
-                             <button
-                               className="btn btn-secondary btn-sm"
-                               onClick={() => {
-                                 setApprovingPaymentId(u.id);
-                                 setApprovalOverride({
-                                   tier: 'elite',
-                                   season: u.requestedSeason || adminData?.currentSeason || 'Season 1'
-                                 });
-                               }}
-                             >
-                               Edit & Approve
-                             </button>
-                             <button className="btn btn-primary btn-sm" onClick={() => handleApprovePayment(u)}>Quick Approve</button>
-                           </>
-                         )}
-                       </div>
+              pendingPayments.map(u => (
+                <div key={u.id} className="glass" style={{ padding: '20px', borderRadius: '12px', marginBottom: '15px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div><div style={{ fontWeight: 800 }}>{u.username}</div><div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{u.email}</div></div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button className="btn btn-primary btn-sm" onClick={() => handleApprovePayment(u)}>Approve</button>
                     </div>
-                    {u.paymentProof && (
-                      <div style={{ marginTop: '10px' }}>
-                        <p style={{ fontSize: '0.75rem', marginBottom: '8px', color: 'var(--text-muted)' }}>Payment Receipt:</p>
-                        <img
-                          src={u.paymentProof}
-                          alt="Proof"
-                          style={{ width: '100%', maxWidth: '400px', borderRadius: '12px', border: '1px solid var(--border)', cursor: 'pointer' }}
-                          onClick={() => setPreviewImage(u.paymentProof)}
-                        />
-                      </div>
-                    )}
                   </div>
-                ))}
-                {pendingPayments.length === 0 && (
-                  <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-                    <div style={{ fontSize: '2.5rem', marginBottom: '16px' }}>✅</div>
-                    <p style={{ color: 'var(--text-muted)', margin: 0 }}>No payments awaiting approval.</p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="animate-fade-in">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {subscribers.sort((a,b) => new Date(b.subscriptionDate || 0) - new Date(a.subscriptionDate || 0)).map(u => (
-                    <div key={u.id} className="glass" style={{ padding: '16px', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '12px', border: '1px solid rgba(255,255,255,0.03)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                          <div className="avatar-ring" style={{ width: '45px', height: '42px', padding: '2px' }}>
-                            <div className="avatar-inner" style={{ background: '#050816', fontSize: '1rem' }}>
-                              {u.profilePicture ? (
-                                <img src={u.profilePicture} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                              ) : (
-                                <span>{u.username.charAt(0).toUpperCase()}</span>
-                              )}
-                            </div>
-                          </div>
-                          <div>
-                            <div style={{ fontWeight: 700, fontSize: '1rem' }}>{u.username}</div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                              <span style={{ color: '#fbbf24', fontWeight: 700 }}>
-                                ELITE PASS
-                              </span>
-                              {' • '} Approved {u.subscriptionDate ? new Date(u.subscriptionDate).toLocaleDateString() : 'Historical'}
-                            </div>
-                            <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: '2px', fontStyle: 'italic' }}>
-                              Seasons: {(u.subscribedSeasons || []).join(', ') || 'Legacy'}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          {approvingPaymentId === u.id ? (
-                            <div className="glass" style={{ display: 'flex', gap: '8px', padding: '8px', borderRadius: '8px', border: '1px solid var(--accent-cyan)' }}>
-                              <select
-                                className="glass"
-                                style={{ fontSize: '0.75rem', padding: '4px' }}
-                                value={approvalOverride.season}
-                                onChange={e => setApprovalOverride({...approvalOverride, season: e.target.value})}
-                              >
-                                {getSeasons().map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                                {!getSeasons().find(s => s.name === 'Season 1') && <option value="Season 1">Season 1</option>}
-                              </select>
-                              <button className="btn btn-primary btn-sm" onClick={() => handleUpdateApprovedSubscription(u)}>Update Seasons</button>
-                              <button className="btn btn-secondary btn-sm" onClick={() => setApprovingPaymentId(null)}>×</button>
-                            </div>
-                          ) : (
-                            <>
-                              <button
-                                className="btn btn-secondary btn-sm"
-                                style={{ padding: '6px 12px', fontSize: '0.75rem' }}
-                                onClick={() => {
-                                  setApprovingPaymentId(u.id);
-                                  setApprovalOverride({
-                                    tier: 'elite',
-                                    season: adminData?.currentSeason || 'Season 1'
-                                  });
-                                }}
-                              >
-                                Edit Seasons
-                              </button>
-                              {u.paymentProof && (
-                                <button className="btn btn-secondary btn-sm" style={{ padding: '6px 12px', fontSize: '0.75rem' }} onClick={() => setPreviewImage(u.paymentProof)}>View Receipt</button>
-                              )}
-                              <button className="btn btn-secondary btn-sm" style={{ padding: '6px 12px', fontSize: '0.75rem' }} onClick={() => navigate(`/profile/${u.id}`)}>Profile</button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
                 </div>
-                {subscribers.length === 0 && (
-                  <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-                    <p style={{ color: 'var(--text-muted)', margin: 0 }}>No approved subscribers found.</p>
+              ))
+            ) : (
+              subscribers.map(u => (
+                <div key={u.id} className="glass" style={{ padding: '16px', borderRadius: '16px', marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div style={{ fontWeight: 700 }}>{u.username}</div>
+                    <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/profile/${u.id}`)}>Profile</button>
                   </div>
-                )}
-              </div>
+                </div>
+              ))
             )}
           </div>
         )}
 
         {/* TAB: OPEN LEAGUE */}
         {activeTab === 'openleague' && (
-          <div className="card glass animate-fade-in" style={{ padding: '20px' }}>
-            <h3 className="card-title" style={{ fontSize: '1.5rem', marginBottom: '8px' }}>Open League Management</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
-              Add individual players or pairs to the Open League standings.
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              {/* Singles Management */}
-              <div className="glass" style={{ padding: '20px', borderRadius: '16px', border: '1px solid var(--accent-cyan)' }}>
-                <h4 style={{ marginBottom: '15px' }}>Add Singles Player</h4>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', alignItems: 'flex-end' }}>
-                  <div style={{ flex: '1 1 200px' }}>
-                    <UserSearchSelect users={allPlayers} selectedId={singlesPlayerForm} onSelect={id => setSinglesPlayerForm(id)} label="Select Player" onQueryChange={searchUsers} />
-                  </div>
-                  <button className="btn btn-primary" onClick={handleAddSinglesPlayer} style={{ padding: '12px 24px', flex: '0 0 auto' }}>➕ Add Player</button>
-                </div>
-
-                <h5 style={{ marginTop: '24px', marginBottom: '12px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.05em' }}>Registered Singles ({openLeagueSingles.length})</h5>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '10px', maxHeight: '300px', overflowY: 'auto', paddingRight: '5px' }}>
-                  {openLeagueSingles.map(p => {
-                    const player = allPlayers.find(u => u.id === p.userId)
-                    return (
-                      <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{player?.username || 'Unknown'}</span>
-                        <button onClick={() => handleRemoveSinglesPlayer(p.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, color: 'var(--error)' }}>✕</button>
-                      </div>
-                    )
-                  })}
-                  {openLeagueSingles.length === 0 && <p style={{ gridColumn: '1/-1', padding: '20px', textAlign: 'center', opacity: 0.5 }}>No players added yet.</p>}
-                </div>
-              </div>
-
-              {/* Duo Management */}
-              <div className="glass" style={{ padding: '20px', borderRadius: '20px', border: '1px solid var(--accent-cyan)' }}>
-                <h4 style={{ marginBottom: '15px', fontSize: '1.2rem' }}>Duo Team Manager</h4>
-
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', marginBottom: '24px', alignItems: 'flex-end', background: 'rgba(0,0,0,0.2)', padding: '15px', borderRadius: '16px' }}>
-                  <div className="form-group" style={{ marginBottom: 0, flex: '1 1 200px' }}>
-                    <label style={{ fontSize: '0.75rem', opacity: 0.8 }}>Partner 1</label>
-                    <UserSearchSelect users={allPlayers} selectedId={duoForm.p1} onSelect={id => setDuoForm({...duoForm, p1: id, captainId: duoForm.captainId === duoForm.p1 ? id : duoForm.captainId})} label="Select Partner 1" onQueryChange={searchUsers} />
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 0, flex: '1 1 200px' }}>
-                    <label style={{ fontSize: '0.75rem', opacity: 0.8 }}>Partner 2</label>
-                    <UserSearchSelect users={allPlayers} selectedId={duoForm.p2} onSelect={id => setDuoForm({...duoForm, p2: id, captainId: duoForm.captainId === duoForm.p2 ? id : duoForm.captainId})} label="Select Partner 2" onQueryChange={searchUsers} />
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 0, flex: '1 1 200px' }}>
-                    <label style={{ fontSize: '0.75rem', opacity: 0.8 }}>Team Captain</label>
-                    <select
-                      className="glass"
-                      value={duoForm.captainId}
-                      onChange={e => setDuoForm({ ...duoForm, captainId: e.target.value })}
-                      style={{ width: '100%', padding: '10px', borderRadius: '8px' }}
-                      disabled={!duoForm.p1 && !duoForm.p2}
-                    >
-                      <option value="">No Captain</option>
-                      {duoForm.p1 && <option value={duoForm.p1}>{allPlayers.find(u => u.id === duoForm.p1)?.username}</option>}
-                      {duoForm.p2 && <option value={duoForm.p2}>{allPlayers.find(u => u.id === duoForm.p2)?.username}</option>}
-                    </select>
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 0, flex: '1 1 200px' }}>
-                    <label style={{ fontSize: '0.75rem', opacity: 0.8 }}>Team Name (Optional)</label>
-                    <input
-                      type="text"
-                      className="glass"
-                      placeholder="e.g. The Bullseyes"
-                      value={duoForm.teamName}
-                      onChange={e => setDuoForm({ ...duoForm, teamName: e.target.value })}
-                      style={{ width: '100%', padding: '10px', borderRadius: '8px' }}
-                    />
-                  </div>
-                  <button className="btn btn-primary" onClick={handleAddDuo} style={{ padding: '12px 24px', borderRadius: '8px', flex: '1 1 auto' }}>
-                    ➕ Create Duo
-                  </button>
-                </div>
-
-                <h5 style={{ marginBottom: '12px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.05em' }}>Registered Duos ({openLeagueDuos.length})</h5>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '15px', maxHeight: '500px', overflowY: 'auto', paddingRight: '10px' }}>
-                  {openLeagueDuos.map(d => {
-                    const u1 = allPlayers.find(u => u.id === d.p1Id)
-                    const u2 = allPlayers.find(u => u.id === d.p2Id)
-                    return (
-                      <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', background: 'rgba(255,255,255,0.05)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          {d.teamName && <span style={{ fontWeight: 800, color: 'var(--accent-cyan)', fontSize: '1.1rem', marginBottom: '2px' }}>{d.teamName}</span>}
-                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                            <span style={{ fontSize: d.teamName ? '0.85rem' : '1rem', opacity: d.teamName ? 0.7 : 1, fontWeight: 600 }}>{u1?.username} & {u2?.username}</span>
-                            {d.captainId && (
-                              <span title={`Captain: ${allPlayers.find(u => u.id === d.captainId)?.username}`} style={{ fontSize: '0.8rem', cursor: 'help' }}>⭐</span>
-                            )}
-                          </div>
-                        </div>
-                        <button onClick={() => handleRemoveDuo(d.id)} style={{ background: 'rgba(239, 68, 68, 0.1)', border: 'none', cursor: 'pointer', padding: '8px', borderRadius: '50%', color: 'var(--error)', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
-                      </div>
-                    )
-                  })}
-                  {openLeagueDuos.length === 0 && <p style={{ gridColumn: '1/-1', padding: '40px', textAlign: 'center', opacity: 0.5, background: 'rgba(255,255,255,0.02)', borderRadius: '16px' }}>No duos created yet.</p>}
-                </div>
+          <div className="card glass" style={{ padding: '20px' }}>
+            <h3>Open League Management</h3>
+            <div className="glass" style={{ padding: '20px', borderRadius: '16px', marginTop: '20px' }}>
+              <h4>Add Singles Player</h4>
+              <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end' }}>
+                <UserSearchSelect users={allPlayers} selectedId={singlesPlayerForm} onSelect={id => setSinglesPlayerForm(id)} label="Select Player" onQueryChange={searchUsers} />
+                <button className="btn btn-primary" onClick={handleAddSinglesPlayer}>Add</button>
               </div>
             </div>
           </div>
@@ -1987,61 +1119,16 @@ export default function Admin() {
 
         {/* TAB: NEW USERS */}
         {activeTab === 'new' && (
-          <div className="card glass animate-fade-in">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <div>
-                <h3 className="card-title">New User Onboarding</h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Users who joined in the last 7 days.</p>
-              </div>
-              <div style={{ padding: '8px 16px', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid var(--accent-cyan)', borderRadius: '8px', color: 'var(--accent-cyan)', fontWeight: 700 }}>
-                {stats.newUsers} RECENT
-              </div>
+          <div className="card glass">
+            <h3>New User Onboarding</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '20px' }}>
+              {stats.newMembers.map(p => (
+                <div key={p.id} className="glass" style={{ padding: '20px', borderRadius: '16px', display: 'flex', justifyContent: 'space-between' }}>
+                  <div><div style={{ fontWeight: 800 }}>{p.username}</div><div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{p.email}</div></div>
+                  <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/profile/${p.id}`)}>View</button>
+                </div>
+              ))}
             </div>
-
-            {stats.newMembers.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-                <div style={{ fontSize: '3rem', marginBottom: '20px' }}>🌵</div>
-                <p style={{ color: 'var(--text-muted)' }}>No new users joined in the last week.</p>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {stats.newMembers.map(p => (
-                  <div key={p.id} className="glass" style={{ padding: '20px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                      <div className="avatar-ring" style={{ width: '55px', height: '52px', padding: '2px' }}>
-                        <div className="avatar-inner" style={{ background: '#050816', fontSize: '1.2rem' }}>
-                          {p.profilePicture ? (
-                            <img src={p.profilePicture} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          ) : (
-                            <span>{(p.username || '?').charAt(0).toUpperCase()}</span>
-                          )}
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{ fontWeight: 800, fontSize: '1.1rem', marginBottom: '4px' }}>{p.username}</div>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                          {p.email} • Joined {new Date(p.createdAt).toLocaleDateString()}
-                        </div>
-                        <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                          <span style={{ fontSize: '0.7rem', padding: '3px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                             Div: {p.division || 'TBC'}
-                          </span>
-                          {p.isSubscribed && (
-                             <span style={{ fontSize: '0.7rem', padding: '3px 8px', borderRadius: '4px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid var(--success)', color: 'var(--success)' }}>
-                               ELITE PASS
-                             </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '12px' }}>
-                      <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/profile/${p.id}`)}>Profile</button>
-                      <button className="btn btn-primary btn-sm" onClick={() => { setDivisionForm({ player: p.id, division: '' }); setActiveTab('players'); }}>Assign Div</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         )}
 
@@ -2049,51 +1136,13 @@ export default function Admin() {
         {activeTab === 'moneypot' && (
           <div className="card glass">
             <h3>League Financials</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginTop: '20px' }}>
-               <div className="glass" style={{ padding: '20px', borderRadius: '12px' }}>
-                  <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>League Prize Pot</div>
-                  <div style={{ fontSize: '2.5rem', fontWeight: 900, color: '#fbbf24' }}>£{subscriptionPot.toFixed(2)}</div>
-                  <div style={{ marginTop: '15px', display: 'flex', gap: '8px' }}>
-                     <input type="number" className="glass" style={{ flex: 1, padding: '8px' }} placeholder="+/- Amount" onChange={e => setPotAdjust({...potAdjust, amount: parseFloat(e.target.value) || 0})} />
-                     <button className="btn btn-secondary btn-sm" onClick={handleAdjustPot}>Adjust Pot</button>
-                  </div>
-               </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB: AUDIT LOGS */}
-        {activeTab === 'audit' && (
-          <div className="card glass animate-fade-in">
-            <h3 className="card-title">System Audit Log</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
-              Track administrative actions and system updates.
-            </p>
-
-            <div className="glass" style={{ maxHeight: '600px', overflowY: 'auto', borderRadius: '12px' }}>
-               {loadingLogs ? (
-                 <div style={{ padding: '40px', textAlign: 'center' }}>
-                    <div className="spinner" style={{ margin: '0 auto 15px' }}></div>
-                    <p style={{ color: 'var(--text-muted)' }}>Fetching logs...</p>
-                 </div>
-               ) : auditLogs.length === 0 ? (
-                 <div style={{ padding: '40px', textAlign: 'center' }}>
-                    <p style={{ color: 'var(--text-muted)' }}>No audit logs found.</p>
-                 </div>
-               ) : (
-                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                   {auditLogs.map(log => (
-                     <div key={log.id} style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                           <span style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{log.action}</span>
-                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(log.timestamp).toLocaleString()}</span>
-                        </div>
-                        <div style={{ color: 'white' }}>{log.details}</div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>Admin: {log.adminName}</div>
-                     </div>
-                   ))}
-                 </div>
-               )}
+            <div className="glass" style={{ padding: '20px', borderRadius: '12px', marginTop: '20px' }}>
+              <div style={{ color: 'var(--text-muted)' }}>Prize Pot</div>
+              <div style={{ fontSize: '2.5rem', fontWeight: 900 }}>£{subscriptionPot.toFixed(2)}</div>
+              <div style={{ marginTop: '15px', display: 'flex', gap: '8px' }}>
+                <input type="number" className="glass" style={{ flex: 1 }} placeholder="+/-" onChange={e => setPotAdjust({...potAdjust, amount: parseFloat(e.target.value) || 0})} />
+                <button className="btn btn-secondary btn-sm" onClick={handleAdjustPot}>Adjust</button>
+              </div>
             </div>
           </div>
         )}
@@ -2101,159 +1150,38 @@ export default function Admin() {
         {/* TAB: STAFF */}
         {activeTab === 'admins' && (
           <div className="card glass">
-            <h3>Staff & Permissions</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0 }}>Staff & Permissions</h3>
+            </div>
+            <div style={{ marginBottom: '30px', padding: '20px', background: 'rgba(56, 189, 248, 0.05)', borderRadius: '16px', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
+               <h4 style={{ marginBottom: '10px' }}>Add New Staff Member</h4>
+               <UserSearchSelect users={allPlayers} selectedId={''} onSelect={id => handleUpdateAdminRole(id, 'isTournamentAdmin', true)} label="Search User by Name" onQueryChange={searchUsers} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                {allPlayers.filter(p => p.isAdmin || p.isTournamentAdmin || p.isCupAdmin).map(p => (
                  <div key={p.id} className="glass" style={{ padding: '16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                       <div style={{ fontWeight: 700 }}>{p.username}</div>
-                       <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)' }}>{p.email}</div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                       <label style={{ fontSize: '0.7rem', textAlign: 'center' }}>
-                          <input type="checkbox" checked={p.isAdmin || false} onChange={e => handleUpdateAdminRole(p.id, 'isAdmin', e.target.checked)} /><br/>Super
-                       </label>
-                       <label style={{ fontSize: '0.7rem', textAlign: 'center' }}>
-                          <input type="checkbox" checked={p.isTournamentAdmin || false} onChange={e => handleUpdateAdminRole(p.id, 'isTournamentAdmin', e.target.checked)} /><br/>Tourny
-                       </label>
-                       <label style={{ fontSize: '0.7rem', textAlign: 'center' }}>
-                          <input type="checkbox" checked={p.isCupAdmin || false} onChange={e => handleUpdateAdminRole(p.id, 'isCupAdmin', e.target.checked)} /><br/>Cup
-                       </label>
+                    <div><div style={{ fontWeight: 700 }}>{p.username}</div><div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)' }}>{p.email}</div></div>
+                    <div style={{ display: 'flex', gap: '15px' }}>
+                       <label style={{ fontSize: '0.7rem' }}><input type="checkbox" checked={p.isAdmin || false} onChange={e => handleUpdateAdminRole(p.id, 'isAdmin', e.target.checked)} /><br/>Super</label>
+                       <label style={{ fontSize: '0.7rem' }}><input type="checkbox" checked={p.isTournamentAdmin || false} onChange={e => handleUpdateAdminRole(p.id, 'isTournamentAdmin', e.target.checked)} /><br/>Tourny</label>
+                       <label style={{ fontSize: '0.7rem' }}><input type="checkbox" checked={p.isCupAdmin || false} onChange={e => handleUpdateAdminRole(p.id, 'isCupAdmin', e.target.checked)} /><br/>Cup</label>
                     </div>
                  </div>
                ))}
-            </div>
-
-            <div style={{ marginTop: '30px', paddingTop: '20px', borderTop: '1px solid var(--border)' }}>
-               <h4>Add New Staff Member</h4>
-               <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                  <UserSearchSelect users={allPlayers.filter(p => !p.isAdmin)} selectedId={''} onSelect={id => handleUpdateAdminRole(id, 'isTournamentAdmin', true)} label="Select User to Promote" onQueryChange={searchUsers} />
-               </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB: AUDIT LOGS */}
-        {activeTab === 'audit' && (
-          <div className="card glass animate-fade-in">
-            <h3 className="card-title">System Audit Log</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
-              Track administrative actions and system updates.
-            </p>
-
-            <div className="glass" style={{ maxHeight: '600px', overflowY: 'auto', borderRadius: '12px' }}>
-               {loadingLogs ? (
-                 <div style={{ padding: '40px', textAlign: 'center' }}>
-                    <div className="spinner" style={{ margin: '0 auto 15px' }}></div>
-                    <p style={{ color: 'var(--text-muted)' }}>Fetching logs...</p>
-                 </div>
-               ) : auditLogs.length === 0 ? (
-                 <div style={{ padding: '40px', textAlign: 'center' }}>
-                    <p style={{ color: 'var(--text-muted)' }}>No audit logs found.</p>
-                 </div>
-               ) : (
-                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                   {auditLogs.map(log => (
-                     <div key={log.id} style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                           <span style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{log.action}</span>
-                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(log.timestamp).toLocaleString()}</span>
-                        </div>
-                        <div style={{ color: 'white' }}>{log.details}</div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>Admin: {log.adminName}</div>
-                     </div>
-                   ))}
-                 </div>
-               )}
             </div>
           </div>
         )}
 
         {/* TAB: PLAYOFFS */}
         {activeTab === 'playoffs' && (
-          <div className="card glass animate-fade-in">
-            <h3 className="card-title">Playoff Match Creation</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
-              Create official playoff fixtures between two players. These will appear in the fixtures list immediately.
-            </p>
-
-            <div className="glass" style={{ padding: '24px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                <div className="form-group">
-                  <label>Player 1</label>
-                  <UserSearchSelect users={allPlayers} selectedId={playoffForm.player1} onSelect={id => setPlayoffForm({...playoffForm, player1: id})} label="Select Player 1" onQueryChange={searchUsers} />
-                </div>
-                <div className="form-group">
-                  <label>Player 2</label>
-                  <UserSearchSelect users={allPlayers} selectedId={playoffForm.player2} onSelect={id => setPlayoffForm({...playoffForm, player2: id})} label="Select Player 2" onQueryChange={searchUsers} />
-                </div>
+          <div className="card glass">
+            <h3>Playoff Match Creation</h3>
+            <div className="glass" style={{ padding: '24px', borderRadius: '16px', marginTop: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <UserSearchSelect users={allPlayers} selectedId={playoffForm.player1} onSelect={id => setPlayoffForm({...playoffForm, player1: id})} label="Player 1" onQueryChange={searchUsers} />
+                <UserSearchSelect users={allPlayers} selectedId={playoffForm.player2} onSelect={id => setPlayoffForm({...playoffForm, player2: id})} label="Player 2" onQueryChange={searchUsers} />
               </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                <div className="form-group">
-                  <label>Division Override (Optional)</label>
-                  <input type="text" className="glass" placeholder="e.g. Elite" value={playoffForm.division} onChange={e => setPlayoffForm({...playoffForm, division: e.target.value})} />
-                </div>
-                <div className="form-group">
-                  <label>Start Date</label>
-                  <input type="date" className="glass" value={playoffForm.date} onChange={e => setPlayoffForm({...playoffForm, date: e.target.value})} />
-                </div>
-                <div className="form-group">
-                  <label>Start Time</label>
-                  <input type="time" className="glass" value={playoffForm.time} onChange={e => setPlayoffForm({...playoffForm, time: e.target.value})} />
-                </div>
-              </div>
-
-              <div className="form-group" style={{ marginBottom: '24px' }}>
-                <label>Format (Best of Legs)</label>
-                <select className="glass" value={playoffForm.bestOf} onChange={e => setPlayoffForm({...playoffForm, bestOf: e.target.value})}>
-                  <option value="1">Best of 1 (First to 1)</option>
-                  <option value="3">Best of 3 (First to 2)</option>
-                  <option value="5">Best of 5 (First to 3)</option>
-                  <option value="7">Best of 7 (First to 4)</option>
-                  <option value="9">Best of 9 (First to 5)</option>
-                  <option value="11">Best of 11 (First to 6)</option>
-                  <option value="13">Best of 13 (First to 7)</option>
-                </select>
-              </div>
-
-              <button className="btn btn-primary btn-block" onClick={handleCreatePlayoff}>Create Playoff Fixture</button>
-            </div>
-          </div>
-        )}
-
-        {/* TAB: AUDIT LOGS */}
-        {activeTab === 'audit' && (
-          <div className="card glass animate-fade-in">
-            <h3 className="card-title">System Audit Log</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
-              Track administrative actions and system updates.
-            </p>
-
-            <div className="glass" style={{ maxHeight: '600px', overflowY: 'auto', borderRadius: '12px' }}>
-               {loadingLogs ? (
-                 <div style={{ padding: '40px', textAlign: 'center' }}>
-                    <div className="spinner" style={{ margin: '0 auto 15px' }}></div>
-                    <p style={{ color: 'var(--text-muted)' }}>Fetching logs...</p>
-                 </div>
-               ) : auditLogs.length === 0 ? (
-                 <div style={{ padding: '40px', textAlign: 'center' }}>
-                    <p style={{ color: 'var(--text-muted)' }}>No audit logs found.</p>
-                 </div>
-               ) : (
-                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                   {auditLogs.map(log => (
-                     <div key={log.id} style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                           <span style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{log.action}</span>
-                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(log.timestamp).toLocaleString()}</span>
-                        </div>
-                        <div style={{ color: 'white' }}>{log.details}</div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>Admin: {log.adminName}</div>
-                     </div>
-                   ))}
-                 </div>
-               )}
+              <button className="btn btn-primary btn-block" style={{ marginTop: '20px' }} onClick={handleCreatePlayoff}>Create Playoff</button>
             </div>
           </div>
         )}
@@ -2263,64 +1191,13 @@ export default function Admin() {
           <div className="card glass">
             <h3>Season Management</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
-               <div className="glass" style={{ padding: '15px', borderRadius: '12px', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid var(--accent-cyan)' }}>
-                  <strong>ACTIVE SEASON:</strong> {adminData?.currentSeason || 'Not Set'}
-               </div>
+               <div className="glass" style={{ padding: '15px', borderRadius: '12px' }}><strong>ACTIVE:</strong> {adminData?.currentSeason || 'Not Set'}</div>
                {getSeasons().map(s => (
-                 <div key={s.id} className="glass" style={{ padding: '12px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>{s.name} ({s.status})</span>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                       <button className="btn btn-secondary btn-sm" onClick={async () => {
-                         await updateAdminData({ currentSeason: s.name });
-                         showToast?.(`Season ${s.name} set as active!`, 'success');
-                         triggerDataRefresh('all');
-                       }}>Set Active</button>
-                       <button className="btn btn-danger btn-sm" onClick={async () => { await deleteDoc(doc(db, 'seasons', s.id)); triggerDataRefresh('seasons'); }}>🗑️</button>
-                    </div>
+                 <div key={s.id} className="glass" style={{ padding: '12px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>{s.name}</span>
+                    <button className="btn btn-secondary btn-sm" onClick={async () => { await updateAdminData({ currentSeason: s.name }); triggerDataRefresh('all'); }}>Set Active</button>
                  </div>
                ))}
-
-               <div style={{ marginTop: '20px' }}>
-                  <h4>Create New Season</h4>
-                  <input type="text" className="glass" placeholder="Season Name (e.g. Summer 2025)" style={{ width: '100%', padding: '12px', marginBottom: '10px' }} onChange={e => setSeasonForm({...seasonForm, name: e.target.value})} />
-                  <button className="btn btn-primary btn-block" onClick={handleCreateSeason}>Launch Season</button>
-               </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB: AUDIT LOGS */}
-        {activeTab === 'audit' && (
-          <div className="card glass animate-fade-in">
-            <h3 className="card-title">System Audit Log</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
-              Track administrative actions and system updates.
-            </p>
-
-            <div className="glass" style={{ maxHeight: '600px', overflowY: 'auto', borderRadius: '12px' }}>
-               {loadingLogs ? (
-                 <div style={{ padding: '40px', textAlign: 'center' }}>
-                    <div className="spinner" style={{ margin: '0 auto 15px' }}></div>
-                    <p style={{ color: 'var(--text-muted)' }}>Fetching logs...</p>
-                 </div>
-               ) : auditLogs.length === 0 ? (
-                 <div style={{ padding: '40px', textAlign: 'center' }}>
-                    <p style={{ color: 'var(--text-muted)' }}>No audit logs found.</p>
-                 </div>
-               ) : (
-                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                   {auditLogs.map(log => (
-                     <div key={log.id} style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                           <span style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{log.action}</span>
-                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(log.timestamp).toLocaleString()}</span>
-                        </div>
-                        <div style={{ color: 'white' }}>{log.details}</div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>Admin: {log.adminName}</div>
-                     </div>
-                   ))}
-                 </div>
-               )}
             </div>
           </div>
         )}
@@ -2331,116 +1208,15 @@ export default function Admin() {
         {/* TAB: MEMBERS */}
         {activeTab === 'players' && (
           <div className="card glass">
-            <h3 style={{ marginBottom: '20px' }}>Global Membership List</h3>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '30px' }}>
-              <div className="glass" style={{ padding: '20px', borderRadius: '15px' }}>
-                <h4>Manage Champions League</h4>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '12px' }}>Assign player to Premier, Pro or Amateur rank.</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <UserSearchSelect users={allPlayers} selectedId={superRankForm.player} onSelect={id => setSuperRankForm({...superRankForm, player: id})} label="Player" onQueryChange={searchUsers} />
-                  <select className="glass" style={{ padding: '10px' }} value={superRankForm.rank} onChange={e => setSuperRankForm({...superRankForm, rank: e.target.value})}>
-                    <option value="">Select Rank...</option>
-                    <option value="Champions">Champions</option>
-                    <option value="None">None (Remove)</option>
-                  </select>
-                  <button className="btn btn-primary btn-block" onClick={handleUpdateSuperRank} disabled={!superRankForm.player || !superRankForm.rank}>Assign Champions Rank</button>
-                </div>
-              </div>
-
-              <div className="glass" style={{ padding: '20px', borderRadius: '15px' }}>
-                <h4>Manually Grant Elite Pass</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
-                    <UserSearchSelect users={allPlayers} selectedId={grantSubForm.player} onSelect={id => setGrantSubForm({...grantSubForm, player: id})} label="Target Player" onQueryChange={searchUsers} />
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <select className="glass" style={{ flex: 1, padding: '10px' }} value={grantSubForm.season} onChange={e => setGrantSubForm({...grantSubForm, season: e.target.value})}>
-                        <option value="">Current Season</option>
-                        {getSeasons().map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                        {!getSeasons().find(s => s.name === 'Season 1') && <option value="Season 1">Season 1</option>}
-                      </select>
-                    </div>
-                    <button className="btn btn-primary btn-block" onClick={handleGrantSubscription}>Activate Elite Pass</button>
-                </div>
-              </div>
-
-              <div className="glass" style={{ padding: '20px', borderRadius: '15px' }}>
-                <h4>Move Player Division</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
-                    <UserSearchSelect users={allPlayers} selectedId={divisionForm.player} onSelect={id => setDivisionForm({...divisionForm, player: id})} label="Target Player" onQueryChange={searchUsers} />
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <select className="glass" style={{ flex: 1, padding: '10px' }} value={divisionForm.division} onChange={e => setDivisionForm({...divisionForm, division: e.target.value})}>
-                        <option value="">Select Division...</option>
-                        <option value="Elite">Elite</option>
-                        <option value="Diamond">Diamond</option>
-                        <option value="Platinum">Platinum</option>
-                        <option value="Gold">Gold</option>
-                        <option value="Silver">Silver</option>
-                        <option value="Bronze">Bronze</option>
-                        <option value="Unassigned">Unassigned</option>
-                      </select>
-                      <button className="btn btn-primary" onClick={handleUpdateDivision}>Move</button>
-                    </div>
-                </div>
-              </div>
-            </div>
-
-            <div style={{ maxHeight: '600px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingRight: '10px' }}>
+            <h3>Global Membership</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '20px' }}>
               {allPlayers.sort((a, b) => a.username.localeCompare(b.username)).map(p => (
-                <div key={p.id} className="player-card glass" style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <div className="avatar-ring" style={{ width: '45px', height: '42px', padding: '2px' }}>
-                      <div className="avatar-inner" style={{ background: '#050816', fontSize: '1rem' }}>
-                        {p.profilePicture ? (
-                          <img src={p.profilePicture} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        ) : (
-                          <span>{(p.username || '?').charAt(0).toUpperCase()}</span>
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {p.username}
-                        {p.isSubscribed && (
-                          <span style={{
-                            color: 'var(--success)',
-                            fontSize: '0.6rem',
-                            background: 'rgba(16, 185, 129, 0.1)',
-                            padding: '2px 8px',
-                            borderRadius: '99px',
-                            border: '1px solid rgba(16, 185, 129, 0.3)',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.05em'
-                          }}>
-                            Pass
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                        {p.email} • <span style={{ color: 'var(--accent-cyan)' }}>{p.division || 'Unassigned'}</span>
-                      </div>
-                    </div>
-                  </div>
+                <div key={p.id} className="player-card glass" style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div><div style={{ fontWeight: 700 }}>{p.username}</div><div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{p.email} • {p.division || 'Unassigned'}</div></div>
                   <div style={{ display: 'flex', gap: '10px' }}>
-                    <button className="btn btn-secondary btn-sm" style={{ padding: '8px 12px' }} onClick={() => navigate(`/profile/${p.id}`)}>View</button>
-                    {isFullAdmin && (
-                      <>
-                        <button
-                          className="btn btn-sm"
-                          style={{
-                            background: p.isBanned ? 'var(--success)' : 'rgba(239, 68, 68, 0.1)',
-                            border: `1px solid ${p.isBanned ? 'var(--success)' : 'var(--error)'}`,
-                            padding: '8px',
-                            color: p.isBanned ? 'white' : 'var(--error)',
-                            minWidth: '40px'
-                          }}
-                          onClick={() => handleToggleBan(p.id, p.isBanned)}
-                          title={p.isBanned ? 'Unban User' : 'Ban User'}
-                        >
-                          {p.isBanned ? '😇' : '🚫'}
-                        </button>
-                        <button className="btn btn-danger btn-sm" style={{ padding: '8px', minWidth: '40px' }} onClick={() => handleDeleteUser(p.id)}>🗑️</button>
-                      </>
-                    )}
+                    <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/profile/${p.id}`)}>View</button>
+                    <button className="btn btn-primary btn-sm" onClick={() => { handleUpdateAdminRole(p.id, 'isTournamentAdmin', true); setActiveTab('admins'); }}>Promote</button>
+                    {isFullAdmin && <button className="btn btn-danger btn-sm" onClick={() => handleDeleteUser(p.id)}>🗑️</button>}
                   </div>
                 </div>
               ))}
@@ -2448,165 +1224,18 @@ export default function Admin() {
           </div>
         )}
 
-        {/* TAB: AUDIT LOGS */}
-        {activeTab === 'audit' && (
-          <div className="card glass animate-fade-in">
-            <h3 className="card-title">System Audit Log</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
-              Track administrative actions and system updates.
-            </p>
-
-            <div className="glass" style={{ maxHeight: '600px', overflowY: 'auto', borderRadius: '12px' }}>
-               {loadingLogs ? (
-                 <div style={{ padding: '40px', textAlign: 'center' }}>
-                    <div className="spinner" style={{ margin: '0 auto 15px' }}></div>
-                    <p style={{ color: 'var(--text-muted)' }}>Fetching logs...</p>
-                 </div>
-               ) : auditLogs.length === 0 ? (
-                 <div style={{ padding: '40px', textAlign: 'center' }}>
-                    <p style={{ color: 'var(--text-muted)' }}>No audit logs found.</p>
-                 </div>
-               ) : (
-                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                   {auditLogs.map(log => (
-                     <div key={log.id} style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                           <span style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{log.action}</span>
-                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(log.timestamp).toLocaleString()}</span>
-                        </div>
-                        <div style={{ color: 'white' }}>{log.details}</div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>Admin: {log.adminName}</div>
-                     </div>
-                   ))}
-                 </div>
-               )}
-            </div>
-          </div>
-        )}
-
         {/* TAB: BETS */}
         {activeTab === 'bets' && (
           <div className="card glass">
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', alignItems: 'center' }}>
-              <h3>Betting Management</h3>
-              <button className="btn btn-primary" onClick={handleCheckBetWinners} disabled={isApproving}>
-                {isApproving ? 'Checking...' : 'Check Bet Winners'}
-              </button>
-            </div>
-
-            {betResults && (
-              <div className="glass" style={{ padding: '20px', borderRadius: '12px', marginBottom: '24px', background: 'rgba(15,23,42,0.95)', border: '1px solid var(--border)', position: 'relative' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                  <h4 style={{ margin: 0 }}>Bet Results ({betResults.filter(r => r.won).length} won / {betResults.filter(r => !r.won).length} lost)</h4>
-                  <button className="btn btn-sm" style={{ padding: '4px 12px' }} onClick={() => setBetResults(null)}>✕</button>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '400px', overflowY: 'auto' }}>
-                  {betResults.map((r, i) => (
-                    <div key={i} style={{
-                      padding: '12px',
-                      borderRadius: '8px',
-                      border: r.won ? '1px solid var(--success)' : '1px solid var(--border)',
-                      background: r.won ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.02)'
-                    }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                        <span style={{ fontWeight: 700, color: 'var(--accent-cyan)' }}>{r.username}</span>
-                        <span style={{
-                          padding: '2px 10px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 800,
-                          color: r.won ? 'var(--success)' : 'var(--error)',
-                          background: r.won ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
-                          textTransform: 'uppercase'
-                        }}>
-                          {r.won ? 'Won' : 'Lost'} {r.amount ? `(${r.amount} tokens)` : ''}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '2px' }}>
-                        Match: <strong style={{ color: 'white' }}>{r.match}</strong>
-                      </div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                        Predicted: <span style={{ color: r.won ? 'var(--success)' : 'var(--error)' }}>{r.prediction}</span>
-                        {' → '}Actual: <span style={{ color: 'white' }}>{r.actual}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="glass" style={{ padding: '20px', borderRadius: '12px', marginBottom: '24px', background: 'rgba(56, 189, 248, 0.05)' }}>
-              <h4 style={{ marginBottom: '12px' }}>Manually Add to Promotion Draw</h4>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <UserSearchSelect users={allPlayers.filter(u => u.promotionDraw !== true)} selectedId={''} onSelect={handleManualDrawEntry} label="Select Player" onQueryChange={searchUsers} />
-              </div>
-            </div>
-
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}><h3>Bets</h3><button className="btn btn-primary" onClick={handleCheckBetWinners}>Check Winners</button></div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {betsList.length === 0 ? (
-                <p style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No bets placed yet.</p>
-              ) : (
-                [...betsList].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).map(bet => (
-                  <div key={bet.id} className="glass" style={{ padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.02)', border: bet.won === true ? '1px solid var(--success)' : bet.won === false ? '1px solid var(--error)' : '1px solid var(--border)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span style={{ fontWeight: 700, color: 'var(--accent-cyan)' }}>{bet.username}</span>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{bet.amount ? `${bet.amount} tokens · ` : ''}{new Date(bet.createdAt).toLocaleDateString()}</span>
-                    </div>
-                    <div style={{ fontSize: '0.9rem', marginBottom: '8px' }}>
-                      Bet on: <strong>{bet.player1Name} vs {bet.player2Name}</strong>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ fontSize: '0.85rem' }}>
-                        Prediction: <span style={{ fontWeight: 600 }}>{bet.predictedWinner} ({bet.predictedScore1}-{bet.predictedScore2})</span>
-                      </div>
-                      <div style={{
-                        padding: '4px 10px',
-                        borderRadius: '20px',
-                        fontSize: '0.7rem',
-                        fontWeight: 800,
-                        background: bet.won === true ? 'var(--success-bg)' : bet.won === false ? 'var(--error-bg)' : 'rgba(255,255,255,0.1)',
-                        color: bet.won === true ? 'var(--success)' : bet.won === false ? 'var(--error)' : 'var(--text-muted)',
-                        textTransform: 'uppercase'
-                      }}>
-                        {bet.won === true ? 'Won' : bet.won === false ? 'Lost' : 'Pending'}
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* TAB: AUDIT LOGS */}
-        {activeTab === 'audit' && (
-          <div className="card glass animate-fade-in">
-            <h3 className="card-title">System Audit Log</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
-              Track administrative actions and system updates.
-            </p>
-
-            <div className="glass" style={{ maxHeight: '600px', overflowY: 'auto', borderRadius: '12px' }}>
-               {loadingLogs ? (
-                 <div style={{ padding: '40px', textAlign: 'center' }}>
-                    <div className="spinner" style={{ margin: '0 auto 15px' }}></div>
-                    <p style={{ color: 'var(--text-muted)' }}>Fetching logs...</p>
-                 </div>
-               ) : auditLogs.length === 0 ? (
-                 <div style={{ padding: '40px', textAlign: 'center' }}>
-                    <p style={{ color: 'var(--text-muted)' }}>No audit logs found.</p>
-                 </div>
-               ) : (
-                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                   {auditLogs.map(log => (
-                     <div key={log.id} style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                           <span style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{log.action}</span>
-                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(log.timestamp).toLocaleString()}</span>
-                        </div>
-                        <div style={{ color: 'white' }}>{log.details}</div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>Admin: {log.adminName}</div>
-                     </div>
-                   ))}
-                 </div>
-               )}
+              {betsList.map(bet => (
+                <div key={bet.id} className="glass" style={{ padding: '16px', borderRadius: '12px' }}>
+                  <div style={{ fontWeight: 700 }}>{bet.username}</div>
+                  <div>{bet.player1Name} vs {bet.player2Name}</div>
+                  <div style={{ color: 'var(--accent-cyan)' }}>{bet.predictedWinner} ({bet.predictedScore1}-{bet.predictedScore2})</div>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -2614,207 +1243,34 @@ export default function Admin() {
         {/* TAB: TOKENS */}
         {activeTab === 'tokens' && (
           <div className="card glass">
-            <h3>Elite Token Disbursement</h3>
+            <h3>Elite Tokens</h3>
             <div style={{ marginTop: '20px' }}>
                <UserSearchSelect users={allPlayers} selectedId={tokenForm.player} onSelect={id => setTokenForm({...tokenForm, player: id})} label="Recipient" onQueryChange={searchUsers} />
                <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
-                  <input type="number" className="glass" style={{ flex: 1, padding: '12px' }} placeholder="Amount" onChange={e => setTokenForm({...tokenForm, amount: parseInt(e.target.value) || 0})} />
-                  <select className="glass" style={{ padding: '10px' }} value={tokenForm.action} onChange={e => setTokenForm({...tokenForm, action: e.target.value})}>
-                     <option value="add">Add</option>
-                     <option value="remove">Remove</option>
-                  </select>
+                  <input type="number" className="glass" placeholder="Amount" onChange={e => setTokenForm({...tokenForm, amount: parseInt(e.target.value) || 0})} />
+                  <select className="glass" value={tokenForm.action} onChange={e => setTokenForm({...tokenForm, action: e.target.value})}><option value="add">Add</option><option value="remove">Remove</option></select>
                </div>
-               <button className="btn btn-primary btn-block" style={{ marginTop: '15px' }} onClick={async () => {
-                  const target = allPlayers.find(u => u.id === tokenForm.player)
-                  const current = target?.eliteTokens || 0
-                  const next = tokenForm.action === 'add' ? current + tokenForm.amount : Math.max(0, current - tokenForm.amount)
-                  await setDoc(doc(db, 'users', tokenForm.player), { eliteTokens: next }, { merge: true })
-                  await logAudit('ADJUST_TOKENS', `${tokenForm.action} ${tokenForm.amount} tokens to ${target?.username}`)
-                  triggerDataRefresh('users')
-                  showToast('Tokens updated', 'success')
-               }}>Update Token Balance</button>
-            </div>
-          </div>
-        )}
-
-        {/* TAB: AUDIT LOGS */}
-        {activeTab === 'audit' && (
-          <div className="card glass animate-fade-in">
-            <h3 className="card-title">System Audit Log</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
-              Track administrative actions and system updates.
-            </p>
-
-            <div className="glass" style={{ maxHeight: '600px', overflowY: 'auto', borderRadius: '12px' }}>
-               {loadingLogs ? (
-                 <div style={{ padding: '40px', textAlign: 'center' }}>
-                    <div className="spinner" style={{ margin: '0 auto 15px' }}></div>
-                    <p style={{ color: 'var(--text-muted)' }}>Fetching logs...</p>
-                 </div>
-               ) : auditLogs.length === 0 ? (
-                 <div style={{ padding: '40px', textAlign: 'center' }}>
-                    <p style={{ color: 'var(--text-muted)' }}>No audit logs found.</p>
-                 </div>
-               ) : (
-                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                   {auditLogs.map(log => (
-                     <div key={log.id} style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                           <span style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{log.action}</span>
-                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(log.timestamp).toLocaleString()}</span>
-                        </div>
-                        <div style={{ color: 'white' }}>{log.details}</div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>Admin: {log.adminName}</div>
-                     </div>
-                   ))}
-                 </div>
-               )}
+               <button className="btn btn-primary btn-block" style={{ marginTop: '15px' }} onClick={async () => { const target = allPlayers.find(u => u.id === tokenForm.player); const current = target?.eliteTokens || 0; const next = tokenForm.action === 'add' ? current + tokenForm.amount : Math.max(0, current - tokenForm.amount); await setDoc(doc(db, 'users', tokenForm.player), { eliteTokens: next }, { merge: true }); triggerDataRefresh('users'); showToast('Tokens updated', 'success') }}>Update</button>
             </div>
           </div>
         )}
 
         {/* TAB: PRACTICE MONITOR */}
         {activeTab === 'practice' && (
-          <div className="card glass animate-fade-in">
-            <h3 className="card-title">Practice Hub Activity</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
-              Monitor global practice sessions and leaderboard entries.
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div className="glass" style={{ padding: '20px', borderRadius: '12px', background: 'rgba(56, 189, 248, 0.05)', border: '1px solid var(--accent-cyan)' }}>
-                <h4 style={{ marginBottom: '10px' }}>Global Statistics</h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                   <div className="stat-card glass" style={{ padding: '15px' }}>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Total Sessions</div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>Live Data</div>
-                   </div>
-                   <div className="stat-card glass" style={{ padding: '15px' }}>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Active Practitioners</div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>Syncing...</div>
-                   </div>
-                </div>
-              </div>
-
-              <button className="btn btn-primary" onClick={async () => {
-                showToast('Syncing practice data...', 'info')
-                triggerDataRefresh('all')
-              }}>Refresh Practice Data</button>
-            </div>
-          </div>
-        )}
-
-        {/* TAB: AUDIT LOGS */}
-        {activeTab === 'audit' && (
-          <div className="card glass animate-fade-in">
-            <h3 className="card-title">System Audit Log</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
-              Track administrative actions and system updates.
-            </p>
-
-            <div className="glass" style={{ maxHeight: '600px', overflowY: 'auto', borderRadius: '12px' }}>
-               {loadingLogs ? (
-                 <div style={{ padding: '40px', textAlign: 'center' }}>
-                    <div className="spinner" style={{ margin: '0 auto 15px' }}></div>
-                    <p style={{ color: 'var(--text-muted)' }}>Fetching logs...</p>
-                 </div>
-               ) : auditLogs.length === 0 ? (
-                 <div style={{ padding: '40px', textAlign: 'center' }}>
-                    <p style={{ color: 'var(--text-muted)' }}>No audit logs found.</p>
-                 </div>
-               ) : (
-                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                   {auditLogs.map(log => (
-                     <div key={log.id} style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                           <span style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{log.action}</span>
-                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(log.timestamp).toLocaleString()}</span>
-                        </div>
-                        <div style={{ color: 'white' }}>{log.details}</div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>Admin: {log.adminName}</div>
-                     </div>
-                   ))}
-                 </div>
-               )}
-            </div>
+          <div className="card glass">
+            <h3>Practice Hub</h3>
+            <button className="btn btn-primary" style={{ marginTop: '20px' }} onClick={() => triggerDataRefresh('all')}>Refresh Data</button>
           </div>
         )}
 
         {/* TAB: TROPHIES */}
         {activeTab === 'trophies' && (
           <div className="card glass">
-            <h3>Trophy Room Management</h3>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '24px' }}>Award digital trophies to players for their achievements.</p>
-
-            <div className="glass" style={{ padding: '24px', borderRadius: '16px' }}>
-              <div className="form-group">
-                <label>Select Player</label>
-                <UserSearchSelect users={allPlayers} selectedId={trophyForm.player} onSelect={id => setTrophyForm({...trophyForm, player: id})} label="Recipient" onQueryChange={searchUsers} />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 3fr', gap: '16px' }}>
-                <div className="form-group">
-                  <label>Icon</label>
-                  <select className="glass" value={trophyForm.icon} onChange={e => setTrophyForm({...trophyForm, icon: e.target.value})}>
-                    <option value="🏆">🏆 Trophy</option>
-                    <option value="🥇">🥇 Gold</option>
-                    <option value="🥈">🥈 Silver</option>
-                    <option value="🥉">🥉 Bronze</option>
-                    <option value="🎯">🎯 Bullseye</option>
-                    <option value="🔥">🔥 Hot Streak</option>
-                    <option value="👑">👑 Champion</option>
-                    <option value="🎖️">🎖️ Medal</option>
-                    <option value="🚀">🚀 Rising Star</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Trophy Name</label>
-                  <input className="glass" placeholder="e.g. League Champion, Most 180s" value={trophyForm.name} onChange={e => setTrophyForm({...trophyForm, name: e.target.value})} />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>Season</label>
-                <input className="glass" placeholder="e.g. Season 1" value={trophyForm.season} onChange={e => setTrophyForm({...trophyForm, season: e.target.value})} />
-              </div>
-
-              <button className="btn btn-primary btn-block" onClick={handleAwardTrophy}>Award Trophy to Player</button>
-            </div>
-          </div>
-        )}
-
-        {/* TAB: AUDIT LOGS */}
-        {activeTab === 'audit' && (
-          <div className="card glass animate-fade-in">
-            <h3 className="card-title">System Audit Log</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
-              Track administrative actions and system updates.
-            </p>
-
-            <div className="glass" style={{ maxHeight: '600px', overflowY: 'auto', borderRadius: '12px' }}>
-               {loadingLogs ? (
-                 <div style={{ padding: '40px', textAlign: 'center' }}>
-                    <div className="spinner" style={{ margin: '0 auto 15px' }}></div>
-                    <p style={{ color: 'var(--text-muted)' }}>Fetching logs...</p>
-                 </div>
-               ) : auditLogs.length === 0 ? (
-                 <div style={{ padding: '40px', textAlign: 'center' }}>
-                    <p style={{ color: 'var(--text-muted)' }}>No audit logs found.</p>
-                 </div>
-               ) : (
-                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                   {auditLogs.map(log => (
-                     <div key={log.id} style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                           <span style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{log.action}</span>
-                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(log.timestamp).toLocaleString()}</span>
-                        </div>
-                        <div style={{ color: 'white' }}>{log.details}</div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>Admin: {log.adminName}</div>
-                     </div>
-                   ))}
-                 </div>
-               )}
+            <h3>Trophy Room</h3>
+            <div className="glass" style={{ padding: '24px', borderRadius: '16px', marginTop: '20px' }}>
+              <UserSearchSelect users={allPlayers} selectedId={trophyForm.player} onSelect={id => setTrophyForm({...trophyForm, player: id})} label="Player" onQueryChange={searchUsers} />
+              <input className="glass" placeholder="Trophy Name" value={trophyForm.name} onChange={e => setTrophyForm({...trophyForm, name: e.target.value})} style={{ marginTop: '15px' }} />
+              <button className="btn btn-primary btn-block" style={{ marginTop: '15px' }} onClick={handleAwardTrophy}>Award Trophy</button>
             </div>
           </div>
         )}
@@ -2822,172 +1278,10 @@ export default function Admin() {
         {/* TAB: SURVEYS */}
         {activeTab === 'surveys' && (
           <div className="card glass">
-            <h3 style={{ marginBottom: '24px' }}>Survey Management</h3>
-
-            <div className="card glass" style={{ padding: '24px', marginBottom: '24px', border: '1px solid var(--accent-cyan)' }}>
-              <h4 style={{ marginBottom: '16px', color: 'var(--accent-cyan)' }}>Create New Survey</h4>
-
-              <div className="form-group">
-                <label>Survey Title</label>
-                <input value={surveyForm.title} onChange={e => setSurveyForm({...surveyForm, title: e.target.value})} placeholder="e.g. Season 2 Feedback" />
-              </div>
-              <div className="form-group">
-                <label>Description (optional)</label>
-                <textarea value={surveyForm.description} onChange={e => setSurveyForm({...surveyForm, description: e.target.value})} rows={2} placeholder="Brief explanation..." />
-              </div>
-              <div className="form-group">
-                <label>Target Audience</label>
-                <select value={surveyForm.targetType} onChange={e => setSurveyForm({...surveyForm, targetType: e.target.value})}>
-                  <option value="all">All Users</option>
-                  <option value="specific">Specific Users</option>
-                </select>
-              </div>
-
-              {surveyForm.targetType === 'specific' && (
-                <div className="form-group">
-                  <label>Select Target Users</label>
-                  <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
-                    {allPlayers.map(p => (
-                      <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', cursor: 'pointer' }}>
-                        <input
-                          type="checkbox"
-                          checked={surveyForm.targetUserIds.includes(p.id)}
-                          onChange={e => {
-                            if (e.target.checked) setSurveyForm({...surveyForm, targetUserIds: [...surveyForm.targetUserIds, p.id]})
-                            else setSurveyForm({...surveyForm, targetUserIds: surveyForm.targetUserIds.filter(id => id !== p.id)})
-                          }}
-                        />
-                        {p.username} <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>({p.division || 'Unassigned'})</span>
-                      </label>
-                    ))}
-                  </div>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '6px' }}>{surveyForm.targetUserIds.length} selected</p>
-                </div>
-              )}
-
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '8px' }}>Questions</label>
-                {surveyQuestions.map((q, i) => (
-                  <div key={q.id} className="glass" style={{ padding: '16px', borderRadius: '8px', marginBottom: '10px', background: 'rgba(255,255,255,0.03)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Question {i + 1}</span>
-                      {surveyQuestions.length > 1 && (
-                        <button className="btn btn-danger btn-sm" style={{ padding: '4px 8px', fontSize: '0.7rem' }} onClick={() => setSurveyQuestions(surveyQuestions.filter((_, idx) => idx !== i))}>Remove</button>
-                      )}
-                    </div>
-                    <input value={q.text} onChange={e => {
-                      const next = [...surveyQuestions]
-                      next[i] = { ...next[i], text: e.target.value }
-                      setSurveyQuestions(next)
-                    }} placeholder="Question text" style={{ marginBottom: '8px' }} />
-                    <select value={q.type} onChange={e => {
-                      const next = [...surveyQuestions]
-                      next[i] = { ...next[i], type: e.target.value }
-                      setSurveyQuestions(next)
-                    }} style={{ marginBottom: '8px' }}>
-                      <option value="text">Text Answer</option>
-                      <option value="radio">Single Choice</option>
-                      <option value="checkbox">Multiple Choice</option>
-                    </select>
-                    {(q.type === 'radio' || q.type === 'checkbox') && (
-                      <input value={q.options || ''} onChange={e => {
-                        const next = [...surveyQuestions]
-                        next[i] = { ...next[i], options: e.target.value }
-                        setSurveyQuestions(next)
-                      }} placeholder="Options (comma-separated)" style={{ fontSize: '0.8rem' }} />
-                    )}
-                  </div>
-                ))}
-                <button className="btn btn-secondary btn-sm" onClick={() => setSurveyQuestions([...surveyQuestions, { id: `q${Date.now()}`, text: '', type: 'text', options: '' }])}>+ Add Question</button>
-              </div>
-
-              <button className="btn btn-primary btn-block" onClick={handleCreateSurvey}>Publish Survey</button>
-            </div>
-
-            <h4 style={{ marginBottom: '16px' }}>Existing Surveys</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {(adminData?.surveys || []).length === 0 ? (
-                <p style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>No surveys created yet.</p>
-              ) : (
-                [...(adminData?.surveys || [])].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).map(survey => (
-                  <div key={survey.id} className="glass" style={{ padding: '16px', borderRadius: '12px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <div>
-                        <strong>{survey.title}</strong>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '10px' }}>{survey.questions.length} questions | {survey.targetType === 'all' ? 'All users' : `${(survey.targetUserIds || []).length} users`}</span>
-                      </div>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <span style={{ fontSize: '0.7rem', color: survey.active ? 'var(--success)' : 'var(--text-muted)' }}>{survey.active ? 'Active' : 'Inactive'}</span>
-                        <button className="btn btn-secondary btn-sm" onClick={() => setViewSurveyResponses(viewSurveyResponses === survey.id ? null : survey.id)}>
-                          {(survey.responses || []).length} Responses
-                        </button>
-                        <button className="btn btn-danger btn-sm" onClick={() => handleDeleteSurvey(survey.id)}>🗑️</button>
-                      </div>
-                    </div>
-                    {survey.description && <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '8px' }}>{survey.description}</p>}
-
-                    {viewSurveyResponses === survey.id && (
-                      <div style={{ marginTop: '16px', padding: '16px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
-                        <h5 style={{ marginBottom: '12px', fontSize: '0.85rem' }}>Responses ({(survey.responses || []).length})</h5>
-                        {(survey.responses || []).length === 0 ? (
-                          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No responses yet.</p>
-                        ) : (
-                          survey.responses.map((resp, ri) => {
-                            const player = allPlayers.find(p => p.id === resp.userId)
-                            return (
-                              <div key={ri} style={{ padding: '12px', borderBottom: '1px solid var(--border)', marginBottom: '8px' }}>
-                                <div style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '6px' }}>{player?.username || 'Unknown'}</div>
-                                {resp.answers.map((ans, ai) => (
-                                  <div key={ai} style={{ fontSize: '0.75rem', marginBottom: '4px' }}>
-                                    <span style={{ color: 'var(--text-muted)' }}>Q{ai + 1}:</span> {ans.answer}
-                                  </div>
-                                ))}
-                                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(resp.submittedAt).toLocaleDateString()}</div>
-                              </div>
-                            )
-                          })
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* TAB: AUDIT LOGS */}
-        {activeTab === 'audit' && (
-          <div className="card glass animate-fade-in">
-            <h3 className="card-title">System Audit Log</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
-              Track administrative actions and system updates.
-            </p>
-
-            <div className="glass" style={{ maxHeight: '600px', overflowY: 'auto', borderRadius: '12px' }}>
-               {loadingLogs ? (
-                 <div style={{ padding: '40px', textAlign: 'center' }}>
-                    <div className="spinner" style={{ margin: '0 auto 15px' }}></div>
-                    <p style={{ color: 'var(--text-muted)' }}>Fetching logs...</p>
-                 </div>
-               ) : auditLogs.length === 0 ? (
-                 <div style={{ padding: '40px', textAlign: 'center' }}>
-                    <p style={{ color: 'var(--text-muted)' }}>No audit logs found.</p>
-                 </div>
-               ) : (
-                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                   {auditLogs.map(log => (
-                     <div key={log.id} style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                           <span style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{log.action}</span>
-                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(log.timestamp).toLocaleString()}</span>
-                        </div>
-                        <div style={{ color: 'white' }}>{log.details}</div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>Admin: {log.adminName}</div>
-                     </div>
-                   ))}
-                 </div>
-               )}
+            <h3>Surveys</h3>
+            <div className="card glass" style={{ marginTop: '20px' }}>
+              <input value={surveyForm.title} onChange={e => setSurveyForm({...surveyForm, title: e.target.value})} placeholder="Survey Title" />
+              <button className="btn btn-primary btn-block" style={{ marginTop: '15px' }} onClick={handleCreateSurvey}>Publish Survey</button>
             </div>
           </div>
         )}
@@ -2995,134 +1289,17 @@ export default function Admin() {
         {/* TAB: MAINTENANCE */}
         {activeTab === 'maintenance' && (
           <div className="card glass" style={{ padding: '32px' }}>
-            <div style={{ marginBottom: '32px' }}>
-              <h3 className="card-title" style={{ fontSize: '1.5rem', marginBottom: '8px' }}>System Control Center</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Manage global application behavior and maintenance states.</p>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '40px' }}>
-              <div className="glass" style={{ padding: '24px', borderRadius: '16px', border: '1px solid var(--accent-cyan)' }}>
-                <h4 style={{ marginBottom: '12px' }}>Season 1 Recovery</h4>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
-                  Force historical data to "Season 1" and link missing IDs.
-                </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <button className="btn btn-success btn-sm" onClick={handleHealUserDivisions} disabled={isApproving}>
-                    {isApproving ? 'Healing...' : 'Heal User Divisions'}
-                  </button>
-                  <button className="btn btn-secondary btn-sm" onClick={handleBulkSyncAnalytics} disabled={isApproving}>
-                    {isApproving ? 'Processing...' : 'Run Deep Sync'}
-                  </button>
-                  <button className="btn btn-danger btn-sm" style={{ opacity: 0.8 }} onClick={handleSoftResetStandings}>
-                    Soft Reset Table (Wipe Stats)
-                  </button>
-                  {adminData?.leagueTableResetAt && (
-                    <button className="btn btn-secondary btn-sm" style={{ fontSize: '0.7rem' }} onClick={handleClearTableReset}>
-                      Restore All History
-                    </button>
-                  )}
-                </div>
+            <h3>System Maintenance</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginTop: '20px' }}>
+              <div className="glass" style={{ padding: '24px' }}>
+                <h4>Recovery Tools</h4>
+                <button className="btn btn-success btn-sm btn-block" onClick={handleHealUserDivisions}>Heal Divisions</button>
+                <button className="btn btn-secondary btn-sm btn-block" onClick={handleBulkSyncAnalytics} style={{ marginTop: '10px' }}>Analytics Sync</button>
               </div>
-
-              <div className="glass" style={{ padding: '24px', borderRadius: '16px', border: '1px solid var(--accent-cyan)' }}>
-                <h4 style={{ marginBottom: '12px' }}>Season 2 Migration</h4>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
-                  Mark all approved League/Super League results from 1 June 2026 onwards as Season 2.
-                </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <button className="btn btn-primary btn-sm" onClick={handleFixSeasons} disabled={isApproving} style={{ width: '100%' }}>
-                    {isApproving ? 'Processing...' : 'Fix Seasons'}
-                  </button>
-                  <button className="btn btn-warning btn-sm" onClick={handleResetSuperLeagueTable} disabled={isApproving} style={{ width: '100%', color: 'black' }}>
-                    Reset & Sync Champions League
-                  </button>
-                </div>
+              <div className="glass" style={{ padding: '24px', background: adminData?.isMaintenanceMode ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.05)' }}>
+                <h4>Maintenance Mode</h4>
+                <button className="btn btn-block" onClick={() => updateAdminData({ isMaintenanceMode: !adminData?.isMaintenanceMode })}>{adminData?.isMaintenanceMode ? 'Disable' : 'Enable'}</button>
               </div>
-
-              <div className="glass" style={{
-                padding: '24px',
-                borderRadius: '16px',
-                background: adminData?.isMaintenanceMode ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.05)',
-                border: `1px solid ${adminData?.isMaintenanceMode ? 'var(--error)' : 'var(--success)'}`,
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                minHeight: '180px'
-              }}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                    <div style={{ fontSize: '2.5rem' }}>{adminData?.isMaintenanceMode ? '🔒' : '🔓'}</div>
-                    <div className="toggle-switch">
-                      <input
-                        type="checkbox"
-                        id="maintenanceToggle"
-                        checked={adminData?.isMaintenanceMode || false}
-                        onChange={e => updateAdminData({ isMaintenanceMode: e.target.checked })}
-                      />
-                      <label htmlFor="maintenanceToggle"></label>
-                    </div>
-                  </div>
-                  <h4 style={{ margin: '0 0 8px 0', fontWeight: 800, fontSize: '1.1rem' }}>Maintenance Mode</h4>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, lineHeight: '1.5' }}>
-                    Only administrators can access the application. Users will see your custom banner message.
-                  </p>
-                </div>
-              </div>
-
-              <div className="glass" style={{
-                padding: '24px',
-                borderRadius: '16px',
-                background: adminData?.registrationsEnabled !== false ? 'rgba(56, 189, 248, 0.1)' : 'rgba(255,255,255,0.05)',
-                border: `1px solid ${adminData?.registrationsEnabled !== false ? 'var(--accent-cyan)' : 'var(--border)'}`,
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                minHeight: '180px'
-              }}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                    <div style={{ fontSize: '2.5rem' }}>{adminData?.registrationsEnabled !== false ? '📝' : '🚫'}</div>
-                    <div className="toggle-switch">
-                      <input
-                        type="checkbox"
-                        id="regToggle"
-                        checked={adminData?.registrationsEnabled !== false}
-                        onChange={e => updateAdminData({ registrationsEnabled: e.target.checked })}
-                      />
-                      <label htmlFor="regToggle"></label>
-                    </div>
-                  </div>
-                  <h4 style={{ margin: '0 0 8px 0', fontWeight: 800, fontSize: '1.1rem' }}>User Sign-ups</h4>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, lineHeight: '1.5' }}>
-                    Control whether new players can create accounts. Useful for closing recruitment during peak season.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="glass" style={{ padding: '24px', borderRadius: '16px', border: '1px solid var(--border)' }}>
-              <h4 style={{ marginBottom: '16px', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--accent-cyan)' }}>Broadcast Message</h4>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '16px' }}>
-                This message is displayed to all active users when Maintenance Mode is locked.
-              </p>
-              <textarea
-                className="glass"
-                style={{ width: '100%', padding: '16px', borderRadius: '12px', marginBottom: '20px', fontSize: '0.95rem', border: '1px solid rgba(255,255,255,0.1)', color: 'white' }}
-                rows={3}
-                placeholder="e.g. Updating league tables for Season 2. Back online soon!"
-                defaultValue={adminData?.maintenanceMessage || ''}
-                id="maintMsgInput"
-              />
-              <button
-                className="btn btn-primary"
-                style={{ width: '100%', padding: '14px', fontWeight: 700 }}
-                onClick={() => {
-                  updateAdminData({ maintenanceMessage: document.getElementById('maintMsgInput').value });
-                  showToast('Broadcast message updated', 'success');
-                }}
-              >
-                Update Broadcast Message
-              </button>
             </div>
           </div>
         )}
@@ -3131,34 +1308,13 @@ export default function Admin() {
         {activeTab === 'audit' && (
           <div className="card glass animate-fade-in">
             <h3 className="card-title">System Audit Log</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>
-              Track administrative actions and system updates.
-            </p>
-
             <div className="glass" style={{ maxHeight: '600px', overflowY: 'auto', borderRadius: '12px' }}>
-               {loadingLogs ? (
-                 <div style={{ padding: '40px', textAlign: 'center' }}>
-                    <div className="spinner" style={{ margin: '0 auto 15px' }}></div>
-                    <p style={{ color: 'var(--text-muted)' }}>Fetching logs...</p>
+               {loadingLogs ? <div style={{ padding: '40px' }}><div className="spinner"></div></div> : auditLogs.map(log => (
+                 <div key={log.id} style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ fontWeight: 800 }}>{log.action}</span><span>{new Date(log.timestamp).toLocaleString()}</span></div>
+                    <div>{log.details}</div>
                  </div>
-               ) : auditLogs.length === 0 ? (
-                 <div style={{ padding: '40px', textAlign: 'center' }}>
-                    <p style={{ color: 'var(--text-muted)' }}>No audit logs found.</p>
-                 </div>
-               ) : (
-                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                   {auditLogs.map(log => (
-                     <div key={log.id} style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                           <span style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{log.action}</span>
-                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(log.timestamp).toLocaleString()}</span>
-                        </div>
-                        <div style={{ color: 'white' }}>{log.details}</div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>Admin: {log.adminName}</div>
-                     </div>
-                   ))}
-                 </div>
-               )}
+               ))}
             </div>
           </div>
         )}
@@ -3166,42 +1322,8 @@ export default function Admin() {
       </div>
 
       {previewImage && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.9)',
-            zIndex: 2000,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px',
-            cursor: 'pointer'
-          }}
-          onClick={() => setPreviewImage(null)}
-        >
-          <img
-            src={previewImage}
-            alt="Preview"
-            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 0 40px rgba(0,0,0,0.5)' }}
-          />
-          <button
-            style={{
-              position: 'absolute',
-              top: '20px',
-              right: '20px',
-              background: 'white',
-              color: 'black',
-              border: 'none',
-              borderRadius: '50%',
-              width: '40px',
-              height: '40px',
-              fontSize: '24px',
-              fontWeight: 'bold',
-              cursor: 'pointer'
-            }}
-            onClick={() => setPreviewImage(null)}
-          >×</button>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setPreviewImage(null)}>
+          <img src={previewImage} alt="Preview" style={{ maxWidth: '100%', maxHeight: '100%' }} />
         </div>
       )}
     </div>
