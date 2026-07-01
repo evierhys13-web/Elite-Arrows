@@ -272,15 +272,33 @@ export function AuthProvider({ children }) {
   const [dataRefreshTrigger, setDataRefreshTrigger] = useState(0);
   const [cupsRefreshTrigger, setCupsRefreshTrigger] = useState(0);
   const [usersRefreshTrigger, setUsersRefreshTrigger] = useState(0);
-  const [adminData, setAdminData] = useState({
-    subscriptionPot: 0,
-    subscriptionPot10: 0,
-    moneyHistory: [],
-    leagueTableResetAt: null,
-    isMaintenanceMode: false,
-    maintenanceMessage: "",
-    registrationsEnabled: true,
-    currentSeason: "Season 1",
+  const [adminData, setAdminData] = useState(() => {
+    try {
+      const saved = localStorage.getItem("eliteArrowsAdminData");
+      if (saved && saved !== "undefined") {
+        const parsed = JSON.parse(saved);
+        return {
+          subscriptionPot: parsed.subscriptionPot || 0,
+          subscriptionPot10: parsed.subscriptionPot10 || 0,
+          moneyHistory: parsed.moneyHistory || [],
+          leagueTableResetAt: parsed.leagueTableResetAt || null,
+          isMaintenanceMode: parsed.isMaintenanceMode || false,
+          maintenanceMessage: parsed.maintenanceMessage || "",
+          registrationsEnabled: parsed.registrationsEnabled !== undefined ? parsed.registrationsEnabled : true,
+          currentSeason: parsed.currentSeason || "Season 1",
+        };
+      }
+    } catch (e) {}
+    return {
+      subscriptionPot: 0,
+      subscriptionPot10: 0,
+      moneyHistory: [],
+      leagueTableResetAt: null,
+      isMaintenanceMode: false,
+      maintenanceMessage: "",
+      registrationsEnabled: true,
+      currentSeason: "Season 1",
+    };
   });
   const [notificationPermission, setNotificationPermission] =
     useState("default");
@@ -656,6 +674,10 @@ export function AuthProvider({ children }) {
           resultStatusOverridesRef.current = data.resultStatusOverrides || {};
 
           try {
+            localStorage.setItem(
+              "eliteArrowsAdminData",
+              JSON.stringify(data),
+            );
             localStorage.setItem(
               "eliteArrowsResultStatusOverrides",
               JSON.stringify(data.resultStatusOverrides || {}),
@@ -2454,40 +2476,18 @@ export function AuthProvider({ children }) {
       setAdminData((prev) => {
         const next = { ...prev, ...newData };
         try {
-          if (
-            Object.prototype.hasOwnProperty.call(
-              newData,
-              "resultStatusOverrides",
-            )
-          ) {
-            resultStatusOverridesRef.current =
-              newData.resultStatusOverrides || {};
-            localStorage.setItem(
-              "eliteArrowsResultStatusOverrides",
-              JSON.stringify(newData.resultStatusOverrides || {}),
-            );
+          if (Object.prototype.hasOwnProperty.call(newData, "resultStatusOverrides")) {
+            resultStatusOverridesRef.current = newData.resultStatusOverrides || {};
+            localStorage.setItem("eliteArrowsResultStatusOverrides", JSON.stringify(newData.resultStatusOverrides || {}));
           }
-          if (
-            Object.prototype.hasOwnProperty.call(newData, "subscriptionPot")
-          ) {
-            localStorage.setItem(
-              "eliteArrowsSubscriptionPot",
-              String(newData.subscriptionPot || 0),
-            );
+          if (Object.prototype.hasOwnProperty.call(newData, "subscriptionPot")) {
+            localStorage.setItem("eliteArrowsSubscriptionPot", String(newData.subscriptionPot || 0));
           }
-          if (
-            Object.prototype.hasOwnProperty.call(newData, "subscriptionPot10")
-          ) {
-            localStorage.setItem(
-              "eliteArrowsSubscriptionPot10",
-              String(newData.subscriptionPot10 || 0),
-            );
+          if (Object.prototype.hasOwnProperty.call(newData, "subscriptionPot10")) {
+            localStorage.setItem("eliteArrowsSubscriptionPot10", String(newData.subscriptionPot10 || 0));
           }
           if (Object.prototype.hasOwnProperty.call(newData, "moneyHistory")) {
-            localStorage.setItem(
-              "eliteArrowsMoneyHistory",
-              JSON.stringify(newData.moneyHistory || []),
-            );
+            localStorage.setItem("eliteArrowsMoneyHistory", JSON.stringify(newData.moneyHistory || []));
           }
         } catch (e) {
           if (e.name === "QuotaExceededError" || e.code === 22) {
@@ -2495,6 +2495,9 @@ export function AuthProvider({ children }) {
             localStorage.removeItem("eliteArrowsMoneyHistory");
           }
         }
+        try {
+          localStorage.setItem("eliteArrowsAdminData", JSON.stringify(next));
+        } catch (e) {}
         return next;
       });
     } catch (e) {
