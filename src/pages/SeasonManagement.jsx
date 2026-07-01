@@ -25,6 +25,7 @@ export default function SeasonManagement() {
   const [selectedChampionsPlayer, setSelectedChampionsPlayer] = useState('')
   const [newChampionsDivision, setNewChampionsDivision] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
+  const [selectedLiveSeason, setSelectedLiveSeason] = useState('')
 
   const allPlayers = getAllUsers()
   const seasons = getSeasons()
@@ -475,6 +476,28 @@ export default function SeasonManagement() {
               <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'white' }}>{championsLeagueSeason}</div>
             </div>
           </div>
+
+          <div style={{ display: 'flex', gap: '8px', marginTop: '8px', alignItems: 'center' }}>
+            <select
+              className="glass"
+              value={selectedLiveSeason}
+              onChange={(e) => setSelectedLiveSeason(e.target.value)}
+              style={{ flex: 1, fontSize: '0.8rem', padding: '8px' }}
+            >
+              <option value="">Select a season to set live...</option>
+              {seasons.filter(s => s.name !== currentSeason).map(s => (
+                <option key={s.id} value={s.name}>{s.name}</option>
+              ))}
+            </select>
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={() => { if (selectedLiveSeason) setActiveSeason(selectedLiveSeason) }}
+              disabled={!selectedLiveSeason || isProcessing}
+            >
+              Set Live
+            </button>
+          </div>
+
           {seasons.find(s => s.name === 'Season 2' && !s.isArchived) && (
             <button className="btn btn-danger btn-sm btn-block" onClick={archiveSeason2Special} disabled={isProcessing} style={{ marginTop: '8px' }}>
               Archive Season 2 Now
@@ -727,6 +750,9 @@ export default function SeasonManagement() {
                   )}
                   {s.name !== currentSeason && (
                     <button className="btn btn-secondary btn-sm" onClick={() => setActiveSeason(s.name)}>Set League Active</button>
+                  )}
+                  {s.name !== currentSeason && !s.isArchived && (
+                    <button className="btn btn-secondary btn-sm" onClick={() => archiveSeason(s)}>Archive</button>
                   )}
                   {s.name !== championsLeagueSeason && (
                     <button className="btn btn-warning btn-sm" onClick={() => updateChampionsLeagueSeason(s.name)}>Set Champions Active</button>

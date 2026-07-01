@@ -328,8 +328,10 @@ export default function Table() {
                 {seasons
                   .filter(
                     (s) =>
-                      s.name !== "Season 1" ||
-                      adminData?.currentSeason === "Season 1",
+                      (s.name !== "Season 1" ||
+                        adminData?.currentSeason === "Season 1") &&
+                      (s.name !== "Season 2" ||
+                        adminData?.currentSeason === "Season 2"),
                   )
                   .map((s) => (
                     <option key={s.id} value={s.name}>
@@ -339,6 +341,10 @@ export default function Table() {
                 {!seasons.find((s) => s.name === "Season 1") &&
                   adminData?.currentSeason === "Season 1" && (
                     <option value="Season 1">Season 1</option>
+                  )}
+                {!seasons.find((s) => s.name === "Season 2") &&
+                  adminData?.currentSeason === "Season 2" && (
+                    <option value="Season 2">Season 2</option>
                   )}
               </select>
             </div>
