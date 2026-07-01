@@ -543,7 +543,7 @@ export default function Admin() {
       const currentSeasons = Array.isArray(target.subscribedSeasons) ? target.subscribedSeasons : []
       const nextSeasons = Array.from(new Set([...currentSeasons, selectedSeason]))
       await setDoc(doc(db, 'users', target.id), {
-        isSubscribed: target.isSubscribed || (selectedSeason === currentSeasonName),
+        isSubscribed: true,
         subscriptionDate: new Date().toISOString(),
         subscriptionTier: 'elite',
         subscribedSeasons: nextSeasons
@@ -644,7 +644,7 @@ export default function Admin() {
         const currentSeasons = Array.isArray(target?.subscribedSeasons) ? target.subscribedSeasons : []
         const nextSeasons = Array.from(new Set([...currentSeasons, season]))
         batch.update(doc(db, 'users', uid), {
-          isSubscribed: target?.isSubscribed || (season === (adminData?.currentSeason || 'Season 1')),
+          isSubscribed: true,
           subscriptionDate: new Date().toISOString(),
           subscriptionTier: 'elite',
           subscribedSeasons: nextSeasons
