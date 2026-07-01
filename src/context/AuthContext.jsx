@@ -271,6 +271,7 @@ export function AuthProvider({ children }) {
   });
   const [dataRefreshTrigger, setDataRefreshTrigger] = useState(0);
   const [cupsRefreshTrigger, setCupsRefreshTrigger] = useState(0);
+  const [usersRefreshTrigger, setUsersRefreshTrigger] = useState(0);
   const [adminData, setAdminData] = useState({
     subscriptionPot: 0,
     subscriptionPot10: 0,
@@ -532,6 +533,9 @@ export function AuthProvider({ children }) {
     setDataRefreshTrigger((prev) => prev + 1);
     if (dataType === "all" || dataType === "cups") {
       setCupsRefreshTrigger((prev) => prev + 1);
+    }
+    if (dataType === "all" || dataType === "users") {
+      setUsersRefreshTrigger((prev) => prev + 1);
     }
   }, []);
 
@@ -1048,6 +1052,29 @@ export function AuthProvider({ children }) {
       cancelled = true;
     };
   }, [cupsRefreshTrigger, user]);
+
+  // Re-fetch users from Firestore when usersRefreshTrigger changes
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    const fetchUsers = async () => {
+      try {
+        const snap = await getDocs(collection(db, "users"));
+        if (cancelled) return;
+        const usersData = snap.docs.map((d) => {
+          const data = d.data();
+          SENSITIVE_FIELDS.forEach((field) => delete data[field]);
+          return { id: d.id, ...data };
+        });
+        setAllUsers(usersData);
+        saveUsersCache(usersData);
+      } catch (e) {}
+    };
+    fetchUsers();
+    return () => {
+      cancelled = true;
+    };
+  }, [usersRefreshTrigger, user]);
 
   // Auto-launch scheduled seasons
   useEffect(() => {
