@@ -66,6 +66,7 @@ export default function Admin() {
   const [divisionForm, setDivisionForm] = useState({ player: '', division: '' })
   const [potAdjust, setPotAdjust] = useState({ amount: 0 })
   const [selectedMemberIds, setSelectedMemberIds] = useState([])
+  const [memberSearch, setMemberSearch] = useState('')
   const [bulkDivision, setBulkDivision] = useState('')
   const [bulkSeason, setBulkSeason] = useState('')
   const [trophyForm, setTrophyForm] = useState({ player: '', name: '', icon: '🏆', season: '' })
@@ -1318,7 +1319,21 @@ export default function Admin() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '20px' }}>
-              {allPlayers.sort((a, b) => a.username.localeCompare(b.username)).map(p => {
+              <input
+                className="glass"
+                type="text"
+                placeholder="Search by name or email..."
+                value={memberSearch}
+                onChange={(e) => setMemberSearch(e.target.value)}
+                style={{ padding: '10px 14px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', fontSize: '0.85rem', width: '100%', boxSizing: 'border-box' }}
+              />
+              {allPlayers
+                .filter(p => {
+                  if (!memberSearch.trim()) return true
+                  const q = memberSearch.toLowerCase()
+                  return p.username?.toLowerCase().includes(q) || p.email?.toLowerCase().includes(q) || p.nickname?.toLowerCase().includes(q)
+                })
+                .sort((a, b) => a.username.localeCompare(b.username)).map(p => {
                 const isSelected = selectedMemberIds.includes(p.id)
                 return (
                   <div
