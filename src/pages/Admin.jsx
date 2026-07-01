@@ -46,6 +46,7 @@ export default function Admin() {
   const [editingResult, setEditingResult] = useState(null)
   const [approvingPaymentId, setApprovingPaymentId] = useState(null)
   const [approvalOverride, setApprovalOverride] = useState({ tier: 'elite', season: '' })
+  const [isProcessing, setIsProcessing] = useState(false)
 
   // Form states
   const [showSubmitGame, setShowSubmitGame] = useState(false)
@@ -64,6 +65,9 @@ export default function Admin() {
   const [superRankForm, setSuperRankForm] = useState({ player: '', rank: '' })
   const [divisionForm, setDivisionForm] = useState({ player: '', division: '' })
   const [potAdjust, setPotAdjust] = useState({ amount: 0 })
+  const [selectedMemberIds, setSelectedMemberIds] = useState([])
+  const [bulkDivision, setBulkDivision] = useState('')
+  const [bulkSeason, setBulkSeason] = useState('')
   const [trophyForm, setTrophyForm] = useState({ player: '', name: '', icon: '🏆', season: '' })
   const [playoffForm, setPlayoffForm] = useState({ player1: '', player2: '', division: '', date: '', time: '', bestOf: '3' })
   const [surveyForm, setSurveyForm] = useState({ title: '', description: '', targetType: 'all', targetUserIds: [] })
@@ -605,6 +609,54 @@ export default function Admin() {
       showToast(`${target.username} moved to ${divisionForm.division}`, 'success')
       setDivisionForm({ player: '', division: '' })
     } catch (e) { showToast(e.message, 'error') }
+  }
+
+  const handleBulkAssignDivision = async () => {
+    if (selectedMemberIds.length === 0) return showToast('Select at least one member', 'error')
+    if (!bulkDivision) return showToast('Select a division', 'error')
+    if (!confirm(`Assign ${selectedMemberIds.length} members to ${bulkDivision}?`)) return
+    setIsProcessing(true)
+    try {
+      const batch = writeBatch(db)
+      selectedMemberIds.forEach(uid => {
+        batch.update(doc(db, 'users', uid), { division: bulkDivision })
+      })
+      await batch.commit()
+      await logAudit('BULK_ASSIGN_DIVISION', `Assigned ${selectedMemberIds.length} members to ${bulkDivision}`)
+      triggerDataRefresh('users')
+      showToast(`Assigned ${selectedMemberIds.length} members to ${bulkDivision}`, 'success')
+      setSelectedMemberIds([])
+      setBulkDivision('')
+    } catch (e) { showToast(e.message, 'error') }
+    setIsProcessing(false)
+  }
+
+  const handleBulkGrantElitePass = async () => {
+    if (selectedMemberIds.length === 0) return showToast('Select at least one member', 'error')
+    const season = bulkSeason || adminData?.currentSeason || 'Season 1'
+    if (!confirm(`Grant Elite Pass (${season}) to ${selectedMemberIds.length} members?`)) return
+    setIsProcessing(true)
+    try {
+      const batch = writeBatch(db)
+      selectedMemberIds.forEach(uid => {
+        const target = allPlayers.find(p => p.id === uid)
+        const currentSeasons = Array.isArray(target?.subscribedSeasons) ? target.subscribedSeasons : []
+        const nextSeasons = Array.from(new Set([...currentSeasons, season]))
+        batch.update(doc(db, 'users', uid), {
+          isSubscribed: target?.isSubscribed || (season === (adminData?.currentSeason || 'Season 1')),
+          subscriptionDate: new Date().toISOString(),
+          subscriptionTier: 'elite',
+          subscribedSeasons: nextSeasons
+        })
+      })
+      await batch.commit()
+      await logAudit('BULK_GRANT_ELITE_PASS', `Granted Elite Pass (${season}) to ${selectedMemberIds.length} members`)
+      triggerDataRefresh('users')
+      showToast(`Granted Elite Pass to ${selectedMemberIds.length} members`, 'success')
+      setSelectedMemberIds([])
+      setBulkSeason('')
+    } catch (e) { showToast(e.message, 'error') }
+    setIsProcessing(false)
   }
 
   const handleUpdateAdminRole = async (targetId, role, value) => {
@@ -1209,17 +1261,106 @@ export default function Admin() {
         {activeTab === 'players' && (
           <div className="card glass">
             <h3>Global Membership</h3>
+
+            {/* Bulk action bar */}
+            <div className="glass" style={{ padding: '16px', borderRadius: '12px', margin: '16px 0', border: '1px solid rgba(56, 189, 248, 0.2)', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-cyan)' }}>
+                {selectedMemberIds.length} selected
+              </span>
+              <select
+                className="glass"
+                value={bulkDivision}
+                onChange={(e) => setBulkDivision(e.target.value)}
+                style={{ fontSize: '0.8rem', padding: '6px 10px', minWidth: '120px' }}
+              >
+                <option value="">Division...</option>
+                <option value="Elite">Elite</option>
+                <option value="Diamond">Diamond</option>
+                <option value="Platinum">Platinum</option>
+                <option value="Gold">Gold</option>
+                <option value="Silver">Silver</option>
+                <option value="Bronze">Bronze</option>
+                <option value="Unassigned">Unassigned</option>
+              </select>
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleBulkAssignDivision}
+                disabled={isProcessing || selectedMemberIds.length === 0 || !bulkDivision}
+              >
+                Assign Division
+              </button>
+              <select
+                className="glass"
+                value={bulkSeason}
+                onChange={(e) => setBulkSeason(e.target.value)}
+                style={{ fontSize: '0.8rem', padding: '6px 10px', minWidth: '120px' }}
+              >
+                <option value="">Season...</option>
+                {getSeasons().map(s => (
+                  <option key={s.id} value={s.name}>{s.name}</option>
+                ))}
+              </select>
+              <button
+                className="btn btn-success btn-sm"
+                onClick={handleBulkGrantElitePass}
+                disabled={isProcessing || selectedMemberIds.length === 0}
+              >
+                Grant Elite Pass
+              </button>
+              {selectedMemberIds.length > 0 && (
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setSelectedMemberIds([])}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '20px' }}>
-              {allPlayers.sort((a, b) => a.username.localeCompare(b.username)).map(p => (
-                <div key={p.id} className="player-card glass" style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div><div style={{ fontWeight: 700 }}>{p.username}</div><div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{p.email} • {p.division || 'Unassigned'}</div></div>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/profile/${p.id}`)}>View</button>
-                    <button className="btn btn-primary btn-sm" onClick={() => { handleUpdateAdminRole(p.id, 'isTournamentAdmin', true); setActiveTab('admins'); }}>Promote</button>
-                    {isFullAdmin && <button className="btn btn-danger btn-sm" onClick={() => handleDeleteUser(p.id)}>🗑️</button>}
+              {allPlayers.sort((a, b) => a.username.localeCompare(b.username)).map(p => {
+                const isSelected = selectedMemberIds.includes(p.id)
+                return (
+                  <div
+                    key={p.id}
+                    className="player-card glass"
+                    style={{
+                      padding: '12px 16px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      border: isSelected ? '2px solid var(--accent-cyan)' : '1px solid transparent',
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => {
+                      setSelectedMemberIds(prev =>
+                        prev.includes(p.id) ? prev.filter(id => id !== p.id) : [...prev, p.id]
+                      )
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {}}
+                        style={{ width: '18px', height: '18px', accentColor: 'var(--accent-cyan)' }}
+                      />
+                      <div>
+                        <div style={{ fontWeight: 700 }}>{p.username}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          {p.email} • {p.division || 'Unassigned'}
+                          {p.isSubscribed && <span style={{ color: 'var(--success)', marginLeft: '8px' }}>✓ Elite Pass</span>}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); navigate(`/profile/${p.id}`) }}>View</button>
+                      <button className="btn btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); handleUpdateAdminRole(p.id, 'isTournamentAdmin', true); setActiveTab('admins'); }}>Promote</button>
+                      {isFullAdmin && <button className="btn btn-danger btn-sm" onClick={(e) => { e.stopPropagation(); handleDeleteUser(p.id) }}>🗑️</button>}
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )}
