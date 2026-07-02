@@ -37,54 +37,6 @@ export default function OpenLeague() {
     }
   };
 
-  const handleRemoveSinglesPlayer = async (id) => {
-    if (!window.confirm("Remove this player from the Open League table? Their results will still exist.")) return;
-    try {
-      await deleteDoc(doc(db, 'openLeagueSingles', id));
-      setSinglesPlayers(singlesPlayers.filter(p => p.id !== id));
-      showToast("Player removed from table", "info");
-    } catch (e) {
-      showToast("Error removing player", "error");
-    }
-  };
-
-  const handleAddDuo = async () => {
-    if (!duoForm.p1 || !duoForm.p2) return showToast("Please select two players", "error");
-    if (duoForm.p1 === duoForm.p2) return showToast("Cannot pair a player with themselves", "error");
-
-    const duoId = [duoForm.p1, duoForm.p2].sort().join('_');
-    const exists = duos.find(d => d.id === duoId);
-    if (exists) return showToast("This duo already exists", "warning");
-
-    try {
-      const newDuo = {
-        id: duoId,
-        p1Id: duoForm.p1,
-        p2Id: duoForm.p2,
-        teamName: duoForm.teamName.trim(),
-        captainId: duoForm.captainId,
-        createdAt: new Date().toISOString()
-      };
-      await setDoc(doc(db, 'openLeagueDuos', duoId), newDuo);
-      setDuos([...duos, newDuo]);
-      setDuoModal({ p1: '', p2: '', teamName: '', captainId: '' });
-      showToast("Duo added to table", "success");
-    } catch (e) {
-      showToast("Error adding duo", "error");
-    }
-  };
-
-  const handleRemoveDuo = async (id) => {
-    if (!window.confirm("Remove this duo? Results will still exist but they won't show if they have no matches.")) return;
-    try {
-      await deleteDoc(doc(db, 'openLeagueDuos', id));
-      setDuos(duos.filter(d => d.id !== id));
-      showToast("Duo removed", "info");
-    } catch (e) {
-      showToast("Error removing duo", "error");
-    }
-  };
-
   const isLocked = now < OPEN_LEAGUE_LAUNCH_DATE;
   const isAdmin = user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin;
   const isSubscribed = user?.isSubscribed === true || isAdmin;
