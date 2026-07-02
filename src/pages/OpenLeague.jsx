@@ -22,7 +22,7 @@ export default function OpenLeague() {
     fetchOpenLeagueData();
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [dataRefreshTrigger]);
 
   const fetchOpenLeagueData = async () => {
     try {
@@ -201,7 +201,7 @@ export default function OpenLeague() {
       if (bDiff !== aDiff) return bDiff - aDiff;
       return b.legsWon - a.legsWon;
     });
-  }, [results, allUsers]);
+  }, [results, allUsers, singlesPlayers]);
 
   const doublesStats = useMemo(() => {
     const stats = {};

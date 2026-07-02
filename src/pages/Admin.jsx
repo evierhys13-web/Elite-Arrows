@@ -90,13 +90,19 @@ export default function Admin() {
             getDocs(collection(db, 'openLeagueDuos')),
             getDocs(collection(db, 'openLeagueSingles'))
           ])
-          setOpenLeagueDuos(duoSnap.docs.map(d => ({ id: d.id, ...d.data() })))
-          setOpenLeagueSingles(singlesSnap.docs.map(d => ({ id: d.id, ...d.data() })))
-        } catch (e) { console.error(e) }
+          const duosData = duoSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          const singlesData = singlesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          setOpenLeagueDuos(duosData)
+          setOpenLeagueSingles(singlesData)
+          console.log("Open League Data Loaded:", { duos: duosData.length, singles: singlesData.length });
+        } catch (e) {
+          console.error("Failed to fetch Open League admin data", e)
+          showToast("Failed to load Open League data", "error")
+        }
       }
       fetchData()
     }
-  }, [activeTab, refreshKey])
+  }, [activeTab, refreshKey, dataRefreshTrigger])
 
   useEffect(() => {
     if (activeTab === 'audit') {
@@ -182,15 +188,16 @@ export default function Admin() {
         id: duoId,
         p1Id: duoForm.p1,
         p2Id: duoForm.p2,
-        teamName: duoForm.teamName.trim(),
-        captainId: duoForm.captainId,
+        teamName: (duoForm.teamName || '').trim(),
+        captainId: duoForm.captainId || duoForm.p1,
         createdAt: new Date().toISOString()
       }
       await setDoc(doc(db, 'openLeagueDuos', duoId), newDuo)
-      setOpenLeagueDuos([...openLeagueDuos, newDuo])
+      setOpenLeagueDuos(prev => [...prev, newDuo])
       setDuoForm({ p1: '', p2: '', teamName: '', captainId: '' })
       await logAudit('ADD_OPEN_LEAGUE_DUO', `Created duo pairing: ${duoId} (${newDuo.teamName || 'No Name'})`)
       showToast("Duo created!", "success")
+      triggerDataRefresh('all')
     } catch (e) { showToast(e.message, "error") }
   }
 
@@ -198,9 +205,10 @@ export default function Admin() {
     if (!window.confirm("Delete this pairing?")) return
     try {
       await deleteDoc(doc(db, 'openLeagueDuos', id))
-      setOpenLeagueDuos(openLeagueDuos.filter(d => d.id !== id))
+      setOpenLeagueDuos(prev => prev.filter(d => d.id !== id))
       await logAudit('REMOVE_OPEN_LEAGUE_DUO', `Deleted duo pairing: ${id}`)
       showToast("Duo removed", "info")
+      triggerDataRefresh('all')
     } catch (e) { showToast(e.message, "error") }
   }
 
@@ -212,10 +220,11 @@ export default function Admin() {
       const id = Date.now().toString()
       const newPlayer = { id, userId: singlesPlayerForm, createdAt: new Date().toISOString() }
       await setDoc(doc(db, 'openLeagueSingles', id), newPlayer)
-      setOpenLeagueSingles([...openLeagueSingles, newPlayer])
+      setOpenLeagueSingles(prev => [...prev, newPlayer])
       setSinglesPlayerForm('')
       await logAudit('ADD_OPEN_LEAGUE_SINGLES', `Added player to Open League table: ${singlesPlayerForm}`)
       showToast("Player added to table!", "success")
+      triggerDataRefresh('all')
     } catch (e) { showToast(e.message, "error") }
   }
 
@@ -223,9 +232,10 @@ export default function Admin() {
     if (!window.confirm("Remove this player from the table?")) return
     try {
       await deleteDoc(doc(db, 'openLeagueSingles', id))
-      setOpenLeagueSingles(openLeagueSingles.filter(p => p.id !== id))
+      setOpenLeagueSingles(prev => prev.filter(p => p.id !== id))
       await logAudit('REMOVE_OPEN_LEAGUE_SINGLES', `Removed player from Open League table: ${id}`)
       showToast("Player removed", "info")
+      triggerDataRefresh('all')
     } catch (e) { showToast(e.message, "error") }
   }
 
