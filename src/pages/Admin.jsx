@@ -1159,13 +1159,141 @@ export default function Admin() {
         {/* TAB: OPEN LEAGUE */}
         {activeTab === 'openleague' && (
           <div className="card glass" style={{ padding: '20px' }}>
-            <h3>Open League Management</h3>
-            <div className="glass" style={{ padding: '20px', borderRadius: '16px', marginTop: '20px' }}>
-              <h4>Add Singles Player</h4>
-              <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end' }}>
-                <UserSearchSelect users={allPlayers} selectedId={singlesPlayerForm} onSelect={id => setSinglesPlayerForm(id)} label="Select Player" onQueryChange={searchUsers} />
-                <button className="btn btn-primary" onClick={handleAddSinglesPlayer}>Add</button>
+            <h3 style={{ marginBottom: '20px' }}>Open League Management</h3>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '24px' }}>
+
+              {/* SINGLES MANAGEMENT */}
+              <div className="glass" style={{ padding: '20px', borderRadius: '16px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>👤</span> Singles Table
+                </h4>
+
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', marginBottom: '20px' }}>
+                  <div style={{ flex: 1 }}>
+                    <UserSearchSelect
+                      users={allPlayers}
+                      selectedId={singlesPlayerForm}
+                      onSelect={id => setSinglesPlayerForm(id)}
+                      label="Add Player to Singles"
+                      onQueryChange={searchUsers}
+                    />
+                  </div>
+                  <button className="btn btn-primary" onClick={handleAddSinglesPlayer} style={{ height: '44px' }}>Add</button>
+                </div>
+
+                <div style={{ maxHeight: '400px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: '5px' }}>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '5px' }}>
+                    {openLeagueSingles.length} Players Enrolled
+                  </div>
+                  {openLeagueSingles.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', background: 'rgba(0,0,0,0.2)', borderRadius: '12px' }}>
+                      No players in singles table.
+                    </div>
+                  ) : (
+                    openLeagueSingles.map(p => {
+                      const userData = allPlayers.find(u => String(u.id) === String(p.userId))
+                      return (
+                        <div key={p.id} className="glass" style={{ padding: '12px 15px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{userData?.username || 'Unknown User'}</div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)' }}>{userData?.division || 'Unassigned'}</div>
+                          </div>
+                          <button
+                            className="btn btn-danger btn-sm"
+                            onClick={() => handleRemoveSinglesPlayer(p.id)}
+                            style={{ padding: '5px 10px' }}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
               </div>
+
+              {/* DOUBLES MANAGEMENT */}
+              <div className="glass" style={{ padding: '20px', borderRadius: '16px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>👥</span> Doubles Table (Duos)
+                </h4>
+
+                <div className="glass" style={{ padding: '15px', borderRadius: '12px', marginBottom: '20px', background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
+                    <UserSearchSelect users={allPlayers} selectedId={duoForm.p1} onSelect={id => setDuoForm({...duoForm, p1: id})} label="Player 1" onQueryChange={searchUsers} />
+                    <UserSearchSelect users={allPlayers} selectedId={duoForm.p2} onSelect={id => setDuoForm({...duoForm, p2: id})} label="Player 2" onQueryChange={searchUsers} />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
+                    <div className="form-group">
+                      <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Team Name (Optional)</label>
+                      <input
+                        type="text"
+                        className="glass"
+                        value={duoForm.teamName}
+                        onChange={e => setDuoForm({...duoForm, teamName: e.target.value})}
+                        placeholder="e.g. The Dart Vaders"
+                        style={{ padding: '10px', width: '100%' }}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Captain</label>
+                      <select
+                        className="glass"
+                        value={duoForm.captainId}
+                        onChange={e => setDuoForm({...duoForm, captainId: e.target.value})}
+                        style={{ padding: '10px', width: '100%' }}
+                      >
+                        <option value="">Select Captain</option>
+                        {duoForm.p1 && <option value={duoForm.p1}>{allPlayers.find(u => u.id === duoForm.p1)?.username}</option>}
+                        {duoForm.p2 && <option value={duoForm.p2}>{allPlayers.find(u => u.id === duoForm.p2)?.username}</option>}
+                      </select>
+                    </div>
+                  </div>
+
+                  <button className="btn btn-primary btn-block" onClick={handleAddDuo} disabled={!duoForm.p1 || !duoForm.p2}>
+                    Create Duo Pairing
+                  </button>
+                </div>
+
+                <div style={{ maxHeight: '350px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: '5px' }}>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '5px' }}>
+                    {openLeagueDuos.length} Registered Duos
+                  </div>
+                  {openLeagueDuos.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', background: 'rgba(0,0,0,0.2)', borderRadius: '12px' }}>
+                      No duos defined yet.
+                    </div>
+                  ) : (
+                    openLeagueDuos.map(d => {
+                      const p1 = allPlayers.find(u => String(u.id) === String(d.p1Id))
+                      const p2 = allPlayers.find(u => String(u.id) === String(d.p2Id))
+                      return (
+                        <div key={d.id} className="glass" style={{ padding: '12px 15px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
+                          <div>
+                            <div style={{ fontWeight: 800, color: 'var(--accent-cyan)', fontSize: '0.95rem' }}>{d.teamName || 'Unnamed Duo'}</div>
+                            <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>{p1?.username || 'P1'} & {p2?.username || 'P2'}</div>
+                            {d.captainId && (
+                              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                Captain: {allPlayers.find(u => u.id === d.captainId)?.username || 'Unknown'}
+                              </div>
+                            )}
+                          </div>
+                          <button
+                            className="btn btn-danger btn-sm"
+                            onClick={() => handleRemoveDuo(d.id)}
+                            style={{ padding: '5px 10px' }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              </div>
+
             </div>
           </div>
         )}

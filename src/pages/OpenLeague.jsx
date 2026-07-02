@@ -138,8 +138,9 @@ export default function OpenLeague() {
     // Initialize with pre-defined singles players from admin
     singlesPlayers.forEach(p => {
       const user = allUsers.find(u => String(u.id) === String(p.userId));
-      stats[p.id] = {
-        id: p.userId,
+      const userIdStr = String(p.userId);
+      stats[userIdStr] = {
+        id: userIdStr,
         username: user?.username || "Unknown",
         played: 0,
         wins: 0,
