@@ -11,7 +11,7 @@ const OPEN_LEAGUE_LAUNCH_DATE = new Date("2026-07-01T00:00:00");
 
 export default function OpenLeague() {
   const [activeTab, setActiveTab] = useState("singles");
-  const { user, getAllUsers, getResults, triggerDataRefresh, forceFetchResults } = useAuth();
+  const { user, getAllUsers, getResults, triggerDataRefresh, forceFetchResults, dataRefreshTrigger } = useAuth();
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [now, setNow] = useState(new Date());
