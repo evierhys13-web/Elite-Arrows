@@ -38,16 +38,32 @@ export const saveProgressLog = async (userId, logData, logId = null) => {
  */
 export const fetchProgressLogs = async (userId) => {
   try {
+    // Using a simpler query to avoid needing a composite index immediately.
+    // We'll sort in-memory instead.
     const q = query(
       collection(db, PROGRESS_COLLECTION),
-      where('userId', '==', userId),
-      orderBy('date', 'desc')
+      where('userId', '==', userId)
     )
     const querySnapshot = await getDocs(q)
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }))
+    const logs = querySnapshot.docs.map(doc => {
+      const data = doc.data()
+      // Handle both Firestore Timestamps and ISO strings
+      let date = data.date
+      if (date && typeof date.toDate === 'function') {
+        date = date.toDate().toISOString()
+      } else if (date instanceof Date) {
+        date = date.toISOString()
+      }
+
+      return {
+        id: doc.id,
+        ...data,
+        date: date || new Date().toISOString()
+      }
+    })
+
+    // Sort by date descending
+    return logs.sort((a, b) => new Date(b.date) - new Date(a.date))
   } catch (error) {
     console.error("Error fetching progress logs: ", error)
     throw error

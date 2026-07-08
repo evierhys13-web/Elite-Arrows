@@ -63,10 +63,17 @@ export default function ProgressTracker() {
   }, [user?.id])
 
   const loadLogs = async () => {
+    if (!user?.id) return
     setLoading(true)
-    const data = await fetchProgressLogs(user.id)
-    setLogs(data)
-    setLoading(false)
+    try {
+      const data = await fetchProgressLogs(user.id)
+      setLogs(data)
+    } catch (error) {
+      console.error("Failed to load logs:", error)
+      showToast("Failed to load performance data. If this is your first time, try adding an entry.", "error")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleInputChange = (e) => {
@@ -267,7 +274,9 @@ export default function ProgressTracker() {
             <tbody>
               {logs.map(log => (
                 <tr key={log.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                  <td style={{ padding: '12px 8px', fontSize: '0.9rem' }}>{log.date}</td>
+                  <td style={{ padding: '12px 8px', fontSize: '0.9rem' }}>
+                    {new Date(log.date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                  </td>
                   <td style={{ padding: '12px 8px' }}>
                     <span style={{
                       padding: '2px 8px',
