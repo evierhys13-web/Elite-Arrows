@@ -1,24 +1,34 @@
-import { db, collection, addDoc, getDocs, query, where, orderBy, deleteDoc, doc, serverTimestamp } from '../firebase'
+import { db, collection, addDoc, getDocs, query, where, orderBy, deleteDoc, doc, serverTimestamp, updateDoc } from '../firebase'
 
 /**
- * Saves a new progress log entry to Firestore.
+ * Saves or updates a progress log entry in Firestore.
  *
  * @param {string} userId - The ID of the user creating the entry.
  * @param {Object} logData - The data for the entry (metrics, type, privacy, etc.).
- * @returns {Promise<string|null>} - The ID of the created document or null on error.
+ * @param {string} [logId] - The ID of the document to update, if existing.
+ * @returns {Promise<string>} - The ID of the saved document.
+ * @throws {Error} - Re-throws Firestore errors.
  */
-export async function saveProgressLog(userId, logData) {
+export async function saveProgressLog(userId, logData, logId = null) {
   try {
-    const docRef = await addDoc(collection(db, 'progressLogs'), {
+    const data = {
       ...logData,
       userId,
-      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       serverTimestamp: serverTimestamp()
-    })
-    return docRef.id
+    }
+
+    if (!logId) {
+      data.createdAt = new Date().toISOString()
+      const docRef = await addDoc(collection(db, 'progressLogs'), data)
+      return docRef.id
+    } else {
+      await updateDoc(doc(db, 'progressLogs', logId), data)
+      return logId
+    }
   } catch (error) {
     console.error('Error saving progress log:', error)
-    return null
+    throw error
   }
 }
 
@@ -42,6 +52,7 @@ export async function fetchProgressLogs(userId) {
     }))
   } catch (error) {
     console.error('Error fetching progress logs:', error)
+    // Return empty array if index is missing or other error occurs
     return []
   }
 }
