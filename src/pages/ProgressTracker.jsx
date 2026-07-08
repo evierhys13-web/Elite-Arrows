@@ -20,11 +20,11 @@ export default function ProgressTracker() {
   const [visibleMetrics, setVisibleMetrics] = useState(new Set(['avg3', 'avg9', 'checkoutRate']))
 
   const metrics = useMemo(() => [
-    { id: 'avg3', label: '3-Dart Avg', color: '#22c55e' },
-    { id: 'avg9', label: '9-Dart Avg', color: '#3b82f6' },
-    { id: 'checkoutRate', label: 'Checkout %', color: '#fbbf24' },
-    { id: 'highestCheckout', label: 'Highest CO', color: '#a855f7' },
-    { id: 'count180', label: '180s', color: '#ef4444' }
+    { id: 'avg3', label: '3-Dart Avg', color: '#22c55e', yAxisId: 'left' },
+    { id: 'avg9', label: '9-Dart Avg', color: '#3b82f6', yAxisId: 'left' },
+    { id: 'checkoutRate', label: 'Checkout %', color: '#fbbf24', yAxisId: 'left' },
+    { id: 'highestCheckout', label: 'Highest CO', color: '#a855f7', yAxisId: 'left' },
+    { id: 'count180', label: '180s', color: '#ef4444', yAxisId: 'right' }
   ], [])
 
   const toggleMetric = (id) => {
@@ -224,17 +224,37 @@ export default function ProgressTracker() {
         <div style={{ height: '350px', width: '100%' }}>
           {logs.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+              <LineChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                <XAxis dataKey="date" stroke="var(--text-muted)" tick={{ fontSize: 10 }} />
-                <YAxis stroke="var(--text-muted)" tick={{ fontSize: 10 }} />
-                <Tooltip
-                  contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '12px' }}
+                <XAxis
+                  dataKey="date"
+                  stroke="var(--text-muted)"
+                  tick={{ fontSize: 10 }}
+                  dy={10}
                 />
-                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
+                <YAxis
+                  yAxisId="left"
+                  stroke="var(--text-muted)"
+                  tick={{ fontSize: 10 }}
+                  label={{ value: 'Averages / %', angle: -90, position: 'insideLeft', style: { fill: 'var(--text-muted)', fontSize: '10px' } }}
+                />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  stroke="#ef4444"
+                  tick={{ fontSize: 10 }}
+                  label={{ value: '180s', angle: 90, position: 'insideRight', style: { fill: '#ef4444', fontSize: '10px' } }}
+                  hide={!visibleMetrics.has('count180')}
+                />
+                <Tooltip
+                  contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '12px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}
+                  itemStyle={{ padding: '2px 0' }}
+                />
+                <Legend iconType="circle" wrapperStyle={{ paddingTop: '25px', fontSize: '12px' }} />
                 {metrics.map(m => visibleMetrics.has(m.id) && (
                   <Line
                     key={m.id}
+                    yAxisId={m.yAxisId}
                     type="monotone"
                     dataKey={m.id}
                     stroke={m.color}
