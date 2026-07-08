@@ -20,6 +20,8 @@ const INITIAL_RESULT_FORM = {
   opponentDoubleSuccess: '',
   proofImage: '',
   proofImageBlob: null,
+  proofImage2: '',
+  proofImageBlob2: null,
   proofVideo: '',
   proofVideoFile: null,
   highlightUrl: '',
@@ -220,7 +222,7 @@ export default function SubmitResult() {
     }
   }
 
-  const handleImageUpload = (e) => {
+  const handleImageUpload = (e, index = 1) => {
     const file = e.target.files[0]
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
@@ -229,8 +231,10 @@ export default function SubmitResult() {
       }
 
       setUploadError('')
-      setUploadedProofUrl('')
-      setUploadedVideoUrl('')
+      if (index === 1) {
+        setUploadedProofUrl('')
+        setUploadedVideoUrl('')
+      }
       setUploadProgress(0)
 
       // 1. Instant local preview
@@ -256,16 +260,18 @@ export default function SubmitResult() {
             compressedDataUrl = canvas.toDataURL('image/jpeg', quality)
           }
 
+          const fieldName = index === 1 ? 'proofImage' : 'proofImage2'
+          const blobName = index === 1 ? 'proofImageBlob' : 'proofImageBlob2'
+
           setFormData(prev => ({
             ...prev,
-            proofImage: compressedDataUrl,
-            proofImageBlob: null,
-            proofVideo: '',
-            proofVideoFile: null
+            [fieldName]: compressedDataUrl,
+            [blobName]: null,
+            ...(index === 1 ? { proofVideo: '', proofVideoFile: null } : {})
           }))
 
           setIsUploadingProof(false) // No more background upload for images
-          setSuccessMessage('Image ready!')
+          setSuccessMessage(index === 1 ? 'Image 1 ready!' : 'Image 2 ready!')
         }
         image.src = reader.result
       }
@@ -319,6 +325,11 @@ export default function SubmitResult() {
     }
   }
 
+  const clearProofInputs = () => {
+    if (cameraInputRef.current) cameraInputRef.current.value = ''
+    if (uploadInputRef.current) uploadInputRef.current.value = ''
+  }
+
   const removeVideo = () => {
     if (formData.proofVideo && formData.proofVideo.startsWith('blob:')) {
       URL.revokeObjectURL(formData.proofVideo)
@@ -330,11 +341,14 @@ export default function SubmitResult() {
     clearProofInputs()
   }
 
-  const removeImage = () => {
-    setFormData(prev => ({ ...prev, proofImage: '', proofImageBlob: null }))
-    setUploadedProofUrl('')
-    setUploadProgress(0)
-    setIsUploadingProof(false)
+  const removeImage = (index = 1) => {
+    const fieldName = index === 1 ? 'proofImage' : 'proofImage2'
+    const blobName = index === 1 ? 'proofImageBlob' : 'proofImageBlob2'
+    setFormData(prev => ({ ...prev, [fieldName]: '', [blobName]: null }))
+    if (index === 1) {
+      setUploadedProofUrl('')
+      setIsUploadingProof(false)
+    }
     clearProofInputs()
   }
 
@@ -342,7 +356,10 @@ export default function SubmitResult() {
     if (fixtureId) {
       setSubmittedFixtureId(String(fixtureId))
     }
-    setFormData({ ...INITIAL_RESULT_FORM })
+    setFormData({
+      ...INITIAL_RESULT_FORM,
+      season: adminData?.currentSeason || 'Season 1'
+    })
     clearProofInputs()
     if (typeof window !== 'undefined' && window.location.pathname.includes('submit-result')) {
       window.history.replaceState(null, '', '/submit-result')
@@ -382,9 +399,11 @@ export default function SubmitResult() {
         setError('Please enter scores for both games')
         return
       }
-    }
-
-    if (!formData.proofImage && !formData.proofVideo) {
+      if (!formData.proofImage || !formData.proofImage2) {
+        setError('Two pieces of proof (one for each game) are required for doubles results.')
+        return
+      }
+    } else if (!formData.proofImage && !formData.proofVideo) {
       setError('Proof of result (screenshot, photo, or video) is required for all match submissions.')
       return
     }
@@ -510,7 +529,7 @@ export default function SubmitResult() {
       const currentResults = [...allResults]
 
       // Helper for creating the document structure
-      const createResultDoc = (s1, s2, idSuffix = '') => {
+      const createResultDoc = (s1, s2, idSuffix = '', proofOverride = null) => {
         const resId = resultId + idSuffix
         const docData = {
           id: resId,
@@ -528,7 +547,7 @@ export default function SubmitResult() {
           submittedAt: new Date().toISOString(),
           bestOf: formData.bestOf,
           firstTo: formData.firstTo,
-          proofImage: finalProofUrl || '',
+          proofImage: proofOverride || finalProofUrl || '',
           proofVideo: finalVideoUrl || '',
           player1Stats: {
             '180s': parseInt(formData.your180s) || 0,
@@ -557,14 +576,19 @@ export default function SubmitResult() {
           docData.player3 = opponentName
           docData.player4Id = opp2User?.id || formData.opponent2
           docData.player4 = getDisplayName(opp2User, 'Opponent 2')
+
+          // If we have two proofs and this is Game 2, use the second proof
+          if (idSuffix === '_2' && formData.proofImage2) {
+            docData.proofImage = formData.proofImage2
+          }
         }
         return docData
       }
 
       let finalResultObj;
       if (formData.gameType === 'Open League Doubles') {
-        const res1 = createResultDoc(formData.yourScore, formData.opponentScore, '_1')
-        const res2 = createResultDoc(formData.yourScore2, formData.opponentScore2, '_2')
+        const res1 = createResultDoc(formData.yourScore, formData.opponentScore, '_1', formData.proofImage)
+        const res2 = createResultDoc(formData.yourScore2, formData.opponentScore2, '_2', formData.proofImage2 || formData.proofImage)
         await Promise.all([
           setDoc(doc(db, 'results', res1.id), res1),
           setDoc(doc(db, 'results', res2.id), res2)
@@ -1064,7 +1088,7 @@ export default function SubmitResult() {
 
           <div className="form-group" style={{ marginBottom: '30px' }}>
             <label style={{ fontSize: '0.9rem', fontWeight: '600', display: 'block', marginBottom: '12px' }}>
-              Proof of Result (Photo/Screenshot/Video)
+              {formData.gameType === 'Open League Doubles' ? 'Proof of Result 1 (Game 1)' : 'Proof of Result (Photo/Screenshot/Video)'}
               {isUploadingProof && <span style={{ marginLeft: '10px', color: 'var(--accent-cyan)', fontSize: '0.8rem' }}>• Uploading: {uploadProgress}%</span>}
             </label>
             
@@ -1112,7 +1136,7 @@ export default function SubmitResult() {
                       capture="environment"
                       aria-label="Take Photo"
                       onClick={(e) => { e.currentTarget.value = '' }}
-                      onChange={handleImageUpload}
+                      onChange={(e) => handleImageUpload(e, 1)}
                       className="result-proof-input"
                       disabled={isUploadingProof}
                     />
@@ -1125,23 +1149,25 @@ export default function SubmitResult() {
                       accept="image/*"
                       aria-label="Upload Screenshot"
                       onClick={(e) => { e.currentTarget.value = '' }}
-                      onChange={handleImageUpload}
+                      onChange={(e) => handleImageUpload(e, 1)}
                       className="result-proof-input"
                       disabled={isUploadingProof}
                     />
                   </div>
-                  <div className="result-proof-native-button result-proof-video" style={{ flex: 1, minWidth: '120px', background: 'var(--accent-primary)' }}>
-                    <span style={{ fontSize: '0.85rem' }}>🎬 Video</span>
-                    <input
-                      type="file"
-                      accept="video/*"
-                      aria-label="Upload Video"
-                      onClick={(e) => { e.currentTarget.value = '' }}
-                      onChange={handleVideoUpload}
-                      className="result-proof-input"
-                      disabled={isUploadingProof}
-                    />
-                  </div>
+                  {formData.gameType !== 'Open League Doubles' && (
+                    <div className="result-proof-native-button result-proof-video" style={{ flex: 1, minWidth: '120px', background: 'var(--accent-primary)' }}>
+                      <span style={{ fontSize: '0.85rem' }}>🎬 Video</span>
+                      <input
+                        type="file"
+                        accept="video/*"
+                        aria-label="Upload Video"
+                        onClick={(e) => { e.currentTarget.value = '' }}
+                        onChange={handleVideoUpload}
+                        className="result-proof-input"
+                        disabled={isUploadingProof}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             ) : formData.proofImage ? (
@@ -1173,7 +1199,7 @@ export default function SubmitResult() {
                 {!isUploadingProof && (
                   <button
                     type="button"
-                    onClick={() => removeImage()}
+                    onClick={() => removeImage(1)}
                     style={{
                       position: 'absolute',
                       top: '10px',
@@ -1249,6 +1275,89 @@ export default function SubmitResult() {
                 )}
               </div>
             )}
+
+            {formData.gameType === 'Open League Doubles' && (
+              <div style={{ marginTop: '20px' }}>
+                <label style={{ fontSize: '0.9rem', fontWeight: '600', display: 'block', marginBottom: '12px' }}>
+                  Proof of Result 2 (Game 2)
+                </label>
+                {!formData.proofImage2 ? (
+                  <div
+                    className="result-proof-picker"
+                    style={{
+                      border: '2px dashed var(--border)',
+                      borderRadius: '12px',
+                      padding: '30px 20px',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      background: 'var(--bg-secondary)',
+                      width: '100%',
+                      color: 'var(--text)',
+                      position: 'relative',
+                      overflow: 'hidden'
+                    }}
+                  >
+                    <div className="result-proof-actions" style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                      <div className="result-proof-native-button result-proof-camera" style={{ flex: 1, minWidth: '120px' }}>
+                        <span style={{ fontSize: '0.85rem' }}>📷 Photo</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          aria-label="Take Photo"
+                          onClick={(e) => { e.currentTarget.value = '' }}
+                          onChange={(e) => handleImageUpload(e, 2)}
+                          className="result-proof-input"
+                        />
+                      </div>
+                      <div className="result-proof-native-button result-proof-upload" style={{ flex: 1, minWidth: '120px' }}>
+                        <span style={{ fontSize: '0.85rem' }}>📁 Image</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          aria-label="Upload Screenshot"
+                          onClick={(e) => { e.currentTarget.value = '' }}
+                          onChange={(e) => handleImageUpload(e, 2)}
+                          className="result-proof-input"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ position: 'relative', textAlign: 'center' }}>
+                    <img
+                      src={formData.proofImage2}
+                      alt="Proof 2"
+                      style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '12px', border: '1px solid var(--border)' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(2)}
+                      style={{
+                        position: 'absolute',
+                        top: '10px',
+                        right: '10px',
+                        background: '#ef4444',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '50%',
+                        width: '32px',
+                        height: '32px',
+                        cursor: 'pointer',
+                        fontSize: '20px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 2px 10px rgba(0,0,0,0.3)'
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             {uploadError && <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '8px', textAlign: 'center' }}>⚠️ {uploadError}</div>}
           </div>
 
