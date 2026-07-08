@@ -21,6 +21,9 @@ export default function ProgressTracker() {
   const initialFormData = {
     date: new Date().toISOString().split('T')[0],
     type: 'Daily',
+    gameType: '501',
+    legFormatType: 'Best of',
+    legs: '3',
     avg3: '',
     avg9: '',
     checkoutRate: '',
@@ -146,11 +149,11 @@ export default function ProgressTracker() {
   }, [logs, selectedMetric])
 
   const metrics = [
-    { id: 'avg3', label: '3-Dart Avg', color: 'var(--accent-cyan)' },
-    { id: 'avg9', label: '9-Dart Avg', color: '#fbbf24' },
-    { id: 'checkoutRate', label: 'Checkout %', color: '#22c55e' },
-    { id: 'highestCheckout', label: 'Highest CO', color: '#f87171' },
-    { id: 'count180', label: '180s', color: '#818cf8' }
+    { id: 'avg3', label: '3-Dart Avg', color: '#22c55e' },
+    { id: 'avg9', label: '9-Dart Avg', color: '#3b82f6' },
+    { id: 'checkoutRate', label: 'Checkout %', color: '#fbbf24' },
+    { id: 'highestCheckout', label: 'Highest CO', color: '#a855f7' },
+    { id: 'count180', label: '180s', color: '#ef4444' }
   ]
 
   return (
@@ -174,9 +177,16 @@ export default function ProgressTracker() {
             {metrics.map(m => (
               <button
                 key={m.id}
-                className={`btn btn-sm ${selectedMetric === m.id ? 'btn-primary' : 'btn-secondary'}`}
+                className={`btn btn-sm ${selectedMetric === m.id ? '' : 'btn-secondary'}`}
                 onClick={() => setSelectedMetric(m.id)}
-                style={{ borderRadius: '99px', whiteSpace: 'nowrap' }}
+                style={{
+                  borderRadius: '99px',
+                  whiteSpace: 'nowrap',
+                  background: selectedMetric === m.id ? m.color : 'rgba(255,255,255,0.05)',
+                  borderColor: m.color,
+                  color: selectedMetric === m.id ? '#000' : 'white',
+                  fontWeight: selectedMetric === m.id ? 800 : 400
+                }}
               >
                 {m.label}
               </button>
@@ -221,6 +231,7 @@ export default function ProgressTracker() {
               <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
                 <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Date</th>
                 <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Type</th>
+                <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Format</th>
                 <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', textAlign: 'center' }}>Avg</th>
                 <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', textAlign: 'center' }}>CO %</th>
                 <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', textAlign: 'center' }}>Best CO</th>
@@ -243,7 +254,10 @@ export default function ProgressTracker() {
                       {log.type}
                     </span>
                   </td>
-                  <td style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>{log.avg3}</td>
+                  <td style={{ padding: '12px 8px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                    {log.type !== 'Weekly' ? `${log.gameType || '501'} • ${log.legFormatType === 'Best of' ? 'Bo' : 'Ft'} ${log.legs || 3}` : '-'}
+                  </td>
+                  <td style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 'bold', color: '#22c55e' }}>{log.avg3}</td>
                   <td style={{ padding: '12px 8px', textAlign: 'center' }}>{log.checkoutRate}%</td>
                   <td style={{ padding: '12px 8px', textAlign: 'center' }}>{log.highestCheckout}</td>
                   <td style={{ padding: '12px 8px', textAlign: 'center' }}>{log.count180}</td>
@@ -297,6 +311,37 @@ export default function ProgressTracker() {
                   </select>
                 </div>
               </div>
+
+              {formData.type !== 'Weekly' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', padding: '16px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                  <div className="form-group">
+                    <label>Game Type</label>
+                    <select className="glass" name="gameType" value={formData.gameType} onChange={handleInputChange}>
+                      <option value="301">301</option>
+                      <option value="501">501</option>
+                      <option value="701">701</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Format</label>
+                    <select className="glass" name="legFormatType" value={formData.legFormatType} onChange={handleInputChange}>
+                      <option value="Best of">Best of</option>
+                      <option value="First to">First to</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Legs</label>
+                    <input
+                      className="glass"
+                      type="number"
+                      name="legs"
+                      value={formData.legs}
+                      onChange={handleInputChange}
+                      min="1"
+                    />
+                  </div>
+                </div>
+              )}
 
               {formData.type === 'Weekly' ? (
                 <div className="card" style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '12px' }}>
