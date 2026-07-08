@@ -95,11 +95,19 @@ export default function ProgressTracker() {
         count180: parseInt(formData.count180) || 0
       }
 
-      await saveProgressLog(user.id, logData, editingId)
+      const savedLog = await saveProgressLog(user.id, logData, editingId)
       showToast(editingId ? 'Progress updated!' : 'Progress entry saved!', 'success')
       setShowModal(false)
       setEditingId(null)
-      loadLogs()
+
+      // Update local state immediately to avoid waiting for fetch
+      if (editingId) {
+        setLogs(prev => prev.map(l => l.id === editingId ? savedLog : l))
+      } else {
+        setLogs(prev => [savedLog, ...prev].sort((a, b) => b.date.localeCompare(a.date)))
+      }
+
+      loadLogs() // Still refresh from server to sync serverTimestamp
       setFormData(initialFormData)
     } catch (error) {
       console.error('Save failed:', error)

@@ -6,7 +6,7 @@ import { db, collection, addDoc, getDocs, query, where, orderBy, deleteDoc, doc,
  * @param {string} userId - The ID of the user creating the entry.
  * @param {Object} logData - The data for the entry (metrics, type, privacy, etc.).
  * @param {string} [logId] - The ID of the document to update, if existing.
- * @returns {Promise<string>} - The ID of the saved document.
+ * @returns {Promise<Object>} - The saved document data including its ID.
  * @throws {Error} - Re-throws Firestore errors.
  */
 export async function saveProgressLog(userId, logData, logId = null) {
@@ -21,10 +21,10 @@ export async function saveProgressLog(userId, logData, logId = null) {
     if (!logId) {
       data.createdAt = new Date().toISOString()
       const docRef = await addDoc(collection(db, 'progressLogs'), data)
-      return docRef.id
+      return { id: docRef.id, ...data }
     } else {
       await updateDoc(doc(db, 'progressLogs', logId), data)
-      return logId
+      return { id: logId, ...data }
     }
   } catch (error) {
     console.error('Error saving progress log:', error)
@@ -52,8 +52,20 @@ export async function fetchProgressLogs(userId) {
     }))
   } catch (error) {
     console.error('Error fetching progress logs:', error)
-    // Return empty array if index is missing or other error occurs
-    return []
+    // If index is missing, fallback to unordered fetch and sort client-side
+    try {
+      const qFallback = query(
+        collection(db, 'progressLogs'),
+        where('userId', '==', userId)
+      )
+      const querySnapshot = await getDocs(qFallback)
+      return querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })).sort((a, b) => b.date.localeCompare(a.date))
+    } catch (fallbackError) {
+      return []
+    }
   }
 }
 
