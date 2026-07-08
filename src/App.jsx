@@ -11,6 +11,7 @@ import BackgroundDecor from './components/BackgroundDecor'
 import NotificationPermissionPrompt from './components/NotificationPermissionPrompt'
 import OnboardingTour, { useOnboarding } from './components/OnboardingTour'
 import WhatsNewPopup, { useWhatsNew } from './components/WhatsNewPopup'
+import ProgressTrackerPopup from './components/ProgressTrackerPopup'
 import SurveyPopup from './components/SurveyPopup'
 import PullToRefresh from './components/PullToRefresh'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -281,6 +282,7 @@ function AppLayout({ children }) {
       <NotificationPermissionPrompt />
       {showOnboarding && <OnboardingTour onComplete={completeOnboarding} />}
       <WhatsNewPopup isOpen={whatsNewOpen} onClose={() => setWhatsNewOpen(false)} />
+      <ProgressTrackerPopup />
       <SurveyPopup />
     </div>
   )
