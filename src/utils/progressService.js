@@ -1,47 +1,45 @@
-import { db, collection, addDoc, getDocs, query, where, orderBy, deleteDoc, doc, serverTimestamp, updateDoc } from '../firebase'
+import { db, collection, addDoc, query, where, orderBy, getDocs, deleteDoc, doc, serverTimestamp, updateDoc } from '../firebase'
+
+const PROGRESS_COLLECTION = 'progressLogs'
 
 /**
- * Saves or updates a progress log entry in Firestore.
- *
- * @param {string} userId - The ID of the user creating the entry.
- * @param {Object} logData - The data for the entry (metrics, type, privacy, etc.).
- * @param {string} [logId] - The ID of the document to update, if existing.
- * @returns {Promise<Object>} - The saved document data including its ID.
- * @throws {Error} - Re-throws Firestore errors.
+ * Saves or updates a progress entry for a user.
+ * @param {string} userId
+ * @param {object} logData
+ * @param {string} [logId] - Optional ID for updating an existing entry
  */
-export async function saveProgressLog(userId, logData, logId = null) {
+export const saveProgressLog = async (userId, logData, logId = null) => {
   try {
     const data = {
-      ...logData,
       userId,
-      updatedAt: new Date().toISOString(),
-      serverTimestamp: serverTimestamp()
+      ...logData,
+      date: logData.date ? new Date(logData.date).toISOString() : new Date().toISOString(),
+      updatedAt: serverTimestamp()
     }
 
-    if (!logId) {
-      data.createdAt = new Date().toISOString()
-      const docRef = await addDoc(collection(db, 'progressLogs'), data)
-      return { id: docRef.id, ...data }
-    } else {
-      await updateDoc(doc(db, 'progressLogs', logId), data)
+    if (logId) {
+      const docRef = doc(db, PROGRESS_COLLECTION, logId)
+      await updateDoc(docRef, data)
       return { id: logId, ...data }
+    } else {
+      data.createdAt = serverTimestamp()
+      const docRef = await addDoc(collection(db, PROGRESS_COLLECTION), data)
+      return { id: docRef.id, ...data }
     }
   } catch (error) {
-    console.error('Error saving progress log:', error)
+    console.error("Error saving progress log: ", error)
     throw error
   }
 }
 
 /**
- * Fetches all progress logs for a specific user, ordered by date.
- *
- * @param {string} userId - The ID of the user whose logs to fetch.
- * @returns {Promise<Array>} - An array of log entries.
+ * Fetches all progress logs for a specific user.
+ * @param {string} userId
  */
-export async function fetchProgressLogs(userId) {
+export const fetchProgressLogs = async (userId) => {
   try {
     const q = query(
-      collection(db, 'progressLogs'),
+      collection(db, PROGRESS_COLLECTION),
       where('userId', '==', userId),
       orderBy('date', 'desc')
     )
@@ -51,36 +49,21 @@ export async function fetchProgressLogs(userId) {
       ...doc.data()
     }))
   } catch (error) {
-    console.error('Error fetching progress logs:', error)
-    // If index is missing, fallback to unordered fetch and sort client-side
-    try {
-      const qFallback = query(
-        collection(db, 'progressLogs'),
-        where('userId', '==', userId)
-      )
-      const querySnapshot = await getDocs(qFallback)
-      return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })).sort((a, b) => b.date.localeCompare(a.date))
-    } catch (fallbackError) {
-      return []
-    }
+    console.error("Error fetching progress logs: ", error)
+    throw error
   }
 }
 
 /**
- * Deletes a progress log entry.
- *
- * @param {string} logId - The ID of the document to delete.
- * @returns {Promise<boolean>} - True if successful, false otherwise.
+ * Deletes a specific progress log.
+ * @param {string} logId
  */
-export async function deleteProgressLog(logId) {
+export const deleteProgressLog = async (logId) => {
   try {
-    await deleteDoc(doc(db, 'progressLogs', logId))
+    await deleteDoc(doc(db, PROGRESS_COLLECTION, logId))
     return true
   } catch (error) {
-    console.error('Error deleting progress log:', error)
-    return false
+    console.error("Error deleting progress log: ", error)
+    throw error
   }
 }

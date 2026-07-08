@@ -48,7 +48,10 @@ The main user interface for the progress tracker.
 #### [NEW] [ProgressTracker.jsx](file:///C:/Developer/Elite-Arrows/src/pages/ProgressTracker.jsx)
 - **Header**: Breadcrumbs and "Add Entry" button.
 - **Form/Modal**: Input fields for the 5 metrics, date picker, type selector (Daily/Weekly/Session), and privacy toggle.
-- **Visualization**: `ResponsiveContainer` with `LineChart` (recharts) showing the trends of the selected metric.
+- **Visualization**: `ResponsiveContainer` with `LineChart` (recharts).
+    - Support for multiple lines on the same chart with a `Legend` to toggle visibility.
+    - Custom `Tooltip` to show all metrics for a hovered data point.
+    - (Optional) Dual Y-axis to handle different scales (Averages on left, Percentages/Counts on right).
 - **History List**: A table or card list showing previous entries with a delete option.
 
 ---

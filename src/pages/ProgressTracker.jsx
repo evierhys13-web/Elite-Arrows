@@ -17,6 +17,27 @@ export default function ProgressTracker() {
   const [showModal, setShowModal] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [selectedMetric, setSelectedMetric] = useState('avg3')
+  const [visibleMetrics, setVisibleMetrics] = useState(new Set(['avg3', 'avg9', 'checkoutRate']))
+
+  const metrics = useMemo(() => [
+    { id: 'avg3', label: '3-Dart Avg', color: '#22c55e' },
+    { id: 'avg9', label: '9-Dart Avg', color: '#3b82f6' },
+    { id: 'checkoutRate', label: 'Checkout %', color: '#fbbf24' },
+    { id: 'highestCheckout', label: 'Highest CO', color: '#a855f7' },
+    { id: 'count180', label: '180s', color: '#ef4444' }
+  ], [])
+
+  const toggleMetric = (id) => {
+    const newVisible = new Set(visibleMetrics)
+    if (newVisible.has(id)) {
+      if (newVisible.size > 1) {
+        newVisible.delete(id)
+      }
+    } else {
+      newVisible.add(id)
+    }
+    setVisibleMetrics(newVisible)
+  }
 
   const initialFormData = {
     date: new Date().toISOString().split('T')[0],
@@ -141,20 +162,18 @@ export default function ProgressTracker() {
   }
 
   const chartData = useMemo(() => {
-    return [...logs].reverse().map(log => ({
-      date: new Date(log.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-      value: log[selectedMetric],
-      fullDate: log.date
-    }))
-  }, [logs, selectedMetric])
-
-  const metrics = [
-    { id: 'avg3', label: '3-Dart Avg', color: '#22c55e' },
-    { id: 'avg9', label: '9-Dart Avg', color: '#3b82f6' },
-    { id: 'checkoutRate', label: 'Checkout %', color: '#fbbf24' },
-    { id: 'highestCheckout', label: 'Highest CO', color: '#a855f7' },
-    { id: 'count180', label: '180s', color: '#ef4444' }
-  ]
+    return [...logs]
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .map(log => ({
+        date: new Date(log.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+        avg3: log.avg3,
+        avg9: log.avg9,
+        checkoutRate: log.checkoutRate,
+        highestCheckout: log.highestCheckout,
+        count180: log.count180,
+        fullDate: log.date
+      }))
+  }, [logs])
 
   return (
     <div className="page animate-fade-in">
@@ -177,15 +196,16 @@ export default function ProgressTracker() {
             {metrics.map(m => (
               <button
                 key={m.id}
-                className={`btn btn-sm ${selectedMetric === m.id ? '' : 'btn-secondary'}`}
-                onClick={() => setSelectedMetric(m.id)}
+                className={`btn btn-sm ${visibleMetrics.has(m.id) ? '' : 'btn-secondary'}`}
+                onClick={() => toggleMetric(m.id)}
                 style={{
                   borderRadius: '99px',
                   whiteSpace: 'nowrap',
-                  background: selectedMetric === m.id ? m.color : 'rgba(255,255,255,0.05)',
+                  background: visibleMetrics.has(m.id) ? m.color : 'rgba(255,255,255,0.05)',
                   borderColor: m.color,
-                  color: selectedMetric === m.id ? '#000' : 'white',
-                  fontWeight: selectedMetric === m.id ? 800 : 400
+                  color: visibleMetrics.has(m.id) ? '#000' : 'white',
+                  fontWeight: visibleMetrics.has(m.id) ? 800 : 400,
+                  opacity: visibleMetrics.has(m.id) ? 1 : 0.5
                 }}
               >
                 {m.label}
@@ -197,22 +217,27 @@ export default function ProgressTracker() {
         <div style={{ height: '350px', width: '100%' }}>
           {logs.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
+              <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="date" stroke="var(--text-muted)" tick={{ fontSize: 10 }} />
                 <YAxis stroke="var(--text-muted)" tick={{ fontSize: 10 }} />
                 <Tooltip
                   contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '12px' }}
-                  itemStyle={{ color: metrics.find(m => m.id === selectedMetric)?.color }}
                 />
-                <Line
-                  type="monotone"
-                  dataKey="value"
-                  stroke={metrics.find(m => m.id === selectedMetric)?.color}
-                  strokeWidth={3}
-                  dot={{ r: 4, fill: metrics.find(m => m.id === selectedMetric)?.color, strokeWidth: 2, stroke: 'var(--bg-primary)' }}
-                  name={metrics.find(m => m.id === selectedMetric)?.label}
-                />
+                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
+                {metrics.map(m => visibleMetrics.has(m.id) && (
+                  <Line
+                    key={m.id}
+                    type="monotone"
+                    dataKey={m.id}
+                    stroke={m.color}
+                    strokeWidth={3}
+                    dot={{ r: 4, fill: m.color, strokeWidth: 2, stroke: 'var(--bg-primary)' }}
+                    activeDot={{ r: 6, strokeWidth: 0 }}
+                    name={m.label}
+                    animationDuration={500}
+                  />
+                ))}
               </LineChart>
             </ResponsiveContainer>
           ) : (
