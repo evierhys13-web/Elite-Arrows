@@ -452,16 +452,20 @@ export default function Admin() {
     if (isNaN(s1) || isNaN(s2)) return showToast('Invalid scores.', 'error')
 
     const isDoubles = f.gameType === 'Open League Doubles'
-    const duo1 = isDoubles ? openLeagueDuos.find(d => d.id === f.player1) : null
-    const duo2 = isDoubles ? openLeagueDuos.find(d => d.id === f.player2) : null
 
-    const p1 = !isDoubles ? allPlayers.find(u => String(u.id) === String(f.player1)) : allPlayers.find(u => String(u.id) === String(duo1.p1Id))
-    const p2 = !isDoubles ? allPlayers.find(u => String(u.id) === String(f.player2)) : allPlayers.find(u => String(u.id) === String(duo1.p2Id))
-    const p3 = isDoubles ? allPlayers.find(u => String(u.id) === String(duo2.p1Id)) : null
-    const p4 = isDoubles ? allPlayers.find(u => String(u.id) === String(duo2.p2Id)) : null
+    // In admin doubles: p1, p2 are search selects for Home players.
+    // p3 is the Away Duo ID.
+    const duo1Ids = isDoubles ? [String(f.player1), String(f.player2)].sort().join('_') : null
+    const duo1 = isDoubles ? openLeagueDuos.find(d => d.id === duo1Ids) : null
+    const duo2 = isDoubles ? openLeagueDuos.find(d => d.id === f.player3) : null
+
+    const p1 = !isDoubles ? allPlayers.find(u => String(u.id) === String(f.player1)) : allPlayers.find(u => String(u.id) === String(f.player1))
+    const p2 = !isDoubles ? allPlayers.find(u => String(u.id) === String(f.player2)) : allPlayers.find(u => String(u.id) === String(f.player2))
+    const p3 = isDoubles ? allPlayers.find(u => String(u.id) === String(duo2?.p1Id)) : null
+    const p4 = isDoubles ? allPlayers.find(u => String(u.id) === String(duo2?.p2Id)) : null
 
     if (!p1 || !p2) return showToast('Players not found.', 'error')
-    if (isDoubles && (!p3 || !p4)) return showToast('Duo players not found.', 'error')
+    if (isDoubles && (!p3 || !p4)) return showToast('Away duo players not found.', 'error')
 
     const resultId = `admin_${Date.now()}`
     try {
@@ -504,9 +508,10 @@ export default function Admin() {
       }
 
       if (isDoubles) {
-        newMatch.player3Id = p3.id
+        newMatch.player2Id = p2.id // Home Player 2
+        newMatch.player3Id = p3.id // Away Player 1
         newMatch.player3 = p3.username
-        newMatch.player4Id = p4.id
+        newMatch.player4Id = p4.id // Away Player 2
         newMatch.player4 = p4.username
       }
 
@@ -1165,6 +1170,26 @@ export default function Admin() {
                         })}
                       </select>
                     ) : (
+                      {adminGameForm.gameType === 'Open League Doubles' ? (
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <UserSearchSelect
+                          users={allPlayers}
+                          selectedId={adminGameForm.player1}
+                          onSelect={id => setAdminGameForm({...adminGameForm, player1: id})}
+                          onQueryChange={searchUsers}
+                          placeholder="Player 1"
+                          label=""
+                        />
+                        <UserSearchSelect
+                          users={allPlayers}
+                          selectedId={adminGameForm.player2}
+                          onSelect={id => setAdminGameForm({...adminGameForm, player2: id})}
+                          onQueryChange={searchUsers}
+                          placeholder="Player 2"
+                          label=""
+                        />
+                      </div>
+                    ) : (
                       <UserSearchSelect
                         users={allPlayers}
                         selectedId={adminGameForm.player1}
@@ -1174,20 +1199,20 @@ export default function Admin() {
                     )}
                   </div>
                   <div className="form-group">
-                    <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>{adminGameForm.gameType === 'Open League Doubles' ? 'Away Team (Duo)' : 'Player 2 (Away)'}</label>
+                    <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>{adminGameForm.gameType === 'Open League Doubles' ? 'Away Team (Registered Duo)' : 'Player 2 (Away)'}</label>
                     {adminGameForm.gameType === 'Open League Doubles' ? (
                       <select
                         className="glass"
                         style={{ width: '100%', padding: '10px' }}
-                        value={adminGameForm.player2}
-                        onChange={e => setAdminGameForm({...adminGameForm, player2: e.target.value})}
+                        value={adminGameForm.player3}
+                        onChange={e => setAdminGameForm({...adminGameForm, player3: e.target.value})}
                       >
-                        <option value="">Select Duo</option>
+                        <option value="">Select Away Duo</option>
                         {openLeagueDuos.map(d => {
                           const u1 = allPlayers.find(u => String(u.id) === String(d.p1Id))
                           const u2 = allPlayers.find(u => String(u.id) === String(d.p2Id))
                           const name = d.teamName || (d.captainId ? allPlayers.find(u => String(u.id) === String(d.captainId))?.username : null) || `${u1?.username || 'P1'} & ${u2?.username || 'P2'}`
-                          return <option key={d.id} value={d.id}>{name}</option>
+                          return <option key={d.id} value={d.id}>{name} ({u1?.username || '?'}, {u2?.username || '?'})</option>
                         })}
                       </select>
                     ) : (

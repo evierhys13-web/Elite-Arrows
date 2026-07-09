@@ -433,8 +433,8 @@ export default function SubmitResult() {
     }
 
     if (formData.gameType === 'Open League Doubles') {
-      if (!formData.yourDuoId) {
-        setError('Please select your duo.')
+      if (!formData.partner) {
+        setError('Please select your partner.')
         return
       }
       if (!formData.opponent) {
@@ -451,7 +451,13 @@ export default function SubmitResult() {
     }
     
     const opponentDuo = formData.gameType === 'Open League Doubles' ? openLeagueDuos.find(d => d.id === formData.opponent) : null
-    const yourDuo = formData.gameType === 'Open League Doubles' ? openLeagueDuos.find(d => d.id === formData.yourDuoId) : null
+
+    // Find Your Duo by combining user.id and partner
+    const yourDuoIds = formData.gameType === 'Open League Doubles'
+      ? [String(user.id), String(formData.partner)].sort().join('_')
+      : null
+    const yourDuo = yourDuoIds ? openLeagueDuos.find(d => d.id === yourDuoIds) : null
+
     const opponentUser = !opponentDuo ? allUsers.find(u => u.id === formData.opponent) : null
 
     const submitterName = getDisplayName(user, 'You')
@@ -616,20 +622,21 @@ export default function SubmitResult() {
           const duo1 = yourDuo
           const duo2 = opponentDuo
 
-          const p1 = allUsers.find(u => String(u.id) === String(duo1.p1Id))
-          const p2 = allUsers.find(u => String(u.id) === String(duo1.p2Id))
-          const p3 = allUsers.find(u => String(u.id) === String(duo2.p1Id))
-          const p4 = allUsers.find(u => String(u.id) === String(duo2.p2Id))
+          const p1 = user
+          const p2 = allUsers.find(u => String(u.id) === String(formData.partner))
+          const p3 = allUsers.find(u => String(u.id) === String(duo2?.p1Id))
+          const p4 = allUsers.find(u => String(u.id) === String(duo2?.p2Id))
 
-          docData.player1 = getDuoDisplayName(duo1)
+          docData.player1 = duo1 ? getDuoDisplayName(duo1) : `${getDisplayName(p1)} & ${getDisplayName(p2)}`
           docData.player2 = getDuoDisplayName(duo2)
 
-          docData.player1Id = p1?.id || duo1.p1Id
-          docData.player2Id = p2?.id || duo1.p2Id
-          docData.player3Id = p3?.id || duo2.p1Id
+          docData.player1Id = p1.id
+          docData.player2Id = p2?.id || formData.partner
+          docData.player3Id = p3?.id || duo2?.p1Id
           docData.player3 = getDisplayName(p3, 'Opponent 3')
-          docData.player4Id = p4?.id || duo2.p2Id
+          docData.player4Id = p4?.id || duo2?.p2Id
           docData.player4 = getDisplayName(p4, 'Opponent 4')
+        }
 
           // If we have two proofs and this is Game 2, use the second proof
           if (idSuffix === '_2' && formData.proofImage2) {
@@ -844,44 +851,25 @@ export default function SubmitResult() {
                 {formData.gameType === 'Open League Doubles' ? 'Your Duo' : 'You'}
               </label>
               <div style={{ display: 'grid', gap: '8px' }}>
-                {formData.gameType === 'Open League Doubles' ? (
-                  <select
-                    name="yourDuoId"
-                    value={formData.yourDuoId}
-                    onChange={handleChange}
-                    required
-                    style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text)' }}
-                  >
-                    <option value="">Select Your Team</option>
-                    {userDuos.length > 0 && (
-                      <optgroup label="Your Registered Teams">
-                        {userDuos.map(d => (
-                          <option key={d.id} value={d.id}>{getDuoDisplayName(d)}</option>
-                        ))}
-                      </optgroup>
-                    )}
-                    <optgroup label="All Registered Teams">
-                      {openLeagueDuos.filter(d => !userDuos.some(ud => ud.id === d.id)).map(d => (
-                        <option key={d.id} value={d.id}>{getDuoDisplayName(d)}</option>
-                      ))}
-                    </optgroup>
-                  </select>
-                ) : (
-                  <div style={{
-                    padding: '12px',
-                    background: 'var(--bg-primary)',
-                    borderRadius: '8px',
-                    fontWeight: 'bold',
-                    border: '1px solid var(--border)',
-                    color: 'var(--accent-cyan)'
-                  }}>
-                    {currentUserName}
-                  </div>
-                )}
-                {formData.gameType === 'Open League Doubles' && !detectedUserDuo && (
-                  <p style={{ fontSize: '0.7rem', color: 'var(--warning)', marginTop: '5px' }}>
-                    Auto-detection failed. Please select your team manually from "All Registered Teams".
-                  </p>
+                <div style={{
+                  padding: '12px',
+                  background: 'var(--bg-primary)',
+                  borderRadius: '8px',
+                  fontWeight: 'bold',
+                  border: '1px solid var(--border)',
+                  color: 'var(--accent-cyan)'
+                }}>
+                  {currentUserName}
+                </div>
+                {formData.gameType === 'Open League Doubles' && (
+                  <UserSearchSelect
+                    users={allUsers}
+                    selectedId={formData.partner}
+                    onSelect={id => setFormData(prev => ({ ...prev, partner: id }))}
+                    placeholder="Search partner..."
+                    label=""
+                    onQueryChange={searchUsers}
+                  />
                 )}
               </div>
             </div>
