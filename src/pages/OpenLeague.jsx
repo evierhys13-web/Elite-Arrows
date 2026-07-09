@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import Breadcrumbs from "../components/Breadcrumbs";
 import { useToast } from "../context/ToastContext";
@@ -13,6 +13,7 @@ export default function OpenLeague() {
   const [activeTab, setActiveTab] = useState("singles");
   const { user, getAllUsers, getResults, triggerDataRefresh, forceFetchResults, dataRefreshTrigger } = useAuth();
   const { showToast } = useToast();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [now, setNow] = useState(new Date());
   const [duos, setDuos] = useState([]);
@@ -314,6 +315,15 @@ export default function OpenLeague() {
                         {activeTab === "singles" ? (
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <Link to={`/profile/${row.id}`} style={{ textDecoration: 'none', color: 'white', fontWeight: 600 }}>{row.username}</Link>
+                            {isSubscribed && row.id !== user?.id && (
+                              <button
+                                className="btn btn-primary btn-xs"
+                                style={{ padding: '4px 8px', fontSize: '0.65rem' }}
+                                onClick={() => navigate(`/submit-result?gameType=Open League Singles&opponent=${row.id}`)}
+                              >
+                                Log Score
+                              </button>
+                            )}
                           </div>
                         ) : (
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -326,6 +336,15 @@ export default function OpenLeague() {
                                 )}
                               </div>
                             </div>
+                            {isSubscribed && (
+                              <button
+                                className="btn btn-primary btn-xs"
+                                style={{ padding: '4px 8px', fontSize: '0.65rem' }}
+                                onClick={() => navigate(`/submit-result?gameType=Open League Doubles&opponent=${row.id}`)}
+                              >
+                                Log Score
+                              </button>
+                            )}
                           </div>
                         )}
                       </td>

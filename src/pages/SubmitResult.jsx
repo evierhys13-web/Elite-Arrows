@@ -1053,19 +1053,21 @@ export default function SubmitResult() {
                     placeholder="0"
                   />
                 </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label style={{ fontSize: '0.8rem' }}>Checkout Success %</label>
-                  <input
-                    type="number"
-                    name="yourDoubleSuccess"
-                    value={formData.yourDoubleSuccess}
-                    onChange={handleChange}
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    placeholder="0"
-                  />
-                </div>
+                {formData.gameType !== 'Open League Doubles' && (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.8rem' }}>Checkout Success %</label>
+                    <input
+                      type="number"
+                      name="yourDoubleSuccess"
+                      value={formData.yourDoubleSuccess}
+                      onChange={handleChange}
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      placeholder="0"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1099,19 +1101,21 @@ export default function SubmitResult() {
                     placeholder="0"
                   />
                 </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label style={{ fontSize: '0.8rem' }}>Checkout Success %</label>
-                  <input
-                    type="number"
-                    name="opponentDoubleSuccess"
-                    value={formData.opponentDoubleSuccess}
-                    onChange={handleChange}
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    placeholder="0"
-                  />
-                </div>
+                {formData.gameType !== 'Open League Doubles' && (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.8rem' }}>Checkout Success %</label>
+                    <input
+                      type="number"
+                      name="opponentDoubleSuccess"
+                      value={formData.opponentDoubleSuccess}
+                      onChange={handleChange}
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      placeholder="0"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>
