@@ -196,6 +196,22 @@ export default function SubmitResult() {
   const isAdmin = user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin
   const isOpenLeague = formData.gameType === 'Open League Singles' || formData.gameType === 'Open League Doubles'
 
+  const userDuo = formData.gameType === 'Open League Doubles'
+    ? openLeagueDuos.find(d => String(d.p1Id) === String(user.id) || String(d.p2Id) === String(user.id))
+    : null
+
+  const getDuoDisplayName = (duo) => {
+    if (!duo) return 'Unknown Duo'
+    if (duo.teamName) return duo.teamName
+    const u1 = allUsers.find(u => String(u.id) === String(duo.p1Id))
+    const u2 = allUsers.find(u => String(u.id) === String(duo.p2Id))
+    if (duo.captainId) {
+      const cap = allUsers.find(u => String(u.id) === String(duo.captainId))
+      if (cap) return cap.username
+    }
+    return `${u1?.username || 'P1'} & ${u2?.username || 'P2'}`
+  }
+
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
@@ -400,16 +416,16 @@ export default function SubmitResult() {
     }
 
     if (formData.gameType === 'Open League Doubles') {
-      if (!formData.partner) {
-        setError('Please select your partner')
+      if (!userDuo) {
+        setError('You must be part of a registered duo to submit doubles results.')
         return
       }
-      if (!formData.opponent2) {
-        setError('Please select your second opponent')
+      if (!formData.opponent) {
+        setError('Please select the opposing duo.')
         return
       }
       if (!formData.yourScore2 || !formData.opponentScore2) {
-        setError('Please enter scores for both games')
+        setError('Please enter scores for both games.')
         return
       }
       if (!formData.proofImage || !formData.proofImage2) {
@@ -421,9 +437,11 @@ export default function SubmitResult() {
       return
     }
     
-    const opponentUser = allUsers.find(u => u.id === formData.opponent)
+    const opponentDuo = formData.gameType === 'Open League Doubles' ? openLeagueDuos.find(d => d.id === formData.opponent) : null
+    const opponentUser = !opponentDuo ? allUsers.find(u => u.id === formData.opponent) : null
+
     const submitterName = getDisplayName(user, 'You')
-    const opponentName = getDisplayName(opponentUser, formData.opponent || 'Selected opponent')
+    const opponentName = opponentDuo ? getDuoDisplayName(opponentDuo) : getDisplayName(opponentUser, formData.opponent || 'Selected opponent')
     
     if (formData.gameType === 'League' && opponentUser) {
       if (opponentUser.division !== user?.division) {
@@ -581,35 +599,23 @@ export default function SubmitResult() {
         }
 
         if (formData.gameType === 'Open League Doubles') {
-          const partnerUser = allUsers.find(u => u.id === formData.partner)
-          const opp2User = allUsers.find(u => u.id === formData.opponent2)
+          const duo1 = userDuo
+          const duo2 = opponentDuo
 
-          const team1Ids = [String(user.id), String(formData.partner)].sort().join('_')
-          const team2Ids = [String(formData.opponent), String(formData.opponent2)].sort().join('_')
+          const p1 = allUsers.find(u => String(u.id) === String(duo1.p1Id))
+          const p2 = allUsers.find(u => String(u.id) === String(duo1.p2Id))
+          const p3 = allUsers.find(u => String(u.id) === String(duo2.p1Id))
+          const p4 = allUsers.find(u => String(u.id) === String(duo2.p2Id))
 
-          const duo1 = openLeagueDuos.find(d => d.id === team1Ids)
-          const duo2 = openLeagueDuos.find(d => d.id === team2Ids)
+          docData.player1 = getDuoDisplayName(duo1)
+          docData.player2 = getDuoDisplayName(duo2)
 
-          const getTeamDisplayName = (duo, p1, p2, defaultName) => {
-            if (duo) {
-              if (duo.teamName) return duo.teamName
-              if (duo.captainId) {
-                const captain = allUsers.find(u => String(u.id) === String(duo.captainId))
-                if (captain) return getDisplayName(captain)
-              }
-            }
-            if (p1 && p2) return `${getDisplayName(p1)} & ${getDisplayName(p2)}`
-            return defaultName
-          }
-
-          docData.player1 = getTeamDisplayName(duo1, user, partnerUser, submitterName)
-          docData.player2 = getTeamDisplayName(duo2, opponentUser, opp2User, opponentName)
-
-          docData.player2Id = partnerUser?.id || formData.partner
-          docData.player3Id = opponentUser?.id || formData.opponent
-          docData.player3 = opponentName
-          docData.player4Id = opp2User?.id || formData.opponent2
-          docData.player4 = getDisplayName(opp2User, 'Opponent 2')
+          docData.player1Id = p1?.id || duo1.p1Id
+          docData.player2Id = p2?.id || duo1.p2Id
+          docData.player3Id = p3?.id || duo2.p1Id
+          docData.player3 = getDisplayName(p3, 'Opponent 3')
+          docData.player4Id = p4?.id || duo2.p2Id
+          docData.player4 = getDisplayName(p4, 'Opponent 4')
 
           // If we have two proofs and this is Game 2, use the second proof
           if (idSuffix === '_2' && formData.proofImage2) {
@@ -826,7 +832,7 @@ export default function SubmitResult() {
           }} className="match-players-grid">
             <div style={{ textAlign: 'center' }}>
               <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
-                {formData.gameType === 'Open League Doubles' ? 'Your Team' : 'You'}
+                {formData.gameType === 'Open League Doubles' ? 'Your Duo' : 'You'}
               </label>
               <div style={{ display: 'grid', gap: '8px' }}>
                 <div style={{
@@ -837,21 +843,12 @@ export default function SubmitResult() {
                   border: '1px solid var(--border)',
                   color: 'var(--accent-cyan)'
                 }}>
-                  {currentUserName}
+                  {formData.gameType === 'Open League Doubles' ? (userDuo ? getDuoDisplayName(userDuo) : currentUserName) : currentUserName}
                 </div>
-                {formData.gameType === 'Open League Doubles' && (
-                  <select
-                    name="partner"
-                    value={formData.partner}
-                    onChange={handleChange}
-                    required
-                    style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text)' }}
-                  >
-                    <option value="">Select Partner</option>
-                    {availablePlayers.map(p => (
-                      <option key={p.id} value={p.id}>{getDisplayName(p)}</option>
-                    ))}
-                  </select>
+                {formData.gameType === 'Open League Doubles' && !userDuo && (
+                  <p style={{ fontSize: '0.7rem', color: 'var(--error)', marginTop: '5px' }}>
+                    You are not registered in any duo.
+                  </p>
                 )}
               </div>
             </div>
@@ -883,40 +880,37 @@ export default function SubmitResult() {
                       )
                     })}
                   </select>
+                ) : formData.gameType === 'Open League Doubles' ? (
+                  <select
+                    name="opponent"
+                    value={formData.opponent}
+                    onChange={handleChange}
+                    required
+                    style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                  >
+                    <option value="">Select Duo</option>
+                    {openLeagueDuos.filter(d => d.id !== userDuo?.id).map(d => (
+                      <option key={d.id} value={d.id}>{getDuoDisplayName(d)}</option>
+                    ))}
+                  </select>
                 ) : (
-                  <>
-                    <select
-                      name="opponent"
-                      value={formData.opponent}
-                      onChange={handleChange}
-                      required
-                      style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text)' }}
-                    >
-                      <option value="">{formData.gameType === 'Open League Doubles' ? 'Opponent 1' : 'Select opponent'}</option>
-                      {opponentOptions.map(p => {
-                        const status = getOpponentStatus(p.id)
-                        return (
-                          <option key={p.id} value={p.id}>
-                            {getDisplayName(p)} ({p.division}){formData.gameType === 'League' && status?.played ? ' - Played' : ''}
-                          </option>
-                        )
-                      })}
-                    </select>
-                    {formData.gameType === 'Open League Doubles' && (
-                      <select
-                        name="opponent2"
-                        value={formData.opponent2}
-                        onChange={handleChange}
-                        required
-                        style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text)' }}
-                      >
-                        <option value="">Opponent 2</option>
-                        {opponentOptions.filter(p => p.id !== formData.opponent).map(p => (
-                          <option key={p.id} value={p.id}>{getDisplayName(p)}</option>
-                        ))}
-                      </select>
-                    )}
-                  </>
+                  <select
+                    name="opponent"
+                    value={formData.opponent}
+                    onChange={handleChange}
+                    required
+                    style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                  >
+                    <option value="">Select opponent</option>
+                    {opponentOptions.map(p => {
+                      const status = getOpponentStatus(p.id)
+                      return (
+                        <option key={p.id} value={p.id}>
+                          {getDisplayName(p)} ({p.division}){formData.gameType === 'League' && status?.played ? ' - Played' : ''}
+                        </option>
+                      )
+                    })}
+                  </select>
                 )}
               </div>
             </div>

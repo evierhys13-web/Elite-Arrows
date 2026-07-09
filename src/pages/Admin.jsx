@@ -83,7 +83,7 @@ export default function Admin() {
   const [loadingLogs, setLoadingLogs] = useState(false)
 
   useEffect(() => {
-    if (activeTab === 'openleague') {
+    if (activeTab === 'openleague' || (activeTab === 'results' && showSubmitGame)) {
       const fetchData = async () => {
         try {
           const [duoSnap, singlesSnap] = await Promise.all([
@@ -446,19 +446,22 @@ export default function Admin() {
 
   const handleAdminSubmitGame = async () => {
     const f = adminGameForm
-    if (!f.player1 || !f.player2) return showToast('Select both players.', 'error')
-    if (f.gameType === 'Open League Doubles' && (!f.player3 || !f.player4)) return showToast('Select all 4 players for doubles.', 'error')
+    if (!f.player1 || !f.player2) return showToast('Select both players/teams.', 'error')
     if (!f.score1 || !f.score2) return showToast('Enter both scores.', 'error')
     const s1 = parseInt(f.score1); const s2 = parseInt(f.score2)
     if (isNaN(s1) || isNaN(s2)) return showToast('Invalid scores.', 'error')
 
-    const p1 = allPlayers.find(u => String(u.id) === String(f.player1))
-    const p2 = allPlayers.find(u => String(u.id) === String(f.player2))
-    const p3 = f.player3 ? allPlayers.find(u => String(u.id) === String(f.player3)) : null
-    const p4 = f.player4 ? allPlayers.find(u => String(u.id) === String(f.player4)) : null
+    const isDoubles = f.gameType === 'Open League Doubles'
+    const duo1 = isDoubles ? openLeagueDuos.find(d => d.id === f.player1) : null
+    const duo2 = isDoubles ? openLeagueDuos.find(d => d.id === f.player2) : null
+
+    const p1 = !isDoubles ? allPlayers.find(u => String(u.id) === String(f.player1)) : allPlayers.find(u => String(u.id) === String(duo1.p1Id))
+    const p2 = !isDoubles ? allPlayers.find(u => String(u.id) === String(f.player2)) : allPlayers.find(u => String(u.id) === String(duo1.p2Id))
+    const p3 = isDoubles ? allPlayers.find(u => String(u.id) === String(duo2.p1Id)) : null
+    const p4 = isDoubles ? allPlayers.find(u => String(u.id) === String(duo2.p2Id)) : null
 
     if (!p1 || !p2) return showToast('Players not found.', 'error')
-    if (f.gameType === 'Open League Doubles' && (!p3 || !p4)) return showToast('Players not found.', 'error')
+    if (isDoubles && (!p3 || !p4)) return showToast('Duo players not found.', 'error')
 
     const resultId = `admin_${Date.now()}`
     try {
@@ -471,15 +474,22 @@ export default function Admin() {
         if (matchTime >= s2Start) targetSeason = 'Season 2'
       }
 
-      const getDisplayName = (profile, fallback = 'Unknown') => (
-        profile?.username || profile?.name || profile?.displayName || profile?.email || fallback
-      )
+      const getTeamName = (duo, u1, u2) => {
+        if (duo) {
+          if (duo.teamName) return duo.teamName
+          if (duo.captainId) {
+            const cap = allPlayers.find(u => String(u.id) === String(duo.captainId))
+            if (cap) return cap.username
+          }
+        }
+        return (u1 && u2) ? `${u1.username} & ${u2.username}` : 'Unknown Team'
+      }
 
       const newMatch = {
         id: resultId,
-        player1: p1.username,
+        player1: isDoubles ? getTeamName(duo1, p1, p2) : p1.username,
         player1Id: p1.id,
-        player2: p2.username,
+        player2: isDoubles ? getTeamName(duo2, p3, p4) : p2.username,
         player2Id: p2.id,
         score1: s1, score2: s2,
         gameType: f.gameType,
@@ -493,33 +503,7 @@ export default function Admin() {
         player2Stats: { '180s': parseInt(f.p2_180s) || 0, highestCheckout: parseInt(f.p2_checkout) || 0, doubleSuccess: parseFloat(f.p2_doubles) || 0 }
       }
 
-      if (f.gameType === 'Open League Doubles') {
-        // Correcting player assignments for doubles: p1&p2 are Team 1, p3&p4 are Team 2
-        // We also want to fetch the team name/captain display name
-        const duoSnap = await getDocs(collection(db, 'openLeagueDuos'))
-        const openLeagueDuos = duoSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-
-        const team1Ids = [String(p1.id), String(p2.id)].sort().join('_')
-        const team2Ids = [String(p3.id), String(p4.id)].sort().join('_')
-
-        const duo1 = openLeagueDuos.find(d => d.id === team1Ids)
-        const duo2 = openLeagueDuos.find(d => d.id === team2Ids)
-
-        const getTeamName = (duo, u1, u2) => {
-          if (duo) {
-            if (duo.teamName) return duo.teamName
-            if (duo.captainId) {
-              const cap = allPlayers.find(u => String(u.id) === String(duo.captainId))
-              if (cap) return cap.username
-            }
-          }
-          return `${u1.username} & ${u2.username}`
-        }
-
-        newMatch.player1 = getTeamName(duo1, p1, p2)
-        newMatch.player2 = getTeamName(duo2, p3, p4)
-        newMatch.player1Id = p1.id
-        newMatch.player2Id = p2.id
+      if (isDoubles) {
         newMatch.player3Id = p3.id
         newMatch.player3 = p3.username
         newMatch.player4Id = p4.id
@@ -1148,64 +1132,78 @@ export default function Admin() {
             {showSubmitGame && (
               <div className="card glass animate-fade-in" style={{ marginBottom: '24px', padding: '24px', border: '1px solid var(--accent-cyan)', background: 'rgba(0,0,0,0.3)' }}>
                 <h3 style={{ marginBottom: '16px', color: 'var(--accent-cyan)' }}>Admin Quick Submit</h3>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Game Type</label>
+                  <select className="glass" style={{ width: '100%', padding: '10px' }} value={adminGameForm.gameType} onChange={e => setAdminGameForm({...adminGameForm, gameType: e.target.value})}>
+                    <option value="Friendly">Friendly</option>
+                    <option value="League">League</option>
+                    <option value="Champions League">Champions League</option>
+                    <option value="Cup">Cup</option>
+                    <option value="Playoff">Playoff</option>
+                    <option value="Open League Singles">Open League Singles</option>
+                    <option value="Open League Doubles">Open League Doubles</option>
+                  </select>
+                </div>
+
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
                   <div className="form-group">
-                    <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>{adminGameForm.gameType === 'Open League Doubles' ? 'Home Team - Player 1' : 'Player 1 (Home)'}</label>
-                    <UserSearchSelect
-                      users={allPlayers}
-                      selectedId={adminGameForm.player1}
-                      onSelect={id => setAdminGameForm({...adminGameForm, player1: id})}
-                      onQueryChange={searchUsers}
-                    />
+                    <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>{adminGameForm.gameType === 'Open League Doubles' ? 'Home Team (Duo)' : 'Player 1 (Home)'}</label>
+                    {adminGameForm.gameType === 'Open League Doubles' ? (
+                      <select
+                        className="glass"
+                        style={{ width: '100%', padding: '10px' }}
+                        value={adminGameForm.player1}
+                        onChange={e => setAdminGameForm({...adminGameForm, player1: e.target.value})}
+                      >
+                        <option value="">Select Duo</option>
+                        {openLeagueDuos.map(d => {
+                          const u1 = allPlayers.find(u => String(u.id) === String(d.p1Id))
+                          const u2 = allPlayers.find(u => String(u.id) === String(d.p2Id))
+                          const name = d.teamName || (d.captainId ? allPlayers.find(u => String(u.id) === String(d.captainId))?.username : null) || `${u1?.username || 'P1'} & ${u2?.username || 'P2'}`
+                          return <option key={d.id} value={d.id}>{name}</option>
+                        })}
+                      </select>
+                    ) : (
+                      <UserSearchSelect
+                        users={allPlayers}
+                        selectedId={adminGameForm.player1}
+                        onSelect={id => setAdminGameForm({...adminGameForm, player1: id})}
+                        onQueryChange={searchUsers}
+                      />
+                    )}
                   </div>
                   <div className="form-group">
-                    <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>{adminGameForm.gameType === 'Open League Doubles' ? 'Away Team - Player 1' : 'Player 2 (Away)'}</label>
-                    <UserSearchSelect
-                      users={allPlayers}
-                      selectedId={adminGameForm.player2}
-                      onSelect={id => setAdminGameForm({...adminGameForm, player2: id})}
-                      onQueryChange={searchUsers}
-                    />
+                    <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>{adminGameForm.gameType === 'Open League Doubles' ? 'Away Team (Duo)' : 'Player 2 (Away)'}</label>
+                    {adminGameForm.gameType === 'Open League Doubles' ? (
+                      <select
+                        className="glass"
+                        style={{ width: '100%', padding: '10px' }}
+                        value={adminGameForm.player2}
+                        onChange={e => setAdminGameForm({...adminGameForm, player2: e.target.value})}
+                      >
+                        <option value="">Select Duo</option>
+                        {openLeagueDuos.map(d => {
+                          const u1 = allPlayers.find(u => String(u.id) === String(d.p1Id))
+                          const u2 = allPlayers.find(u => String(u.id) === String(d.p2Id))
+                          const name = d.teamName || (d.captainId ? allPlayers.find(u => String(u.id) === String(d.captainId))?.username : null) || `${u1?.username || 'P1'} & ${u2?.username || 'P2'}`
+                          return <option key={d.id} value={d.id}>{name}</option>
+                        })}
+                      </select>
+                    ) : (
+                      <UserSearchSelect
+                        users={allPlayers}
+                        selectedId={adminGameForm.player2}
+                        onSelect={id => setAdminGameForm({...adminGameForm, player2: id})}
+                        onQueryChange={searchUsers}
+                      />
+                    )}
                   </div>
                 </div>
 
-                {adminGameForm.gameType === 'Open League Doubles' && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
-                    <div className="form-group">
-                      <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Home Team - Player 2</label>
-                      <UserSearchSelect
-                        users={allPlayers}
-                        selectedId={adminGameForm.player3}
-                        onSelect={id => setAdminGameForm({...adminGameForm, player3: id})}
-                        onQueryChange={searchUsers}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Away Team - Player 2</label>
-                      <UserSearchSelect
-                        users={allPlayers}
-                        selectedId={adminGameForm.player4}
-                        onSelect={id => setAdminGameForm({...adminGameForm, player4: id})}
-                        onQueryChange={searchUsers}
-                      />
-                    </div>
-                  </div>
-                )}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '16px', marginBottom: '20px' }}>
                   <div className="form-group"><label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Score 1</label><input type="number" className="glass" style={{ width: '100%' }} value={adminGameForm.score1} onChange={e => setAdminGameForm({...adminGameForm, score1: e.target.value})} placeholder="0" /></div>
                   <div className="form-group"><label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Score 2</label><input type="number" className="glass" style={{ width: '100%' }} value={adminGameForm.score2} onChange={e => setAdminGameForm({...adminGameForm, score2: e.target.value})} placeholder="0" /></div>
-                  <div className="form-group">
-                    <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Game Type</label>
-                    <select className="glass" style={{ width: '100%' }} value={adminGameForm.gameType} onChange={e => setAdminGameForm({...adminGameForm, gameType: e.target.value})}>
-                      <option value="Friendly">Friendly</option>
-                      <option value="League">League</option>
-                      <option value="Champions League">Champions League</option>
-                      <option value="Cup">Cup</option>
-                      <option value="Playoff">Playoff</option>
-                      <option value="Open League Singles">Open League Singles</option>
-                      <option value="Open League Doubles">Open League Doubles</option>
-                    </select>
-                  </div>
                   <div className="form-group">
                     <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Season</label>
                     <select className="glass" style={{ width: '100%' }} value={adminGameForm.season} onChange={e => setAdminGameForm({...adminGameForm, season: e.target.value})}>
