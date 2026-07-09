@@ -129,9 +129,16 @@ export default function MatchLog() {
     if (!targetUser.id) return []
     return allResults
       .filter(r => {
-        const player1Id = getResultPlayerId(r, 1, allUsers)
-        const player2Id = getResultPlayerId(r, 2, allUsers)
-        const isTargetMatch = String(player1Id) === String(targetUser.id) || String(player2Id) === String(targetUser.id)
+        const isDoubles = isOpenLeagueDoublesResult(r)
+        const p1Id = String(r.player1Id || '')
+        const p2Id = String(r.player2Id || '')
+        const p3Id = String(r.player3Id || '')
+        const p4Id = String(r.player4Id || '')
+
+        const isTargetMatch = isDoubles
+          ? [p1Id, p2Id, p3Id, p4Id].includes(String(targetUser.id))
+          : (p1Id === String(targetUser.id) || p2Id === String(targetUser.id))
+
         const isApproved = String(r.status || '').toLowerCase() === 'approved'
 
         // Robust season matching
@@ -147,17 +154,33 @@ export default function MatchLog() {
         } else if (competition === 'Open Singles') {
           return isOpenLeagueResult(r)
         } else if (competition === 'Open Doubles') {
-          return isOpenLeagueDoublesResult(r)
+          return isDoubles
         }
         return false
       })
       .map(r => {
-        const player1Id = getResultPlayerId(r, 1, allUsers)
-        const player2Id = getResultPlayerId(r, 2, allUsers)
-        const isPlayer1 = String(player1Id) === String(targetUser.id)
-        const opponentId = isPlayer1 ? player2Id : player1Id
-        const opponentUser = allUsers.find(u => String(u.id) === String(opponentId))
-        const win = Number(r.score1) > Number(r.score2) ? (isPlayer1 ? true : false) : (Number(r.score2) > Number(r.score1) ? (isPlayer1 ? false : true) : null)
+        const isDoubles = isOpenLeagueDoublesResult(r)
+        const p1Id = String(r.player1Id || '')
+        const p2Id = String(r.player2Id || '')
+        const p3Id = String(r.player3Id || '')
+        const p4Id = String(r.player4Id || '')
+
+        let isTeam1 = false
+        let opponentName = ''
+        let opponentId = ''
+
+        if (isDoubles) {
+          isTeam1 = (p1Id === String(targetUser.id) || p2Id === String(targetUser.id))
+          opponentName = isTeam1 ? r.player2 : r.player1 // Using the display strings we now store correctly
+          // In doubles, we use the display strings from player1/player2 which now represent teams
+        } else {
+          isTeam1 = p1Id === String(targetUser.id)
+          opponentId = isTeam1 ? p2Id : p1Id
+          const opponentUser = allUsers.find(u => String(u.id) === String(opponentId))
+          opponentName = opponentUser?.username || (isTeam1 ? r.player2 : r.player1) || 'Unknown'
+        }
+
+        const win = Number(r.score1) > Number(r.score2) ? (isTeam1 ? true : false) : (Number(r.score2) > Number(r.score1) ? (isTeam1 ? false : true) : null)
 
         let resultLabel = 'Draw'
         if (win === true) resultLabel = 'Win'
@@ -166,10 +189,9 @@ export default function MatchLog() {
         return {
           id: r.id,
           opponentId: String(opponentId),
-          opponent: opponentUser?.username || 'Unknown',
-          opponentDivision: opponentUser?.division || '',
+          opponent: opponentName,
           result: resultLabel,
-          score: isPlayer1 ? `${r.score1}-${r.score2}` : `${r.score2}-${r.score1}`,
+          score: isTeam1 ? `${r.score1}-${r.score2}` : `${r.score2}-${r.score1}`,
           date: r.date,
           season: r.season,
           gameType: r.gameType

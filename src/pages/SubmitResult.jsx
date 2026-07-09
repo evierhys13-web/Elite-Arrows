@@ -48,6 +48,7 @@ export default function SubmitResult() {
   const [error, setError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [submittedFixtureId, setSubmittedFixtureId] = useState(null)
+  const [openLeagueDuos, setOpenLeagueDuos] = useState([])
 
   // Background upload states
   const [isUploadingProof, setIsUploadingProof] = useState(false)
@@ -57,6 +58,18 @@ export default function SubmitResult() {
   const currentUploadTaskId = useRef(null)
 
   const allUsers = getAllUsers()
+
+  useEffect(() => {
+    const fetchDuos = async () => {
+      try {
+        const snap = await getDocs(collection(db, 'openLeagueDuos'))
+        setOpenLeagueDuos(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })))
+      } catch (e) {
+        console.error("Failed to fetch duos", e)
+      }
+    }
+    fetchDuos()
+  }, [])
   const availablePlayers = allUsers.filter(u => u.id !== user.id)
   const opponentOptions = formData.gameType === 'League'
     ? availablePlayers.filter(u => u.division === user.division)
@@ -570,8 +583,29 @@ export default function SubmitResult() {
         if (formData.gameType === 'Open League Doubles') {
           const partnerUser = allUsers.find(u => u.id === formData.partner)
           const opp2User = allUsers.find(u => u.id === formData.opponent2)
+
+          const team1Ids = [String(user.id), String(formData.partner)].sort().join('_')
+          const team2Ids = [String(formData.opponent), String(formData.opponent2)].sort().join('_')
+
+          const duo1 = openLeagueDuos.find(d => d.id === team1Ids)
+          const duo2 = openLeagueDuos.find(d => d.id === team2Ids)
+
+          const getTeamDisplayName = (duo, p1, p2, defaultName) => {
+            if (duo) {
+              if (duo.teamName) return duo.teamName
+              if (duo.captainId) {
+                const captain = allUsers.find(u => String(u.id) === String(duo.captainId))
+                if (captain) return getDisplayName(captain)
+              }
+            }
+            if (p1 && p2) return `${getDisplayName(p1)} & ${getDisplayName(p2)}`
+            return defaultName
+          }
+
+          docData.player1 = getTeamDisplayName(duo1, user, partnerUser, submitterName)
+          docData.player2 = getTeamDisplayName(duo2, opponentUser, opp2User, opponentName)
+
           docData.player2Id = partnerUser?.id || formData.partner
-          docData.player2 = getDisplayName(partnerUser, 'Partner')
           docData.player3Id = opponentUser?.id || formData.opponent
           docData.player3 = opponentName
           docData.player4Id = opp2User?.id || formData.opponent2
