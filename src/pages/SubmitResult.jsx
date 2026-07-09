@@ -37,7 +37,7 @@ const INITIAL_RESULT_FORM = {
 }
 
 export default function SubmitResult() {
-  const { user, getAllUsers, getFixtures, getResults, updateResults, updateFixtures, addTokens, triggerDataRefresh, notifyAdmins, adminData, getSeasons } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, updateResults, updateFixtures, addTokens, triggerDataRefresh, notifyAdmins, adminData, getSeasons, searchUsers } = useAuth()
   const { showToast } = useToast()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
