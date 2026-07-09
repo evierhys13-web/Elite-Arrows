@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { db, doc, setDoc, storage, ref, uploadString, uploadBytes, uploadBytesResumable, getDownloadURL } from '../firebase'
+import { db, doc, setDoc, storage, ref, uploadString, uploadBytes, uploadBytesResumable, getDownloadURL, collection, getDocs } from '../firebase'
 import { useToast } from '../context/ToastContext'
 import { logResultSubmitted } from '../utils/analytics'
+import UserSearchSelect from '../components/UserSearchSelect'
 
 const INITIAL_RESULT_FORM = {
   gameType: 'Friendly',
