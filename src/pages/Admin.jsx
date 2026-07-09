@@ -1098,6 +1098,57 @@ export default function Admin() {
               <input type="text" className="glass" placeholder="🔍 Search players..." style={{ flex: 2, padding: '10px' }} value={resultSearch} onChange={e => setResultSearch(e.target.value)} />
               <select className="glass" style={{ flex: 1, padding: '10px' }} value={resultTypeFilter} onChange={e => setResultTypeFilter(e.target.value)}><option value="all">All Types</option><option value="league">League</option><option value="champions league">Champions League</option><option value="cup">Cup</option><option value="friendly">Friendly</option></select>
             </div>
+
+            {showSubmitGame && (
+              <div className="card glass animate-fade-in" style={{ marginBottom: '24px', padding: '24px', border: '1px solid var(--accent-cyan)', background: 'rgba(0,0,0,0.3)' }}>
+                <h3 style={{ marginBottom: '16px', color: 'var(--accent-cyan)' }}>Admin Quick Submit</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Player 1 (Home)</label>
+                    <UserSearchSelect
+                      users={allPlayers}
+                      selectedId={adminGameForm.player1}
+                      onSelect={id => setAdminGameForm({...adminGameForm, player1: id})}
+                      onQueryChange={searchUsers}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Player 2 (Away)</label>
+                    <UserSearchSelect
+                      users={allPlayers}
+                      selectedId={adminGameForm.player2}
+                      onSelect={id => setAdminGameForm({...adminGameForm, player2: id})}
+                      onQueryChange={searchUsers}
+                    />
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+                  <div className="form-group"><label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Score 1</label><input type="number" className="glass" style={{ width: '100%' }} value={adminGameForm.score1} onChange={e => setAdminGameForm({...adminGameForm, score1: e.target.value})} placeholder="0" /></div>
+                  <div className="form-group"><label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Score 2</label><input type="number" className="glass" style={{ width: '100%' }} value={adminGameForm.score2} onChange={e => setAdminGameForm({...adminGameForm, score2: e.target.value})} placeholder="0" /></div>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Game Type</label>
+                    <select className="glass" style={{ width: '100%' }} value={adminGameForm.gameType} onChange={e => setAdminGameForm({...adminGameForm, gameType: e.target.value})}>
+                      <option value="Friendly">Friendly</option>
+                      <option value="League">League</option>
+                      <option value="Champions League">Champions League</option>
+                      <option value="Cup">Cup</option>
+                      <option value="Playoff">Playoff</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Season</label>
+                    <select className="glass" style={{ width: '100%' }} value={adminGameForm.season} onChange={e => setAdminGameForm({...adminGameForm, season: e.target.value})}>
+                      <option value="">Auto (Current)</option>
+                      {getSeasons().map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button className="btn btn-primary" style={{ flex: 2 }} onClick={handleAdminSubmitGame}>Submit Result</button>
+                  <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowSubmitGame(false)}>Cancel</button>
+                </div>
+              </div>
+            )}
             {editingResult && (
               <div className="card glass" style={{ marginBottom: '24px', padding: '24px', border: '1px solid var(--accent-cyan)' }}>
                 <form onSubmit={handleUpdateResult}>
