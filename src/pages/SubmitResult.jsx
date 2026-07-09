@@ -197,28 +197,36 @@ export default function SubmitResult() {
   const isAdmin = user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin
   const isOpenLeague = formData.gameType === 'Open League Singles' || formData.gameType === 'Open League Doubles'
 
-  const userDuos = formData.gameType === 'Open League Doubles'
-    ? openLeagueDuos.filter(d => String(d.p1Id) === String(user.id) || String(d.p2Id) === String(user.id))
-    : []
+  const userDuos = openLeagueDuos.filter(d =>
+    String(d.p1Id) === String(user.id) ||
+    String(d.p2Id) === String(user.id)
+  )
 
   const detectedUserDuo = userDuos.length > 0 ? userDuos[0] : null
 
   useEffect(() => {
-    if (formData.gameType === 'Open League Doubles' && detectedUserDuo && !formData.yourDuoId) {
-      setFormData(prev => ({ ...prev, yourDuoId: detectedUserDuo.id }))
+    if (formData.gameType === 'Open League Doubles' && !formData.yourDuoId) {
+      if (detectedUserDuo) {
+        setFormData(prev => ({ ...prev, yourDuoId: detectedUserDuo.id }))
+      }
     }
   }, [formData.gameType, detectedUserDuo])
 
   const getDuoDisplayName = (duo) => {
     if (!duo) return 'Unknown Duo'
-    if (duo.teamName) return duo.teamName
     const u1 = allUsers.find(u => String(u.id) === String(duo.p1Id))
     const u2 = allUsers.find(u => String(u.id) === String(duo.p2Id))
+
+    const playersStr = (u1 && u2) ? `(${u1.username} & ${u2.username})` : ''
+
+    if (duo.teamName) return `${duo.teamName} ${playersStr}`
+
     if (duo.captainId) {
       const cap = allUsers.find(u => String(u.id) === String(duo.captainId))
-      if (cap) return cap.username
+      if (cap) return `${cap.username}'s Team ${playersStr}`
     }
-    return u1 && u2 ? `${u1.username} & ${u2.username}` : 'Unnamed Team'
+
+    return u1 && u2 ? `${u1.username} & ${u2.username}` : `Unnamed Team (${duo.id})`
   }
 
   const handleChange = (e) => {
@@ -854,16 +862,18 @@ export default function SubmitResult() {
                     style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text)' }}
                   >
                     <option value="">Select Your Team</option>
-                    {(isAdmin ? openLeagueDuos : userDuos).map(d => (
-                      <option key={d.id} value={d.id}>{getDuoDisplayName(d)}</option>
-                    ))}
-                    {!isAdmin && userDuos.length === 0 && openLeagueDuos.length > 0 && (
-                       <optgroup label="All Registered Teams (Admin View)">
-                          {openLeagueDuos.map(d => (
-                            <option key={d.id} value={d.id}>{getDuoDisplayName(d)}</option>
-                          ))}
-                       </optgroup>
+                    {userDuos.length > 0 && (
+                      <optgroup label="Your Registered Teams">
+                        {userDuos.map(d => (
+                          <option key={d.id} value={d.id}>{getDuoDisplayName(d)}</option>
+                        ))}
+                      </optgroup>
                     )}
+                    <optgroup label="All Registered Teams">
+                      {openLeagueDuos.filter(d => !userDuos.some(ud => ud.id === d.id)).map(d => (
+                        <option key={d.id} value={d.id}>{getDuoDisplayName(d)}</option>
+                      ))}
+                    </optgroup>
                   </select>
                 ) : (
                   <div style={{
@@ -877,9 +887,9 @@ export default function SubmitResult() {
                     {currentUserName}
                   </div>
                 )}
-                {formData.gameType === 'Open League Doubles' && !detectedUserDuo && !isAdmin && (
+                {formData.gameType === 'Open League Doubles' && !detectedUserDuo && (
                   <p style={{ fontSize: '0.7rem', color: 'var(--warning)', marginTop: '5px' }}>
-                    Auto-detection failed. Please select your team manually.
+                    Auto-detection failed. Please select your team manually from "All Registered Teams".
                   </p>
                 )}
               </div>
@@ -921,7 +931,7 @@ export default function SubmitResult() {
                     style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text)' }}
                   >
                     <option value="">Select Duo</option>
-                    {openLeagueDuos.filter(d => d.id !== userDuo?.id).map(d => (
+                    {openLeagueDuos.filter(d => d.id !== formData.yourDuoId).map(d => (
                       <option key={d.id} value={d.id}>{getDuoDisplayName(d)}</option>
                     ))}
                   </select>
