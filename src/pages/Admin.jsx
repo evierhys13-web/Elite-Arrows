@@ -51,7 +51,7 @@ export default function Admin() {
   // Form states
   const [showSubmitGame, setShowSubmitGame] = useState(false)
   const [adminGameForm, setAdminGameForm] = useState({
-    player1: '', player2: '',
+    player1: '', player2: '', player3: '', player4: '',
     score1: '', score2: '',
     gameType: 'Friendly',
     season: '',
@@ -447,12 +447,19 @@ export default function Admin() {
   const handleAdminSubmitGame = async () => {
     const f = adminGameForm
     if (!f.player1 || !f.player2) return showToast('Select both players.', 'error')
+    if (f.gameType === 'Open League Doubles' && (!f.player3 || !f.player4)) return showToast('Select all 4 players for doubles.', 'error')
     if (!f.score1 || !f.score2) return showToast('Enter both scores.', 'error')
     const s1 = parseInt(f.score1); const s2 = parseInt(f.score2)
     if (isNaN(s1) || isNaN(s2)) return showToast('Invalid scores.', 'error')
+
     const p1 = allPlayers.find(u => String(u.id) === String(f.player1))
     const p2 = allPlayers.find(u => String(u.id) === String(f.player2))
+    const p3 = f.player3 ? allPlayers.find(u => String(u.id) === String(f.player3)) : null
+    const p4 = f.player4 ? allPlayers.find(u => String(u.id) === String(f.player4)) : null
+
     if (!p1 || !p2) return showToast('Players not found.', 'error')
+    if (f.gameType === 'Open League Doubles' && (!p3 || !p4)) return showToast('Players not found.', 'error')
+
     const resultId = `admin_${Date.now()}`
     try {
       const isSuper = f.gameType === 'Champions League'
@@ -463,6 +470,11 @@ export default function Admin() {
       if (isSuper && (!f.season || f.season === 'Season 1' || f.season === '2026')) {
         if (matchTime >= s2Start) targetSeason = 'Season 2'
       }
+
+      const getDisplayName = (profile, fallback = 'Unknown') => (
+        profile?.username || profile?.name || profile?.displayName || profile?.email || fallback
+      )
+
       const newMatch = {
         id: resultId,
         player1: p1.username,
@@ -480,10 +492,44 @@ export default function Admin() {
         player1Stats: { '180s': parseInt(f.p1_180s) || 0, highestCheckout: parseInt(f.p1_checkout) || 0, doubleSuccess: parseFloat(f.p1_doubles) || 0 },
         player2Stats: { '180s': parseInt(f.p2_180s) || 0, highestCheckout: parseInt(f.p2_checkout) || 0, doubleSuccess: parseFloat(f.p2_doubles) || 0 }
       }
+
+      if (f.gameType === 'Open League Doubles') {
+        // Correcting player assignments for doubles: p1&p2 are Team 1, p3&p4 are Team 2
+        // We also want to fetch the team name/captain display name
+        const duoSnap = await getDocs(collection(db, 'openLeagueDuos'))
+        const openLeagueDuos = duoSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+
+        const team1Ids = [String(p1.id), String(p2.id)].sort().join('_')
+        const team2Ids = [String(p3.id), String(p4.id)].sort().join('_')
+
+        const duo1 = openLeagueDuos.find(d => d.id === team1Ids)
+        const duo2 = openLeagueDuos.find(d => d.id === team2Ids)
+
+        const getTeamName = (duo, u1, u2) => {
+          if (duo) {
+            if (duo.teamName) return duo.teamName
+            if (duo.captainId) {
+              const cap = allPlayers.find(u => String(u.id) === String(duo.captainId))
+              if (cap) return cap.username
+            }
+          }
+          return `${u1.username} & ${u2.username}`
+        }
+
+        newMatch.player1 = getTeamName(duo1, p1, p2)
+        newMatch.player2 = getTeamName(duo2, p3, p4)
+        newMatch.player1Id = p1.id
+        newMatch.player2Id = p2.id
+        newMatch.player3Id = p3.id
+        newMatch.player3 = p3.username
+        newMatch.player4Id = p4.id
+        newMatch.player4 = p4.username
+      }
+
       await setDoc(doc(db, 'results', resultId), newMatch)
       logMatchApproved(newMatch)
-      await logAudit('ADMIN_SUBMIT_GAME', `Admin submitted game: ${p1.username} ${s1}-${s2} ${p2.username}`)
-      setAdminGameForm({ player1: '', player2: '', score1: '', score2: '', gameType: 'Friendly', p1_180s: '', p2_180s: '', p1_checkout: '', p2_checkout: '', p1_doubles: '', p2_doubles: '' })
+      await logAudit('ADMIN_SUBMIT_GAME', `Admin submitted ${f.gameType}: ${newMatch.player1} ${s1}-${s2} ${newMatch.player2}`)
+      setAdminGameForm({ player1: '', player2: '', player3: '', player4: '', score1: '', score2: '', gameType: 'Friendly', p1_180s: '', p2_180s: '', p1_checkout: '', p2_checkout: '', p1_doubles: '', p2_doubles: '' })
       triggerDataRefresh('results')
       showToast('Game submitted!', 'success')
     } catch (e) { showToast('Error: ' + e.message, 'error') }
@@ -1104,7 +1150,7 @@ export default function Admin() {
                 <h3 style={{ marginBottom: '16px', color: 'var(--accent-cyan)' }}>Admin Quick Submit</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
                   <div className="form-group">
-                    <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Player 1 (Home)</label>
+                    <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>{adminGameForm.gameType === 'Open League Doubles' ? 'Home Team - Player 1' : 'Player 1 (Home)'}</label>
                     <UserSearchSelect
                       users={allPlayers}
                       selectedId={adminGameForm.player1}
@@ -1113,7 +1159,7 @@ export default function Admin() {
                     />
                   </div>
                   <div className="form-group">
-                    <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Player 2 (Away)</label>
+                    <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>{adminGameForm.gameType === 'Open League Doubles' ? 'Away Team - Player 1' : 'Player 2 (Away)'}</label>
                     <UserSearchSelect
                       users={allPlayers}
                       selectedId={adminGameForm.player2}
@@ -1122,6 +1168,29 @@ export default function Admin() {
                     />
                   </div>
                 </div>
+
+                {adminGameForm.gameType === 'Open League Doubles' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+                    <div className="form-group">
+                      <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Home Team - Player 2</label>
+                      <UserSearchSelect
+                        users={allPlayers}
+                        selectedId={adminGameForm.player3}
+                        onSelect={id => setAdminGameForm({...adminGameForm, player3: id})}
+                        onQueryChange={searchUsers}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Away Team - Player 2</label>
+                      <UserSearchSelect
+                        users={allPlayers}
+                        selectedId={adminGameForm.player4}
+                        onSelect={id => setAdminGameForm({...adminGameForm, player4: id})}
+                        onQueryChange={searchUsers}
+                      />
+                    </div>
+                  </div>
+                )}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '16px', marginBottom: '20px' }}>
                   <div className="form-group"><label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Score 1</label><input type="number" className="glass" style={{ width: '100%' }} value={adminGameForm.score1} onChange={e => setAdminGameForm({...adminGameForm, score1: e.target.value})} placeholder="0" /></div>
                   <div className="form-group"><label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Score 2</label><input type="number" className="glass" style={{ width: '100%' }} value={adminGameForm.score2} onChange={e => setAdminGameForm({...adminGameForm, score2: e.target.value})} placeholder="0" /></div>
@@ -1133,6 +1202,8 @@ export default function Admin() {
                       <option value="Champions League">Champions League</option>
                       <option value="Cup">Cup</option>
                       <option value="Playoff">Playoff</option>
+                      <option value="Open League Singles">Open League Singles</option>
+                      <option value="Open League Doubles">Open League Doubles</option>
                     </select>
                   </div>
                   <div className="form-group">
