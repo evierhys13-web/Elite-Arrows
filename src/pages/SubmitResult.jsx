@@ -441,12 +441,8 @@ export default function SubmitResult() {
         setError('Please select the opposing duo.')
         return
       }
-      if (!formData.yourScore2 || !formData.opponentScore2) {
-        setError('Please enter scores for both games.')
-        return
-      }
-      if (!formData.proofImage || !formData.proofImage2) {
-        setError('Two pieces of proof (one for each game) are required for doubles results.')
+      if (!formData.proofImage) {
+        setError('Proof of result is required.')
         return
       }
     } else if (!formData.proofImage && !formData.proofVideo) {
@@ -645,14 +641,9 @@ export default function SubmitResult() {
 
       let finalResultObj;
       if (formData.gameType === 'Open League Doubles') {
-        const res1 = createResultDoc(formData.yourScore, formData.opponentScore, '_1', formData.proofImage)
-        const res2 = createResultDoc(formData.yourScore2, formData.opponentScore2, '_2', formData.proofImage2 || formData.proofImage)
-        await Promise.all([
-          setDoc(doc(db, 'results', res1.id), res1),
-          setDoc(doc(db, 'results', res2.id), res2)
-        ])
-        currentResults.push(res1, res2)
-        finalResultObj = res1;
+        finalResultObj = createResultDoc(formData.yourScore, formData.opponentScore)
+        await setDoc(doc(db, 'results', finalResultObj.id), finalResultObj)
+        currentResults.push(finalResultObj)
       } else {
         finalResultObj = createResultDoc(formData.yourScore, formData.opponentScore)
         await setDoc(doc(db, 'results', finalResultObj.id), finalResultObj)
@@ -966,7 +957,7 @@ export default function SubmitResult() {
           }}>
             <div className="form-group">
               <label style={{ fontWeight: '600', marginBottom: '8px', display: 'block' }}>
-                {formData.gameType === 'Open League Doubles' ? 'Game 1: Your Team Legs' : 'Your Legs Won'}
+                {formData.gameType === 'Open League Doubles' ? 'Home Team Legs' : 'Your Legs Won'}
               </label>
               <input
                 type="number"
@@ -981,7 +972,7 @@ export default function SubmitResult() {
             </div>
             <div className="form-group">
               <label style={{ fontWeight: '600', marginBottom: '8px', display: 'block' }}>
-                {formData.gameType === 'Open League Doubles' ? 'Game 1: Opposing Duo Legs' : 'Opponent Legs Won'}
+                {formData.gameType === 'Open League Doubles' ? 'Away Team Legs' : 'Opponent Legs Won'}
               </label>
               <input
                 type="number"
@@ -994,37 +985,6 @@ export default function SubmitResult() {
                 placeholder="0"
               />
             </div>
-
-            {formData.gameType === 'Open League Doubles' && (
-              <>
-                <div className="form-group">
-                  <label style={{ fontWeight: '600', marginBottom: '8px', display: 'block' }}>Game 2: Your Team Legs</label>
-                  <input
-                    type="number"
-                    name="yourScore2"
-                    value={formData.yourScore2}
-                    onChange={handleChange}
-                    min="0"
-                    required
-                    style={{ fontSize: '1.2rem', textAlign: 'center', padding: '15px' }}
-                    placeholder="0"
-                  />
-                </div>
-                <div className="form-group">
-                  <label style={{ fontWeight: '600', marginBottom: '8px', display: 'block' }}>Game 2: Opposing Duo Legs</label>
-                  <input
-                    type="number"
-                    name="opponentScore2"
-                    value={formData.opponentScore2}
-                    onChange={handleChange}
-                    min="0"
-                    required
-                    style={{ fontSize: '1.2rem', textAlign: 'center', padding: '15px' }}
-                    placeholder="0"
-                  />
-                </div>
-              </>
-            )}
           </div>
 
           <div style={{
@@ -1158,7 +1118,7 @@ export default function SubmitResult() {
 
           <div className="form-group" style={{ marginBottom: '30px' }}>
             <label style={{ fontSize: '0.9rem', fontWeight: '600', display: 'block', marginBottom: '12px' }}>
-              {formData.gameType === 'Open League Doubles' ? 'Proof of Result 1 (Game 1)' : 'Proof of Result (Photo/Screenshot/Video)'}
+              Proof of Result (Photo/Screenshot/Video)
               {isUploadingProof && <span style={{ marginLeft: '10px', color: 'var(--accent-cyan)', fontSize: '0.8rem' }}>• Uploading: {uploadProgress}%</span>}
             </label>
             
@@ -1342,88 +1302,6 @@ export default function SubmitResult() {
                   >
                     ×
                   </button>
-                )}
-              </div>
-            )}
-
-            {formData.gameType === 'Open League Doubles' && (
-              <div style={{ marginTop: '20px' }}>
-                <label style={{ fontSize: '0.9rem', fontWeight: '600', display: 'block', marginBottom: '12px' }}>
-                  Proof of Result 2 (Game 2)
-                </label>
-                {!formData.proofImage2 ? (
-                  <div
-                    className="result-proof-picker"
-                    style={{
-                      border: '2px dashed var(--border)',
-                      borderRadius: '12px',
-                      padding: '30px 20px',
-                      textAlign: 'center',
-                      cursor: 'pointer',
-                      background: 'var(--bg-secondary)',
-                      width: '100%',
-                      color: 'var(--text)',
-                      position: 'relative',
-                      overflow: 'hidden'
-                    }}
-                  >
-                    <div className="result-proof-actions" style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                      <div className="result-proof-native-button result-proof-camera" style={{ flex: 1, minWidth: '120px' }}>
-                        <span style={{ fontSize: '0.85rem' }}>📷 Photo</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          aria-label="Take Photo"
-                          onClick={(e) => { e.currentTarget.value = '' }}
-                          onChange={(e) => handleImageUpload(e, 2)}
-                          className="result-proof-input"
-                        />
-                      </div>
-                      <div className="result-proof-native-button result-proof-upload" style={{ flex: 1, minWidth: '120px' }}>
-                        <span style={{ fontSize: '0.85rem' }}>📁 Image</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          aria-label="Upload Screenshot"
-                          onClick={(e) => { e.currentTarget.value = '' }}
-                          onChange={(e) => handleImageUpload(e, 2)}
-                          className="result-proof-input"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ position: 'relative', textAlign: 'center' }}>
-                    <img
-                      src={formData.proofImage2}
-                      alt="Proof 2"
-                      style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '12px', border: '1px solid var(--border)' }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeImage(2)}
-                      style={{
-                        position: 'absolute',
-                        top: '10px',
-                        right: '10px',
-                        background: '#ef4444',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '50%',
-                        width: '32px',
-                        height: '32px',
-                        cursor: 'pointer',
-                        fontSize: '20px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        boxShadow: '0 2px 10px rgba(0,0,0,0.3)'
-                      }}
-                    >
-                      ×
-                    </button>
-                  </div>
                 )}
               </div>
             )}
