@@ -1,11 +1,11 @@
 export const getOutcomePoints = (legsWon, legsLost, options = {}) => {
   const won = Number(legsWon) || 0
   const lost = Number(legsLost) || 0
-  const { noDrawBonus = false, noWinBonus = false, isOpenLeague = false, isChampionsLeague = false } = options
+  const { noDrawBonus = false, noWinBonus = false, isOpenLeague = false, isChampionsLeague = false, isSingles = false } = options
 
   if (isOpenLeague) {
     if (won > lost) return 3
-    if (won === lost) return 1
+    if (won === lost) return isSingles ? 0 : 1
     return -1
   }
 
@@ -21,7 +21,7 @@ export const getOutcomePoints = (legsWon, legsLost, options = {}) => {
 }
 
 export const getLeaguePoints = (legsWon, legsLost, options = {}) => {
-  if (options.isOpenLeague || options.isChampionsLeague) {
+  if (options.isChampionsLeague) {
     return getOutcomePoints(legsWon, legsLost, options)
   }
   return (Number(legsWon) || 0) + getOutcomePoints(legsWon, legsLost, options)

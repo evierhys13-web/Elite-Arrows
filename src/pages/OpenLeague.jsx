@@ -135,7 +135,7 @@ export default function OpenLeague() {
         s.played += 1;
         s.legsWon += won;
         s.legsLost += lost;
-        const pts = getLeaguePoints(won, lost, { isOpenLeague: true });
+        const pts = getLeaguePoints(won, lost, { isOpenLeague: true, isSingles: true });
         s.points += pts;
         if (won > lost) { s.wins += 1; s.form.push('W'); }
         else if (won < lost) { s.losses += 1; s.form.push('L'); }
@@ -211,7 +211,7 @@ export default function OpenLeague() {
         s.played += 1;
         s.legsWon += won;
         s.legsLost += lost;
-        const pts = getLeaguePoints(won, lost, { isOpenLeague: true });
+        const pts = getLeaguePoints(won, lost, { isOpenLeague: true, isSingles: false });
         s.points += pts;
         if (won > lost) { s.wins += 1; s.form.push('W'); }
         else if (won < lost) { s.losses += 1; s.form.push('L'); }
@@ -268,7 +268,7 @@ export default function OpenLeague() {
       <div className="page-header" style={{ marginBottom: "24px", display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div>
           <h1 className="page-title text-gradient" style={{ fontSize: "2.5rem" }}>Open League</h1>
-          <p style={{ color: 'var(--text-muted)' }}>Free for all players. Win: 3pts, Draw: 1pt, Loss: -1pt.</p>
+          <p style={{ color: 'var(--text-muted)' }}>Free for all players. Leg: 1pt, Win: +3pts, Loss: -1pt. {activeTab === "singles" ? "(No Draws)" : "Draw: +1pt"}</p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
           <button className="btn btn-secondary btn-sm" onClick={handleRefresh} disabled={loading}>
@@ -295,7 +295,7 @@ export default function OpenLeague() {
                 <th style={{ textAlign: "left", padding: "12px" }}>{activeTab === "singles" ? "Player" : "Duo"}</th>
                 <th style={{ width: "40px", textAlign: "center" }}>P</th>
                 <th style={{ width: "40px", textAlign: "center" }}>W</th>
-                <th style={{ width: "40px", textAlign: "center" }}>D</th>
+                {activeTab !== "singles" && <th style={{ width: "40px", textAlign: "center" }}>D</th>}
                 <th style={{ width: "40px", textAlign: "center" }}>L</th>
                 <th style={{ width: "60px", textAlign: "center" }}>+/-</th>
                 <th style={{ width: "60px", textAlign: "center", color: "var(--accent-cyan)" }}>Pts</th>
@@ -331,7 +331,7 @@ export default function OpenLeague() {
                       </td>
                       <td style={{ textAlign: 'center' }}>{row.played}</td>
                       <td style={{ textAlign: 'center' }}>{row.wins}</td>
-                      <td style={{ textAlign: 'center' }}>{row.draws}</td>
+                      {activeTab !== "singles" && <td style={{ textAlign: 'center' }}>{row.draws}</td>}
                       <td style={{ textAlign: 'center' }}>{row.losses}</td>
                       <td style={{ textAlign: 'center', color: legDiff > 0 ? 'var(--success)' : legDiff < 0 ? 'var(--error)' : 'inherit' }}>
                         {legDiff > 0 ? `+${legDiff}` : legDiff}
