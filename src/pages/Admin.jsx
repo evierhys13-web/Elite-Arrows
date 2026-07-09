@@ -1153,24 +1153,8 @@ export default function Admin() {
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
                   <div className="form-group">
-                    <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>{adminGameForm.gameType === 'Open League Doubles' ? 'Home Team (Duo)' : 'Player 1 (Home)'}</label>
+                    <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>{adminGameForm.gameType === 'Open League Doubles' ? 'Home Team (Player 1 & 2)' : 'Player 1 (Home)'}</label>
                     {adminGameForm.gameType === 'Open League Doubles' ? (
-                      <select
-                        className="glass"
-                        style={{ width: '100%', padding: '10px' }}
-                        value={adminGameForm.player1}
-                        onChange={e => setAdminGameForm({...adminGameForm, player1: e.target.value})}
-                      >
-                        <option value="">Select Duo</option>
-                        {openLeagueDuos.map(d => {
-                          const u1 = allPlayers.find(u => String(u.id) === String(d.p1Id))
-                          const u2 = allPlayers.find(u => String(u.id) === String(d.p2Id))
-                          const name = d.teamName || (d.captainId ? allPlayers.find(u => String(u.id) === String(d.captainId))?.username : null) || `${u1?.username || 'P1'} & ${u2?.username || 'P2'}`
-                          return <option key={d.id} value={d.id}>{name}</option>
-                        })}
-                      </select>
-                    ) : (
-                      {adminGameForm.gameType === 'Open League Doubles' ? (
                       <div style={{ display: 'flex', gap: '10px' }}>
                         <UserSearchSelect
                           users={allPlayers}

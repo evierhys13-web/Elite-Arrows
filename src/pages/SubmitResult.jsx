@@ -638,10 +638,9 @@ export default function SubmitResult() {
           docData.player4 = getDisplayName(p4, 'Opponent 4')
         }
 
-          // If we have two proofs and this is Game 2, use the second proof
-          if (idSuffix === '_2' && formData.proofImage2) {
-            docData.proofImage = formData.proofImage2
-          }
+        // If we have two proofs and this is Game 2, use the second proof
+        if (idSuffix === '_2' && formData.proofImage2) {
+          docData.proofImage = formData.proofImage2
         }
         return docData
       }
