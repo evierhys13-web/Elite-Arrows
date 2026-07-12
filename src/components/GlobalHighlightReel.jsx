@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 export default function GlobalHighlightReel() {
   const [highlights, setHighlights] = useState([])
   const [loading, setLoading] = useState(true)
+  const [previewImage, setPreviewImage] = useState(null)
 
   useEffect(() => {
     const fetchHighlights = async () => {
@@ -63,7 +64,11 @@ export default function GlobalHighlightReel() {
 
     if (h.imageUrl) {
         return (
-            <img src={h.imageUrl} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img
+                src={h.imageUrl}
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', cursor: 'zoom-in' }}
+                onClick={() => setPreviewImage(h.imageUrl)}
+            />
         )
     }
 
@@ -108,6 +113,21 @@ export default function GlobalHighlightReel() {
           </div>
         ))}
       </div>
+
+      {previewImage && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+          onClick={() => setPreviewImage(null)}
+        >
+          <img src={previewImage} alt="Preview" style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: '12px', boxShadow: '0 0 50px rgba(0,0,0,0.5)' }} />
+          <button
+            style={{ position: 'absolute', top: '20px', right: '20px', background: 'white', color: 'black', border: 'none', borderRadius: '50%', width: '40px', height: '40px', fontSize: '24px', cursor: 'pointer', fontWeight: 'bold' }}
+            onClick={() => setPreviewImage(null)}
+          >
+            ×
+          </button>
+        </div>
+      )}
     </div>
   )
 }
