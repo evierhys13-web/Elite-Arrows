@@ -99,7 +99,7 @@ export default function Sidebar() {
           { path: '/contact', label: 'Contact Us', icon: MailIcon },
           { path: '/support', label: 'Support', icon: HelpIcon },
           { path: '/donations', label: 'Donations', icon: HeartIcon },
-          { label: 'Player / Role Applications', icon: ExternalLinkIcon, external: 'https://vercel.com/evierhys13-webs-projects/elite-arrows-merch' },
+          { label: 'Player / Role Applications', icon: ExternalLinkIcon, external: 'https://elite-arrows-applications.vercel.app/' },
         ]
       },
       {
