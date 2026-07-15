@@ -32,6 +32,7 @@ const BellIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor
 const HeartIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
 const StarIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
 const DownloadIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7,10 12,15 17,10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+const ExternalLinkIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
 
 const OPEN_LEAGUE_LAUNCH_DATE = new Date('2026-07-01T00:00:00')
 
@@ -98,6 +99,7 @@ export default function Sidebar() {
           { path: '/contact', label: 'Contact Us', icon: MailIcon },
           { path: '/support', label: 'Support', icon: HelpIcon },
           { path: '/donations', label: 'Donations', icon: HeartIcon },
+          { label: 'Player / Role Applications', icon: ExternalLinkIcon, external: 'https://vercel.com/evierhys13-webs-projects/elite-arrows-merch' },
         ]
       },
       {
@@ -164,9 +166,9 @@ export default function Sidebar() {
                 {group.title}
               </div>
               {group.items.map((item) => {
-                const isActive = window.location.pathname === item.path
+                const isActive = !item.external && window.location.pathname === item.path
                 return (
-                  <button key={item.path} className={`nav-item ${isActive ? 'active' : ''}`} onClick={() => { navigate(item.path); setIsOpen(false); }}>
+                  <button key={item.label} className={`nav-item ${isActive ? 'active' : ''}`} onClick={() => { if (item.external) { window.open(item.external, '_blank', 'noopener,noreferrer') } else { navigate(item.path) } setIsOpen(false); }}>
                     <item.icon />
                     <span>{item.label}</span>
                   </button>
