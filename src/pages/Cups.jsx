@@ -16,7 +16,9 @@ export default function CupTournaments() {
     maxPlayers: 8,
     type: 'knockout', // knockout, groups, world_cup, group_knockout
     playersPerGroup: 4,
-    advancePerGroup: 2
+    advancePerGroup: 2,
+    allowBestThird: true,
+    targetDurationDays: 14
   })
   const [selectedPlayers, setSelectedPlayers] = useState([])
   const [matches, setMatches] = useState([])
@@ -180,6 +182,10 @@ export default function CupTournaments() {
       if (formData.type === 'world_cup' || formData.type === 'group_knockout') {
         const advanceCount = formData.type === 'group_knockout' ? (formData.advancePerGroup || 2) : 2
         const totalAdvancers = numGroups * advanceCount
+
+        // If best 3rd is disabled, we only take the direct advancers and fill with Byes
+        const effectiveAdvancers = (formData.type === 'world_cup' && !formData.allowBestThird) ? totalAdvancers : totalAdvancers
+
         totalPlayersInKnockout = Math.pow(2, Math.ceil(Math.log2(totalAdvancers)))
         const numExtraNeeded = totalPlayersInKnockout - totalAdvancers
 
@@ -219,21 +225,27 @@ export default function CupTournaments() {
           }
         }
 
-        // 3. Assign best next-placed players to fill remaining bracket spots
-        for (let i = 0; i < numExtraNeeded && kIdx < totalPlayersInKnockout; i++) {
-          const mIdx = Math.floor(kIdx / 2)
-          const targetPlayer = kIdx % 2 === 0 ? 'sourceP1' : 'sourceP2'
-          if (knockoutMatches[mIdx]) {
-            knockoutMatches[mIdx][targetPlayer] = { bestExtra: true, position: i + 1 }
+        // 3. Assign best next-placed players to fill remaining bracket spots (if enabled)
+        if (formData.type === 'group_knockout' || (formData.type === 'world_cup' && formData.allowBestThird)) {
+          for (let i = 0; i < numExtraNeeded && kIdx < totalPlayersInKnockout; i++) {
+            const mIdx = Math.floor(kIdx / 2)
+            const targetPlayer = kIdx % 2 === 0 ? 'sourceP1' : 'sourceP2'
+            if (knockoutMatches[mIdx]) {
+              knockoutMatches[mIdx][targetPlayer] = { bestExtra: true, position: i + 1 }
+            }
+            kIdx++
           }
-          kIdx++
         }
 
         newMatches = [...newMatches, ...knockoutMatches]
       }
     }
 
-    setRoundFormats(defaultFormats)
+    // Calculate stage duration estimates
+    const totalStages = (formData.type === 'knockout') ? numKnockoutRounds : (1 + numKnockoutRounds)
+    const stageDays = Math.max(1, Math.round((formData.targetDurationDays / totalStages) * 10) / 10)
+
+    setRoundFormats({ ...defaultFormats, _stageDays: stageDays })
     setMatches(newMatches)
     setGroups(newGroups)
   }
@@ -479,6 +491,20 @@ export default function CupTournaments() {
             </div>
           </div>
 
+          <div className="form-group">
+            <label>Target Total Duration (Days)</label>
+            <input
+              type="number"
+              min="1"
+              value={formData.targetDurationDays}
+              onChange={(e) => setFormData({...formData, targetDurationDays: parseInt(e.target.value)})}
+              placeholder="e.g. 14"
+            />
+            <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+              Used to calculate recommended deadlines for each stage.
+            </p>
+          </div>
+
           {(formData.type === 'groups' || formData.type === 'world_cup' || formData.type === 'group_knockout') && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
               <div className="form-group">
@@ -498,7 +524,14 @@ export default function CupTournaments() {
                   <label>Advancement Rule</label>
                   <div style={{ padding: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', fontSize: '0.85rem', border: '1px solid rgba(255,255,255,0.1)' }}>
                     <span style={{ color: 'var(--success)', fontWeight: 800 }}>✓ Top 2</span> from every group advance.<br/>
-                    <span style={{ color: 'var(--accent-cyan)', fontWeight: 800 }}>✓ Best 3rd</span> placed players advance to fill the bracket.
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginTop: '8px', color: formData.allowBestThird ? 'white' : 'var(--text-muted)' }}>
+                      <input
+                        type="checkbox"
+                        checked={formData.allowBestThird}
+                        onChange={(e) => setFormData({...formData, allowBestThird: e.target.checked})}
+                      />
+                      <span>Include best 3rd placed players to fill bracket</span>
+                    </label>
                   </div>
                 </div>
               )}
@@ -586,11 +619,12 @@ export default function CupTournaments() {
                 {formData.type === 'world_cup' && <span style={{ fontSize: '0.7rem', background: 'gold', color: 'black', padding: '2px 8px', borderRadius: '4px', fontWeight: 900 }}>ELITE FORMAT</span>}
               </h4>
 
-              {formData.type === 'world_cup' && (
+                {formData.type === 'world_cup' && (
                 <div style={{ background: 'rgba(255,215,0,0.05)', padding: '15px', borderRadius: '12px', border: '1px solid rgba(255,215,0,0.2)', marginBottom: '20px' }}>
                   <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                    <strong>Phase 1:</strong> {groups.length} Groups of {formData.playersPerGroup} players. Top 2 from each group + best 3rd placed qualify.<br/>
-                    <strong>Phase 2:</strong> {Math.ceil(Math.log2(matches.filter(m => m.stage === 'knockout' && m.round === 1).length * 2))}-round knockout bracket ({matches.filter(m => m.stage === 'knockout' && m.round === 1).length * 2} players).
+                    <strong>Phase 1:</strong> {groups.length} Groups of {formData.playersPerGroup} players. Top 2 from each group {formData.allowBestThird ? '+ best 3rd placed ' : ''}qualify.<br/>
+                    <strong>Phase 2:</strong> {Math.ceil(Math.log2(matches.filter(m => m.stage === 'knockout' && m.round === 1).length * 2))}-round knockout bracket ({matches.filter(m => m.stage === 'knockout' && m.round === 1).length * 2} players).<br/>
+                    <strong style={{ color: 'var(--accent-cyan)' }}>⏱ Estimated Pace:</strong> {roundFormats._stageDays} days per stage.
                   </p>
                 </div>
               )}
@@ -599,7 +633,8 @@ export default function CupTournaments() {
                 <div style={{ background: 'rgba(56,189,248,0.05)', padding: '15px', borderRadius: '12px', border: '1px solid rgba(56,189,248,0.2)', marginBottom: '20px' }}>
                   <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                     <strong>Phase 1:</strong> {groups.length} Groups of {formData.playersPerGroup} players. Top {formData.advancePerGroup || 2} from each group qualify.<br/>
-                    <strong>Phase 2:</strong> {Math.ceil(Math.log2(matches.filter(m => m.stage === 'knockout' && m.round === 1).length * 2))}-round knockout bracket ({matches.filter(m => m.stage === 'knockout' && m.round === 1).length * 2} players).
+                    <strong>Phase 2:</strong> {Math.ceil(Math.log2(matches.filter(m => m.stage === 'knockout' && m.round === 1).length * 2))}-round knockout bracket ({matches.filter(m => m.stage === 'knockout' && m.round === 1).length * 2} players).<br/>
+                    <strong style={{ color: 'var(--accent-cyan)' }}>⏱ Estimated Pace:</strong> {roundFormats._stageDays} days per stage.
                   </p>
                 </div>
               )}
@@ -848,9 +883,16 @@ export default function CupTournaments() {
                     Entry: £{cup.entryFee} | Players: {cup.players?.length || 0} | Prize Pot: £{prizePot}
                   </p>
                   {cup.type === 'world_cup' && (
-                    <p style={{ color: '#fbbf24', fontSize: '0.8rem', fontWeight: 800, marginTop: '8px', textTransform: 'uppercase' }}>
-                      {cup.groupsAdvanced ? '✓ Knockout Phase In Progress' : '⏳ Group Stage In Progress'}
-                    </p>
+                    <div style={{ marginTop: '12px' }}>
+                      <p style={{ color: '#fbbf24', fontSize: '0.8rem', fontWeight: 800, margin: 0, textTransform: 'uppercase' }}>
+                        {cup.groupsAdvanced ? '✓ Knockout Phase In Progress' : '⏳ Group Stage In Progress'}
+                      </p>
+                      {cup.roundFormats?._stageDays && (
+                        <p style={{ color: 'var(--accent-cyan)', fontSize: '0.75rem', marginTop: '4px' }}>
+                          ⏱ Estimated Pace: {cup.roundFormats._stageDays} days per stage
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
                 {cup.roundFormats && (

@@ -149,7 +149,7 @@ export default function CupBracket() {
     const numGroups = Object.keys(sortedStandings).length
     const totalDirect = numGroups * advanceCount
     const knockoutSize = totalDirect > 0 ? Math.pow(2, Math.ceil(Math.log2(totalDirect))) : 0
-    const numThirdNeeded = knockoutSize - totalDirect
+    const numThirdNeeded = (cup.type === 'group_knockout' || cup.allowBestThird) ? (knockoutSize - totalDirect) : 0
 
     const sortedThirdPlaced = extraPlaced.sort((a, b) => (b.points - a.points) || (b.legsFor - b.legsAgainst) - (a.legsFor - a.legsAgainst) || (b.legsFor - a.legsFor))
 
@@ -436,6 +436,11 @@ export default function CupBracket() {
           }}>
              {isWorldCup ? '🏆 WORLD CUP FORMAT' : isGroupKnockout ? '📋 GROUPS → KNOCKOUT' : (cup.type || 'tournament').replace('_', ' ')}
           </div>
+          {cup.roundFormats?._stageDays && (
+            <div className="glass" style={{ padding: '8px 20px', borderRadius: '30px', fontSize: '0.85rem', color: 'var(--accent-cyan)', fontWeight: 800, border: '1px solid var(--accent-cyan)' }}>
+              ⏱ {cup.roundFormats._stageDays} DAYS PER STAGE
+            </div>
+          )}
         </div>
       </div>
 
@@ -493,7 +498,7 @@ export default function CupBracket() {
           }}>
             <h2 style={{ fontSize: '1.2rem', fontWeight: 900, letterSpacing: '2px', color: 'white' }}>GROUP STANDINGS</h2>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              {isWorldCup ? 'Top 2 + Best 3rd Placed Advance' : isGroupKnockout ? `Top ${cup.advancePerGroup || 2} + Best Next-Placed Advance` : `Top ${cup.advancePerGroup || 2} Advance to Knockout`}
+              {isWorldCup ? (cup.allowBestThird ? 'Top 2 + Best 3rd Placed Advance' : 'Top 2 Advance to Knockout') : isGroupKnockout ? `Top ${cup.advancePerGroup || 2} + Best Next-Placed Advance` : `Top ${cup.advancePerGroup || 2} Advance to Knockout`}
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '24px', marginBottom: '40px' }}>

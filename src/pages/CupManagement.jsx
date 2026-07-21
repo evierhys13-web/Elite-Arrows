@@ -83,9 +83,11 @@ function CupManagement() {
       Object.keys(standings).forEach(gId => {
         const sorted = Object.values(standings[gId]).sort((a,b) => (b.points - a.points) || (b.legsFor - b.legsAgainst) - (a.legsFor - a.legsAgainst) || (b.legsFor - a.legsFor))
         sortedGroups[gId] = sorted
-        // Collect the next-placed player beyond the direct qualifiers
-        if (sorted[advanceCount]) {
-          extraPlacedPlayers.push({ ...sorted[advanceCount], group: gId })
+        // Collect the next-placed player beyond the direct qualifiers (only if enabled or group_knockout which always fills)
+        if (cupData.type === 'group_knockout' || cupData.allowBestThird) {
+          if (sorted[advanceCount]) {
+            extraPlacedPlayers.push({ ...sorted[advanceCount], group: gId })
+          }
         }
       })
 
@@ -701,6 +703,13 @@ function CupManagement() {
                     }}>{cup.status || 'Planned'}</span>
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', opacity: 0.6 }}>ID: {cup.id} | {cup.type}</span>
                   </div>
+                  {cup.roundFormats?._stageDays && (
+                    <div style={{ marginTop: '8px' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', background: 'rgba(56, 189, 248, 0.1)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
+                        ⏱ {cup.roundFormats._stageDays} DAYS PER STAGE
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
