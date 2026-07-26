@@ -203,22 +203,36 @@ export default function CupTournaments() {
 
         // Build empty knockout bracket starting from round 1
         const knockoutMatches = buildKnockoutMatches(new Array(totalPlayersInKnockout).fill(null), numKnockoutRounds, 1)
+        const round1Matches = knockoutMatches.filter(m => m.round === 1)
 
         // Label the initial knockout matches with their source
-        // Implementation of crossover: A1 vs B2, B1 vs C2, C1 vs D2... (Shifted Crossover)
-        // This satisfies the "Top 1 of Group A vs Top 2 of Group B" requirement
+        // Implementation of standard crossover: A1 vs B2, B1 vs A2, C1 vs D2, D1 vs C2...
 
-        // 1. Assign Winners (Position 1)
-        for (let g = 0; g < numGroups && g < knockoutMatches.length; g++) {
-          knockoutMatches[g].sourceP1 = { group: String.fromCharCode(65 + g), position: 1 }
-        }
+        let mIdx = 0
+        for (let g = 0; g < numGroups; g += 2) {
+          const g1 = String.fromCharCode(65 + g)
+          const g2 = (g + 1 < numGroups) ? String.fromCharCode(65 + g + 1) : null
 
-        // 2. Assign Runners-up (Position 2) with a shift
-        // Pairing: Winner of Group G vs Runner-up of Group G+1
-        if (advanceCount >= 2) {
-          for (let g = 0; g < numGroups && g < knockoutMatches.length; g++) {
-            const runnerUpGroupIdx = (g + 1) % numGroups
-            knockoutMatches[g].sourceP2 = { group: String.fromCharCode(65 + runnerUpGroupIdx), position: 2 }
+          if (g2) {
+            // Match for G1 Winner vs G2 Runner-up
+            if (round1Matches[mIdx]) {
+              round1Matches[mIdx].sourceP1 = { group: g1, position: 1 }
+              round1Matches[mIdx].sourceP2 = { group: g2, position: 2 }
+              mIdx++
+            }
+            // Match for G2 Winner vs G1 Runner-up
+            if (round1Matches[mIdx]) {
+              round1Matches[mIdx].sourceP1 = { group: g2, position: 1 }
+              round1Matches[mIdx].sourceP2 = { group: g1, position: 2 }
+              mIdx++
+            }
+          } else {
+            // Odd group left over - Winner vs Runner-up from same group (unideal but only happens with odd group counts)
+            if (round1Matches[mIdx]) {
+              round1Matches[mIdx].sourceP1 = { group: g1, position: 1 }
+              round1Matches[mIdx].sourceP2 = { group: g1, position: 2 }
+              mIdx++
+            }
           }
         }
 
@@ -226,14 +240,14 @@ export default function CupTournaments() {
         if (formData.type === 'group_knockout' || (formData.type === 'world_cup' && formData.allowBestThird)) {
           // Find all empty slots (P1 or P2) in knockout round 1
           const emptySlots = []
-          knockoutMatches.forEach((m, idx) => {
-            if (!m.sourceP1) emptySlots.push({ mIdx: idx, target: 'sourceP1' })
-            if (!m.sourceP2) emptySlots.push({ mIdx: idx, target: 'sourceP2' })
+          round1Matches.forEach((m) => {
+            if (!m.sourceP1) emptySlots.push({ match: m, target: 'sourceP1' })
+            if (!m.sourceP2) emptySlots.push({ match: m, target: 'sourceP2' })
           })
 
           for (let i = 0; i < numExtraNeeded && i < emptySlots.length; i++) {
-            const { mIdx, target } = emptySlots[i]
-            knockoutMatches[mIdx][target] = { bestExtra: true, position: i + 1 }
+            const { match, target } = emptySlots[i]
+            match[target] = { bestExtra: true, position: i + 1 }
           }
         }
 
