@@ -56,7 +56,13 @@ export default function CupTournaments() {
       // 1. Update participants list
       const updatedPlayers = cupData.players.map(pid => String(pid) === String(playerToRemove) ? playerToAdd : pid)
 
-      // 2. Update all matches
+      // 2. Update groups
+      const updatedGroups = (cupData.groups || []).map(g => ({
+        ...g,
+        players: g.players.map(pid => String(pid) === String(playerToRemove) ? playerToAdd : pid)
+      }))
+
+      // 3. Update all matches
       const updatedMatches = cupData.matches.map(m => ({
         ...m,
         player1: String(m.player1) === String(playerToRemove) ? playerToAdd : m.player1,
@@ -64,9 +70,9 @@ export default function CupTournaments() {
         winner: String(m.winner) === String(playerToRemove) ? playerToAdd : m.winner
       }))
 
-      await setDoc(cupRef, { ...cupData, players: updatedPlayers, matches: updatedMatches }, { merge: true })
+      await setDoc(cupRef, { ...cupData, players: updatedPlayers, groups: updatedGroups, matches: updatedMatches }, { merge: true })
 
-      // 3. Update Fixtures
+      // 4. Update Fixtures
       const fixturesSnap = await getDocs(query(collection(db, 'fixtures'), where('cupId', '==', parseInt(swapCup.id))))
       const batch = writeBatch(db)
       let fixtureCount = 0
@@ -199,29 +205,52 @@ export default function CupTournaments() {
         const knockoutMatches = buildKnockoutMatches(new Array(totalPlayersInKnockout).fill(null), numKnockoutRounds, 1)
 
         // Label the initial knockout matches with their source
+        // Implementation of crossover: A1 vs B2, B1 vs A2, etc.
         let kIdx = 0
 
-        // 1. Assign Winners (Position 1) from each group
-        for (let g = 0; g < numGroups && kIdx < totalPlayersInKnockout; g++) {
-          const groupId = String.fromCharCode(65 + g)
-          const mIdx = Math.floor(kIdx / 2)
-          const targetPlayer = kIdx % 2 === 0 ? 'sourceP1' : 'sourceP2'
-          if (knockoutMatches[mIdx]) {
-            knockoutMatches[mIdx][targetPlayer] = { group: groupId, position: 1 }
-          }
-          kIdx++
-        }
+        if (advanceCount === 2 && numGroups % 2 === 0) {
+          // Special logic for standard pairs of groups (A/B, C/D, etc.)
+          for (let g = 0; g < numGroups; g += 2) {
+            const g1 = String.fromCharCode(65 + g)
+            const g2 = String.fromCharCode(65 + g + 1)
 
-        // 2. Assign remaining direct qualifiers (positions 2, 3, ... advanceCount)
-        for (let pos = 2; pos <= advanceCount; pos++) {
+            // Match for G1 Winner vs G2 Runner-up
+            if (knockoutMatches[kIdx]) {
+              knockoutMatches[kIdx].sourceP1 = { group: g1, position: 1 }
+              knockoutMatches[kIdx].sourceP2 = { group: g2, position: 2 }
+              kIdx++
+            }
+            // Match for G2 Winner vs G1 Runner-up
+            if (knockoutMatches[kIdx]) {
+              knockoutMatches[kIdx].sourceP1 = { group: g2, position: 1 }
+              knockoutMatches[kIdx].sourceP2 = { group: g1, position: 2 }
+              kIdx++
+            }
+          }
+        } else {
+          // Fallback to sequential for unusual numbers
+          // 1. Assign Winners (Position 1) from each group
           for (let g = 0; g < numGroups && kIdx < totalPlayersInKnockout; g++) {
             const groupId = String.fromCharCode(65 + g)
             const mIdx = Math.floor(kIdx / 2)
             const targetPlayer = kIdx % 2 === 0 ? 'sourceP1' : 'sourceP2'
             if (knockoutMatches[mIdx]) {
-              knockoutMatches[mIdx][targetPlayer] = { group: groupId, position: pos }
+              knockoutMatches[mIdx][targetPlayer] = { group: groupId, position: 1 }
             }
             kIdx++
+          }
+
+          // 2. Assign remaining direct qualifiers (positions 2, 3, ... advanceCount)
+          for (let pos = 2; pos <= advanceCount; pos++) {
+            for (let g = 0; g < numGroups && kIdx < totalPlayersInKnockout; g++) {
+              const groupId = String.fromCharCode(65 + g)
+              const mIdx = Math.floor(kIdx / 2)
+              const targetPlayer = kIdx % 2 === 0 ? 'sourceP1' : 'sourceP2'
+              if (knockoutMatches[mIdx]) {
+                knockoutMatches[mIdx][targetPlayer] = { group: groupId, position: pos }
+              }
+              kIdx++
+            }
           }
         }
 

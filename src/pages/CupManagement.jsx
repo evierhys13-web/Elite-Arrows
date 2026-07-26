@@ -511,7 +511,13 @@ function CupManagement() {
       // 1. Update participants list
       const updatedPlayers = cupData.players.map(pid => String(pid) === String(playerToRemove) ? playerToAdd : pid)
 
-      // 2. Update all matches (swap the ID everywhere it appears)
+      // 2. Update groups
+      const updatedGroups = (cupData.groups || []).map(g => ({
+        ...g,
+        players: g.players.map(pid => String(pid) === String(playerToRemove) ? playerToAdd : pid)
+      }))
+
+      // 3. Update all matches (swap the ID everywhere it appears)
       const updatedMatches = cupData.matches.map(m => ({
         ...m,
         player1: String(m.player1) === String(playerToRemove) ? playerToAdd : m.player1,
@@ -519,9 +525,9 @@ function CupManagement() {
         winner: String(m.winner) === String(playerToRemove) ? playerToAdd : m.winner
       }))
 
-      await setDoc(cupRef, { ...cupData, players: updatedPlayers, matches: updatedMatches }, { merge: true })
+      await setDoc(cupRef, { ...cupData, players: updatedPlayers, groups: updatedGroups, matches: updatedMatches }, { merge: true })
 
-      // 3. Update Fixtures (sync names and IDs)
+      // 4. Update Fixtures (sync names and IDs)
       const fixturesSnap = await getDocs(query(collection(db, 'fixtures'), where('cupId', '==', parseInt(swapCup.id))))
       const batch = writeBatch(db)
       let fixtureCount = 0
