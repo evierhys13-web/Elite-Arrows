@@ -205,64 +205,35 @@ export default function CupTournaments() {
         const knockoutMatches = buildKnockoutMatches(new Array(totalPlayersInKnockout).fill(null), numKnockoutRounds, 1)
 
         // Label the initial knockout matches with their source
-        // Implementation of crossover: A1 vs B2, B1 vs A2, etc.
-        let kIdx = 0
+        // Implementation of crossover: A1 vs B2, B1 vs C2, C1 vs D2... (Shifted Crossover)
+        // This satisfies the "Top 1 of Group A vs Top 2 of Group B" requirement
 
-        if (advanceCount === 2 && numGroups % 2 === 0) {
-          // Special logic for standard pairs of groups (A/B, C/D, etc.)
-          for (let g = 0; g < numGroups; g += 2) {
-            const g1 = String.fromCharCode(65 + g)
-            const g2 = String.fromCharCode(65 + g + 1)
+        // 1. Assign Winners (Position 1)
+        for (let g = 0; g < numGroups && g < knockoutMatches.length; g++) {
+          knockoutMatches[g].sourceP1 = { group: String.fromCharCode(65 + g), position: 1 }
+        }
 
-            // Match for G1 Winner vs G2 Runner-up
-            if (knockoutMatches[kIdx]) {
-              knockoutMatches[kIdx].sourceP1 = { group: g1, position: 1 }
-              knockoutMatches[kIdx].sourceP2 = { group: g2, position: 2 }
-              kIdx++
-            }
-            // Match for G2 Winner vs G1 Runner-up
-            if (knockoutMatches[kIdx]) {
-              knockoutMatches[kIdx].sourceP1 = { group: g2, position: 1 }
-              knockoutMatches[kIdx].sourceP2 = { group: g1, position: 2 }
-              kIdx++
-            }
-          }
-        } else {
-          // Fallback to sequential for unusual numbers
-          // 1. Assign Winners (Position 1) from each group
-          for (let g = 0; g < numGroups && kIdx < totalPlayersInKnockout; g++) {
-            const groupId = String.fromCharCode(65 + g)
-            const mIdx = Math.floor(kIdx / 2)
-            const targetPlayer = kIdx % 2 === 0 ? 'sourceP1' : 'sourceP2'
-            if (knockoutMatches[mIdx]) {
-              knockoutMatches[mIdx][targetPlayer] = { group: groupId, position: 1 }
-            }
-            kIdx++
-          }
-
-          // 2. Assign remaining direct qualifiers (positions 2, 3, ... advanceCount)
-          for (let pos = 2; pos <= advanceCount; pos++) {
-            for (let g = 0; g < numGroups && kIdx < totalPlayersInKnockout; g++) {
-              const groupId = String.fromCharCode(65 + g)
-              const mIdx = Math.floor(kIdx / 2)
-              const targetPlayer = kIdx % 2 === 0 ? 'sourceP1' : 'sourceP2'
-              if (knockoutMatches[mIdx]) {
-                knockoutMatches[mIdx][targetPlayer] = { group: groupId, position: pos }
-              }
-              kIdx++
-            }
+        // 2. Assign Runners-up (Position 2) with a shift
+        // Pairing: Winner of Group G vs Runner-up of Group G+1
+        if (advanceCount >= 2) {
+          for (let g = 0; g < numGroups && g < knockoutMatches.length; g++) {
+            const runnerUpGroupIdx = (g + 1) % numGroups
+            knockoutMatches[g].sourceP2 = { group: String.fromCharCode(65 + runnerUpGroupIdx), position: 2 }
           }
         }
 
         // 3. Assign best next-placed players to fill remaining bracket spots (if enabled)
         if (formData.type === 'group_knockout' || (formData.type === 'world_cup' && formData.allowBestThird)) {
-          for (let i = 0; i < numExtraNeeded && kIdx < totalPlayersInKnockout; i++) {
-            const mIdx = Math.floor(kIdx / 2)
-            const targetPlayer = kIdx % 2 === 0 ? 'sourceP1' : 'sourceP2'
-            if (knockoutMatches[mIdx]) {
-              knockoutMatches[mIdx][targetPlayer] = { bestExtra: true, position: i + 1 }
-            }
-            kIdx++
+          // Find all empty slots (P1 or P2) in knockout round 1
+          const emptySlots = []
+          knockoutMatches.forEach((m, idx) => {
+            if (!m.sourceP1) emptySlots.push({ mIdx: idx, target: 'sourceP1' })
+            if (!m.sourceP2) emptySlots.push({ mIdx: idx, target: 'sourceP2' })
+          })
+
+          for (let i = 0; i < numExtraNeeded && i < emptySlots.length; i++) {
+            const { mIdx, target } = emptySlots[i]
+            knockoutMatches[mIdx][target] = { bestExtra: true, position: i + 1 }
           }
         }
 
