@@ -306,15 +306,91 @@ export default function CupTournaments() {
   }
 
   const updateRoundFormat = (round, field, value) => {
-    const val = parseInt(value)
+    const val = parseInt(value) || 0
     setRoundFormats(prev => {
-      const newFormat = { ...prev[round], [field]: val }
-      // Auto-calculate firstTo if bestOf changes
-      if (field === 'bestOf') {
+      const current = prev[round] || { startScore: 501, bestOf: 3, firstTo: 2, entryMode: 'bestOf' }
+      const newFormat = { ...current, [field]: val }
+
+      if (field === 'entryMode') {
+        newFormat.entryMode = value // value is string here
+      } else if (field === 'bestOf') {
         newFormat.firstTo = Math.ceil(val / 2)
+      } else if (field === 'firstTo') {
+        newFormat.bestOf = (val * 2) - 1
       }
+
       return { ...prev, [round]: newFormat }
     })
+  }
+
+  const renderFormatEntry = (round, label) => {
+    const format = roundFormats[round] || { startScore: 501, bestOf: 3, firstTo: 2, entryMode: 'bestOf' }
+    const mode = format.entryMode || 'bestOf'
+
+    return (
+      <div style={{ background: 'var(--bg-secondary)', padding: '12px', borderRadius: '12px', marginBottom: '10px', border: '1px solid rgba(255,255,255,0.05)' }}>
+        <h5 style={{ color: 'var(--accent-cyan)', marginBottom: '12px', fontSize: '0.8rem', textTransform: 'uppercase' }}>{label}</h5>
+
+        <div className="form-group" style={{ marginBottom: '12px' }}>
+          <label style={{ fontSize: '0.7rem', opacity: 0.6 }}>Start Score</label>
+          <select
+            value={format.startScore}
+            onChange={(e) => updateRoundFormat(round, 'startScore', e.target.value)}
+            style={{ fontSize: '0.8rem', padding: '8px' }}
+          >
+            <option value={301}>301</option>
+            <option value={501}>501</option>
+            <option value={601}>601</option>
+            <option value={701}>701</option>
+          </select>
+        </div>
+
+        <div style={{ display: 'flex', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', padding: '4px', marginBottom: '12px' }}>
+          <button
+            className={`btn btn-xs ${mode === 'bestOf' ? 'btn-primary' : ''}`}
+            style={{ flex: 1, fontSize: '0.65rem', padding: '4px', background: mode === 'bestOf' ? '' : 'transparent', border: 'none' }}
+            onClick={() => updateRoundFormat(round, 'entryMode', 'bestOf')}
+          >
+            Best Of
+          </button>
+          <button
+            className={`btn btn-xs ${mode === 'firstTo' ? 'btn-primary' : ''}`}
+            style={{ flex: 1, fontSize: '0.65rem', padding: '4px', background: mode === 'firstTo' ? '' : 'transparent', border: 'none' }}
+            onClick={() => updateRoundFormat(round, 'entryMode', 'firstTo')}
+          >
+            First To
+          </button>
+        </div>
+
+        {mode === 'bestOf' ? (
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <select
+              value={format.bestOf}
+              onChange={(e) => updateRoundFormat(round, 'bestOf', e.target.value)}
+              style={{ fontSize: '0.8rem', padding: '8px' }}
+            >
+              {[1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21].map(v => (
+                <option key={v} value={v}>Best of {v} legs</option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <div style={{ position: 'relative' }}>
+              <input
+                type="number"
+                min="1"
+                value={format.firstTo}
+                onChange={(e) => updateRoundFormat(round, 'firstTo', e.target.value)}
+                style={{ fontSize: '0.8rem', padding: '8px 12px', width: '100%' }}
+                placeholder="Target legs"
+              />
+              <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.7rem', opacity: 0.5 }}>legs</span>
+            </div>
+          </div>
+        )}
+      </div>
+    )
   }
 
   const saveCup = async () => {
@@ -647,45 +723,7 @@ export default function CupTournaments() {
               <div style={{ display: 'flex', gap: '20px', overflowX: 'auto', padding: '10px' }}>
                 {formData.type !== 'knockout' && (
                   <div style={{ minWidth: '220px' }}>
-                    <h5 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>Group Stage</h5>
-                    <div style={{ background: 'var(--bg-secondary)', padding: '10px', borderRadius: '8px', marginBottom: '10px' }}>
-                      <div className="form-group" style={{ marginBottom: '8px' }}>
-                        <label style={{ fontSize: '0.75rem' }}>Start Score</label>
-                        <select
-                          value={roundFormats[0]?.startScore || 501}
-                          onChange={(e) => updateRoundFormat(0, 'startScore', e.target.value)}
-                          style={{ fontSize: '0.8rem', padding: '5px' }}
-                        >
-                          <option value={301}>301</option>
-                          <option value={501}>501</option>
-                        </select>
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                        <div className="form-group" style={{ marginBottom: '0' }}>
-                          <label style={{ fontSize: '0.75rem' }}>Best Of</label>
-                          <select
-                            value={roundFormats[0]?.bestOf || 3}
-                            onChange={(e) => updateRoundFormat(0, 'bestOf', e.target.value)}
-                            style={{ fontSize: '0.8rem', padding: '5px' }}
-                          >
-                            <option value={1}>1</option>
-                            <option value={3}>3</option>
-                            <option value={5}>5</option>
-                            <option value={7}>7</option>
-                          </select>
-                        </div>
-                        <div className="form-group" style={{ marginBottom: '0' }}>
-                          <label style={{ fontSize: '0.75rem' }}>First To</label>
-                          <input
-                            type="number"
-                            min="1"
-                            value={roundFormats[0]?.firstTo || 2}
-                            onChange={(e) => updateRoundFormat(0, 'firstTo', e.target.value)}
-                            style={{ fontSize: '0.8rem', padding: '5px', width: '100%' }}
-                          />
-                        </div>
-                      </div>
-                    </div>
+                    {renderFormatEntry(0, 'Group Stage')}
                     {groups.map(g => (
                       <div key={g.id} style={{ background: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '8px', marginBottom: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
                         <div style={{ fontWeight: 900, fontSize: '0.75rem', color: 'var(--accent-cyan)', marginBottom: '5px' }}>GROUP {g.id}</div>
@@ -699,53 +737,11 @@ export default function CupTournaments() {
 
                 {Array.from(new Set(matches.filter(m => m.stage === 'knockout').map(m => m.round))).sort((a, b) => a - b).map(round => (
                   <div key={round} style={{ minWidth: '200px' }}>
-                    <h5 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>
-                      {round === Math.max(...matches.filter(m => m.stage === 'knockout').map(m => m.round)) ? 'Final' :
-                       round === Math.max(...matches.filter(m => m.stage === 'knockout').map(m => m.round)) - 1 ? 'Semi-Final' :
-                       round === Math.max(...matches.filter(m => m.stage === 'knockout').map(m => m.round)) - 2 ? 'Quarter-Final' : `KO Round ${round}`}
-                    </h5>
-                    
-                    <div style={{ background: 'var(--bg-secondary)', padding: '10px', borderRadius: '8px', marginBottom: '10px' }}>
-                      <div className="form-group" style={{ marginBottom: '8px' }}>
-                        <label style={{ fontSize: '0.75rem' }}>Start Score</label>
-                        <select 
-                          value={roundFormats[round]?.startScore || 501}
-                          onChange={(e) => updateRoundFormat(round, 'startScore', e.target.value)}
-                          style={{ fontSize: '0.8rem', padding: '5px' }}
-                        >
-                          <option value={301}>301</option>
-                          <option value={501}>501</option>
-                        </select>
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                        <div className="form-group" style={{ marginBottom: '0' }}>
-                          <label style={{ fontSize: '0.75rem' }}>Best Of</label>
-                          <select
-                            value={roundFormats[round]?.bestOf || 3}
-                            onChange={(e) => updateRoundFormat(round, 'bestOf', e.target.value)}
-                            style={{ fontSize: '0.8rem', padding: '5px' }}
-                          >
-                            <option value={1}>1</option>
-                            <option value={3}>3</option>
-                            <option value={5}>5</option>
-                            <option value={7}>7</option>
-                            <option value={9}>9</option>
-                            <option value={11}>11</option>
-                            <option value={13}>13</option>
-                          </select>
-                        </div>
-                        <div className="form-group" style={{ marginBottom: '0' }}>
-                          <label style={{ fontSize: '0.75rem' }}>First To</label>
-                          <input
-                            type="number"
-                            min="1"
-                            value={roundFormats[round]?.firstTo || 2}
-                            onChange={(e) => updateRoundFormat(round, 'firstTo', e.target.value)}
-                            style={{ fontSize: '0.8rem', padding: '5px', width: '100%' }}
-                          />
-                        </div>
-                      </div>
-                    </div>
+                    {renderFormatEntry(round,
+                      round === Math.max(...matches.filter(m => m.stage === 'knockout').map(m => m.round)) ? 'Final' :
+                      round === Math.max(...matches.filter(m => m.stage === 'knockout').map(m => m.round)) - 1 ? 'Semi-Final' :
+                      round === Math.max(...matches.filter(m => m.stage === 'knockout').map(m => m.round)) - 2 ? 'Quarter-Final' : `KO Round ${round}`
+                    )}
                     
                     {matches.filter(m => m.round === round && m.stage === 'knockout').map(match => (
                       <div key={match.id} style={{ 
