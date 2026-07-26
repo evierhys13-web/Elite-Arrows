@@ -329,7 +329,7 @@ export default function CupBracket() {
       if (updatedMatch.player1 && updatedMatch.player2) {
         const existingFixture = (fixtures || []).find(f => String(f.matchId) === String(updatedMatch.id))
         if (!existingFixture) {
-          const roundFormat = cupData.roundFormats?.[updatedMatch.round || 0] || { startScore: 501, bestOf: 3 }
+          const roundFormat = cupData.roundFormats?.[updatedMatch.round || 0] || { startScore: 501, bestOf: 3, firstTo: 2 }
           const fixtureId = `cup_${cup.id}_match_${updatedMatch.id}`
 
           const p1 = allUsers.find(u => String(u.id) === String(updatedMatch.player1))
@@ -341,7 +341,7 @@ export default function CupBracket() {
             cupName: cup.name,
             startScore: roundFormat.startScore,
             bestOf: roundFormat.bestOf,
-            firstTo: Math.ceil(roundFormat.bestOf / 2),
+            firstTo: roundFormat.firstTo || Math.ceil(roundFormat.bestOf / 2),
             player1: p1?.username || 'Unknown',
             player1Id: updatedMatch.player1,
             player2: p2?.username || 'Unknown',
@@ -439,6 +439,11 @@ export default function CupBracket() {
           {cup.roundFormats?._stageDays && (
             <div className="glass" style={{ padding: '8px 20px', borderRadius: '30px', fontSize: '0.85rem', color: 'var(--accent-cyan)', fontWeight: 800, border: '1px solid var(--accent-cyan)' }}>
               ⏱ {cup.roundFormats._stageDays} DAYS PER STAGE
+            </div>
+          )}
+          {cup.roundFormats && (
+            <div className="glass" style={{ padding: '8px 20px', borderRadius: '30px', fontSize: '0.85rem', color: 'white', fontWeight: 800, border: '1px solid rgba(255,255,255,0.1)' }}>
+              🎯 {activeStage === 'groups' ? (cup.roundFormats[0]?.firstTo ? `FT${cup.roundFormats[0].firstTo}` : `Bo${cup.roundFormats[0]?.bestOf || 3}`) : 'VARIES BY ROUND'}
             </div>
           )}
         </div>
@@ -822,7 +827,7 @@ export default function CupBracket() {
                     padding: '2px 8px',
                     borderRadius: '4px'
                   }}>
-                    {fixture.startScore || 501} / Bo{fixture.bestOf || 3}
+                    {fixture.startScore || 501} / {fixture.firstTo ? `FT${fixture.firstTo}` : `Bo${fixture.bestOf || 3}`}
                   </span>
                 </div>
                 <div style={{ fontSize: '1rem', color: 'white' }}>

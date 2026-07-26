@@ -119,14 +119,14 @@ function CupManagement() {
 
         const updatedM = updatedMatches[mIdx]
         if (updatedM.player1 && updatedM.player2) {
-           const format = cupData.roundFormats?.[1] || { startScore: 501, bestOf: 3 }
+           const format = cupData.roundFormats?.[1] || { startScore: 501, bestOf: 3, firstTo: 2 }
            newFixtures.push({
              id: `cup_${cup.id}_match_${updatedM.id}`,
              cupId: isNaN(parseInt(cup.id)) ? cup.id : parseInt(cup.id),
              cupName: cupData.name,
              startScore: format.startScore,
              bestOf: format.bestOf,
-             firstTo: Math.ceil(format.bestOf / 2),
+             firstTo: format.firstTo || Math.ceil(format.bestOf / 2),
              player1: updatedM.player1,
              player1Id: updatedM.player1,
              player2: updatedM.player2,
@@ -274,11 +274,11 @@ function CupManagement() {
                     const fRef = doc(db, 'fixtures', fId)
                     const fSnap = await transaction.get(fRef)
                     if (!fSnap.exists()) {
-                      const fmt = cupData.roundFormats?.[m.round] || { startScore: 501, bestOf: 3 }
+                      const fmt = cupData.roundFormats?.[m.round] || { startScore: 501, bestOf: 3, firstTo: 2 }
                       transaction.set(fRef, {
                         id: fId, cupId: parseInt(cup.id), cupName: cupData.name,
                         startScore: fmt.startScore, bestOf: fmt.bestOf,
-                        firstTo: Math.ceil(fmt.bestOf / 2),
+                        firstTo: fmt.firstTo || Math.ceil(fmt.bestOf / 2),
                         player1: m.player1, player1Id: m.player1,
                         player2: m.player2, player2Id: m.player2,
                         matchId: m.id, round: m.round, status: 'accepted',
@@ -600,7 +600,7 @@ function CupManagement() {
       if (updatedMatch.player1 && updatedMatch.player2) {
         const existingFixture = (getFixtures() || []).find(f => String(f.matchId) === String(updatedMatch.id))
         if (!existingFixture) {
-          const roundFormat = cupData.roundFormats?.[updatedMatch.round || 0] || { startScore: 501, bestOf: 3 }
+          const roundFormat = cupData.roundFormats?.[updatedMatch.round || 0] || { startScore: 501, bestOf: 3, firstTo: 2 }
           const fixtureId = `cup_${cup.id}_match_${updatedMatch.id}`
 
           const p1 = allUsers.find(u => String(u.id) === String(updatedMatch.player1))
@@ -612,7 +612,7 @@ function CupManagement() {
             cupName: cup.name,
             startScore: roundFormat.startScore,
             bestOf: roundFormat.bestOf,
-            firstTo: Math.ceil(roundFormat.bestOf / 2),
+            firstTo: roundFormat.firstTo || Math.ceil(roundFormat.bestOf / 2),
             player1: p1?.username || 'Unknown',
             player1Id: updatedMatch.player1,
             player2: p2?.username || 'Unknown',

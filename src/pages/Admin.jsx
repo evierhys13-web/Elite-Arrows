@@ -1264,33 +1264,100 @@ export default function Admin() {
         {/* TAB: PAYMENTS */}
         {activeTab === 'payments' && (
           <div className="card glass">
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}>
-              <div><h3>League Subscriptions</h3></div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button className={`btn btn-sm ${paymentSubTab === 'pending' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setPaymentSubTab('pending')}>Pending ({pendingPayments.length})</button>
-                <button className={`btn btn-sm ${paymentSubTab === 'approved' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setPaymentSubTab('approved')}>Approved ({subscribers.length})</button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+              <div><h3>League & Role Management</h3></div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button className={`btn btn-sm ${paymentSubTab === 'pending' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setPaymentSubTab('pending')}>Payments ({pendingPayments.length})</button>
+                <button className={`btn btn-sm ${paymentSubTab === 'roles' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setPaymentSubTab('roles')}>Role Apps ({entryRequests.length})</button>
+                <button className={`btn btn-sm ${paymentSubTab === 'approved' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setPaymentSubTab('approved')}>Subscribers ({subscribers.length})</button>
               </div>
             </div>
-            {paymentSubTab === 'pending' ? (
-              pendingPayments.map(u => (
-                <div key={u.id} className="glass" style={{ padding: '20px', borderRadius: '12px', marginBottom: '15px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <div><div style={{ fontWeight: 800 }}>{u.username}</div><div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{u.email}</div></div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button className="btn btn-primary btn-sm" onClick={() => handleApprovePayment(u)}>Approve</button>
+
+            {paymentSubTab === 'pending' && (
+              <div className="animate-fade-in">
+                {pendingPayments.length === 0 ? (
+                   <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>No pending payments.</div>
+                ) : (
+                  pendingPayments.map(u => (
+                    <div key={u.id} className="glass" style={{ padding: '20px', borderRadius: '12px', marginBottom: '15px', borderLeft: '4px solid #fbbf24' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                        <div>
+                          <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>{u.username}</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '8px' }}>{u.email}</div>
+                          <div style={{ display: 'flex', gap: '12px', fontSize: '0.75rem' }}>
+                            <span style={{ color: 'var(--accent-cyan)' }}>Season: {u.requestedSeason || 'N/A'}</span>
+                            <span style={{ color: 'var(--success)' }}>Plan: {u.requestedPlan || 'Elite'}</span>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                          {u.paymentProof && (
+                            <button className="btn btn-secondary btn-sm" onClick={() => setPreviewImage(u.paymentProof)}>View Proof</button>
+                          )}
+                          <button className="btn btn-primary btn-sm" onClick={() => handleApprovePayment(u)}>Approve & Activate</button>
+                          <button className="btn btn-danger btn-sm" onClick={async () => {
+                            if (confirm(`Reject payment for ${u.username}?`)) {
+                              await updateDoc(doc(db, 'users', u.id), { paymentPending: false });
+                              triggerDataRefresh('users');
+                            }
+                          }}>Reject</button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {paymentSubTab === 'roles' && (
+              <div className="animate-fade-in">
+                {entryRequests.length === 0 ? (
+                   <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>No pending role applications.</div>
+                ) : (
+                  entryRequests.map(u => (
+                    <div key={u.id} className="glass" style={{ padding: '20px', borderRadius: '12px', marginBottom: '15px', borderLeft: '4px solid var(--accent-cyan)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                        <div>
+                          <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>{u.username}</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '8px' }}>{u.email}</div>
+                          <div style={{ display: 'flex', gap: '12px', fontSize: '0.75rem' }}>
+                            <span style={{ color: 'var(--accent-cyan)' }}>Requested: {u.requestDate ? new Date(u.requestDate).toLocaleDateString() : 'Unknown Date'}</span>
+                            <span style={{ color: 'var(--warning)' }}>Current Role: {u.division || 'Member'}</span>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                          <button className="btn btn-primary btn-sm" onClick={async () => {
+                            setGrantSubForm({ player: u.id, tier: 'elite', season: u.requestedSeason || '' });
+                            setActiveTab('players'); // Or just handle it here
+                            showToast('Direct to member management to assign specific roles', 'info');
+                          }}>Manage User</button>
+                          <button className="btn btn-secondary btn-sm" onClick={async () => {
+                            if (confirm(`Clear application for ${u.username}?`)) {
+                              await updateDoc(doc(db, 'users', u.id), { adminRequestPending: false });
+                              triggerDataRefresh('users');
+                            }
+                          }}>Clear</button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {paymentSubTab === 'approved' && (
+              <div className="animate-fade-in">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+                  {subscribers.map(u => (
+                    <div key={u.id} className="glass" style={{ padding: '16px', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontWeight: 700 }}>{u.username}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{u.subscriptionTier || 'Elite'} • {Array.isArray(u.subscribedSeasons) ? u.subscribedSeasons.join(', ') : 'S1'}</div>
+                      </div>
+                      <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/profile/${u.id}`)}>Profile</button>
+                    </div>
+                  ))}
                 </div>
-              ))
-            ) : (
-              subscribers.map(u => (
-                <div key={u.id} className="glass" style={{ padding: '16px', borderRadius: '16px', marginBottom: '10px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <div style={{ fontWeight: 700 }}>{u.username}</div>
-                    <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/profile/${u.id}`)}>Profile</button>
-                  </div>
-                </div>
-              ))
+              </div>
             )}
           </div>
         )}

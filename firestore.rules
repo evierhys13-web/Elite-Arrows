@@ -14,11 +14,9 @@ service cloud.firestore {
           'test@elitearrows.co.uk'
         ]) ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true ||
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isTournamentAdmin == true ||
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isCupAdmin == true ||
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == 'true' ||
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isTournamentAdmin == 'true'
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isAdmin', false) == true ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isTournamentAdmin', false) == true ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isCupAdmin', false) == true
         ))
       );
     }
@@ -38,8 +36,6 @@ service cloud.firestore {
     }
 
     function participantFixtureUpdateIsSafe() {
-      // Participants can change status, dates, scores, and set the _deleted flag.
-      // We only block changing the core identity of the fixture (who is playing and what match it is).
       let affected = request.resource.data.diff(resource.data).affectedKeys();
       return !affected.hasAny([
         'player1Id',
@@ -52,168 +48,171 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if request.auth != null;
+      allow read: if signedIn();
       allow write: if isOwner(userId) || isAdmin();
-      allow update: if request.auth != null &&
+      allow update: if signedIn() &&
         request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(['friends', 'sentFriendRequests', 'receivedFriendRequests']);
     }
 
     match /results/{resultId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
+      allow read: if signedIn();
+      allow create: if signedIn();
       allow update, delete: if isAdmin();
     }
 
     match /chatMessages/{messageId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null &&
-        (isOwner(resource.data.senderId) || isAdmin());
-      allow delete: if request.auth != null &&
-        (isOwner(resource.data.senderId) || isAdmin());
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update, delete: if signedIn() && (isOwner(resource.data.senderId) || isAdmin());
     }
 
     match /fixtures/{fixtureId} {
       allow read: if signedIn();
       allow create: if signedIn();
-      allow update, delete: if signedIn() && (
-        isAdmin() ||
-        resource.data.player1Id == request.auth.uid ||
-        resource.data.player2Id == request.auth.uid ||
-        resource.data.player1 == request.auth.uid ||
-        resource.data.player2 == request.auth.uid ||
-        resource.data.createdBy == request.auth.uid
-      );
+      allow update: if signedIn() && (isAdmin() || (isFixtureParticipant(resource.data) && participantFixtureUpdateIsSafe()));
+      allow delete: if signedIn() && (isAdmin() || isFixtureParticipant(resource.data));
     }
 
     match /cups/{cupId} {
-      allow read: if request.auth != null;
+      allow read: if signedIn();
       allow write: if isAdmin();
     }
 
     match /tournaments/{tournamentId} {
-      allow read: if request.auth != null;
+      allow read: if signedIn();
       allow write: if isAdmin();
     }
 
     match /tournament_records/{recordId} {
-      allow read: if request.auth != null;
+      allow read: if signedIn();
       allow write: if isAdmin();
     }
 
     match /adminData/{docId} {
-      allow read: if request.auth != null;
+      allow read: if signedIn();
       allow write: if isAdmin();
     }
 
     match /supportRequests/{requestId} {
       allow read: if isAdmin();
-      allow create: if request.auth != null;
+      allow create: if signedIn();
       allow update: if isAdmin();
     }
 
     match /seasons/{seasonId} {
-      allow read: if request.auth != null;
+      allow read: if signedIn();
       allow write: if isAdmin();
     }
 
     match /news/{newsId} {
-      allow read: if request.auth != null;
+      allow read: if signedIn();
       allow write: if isAdmin();
     }
 
     match /notifications/{notificationId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read: if signedIn() && (isOwner(resource.data.toUserId) || isAdmin());
+      allow write: if signedIn();
     }
 
     match /fcmTokens/{tokenId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if signedIn() && isOwner(tokenId);
     }
 
     match /bets/{betId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
+      allow read: if signedIn();
+      allow create: if signedIn();
       allow update, delete: if isAdmin();
     }
 
     match /tournamentSignups/{signupId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
+      allow read: if signedIn();
+      allow create: if signedIn();
       allow update, delete: if isAdmin();
     }
 
     match /giveaways/{giveawayId} {
-      allow read: if request.auth != null;
-      allow create: if isAdmin();
-      allow update, delete: if isAdmin();
+      allow read: if signedIn();
+      allow write: if isAdmin();
     }
 
     match /challenges/{challengeId} {
-      allow read: if request.auth != null;
+      allow read: if signedIn();
       allow write: if isAdmin();
     }
 
     match /challengeSubmissions/{submissionId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
+      allow read: if signedIn();
+      allow create: if signedIn();
       allow update, delete: if isAdmin();
     }
 
     match /disputes/{disputeId} {
       allow read: if isAdmin();
-      allow create: if request.auth != null;
+      allow create: if signedIn();
       allow update, delete: if isAdmin();
     }
 
     match /openLeagueDuos/{duoId} {
-      allow read: if request.auth != null;
+      allow read: if signedIn();
       allow write: if isAdmin();
     }
 
     match /openLeagueSingles/{singlesId} {
-      allow read: if request.auth != null;
+      allow read: if signedIn();
       allow write: if isAdmin();
     }
 
     match /auditLogs/{logId} {
-      allow read: if isAdmin();
-      allow create: if isAdmin();
+      allow read, create: if isAdmin();
     }
 
     match /highlights/{highlightId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow update, delete: if isAdmin() || (request.auth != null && request.auth.uid == resource.data.userId);
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update, delete: if isAdmin() || isOwner(resource.data.userId);
     }
 
     match /practiceSessions/{sessionId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update, delete: if isOwner(resource.data.userId);
     }
 
     match /progressLogs/{logId} {
-      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || resource.data.isPublic == true || isAdmin());
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
+      allow read: if signedIn() && (isOwner(resource.data.userId) || resource.data.get('isPublic', false) == true || isAdmin());
+      allow create: if signedIn();
+      allow update, delete: if isOwner(resource.data.userId) || isAdmin();
     }
 
     match /practiceLeaderboard/{entryId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null;
+      allow read, create, update: if signedIn();
     }
 
     match /liveGames/{gameId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read, write: if signedIn();
     }
 
     match /gameInvites/{inviteId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read, write: if signedIn();
+    }
+
+    // Merch Shop Collections - Public access for submissions
+    match /merchPlayerApplications/{appId} {
+      allow read, create: if true;
+      allow update, delete: if isAdmin();
+    }
+    match /merchRoleApplications/{appId} {
+      allow read, create: if true;
+      allow update, delete: if isAdmin();
+    }
+    match /merchSuggestions/{sugId} {
+      allow read, create, update: if true;
+      allow delete: if isAdmin();
+    }
+
+    match /mail/{mailId} {
+      allow create: if isAdmin();
     }
   }
 }

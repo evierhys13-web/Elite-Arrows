@@ -306,13 +306,15 @@ export default function CupTournaments() {
   }
 
   const updateRoundFormat = (round, field, value) => {
-    setRoundFormats(prev => ({
-      ...prev,
-      [round]: {
-        ...prev[round],
-        [field]: parseInt(value)
+    const val = parseInt(value)
+    setRoundFormats(prev => {
+      const newFormat = { ...prev[round], [field]: val }
+      // Auto-calculate firstTo if bestOf changes
+      if (field === 'bestOf') {
+        newFormat.firstTo = Math.ceil(val / 2)
       }
-    }))
+      return { ...prev, [round]: newFormat }
+    })
   }
 
   const saveCup = async () => {
@@ -334,32 +336,35 @@ export default function CupTournaments() {
     const initialMatches = matches.filter(m => m.stage === 'groups' || (m.stage === 'knockout' && m.round === 1))
     const existingFixtures = getFixtures()
     
-    const newFixtures = initialMatches.filter(m => m.player1 && m.player2).map(m => ({
-      id: Date.now() + m.id,
-      cupId: newCup.id,
-      cupName: formData.name,
-      startScore: roundFormats[m.round || 0]?.startScore || 501,
-      bestOf: roundFormats[m.round || 0]?.bestOf || 3,
-      firstTo: Math.ceil((roundFormats[m.round || 0]?.bestOf || 3) / 2),
-      player1: m.player1,
-      player1Id: m.player1,
-      player2: m.player2,
-      player2Id: m.player2,
-      matchId: m.id,
-      round: m.round || 0,
-      stage: m.stage,
-      group: m.group || null,
-      date: '',
-      time: '',
-      scheduledBy: m.player1,
-      status: 'accepted',
-      proposalStatus: 'accepted',
-      proposedDate: '',
-      proposedTime: '',
-      counterDate: '',
-      counterTime: '',
-      createdAt: new Date().toISOString()
-    }))
+      const newFixtures = initialMatches.filter(m => m.player1 && m.player2).map(m => {
+      const format = roundFormats[m.round || 0] || { startScore: 501, bestOf: 3, firstTo: 2 }
+      return {
+        id: Date.now() + m.id,
+        cupId: newCup.id,
+        cupName: formData.name,
+        startScore: format.startScore || 501,
+        bestOf: format.bestOf || 3,
+        firstTo: format.firstTo || Math.ceil((format.bestOf || 3) / 2),
+        player1: m.player1,
+        player1Id: m.player1,
+        player2: m.player2,
+        player2Id: m.player2,
+        matchId: m.id,
+        round: m.round || 0,
+        stage: m.stage,
+        group: m.group || null,
+        date: '',
+        time: '',
+        scheduledBy: m.player1,
+        status: 'accepted',
+        proposalStatus: 'accepted',
+        proposedDate: '',
+        proposedTime: '',
+        counterDate: '',
+        counterTime: '',
+        createdAt: new Date().toISOString()
+      }
+    })
     
     localStorage.setItem('eliteArrowsFixtures', JSON.stringify([...existingFixtures, ...newFixtures]))
     localStorage.setItem('eliteArrowsCups', JSON.stringify([...cups, newCup]))
@@ -655,17 +660,30 @@ export default function CupTournaments() {
                           <option value={501}>501</option>
                         </select>
                       </div>
-                      <div className="form-group" style={{ marginBottom: '0' }}>
-                        <label style={{ fontSize: '0.75rem' }}>Best Of</label>
-                        <select
-                          value={roundFormats[0]?.bestOf || 3}
-                          onChange={(e) => updateRoundFormat(0, 'bestOf', e.target.value)}
-                          style={{ fontSize: '0.8rem', padding: '5px' }}
-                        >
-                          <option value={3}>Best of 3</option>
-                          <option value={5}>Best of 5</option>
-                          <option value={7}>Best of 7</option>
-                        </select>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                        <div className="form-group" style={{ marginBottom: '0' }}>
+                          <label style={{ fontSize: '0.75rem' }}>Best Of</label>
+                          <select
+                            value={roundFormats[0]?.bestOf || 3}
+                            onChange={(e) => updateRoundFormat(0, 'bestOf', e.target.value)}
+                            style={{ fontSize: '0.8rem', padding: '5px' }}
+                          >
+                            <option value={1}>1</option>
+                            <option value={3}>3</option>
+                            <option value={5}>5</option>
+                            <option value={7}>7</option>
+                          </select>
+                        </div>
+                        <div className="form-group" style={{ marginBottom: '0' }}>
+                          <label style={{ fontSize: '0.75rem' }}>First To</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={roundFormats[0]?.firstTo || 2}
+                            onChange={(e) => updateRoundFormat(0, 'firstTo', e.target.value)}
+                            style={{ fontSize: '0.8rem', padding: '5px', width: '100%' }}
+                          />
+                        </div>
                       </div>
                     </div>
                     {groups.map(g => (
@@ -699,19 +717,33 @@ export default function CupTournaments() {
                           <option value={501}>501</option>
                         </select>
                       </div>
-                      <div className="form-group" style={{ marginBottom: '0' }}>
-                        <label style={{ fontSize: '0.75rem' }}>Best Of</label>
-                        <select 
-                          value={roundFormats[round]?.bestOf || 3}
-                          onChange={(e) => updateRoundFormat(round, 'bestOf', e.target.value)}
-                          style={{ fontSize: '0.8rem', padding: '5px' }}
-                        >
-                          <option value={3}>Best of 3</option>
-                          <option value={5}>Best of 5</option>
-                          <option value={7}>Best of 7</option>
-                          <option value={9}>Best of 9</option>
-                          <option value={11}>Best of 11</option>
-                        </select>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                        <div className="form-group" style={{ marginBottom: '0' }}>
+                          <label style={{ fontSize: '0.75rem' }}>Best Of</label>
+                          <select
+                            value={roundFormats[round]?.bestOf || 3}
+                            onChange={(e) => updateRoundFormat(round, 'bestOf', e.target.value)}
+                            style={{ fontSize: '0.8rem', padding: '5px' }}
+                          >
+                            <option value={1}>1</option>
+                            <option value={3}>3</option>
+                            <option value={5}>5</option>
+                            <option value={7}>7</option>
+                            <option value={9}>9</option>
+                            <option value={11}>11</option>
+                            <option value={13}>13</option>
+                          </select>
+                        </div>
+                        <div className="form-group" style={{ marginBottom: '0' }}>
+                          <label style={{ fontSize: '0.75rem' }}>First To</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={roundFormats[round]?.firstTo || 2}
+                            onChange={(e) => updateRoundFormat(round, 'firstTo', e.target.value)}
+                            style={{ fontSize: '0.8rem', padding: '5px', width: '100%' }}
+                          />
+                        </div>
                       </div>
                     </div>
                     
@@ -905,11 +937,11 @@ export default function CupTournaments() {
                     borderRadius: '8px'
                   }}>
                     <strong style={{ display: 'block', marginBottom: '5px', color: 'white' }}>Format:</strong>
-                    {Object.entries(cup.roundFormats).map(([round, format]) => {
+                    {Object.entries(cup.roundFormats).filter(([key]) => key !== '_stageDays').map(([round, format]) => {
                       const roundName = parseInt(round) === cup.currentRound ? 'Current' : ''
                       return (
                         <div key={round} style={{ display: 'inline-block', marginRight: '15px' }}>
-                          <span style={{ opacity: 0.7 }}>{roundName}{roundName ? ' ' : ''}R{round}:</span> {format.startScore} / Bo{format.bestOf}
+                          <span style={{ opacity: 0.7 }}>{roundName}{roundName ? ' ' : ''}R{round}:</span> {format.startScore} / {format.firstTo ? `FT${format.firstTo}` : `Bo${format.bestOf}`}
                         </div>
                       )
                     })}
