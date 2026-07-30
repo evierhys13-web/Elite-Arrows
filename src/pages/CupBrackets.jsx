@@ -92,6 +92,15 @@ export default function CupBracket() {
     return fixtureScores
   }
 
+  const getFullMatchResult = (match) => {
+    if (!match) return null
+    const fixture = fixtures.find(f => f && String(f.matchId) === String(match.id))
+    return results.find(result => result && (
+      (String(result.cupId || '') === String(cup.id) && String(result.matchId || '') === String(match.id)) ||
+      (fixture?.id && String(result.fixtureId || '') === String(fixture.id))
+    ) && String(result.status).toLowerCase() === 'approved')
+  }
+
   const groupStandings = useMemo(() => {
     if (!cup || !Array.isArray(cup?.matches) || cup.matches.length === 0) return { sortedStandings: {}, bestThirdIds: [], sortedThirdPlaced: [], numThirdNeeded: 0, advanceCount: 2 }
     const safe = cup.matches
@@ -105,10 +114,12 @@ export default function CupBracket() {
       const p1 = match.player1
       const p2 = match.player2
 
-      if (p1 && !standings[gId][p1]) standings[gId][p1] = { id: p1, played: 0, won: 0, lost: 0, legsFor: 0, legsAgainst: 0, points: 0 }
-      if (p2 && !standings[gId][p2]) standings[gId][p2] = { id: p2, played: 0, won: 0, lost: 0, legsFor: 0, legsAgainst: 0, points: 0 }
+      if (p1 && !standings[gId][p1]) standings[gId][p1] = { id: p1, played: 0, won: 0, lost: 0, legsFor: 0, legsAgainst: 0, points: 0, avgSum: 0 }
+      if (p2 && !standings[gId][p2]) standings[gId][p2] = { id: p2, played: 0, won: 0, lost: 0, legsFor: 0, legsAgainst: 0, points: 0, avgSum: 0 }
 
       const result = getMatchResult(match)
+      const fullRes = getFullMatchResult(match)
+
       if (result && p1 && p2) {
         standings[gId][p1].played++
         standings[gId][p2].played++
@@ -125,6 +136,14 @@ export default function CupBracket() {
           standings[gId][p2].won++
           standings[gId][p2].points += 2
           standings[gId][p1].lost++
+        }
+
+        if (fullRes) {
+          const p1Stats = fullRes.player1Stats || {}
+          const p2Stats = fullRes.player2Stats || {}
+          const isMatchP1ResultP1 = String(p1) === String(fullRes.player1Id)
+          standings[gId][p1].avgSum += isMatchP1ResultP1 ? (p1Stats.avg || 0) : (p2Stats.avg || 0)
+          standings[gId][p2].avgSum += isMatchP1ResultP1 ? (p2Stats.avg || 0) : (p1Stats.avg || 0)
         }
       }
     })
@@ -559,6 +578,7 @@ export default function CupBracket() {
                     <th style={{ textAlign: 'center', padding: '12px 8px' }}>GROUP</th>
                     <th style={{ textAlign: 'center', padding: '12px 8px' }}>P</th>
                     <th style={{ textAlign: 'center', padding: '12px 8px' }}>W</th>
+                    <th style={{ textAlign: 'center', padding: '12px 8px', color: 'var(--accent-primary)' }}>AVG</th>
                     <th style={{ textAlign: 'center', padding: '12px 8px' }}>+/-</th>
                     <th style={{ textAlign: 'center', padding: '12px 8px', color: 'var(--accent-cyan)' }}>PTS</th>
                     <th style={{ textAlign: 'right', padding: '12px 8px' }}>STATUS</th>
@@ -580,6 +600,7 @@ export default function CupBracket() {
                         </td>
                         <td style={{ textAlign: 'center', padding: '14px 8px' }}>{p.played}</td>
                         <td style={{ textAlign: 'center', padding: '14px 8px' }}>{p.won}</td>
+                        <td style={{ textAlign: 'center', padding: '14px 8px', color: 'var(--accent-primary)', fontWeight: 600 }}>{p.played > 0 ? (p.avgSum / p.played).toFixed(2) : '-'}</td>
                         <td style={{ textAlign: 'center', padding: '14px 8px', fontWeight: 700, color: (p.legsFor - p.legsAgainst) >= 0 ? 'var(--success)' : 'var(--error)' }}>
                           {(p.legsFor - p.legsAgainst) > 0 ? `+${p.legsFor - p.legsAgainst}` : p.legsFor - p.legsAgainst}
                         </td>
@@ -634,6 +655,7 @@ export default function CupBracket() {
                     <th style={{ textAlign: 'left', padding: '10px 5px' }}>PLAYER</th>
                     <th style={{ padding: '10px 5px' }}>P</th>
                     <th style={{ padding: '10px 5px' }}>W</th>
+                    <th style={{ padding: '10px 5px', color: 'var(--accent-primary)' }}>AVG</th>
                     <th style={{ padding: '10px 5px' }}>+/-</th>
                     <th style={{ padding: '10px 5px', color: 'var(--accent-cyan)' }}>PTS</th>
                   </tr>
@@ -662,6 +684,7 @@ export default function CupBracket() {
                         </td>
                         <td style={{ textAlign: 'center', padding: '12px 5px' }}>{p.played}</td>
                         <td style={{ textAlign: 'center', padding: '12px 5px' }}>{p.won}</td>
+                        <td style={{ textAlign: 'center', padding: '12px 5px', color: 'var(--accent-primary)', fontWeight: 600 }}>{p.played > 0 ? (p.avgSum / p.played).toFixed(2) : '-'}</td>
                         <td style={{ textAlign: 'center', padding: '12px 5px', color: (p.legsFor - p.legsAgainst) >= 0 ? 'var(--success)' : 'var(--error)' }}>
                           {(p.legsFor - p.legsAgainst) > 0 ? `+${p.legsFor - p.legsAgainst}` : p.legsFor - p.legsAgainst}
                         </td>

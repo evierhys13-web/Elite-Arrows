@@ -41,7 +41,9 @@ function CupManagement() {
     p1_checkout: '0',
     p2_checkout: '0',
     p1_doubles: '0',
-    p2_doubles: '0'
+    p2_doubles: '0',
+    p1_avg: '',
+    p2_avg: ''
   })
   const allUsers = getAllUsers()
 
@@ -372,7 +374,9 @@ function CupManagement() {
       p1_checkout: '0',
       p2_checkout: '0',
       p1_doubles: '0',
-      p2_doubles: '0'
+      p2_doubles: '0',
+      p1_avg: '',
+      p2_avg: ''
     })
     setShowResultModal(true)
   }
@@ -443,7 +447,7 @@ function CupManagement() {
 
   const submitResult = async () => {
     if (isSubmitting) return
-    const { cup, match, score1, score2, p1_180s, p2_180s, p1_checkout, p2_checkout, p1_doubles, p2_doubles } = resultForm
+    const { cup, match, score1, score2, p1_180s, p2_180s, p1_checkout, p2_checkout, p1_doubles, p2_doubles, p1_avg, p2_avg } = resultForm
 
     if (!cup || !match || !match.player1 || !match.player2) {
       alert('Error: Bracket data is incomplete. Please refresh and try again.')
@@ -455,7 +459,9 @@ function CupManagement() {
     
     if (isNaN(s1) || isNaN(s2)) return alert('Please enter scores for both players.')
     if (s1 === s2) return alert('Draws are not permitted in Cup matches.')
-    
+
+    if (!p1_avg || !p2_avg) return alert('Please enter 3-dart averages for both players.')
+
     setIsSubmitting(true)
     const winnerId = s1 > s2 ? match.player1 : match.player2
     const resultId = `admin_cup_${Date.now()}`
@@ -478,8 +484,18 @@ function CupManagement() {
         date: new Date().toISOString().split('T')[0],
         submittedAt: new Date().toISOString(),
         submittedBy: 'admin',
-        player1Stats: { '180s': parseInt(p1_180s) || 0, highestCheckout: parseInt(p1_checkout) || 0, doubleSuccess: parseFloat(p1_doubles) || 0 },
-        player2Stats: { '180s': parseInt(p2_180s) || 0, highestCheckout: parseInt(p2_checkout) || 0, doubleSuccess: parseFloat(p2_doubles) || 0 }
+        player1Stats: {
+          '180s': parseInt(p1_180s) || 0,
+          highestCheckout: parseInt(p1_checkout) || 0,
+          doubleSuccess: parseFloat(p1_doubles) || 0,
+          avg: parseFloat(p1_avg) || 0
+        },
+        player2Stats: {
+          '180s': parseInt(p2_180s) || 0,
+          highestCheckout: parseInt(p2_checkout) || 0,
+          doubleSuccess: parseFloat(p2_doubles) || 0,
+          avg: parseFloat(p2_avg) || 0
+        }
       }
       
       await setDoc(doc(db, 'results', resultId), approvedResult)
@@ -1023,6 +1039,10 @@ function CupManagement() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label style={{ fontSize: '0.65rem' }}>P1 3-Dart Avg</label>
+                      <input type="number" step="0.01" value={resultForm.p1_avg} onChange={e => setResultForm({...resultForm, p1_avg: e.target.value})} style={{ padding: '8px 12px', fontSize: '0.9rem' }} />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
                       <label style={{ fontSize: '0.65rem' }}>P1 180s</label>
                       <input type="number" value={resultForm.p1_180s} onChange={e => setResultForm({...resultForm, p1_180s: e.target.value})} style={{ padding: '8px 12px', fontSize: '0.9rem' }} />
                     </div>
@@ -1032,6 +1052,10 @@ function CupManagement() {
                     </div>
                  </div>
                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label style={{ fontSize: '0.65rem' }}>P2 3-Dart Avg</label>
+                      <input type="number" step="0.01" value={resultForm.p2_avg} onChange={e => setResultForm({...resultForm, p2_avg: e.target.value})} style={{ padding: '8px 12px', fontSize: '0.9rem' }} />
+                    </div>
                     <div className="form-group" style={{ marginBottom: 0 }}>
                       <label style={{ fontSize: '0.65rem' }}>P2 180s</label>
                       <input type="number" value={resultForm.p2_180s} onChange={e => setResultForm({...resultForm, p2_180s: e.target.value})} style={{ padding: '8px 12px', fontSize: '0.9rem' }} />

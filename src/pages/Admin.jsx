@@ -57,7 +57,8 @@ export default function Admin() {
     season: '',
     p1_180s: '', p2_180s: '',
     p1_checkout: '', p2_checkout: '',
-    p1_doubles: '', p2_doubles: ''
+    p1_doubles: '', p2_doubles: '',
+    p1_avg: '', p2_avg: ''
   })
   const [tokenForm, setTokenForm] = useState({ player: '', amount: 0, action: 'add' })
   const [seasonForm, setSeasonForm] = useState({ name: '', startDate: new Date().toISOString().split('T')[0], endDate: '' })
@@ -503,8 +504,18 @@ export default function Admin() {
         date: new Date().toISOString().split('T')[0],
         submittedAt: new Date().toISOString(),
         submittedBy: 'admin',
-        player1Stats: { '180s': parseInt(f.p1_180s) || 0, highestCheckout: parseInt(f.p1_checkout) || 0, doubleSuccess: parseFloat(f.p1_doubles) || 0 },
-        player2Stats: { '180s': parseInt(f.p2_180s) || 0, highestCheckout: parseInt(f.p2_checkout) || 0, doubleSuccess: parseFloat(f.p2_doubles) || 0 }
+        player1Stats: {
+          '180s': parseInt(f.p1_180s) || 0,
+          highestCheckout: parseInt(f.p1_checkout) || 0,
+          doubleSuccess: parseFloat(f.p1_doubles) || 0,
+          avg: parseFloat(f.p1_avg) || 0
+        },
+        player2Stats: {
+          '180s': parseInt(f.p2_180s) || 0,
+          highestCheckout: parseInt(f.p2_checkout) || 0,
+          doubleSuccess: parseFloat(f.p2_doubles) || 0,
+          avg: parseFloat(f.p2_avg) || 0
+        }
       }
 
       if (isDoubles) {
@@ -518,7 +529,15 @@ export default function Admin() {
       await setDoc(doc(db, 'results', resultId), newMatch)
       logMatchApproved(newMatch)
       await logAudit('ADMIN_SUBMIT_GAME', `Admin submitted ${f.gameType}: ${newMatch.player1} ${s1}-${s2} ${newMatch.player2}`)
-      setAdminGameForm({ player1: '', player2: '', player3: '', player4: '', score1: '', score2: '', gameType: 'Friendly', p1_180s: '', p2_180s: '', p1_checkout: '', p2_checkout: '', p1_doubles: '', p2_doubles: '' })
+      setAdminGameForm({
+        player1: '', player2: '', player3: '', player4: '',
+        score1: '', score2: '',
+        gameType: 'Friendly',
+        p1_180s: '', p2_180s: '',
+        p1_checkout: '', p2_checkout: '',
+        p1_doubles: '', p2_doubles: '',
+        p1_avg: '', p2_avg: ''
+      })
       triggerDataRefresh('results')
       showToast('Game submitted!', 'success')
     } catch (e) { showToast('Error: ' + e.message, 'error') }
@@ -1215,6 +1234,8 @@ export default function Admin() {
                   <div className="form-group"><label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Score 2</label><input type="number" className="glass" style={{ width: '100%' }} value={adminGameForm.score2} onChange={e => setAdminGameForm({...adminGameForm, score2: e.target.value})} placeholder="0" /></div>
                   <div className="form-group"><label style={{ fontSize: '0.8rem', opacity: 0.7 }}>P1 180s</label><input type="number" className="glass" style={{ width: '100%' }} value={adminGameForm.p1_180s} onChange={e => setAdminGameForm({...adminGameForm, p1_180s: e.target.value})} placeholder="0" /></div>
                   <div className="form-group"><label style={{ fontSize: '0.8rem', opacity: 0.7 }}>P2 180s</label><input type="number" className="glass" style={{ width: '100%' }} value={adminGameForm.p2_180s} onChange={e => setAdminGameForm({...adminGameForm, p2_180s: e.target.value})} placeholder="0" /></div>
+                  <div className="form-group"><label style={{ fontSize: '0.8rem', opacity: 0.7 }}>P1 Avg</label><input type="number" step="0.01" className="glass" style={{ width: '100%' }} value={adminGameForm.p1_avg} onChange={e => setAdminGameForm({...adminGameForm, p1_avg: e.target.value})} placeholder="0.00" /></div>
+                  <div className="form-group"><label style={{ fontSize: '0.8rem', opacity: 0.7 }}>P2 Avg</label><input type="number" step="0.01" className="glass" style={{ width: '100%' }} value={adminGameForm.p2_avg} onChange={e => setAdminGameForm({...adminGameForm, p2_avg: e.target.value})} placeholder="0.00" /></div>
                   <div className="form-group">
                     <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Season</label>
                     <select className="glass" style={{ width: '100%' }} value={adminGameForm.season} onChange={e => setAdminGameForm({...adminGameForm, season: e.target.value})}>

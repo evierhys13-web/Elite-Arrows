@@ -33,7 +33,9 @@ const INITIAL_RESULT_FORM = {
   opponent2: '',
   yourScore2: '',
   opponentScore2: '',
-  yourDuoId: ''
+  yourDuoId: '',
+  yourAvg: '',
+  opponentAvg: ''
 }
 
 export default function SubmitResult() {
@@ -72,12 +74,19 @@ export default function SubmitResult() {
     }
     fetchDuos()
   }, [])
-  const availablePlayers = allUsers.filter(u => u.id !== user.id)
-  const opponentOptions = formData.gameType === 'League'
-    ? availablePlayers.filter(u => u.division === user.division)
-    : formData.gameType === 'Champions League'
-      ? availablePlayers.filter(u => u.superLeagueDivision === 'Champions')
-      : availablePlayers
+  const availablePlayers = useMemo(() => {
+    if (!user) return []
+    return allUsers.filter(u => u.id !== user.id)
+  }, [allUsers, user])
+
+  const opponentOptions = useMemo(() => {
+    if (!user) return []
+    return formData.gameType === 'League'
+      ? availablePlayers.filter(u => u.division === user.division)
+      : formData.gameType === 'Champions League'
+        ? availablePlayers.filter(u => u.superLeagueDivision === 'Champions')
+        : availablePlayers
+  }, [availablePlayers, formData.gameType, user])
   const fixtureIdParam = searchParams.get('fixtureId')
   const opponentParam = searchParams.get('opponent')
   const gameTypeParam = searchParams.get('gameType')
@@ -95,9 +104,12 @@ export default function SubmitResult() {
   const targetSeasonDoc = seasons.find(s => s.name === currentSeasonLabel)
   const stagedDiv = targetSeasonDoc?.stagedDivisions?.[String(user.id)] || targetSeasonDoc?.stagedDivisions?.[user.id]
 
-  const effectiveDivision = formData.gameType === 'Champions League'
-    ? 'Champions'
-    : (stagedDiv || user.division || 'Unassigned')
+  const effectiveDivision = useMemo(() => {
+    if (!user) return 'Unassigned'
+    return formData.gameType === 'Champions League'
+      ? 'Champions'
+      : (stagedDiv || user.division || 'Unassigned')
+  }, [formData.gameType, stagedDiv, user])
 
   useEffect(() => {
     if (!formData.season && adminData?.currentSeason) {
@@ -203,10 +215,13 @@ export default function SubmitResult() {
   const isAdmin = user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin
   const isOpenLeague = formData.gameType === 'Open League Singles' || formData.gameType === 'Open League Doubles'
 
-  const userDuos = openLeagueDuos.filter(d =>
-    String(d.p1Id) === String(user.id) ||
-    String(d.p2Id) === String(user.id)
-  )
+  const userDuos = useMemo(() => {
+    if (!user) return []
+    return openLeagueDuos.filter(d =>
+      String(d.p1Id) === String(user.id) ||
+      String(d.p2Id) === String(user.id)
+    )
+  }, [openLeagueDuos, user])
 
   const detectedUserDuo = userDuos.length > 0 ? userDuos[0] : null
 
@@ -438,6 +453,13 @@ export default function SubmitResult() {
       return
     }
 
+    if (formData.gameType === 'Cup') {
+      if (!formData.yourAvg || !formData.opponentAvg) {
+        setError('3-dart average is required for Cup matches.')
+        return
+      }
+    }
+
     if (formData.gameType === 'Open League Doubles') {
       if (!formData.partner) {
         setError('Please select your partner.')
@@ -548,6 +570,84 @@ export default function SubmitResult() {
     try {
       setIsSubmitting(true)
 
+      const opponentDuo = formData.gameType === 'Open League Doubles' ? openLeagueDuos.find(d => d.id === formData.opponent) : null
+
+      // Find Your Duo by combining user.id and partner
+      const yourDuoIds = formData.gameType === 'Open League Doubles'
+        ? [String(user.id), String(formData.partner)].sort().join('_')
+        : null
+      const yourDuo = yourDuoIds ? openLeagueDuos.find(d => d.id === yourDuoIds) : null
+
+      const opponentUser = !opponentDuo ? allUsers.find(u => u.id === formData.opponent) : null
+
+      const submitterName = getDisplayName(user, 'You')
+      const opponentName = opponentDuo ? getDuoDisplayName(opponentDuo) : getDisplayName(opponentUser, formData.opponent || 'Selected opponent')
+
+      // Helper for creating the document structure
+      const createResultDoc = (s1, s2, idSuffix = '', proofOverride = null) => {
+        const resId = resultId + idSuffix
+        const docData = {
+          id: resId,
+          firestoreId: resId,
+          player1: submitterName,
+          player1Id: user.id,
+          player2: opponentName,
+          player2Id: opponentUser?.id || formData.opponent,
+          score1: parseInt(s1),
+          score2: parseInt(s2),
+          division: effectiveDivision,
+          gameType: formData.gameType,
+          season: formData.season || adminData?.currentSeason || 'Season 1',
+          date: new Date().toISOString().split('T')[0],
+          submittedAt: new Date().toISOString(),
+          bestOf: formData.bestOf,
+          firstTo: formData.firstTo,
+          player1Stats: {
+            '180s': parseInt(formData.your180s) || 0,
+            highestCheckout: parseInt(formData.yourHighestCheckout) || 0,
+            doubleSuccess: parseFloat(formData.yourDoubleSuccess) || 0,
+            avg: parseFloat(formData.yourAvg) || 0
+          },
+          player2Stats: {
+            '180s': parseInt(formData.opponent180s) || 0,
+            highestCheckout: parseInt(formData.opponentHighestCheckout) || 0,
+            doubleSuccess: parseFloat(formData.opponentDoubleSuccess) || 0,
+            avg: parseFloat(formData.opponentAvg) || 0
+          },
+          status: 'pending',
+          submittedBy: user.id,
+          proofImage: proofOverride || finalProofUrl || '',
+          proofImage2: formData.proofImage2 || '',
+          proofVideo: finalVideoUrl || '',
+          ...(fixtureForResult?.id && { fixtureId: fixtureForResult.id }),
+          ...(cupId && { cupId, matchId }),
+          ...(cupFixture?.cupName && { cupName: cupFixture.cupName }),
+          ...(cupFixture?.startScore && { startScore: cupFixture.startScore })
+        }
+
+        if (formData.gameType === 'Open League Doubles') {
+          const duo1 = yourDuo
+          const duo2 = opponentDuo
+
+          const p1 = user
+          const p2 = allUsers.find(u => String(u.id) === String(formData.partner))
+          const p3 = allUsers.find(u => String(u.id) === String(duo2?.p1Id))
+          const p4 = allUsers.find(u => String(u.id) === String(duo2?.p2Id))
+
+          docData.player1 = duo1 ? getDuoDisplayName(duo1) : `${getDisplayName(p1)} & ${getDisplayName(p2)}`
+          docData.player2 = getDuoDisplayName(duo2)
+
+          docData.player1Id = p1.id
+          docData.player2Id = p2?.id || formData.partner
+          docData.player3Id = p3?.id || duo2?.p1Id
+          docData.player3 = getDisplayName(p3, 'Opponent 3')
+          docData.player4Id = p4?.id || duo2?.p2Id
+          docData.player4 = getDisplayName(p4, 'Opponent 4')
+        }
+
+        return docData
+      }
+
       // Use either the Storage URL (for videos) or the Base64 data (for images)
       // Images are now saved directly in Firestore for immediate submission.
       let finalProofUrl = proofUrl || formData.proofImage
@@ -584,69 +684,6 @@ export default function SubmitResult() {
       const resultId = Date.now().toString()
       const fixtureForResult = cupFixture || selectedFixture
       const currentResults = [...allResults]
-
-      // Helper for creating the document structure
-      const createResultDoc = (s1, s2, idSuffix = '', proofOverride = null) => {
-        const resId = resultId + idSuffix
-        const docData = {
-          id: resId,
-          firestoreId: resId,
-          player1: submitterName,
-          player1Id: user.id,
-          player2: opponentName,
-          player2Id: opponentUser?.id || formData.opponent,
-          score1: parseInt(s1),
-          score2: parseInt(s2),
-          division: effectiveDivision,
-          gameType: formData.gameType,
-          season: formData.season || adminData?.currentSeason || 'Season 1',
-          date: new Date().toISOString().split('T')[0],
-          submittedAt: new Date().toISOString(),
-          bestOf: formData.bestOf,
-          firstTo: formData.firstTo,
-          proofImage: proofOverride || finalProofUrl || '',
-          proofImage2: formData.proofImage2 || '',
-          proofVideo: finalVideoUrl || '',
-          player1Stats: {
-            '180s': parseInt(formData.your180s) || 0,
-            highestCheckout: parseInt(formData.yourHighestCheckout) || 0,
-            doubleSuccess: parseFloat(formData.yourDoubleSuccess) || 0
-          },
-          player2Stats: {
-            '180s': parseInt(formData.opponent180s) || 0,
-            highestCheckout: parseInt(formData.opponentHighestCheckout) || 0,
-            doubleSuccess: parseFloat(formData.opponentDoubleSuccess) || 0
-          },
-          status: 'pending',
-          submittedBy: user.id,
-          ...(fixtureForResult?.id && { fixtureId: fixtureForResult.id }),
-          ...(cupId && { cupId, matchId }),
-          ...(cupFixture?.cupName && { cupName: cupFixture.cupName }),
-          ...(cupFixture?.startScore && { startScore: cupFixture.startScore })
-        }
-
-        if (formData.gameType === 'Open League Doubles') {
-          const duo1 = yourDuo
-          const duo2 = opponentDuo
-
-          const p1 = user
-          const p2 = allUsers.find(u => String(u.id) === String(formData.partner))
-          const p3 = allUsers.find(u => String(u.id) === String(duo2?.p1Id))
-          const p4 = allUsers.find(u => String(u.id) === String(duo2?.p2Id))
-
-          docData.player1 = duo1 ? getDuoDisplayName(duo1) : `${getDisplayName(p1)} & ${getDisplayName(p2)}`
-          docData.player2 = getDuoDisplayName(duo2)
-
-          docData.player1Id = p1.id
-          docData.player2Id = p2?.id || formData.partner
-          docData.player3Id = p3?.id || duo2?.p1Id
-          docData.player3 = getDisplayName(p3, 'Opponent 3')
-          docData.player4Id = p4?.id || duo2?.p2Id
-          docData.player4 = getDisplayName(p4, 'Opponent 4')
-        }
-
-        return docData
-      }
 
       let finalResultObj;
       if (formData.gameType === 'Open League Doubles') {
@@ -1041,6 +1078,19 @@ export default function SubmitResult() {
                   />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontSize: '0.8rem' }}>3-Dart Average</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="yourAvg"
+                    value={formData.yourAvg}
+                    onChange={handleChange}
+                    min="0"
+                    placeholder="0.00"
+                    required={formData.gameType === 'Cup'}
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
                   <label style={{ fontSize: '0.8rem' }}>Highest Checkout</label>
                   <input
                     type="number"
@@ -1086,6 +1136,19 @@ export default function SubmitResult() {
                     onChange={handleChange}
                     min="0"
                     placeholder="0"
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontSize: '0.8rem' }}>3-Dart Average</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="opponentAvg"
+                    value={formData.opponentAvg}
+                    onChange={handleChange}
+                    min="0"
+                    placeholder="0.00"
+                    required={formData.gameType === 'Cup'}
                   />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
