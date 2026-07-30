@@ -140,6 +140,8 @@ export default function SubmitResult() {
     return null
   }
 
+  const cups = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
+
   const cupFixtures = allFixtures.filter((fixture) => {
     if (!fixture.cupId) return false
     const status = String(fixture.status).toLowerCase()
@@ -152,7 +154,6 @@ export default function SubmitResult() {
     const { player1Id, player2Id } = getFixturePlayerIds(fixture)
     return String(player1Id) === String(user.id) || String(player2Id) === String(user.id)
   })
-  const cups = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
 
   const getDisplayName = (profile, fallback = 'Unknown player') => (
     profile?.username || profile?.name || profile?.displayName || profile?.email || fallback
