@@ -153,9 +153,14 @@ export default function CupBracket() {
 
     const sortedThirdPlaced = extraPlaced.sort((a, b) => (b.points - a.points) || (b.legsFor - b.legsAgainst) - (a.legsFor - a.legsAgainst) || (b.legsFor - a.legsFor))
 
-    const bestThirdIds = sortedThirdPlaced.slice(0, numThirdNeeded).map(p => p.id)
+    // Check if the current round of knockout matches actually expects these players
+    // This handles the case where a tournament was created before the "Best 3rd" feature or with it disabled
+    const expectsBestThird = cup.matches.some(m => m.stage === 'knockout' && m.round === 1 && (m.sourceP1?.bestThird || m.sourceP1?.bestExtra || m.sourceP2?.bestThird || m.sourceP2?.bestExtra))
+    const effectiveNumNeeded = expectsBestThird ? numThirdNeeded : 0
 
-    return { sortedStandings, bestThirdIds, sortedThirdPlaced, numThirdNeeded, advanceCount }
+    const bestThirdIds = sortedThirdPlaced.slice(0, effectiveNumNeeded).map(p => p.id)
+
+    return { sortedStandings, bestThirdIds, sortedThirdPlaced, numThirdNeeded: effectiveNumNeeded, advanceCount }
   }, [cup, results, fixtures])
 
   useEffect(() => {
