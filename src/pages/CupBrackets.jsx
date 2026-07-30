@@ -492,6 +492,84 @@ export default function CupBracket() {
         </div>
       )}
 
+      {activeStage === 'groups' && numThirdNeeded > 0 && sortedThirdPlaced.length > 0 && (
+        <div className="animate-fade-in" style={{ marginBottom: '48px', maxWidth: '1000px', margin: '0 auto 48px' }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '20px',
+            padding: '0 10px'
+          }}>
+            <div>
+              <h2 style={{ fontSize: '1.2rem', fontWeight: 900, letterSpacing: '2px', color: '#fbbf24' }}>BEST 3RD PLACED RANKING</h2>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>Ranking of players in 3rd position across all groups.</p>
+            </div>
+            <div style={{
+              background: 'rgba(251, 191, 36, 0.1)',
+              color: '#fbbf24',
+              padding: '6px 16px',
+              borderRadius: '30px',
+              fontSize: '0.75rem',
+              fontWeight: 800,
+              border: '1px solid rgba(251, 191, 36, 0.3)'
+            }}>
+              TOP {numThirdNeeded} ADVANCE
+            </div>
+          </div>
+
+          <div className="card glass" style={{ padding: '24px', borderRadius: '24px', border: '1px solid rgba(251, 191, 36, 0.2)', boxShadow: '0 20px 50px rgba(0,0,0,0.2)' }}>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-muted)' }}>
+                    <th style={{ textAlign: 'center', width: '50px', padding: '12px 8px' }}>#</th>
+                    <th style={{ textAlign: 'left', padding: '12px 8px' }}>PLAYER</th>
+                    <th style={{ textAlign: 'center', padding: '12px 8px' }}>GROUP</th>
+                    <th style={{ textAlign: 'center', padding: '12px 8px' }}>P</th>
+                    <th style={{ textAlign: 'center', padding: '12px 8px' }}>W</th>
+                    <th style={{ textAlign: 'center', padding: '12px 8px' }}>+/-</th>
+                    <th style={{ textAlign: 'center', padding: '12px 8px', color: 'var(--accent-cyan)' }}>PTS</th>
+                    <th style={{ textAlign: 'right', padding: '12px 8px' }}>STATUS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedThirdPlaced.map((p, idx) => {
+                    const isQualifying = idx < numThirdNeeded
+                    return (
+                      <tr key={p.id} style={{
+                        borderBottom: '1px solid rgba(255,255,255,0.03)',
+                        background: isQualifying ? 'rgba(34, 197, 94, 0.03)' : 'transparent',
+                        transition: 'background 0.2s'
+                      }}>
+                        <td style={{ textAlign: 'center', padding: '14px 8px', fontWeight: 900, color: isQualifying ? '#fbbf24' : 'var(--text-muted)' }}>{idx + 1}</td>
+                        <td style={{ padding: '14px 8px', fontWeight: 700 }}>{getPlayerName(p.id)}</td>
+                        <td style={{ textAlign: 'center', padding: '14px 8px' }}>
+                           <span style={{ background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 800 }}>{p.group}</span>
+                        </td>
+                        <td style={{ textAlign: 'center', padding: '14px 8px' }}>{p.played}</td>
+                        <td style={{ textAlign: 'center', padding: '14px 8px' }}>{p.won}</td>
+                        <td style={{ textAlign: 'center', padding: '14px 8px', fontWeight: 700, color: (p.legsFor - p.legsAgainst) >= 0 ? 'var(--success)' : 'var(--error)' }}>
+                          {(p.legsFor - p.legsAgainst) > 0 ? `+${p.legsFor - p.legsAgainst}` : p.legsFor - p.legsAgainst}
+                        </td>
+                        <td style={{ textAlign: 'center', padding: '14px 8px', fontWeight: 900, color: 'var(--accent-cyan)' }}>{p.points}</td>
+                        <td style={{ textAlign: 'right', padding: '14px 8px' }}>
+                           {isQualifying ? (
+                             <span style={{ color: 'var(--success)', fontWeight: 800, fontSize: '0.7rem', background: 'var(--success-bg)', padding: '4px 10px', borderRadius: '20px' }}>✓ QUALIFIED</span>
+                           ) : (
+                             <span style={{ color: 'var(--error)', fontWeight: 800, fontSize: '0.7rem', background: 'var(--error-bg)', padding: '4px 10px', borderRadius: '20px' }}>✕ ELIMINATED</span>
+                           )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
       {activeStage === 'groups' && (
         <div className="animate-fade-in">
           <div style={{
