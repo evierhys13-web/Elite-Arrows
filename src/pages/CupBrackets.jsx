@@ -192,7 +192,7 @@ export default function CupBracket() {
   const totalRounds = safeCupMatches.length > 0
     ? Math.max(...safeCupMatches.filter(m => m && m.round).map(m => m.round), 1)
     : 1
-  const prizePot = (cup.entryFee || 0) * (cup.players?.length || 0)
+  const prizePot = cup.prizePool !== undefined ? cup.prizePool : (cup.entryFee || 0) * (cup.players?.length || 0)
   const cupWinner = safeCupMatches.find(m => m && m.round === totalRounds)?.winner
 
   const getRoundName = (round) => {

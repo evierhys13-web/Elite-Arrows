@@ -812,7 +812,7 @@ export default function CupTournaments() {
       )}
 
       {cups.filter(c => activeTab === 'active' ? (c.status !== 'completed') : (c.status === 'completed')).map(cup => {
-        const prizePot = cup.entryFee * (cup.players?.length || 0)
+        const prizePot = cup.prizePool !== undefined ? cup.prizePool : cup.entryFee * (cup.players?.length || 0)
         const isExpanded = expandedCups[cup.id]
 
         return (

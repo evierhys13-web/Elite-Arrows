@@ -29,6 +29,8 @@ function CupManagement() {
   const syncInProgressRef = useRef(false)
   const [editingDeadlines, setEditingDeadlines] = useState(null)
   const [deadlinesForm, setDeadlinesForm] = useState({})
+  const [editingPrize, setEditingPrize] = useState(null)
+  const [prizeForm, setPrizeForm] = useState({ prizePool: 0, entryFee: 0 })
   const [resultForm, setResultForm] = useState({
     cup: null,
     match: null,
@@ -648,6 +650,24 @@ function CupManagement() {
     }
   }
 
+  const handleSavePrize = async () => {
+    if (!editingPrize) return
+    setIsSubmitting(true)
+    try {
+      await setDoc(doc(db, 'cups', String(editingPrize.id)), {
+        prizePool: parseFloat(prizeForm.prizePool) || 0,
+        entryFee: parseFloat(prizeForm.entryFee) || 0
+      }, { merge: true })
+      showToast('Prize info updated!', 'success')
+      setEditingPrize(null)
+      triggerDataRefresh('cups')
+    } catch (e) {
+      showToast('Error saving prize info: ' + e.message, 'error')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const handleSaveDeadlines = async () => {
     if (!editingDeadlines) return
     setIsSubmitting(true)
@@ -691,7 +711,25 @@ function CupManagement() {
           return (a.matchNum || 0) - (b.matchNum || 0)
         })
         
-        const handleSaveDeadlines = async () => {
+        const handleSavePrize = async () => {
+    if (!editingPrize) return
+    setIsSubmitting(true)
+    try {
+      await setDoc(doc(db, 'cups', String(editingPrize.id)), {
+        prizePool: parseFloat(prizeForm.prizePool) || 0,
+        entryFee: parseFloat(prizeForm.entryFee) || 0
+      }, { merge: true })
+      showToast('Prize info updated!', 'success')
+      setEditingPrize(null)
+      triggerDataRefresh('cups')
+    } catch (e) {
+      showToast('Error saving prize info: ' + e.message, 'error')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleSaveDeadlines = async () => {
     if (!editingDeadlines) return
     setIsSubmitting(true)
     try {
@@ -760,7 +798,21 @@ function CupManagement() {
                     setDeadlinesForm(cup.deadlines || {})
                   }}
                 >
-                  📅 Set Deadlines
+                  📅 Deadlines
+                </button>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  style={{ fontSize: '0.75rem', background: 'rgba(34, 197, 94, 0.1)', borderColor: 'rgba(34, 197, 94, 0.3)' }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setEditingPrize(cup)
+                    setPrizeForm({
+                      prizePool: cup.prizePool || (cup.entryFee * (cup.players?.length || 0)),
+                      entryFee: cup.entryFee || 0
+                    })
+                  }}
+                >
+                  💰 Prize
                 </button>
                 {cup.type === 'group_knockout' && !cup.groupsAdvanced && (
                    <button
@@ -817,7 +869,25 @@ function CupManagement() {
                     let roundLabel = getRoundName(match.round, totalRounds)
                     if (match.stage === 'groups') roundLabel = `GROUP ${match.group}`
 
-                    const handleSaveDeadlines = async () => {
+                    const handleSavePrize = async () => {
+    if (!editingPrize) return
+    setIsSubmitting(true)
+    try {
+      await setDoc(doc(db, 'cups', String(editingPrize.id)), {
+        prizePool: parseFloat(prizeForm.prizePool) || 0,
+        entryFee: parseFloat(prizeForm.entryFee) || 0
+      }, { merge: true })
+      showToast('Prize info updated!', 'success')
+      setEditingPrize(null)
+      triggerDataRefresh('cups')
+    } catch (e) {
+      showToast('Error saving prize info: ' + e.message, 'error')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleSaveDeadlines = async () => {
     if (!editingDeadlines) return
     setIsSubmitting(true)
     try {
@@ -1067,6 +1137,44 @@ function CupManagement() {
               <button className="btn btn-secondary btn-block" onClick={() => setEditingDeadlines(null)}>Cancel</button>
               <button className="btn btn-primary btn-block" onClick={handleSaveDeadlines} disabled={isSubmitting}>
                 {isSubmitting ? 'Saving...' : 'Save Deadlines'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editingPrize && (
+        <div className="modal-overlay">
+          <div className="modal-content glass" style={{ maxWidth: '400px' }}>
+            <h3 style={{ marginBottom: '20px' }} className="text-gradient">Edit Prize Pool</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '20px' }}>
+              Update the financial details for <strong>{editingPrize.name}</strong>.
+            </p>
+
+            <div className="form-group">
+              <label style={{ fontSize: '0.75rem', fontWeight: 800 }}>Total Prize Pool (£)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={prizeForm.prizePool}
+                onChange={e => setPrizeForm({...prizeForm, prizePool: e.target.value})}
+              />
+            </div>
+
+            <div className="form-group" style={{ marginTop: '16px' }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: 800 }}>Entry Fee (£)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={prizeForm.entryFee}
+                onChange={e => setPrizeForm({...prizeForm, entryFee: e.target.value})}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '30px' }}>
+              <button className="btn btn-secondary btn-block" onClick={() => setEditingPrize(null)}>Cancel</button>
+              <button className="btn btn-primary btn-block" onClick={handleSavePrize} disabled={isSubmitting}>
+                {isSubmitting ? 'Saving...' : 'Update Prize'}
               </button>
             </div>
           </div>
