@@ -209,7 +209,11 @@ export default function CupBracket() {
 
   const getPlayerName = (id) => {
     if (!id) return null
-    return allUsers.find(u => String(u.id) === String(id))?.username || 'Unknown'
+    const user = allUsers.find(u => String(u.id) === String(id))
+    if (user) return user.username
+    // If not found in allUsers, it might be that id is already a username string
+    // from a fixture/match that was manually updated but not synced with allUsers
+    return id.length > 20 ? 'Unknown' : id // Basic heuristic to distinguish IDs from names
   }
 
   const roundsData = rounds.map(round => {
@@ -242,7 +246,13 @@ export default function CupBracket() {
       // 1. Update participants list
       const updatedPlayers = cupData.players.map(pid => String(pid) === String(playerToRemove) ? playerToAdd : pid)
 
-      // 2. Update all matches
+      // 2. Update groups
+      const updatedGroups = (cupData.groups || []).map(g => ({
+        ...g,
+        players: (g.players || []).map(pid => String(pid) === String(playerToRemove) ? playerToAdd : pid)
+      }))
+
+      // 3. Update all matches
       const updatedMatches = cupData.matches.map(m => ({
         ...m,
         player1: String(m.player1) === String(playerToRemove) ? playerToAdd : m.player1,
@@ -250,11 +260,11 @@ export default function CupBracket() {
         winner: String(m.winner) === String(playerToRemove) ? playerToAdd : m.winner
       }))
 
-      const nextCupData = { ...cupData, players: updatedPlayers, matches: updatedMatches }
+      const nextCupData = { ...cupData, players: updatedPlayers, groups: updatedGroups, matches: updatedMatches }
       await setDoc(cupRef, nextCupData, { merge: true })
 
-      // 3. Update Fixtures
-      const fixturesSnap = await getDocs(query(collection(db, 'fixtures'), where('cupId', '==', parseInt(cup.id))))
+      // 4. Update Fixtures
+      const fixturesSnap = await getDocs(query(collection(db, 'fixtures'), where('cupId', 'in', [String(cup.id), parseInt(cup.id)])))
       const batch = writeBatch(db)
       let fixtureCount = 0
 
@@ -422,6 +432,22 @@ export default function CupBracket() {
           fontWeight: 900,
           letterSpacing: '-1px'
         }}>{cup.name}</h1>
+
+        {cup.deadlines && (
+          <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            {activeStage === 'groups' && cup.deadlines.groups && (
+              <div style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', padding: '6px 16px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 800, border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                🚨 GROUP STAGE DEADLINE: {cup.deadlines.groups}
+              </div>
+            )}
+            {activeStage === 'knockout' && cup.deadlines[cup.currentRound || 1] && (
+              <div style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', padding: '6px 16px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 800, border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                🚨 ROUND {cup.currentRound || 1} DEADLINE: {cup.deadlines[cup.currentRound || 1]}
+              </div>
+            )}
+          </div>
+        )}
+
         <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', flexWrap: 'wrap' }}>
           <div className="glass" style={{ padding: '8px 20px', borderRadius: '30px', fontSize: '0.85rem', color: 'var(--accent-cyan)', fontWeight: 800, border: '1px solid rgba(255,255,255,0.1)' }}>
              💰 PRIZE: £{prizePot}

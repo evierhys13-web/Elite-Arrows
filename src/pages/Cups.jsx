@@ -73,7 +73,7 @@ export default function CupTournaments() {
       await setDoc(cupRef, { ...cupData, players: updatedPlayers, groups: updatedGroups, matches: updatedMatches }, { merge: true })
 
       // 4. Update Fixtures
-      const fixturesSnap = await getDocs(query(collection(db, 'fixtures'), where('cupId', '==', parseInt(swapCup.id))))
+      const fixturesSnap = await getDocs(query(collection(db, 'fixtures'), where('cupId', 'in', [String(swapCup.id), parseInt(swapCup.id)])))
       const batch = writeBatch(db)
       let fixtureCount = 0
 
