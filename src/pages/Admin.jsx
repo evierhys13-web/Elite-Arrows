@@ -28,6 +28,7 @@ export default function Admin() {
     dataRefreshTrigger,
     updateResults,
     removeResult,
+    updateFixtures,
     forceFetchResults,
     searchUsers
   } = useAuth()
