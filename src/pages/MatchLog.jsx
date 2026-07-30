@@ -7,7 +7,7 @@ import { db, doc, setDoc, getDocs, collection } from '../firebase'
 import { useToast } from '../context/ToastContext'
 
 export default function MatchLog() {
-  const { user, getAllUsers, getFixtures, getResults, adminData, getSeasons, bets, useTokens, triggerDataRefresh } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, getCups, adminData, getSeasons, bets, useTokens, triggerDataRefresh } = useAuth()
   const navigate = useNavigate()
   const { showToast } = useToast()
   const [activeTab, setActiveTab] = useState('toPlay')
@@ -21,6 +21,8 @@ export default function MatchLog() {
 
   const [openSinglesEntries, setOpenSinglesEntries] = useState([])
   const [openDuoEntries, setOpenDuoEntries] = useState([])
+
+  const cups = Array.isArray(getCups()) ? getCups() : []
 
   useMemo(() => {
     const fetchData = async () => {

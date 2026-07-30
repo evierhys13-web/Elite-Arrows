@@ -140,7 +140,7 @@ export default function SubmitResult() {
     return null
   }
 
-  const cups = JSON.parse(localStorage.getItem('eliteArrowsCups') || '[]')
+  const cups = getCups()
 
   const cupFixtures = allFixtures.filter((fixture) => {
     if (!fixture.cupId) return false
@@ -148,7 +148,7 @@ export default function SubmitResult() {
     if (['approved', 'result_submitted', 'completed'].includes(status)) return false
 
     // Only show fixtures for cups that actually exist in the cups array
-    const cupExists = cups.some(c => String(c.id) === String(fixture.cupId))
+    const cupExists = Array.isArray(cups) && cups.some(c => String(c.id) === String(fixture.cupId))
     if (!cupExists) return false
 
     const { player1Id, player2Id } = getFixturePlayerIds(fixture)
@@ -931,7 +931,7 @@ export default function SubmitResult() {
                   >
                     <option value="">Select match</option>
                     {cupFixtures.map(f => {
-                      const cup = cups.find(c => String(c.id) === String(f.cupId))
+                      const cup = Array.isArray(cups) ? cups.find(c => String(c.id) === String(f.cupId)) : null
                       const opponentId = getFixtureOpponentId(f)
                       const opponent = allUsers.find(u => String(u.id) === String(opponentId))
 
