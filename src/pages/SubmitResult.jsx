@@ -132,6 +132,11 @@ export default function SubmitResult() {
     if (!fixture.cupId) return false
     const status = String(fixture.status).toLowerCase()
     if (['approved', 'result_submitted', 'completed'].includes(status)) return false
+
+    // Only show fixtures for cups that actually exist in the cups array
+    const cupExists = cups.some(c => String(c.id) === String(fixture.cupId))
+    if (!cupExists) return false
+
     const { player1Id, player2Id } = getFixturePlayerIds(fixture)
     return String(player1Id) === String(user.id) || String(player2Id) === String(user.id)
   })
@@ -888,12 +893,20 @@ export default function SubmitResult() {
                   >
                     <option value="">Select match</option>
                     {cupFixtures.map(f => {
-                      const cup = cups.find(c => c.id === f.cupId)
+                      const cup = cups.find(c => String(c.id) === String(f.cupId))
                       const opponentId = getFixtureOpponentId(f)
-                      const opponent = allUsers.find(u => u.id === opponentId)
+                      const opponent = allUsers.find(u => String(u.id) === String(opponentId))
+
+                      const getRoundName = (round, totalRounds = 5) => {
+                        if (round === 0) return 'Group Stage'
+                        if (round === totalRounds) return 'Final'
+                        if (round === totalRounds - 1) return 'Semi-Final'
+                        return `Round ${round}`
+                      }
+
                       return (
                         <option key={f.id} value={opponentId}>
-                          {cup?.name || 'Cup'} - vs {getDisplayName(opponent, 'Unknown')}
+                          {cup?.name || 'Cup'} - {getRoundName(f.round)} vs {getDisplayName(opponent, 'Unknown')}
                         </option>
                       )
                     })}

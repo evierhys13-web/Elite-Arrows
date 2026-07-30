@@ -151,6 +151,8 @@ export default function MatchLog() {
           return isLeagueResult(r, fixturesById) || isPlayoffResult(r, fixturesById)
         } else if (competition === 'Champions League') {
           return isSuperLeagueResult(r, fixturesById)
+        } else if (competition === 'Cup') {
+          return String(r.gameType || '').toLowerCase() === 'cup' || !!r.cupId
         } else if (competition === 'Open Singles') {
           return isOpenLeagueResult(r)
         } else if (competition === 'Open Doubles') {
@@ -277,6 +279,29 @@ export default function MatchLog() {
           return { ...u, _playedCount: playedCount, _remaining: 2 - playedCount }
         })
         .filter(u => u._remaining > 0)
+    } else if (competition === 'Cup') {
+      // Cup logic: show active fixtures
+      return fixtures
+        .filter(f => {
+          if (!f.cupId || f._deleted) return false
+          const status = String(f.status).toLowerCase()
+          if (['approved', 'result_submitted', 'completed'].includes(status)) return false
+          return String(f.player1Id) === String(targetUser.id) || String(f.player2Id) === String(targetUser.id)
+        })
+        .map(f => {
+          const opponentId = String(f.player1Id) === String(targetUser.id) ? f.player2Id : f.player1Id
+          const opponent = allUsers.find(u => String(u.id) === String(opponentId))
+          const cup = cups.find(c => String(c.id) === String(f.cupId))
+          return {
+            ...opponent,
+            id: opponent?.id || opponentId,
+            username: opponent?.username || 'Unknown',
+            _isCup: true,
+            _cupName: cup?.name || f.cupName || 'Cup',
+            _round: f.round,
+            _fixtureId: f.id
+          }
+        })
     } else if (competition === 'Open Singles') {
       const isInOpenSingles = openSinglesEntries.some(e => String(e.userId) === String(targetUser.id))
       if (!isInOpenSingles) return []
@@ -361,6 +386,13 @@ export default function MatchLog() {
           style={{ borderRadius: '99px', minWidth: '120px' }}
         >
           Champions League
+        </button>
+        <button
+          className={`btn btn-sm ${competition === 'Cup' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setCompetition('Cup')}
+          style={{ borderRadius: '99px', minWidth: '120px' }}
+        >
+          Cups
         </button>
         <button
           className={`btn btn-sm ${competition === 'Open Singles' ? 'btn-primary' : 'btn-secondary'}`}
@@ -463,7 +495,7 @@ export default function MatchLog() {
                     <div>
                       <div style={{ fontWeight: '700', fontSize: '0.95rem' }}>{player.username}</div>
                       <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                        {competition === 'League' ? `${player.division} Division` : `${player.superLeagueDivision} Champions Rank`}
+                        {player._isCup ? `${player._cupName} - Round ${player._round}` : (competition === 'League' ? `${player.division} Division` : `${player.superLeagueDivision} Champions Rank`)}
                       </div>
                       {competition === 'Champions League' && (
                         <div style={{ fontSize: '0.65rem', color: 'var(--accent-cyan)' }}>
@@ -482,11 +514,9 @@ export default function MatchLog() {
                           if (competition === 'Open Singles') {
                             navigate(`/submit-result?opponent=${player.id}&gameType=Open League Singles&season=${currentSeasonName}`)
                           } else if (competition === 'Open Doubles') {
-                            // For Open Doubles, we need to pass the duo info
-                            // The submit page handles opponent1 and opponent2
-                            // But here we have a Duo team.
-                            // I'll just navigate to submit result with the first opponent, user can fill the rest
                             navigate(`/submit-result?opponent=${player.p1Id}&gameType=Open League Doubles&season=${currentSeasonName}`)
+                          } else if (competition === 'Cup') {
+                            navigate(`/submit-result?fixtureId=${player._fixtureId}&gameType=Cup&season=${currentSeasonName}`)
                           } else {
                             navigate(`/submit-result?opponent=${player.id}&gameType=${player._playoff ? 'Playoff' : competition}&season=${currentSeasonName}`)
                           }
@@ -524,7 +554,7 @@ export default function MatchLog() {
                       padding: '4px 8px',
                       borderRadius: '4px',
                       border: `1px solid ${player._playoff ? 'rgba(245, 158, 11, 0.2)' : 'rgba(0, 212, 255, 0.2)'}`
-                    }}>{player._playoff ? 'Playoff' : competition}</span>
+                    }}>{player._playoff ? 'Playoff' : (player._isCup ? 'Cup' : competition)}</span>
                   </div>
                 </div>
 
