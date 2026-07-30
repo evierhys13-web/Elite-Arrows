@@ -39,7 +39,7 @@ const INITIAL_RESULT_FORM = {
 }
 
 export default function SubmitResult() {
-  const { user, getAllUsers, getFixtures, getResults, updateResults, updateFixtures, addTokens, triggerDataRefresh, notifyAdmins, adminData, getSeasons, searchUsers } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, getCups, updateResults, updateFixtures, addTokens, triggerDataRefresh, notifyAdmins, adminData, getSeasons, searchUsers } = useAuth()
   const { showToast } = useToast()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -140,20 +140,24 @@ export default function SubmitResult() {
     return null
   }
 
-  const cups = getCups()
+  const cupFixtures = useMemo(() => {
+    if (!getCups || typeof getCups !== 'function') return []
+    const cupsData = getCups()
+    if (!Array.isArray(cupsData)) return []
 
-  const cupFixtures = allFixtures.filter((fixture) => {
-    if (!fixture.cupId) return false
-    const status = String(fixture.status).toLowerCase()
-    if (['approved', 'result_submitted', 'completed'].includes(status)) return false
+    return allFixtures.filter((fixture) => {
+      if (!fixture.cupId) return false
+      const status = String(fixture.status).toLowerCase()
+      if (['approved', 'result_submitted', 'completed'].includes(status)) return false
 
-    // Only show fixtures for cups that actually exist in the cups array
-    const cupExists = Array.isArray(cups) && cups.some(c => String(c.id) === String(fixture.cupId))
-    if (!cupExists) return false
+      // Only show fixtures for cups that actually exist
+      const cupExists = cupsData.some(c => String(c.id) === String(fixture.cupId))
+      if (!cupExists) return false
 
-    const { player1Id, player2Id } = getFixturePlayerIds(fixture)
-    return String(player1Id) === String(user.id) || String(player2Id) === String(user.id)
-  })
+      const { player1Id, player2Id } = getFixturePlayerIds(fixture)
+      return String(player1Id) === String(user.id) || String(player2Id) === String(user.id)
+    })
+  }, [allFixtures, getCups, user.id])
 
   const getDisplayName = (profile, fallback = 'Unknown player') => (
     profile?.username || profile?.name || profile?.displayName || profile?.email || fallback
@@ -931,7 +935,8 @@ export default function SubmitResult() {
                   >
                     <option value="">Select match</option>
                     {cupFixtures.map(f => {
-                      const cup = Array.isArray(cups) ? cups.find(c => String(c.id) === String(f.cupId)) : null
+                      const cupsData = (typeof getCups === 'function') ? getCups() : []
+                      const cup = Array.isArray(cupsData) ? cupsData.find(c => String(c.id) === String(f.cupId)) : null
                       const opponentId = getFixtureOpponentId(f)
                       const opponent = allUsers.find(u => String(u.id) === String(opponentId))
 

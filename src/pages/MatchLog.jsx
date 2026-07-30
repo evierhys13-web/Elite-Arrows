@@ -22,7 +22,11 @@ export default function MatchLog() {
   const [openSinglesEntries, setOpenSinglesEntries] = useState([])
   const [openDuoEntries, setOpenDuoEntries] = useState([])
 
-  const cups = Array.isArray(getCups()) ? getCups() : []
+  const cups = useMemo(() => {
+    if (typeof getCups !== 'function') return []
+    const data = getCups()
+    return Array.isArray(data) ? data : []
+  }, [getCups])
 
   useMemo(() => {
     const fetchData = async () => {

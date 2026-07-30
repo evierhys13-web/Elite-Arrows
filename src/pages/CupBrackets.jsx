@@ -34,7 +34,8 @@ export default function CupBracket() {
 
   useEffect(() => {
     try {
-      const cups = Array.isArray(getCups()) ? getCups() : []
+      const cupsData = (typeof getCups === 'function') ? getCups() : []
+      const cups = Array.isArray(cupsData) ? cupsData : []
       const foundCup = cups.find(c => c && String(c.id) === String(cupId))
       if (foundCup) setCup(foundCup)
       

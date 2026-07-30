@@ -33,12 +33,12 @@ export default function CupFixtures() {
   }
 
   const getCupName = (cupId) => {
-    const cups = getCups()
+    const cups = (typeof getCups === 'function') ? getCups() : []
     return cups.find(c => c.id === cupId)?.name || 'Unknown Cup'
   }
 
   const getTotalRounds = (cupId) => {
-    const cups = getCups()
+    const cups = (typeof getCups === 'function') ? getCups() : []
     const cup = cups.find(c => c.id === cupId)
     return cup ? Math.max(...(cup.matches?.map(m => m.round) || [1])) : 1
   }

@@ -119,7 +119,11 @@ export default function CupTournaments() {
   const isSubscribed = user?.isSubscribed === true || isAdmin
 
   const allUsers = getAllUsers()
-  const cups = getCups()
+  const cups = useMemo(() => {
+    if (typeof getCups !== 'function') return []
+    const data = getCups()
+    return Array.isArray(data) ? data : []
+  }, [getCups])
   const selectablePlayers = allUsers.filter(u => !selectedPlayers.includes(u.id))
 
   const handlePlayerSelect = (playerId) => {
