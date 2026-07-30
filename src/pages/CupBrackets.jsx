@@ -128,13 +128,17 @@ export default function CupBracket() {
         standings[gId][p2].legsFor += result.score2
         standings[gId][p2].legsAgainst += result.score1
 
+        // Championship Cup Scoring: 1 point per leg won
+        standings[gId][p1].points += result.score1
+        standings[gId][p2].points += result.score2
+
         if (result.score1 > result.score2) {
           standings[gId][p1].won++
-          standings[gId][p1].points += 2
+          standings[gId][p1].points += 2 // 2 points for match win
           standings[gId][p2].lost++
         } else if (result.score2 > result.score1) {
           standings[gId][p2].won++
-          standings[gId][p2].points += 2
+          standings[gId][p2].points += 2 // 2 points for match win
           standings[gId][p1].lost++
         }
 
