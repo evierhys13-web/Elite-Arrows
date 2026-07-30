@@ -472,7 +472,34 @@ export default function Admin() {
     try {
       const isSuper = f.gameType === 'Champions League'
       const isLeague = f.gameType === 'League'
+      const isCup = f.gameType === 'Cup'
       let targetSeason = f.season || adminData?.currentSeason || 'Season 1'
+
+      let cupId = null
+      let matchId = null
+      let cupName = null
+      let fixtureId = null
+
+      if (isCup) {
+        // Try to find a matching cup fixture
+        const allFixtures = getFixtures()
+        const match = allFixtures.find(fixture => {
+          if (!fixture.cupId || fixture._deleted) return false
+          const { player1Id, player2Id } = fixture
+          const p1Match = String(player1Id) === String(p1.id) || String(player1Id) === String(p2.id)
+          const p2Match = String(player2Id) === String(p1.id) || String(player2Id) === String(p2.id)
+          const status = String(fixture.status).toLowerCase()
+          return p1Match && p2Match && !['approved', 'result_submitted', 'completed'].includes(status)
+        })
+
+        if (match) {
+          cupId = match.cupId
+          matchId = match.matchId
+          cupName = match.cupName
+          fixtureId = match.id
+        }
+      }
+
       const matchTime = new Date().getTime()
       const s2Start = new Date('2026-08-01T00:00:00').getTime()
       if (isSuper && (!f.season || f.season === 'Season 1' || f.season === '2026')) {
@@ -504,6 +531,8 @@ export default function Admin() {
         date: new Date().toISOString().split('T')[0],
         submittedAt: new Date().toISOString(),
         submittedBy: 'admin',
+        ...(cupId && { cupId, matchId, cupName }),
+        ...(fixtureId && { fixtureId }),
         player1Stats: {
           '180s': parseInt(f.p1_180s) || 0,
           highestCheckout: parseInt(f.p1_checkout) || 0,
@@ -527,6 +556,24 @@ export default function Admin() {
       }
 
       await setDoc(doc(db, 'results', resultId), newMatch)
+
+      if (fixtureId) {
+        const allFixtures = [...getFixtures()]
+        const fIdx = allFixtures.findIndex(fix => String(fix.id) === String(fixtureId))
+        if (fIdx !== -1) {
+          allFixtures[fIdx] = {
+            ...allFixtures[fIdx],
+            status: 'approved',
+            resultId,
+            score1: s1,
+            score2: s2,
+            updatedAt: new Date().toISOString()
+          }
+          updateFixtures(allFixtures)
+          await setDoc(doc(db, 'fixtures', String(fixtureId)), allFixtures[fIdx], { merge: true })
+        }
+      }
+
       logMatchApproved(newMatch)
       await logAudit('ADMIN_SUBMIT_GAME', `Admin submitted ${f.gameType}: ${newMatch.player1} ${s1}-${s2} ${newMatch.player2}`)
       setAdminGameForm({
