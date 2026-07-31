@@ -1347,7 +1347,7 @@ export default function Admin() {
                           <button className="btn btn-danger btn-sm" onClick={() => handleRejectResult(r.id)}>Reject</button>
                         </>
                       )}
-                      {(r.proofImage || r.proofImage2 || r.proofVideo) && (
+                      {(r.proofImage || r.proofImage2 || r.proofVideo || r.hasProofImage) && (
                         <div style={{ display: 'flex', gap: '4px' }}>
                           {r.proofImage && (
                             <button
@@ -1358,11 +1358,22 @@ export default function Admin() {
                               🖼️ Proof 1
                             </button>
                           )}
+                          {!r.proofImage && r.hasProofImage && (
+                            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
+                              (Legacy Proof Attached)
+                            </div>
+                          )}
                           {r.proofImage2 && (
                             <button
                               className="btn btn-secondary btn-sm"
                               style={{ background: 'rgba(0, 212, 255, 0.1)', borderColor: 'rgba(0, 212, 255, 0.3)', whiteSpace: 'nowrap' }}
-                              onClick={() => setPreviewImage(r.proofImage2)}
+                              onClick={() => {
+                                if (r.proofImage2) {
+                                  setPreviewImage(r.proofImage2)
+                                } else {
+                                  showToast('No image data found in Proof 2', 'warning')
+                                }
+                              }}
                             >
                               🖼️ Proof 2
                             </button>
@@ -1944,8 +1955,48 @@ export default function Admin() {
       </div>
 
       {previewImage && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setPreviewImage(null)}>
-          <img src={previewImage} alt="Preview" style={{ maxWidth: '100%', maxHeight: '100%' }} />
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.95)',
+            zIndex: 10000,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+          onClick={() => setPreviewImage(null)}
+        >
+          <div style={{ position: 'absolute', top: '20px', right: '20px', color: 'white', fontSize: '2rem', cursor: 'pointer', zIndex: 10001 }}>×</div>
+          <div style={{ position: 'relative', maxWidth: '100%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '15px' }}>
+            <img
+              src={previewImage}
+              alt="Verification Proof"
+              onError={() => {
+                showToast('Failed to load image. It may be corrupted or too large.', 'error')
+                setPreviewImage(null)
+              }}
+              style={{
+                maxWidth: '100%',
+                maxHeight: '80vh',
+                borderRadius: '8px',
+                boxShadow: '0 0 50px rgba(0,0,0,0.5)',
+                border: '1px solid rgba(255,255,255,0.1)'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            />
+            {previewImage.startsWith('http') && (
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={(e) => { e.stopPropagation(); window.open(previewImage, '_blank'); }}
+              >
+                🔗 Open in New Tab
+              </button>
+            )}
+          </div>
+          <p style={{ color: 'var(--text-muted)', marginTop: '20px', fontSize: '0.8rem' }}>Tap anywhere to close</p>
         </div>
       )}
     </div>
