@@ -152,6 +152,12 @@ export default function Table() {
       }))
       .filter((p) => {
         if (activeDivision !== "Overall") return true;
+
+        // For Season 4 specifically, keep Overall table empty until games are played
+        if (selectedSeason === "Season 4") {
+          return p.stats.played > 0;
+        }
+
         const hasValidDivision =
           p.division && p.division !== "Unassigned" && p.division !== "Admin";
         return p.stats.played > 0 || hasValidDivision;
