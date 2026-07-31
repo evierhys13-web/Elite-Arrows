@@ -270,23 +270,28 @@ export const derivePlayerStatsFromResults = (users = [], results = [], options =
   })
 
   // Apply manual stats adjustments (admin overrides)
-  users.forEach(user => {
-    if (user && user.id) {
-      const id = String(user.id)
-      const overrides = (superLeagueOnly ? user.manualSuperStats : user.manualStats)
-      if (overrides && statsByPlayerId[id]) {
-        // We treat manual stats as absolute overrides for the main columns if provided
-        statsByPlayerId[id].played = overrides.played ?? statsByPlayerId[id].played
-        statsByPlayerId[id].wins = overrides.wins ?? statsByPlayerId[id].wins
-        statsByPlayerId[id].draws = overrides.draws ?? statsByPlayerId[id].draws
-        statsByPlayerId[id].losses = overrides.losses ?? statsByPlayerId[id].losses
-        statsByPlayerId[id].points = overrides.points ?? statsByPlayerId[id].points
-        statsByPlayerId[id].legsWon = overrides.legsWon ?? statsByPlayerId[id].legsWon
-        statsByPlayerId[id].legsLost = overrides.legsLost ?? statsByPlayerId[id].legsLost
-        statsByPlayerId[id].legDiff = statsByPlayerId[id].legsWon - statsByPlayerId[id].legsLost
+  // Only apply to Season 1 / Legacy or when viewing Overall (null season)
+  const isLegacySeason = !currentSeason || ['season1', '2026', 'legacy'].includes(String(currentSeason).replace(/\s+/g, '').toLowerCase())
+
+  if (isLegacySeason) {
+    users.forEach(user => {
+      if (user && user.id) {
+        const id = String(user.id)
+        const overrides = (superLeagueOnly ? user.manualSuperStats : user.manualStats)
+        if (overrides && statsByPlayerId[id]) {
+          // We treat manual stats as absolute overrides for the main columns if provided
+          statsByPlayerId[id].played = overrides.played ?? statsByPlayerId[id].played
+          statsByPlayerId[id].wins = overrides.wins ?? statsByPlayerId[id].wins
+          statsByPlayerId[id].draws = overrides.draws ?? statsByPlayerId[id].draws
+          statsByPlayerId[id].losses = overrides.losses ?? statsByPlayerId[id].losses
+          statsByPlayerId[id].points = overrides.points ?? statsByPlayerId[id].points
+          statsByPlayerId[id].legsWon = overrides.legsWon ?? statsByPlayerId[id].legsWon
+          statsByPlayerId[id].legsLost = overrides.legsLost ?? statsByPlayerId[id].legsLost
+          statsByPlayerId[id].legDiff = statsByPlayerId[id].legsWon - statsByPlayerId[id].legsLost
+        }
       }
-    }
-  })
+    })
+  }
 
   return statsByPlayerId
 }
