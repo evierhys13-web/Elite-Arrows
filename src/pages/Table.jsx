@@ -30,9 +30,7 @@ export default function Table() {
   } = useAuth();
   const { showToast } = useToast();
   const [refreshKey, setRefreshKey] = useState(0);
-  const [selectedSeason, setSelectedSeason] = useState(
-    adminData?.currentSeason || "Season 1",
-  );
+  const [selectedSeason, setSelectedSeason] = useState("Season 4");
   const [loadingSeason, setLoadingSeason] = useState(true);
   const [hasInitializedSeason, setHasInitializedSeason] = useState(false);
 
@@ -76,21 +74,14 @@ export default function Table() {
   };
 
   const divisions = getDivisionsForSeason();
-  const seasons = getSeasons();
+  const seasons = getSeasons().filter(s => s.name === "Season 4");
 
   useEffect(() => {
-    // Ensure selectedSeason is always valid and prioritize Season 1 if currently in May 2026
-    const now = new Date();
-    const isMay2026 = now.getFullYear() === 2026 && now.getMonth() === 4; // May is 4
-
-    if (adminData?.currentSeason && !hasInitializedSeason) {
-      setSelectedSeason(adminData.currentSeason);
-      setHasInitializedSeason(true);
-    } else if (isMay2026 && !hasInitializedSeason) {
-      setSelectedSeason("Season 1");
+    if (!hasInitializedSeason) {
+      setSelectedSeason("Season 4");
       setHasInitializedSeason(true);
     }
-  }, [adminData?.currentSeason, hasInitializedSeason]);
+  }, [hasInitializedSeason]);
 
   const allUsers = getAllUsers();
   const fixtures = getFixtures();
@@ -337,27 +328,11 @@ export default function Table() {
                   border: "1px solid rgba(255,255,255,0.1)",
                 }}
               >
-                {seasons
-                  .filter(
-                    (s) =>
-                      (s.name !== "Season 1" ||
-                        adminData?.currentSeason === "Season 1") &&
-                      (s.name !== "Season 2" ||
-                        adminData?.currentSeason === "Season 2"),
-                  )
-                  .map((s) => (
-                    <option key={s.id} value={s.name}>
-                      {s.name}
-                    </option>
-                  ))}
-                {!seasons.find((s) => s.name === "Season 1") &&
-                  adminData?.currentSeason === "Season 1" && (
-                    <option value="Season 1">Season 1</option>
-                  )}
-                {!seasons.find((s) => s.name === "Season 2") &&
-                  adminData?.currentSeason === "Season 2" && (
-                    <option value="Season 2">Season 2</option>
-                  )}
+                {seasons.map((s) => (
+                  <option key={s.id} value={s.name}>
+                    {s.name}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
