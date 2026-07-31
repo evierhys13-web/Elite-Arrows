@@ -481,6 +481,16 @@ export default function Table() {
                     width: "35px",
                     padding: "12px 2px",
                     textAlign: "center",
+                    color: "var(--accent-primary)",
+                  }}
+                >
+                  Avg
+                </th>
+                <th
+                  style={{
+                    width: "35px",
+                    padding: "12px 2px",
+                    textAlign: "center",
                     color: "var(--accent-cyan)",
                   }}
                 >
@@ -692,6 +702,17 @@ export default function Table() {
                             <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>-</span>
                           )}
                         </div>
+                      </td>
+                      <td
+                        style={{
+                          textAlign: "center",
+                          padding: "10px 2px",
+                          fontWeight: "600",
+                          color: "var(--accent-primary)",
+                          fontSize: "0.8rem",
+                        }}
+                      >
+                        {player.stats.average > 0 ? player.stats.average.toFixed(2) : '-'}
                       </td>
                       <td
                         style={{

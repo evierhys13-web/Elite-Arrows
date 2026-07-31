@@ -152,7 +152,9 @@ export const createEmptyPlayerStats = (player = {}) => ({
   doubleSuccessTotal: 0,
   doubleSuccessCount: 0,
   doubleSuccess: 0,
-  average: Math.min(70, player.threeDartAverage || 0),
+  averageTotal: 0,
+  averageCount: 0,
+  average: 0,
   form: [],
   history: []
 })
@@ -192,6 +194,13 @@ const addResultToPlayer = (stats, result, playerNumber, opponentScore, score, co
     stats.doubleSuccessTotal += toNumber(submittedStats.doubleSuccess)
     stats.doubleSuccessCount += 1
     stats.doubleSuccess = Number((stats.doubleSuccessTotal / stats.doubleSuccessCount).toFixed(2))
+  }
+
+  const matchAvg = toNumber(submittedStats.avg)
+  if (matchAvg > 0) {
+    stats.averageTotal += matchAvg
+    stats.averageCount += 1
+    stats.average = Number((stats.averageTotal / stats.averageCount).toFixed(2))
   }
 
   const explicitAvg = toNumber(result[`player${playerNumber}ExplicitAverage`])
