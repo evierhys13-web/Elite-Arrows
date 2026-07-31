@@ -62,6 +62,56 @@ export default function SubmitResult() {
   const currentUploadTaskId = useRef(null)
 
   const allUsers = getAllUsers()
+  const allFixtures = getFixtures()
+  const allResults = getResults()
+  const seasons = getSeasons()
+
+  // Robust season detection
+  const getDefaultSeason = () => {
+    return formData.season || searchParams.get('season') || adminData?.currentSeason || 'Season 1'
+  }
+
+  const currentSeasonLabel = getDefaultSeason()
+  const targetSeasonDoc = seasons.find(s => s.name === currentSeasonLabel)
+
+  const playersWithDivisions = useMemo(() => {
+    if (!allUsers) return []
+    const staged = targetSeasonDoc?.stagedDivisions || {}
+    return allUsers.map(u => {
+      const uid = String(u.id)
+      const sDiv = staged[uid] || staged[u.id]
+      return {
+        ...u,
+        effectiveDiv: sDiv || u.division || 'Unassigned'
+      }
+    })
+  }, [allUsers, targetSeasonDoc])
+
+  const userEffectiveDiv = useMemo(() => {
+    if (!user) return 'Unassigned'
+    return playersWithDivisions.find(u => String(u.id) === String(user.id))?.effectiveDiv || 'Unassigned'
+  }, [playersWithDivisions, user])
+
+  const availablePlayers = useMemo(() => {
+    if (!user) return []
+    return playersWithDivisions.filter(u => String(u.id) !== String(user.id))
+  }, [playersWithDivisions, user])
+
+  const opponentOptions = useMemo(() => {
+    if (!user) return []
+    return formData.gameType === 'League'
+      ? availablePlayers.filter(u => u.effectiveDiv === userEffectiveDiv)
+      : formData.gameType === 'Champions League'
+        ? availablePlayers.filter(u => u.superLeagueDivision === 'Champions')
+        : availablePlayers
+  }, [availablePlayers, formData.gameType, userEffectiveDiv])
+
+  const effectiveDivision = useMemo(() => {
+    if (!user) return 'Unassigned'
+    return formData.gameType === 'Champions League'
+      ? 'Champions'
+      : userEffectiveDiv
+  }, [formData.gameType, userEffectiveDiv, user])
 
   useEffect(() => {
     const fetchDuos = async () => {
@@ -74,42 +124,6 @@ export default function SubmitResult() {
     }
     fetchDuos()
   }, [])
-  const availablePlayers = useMemo(() => {
-    if (!user) return []
-    return allUsers.filter(u => u.id !== user.id)
-  }, [allUsers, user])
-
-  const opponentOptions = useMemo(() => {
-    if (!user) return []
-    return formData.gameType === 'League'
-      ? availablePlayers.filter(u => u.division === user.division)
-      : formData.gameType === 'Champions League'
-        ? availablePlayers.filter(u => u.superLeagueDivision === 'Champions')
-        : availablePlayers
-  }, [availablePlayers, formData.gameType, user])
-  const fixtureIdParam = searchParams.get('fixtureId')
-  const opponentParam = searchParams.get('opponent')
-  const gameTypeParam = searchParams.get('gameType')
-  const seasonParam = searchParams.get('season')
-  const allFixtures = getFixtures()
-  const allResults = getResults()
-  const seasons = getSeasons()
-
-  // Robust season detection
-  const getDefaultSeason = () => {
-    return formData.season || seasonParam || adminData?.currentSeason || 'Season 1'
-  }
-
-  const currentSeasonLabel = getDefaultSeason()
-  const targetSeasonDoc = seasons.find(s => s.name === currentSeasonLabel)
-  const stagedDiv = targetSeasonDoc?.stagedDivisions?.[String(user.id)] || targetSeasonDoc?.stagedDivisions?.[user.id]
-
-  const effectiveDivision = useMemo(() => {
-    if (!user) return 'Unassigned'
-    return formData.gameType === 'Champions League'
-      ? 'Champions'
-      : (stagedDiv || user.division || 'Unassigned')
-  }, [formData.gameType, stagedDiv, user])
 
   useEffect(() => {
     if (!formData.season && adminData?.currentSeason) {
@@ -986,7 +1000,7 @@ export default function SubmitResult() {
                       const status = getOpponentStatus(p.id)
                       return (
                         <option key={p.id} value={p.id}>
-                          {getDisplayName(p)} ({p.division}){formData.gameType === 'League' && status?.played ? ' - Played' : ''}
+                          {getDisplayName(p)} ({p.effectiveDiv}){formData.gameType === 'League' && status?.played ? ' - Played' : ''}
                         </option>
                       )
                     })}
