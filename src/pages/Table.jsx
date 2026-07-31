@@ -151,8 +151,10 @@ export default function Table() {
       .filter((p) => {
         if (activeDivision !== "Overall") return true;
 
-        // Show all players for Season 4 Overall as requested (excluding Admins)
-        if (selectedSeason === "Season 4") return p.division !== "Admin";
+        // Show all players for Season 4 Overall who are in a division (excluding Unassigned and Admin)
+        if (selectedSeason === "Season 4") {
+          return p.division && p.division !== "Unassigned" && p.division !== "Admin";
+        }
 
         const hasValidDivision =
           p.division && p.division !== "Unassigned" && p.division !== "Admin";
