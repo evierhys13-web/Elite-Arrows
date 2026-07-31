@@ -25,12 +25,11 @@ export default function Home() {
 
   const activeSeason = useMemo(() => {
     const seasons = typeof getSeasons === 'function' ? getSeasons() : []
-    const now = new Date()
 
-    // 1. Force Season 4 focus as requested
+    // 1. Force Season 4 dates as requested: Aug 1st to Sept 1st
     return {
       name: 'Season 4',
-      startDate: '2026-07-01T00:00:00', // Set to past date so it's "Active"
+      startDate: '2026-08-01T00:00:00',
       endDate: '2026-09-01T00:00:00'
     }
   }, [getSeasons])
