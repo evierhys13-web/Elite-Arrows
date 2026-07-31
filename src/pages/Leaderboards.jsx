@@ -56,7 +56,7 @@ export default function Leaderboards() {
     return list
   }, [playerStats, selectedDivision])
 
-  const divisions = ['all', 'Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze']
+  const divisions = ['all', 'Elite', 'Emerald', 'Diamond', 'Platinum']
 
   const top180s = useMemo(() =>
     leaderboard.length > 0 ? leaderboard.reduce((max, player) => (!max || player['180s'] > max['180s']) ? player : max, null) : null

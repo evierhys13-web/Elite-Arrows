@@ -11,11 +11,9 @@ import Breadcrumbs from '../components/Breadcrumbs'
 
 const DIVISION_COLORS = {
   'Elite': '#fbbf24',
+  'Emerald': '#10b981',
   'Diamond': '#38bdf8',
   'Platinum': '#818cf8',
-  'Gold': '#fcd34d',
-  'Silver': '#cbd5e1',
-  'Bronze': '#d97706',
   'Unassigned': '#6B7280'
 }
 

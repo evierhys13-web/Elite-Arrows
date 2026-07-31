@@ -1310,7 +1310,7 @@ export default function Admin() {
                 <form onSubmit={handleUpdateResult}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                     <div className="form-group"><label>Season</label><select value={editingResult.season || ''} onChange={e => setEditingResult({...editingResult, season: e.target.value})}><option value="">Legacy</option>{getSeasons().map(s => <option key={s.id} value={s.name}>{s.name}</option>)}</select></div>
-                    <div className="form-group"><label>Division</label><select value={editingResult.division || ''} onChange={e => setEditingResult({...editingResult, division: e.target.value})}><option value="">Auto</option>{['Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Champions'].map(d => <option key={d} value={d}>{d}</option>)}</select></div>
+                    <div className="form-group"><label>Division</label><select value={editingResult.division || ''} onChange={e => setEditingResult({...editingResult, division: e.target.value})}><option value="">Auto</option>{['Elite', 'Emerald', 'Diamond', 'Platinum', 'Champions'].map(d => <option key={d} value={d}>{d}</option>)}</select></div>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                     <div className="form-group"><label>Score 1 ({editingResult.player1})</label><input type="number" value={editingResult.score1} onChange={e => setEditingResult({...editingResult, score1: parseInt(e.target.value)})} /></div>
@@ -1763,11 +1763,9 @@ export default function Admin() {
               >
                 <option value="">Division...</option>
                 <option value="Elite">Elite</option>
+                <option value="Emerald">Emerald</option>
                 <option value="Diamond">Diamond</option>
                 <option value="Platinum">Platinum</option>
-                <option value="Gold">Gold</option>
-                <option value="Silver">Silver</option>
-                <option value="Bronze">Bronze</option>
                 <option value="Unassigned">Unassigned</option>
               </select>
               <button

@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { db, doc, updateDoc, writeBatch } from '../firebase'
 
-const DIVISIONS = ['Elite', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze']
+const DIVISIONS = ['Elite', 'Emerald', 'Diamond', 'Platinum']
 
 export default function Rewards() {
   const { user, getAllUsers, getResults, bets, triggerDataRefresh, adminData } = useAuth()

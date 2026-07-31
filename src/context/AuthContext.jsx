@@ -60,11 +60,9 @@ const SEASON_ONE_WELCOME_START = new Date(
 
 export const DIVISIONS = [
   "Elite",
+  "Emerald",
   "Diamond",
   "Platinum",
-  "Gold",
-  "Silver",
-  "Bronze",
 ];
 
 const RESULT_CACHE_KEY = "eliteArrowsResults";

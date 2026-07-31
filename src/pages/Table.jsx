@@ -8,11 +8,9 @@ import { db, doc, setDoc } from "../firebase";
 
 const DIVISION_COLORS = {
   Elite: "#fbbf24",
+  Emerald: "#10b981",
   Diamond: "#38bdf8",
   Platinum: "#818cf8",
-  Gold: "#fcd34d",
-  Silver: "#cbd5e1",
-  Bronze: "#d97706",
   Overall: "#818cf8",
 };
 
@@ -68,15 +66,16 @@ export default function Table() {
 
   const isAdmin = user?.isAdmin === true;
 
-  const divisions = [
-    "Overall",
-    "Elite",
-    "Diamond",
-    "Platinum",
-    "Gold",
-    "Silver",
-    "Bronze",
-  ];
+  const getDivisionsForSeason = () => {
+    // For Season 4 and beyond, use the new division structure
+    if (selectedSeason === "Season 4" || selectedSeason === "Season 5") {
+      return ["Overall", "Elite", "Emerald", "Diamond", "Platinum"];
+    }
+    // Fallback for older seasons
+    return ["Overall", "Elite", "Emerald", "Diamond", "Platinum", "Gold", "Silver", "Bronze"];
+  };
+
+  const divisions = getDivisionsForSeason();
   const seasons = getSeasons();
 
   useEffect(() => {

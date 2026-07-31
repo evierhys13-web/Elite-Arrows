@@ -646,11 +646,9 @@ export default function Guide() {
                 <h4 style={{ color: 'var(--accent-cyan)' }}>Division Tiers</h4>
                 <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
                   <li><strong>Elite</strong> - Top tier players</li>
+                  <li><strong>Emerald</strong> - High intermediate plus</li>
                   <li><strong>Diamond</strong> - High intermediate</li>
                   <li><strong>Platinum</strong> - Intermediate</li>
-                  <li><strong>Gold</strong> - Lower intermediate</li>
-                  <li><strong>Silver</strong> - Development level</li>
-                  <li><strong>Bronze</strong> - Entry level</li>
                 </ul>
               </div>
 

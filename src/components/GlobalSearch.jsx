@@ -18,12 +18,9 @@ const UserIcon = () => (
 
 const divisionColors = {
   Elite: '#9333ea',
-  Premier: '#3b82f6',
-  Champion: '#10b981',
+  Emerald: '#10b981',
   Diamond: '#06b6d4',
-  Gold: '#eab308',
-  Silver: '#94a3b8',
-  Bronze: '#d97706'
+  Platinum: '#818cf8',
 }
 
 export default function GlobalSearch() {
