@@ -61,6 +61,11 @@ export default function SubmitResult() {
   const [uploadError, setUploadError] = useState('')
   const currentUploadTaskId = useRef(null)
 
+  const fixtureIdParam = searchParams.get('fixtureId')
+  const opponentParam = searchParams.get('opponent')
+  const gameTypeParam = searchParams.get('gameType')
+  const seasonParam = searchParams.get('season')
+
   const allUsers = getAllUsers()
   const allFixtures = getFixtures()
   const allResults = getResults()
