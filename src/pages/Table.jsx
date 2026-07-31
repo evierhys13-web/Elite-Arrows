@@ -527,15 +527,16 @@ export default function Table() {
 
                   // Updated rules for Season 4
                   const useNewRules = selectedSeason === "Season 4" || selectedSeason === "Season 5";
+
                   const isPromotion = useNewRules
-                    ? (index < 3 && activeDivision !== "Overall")
+                    ? (index < 3 && activeDivision !== "Overall" && activeDivision !== "Elite")
                     : (index < 2 && activeDivision !== "Overall");
 
                   const isRelegation = useNewRules
-                    ? (index >= playersInDivision.length - 3 && playersInDivision.length > 6 && activeDivision !== "Overall")
+                    ? (index >= playersInDivision.length - 3 && playersInDivision.length > 6 && activeDivision !== "Overall" && activeDivision !== "Platinum")
                     : (index >= playersInDivision.length - 2 && playersInDivision.length > 4 && activeDivision !== "Overall" && activeDivision !== "Development");
 
-                  const isPrizeWinner = useNewRules && index < 2 && activeDivision !== "Overall";
+                  const isPrizeWinner = index < 2 && activeDivision !== "Overall";
                   const isMe = player.id === user?.id;
 
                   return (
@@ -604,7 +605,11 @@ export default function Table() {
                                 letterSpacing: "0.05em",
                               }}
                             >
-                              {isRelegation ? "RELEGATION" : (isPrizeWinner ? "PRIZE + PROMOTION" : "PROMOTION")}
+                              {isRelegation
+                                ? "RELEGATION"
+                                : (isPrizeWinner
+                                    ? (isPromotion ? "PRIZE + PROMOTION" : "PRIZE")
+                                    : "PROMOTION")}
                             </span>
                           )}
                         </Link>
