@@ -136,6 +136,13 @@ export default function Table() {
           );
 
     return source
+      .filter(p => {
+        // Specifically remove Tom Beaumont from Season 4 standings as requested
+        if (selectedSeason === "Season 4" && (p.username === "Tom Beaumont" || p.name === "Tom Beaumont")) {
+          return false;
+        }
+        return true;
+      })
       .map((p) => ({
         ...p,
         displayDivision: p.division || "Unassigned",
