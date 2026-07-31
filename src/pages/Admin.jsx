@@ -1320,7 +1320,27 @@ export default function Admin() {
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ fontWeight: 700 }}>{r.player1} <span style={{ color: 'var(--accent-cyan)' }}>vs</span> {r.player2}</span><span style={{ fontWeight: 900, color: 'var(--accent-cyan)' }}>{r.score1}-{r.score2}</span></div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{r.gameType} | {r.date} {r.excludeFromLeague && <span style={{ color: 'var(--error)' }}>🚫 EXCLUDED</span>}</div>
-                    <div style={{ display: 'flex', gap: '6px', marginTop: '10px' }}>
+
+                    {/* Stats Display for Verification */}
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
+                      {(r.player1Stats?.avg || r.player2Stats?.avg) && (
+                        <div style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '4px' }}>
+                          Avg: <span style={{ color: 'var(--accent-cyan)' }}>{r.player1Stats?.avg || 0}</span> / <span style={{ color: 'var(--accent-cyan)' }}>{r.player2Stats?.avg || 0}</span>
+                        </div>
+                      )}
+                      {(r.player1Stats?.['180s'] > 0 || r.player2Stats?.['180s'] > 0) && (
+                        <div style={{ fontSize: '0.7rem', background: 'rgba(251, 191, 36, 0.1)', padding: '2px 8px', borderRadius: '4px', color: '#fbbf24' }}>
+                          180s: {r.player1Stats?.['180s'] || 0} / {r.player2Stats?.['180s'] || 0}
+                        </div>
+                      )}
+                      {(r.player1Stats?.highestCheckout > 0 || r.player2Stats?.highestCheckout > 0) && (
+                        <div style={{ fontSize: '0.7rem', background: 'rgba(34, 197, 94, 0.1)', padding: '2px 8px', borderRadius: '4px', color: 'var(--success)' }}>
+                          H.Check: {r.player1Stats?.highestCheckout || 0} / {r.player2Stats?.highestCheckout || 0}
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '6px', marginTop: '12px' }}>
                       {resultFilter === 'pending' && (
                         <>
                           <button className="btn btn-primary btn-sm" onClick={() => handleApproveResult(r.id)}>Approve</button>
