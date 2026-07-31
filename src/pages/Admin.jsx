@@ -1099,7 +1099,15 @@ export default function Admin() {
   const filteredResultsList = useMemo(() => {
     let list = allResults.filter(r => String(r.status).toLowerCase() === resultFilter)
     if (resultSearch) { const s = resultSearch.toLowerCase(); list = list.filter(r => String(r.player1).toLowerCase().includes(s) || String(r.player2).toLowerCase().includes(s)) }
-    if (resultTypeFilter !== 'all') { list = list.filter(r => String(r.gameType).toLowerCase() === resultTypeFilter.toLowerCase()) }
+    if (resultTypeFilter !== 'all') {
+      if (resultTypeFilter === 'cup') {
+        list = list.filter(r => String(r.gameType).toLowerCase() === 'cup' || !!r.cupId)
+      } else if (resultTypeFilter === 'open league') {
+        list = list.filter(r => String(r.gameType).toLowerCase().includes('open league'))
+      } else {
+        list = list.filter(r => String(r.gameType).toLowerCase() === resultTypeFilter.toLowerCase())
+      }
+    }
     return list.sort((a, b) => new Date(b.date || b.submittedAt) - new Date(a.date || a.submittedAt))
   }, [allResults, resultFilter, resultSearch, resultTypeFilter])
 
@@ -1205,7 +1213,14 @@ export default function Admin() {
             </div>
             <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
               <input type="text" className="glass" placeholder="🔍 Search players..." style={{ flex: 2, padding: '10px' }} value={resultSearch} onChange={e => setResultSearch(e.target.value)} />
-              <select className="glass" style={{ flex: 1, padding: '10px' }} value={resultTypeFilter} onChange={e => setResultTypeFilter(e.target.value)}><option value="all">All Types</option><option value="league">League</option><option value="champions league">Champions League</option><option value="cup">Cup</option><option value="friendly">Friendly</option></select>
+              <select className="glass" style={{ flex: 1, padding: '10px' }} value={resultTypeFilter} onChange={e => setResultTypeFilter(e.target.value)}>
+                <option value="all">All Types</option>
+                <option value="league">League</option>
+                <option value="champions league">Champions League</option>
+                <option value="cup">Cup</option>
+                <option value="open league">Open League</option>
+                <option value="friendly">Friendly</option>
+              </select>
             </div>
 
             {showSubmitGame && (
@@ -1308,6 +1323,34 @@ export default function Admin() {
             {editingResult && (
               <div className="card glass" style={{ marginBottom: '24px', padding: '24px', border: '1px solid var(--accent-cyan)' }}>
                 <form onSubmit={handleUpdateResult}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+                    <div className="form-group">
+                      <label>Player 1</label>
+                      <UserSearchSelect
+                        users={allPlayers}
+                        selectedId={editingResult.player1Id}
+                        onSelect={id => {
+                          const u = allPlayers.find(up => String(up.id) === String(id));
+                          setEditingResult({...editingResult, player1Id: id, player1: u?.username || editingResult.player1})
+                        }}
+                        onQueryChange={searchUsers}
+                        label=""
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Player 2</label>
+                      <UserSearchSelect
+                        users={allPlayers}
+                        selectedId={editingResult.player2Id}
+                        onSelect={id => {
+                          const u = allPlayers.find(up => String(up.id) === String(id));
+                          setEditingResult({...editingResult, player2Id: id, player2: u?.username || editingResult.player2})
+                        }}
+                        onQueryChange={searchUsers}
+                        label=""
+                      />
+                    </div>
+                  </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                     <div className="form-group"><label>Season</label><select value={editingResult.season || ''} onChange={e => setEditingResult({...editingResult, season: e.target.value})}><option value="">Legacy</option>{getSeasons().map(s => <option key={s.id} value={s.name}>{s.name}</option>)}</select></div>
                     <div className="form-group"><label>Division</label><select value={editingResult.division || ''} onChange={e => setEditingResult({...editingResult, division: e.target.value})}><option value="">Auto</option>{['Elite', 'Emerald', 'Diamond', 'Platinum', 'Champions'].map(d => <option key={d} value={d}>{d}</option>)}</select></div>
@@ -1316,7 +1359,7 @@ export default function Admin() {
                     <div className="form-group"><label>Score 1 ({editingResult.player1})</label><input type="number" value={editingResult.score1} onChange={e => setEditingResult({...editingResult, score1: parseInt(e.target.value)})} /></div>
                     <div className="form-group"><label>Score 2 ({editingResult.player2})</label><input type="number" value={editingResult.score2} onChange={e => setEditingResult({...editingResult, score2: parseInt(e.target.value)})} /></div>
                   </div>
-                  <div style={{ display: 'flex', gap: '10px' }}><button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Save</button><button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setEditingResult(null)}>Cancel</button></div>
+                  <div style={{ display: 'flex', gap: '10px' }}><button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Save Changes</button><button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setEditingResult(null)}>Cancel</button></div>
                 </form>
               </div>
             )}

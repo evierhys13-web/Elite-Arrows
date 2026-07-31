@@ -13,6 +13,7 @@ export default function Results() {
   const [activeTab, setActiveTab] = useState('approved')
   const [fetchingMore, setFetchingMore] = useState(false)
   const [previewImage, setPreviewImage] = useState(null)
+  const [typeFilter, setTypeFilter] = useState('all')
 
   useEffect(() => {
     const loadInitial = async () => {
@@ -27,8 +28,18 @@ export default function Results() {
   const isSubscribed = user?.isSubscribed === true || isAdmin
   
   const allResults = getResults() || []
-  const approvedResults = allResults.filter(r => String(r.status).toLowerCase() === 'approved').sort((a, b) => new Date(b.date || b.submittedAt) - new Date(a.date || a.submittedAt))
-  const pendingResults = allResults.filter(r => String(r.status).toLowerCase() === 'pending').sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt))
+
+  const filteredResults = allResults.filter(r => {
+    if (typeFilter === 'all') return true
+    if (typeFilter === 'league') return r.gameType === 'League'
+    if (typeFilter === 'super') return r.gameType === 'Champions League' || r.gameType === 'Super League'
+    if (typeFilter === 'cup') return r.gameType === 'Cup' || !!r.cupId
+    if (typeFilter === 'open') return String(r.gameType).toLowerCase().includes('open league')
+    return true
+  })
+
+  const approvedResults = filteredResults.filter(r => String(r.status).toLowerCase() === 'approved').sort((a, b) => new Date(b.date || b.submittedAt) - new Date(a.date || a.submittedAt))
+  const pendingResults = filteredResults.filter(r => String(r.status).toLowerCase() === 'pending').sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt))
 
   const handleApprove = async (resultId) => {
     if (!confirm('Approve this match result?')) return
@@ -211,6 +222,25 @@ export default function Results() {
         <div className="page-header" style={{ marginBottom: '30px' }}>
           <h1 className="page-title text-gradient" style={{ fontSize: '2.5rem' }}>League Results</h1>
           <p style={{ color: 'var(--text-muted)' }}>Official scores and player statistics</p>
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', overflowX: 'auto', paddingBottom: '8px' }}>
+          {[
+            { id: 'all', label: 'All' },
+            { id: 'league', label: 'Standard' },
+            { id: 'super', label: 'Champions' },
+            { id: 'cup', label: 'Cups' },
+            { id: 'open', label: 'Open League' }
+          ].map(f => (
+            <button
+              key={f.id}
+              className={`btn btn-sm ${typeFilter === f.id ? 'btn-primary' : 'btn-secondary glass'}`}
+              onClick={() => setTypeFilter(f.id)}
+              style={{ borderRadius: '20px', padding: '8px 16px', whiteSpace: 'nowrap' }}
+            >
+              {f.label}
+            </button>
+          ))}
         </div>
 
         {isAdmin && (

@@ -524,12 +524,18 @@ export default function Table() {
               ) : (
                 playersInDivision.map((player, index) => {
                   const legDiff = player.stats.legsWon - player.stats.legsLost;
-                  const isPromotion = index < 2 && activeDivision !== "Overall";
-                  const isRelegation =
-                    index >= playersInDivision.length - 2 &&
-                    playersInDivision.length > 4 &&
-                    activeDivision !== "Overall" &&
-                    activeDivision !== "Development";
+
+                  // Updated rules for Season 4
+                  const useNewRules = selectedSeason === "Season 4" || selectedSeason === "Season 5";
+                  const isPromotion = useNewRules
+                    ? (index < 3 && activeDivision !== "Overall")
+                    : (index < 2 && activeDivision !== "Overall");
+
+                  const isRelegation = useNewRules
+                    ? (index >= playersInDivision.length - 3 && playersInDivision.length > 6 && activeDivision !== "Overall")
+                    : (index >= playersInDivision.length - 2 && playersInDivision.length > 4 && activeDivision !== "Overall" && activeDivision !== "Development");
+
+                  const isPrizeWinner = useNewRules && index < 2 && activeDivision !== "Overall";
                   const isMe = player.id === user?.id;
 
                   return (
@@ -589,16 +595,16 @@ export default function Table() {
                               </span>
                             )}
                           </span>
-                          {(isPromotion || isRelegation) && (
+                          {(isPromotion || isRelegation || isPrizeWinner) && (
                             <span
                               style={{
                                 fontSize: "0.5rem",
                                 fontWeight: "900",
-                                color: isPromotion ? "#10b981" : "#ef4444",
+                                color: isRelegation ? "#ef4444" : (isPrizeWinner ? "#fbbf24" : "#10b981"),
                                 letterSpacing: "0.05em",
                               }}
                             >
-                              {isPromotion ? "PROMOTION" : "RELEGATION"}
+                              {isRelegation ? "RELEGATION" : (isPrizeWinner ? "PRIZE + PROMOTION" : "PROMOTION")}
                             </span>
                           )}
                         </Link>
