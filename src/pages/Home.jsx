@@ -28,17 +28,18 @@ export default function Home() {
     const now = new Date()
     const nowTime = now.getTime()
 
-    // Season 1, 2 & 3 Hardcoded Thresholds
+    // Season 1, 2, 3 & 4 Hardcoded Thresholds
     const s1Start = new Date('2026-05-01T00:00:00').getTime()
     const s1End = new Date('2026-08-01T00:00:00').getTime()
     const s2End = new Date('2026-07-01T00:00:00').getTime()
     const s3End = new Date('2026-08-01T00:00:00').getTime()
+    const s4End = new Date('2026-09-01T00:00:00').getTime()
 
     // 1. Try to find the season that matches adminData.currentSeason
     let current = seasons.find(s => s.name === adminData?.currentSeason)
 
-    // 2. Fallback / Hard Override for Elite Arrows Season 1, 2 & 3
-    if (!current || current.name === 'Season 1' || current.name === 'Season 2' || current.name === 'Season 3') {
+    // 2. Fallback / Hard Override for Elite Arrows Season 1, 2, 3 & 4
+    if (!current || ['Season 1', 'Season 2', 'Season 3', 'Season 4'].includes(current.name)) {
       if (nowTime < s1End) {
         return {
           id: 'season1_legacy',
@@ -58,6 +59,12 @@ export default function Home() {
           name: 'Season 3',
           startDate: '2026-07-01T00:00:00',
           endDate: '2026-08-01T00:00:00'
+        }
+      } else if (nowTime < s4End) {
+        return {
+          name: 'Season 4',
+          startDate: '2026-08-01T00:00:00',
+          endDate: '2026-09-01T00:00:00'
         }
       }
     }
