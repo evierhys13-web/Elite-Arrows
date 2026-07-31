@@ -1348,35 +1348,46 @@ export default function Admin() {
                         </>
                       )}
                       {(r.proofImage || r.proofImage2 || r.proofVideo || r.hasProofImage) && (
-                        <div style={{ display: 'flex', gap: '4px' }}>
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
                           {r.proofImage && (
-                            <button
-                              className="btn btn-secondary btn-sm"
-                              style={{ background: 'rgba(0, 212, 255, 0.1)', borderColor: 'rgba(0, 212, 255, 0.3)', whiteSpace: 'nowrap' }}
-                              onClick={() => setPreviewImage(r.proofImage)}
-                            >
-                              🖼️ Proof 1
-                            </button>
-                          )}
-                          {!r.proofImage && r.hasProofImage && (
-                            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
-                              (Legacy Proof Attached)
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <button
+                                className="btn btn-secondary btn-sm"
+                                style={{ background: 'rgba(0, 212, 255, 0.1)', borderColor: 'rgba(0, 212, 255, 0.3)', whiteSpace: 'nowrap' }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPreviewImage(r.proofImage);
+                                }}
+                              >
+                                🖼️ Proof 1
+                              </button>
+                              <div
+                                style={{ width: '60px', height: '40px', borderRadius: '4px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}
+                                onClick={() => setPreviewImage(r.proofImage)}
+                              >
+                                <img src={r.proofImage} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="P1" />
+                              </div>
                             </div>
                           )}
                           {r.proofImage2 && (
-                            <button
-                              className="btn btn-secondary btn-sm"
-                              style={{ background: 'rgba(0, 212, 255, 0.1)', borderColor: 'rgba(0, 212, 255, 0.3)', whiteSpace: 'nowrap' }}
-                              onClick={() => {
-                                if (r.proofImage2) {
-                                  setPreviewImage(r.proofImage2)
-                                } else {
-                                  showToast('No image data found in Proof 2', 'warning')
-                                }
-                              }}
-                            >
-                              🖼️ Proof 2
-                            </button>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <button
+                                className="btn btn-secondary btn-sm"
+                                style={{ background: 'rgba(0, 212, 255, 0.1)', borderColor: 'rgba(0, 212, 255, 0.3)', whiteSpace: 'nowrap' }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPreviewImage(r.proofImage2);
+                                }}
+                              >
+                                🖼️ Proof 2
+                              </button>
+                              <div
+                                style={{ width: '60px', height: '40px', borderRadius: '4px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}
+                                onClick={() => setPreviewImage(r.proofImage2)}
+                              >
+                                <img src={r.proofImage2} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="P2" />
+                              </div>
+                            </div>
                           )}
                           {r.proofVideo && (
                             <button
@@ -1386,6 +1397,11 @@ export default function Admin() {
                             >
                               🎬 Video
                             </button>
+                          )}
+                          {!r.proofImage && r.hasProofImage && (
+                            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
+                              (Legacy Proof Attached)
+                            </div>
                           )}
                         </div>
                       )}

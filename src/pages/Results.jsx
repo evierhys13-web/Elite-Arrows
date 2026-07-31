@@ -12,6 +12,7 @@ export default function Results() {
   const { showToast } = useToast()
   const [activeTab, setActiveTab] = useState('approved')
   const [fetchingMore, setFetchingMore] = useState(false)
+  const [previewImage, setPreviewImage] = useState(null)
 
   useEffect(() => {
     const loadInitial = async () => {
@@ -155,7 +156,7 @@ export default function Results() {
                 src={result.proofImage}
                 alt="Match Proof"
                 style={{ width: '100%', borderRadius: '8px', cursor: 'pointer', border: '1px solid var(--border)' }}
-                onClick={() => window.open(result.proofImage, '_blank')}
+                onClick={() => setPreviewImage(result.proofImage)}
               />
             ) : result.proofVideo ? (
               <video
@@ -247,6 +248,44 @@ export default function Results() {
           )}
         </div>
       </PullToRefresh>
+
+      {previewImage && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.95)',
+            zIndex: 10000,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+          onClick={() => setPreviewImage(null)}
+        >
+          <div style={{ position: 'absolute', top: '20px', right: '20px', color: 'white', fontSize: '2rem', cursor: 'pointer', zIndex: 10001 }}>×</div>
+          <div style={{ position: 'relative', maxWidth: '100%', maxHeight: '90vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <img
+              src={previewImage}
+              alt="Verification Proof"
+              onError={() => {
+                showToast('Failed to load image. It may be corrupted or too large.', 'error')
+                setPreviewImage(null)
+              }}
+              style={{
+                maxWidth: '100%',
+                maxHeight: '90vh',
+                borderRadius: '8px',
+                boxShadow: '0 0 50px rgba(0,0,0,0.5)',
+                border: '1px solid rgba(255,255,255,0.1)'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+          <p style={{ color: 'var(--text-muted)', marginTop: '20px', fontSize: '0.8rem' }}>Tap anywhere to close</p>
+        </div>
+      )}
     </div>
   )
 }
