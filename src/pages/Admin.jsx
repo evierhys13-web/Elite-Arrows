@@ -76,7 +76,14 @@ export default function Admin() {
   const [surveyForm, setSurveyForm] = useState({ title: '', description: '', targetType: 'all', targetUserIds: [] })
   const [surveyQuestions, setSurveyQuestions] = useState([{ id: 'q1', text: '', type: 'text', options: '' }])
   const [viewSurveyResponses, setViewSurveyResponses] = useState(null)
-  const [previewImage, setPreviewImage] = useState(null)
+  const [expandedProofs, setExpandedProofs] = useState({})
+
+  const toggleProof = (id, field) => {
+    setExpandedProofs(prev => ({
+      ...prev,
+      [`${id}_${field}`]: !prev[`${id}_${field}`]
+    }))
+  }
   const [openLeagueDuos, setOpenLeagueDuos] = useState([])
   const [openLeagueSingles, setOpenLeagueSingles] = useState([])
   const [duoForm, setDuoForm] = useState({ p1: '', p2: '', teamName: '', captainId: '' })
@@ -1348,59 +1355,46 @@ export default function Admin() {
                         </>
                       )}
                       {(r.proofImage || r.proofImage2 || r.proofVideo || r.hasProofImage) && (
-                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-                          {r.proofImage && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', marginTop: '10px' }}>
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                            {r.proofImage && (
+                              <button
+                                className="btn btn-secondary btn-sm"
+                                style={{ background: expandedProofs[`${r.id}_1`] ? 'var(--accent-cyan)' : 'rgba(0, 212, 255, 0.1)', color: expandedProofs[`${r.id}_1`] ? '#000' : '#fff', borderColor: 'rgba(0, 212, 255, 0.3)', whiteSpace: 'nowrap' }}
+                                onClick={() => toggleProof(r.id, '1')}
+                              >
+                                {expandedProofs[`${r.id}_1`] ? 'Hide Proof 1' : '🖼️ View Proof 1'}
+                              </button>
+                            )}
+                            {r.proofImage2 && (
+                              <button
+                                className="btn btn-secondary btn-sm"
+                                style={{ background: expandedProofs[`${r.id}_2`] ? 'var(--accent-cyan)' : 'rgba(0, 212, 255, 0.1)', color: expandedProofs[`${r.id}_2`] ? '#000' : '#fff', borderColor: 'rgba(0, 212, 255, 0.3)', whiteSpace: 'nowrap' }}
+                                onClick={() => toggleProof(r.id, '2')}
+                              >
+                                {expandedProofs[`${r.id}_2`] ? 'Hide Proof 2' : '🖼️ View Proof 2'}
+                              </button>
+                            )}
+                            {r.proofVideo && (
                               <button
                                 className="btn btn-secondary btn-sm"
                                 style={{ background: 'rgba(0, 212, 255, 0.1)', borderColor: 'rgba(0, 212, 255, 0.3)', whiteSpace: 'nowrap' }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setPreviewImage(r.proofImage);
-                                }}
+                                onClick={() => window.open(r.proofVideo, '_blank')}
                               >
-                                🖼️ Proof 1
+                                🎬 Video
                               </button>
-                              <div
-                                style={{ width: '60px', height: '40px', borderRadius: '4px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}
-                                onClick={() => setPreviewImage(r.proofImage)}
-                              >
-                                <img src={r.proofImage} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="P1" />
-                              </div>
+                            )}
+                          </div>
+
+                          {expandedProofs[`${r.id}_1`] && r.proofImage && (
+                            <div className="animate-fade-in" style={{ width: '100%', background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                              <img src={r.proofImage} style={{ width: '100%', height: 'auto', borderRadius: '4px' }} alt="Proof 1" />
                             </div>
                           )}
-                          {r.proofImage2 && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                              <button
-                                className="btn btn-secondary btn-sm"
-                                style={{ background: 'rgba(0, 212, 255, 0.1)', borderColor: 'rgba(0, 212, 255, 0.3)', whiteSpace: 'nowrap' }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setPreviewImage(r.proofImage2);
-                                }}
-                              >
-                                🖼️ Proof 2
-                              </button>
-                              <div
-                                style={{ width: '60px', height: '40px', borderRadius: '4px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}
-                                onClick={() => setPreviewImage(r.proofImage2)}
-                              >
-                                <img src={r.proofImage2} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="P2" />
-                              </div>
-                            </div>
-                          )}
-                          {r.proofVideo && (
-                            <button
-                              className="btn btn-secondary btn-sm"
-                              style={{ background: 'rgba(0, 212, 255, 0.1)', borderColor: 'rgba(0, 212, 255, 0.3)', whiteSpace: 'nowrap' }}
-                              onClick={() => window.open(r.proofVideo, '_blank')}
-                            >
-                              🎬 Video
-                            </button>
-                          )}
-                          {!r.proofImage && r.hasProofImage && (
-                            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
-                              (Legacy Proof Attached)
+
+                          {expandedProofs[`${r.id}_2`] && r.proofImage2 && (
+                            <div className="animate-fade-in" style={{ width: '100%', background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                              <img src={r.proofImage2} style={{ width: '100%', height: 'auto', borderRadius: '4px' }} alt="Proof 2" />
                             </div>
                           )}
                         </div>
@@ -1969,52 +1963,6 @@ export default function Admin() {
         )}
 
       </div>
-
-      {previewImage && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.95)',
-            zIndex: 10000,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px'
-          }}
-          onClick={() => setPreviewImage(null)}
-        >
-          <div style={{ position: 'absolute', top: '20px', right: '20px', color: 'white', fontSize: '2rem', cursor: 'pointer', zIndex: 10001 }}>×</div>
-          <div style={{ position: 'relative', maxWidth: '100%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '15px' }}>
-            <img
-              src={previewImage}
-              alt="Verification Proof"
-              onError={() => {
-                showToast('Failed to load image. It may be corrupted or too large.', 'error')
-                setPreviewImage(null)
-              }}
-              style={{
-                maxWidth: '100%',
-                maxHeight: '80vh',
-                borderRadius: '8px',
-                boxShadow: '0 0 50px rgba(0,0,0,0.5)',
-                border: '1px solid rgba(255,255,255,0.1)'
-              }}
-              onClick={(e) => e.stopPropagation()}
-            />
-            {previewImage.startsWith('http') && (
-              <button
-                className="btn btn-secondary btn-sm"
-                onClick={(e) => { e.stopPropagation(); window.open(previewImage, '_blank'); }}
-              >
-                🔗 Open in New Tab
-              </button>
-            )}
-          </div>
-          <p style={{ color: 'var(--text-muted)', marginTop: '20px', fontSize: '0.8rem' }}>Tap anywhere to close</p>
-        </div>
-      )}
     </div>
   )
 }
