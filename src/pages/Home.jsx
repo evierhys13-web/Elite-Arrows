@@ -26,59 +26,14 @@ export default function Home() {
   const activeSeason = useMemo(() => {
     const seasons = typeof getSeasons === 'function' ? getSeasons() : []
     const now = new Date()
-    const nowTime = now.getTime()
 
-    // Season 1, 2, 3 & 4 Hardcoded Thresholds
-    const s1Start = new Date('2026-05-01T00:00:00').getTime()
-    const s1End = new Date('2026-08-01T00:00:00').getTime()
-    const s2End = new Date('2026-07-01T00:00:00').getTime()
-    const s3End = new Date('2026-08-01T00:00:00').getTime()
-    const s4End = new Date('2026-09-01T00:00:00').getTime()
-
-    // 1. Try to find the season that matches adminData.currentSeason
-    let current = seasons.find(s => s.name === adminData?.currentSeason)
-
-    // 2. Fallback / Hard Override for Elite Arrows Season 1, 2, 3 & 4
-    if (!current || ['Season 1', 'Season 2', 'Season 3', 'Season 4'].includes(current.name)) {
-      if (nowTime < s1End) {
-        return {
-          id: 'season1_legacy',
-          name: 'Season 1',
-          startDate: '2026-05-01T00:00:00',
-          endDate: '2026-08-01T00:00:00'
-        }
-      } else if (nowTime < s2End) {
-        return {
-          id: 'season2_auto',
-          name: 'Season 2',
-          startDate: '2026-08-01T00:00:00',
-          endDate: '2026-07-01T00:00:00'
-        }
-      } else if (nowTime < s3End) {
-        return {
-          name: 'Season 3',
-          startDate: '2026-07-01T00:00:00',
-          endDate: '2026-08-01T00:00:00'
-        }
-      } else if (nowTime < s4End) {
-        return {
-          name: 'Season 4',
-          startDate: '2026-08-01T00:00:00',
-          endDate: '2026-09-01T00:00:00'
-        }
-      }
+    // 1. Force Season 4 focus as requested
+    return {
+      name: 'Season 4',
+      startDate: '2026-07-01T00:00:00', // Set to past date so it's "Active"
+      endDate: '2026-09-01T00:00:00'
     }
-
-    // 3. Otherwise find the latest one that has started
-    if (!current) {
-      const started = [...seasons]
-        .filter(s => s.startDate && new Date(s.startDate) <= now)
-        .sort((a, b) => new Date(b.startDate || 0) - new Date(a.startDate || 0))
-      if (started.length > 0) current = started[0]
-    }
-
-    return current || { name: 'Off-Season', startDate: now.toISOString(), endDate: now.toISOString() }
-  }, [getSeasons, adminData?.currentSeason])
+  }, [getSeasons])
 
   useEffect(() => {
     setVisible(true)
@@ -196,7 +151,7 @@ export default function Home() {
   }, [allUsers])
 
   const isSeasonActive = seasonPhase === 'active'
-  const seasonTimerTitle = seasonPhase === 'active' ? `${activeSeason.name} ends in:` : seasonPhase === 'ended' ? `${activeSeason.name} Ended` : `${activeSeason.name} Starts In`
+  const seasonTimerTitle = seasonPhase === 'active' ? 'Season 4 Ends In:' : seasonPhase === 'ended' ? 'Season 4 Ended' : 'Season 4 Starts In'
 
   return (
     <>
