@@ -466,8 +466,8 @@ export default function SubmitResult() {
     }
 
     if (formData.gameType === 'Open League Doubles') {
-      if (!formData.partner) {
-        setError('Please select your partner.')
+      if (!formData.yourDuoId) {
+        setError('Please select your duo.')
         return
       }
       if (!formData.opponent) {
