@@ -1321,8 +1321,49 @@ export default function Admin() {
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ fontWeight: 700 }}>{r.player1} <span style={{ color: 'var(--accent-cyan)' }}>vs</span> {r.player2}</span><span style={{ fontWeight: 900, color: 'var(--accent-cyan)' }}>{r.score1}-{r.score2}</span></div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{r.gameType} | {r.date} {r.excludeFromLeague && <span style={{ color: 'var(--error)' }}>🚫 EXCLUDED</span>}</div>
                     <div style={{ display: 'flex', gap: '6px', marginTop: '10px' }}>
-                      {resultFilter === 'pending' && <><button className="btn btn-primary btn-sm" onClick={() => handleApproveResult(r.id)}>Approve</button><button className="btn btn-danger btn-sm" onClick={() => handleRejectResult(r.id)}>Reject</button></>}
-                      {resultFilter !== 'pending' && <><button className="btn btn-secondary btn-sm" onClick={() => setEditingResult({...r})}>✏️</button><button className="btn btn-secondary btn-sm" onClick={() => handleApproveResult(r.id)}>🔄</button></>}
+                      {resultFilter === 'pending' && (
+                        <>
+                          <button className="btn btn-primary btn-sm" onClick={() => handleApproveResult(r.id)}>Approve</button>
+                          <button className="btn btn-danger btn-sm" onClick={() => handleRejectResult(r.id)}>Reject</button>
+                        </>
+                      )}
+                      {(r.proofImage || r.proofImage2 || r.proofVideo) && (
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          {r.proofImage && (
+                            <button
+                              className="btn btn-secondary btn-sm"
+                              style={{ background: 'rgba(0, 212, 255, 0.1)', borderColor: 'rgba(0, 212, 255, 0.3)', whiteSpace: 'nowrap' }}
+                              onClick={() => setPreviewImage(r.proofImage)}
+                            >
+                              🖼️ Proof 1
+                            </button>
+                          )}
+                          {r.proofImage2 && (
+                            <button
+                              className="btn btn-secondary btn-sm"
+                              style={{ background: 'rgba(0, 212, 255, 0.1)', borderColor: 'rgba(0, 212, 255, 0.3)', whiteSpace: 'nowrap' }}
+                              onClick={() => setPreviewImage(r.proofImage2)}
+                            >
+                              🖼️ Proof 2
+                            </button>
+                          )}
+                          {r.proofVideo && (
+                            <button
+                              className="btn btn-secondary btn-sm"
+                              style={{ background: 'rgba(0, 212, 255, 0.1)', borderColor: 'rgba(0, 212, 255, 0.3)', whiteSpace: 'nowrap' }}
+                              onClick={() => window.open(r.proofVideo, '_blank')}
+                            >
+                              🎬 Video
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      {resultFilter !== 'pending' && (
+                        <>
+                          <button className="btn btn-secondary btn-sm" onClick={() => setEditingResult({...r})}>✏️</button>
+                          <button className="btn btn-secondary btn-sm" onClick={() => handleApproveResult(r.id)}>🔄</button>
+                        </>
+                      )}
                       <button className="btn btn-danger btn-sm" onClick={() => handleDeleteResult(r.id)}>🗑️</button>
                     </div>
                   </div>
