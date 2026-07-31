@@ -151,10 +151,8 @@ export default function Table() {
       .filter((p) => {
         if (activeDivision !== "Overall") return true;
 
-        // For Season 4 specifically, keep Overall table empty until games are played
-        if (selectedSeason === "Season 4") {
-          return p.stats.played > 0;
-        }
+        // Show all players for Season 4 Overall as requested
+        if (selectedSeason === "Season 4") return true;
 
         const hasValidDivision =
           p.division && p.division !== "Unassigned" && p.division !== "Admin";
