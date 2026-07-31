@@ -196,7 +196,7 @@ export default function Home() {
   }, [allUsers])
 
   const isSeasonActive = seasonPhase === 'active'
-  const seasonTimerTitle = seasonPhase === 'active' ? 'Season Ends In' : seasonPhase === 'ended' ? 'Season Ended' : 'Season Starts In'
+  const seasonTimerTitle = seasonPhase === 'active' ? `${activeSeason.name} ends in:` : seasonPhase === 'ended' ? `${activeSeason.name} Ended` : `${activeSeason.name} Starts In`
 
   return (
     <>
