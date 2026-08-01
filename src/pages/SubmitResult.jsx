@@ -225,7 +225,7 @@ export default function SubmitResult() {
     const existingMatches = allResults.filter(r => {
       const isSameSeason = r.season === currentSeasonLabel
       const isLeagueGame = r.gameType === 'League'
-      const sameDivision = r.division === user.division
+      const sameDivision = r.division === effectiveDivision
       const isBetweenPlayers = (String(r.player1Id) === String(user.id) && String(r.player2Id) === String(opponentId)) ||
                                  (String(r.player2Id) === String(user.id) && String(r.player1Id) === String(opponentId))
       const isNotRejected = String(r.status).toLowerCase() !== 'rejected'
@@ -507,13 +507,13 @@ export default function SubmitResult() {
     // Find Your Duo using the dropdown selection
     const yourDuo = formData.gameType === 'Open League Doubles' ? openLeagueDuos.find(d => d.id === formData.yourDuoId) : null
 
-    const opponentUser = !opponentDuo ? allUsers.find(u => u.id === formData.opponent) : null
+    const opponentUser = !opponentDuo ? playersWithDivisions.find(u => String(u.id) === String(formData.opponent)) : null
 
     const submitterName = getDisplayName(user, 'You')
     const opponentName = opponentDuo ? getDuoDisplayName(opponentDuo) : getDisplayName(opponentUser, formData.opponent || 'Selected opponent')
     
     if (formData.gameType === 'League' && opponentUser) {
-      if (opponentUser.division !== user?.division) {
+      if (opponentUser.effectiveDiv !== userEffectiveDiv) {
         setError('League results can only be submitted against players in your division.')
         return
       }
