@@ -1354,6 +1354,32 @@ export default function Admin() {
                     <div className="form-group"><label>Score 1 ({editingResult.player1})</label><input type="number" value={editingResult.score1} onChange={e => setEditingResult({...editingResult, score1: parseInt(e.target.value)})} /></div>
                     <div className="form-group"><label>Score 2 ({editingResult.player2})</label><input type="number" value={editingResult.score2} onChange={e => setEditingResult({...editingResult, score2: parseInt(e.target.value)})} /></div>
                   </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                    <div className="form-group">
+                      <label>P1 3-Dart Avg</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editingResult.player1Stats?.avg || ''}
+                        onChange={e => setEditingResult({
+                          ...editingResult,
+                          player1Stats: { ...(editingResult.player1Stats || {}), avg: parseFloat(e.target.value) || 0 }
+                        })}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>P2 3-Dart Avg</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editingResult.player2Stats?.avg || ''}
+                        onChange={e => setEditingResult({
+                          ...editingResult,
+                          player2Stats: { ...(editingResult.player2Stats || {}), avg: parseFloat(e.target.value) || 0 }
+                        })}
+                      />
+                    </div>
+                  </div>
                   <div style={{ display: 'flex', gap: '10px' }}><button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Save Changes</button><button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setEditingResult(null)}>Cancel</button></div>
                 </form>
               </div>
