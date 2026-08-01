@@ -6,7 +6,7 @@ export const getOutcomePoints = (legsWon, legsLost, options = {}) => {
   if (isOpenLeague) {
     if (won > lost) return 3
     if (won === lost) return isSingles ? 0 : 1
-    return -1
+    return 0
   }
 
   if (isChampionsLeague) {

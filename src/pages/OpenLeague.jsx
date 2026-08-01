@@ -269,7 +269,7 @@ export default function OpenLeague() {
       <div className="page-header" style={{ marginBottom: "24px", display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div>
           <h1 className="page-title text-gradient" style={{ fontSize: "2.5rem" }}>Open League</h1>
-          <p style={{ color: 'var(--text-muted)' }}>Free for all players. Leg: 1pt, Win: +3pts, Loss: -1pt. {activeTab === "singles" ? "(No Draws)" : "Draw: +1pt"}</p>
+          <p style={{ color: 'var(--text-muted)' }}>Free for all players. Leg: 1pt, Win: +3pts. {activeTab === "singles" ? "(No Draws)" : "Draw: +1pt"}</p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
           <button className="btn btn-secondary btn-sm" onClick={handleRefresh} disabled={loading}>
