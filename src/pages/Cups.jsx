@@ -187,7 +187,7 @@ export default function CupTournaments() {
         }
       }
 
-      defaultFormats[0] = { startScore: 501, bestOf: 3, firstTo: 2 } // Group stage format
+      defaultFormats[0] = { startScore: 501, bestOf: 5, firstTo: 3 } // Group stage format (FT3)
 
       if (formData.type === 'world_cup' || formData.type === 'group_knockout') {
         const advanceCount = formData.type === 'group_knockout' ? (formData.advancePerGroup || 2) : 2
@@ -424,7 +424,7 @@ export default function CupTournaments() {
       roundFormats,
       createdAt: new Date().toISOString(),
       status: 'active',
-      currentRound: 1
+      currentRound: (formData.type === 'groups' || formData.type === 'world_cup' || formData.type === 'group_knockout') ? 0 : 1
     }
     
     const initialMatches = matches.filter(m => m.stage === 'groups' || (m.stage === 'knockout' && m.round === 1))
@@ -952,17 +952,21 @@ export default function CupTournaments() {
                   }}>
                     <strong style={{ display: 'block', marginBottom: '5px', color: 'white' }}>Format:</strong>
                     {Object.entries(cup.roundFormats).filter(([key]) => key !== '_stageDays').map(([round, format]) => {
-                      const roundName = parseInt(round) === cup.currentRound ? 'Current' : ''
+                      const rNum = parseInt(round)
+                      const isCurrent = rNum === (cup.currentRound !== undefined ? cup.currentRound : 1)
+                      const roundName = isCurrent ? 'Current' : ''
+                      const roundLabel = `R${round}`
+
                       return (
                         <div key={round} style={{ display: 'inline-block', marginRight: '15px' }}>
-                          <span style={{ opacity: 0.7 }}>{roundName}{roundName ? ' ' : ''}R{round}:</span> {format.startScore} / {format.firstTo ? `FT${format.firstTo}` : `Bo${format.bestOf}`}
+                          <span style={{ opacity: 0.7 }}>{roundName}{roundName ? ' ' : ''}{roundLabel}:</span> {format.startScore} / {format.firstTo ? `FT${format.firstTo}` : `Bo${format.bestOf}`}
                         </div>
                       )
                     })}
                   </div>
                 )}
                 <p style={{ fontSize: '0.85rem', color: 'var(--accent-cyan)', marginTop: '12px', fontWeight: 'bold' }}>
-                  Status: {cup.status === 'completed' ? 'Completed' : `Active - Round ${cup.currentRound || 1}`}
+                  Status: {cup.status === 'completed' ? 'Completed' : `Active - ${cup.currentRound === 0 ? 'Group Stage (R0)' : `Round ${cup.currentRound}`}`}
                 </p>
               </div>
             )}

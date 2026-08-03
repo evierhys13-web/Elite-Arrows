@@ -47,6 +47,25 @@ function CupManagement() {
   })
   const allUsers = getAllUsers()
 
+  const handleUpdateCurrentRound = async (cup) => {
+    const newVal = prompt(`Enter new Current Round for "${cup.name}" (0 for Group Stage, 1+ for Knockout):`, cup.currentRound || 0)
+    if (newVal === null) return
+    const round = parseInt(newVal)
+    if (isNaN(round)) return alert('Please enter a valid number')
+
+    setIsSubmitting(true)
+    try {
+      await setDoc(doc(db, 'cups', String(cup.id)), { currentRound: round }, { merge: true })
+      showToast(`Current round updated to ${round === 0 ? 'Group Stage (0)' : `Round ${round}`}!`, 'success')
+      triggerDataRefresh('cups')
+      setRefreshKey(prev => prev + 1)
+    } catch (e) {
+      showToast('Error: ' + e.message, 'error')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const handleAdvanceGroups = async (cup) => {
     if (!window.confirm('This will calculate final group standings and advance the top players to the knockout bracket. Ensure all group matches are entered. Continue?')) return
 
@@ -146,7 +165,7 @@ function CupManagement() {
         }
       })
 
-      await setDoc(cupRef, { ...cupData, matches: updatedMatches, groupsAdvanced: true }, { merge: true })
+      await setDoc(cupRef, { ...cupData, matches: updatedMatches, groupsAdvanced: true, currentRound: 1 }, { merge: true })
       const batch = writeBatch(db)
       newFixtures.forEach(f => batch.set(doc(db, 'fixtures', f.id), f))
       await batch.commit()
@@ -258,11 +277,15 @@ function CupManagement() {
 
             if (cupChanges > 0) {
               const allComplete = matches.every(m => (m.player1 && m.player2) ? m.winner : true)
-              let currentRound = cupData.currentRound || 1
-              while (matches.filter(m => Number(m.round) === currentRound).every(m => m.winner)) {
-                const maxRound = Math.max(...matches.map(m => m.round))
-                if (currentRound < maxRound) currentRound++
-                else break
+              let currentRound = (cupData.currentRound !== undefined) ? cupData.currentRound : 1
+
+              // Only auto-advance knockout rounds (1+). Groups (0) must be advanced manually.
+              if (currentRound > 0) {
+                while (matches.filter(m => Number(m.round) === currentRound).every(m => m.winner)) {
+                  const maxRound = Math.max(...matches.map(m => m.round))
+                  if (currentRound < maxRound) currentRound++
+                  else break
+                }
               }
 
               transaction.update(cupRef, { matches, status: allComplete ? 'completed' : 'active', currentRound })
@@ -794,6 +817,16 @@ function CupManagement() {
                       letterSpacing: '0.05em'
                     }}>{cup.status || 'Planned'}</span>
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', opacity: 0.6 }}>ID: {cup.id} | {cup.type}</span>
+                    <button
+                      className="btn btn-secondary btn-xs"
+                      style={{ padding: '2px 8px', fontSize: '0.6rem' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleUpdateCurrentRound(cup);
+                      }}
+                    >
+                      Round: {cup.currentRound === 0 ? 'Groups (0)' : (cup.currentRound || 1)} ✏️
+                    </button>
                   </div>
                   {cup.roundFormats?._stageDays && (
                     <div style={{ marginTop: '8px' }}>

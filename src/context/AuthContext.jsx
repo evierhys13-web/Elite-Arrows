@@ -2320,7 +2320,18 @@ export function AuthProvider({ children }) {
           return m.winner !== null;
         });
 
-        let currentRound = cupData.currentRound || 1;
+        let currentRound = (cupData.currentRound !== undefined) ? cupData.currentRound : 1;
+
+        // Don't auto-advance past round 0 (groups) - this must be done manually via handleAdvanceGroups
+        if (currentRound === 0) {
+          transaction.update(cupRef, {
+            matches: updatedMatches,
+            status: allComplete ? "completed" : "active",
+          });
+          triggerCupsRefresh();
+          return;
+        }
+
         const roundMatches = updatedMatches.filter(
           (m) => Number(m.round) === Number(currentRound),
         );
