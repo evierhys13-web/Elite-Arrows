@@ -58,14 +58,14 @@ export default function Sidebar() {
       {
         title: 'League',
         items: [
+          { path: '/home', label: 'Home', icon: HomeIcon },
           { path: '/table', label: 'Standings', icon: TableIcon },
           ...(isOpenLeagueVisible ? [{ path: '/open-league', label: 'Open League', icon: TrophyIcon }] : []),
           { path: '/match-log', label: 'Schedule', icon: CalendarIcon },
           { path: '/submit-result', label: 'Submit Score', icon: PlusCircleIcon },
           { path: '/results', label: 'Results', icon: TrophyIcon },
-          { path: '/home', label: 'Home', icon: HomeIcon },
-          { path: '/notifications', label: 'Notifications', icon: BellIcon },
           { path: '/players', label: 'Players', icon: UsersIcon },
+          { path: '/notifications', label: 'Notifications', icon: BellIcon },
           { path: '/giveaways', label: 'Giveaways', icon: GiftIcon },
         ]
       },
