@@ -19,6 +19,7 @@ export default function DailyChallenges() {
   const [newChallenge, setNewChallenge] = useState({ title: '', description: '', date: new Date().toISOString().split('T')[0] })
   const [videoFile, setVideoFile] = useState(null)
   const [videoPreview, setVideoPreview] = useState(null)
+  const [previewImage, setPreviewImage] = useState(null)
 
   const isAdmin = useMemo(() => {
     return ADMIN_EMAILS.includes(user?.email?.toLowerCase()) || user?.isAdmin || user?.isTournamentAdmin
