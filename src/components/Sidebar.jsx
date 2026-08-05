@@ -58,16 +58,15 @@ export default function Sidebar() {
       {
         title: 'League',
         items: [
-          { path: '/home', label: 'Home', icon: HomeIcon },
-          ...(isOpenLeagueVisible ? [{ path: '/open-league', label: 'Open League', icon: TrophyIcon }] : []),
           { path: '/table', label: 'Standings', icon: TableIcon },
-          { path: '/super-league', label: 'Champions League', icon: TrophyIcon },
+          ...(isOpenLeagueVisible ? [{ path: '/open-league', label: 'Open League', icon: TrophyIcon }] : []),
           { path: '/match-log', label: 'Schedule', icon: CalendarIcon },
+          { path: '/submit-result', label: 'Submit Score', icon: PlusCircleIcon },
+          { path: '/results', label: 'Results', icon: TrophyIcon },
+          { path: '/home', label: 'Home', icon: HomeIcon },
           { path: '/notifications', label: 'Notifications', icon: BellIcon },
           { path: '/players', label: 'Players', icon: UsersIcon },
-          { path: '/challenges', label: 'Challenges', icon: StarIcon },
           { path: '/giveaways', label: 'Giveaways', icon: GiftIcon },
-          { path: '/results', label: 'Results', icon: TrophyIcon },
         ]
       },
       {
@@ -75,12 +74,9 @@ export default function Sidebar() {
         items: [
           { path: '/practice', label: 'Practice Hub', icon: TargetIcon },
           { path: '/progress-tracker', label: 'Progress Tracker', icon: BarChartIcon },
-          { path: '/live-match', label: 'Play Online/Local', icon: TargetIcon },
-          { path: '/submit-result', label: 'Submit Score', icon: PlusCircleIcon },
           { path: '/fixtures', label: 'Arrangements', icon: HistoryIcon },
           { path: '/cups', label: 'Cups', icon: TrophyIcon },
           { path: '/tournaments', label: 'Tournaments', icon: TournamentIcon },
-          { path: '/rewards', label: 'Rewards', icon: GiftIcon },
           { path: '/leaderboards', label: 'Leaderboards', icon: TrophyIcon },
           { path: '/analytics', label: 'Analytics', icon: BarChartIcon },
         ]
