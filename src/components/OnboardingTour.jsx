@@ -24,7 +24,7 @@ const ONBOARDING_STEPS = [
   },
   {
     title: 'Join the Community',
-    description: 'Subscribe to access chat, tournaments, cups, and rewards. Connect with other league members!',
+    description: 'Subscribe to access chat, tournaments, cups, and token betting. Connect with other league members!',
     icon: 'community'
   }
 ];

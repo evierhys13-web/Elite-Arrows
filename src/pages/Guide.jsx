@@ -8,13 +8,13 @@ export default function Guide() {
     { id: 'getting-started', label: 'Getting Started', icon: '🎯' },
     { id: 'account', label: 'Account Setup', icon: '👤' },
     { id: 'subscription', label: 'Subscription', icon: '⭐' },
-    { id: 'fixtures', label: 'Fixtures', icon: '📅' },
+    { id: 'fixtures', label: 'Arrangements', icon: '📅' },
     { id: 'results', label: 'Results', icon: '🏆' },
     { id: 'cups', label: 'Cups & Tournaments', icon: '🎯' },
     { id: 'league', label: 'League Games', icon: '📊' },
     { id: 'leaderboards', label: 'Leaderboards', icon: '📈' },
     { id: 'chat', label: 'Chat', icon: '💬' },
-    { id: 'tokens', label: 'Tokens & Rewards', icon: '💰' },
+    { id: 'tokens', label: 'Elite Tokens', icon: '💰' },
     { id: 'admin', label: 'Admin Tools', icon: 'Admin' },
     { id: 'profile', label: 'Profile & Stats', icon: '📋' },
     { id: 'search', label: 'Finding Players', icon: '🔍' },
@@ -82,6 +82,7 @@ export default function Guide() {
                   <li><strong>Set up your profile</strong> - Add your details, profile picture, and bio</li>
                   <li><strong>Get assigned to a division</strong> - Admins will place you in the appropriate league division</li>
                   <li><strong>Subscribe for full access</strong> - Unlock all features with Elite Arrows Pass</li>
+                  <li><strong>Join the community</strong> - Click the WhatsApp link at the top of the Home page to join our group</li>
                   <li><strong>Start playing!</strong> - Create fixtures, submit results, and earn tokens</li>
                 </ol>
               </div>
@@ -164,7 +165,7 @@ export default function Guide() {
                   <li>✗ Cannot create fixtures</li>
                   <li>✗ Cannot submit results</li>
                   <li>✗ Cannot join cups/tournaments</li>
-                  <li>✗ Cannot access rewards and token betting</li>
+                  <li>✗ Cannot access token betting</li>
                 </ul>
               </div>
 
@@ -175,7 +176,7 @@ export default function Guide() {
                   <li>✓ Submit game results</li>
                   <li>✓ Participate in league games</li>
                   <li>✓ Enter cup tournaments</li>
-                  <li>✓ Earn tokens and rewards</li>
+                  <li>✓ Earn and use Elite Tokens</li>
                   <li>✓ Access to games and challenges</li>
                   <li>✓ Chat with friends</li>
                   <li>✓ Priority support</li>
@@ -186,20 +187,20 @@ export default function Guide() {
 
           {activeSection === 'fixtures' && (
             <div className="card">
-              <h2 className="card-title">📅 Fixtures</h2>
+              <h2 className="card-title">📅 Arrangements (Fixtures)</h2>
               
               <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>What are Fixtures?</h4>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>What are Arrangements?</h4>
                 <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                  Fixtures are scheduled matches between you and other players. You can create 
+                  Arrangements (also called Fixtures) are scheduled matches between you and other players. You can create
                   Friendly or League fixture proposals and invite opponents to play.
                 </p>
               </div>
 
               <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Creating a Fixture</h4>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>Creating an Arrangement</h4>
                 <ol style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-                  <li>Go to <strong>Fixtures</strong> page</li>
+                  <li>Go to <strong>Arrangements</strong> page</li>
                   <li>Click <strong>+ Create Fixture</strong></li>
                   <li>Select game type (Friendly or League)</li>
                   <li>Use the <strong>search bar</strong> to find and select your opponent</li>
@@ -264,14 +265,13 @@ export default function Guide() {
               <div style={{ marginTop: '20px' }}>
                 <h4 style={{ color: 'var(--accent-cyan)' }}>How to Submit</h4>
                 <ol style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-                  <li>Go to <strong>Fixtures</strong> page</li>
+                  <li>Go to <strong>Submit Score</strong> in the sidebar or from <strong>Arrangements</strong></li>
                   <li>Find your accepted fixture in <strong>Upcoming</strong></li>
                   <li>Click <strong>Submit Result</strong></li>
                   <li>Enter legs won for both players</li>
                   <li>Add optional stats (180s, checkout %, high score)</li>
                   <li>For League games: upload proof screenshot</li>
                   <li>Click <strong>Submit for Approval</strong></li>
-                  <li>The submit button turns green once the result is saved, then the form resets for the next result</li>
                 </ol>
               </div>
 
@@ -463,37 +463,35 @@ export default function Guide() {
 
           {activeSection === 'tokens' && (
             <div className="card">
-              <h2 className="card-title">💰 Tokens & Rewards</h2>
+              <h2 className="card-title">💰 Elite Tokens</h2>
               
               <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>What are Tokens?</h4>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>What are Elite Tokens?</h4>
                 <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                  Tokens are earned by winning games and can be used for League game bets
-                  from Fixtures &gt; All Fixtures.
+                  Elite Tokens are our in-app currency earned by winning games and participating in the community.
+                  They can be used for betting on League games from the Fixtures page.
                 </p>
               </div>
 
               <div style={{ marginTop: '20px' }}>
                 <h4 style={{ color: 'var(--accent-cyan)' }}>Earning Tokens</h4>
                 <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
-                  <li><strong>Win rewards</strong> - Winning submitted games can award tokens</li>
-                  <li><strong>Admin rewards</strong> - Admins can add or remove tokens for a player</li>
-                  <li><strong>Bulk rewards</strong> - Admins can add the same token amount to all players for events or bonuses</li>
-                  <li><strong>Bonus tokens</strong> - Special promotions, achievements, and milestones</li>
+                  <li><strong>Win matches</strong> - Winning league and tournament games awards tokens</li>
+                  <li><strong>Milestones</strong> - Reach certain stat goals to earn bonus tokens</li>
+                  <li><strong>Admin awards</strong> - Admins may grant tokens for special events or participation</li>
                 </ul>
               </div>
 
               <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Betting and Draws</h4>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>Token Betting</h4>
                 <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
                   Visit <Link to="/fixtures" style={{ color: 'var(--accent-cyan)' }}>Fixtures</Link> &gt; <strong>All Fixtures</strong>
-                  to bet tokens on eligible confirmed League games. The <Link to="/rewards" style={{ color: 'var(--accent-cyan)' }}>Rewards</Link> page
-                  shows your token balance and the promotion draw wheel.
+                  to bet tokens on eligible confirmed League games in your division.
                 </p>
                 <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
-                  <li><strong>Eligible bets</strong> - Confirmed League fixtures in your own division where you are not one of the players</li>
-                  <li><strong>Correct predictions</strong> - Predict the winner and exact score to enter the promotion draw</li>
-                  <li><strong>Rewards page</strong> - View Elite Tokens and the promotion wheel without the betting list clutter</li>
+                  <li><strong>Eligible games</strong> - You can bet on any League game in your division that you are not playing in</li>
+                  <li><strong>Predictions</strong> - Predict the winner to multiply your tokens</li>
+                  <li><strong>Balances</strong> - Your token balance is displayed on your profile</li>
                 </ul>
               </div>
             </div>
