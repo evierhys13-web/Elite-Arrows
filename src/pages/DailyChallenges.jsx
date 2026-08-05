@@ -150,6 +150,63 @@ export default function DailyChallenges() {
 
   const userSub = submissions.find(s => s.userId === user.id)
 
+  if (showCreateModal && isAdmin) {
+    return (
+      <div className="page animate-fade-in">
+        <Breadcrumbs items={[
+          { label: 'Home', path: '/home' },
+          { label: 'Daily Challenges', path: '/daily-challenges', onClick: () => setShowCreateModal(false) },
+          { label: 'Set Challenge' }
+        ]} />
+
+        <div className="page-header">
+          <h1 className="page-title text-gradient">Set Daily Challenge</h1>
+          <p style={{ color: 'var(--text-muted)' }}>Configure the challenge for players to complete.</p>
+        </div>
+
+        <div className="card glass" style={{ maxWidth: '800px', margin: '0 auto' }}>
+          <div className="form-group">
+            <label style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '8px', display: 'block' }}>Challenge Title</label>
+            <input
+              style={{ fontSize: '1.1rem', padding: '12px' }}
+              value={newChallenge.title}
+              onChange={e => setNewChallenge({...newChallenge, title: e.target.value})}
+              placeholder="e.g. 3 Darts in Single 20"
+            />
+          </div>
+          <div className="form-group">
+            <label style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '8px', display: 'block' }}>Description</label>
+            <textarea
+              style={{ fontSize: '1.1rem', padding: '12px' }}
+              value={newChallenge.description}
+              onChange={e => setNewChallenge({...newChallenge, description: e.target.value})}
+              placeholder="Explain what the player needs to do..."
+              rows={8}
+            />
+          </div>
+          <div className="form-group">
+            <label style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '8px', display: 'block' }}>Date</label>
+            <input
+              type="date"
+              style={{ fontSize: '1.1rem', padding: '12px' }}
+              value={newChallenge.date}
+              onChange={e => setNewChallenge({...newChallenge, date: e.target.value})}
+            />
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px', marginTop: '30px' }}>
+            <button className="btn btn-primary" style={{ flex: 2, padding: '15px', fontSize: '1.1rem' }} onClick={handleCreateChallenge} disabled={loading}>
+              {loading ? 'Setting...' : 'Set Challenge'}
+            </button>
+            <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowCreateModal(false)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="page animate-fade-in">
       <Breadcrumbs items={[{ label: 'Home', path: '/home' }, { label: 'Daily Challenges', path: '/daily-challenges' }]} />
@@ -235,32 +292,9 @@ export default function DailyChallenges() {
         </div>
       )}
 
-      {showCreateModal && (
-        <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
-          <div className="card glass" style={{ maxWidth: '500px', width: '95%' }} onClick={e => e.stopPropagation()}>
-            <h2 className="card-title">Set Daily Challenge</h2>
-            <div className="form-group">
-              <label>Title</label>
-              <input value={newChallenge.title} onChange={e => setNewChallenge({...newChallenge, title: e.target.value})} placeholder="e.g. 3 Darts in Single 20" />
-            </div>
-            <div className="form-group">
-              <label>Description</label>
-              <textarea value={newChallenge.description} onChange={e => setNewChallenge({...newChallenge, description: e.target.value})} placeholder="Explain what the player needs to do..." rows={4} />
-            </div>
-            <div className="form-group">
-              <label>Date</label>
-              <input type="date" value={newChallenge.date} onChange={e => setNewChallenge({...newChallenge, date: e.target.value})} />
-            </div>
-            <button className="btn btn-primary btn-block" onClick={handleCreateChallenge} disabled={loading}>
-              {loading ? 'Setting...' : 'Set Challenge'}
-            </button>
-          </div>
-        </div>
-      )}
-
       {showSubmitModal && (
-        <div className="modal-overlay" onClick={() => setShowSubmitModal(false)}>
-          <div className="card glass" style={{ maxWidth: '500px', width: '95%' }} onClick={e => e.stopPropagation()}>
+        <div className="modal-overlay" style={{ zIndex: 3000 }} onClick={() => setShowSubmitModal(false)}>
+          <div className="card glass" style={{ maxWidth: '600px', width: '95%' }} onClick={e => e.stopPropagation()}>
             <h2 className="card-title">Submit Video Proof</h2>
             <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>Upload a video of you completing: <strong>{currentChallenge?.title}</strong></p>
 
@@ -288,6 +322,45 @@ export default function DailyChallenges() {
               {loading ? 'Submitting...' : 'Submit Video'}
             </button>
           </div>
+        </div>
+      )}
+      {previewImage && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.9)',
+            zIndex: 4000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+            cursor: 'pointer'
+          }}
+          onClick={() => setPreviewImage(null)}
+        >
+          <img
+            src={previewImage}
+            alt="Preview"
+            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 0 40px rgba(0,0,0,0.5)' }}
+          />
+          <button
+            style={{
+              position: 'absolute',
+              top: '20px',
+              right: '20px',
+              background: 'white',
+              color: 'black',
+              border: 'none',
+              borderRadius: '50%',
+              width: '40px',
+              height: '40px',
+              fontSize: '24px',
+              fontWeight: 'bold',
+              cursor: 'pointer'
+            }}
+            onClick={() => setPreviewImage(null)}
+          >×</button>
         </div>
       )}
     </div>
