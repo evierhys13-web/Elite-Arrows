@@ -196,6 +196,38 @@ export default function Home() {
         <NewsFeed />
       </div>
 
+      <div className={`card animate-fade-in-up stagger-item`} style={{ marginBottom: '20px', border: '2px solid var(--accent-cyan)' }}>
+        <div style={{ textAlign: 'center' }}>
+          <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>
+            {seasonTimerTitle}
+          </h2>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
+            {isSeasonActive
+              ? `${new Date(activeSeason.startDate).toLocaleString()} - ${new Date(activeSeason.endDate).toLocaleString()}`
+              : `${activeSeason.name}: ${new Date(activeSeason.startDate).toLocaleString()} - ${new Date(activeSeason.endDate).toLocaleString()}`
+            }
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '20px' }}>
+            <div className="stat-card" style={{ padding: '15px' }}>
+              <div className="stat-value" style={{ fontSize: '1.5rem' }}>{timeLeft.days}</div>
+              <div className="stat-label">Days</div>
+            </div>
+            <div className="stat-card" style={{ padding: '15px' }}>
+              <div className="stat-value" style={{ fontSize: '1.5rem' }}>{timeLeft.hours}</div>
+              <div className="stat-label">Hours</div>
+            </div>
+            <div className="stat-card" style={{ padding: '15px' }}>
+              <div className="stat-value" style={{ fontSize: '1.5rem' }}>{timeLeft.minutes}</div>
+              <div className="stat-label">Mins</div>
+            </div>
+            <div className="stat-card" style={{ padding: '15px' }}>
+              <div className="stat-value" style={{ fontSize: '1.5rem' }}>{timeLeft.seconds}</div>
+              <div className="stat-label">Secs</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <GlobalHighlightReel />
 
       {/* Surveys */}
@@ -276,38 +308,6 @@ export default function Home() {
           </div>
         ))
       })()}
-
-      <div className={`card animate-fade-in-up stagger-item`} style={{ marginBottom: '20px', border: '2px solid var(--accent-cyan)' }}>
-        <div style={{ textAlign: 'center' }}>
-          <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>
-            {seasonTimerTitle}
-          </h2>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
-            {isSeasonActive 
-              ? `${new Date(activeSeason.startDate).toLocaleString()} - ${new Date(activeSeason.endDate).toLocaleString()}`
-              : `${activeSeason.name}: ${new Date(activeSeason.startDate).toLocaleString()} - ${new Date(activeSeason.endDate).toLocaleString()}`
-            }
-          </p>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '20px' }}>
-            <div className="stat-card" style={{ padding: '15px' }}>
-              <div className="stat-value" style={{ fontSize: '1.5rem' }}>{timeLeft.days}</div>
-              <div className="stat-label">Days</div>
-            </div>
-            <div className="stat-card" style={{ padding: '15px' }}>
-              <div className="stat-value" style={{ fontSize: '1.5rem' }}>{timeLeft.hours}</div>
-              <div className="stat-label">Hours</div>
-            </div>
-            <div className="stat-card" style={{ padding: '15px' }}>
-              <div className="stat-value" style={{ fontSize: '1.5rem' }}>{timeLeft.minutes}</div>
-              <div className="stat-label">Mins</div>
-            </div>
-            <div className="stat-card" style={{ padding: '15px' }}>
-              <div className="stat-value" style={{ fontSize: '1.5rem' }}>{timeLeft.seconds}</div>
-              <div className="stat-label">Secs</div>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {champions.length > 0 && (
         <div className="card animate-fade-in-up stagger-item" style={{ marginBottom: '20px', background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(245, 158, 11, 0.1))', border: '1px solid #fbbf24' }}>
