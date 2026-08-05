@@ -57,6 +57,7 @@ const PracticeHub = lazy(() => import('./pages/PracticeHub'))
 const PracticeGame = lazy(() => import('./pages/PracticeGame'))
 const OpenLeague = lazy(() => import('./pages/OpenLeague'))
 const ProgressTracker = lazy(() => import('./pages/ProgressTracker'))
+const DailyChallenges = lazy(() => import('./pages/DailyChallenges'))
 
 function PageLoader() {
   const [showRefresh, setShowRefresh] = useState(false)
@@ -325,6 +326,7 @@ function AppRoutes() {
       <Route path="/progress-tracker" element={<ProtectedRoute><AppLayout><ProgressTracker /></AppLayout></ProtectedRoute>} />
       <Route path="/practice/:modeId" element={<ProtectedRoute><AppLayout><PracticeGame /></AppLayout></ProtectedRoute>} />
       <Route path="/challenges" element={<ProtectedRoute><AppLayout><Challenges /></AppLayout></ProtectedRoute>} />
+      <Route path="/daily-challenges" element={<ProtectedRoute><AppLayout><DailyChallenges /></AppLayout></ProtectedRoute>} />
       <Route path="/giveaways" element={<ProtectedRoute><AppLayout><Giveaways /></AppLayout></ProtectedRoute>} />
       <Route path="/super-league" element={<SubscribedRoute><AppLayout><ChampionsLeague /></AppLayout></SubscribedRoute>} />
       <Route path="/season-management" element={<AdminRoute><AppLayout><SeasonManagement /></AppLayout></AdminRoute>} />

@@ -64,6 +64,7 @@ export default function Sidebar() {
           { path: '/match-log', label: 'Schedule', icon: CalendarIcon },
           { path: '/submit-result', label: 'Submit Score', icon: PlusCircleIcon },
           { path: '/results', label: 'Results', icon: TrophyIcon },
+          { path: '/daily-challenges', label: 'Daily Challenges', icon: StarIcon },
           { path: '/players', label: 'Players', icon: UsersIcon },
           { path: '/notifications', label: 'Notifications', icon: BellIcon },
           { path: '/giveaways', label: 'Giveaways', icon: GiftIcon },
