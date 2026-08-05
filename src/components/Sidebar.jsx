@@ -72,10 +72,10 @@ export default function Sidebar() {
       {
         title: 'Compete',
         items: [
+          { path: '/cups', label: 'Cups', icon: TrophyIcon },
           { path: '/practice', label: 'Practice Hub', icon: TargetIcon },
           { path: '/progress-tracker', label: 'Progress Tracker', icon: BarChartIcon },
           { path: '/fixtures', label: 'Arrangements', icon: HistoryIcon },
-          { path: '/cups', label: 'Cups', icon: TrophyIcon },
           { path: '/tournaments', label: 'Tournaments', icon: TournamentIcon },
           { path: '/leaderboards', label: 'Leaderboards', icon: TrophyIcon },
           { path: '/analytics', label: 'Analytics', icon: BarChartIcon },
