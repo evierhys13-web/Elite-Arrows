@@ -151,7 +151,9 @@ export default function MatchLog() {
         const resSeason = String(r.season || '').trim()
         const isSeasonMatch = resSeason === currentSeasonName || (!resSeason && currentSeasonName === 'Season 1')
 
-        if (!isApproved || !isSeasonMatch || !isTargetMatch) return false
+        const isOpen = isOpenLeagueResult(r) || isOpenLeagueDoublesResult(r)
+
+        if (!isApproved || (!isSeasonMatch && !isOpen) || !isTargetMatch) return false
 
         if (competition === 'League') {
           return isLeagueResult(r, fixturesById) || isPlayoffResult(r, fixturesById)
@@ -501,7 +503,13 @@ export default function MatchLog() {
                     <div>
                       <div style={{ fontWeight: '700', fontSize: '0.95rem' }}>{player.username}</div>
                       <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                        {player._isCup ? `${player._cupName} - Round ${player._round}` : (competition === 'League' ? `${player.division} Division` : `${player.superLeagueDivision} Champions Rank`)}
+                        {player._isCup
+                          ? `${player._cupName} - Round ${player._round}`
+                          : (competition === 'League'
+                              ? `${player.division} Division`
+                              : (competition === 'Champions League'
+                                  ? `${player.superLeagueDivision} Champions Rank`
+                                  : 'Open League'))}
                       </div>
                       {competition === 'Champions League' && (
                         <div style={{ fontSize: '0.65rem', color: 'var(--accent-cyan)' }}>
