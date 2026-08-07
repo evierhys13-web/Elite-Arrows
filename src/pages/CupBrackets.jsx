@@ -189,7 +189,11 @@ export default function CupBracket() {
 
   useEffect(() => {
     if (cup && !activeStageSetRef.current) {
-      setActiveStage(cup.type === 'knockout' ? 'knockout' : 'groups')
+      if (cup.type === 'knockout' || cup.groupsAdvanced || (cup.currentRound && cup.currentRound > 0)) {
+        setActiveStage('knockout')
+      } else {
+        setActiveStage('groups')
+      }
       activeStageSetRef.current = true
     }
   }, [cup])

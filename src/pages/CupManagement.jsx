@@ -5,7 +5,7 @@ import UserSearchSelect from '../components/UserSearchSelect'
 import { useToast } from '../context/ToastContext'
 
 function CupManagement() {
-  const { getAllUsers, getCups, getFixtures, getResults, advanceCupBracket, triggerDataRefresh, dataRefreshTrigger } = useAuth()
+  const { getAllUsers, getCups, getFixtures, getResults, advanceCupBracket, triggerDataRefresh, dataRefreshTrigger, notifyUser } = useAuth()
   const { showToast } = useToast()
   const [refreshKey, setRefreshKey] = useState(0)
   const [cups, setCups] = useState([])
@@ -116,29 +116,42 @@ function CupManagement() {
         }
       })
 
-      const bestExtraPlaced = extraPlacedPlayers.sort((a, b) => (b.points - a.points) || (b.legsFor - b.legsAgainst) - (a.legsFor - a.legsAgainst) || (b.legsFor - a.legsFor))
+      const bestExtraPlaced = extraPlacedPlayers.sort((a, b) => (a.points - b.points) || (b.legsFor - b.legsAgainst) - (a.legsFor - a.legsAgainst) || (b.legsFor - a.legsFor))
 
       const updatedMatches = [...cupData.matches]
       const newFixtures = []
+      const qualifiedPlayers = new Set()
 
       updatedMatches.filter(m => m.stage === 'knockout' && m.round === 1).forEach(m => {
         const mIdx = updatedMatches.findIndex(um => um.id === m.id)
         if (m.sourceP1) {
           if (m.sourceP1.bestThird || m.sourceP1.bestExtra) {
             const qualified = bestExtraPlaced[m.sourceP1.position - 1]
-            if (qualified) updatedMatches[mIdx].player1 = qualified.id
+            if (qualified) {
+                updatedMatches[mIdx].player1 = qualified.id
+                qualifiedPlayers.add(qualified.id)
+            }
           } else {
             const qualified = sortedGroups[m.sourceP1.group]?.[m.sourceP1.position - 1]
-            if (qualified) updatedMatches[mIdx].player1 = qualified.id
+            if (qualified) {
+                updatedMatches[mIdx].player1 = qualified.id
+                qualifiedPlayers.add(qualified.id)
+            }
           }
         }
         if (m.sourceP2) {
           if (m.sourceP2.bestThird || m.sourceP2.bestExtra) {
             const qualified = bestExtraPlaced[m.sourceP2.position - 1]
-            if (qualified) updatedMatches[mIdx].player2 = qualified.id
+            if (qualified) {
+                updatedMatches[mIdx].player2 = qualified.id
+                qualifiedPlayers.add(qualified.id)
+            }
           } else {
             const qualified = sortedGroups[m.sourceP2.group]?.[m.sourceP2.position - 1]
-            if (qualified) updatedMatches[mIdx].player2 = qualified.id
+            if (qualified) {
+                updatedMatches[mIdx].player2 = qualified.id
+                qualifiedPlayers.add(qualified.id)
+            }
           }
         }
 
@@ -165,12 +178,17 @@ function CupManagement() {
         }
       })
 
-      await setDoc(cupRef, { ...cupData, matches: updatedMatches, groupsAdvanced: true, currentRound: 1 }, { merge: true })
+      await setDoc(cupRef, { ...cupData, matches: updatedMatches, groupsAdvanced: true, currentRound: 1, status: 'active' }, { merge: true })
       const batch = writeBatch(db)
       newFixtures.forEach(f => batch.set(doc(db, 'fixtures', f.id), f))
       await batch.commit()
 
-      showToast('Group stage finalized and knockout matches created!', 'success')
+      // Notify qualified players
+      for (const pid of Array.from(qualifiedPlayers)) {
+          notifyUser(pid, 'Cup Knockout Started!', `You have qualified for the knockout stage of ${cupData.name}! Check your fixtures.`, 'cup_started')
+      }
+
+      showToast('Group stage finalized and knockout phase (Round 1) has begun!', 'success')
       triggerDataRefresh('all')
       setRefreshKey(prev => prev + 1)
     } catch (e) {
@@ -749,41 +767,8 @@ function CupManagement() {
           if (a.round !== b.round) return (a.round || 0) - (b.round || 0)
           return (a.matchNum || 0) - (b.matchNum || 0)
         })
-        
-        const handleSavePrize = async () => {
-    if (!editingPrize) return
-    setIsSubmitting(true)
-    try {
-      await setDoc(doc(db, 'cups', String(editingPrize.id)), {
-        prizePool: parseFloat(prizeForm.prizePool) || 0,
-        entryFee: parseFloat(prizeForm.entryFee) || 0
-      }, { merge: true })
-      showToast('Prize info updated!', 'success')
-      setEditingPrize(null)
-      triggerDataRefresh('cups')
-    } catch (e) {
-      showToast('Error saving prize info: ' + e.message, 'error')
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
 
-  const handleSaveDeadlines = async () => {
-    if (!editingDeadlines) return
-    setIsSubmitting(true)
-    try {
-      await setDoc(doc(db, 'cups', String(editingDeadlines.id)), { deadlines: deadlinesForm }, { merge: true })
-      showToast('Deadlines updated!', 'success')
-      setEditingDeadlines(null)
-      triggerDataRefresh('cups')
-    } catch (e) {
-      showToast('Error saving deadlines: ' + e.message, 'error')
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  return (
+        return (
           <div key={cup.id} className="card glass animate-fade-in" style={{ padding: '0', border: '1px solid rgba(129, 140, 248, 0.2)', overflow: 'hidden' }}>
             <div
               style={{
@@ -863,16 +848,7 @@ function CupManagement() {
                 >
                   💰 Prize
                 </button>
-                {cup.type === 'group_knockout' && !cup.groupsAdvanced && (
-                   <button
-                     className="btn btn-primary btn-sm"
-                     onClick={(e) => { e.stopPropagation(); handleAdvanceGroups(cup); }}
-                     disabled={isSubmitting}
-                   >
-                     ⚡ Finalize Groups
-                   </button>
-                )}
-                {cup.type === 'world_cup' && !cup.groupsAdvanced && (
+                {(cup.type === 'group_knockout' || cup.type === 'world_cup') && !cup.groupsAdvanced && (
                    <button
                      className="btn btn-primary btn-sm"
                      onClick={(e) => { e.stopPropagation(); handleAdvanceGroups(cup); }}
@@ -918,40 +894,7 @@ function CupManagement() {
                     let roundLabel = getRoundName(match.round, totalRounds)
                     if (match.stage === 'groups') roundLabel = `GROUP ${match.group}`
 
-                    const handleSavePrize = async () => {
-    if (!editingPrize) return
-    setIsSubmitting(true)
-    try {
-      await setDoc(doc(db, 'cups', String(editingPrize.id)), {
-        prizePool: parseFloat(prizeForm.prizePool) || 0,
-        entryFee: parseFloat(prizeForm.entryFee) || 0
-      }, { merge: true })
-      showToast('Prize info updated!', 'success')
-      setEditingPrize(null)
-      triggerDataRefresh('cups')
-    } catch (e) {
-      showToast('Error saving prize info: ' + e.message, 'error')
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  const handleSaveDeadlines = async () => {
-    if (!editingDeadlines) return
-    setIsSubmitting(true)
-    try {
-      await setDoc(doc(db, 'cups', String(editingDeadlines.id)), { deadlines: deadlinesForm }, { merge: true })
-      showToast('Deadlines updated!', 'success')
-      setEditingDeadlines(null)
-      triggerDataRefresh('cups')
-    } catch (e) {
-      showToast('Error saving deadlines: ' + e.message, 'error')
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  return (
+                    return (
                       <div key={match.id} style={{
                         padding: '20px',
                         borderRadius: '16px',
@@ -1151,7 +1094,49 @@ function CupManagement() {
 
       {showSwapModal && (
         <div className="modal-overlay">
-          {/* ... swap modal content ... */}
+           <div className="modal-content glass" style={{ maxWidth: '400px' }}>
+            <h3 style={{ marginBottom: '20px' }}>Swap Player in Cup</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '20px' }}>
+              Replace a participant throughout the entire bracket and all fixtures for <strong>{swapCup?.name}</strong>.
+            </p>
+
+            <div className="form-group">
+              <label>Player to Remove</label>
+              <select
+                className="glass"
+                value={playerToRemove}
+                onChange={e => setPlayerToRemove(e.target.value)}
+              >
+                <option value="">Select participant...</option>
+                {swapCup?.players?.map(pid => {
+                  const p = allUsers.find(u => u.id === pid)
+                  return <option key={pid} value={pid}>{p?.username || pid}</option>
+                })}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label>Replacement Player</label>
+              <UserSearchSelect
+                users={allUsers.filter(u => !(swapCup?.players || []).includes(u.id))}
+                selectedId={playerToAdd}
+                onSelect={setPlayerToAdd}
+                label=""
+                placeholder="Search for new player..."
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '30px' }}>
+              <button className="btn btn-secondary btn-block" onClick={() => setShowSwapModal(false)}>Cancel</button>
+              <button
+                className="btn btn-primary btn-block"
+                onClick={handleSwapPlayer}
+                disabled={isSubmitting || !playerToRemove || !playerToAdd}
+              >
+                {isSubmitting ? 'Swapping...' : 'Perform Swap'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
