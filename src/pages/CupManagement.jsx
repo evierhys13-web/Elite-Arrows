@@ -108,15 +108,21 @@ function CupManagement() {
       Object.keys(standings).forEach(gId => {
         const sorted = Object.values(standings[gId]).sort((a,b) => (b.points - a.points) || (b.legsFor - b.legsAgainst) - (a.legsFor - a.legsAgainst) || (b.legsFor - a.legsFor))
         sortedGroups[gId] = sorted
-        // Collect the next-placed player beyond the direct qualifiers (only if enabled or group_knockout which always fills)
+
+        // Collect the next-placed player beyond the direct qualifiers
         if (cupData.type === 'group_knockout' || cupData.allowBestThird) {
-          if (sorted[advanceCount]) {
-            extraPlacedPlayers.push({ ...sorted[advanceCount], group: gId })
+          const nextIndex = advanceCount
+          // RULE: Only consider if they are NOT the last placed player in the group
+          if (sorted[nextIndex] && nextIndex < sorted.length - 1) {
+            extraPlacedPlayers.push({ ...sorted[nextIndex], group: gId })
           }
         }
       })
 
-      const bestExtraPlaced = extraPlacedPlayers.sort((a, b) => (a.points - b.points) || (b.legsFor - b.legsAgainst) - (a.legsFor - a.legsAgainst) || (b.legsFor - a.legsFor))
+      // Sort extras and limit to Top 4 as per specific league rules
+      const bestExtraPlaced = extraPlacedPlayers
+        .sort((a, b) => (b.points - a.points) || (b.legsFor - b.legsAgainst) - (a.legsFor - a.legsAgainst) || (b.legsFor - a.legsFor))
+        .slice(0, 4)
 
       const updatedMatches = [...cupData.matches]
       const newFixtures = []
