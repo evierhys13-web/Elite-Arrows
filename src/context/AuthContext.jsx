@@ -198,6 +198,8 @@ const saveResultsCache = (results) => {
   }
 };
 
+const EMPTY_ARRAY = [];
+
 export function AuthProvider({ children }) {
   const { showToast } = useToast();
   // Initialize state from local cache to prevent data flickering on refresh
@@ -1054,9 +1056,9 @@ export function AuthProvider({ children }) {
     };
   }, [user?.id, triggerDataRefresh, publishResults]);
 
-  // Re-fetch cups from Firestore when dataRefreshTrigger changes
+  // Re-fetch cups from Firestore when cupsRefreshTrigger changes
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
     let cancelled = false;
     const fetchCups = async () => {
       try {
@@ -1071,11 +1073,11 @@ export function AuthProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [cupsRefreshTrigger, user]);
+  }, [cupsRefreshTrigger, user?.id]);
 
   // Re-fetch users from Firestore when usersRefreshTrigger changes
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
     let cancelled = false;
     const fetchUsers = async () => {
       try {
@@ -1094,7 +1096,7 @@ export function AuthProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [usersRefreshTrigger, user]);
+  }, [usersRefreshTrigger, user?.id]);
 
   // Auto-launch scheduled seasons
   useEffect(() => {
@@ -1684,9 +1686,9 @@ export function AuthProvider({ children }) {
       const localUsers = JSON.parse(
         localStorage.getItem("eliteArrowsUsers") || "[]",
       );
-      return Array.isArray(localUsers) ? localUsers : [];
+      return Array.isArray(localUsers) && localUsers.length > 0 ? localUsers : EMPTY_ARRAY;
     } catch (e) {
-      return [];
+      return EMPTY_ARRAY;
     }
   }, [allUsers]);
 
@@ -1697,7 +1699,7 @@ export function AuthProvider({ children }) {
   const getResults = useCallback(() => {
     if (Array.isArray(results) && results.length > 0) return results;
     const cached = getCachedResults();
-    return Array.isArray(cached) ? cached : [];
+    return Array.isArray(cached) && cached.length > 0 ? cached : EMPTY_ARRAY;
   }, [results]);
 
   const updateResults = useCallback((updatedResults, purgeScope = null) => {
@@ -2096,9 +2098,9 @@ export function AuthProvider({ children }) {
       const local = JSON.parse(
         localStorage.getItem("eliteArrowsFixtures") || "[]",
       );
-      return Array.isArray(local) ? local : [];
+      return Array.isArray(local) && local.length > 0 ? local : EMPTY_ARRAY;
     } catch (e) {
-      return [];
+      return EMPTY_ARRAY;
     }
   }, [fixtures]);
 
@@ -2384,9 +2386,9 @@ export function AuthProvider({ children }) {
     if (Array.isArray(cups) && cups.length > 0) return cups;
     try {
       const local = JSON.parse(localStorage.getItem("eliteArrowsCups") || "[]");
-      return Array.isArray(local) ? local : [];
+      return Array.isArray(local) && local.length > 0 ? local : EMPTY_ARRAY;
     } catch (e) {
-      return [];
+      return EMPTY_ARRAY;
     }
   }, [cups]);
 
@@ -2684,80 +2686,147 @@ export function AuthProvider({ children }) {
     }
   }, [pendingGameInvite, acceptGameInvite]);
 
+  const contextValue = useMemo(() => ({
+    user,
+    loading,
+    allUsers,
+    notifications,
+    results,
+    fixtures,
+    cups,
+    supportRequests,
+    seasons,
+    dataRefreshTrigger,
+    adminData,
+    notificationPermission,
+    fcmToken,
+    unreadCount,
+    news,
+    triggerDataRefresh,
+    triggerCupsRefresh,
+    requestNotificationPermission,
+    registerFCMToken,
+    showLocalNotification,
+    updateBadgeCount,
+    sendNotification,
+    notifyAllSubscribers,
+    notifyAdmins,
+    notifyUser,
+    signUp,
+    signIn,
+    signOut: handleSignOut,
+    updateUser,
+    updateOtherUser,
+    addUserManually,
+    addFriend,
+    acceptFriendRequest,
+    declineFriendRequest,
+    cancelFriendRequest,
+    removeFriend,
+    subscribe,
+    requestAdminRole,
+    getAllUsers,
+    getFriends,
+    getResults,
+    fetchResultsBySeason,
+    fetchUsersByDivision,
+    fetchMoreResults,
+    fetchFixturesBySeason,
+    searchUsers,
+    forceFetchResults,
+    updateResults,
+    removeResult,
+    getFixtures,
+    updateFixtures,
+    getCups,
+    bets,
+    getSupportRequests,
+    advanceCupBracket,
+    getSeasons,
+    sendGameInvite,
+    acceptGameInvite,
+    updateLiveGame,
+    getNews,
+    postNews,
+    deleteNews,
+    togglePinNews,
+    addTokens,
+    useTokens,
+    updateAdminData,
+    addToMoneyHistory,
+    isAuthenticated: !!user,
+  }), [
+    user,
+    loading,
+    allUsers,
+    notifications,
+    results,
+    fixtures,
+    cups,
+    supportRequests,
+    seasons,
+    dataRefreshTrigger,
+    adminData,
+    notificationPermission,
+    fcmToken,
+    unreadCount,
+    news,
+    triggerDataRefresh,
+    triggerCupsRefresh,
+    requestNotificationPermission,
+    registerFCMToken,
+    showLocalNotification,
+    updateBadgeCount,
+    sendNotification,
+    notifyAllSubscribers,
+    notifyAdmins,
+    notifyUser,
+    signUp,
+    signIn,
+    handleSignOut,
+    updateUser,
+    updateOtherUser,
+    addUserManually,
+    addFriend,
+    acceptFriendRequest,
+    declineFriendRequest,
+    cancelFriendRequest,
+    removeFriend,
+    subscribe,
+    requestAdminRole,
+    getAllUsers,
+    getFriends,
+    getResults,
+    fetchResultsBySeason,
+    fetchUsersByDivision,
+    fetchMoreResults,
+    fetchFixturesBySeason,
+    searchUsers,
+    forceFetchResults,
+    updateResults,
+    removeResult,
+    getFixtures,
+    updateFixtures,
+    getCups,
+    bets,
+    getSupportRequests,
+    advanceCupBracket,
+    getSeasons,
+    sendGameInvite,
+    acceptGameInvite,
+    updateLiveGame,
+    getNews,
+    postNews,
+    deleteNews,
+    togglePinNews,
+    addTokens,
+    useTokens,
+    updateAdminData,
+    addToMoneyHistory
+  ]);
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        allUsers,
-        notifications,
-        results,
-        fixtures,
-        cups,
-        supportRequests,
-        seasons,
-        dataRefreshTrigger,
-        adminData,
-        notificationPermission,
-        fcmToken,
-        unreadCount,
-        news,
-        triggerDataRefresh,
-        triggerCupsRefresh,
-        requestNotificationPermission,
-        registerFCMToken,
-        showLocalNotification,
-        updateBadgeCount,
-        sendNotification,
-        notifyAllSubscribers,
-        notifyAdmins,
-        notifyUser,
-        signUp,
-        signIn,
-        signOut: handleSignOut,
-        updateUser,
-        updateOtherUser,
-        addUserManually,
-        addFriend,
-        acceptFriendRequest,
-        declineFriendRequest,
-        cancelFriendRequest,
-        removeFriend,
-        subscribe,
-        requestAdminRole,
-        getAllUsers,
-        getFriends,
-        getResults,
-        fetchResultsBySeason,
-        fetchUsersByDivision,
-        fetchMoreResults,
-        fetchFixturesBySeason,
-        searchUsers,
-        forceFetchResults,
-        updateResults,
-        removeResult,
-        getFixtures,
-        updateFixtures,
-        getCups,
-        bets,
-        getSupportRequests,
-        advanceCupBracket,
-        getSeasons,
-        sendGameInvite,
-        acceptGameInvite,
-        updateLiveGame,
-        getNews,
-        postNews,
-        deleteNews,
-        togglePinNews,
-        addTokens,
-        useTokens,
-        adminData,
-        updateAdminData,
-        addToMoneyHistory,
-        isAuthenticated: !!user,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {showSeasonOneWelcome && user && (
         <SeasonOneWelcomeModal
           isOpen={showSeasonOneWelcome}

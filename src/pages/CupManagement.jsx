@@ -45,7 +45,7 @@ function CupManagement() {
     p1_avg: '',
     p2_avg: ''
   })
-  const allUsers = getAllUsers()
+  const allUsers = useMemo(() => getAllUsers(), [getAllUsers])
 
   const handleUpdateCurrentRound = async (cup) => {
     const newVal = prompt(`Enter new Current Round for "${cup.name}" (0 for Group Stage, 1+ for Knockout):`, cup.currentRound || 0)
@@ -379,7 +379,7 @@ function CupManagement() {
     } catch (err) {
       console.error('Error loading data in CupManagement:', err)
     }
-  }, [refreshKey, dataRefreshTrigger, getCups, getFixtures, getResults])
+  }, [refreshKey, getCups, getFixtures, getResults])
 
   // Auto-sync once on mount (silently) to fix any un-advanced results
   useEffect(() => {
