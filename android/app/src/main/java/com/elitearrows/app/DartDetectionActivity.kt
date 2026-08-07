@@ -35,6 +35,13 @@ class DartDetectionActivity : AppCompatActivity() {
     private lateinit var previewView: PreviewView
     private lateinit var overlayView: DartboardOverlayView
     private lateinit var scoreNotification: TextView
+    private lateinit var playerNameView: TextView
+    private lateinit var playerScoreView: TextView
+    private lateinit var opponentNameView: TextView
+    private lateinit var opponentScoreView: TextView
+    private var currentPlayerScore = 501
+    private var currentOpponentScore = 501
+
     private var cameraControl: CameraControl? = null
     private val scoringEngine = ScoringEngine()
     private lateinit var objectDetector: ObjectDetector
@@ -85,6 +92,72 @@ class DartDetectionActivity : AppCompatActivity() {
         previewView.scaleType = PreviewView.ScaleType.FILL_CENTER
 
         root.addView(overlayView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+
+        // Native Scoreboard Overlay
+        if (isLiveMode) {
+            val pName = intent.getStringExtra("playerName") ?: "YOU"
+            currentPlayerScore = intent.getIntExtra("playerScore", 501)
+            val oName = intent.getStringExtra("opponentName") ?: "BOT"
+            currentOpponentScore = intent.getIntExtra("opponentScore", 501)
+
+            val scoreboard = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER
+                setPadding(40, 20, 40, 20)
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    setColor(Color.parseColor("#CC050816"))
+                    cornerRadius = 30f
+                }
+            }
+
+            fun createPlayerView(name: String, score: Int, isPlayer: Boolean): LinearLayout {
+                return LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    gravity = if (isPlayer) Gravity.START else Gravity.END
+                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                    
+                    val nView = TextView(this@DartDetectionActivity).apply {
+                        text = name.uppercase()
+                        textSize = 10f
+                        setTextColor(Color.LTGRAY)
+                        setTypeface(null, android.graphics.Typeface.BOLD)
+                    }
+                    val sView = TextView(this@DartDetectionActivity).apply {
+                        text = score.toString()
+                        textSize = 28f
+                        setTextColor(if (isPlayer) Color.parseColor("#00D4FF") else Color.WHITE)
+                        setTypeface(null, android.graphics.Typeface.BOLD)
+                    }
+                    
+                    if (isPlayer) {
+                        playerNameView = nView
+                        playerScoreView = sView
+                    } else {
+                        opponentNameView = nView
+                        opponentScoreView = sView
+                    }
+                    
+                    addView(nView)
+                    addView(sView)
+                }
+            }
+
+            scoreboard.addView(createPlayerView(pName, currentPlayerScore, true))
+            scoreboard.addView(TextView(this).apply {
+                text = "VS"
+                textSize = 12f
+                setTextColor(Color.DKGRAY)
+                setPadding(30, 0, 30, 0)
+                setTypeface(null, android.graphics.Typeface.BOLD)
+            })
+            scoreboard.addView(createPlayerView(oName, currentOpponentScore, false))
+
+            val boardParams = ConstraintLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topToTop = ConstraintLayout.LayoutParams.PARENT_ID
+                setMargins(40, 40, 40, 0)
+            }
+            root.addView(scoreboard, boardParams)
+        }
         
         val scoreParams = ConstraintLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
             topToTop = ConstraintLayout.LayoutParams.PARENT_ID
@@ -291,19 +364,32 @@ class DartDetectionActivity : AppCompatActivity() {
                             val offsetX = (previewView.width - rotatedWidth * scale) / 2f
                             val offsetY = (previewView.height - rotatedHeight * scale) / 2f
                             
-                            // Found a potential board!
-                            bullX = bounds.centerX().toFloat() * scale + offsetX
-                            bullY = bounds.centerY().toFloat() * scale + offsetY
+                            // Map bounding box to screen coordinates
+                            val screenLeft = bounds.left * scale + offsetX
+                            val screenTop = bounds.top * scale + offsetY
+                            val screenRight = bounds.right * scale + offsetX
+                            val screenBottom = bounds.bottom * scale + offsetY
+                            val screenWidth = screenRight - screenLeft
                             
-                            // Radius adjustment: Double wire is ~75% of full board width
-                            radius = (bounds.width() / 2f) * scale * 0.75f
+                            // Found a potential board!
+                            bullX = screenLeft + screenWidth / 2f
+                            bullY = screenTop + (screenBottom - screenTop) / 2f
+                            
+                            // Standard dartboard double wire diameter is 340mm
+                            // Total board diameter is 451mm
+                            // If ML Kit detects the whole board: radius = (width/2) * (170/225.5) = 0.754
+                            // If it detects just the scoring area: radius = (width/2)
+                            // Most models detect the scoring area + some surround.
+                            radius = (screenWidth / 2f) * 0.78f 
+                            
                             top20X = bullX
                             top20Y = bullY - radius
                             
                             runOnUiThread {
                                 overlayView.updateCalibration(bullX, bullY, radius)
                                 calibrationStep = 2
-                                Toast.makeText(this, "Board Detected Automatically", Toast.LENGTH_SHORT).show()
+                                // Show segment lines so user can see alignment
+                                Toast.makeText(this, "AI: Board Locked. Tap to reset if off.", Toast.LENGTH_SHORT).show()
                             }
                             break
                         }
@@ -346,34 +432,21 @@ class DartDetectionActivity : AppCompatActivity() {
         var sumSX = 0L
         var sumSY = 0L
         
-        val step = 4 // Subsample for performance
+        val step = 2 // Higher resolution for better accuracy
         for (y in 0 until height step step) {
             for (x in 0 until width step step) {
                 val idx = y * width + x
                 val diff = kotlin.math.abs((currentData[idx].toInt() and 0xFF) - (lastFrameData!![idx].toInt() and 0xFF))
-                if (diff > 40) { // Threshold for change
+                if (diff > 50) { // Higher threshold
                     diffCount++
                     
-                    // Map buffer (x, y) to screen-oriented (sx, sy)
                     val sx: Float
                     val sy: Float
                     when (rotation) {
-                        90 -> {
-                            sx = (height - y).toFloat()
-                            sy = x.toFloat()
-                        }
-                        180 -> {
-                            sx = (width - x).toFloat()
-                            sy = (height - y).toFloat()
-                        }
-                        270 -> {
-                            sx = y.toFloat()
-                            sy = (width - x).toFloat()
-                        }
-                        else -> { // 0
-                            sx = x.toFloat()
-                            sy = y.toFloat()
-                        }
+                        90 -> { sx = (height - y).toFloat(); sy = x.toFloat() }
+                        180 -> { sx = (width - x).toFloat(); sy = (height - y).toFloat() }
+                        270 -> { sx = y.toFloat(); sy = (width - x).toFloat() }
+                        else -> { sx = x.toFloat(); sy = y.toFloat() }
                     }
                     sumSX += sx.toLong()
                     sumSY += sy.toLong()
@@ -384,22 +457,32 @@ class DartDetectionActivity : AppCompatActivity() {
         val totalPixels = (width / step) * (height / step)
         val changePercentage = diffCount.toFloat() / totalPixels
 
-        if (changePercentage in 0.001f..0.05f) { // Significant but small (like a dart)
+        if (changePercentage in 0.0005f..0.02f) { 
             if (isStable) {
                 isStable = false
                 val avgSX = (sumSX.toFloat() / diffCount) * scale + offsetX
                 val avgSY = (sumSY.toFloat() / diffCount) * scale + offsetY
                 
                 runOnUiThread {
-                    val score = scoringEngine.calculateScore(avgSX, avgSY, bullX, bullY, top20X, top20Y)
-                    if (score.value >= 0) {
-                        overlayView.updateLastDart(avgSX, avgSY, score.label)
+                    // Tip detection correction
+                    val correctedX = bullX + (avgSX - bullX) * 0.95f
+                    val correctedY = bullY + (avgSY - bullY) * 0.95f
+
+                    val score = scoringEngine.calculateScore(correctedX, correctedY, bullX, bullY, top20X, top20Y)
+                    if (score.value >= 0 && score.label != "MISS") {
+                        if (isLiveMode) {
+                            currentPlayerScore -= score.value
+                            if (currentPlayerScore < 0) currentPlayerScore = 0
+                            playerScoreView.text = currentPlayerScore.toString()
+                        }
+                        
+                        overlayView.updateLastDart(correctedX, correctedY, score.label)
                         showHitNotification(score.label)
                         sendScoreToWeb(score.label, score.value)
                     }
                 }
             }
-        } else if (changePercentage < 0.0005f) {
+        } else if (changePercentage < 0.0002f) {
             isStable = true
         }
     }

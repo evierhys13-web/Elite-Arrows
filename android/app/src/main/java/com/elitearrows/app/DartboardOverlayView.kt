@@ -34,17 +34,17 @@ class DartboardOverlayView(context: Context, attrs: AttributeSet?) : View(contex
         if (centerX > 0 && centerY > 0 && radius > 0) {
             paint.style = Paint.Style.STROKE
             
-            // Draw calibration circles
+            // Draw calibration circles (Using precise proportions from ScoringEngine)
             paint.color = Color.CYAN
-            canvas.drawCircle(centerX, centerY, radius, paint) // Outer
-            canvas.drawCircle(centerX, centerY, radius * 0.95f, paint) // Double Inner
+            canvas.drawCircle(centerX, centerY, radius, paint) // Double Outer
+            canvas.drawCircle(centerX, centerY, radius * 0.953f, paint) // Double Inner
             
-            canvas.drawCircle(centerX, centerY, radius * 0.65f, paint) // Triple Outer
-            canvas.drawCircle(centerX, centerY, radius * 0.58f, paint) // Triple Inner
+            canvas.drawCircle(centerX, centerY, radius * 0.629f, paint) // Triple Outer
+            canvas.drawCircle(centerX, centerY, radius * 0.582f, paint) // Triple Inner
 
             paint.color = Color.RED
-            canvas.drawCircle(centerX, centerY, radius * 0.12f, paint) // Outer Bull
-            canvas.drawCircle(centerX, centerY, radius * 0.05f, paint) // Inner Bull
+            canvas.drawCircle(centerX, centerY, radius * 0.0935f, paint) // Outer Bull
+            canvas.drawCircle(centerX, centerY, radius * 0.0374f, paint) // Inner Bull
 
             // Draw segment lines for debugging orientation
             paint.color = Color.argb(100, 0, 255, 255)

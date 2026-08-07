@@ -30,12 +30,12 @@ class ScoringEngine {
         val distance = sqrt(dx.pow(2) + dy.pow(2))
         val relativeDistance = distance / outerRadius
 
-        // Radial boundaries as fractions of outer radius (approximate)
-        val doubleWire = 1.0f
-        val tripleOuter = 0.65f
-        val tripleInner = 0.58f
-        val outerBull = 0.12f
-        val innerBull = 0.05f
+        // Radial boundaries as fractions of outer radius (170mm)
+        val outerBull = 15.9f / 170f   // ~0.0935
+        val innerBull = 6.35f / 170f   // ~0.0374
+        val tripleOuter = 107f / 170f  // ~0.629
+        val tripleInner = 99f / 170f   // ~0.582
+        val doubleInner = 162f / 170f  // ~0.953
 
         // 1. Check Bullseye
         if (relativeDistance <= innerBull) return DartScore(50, 1, "BULL")
@@ -50,17 +50,18 @@ class ScoringEngine {
         var angle = atan2(dx.toDouble(), dy.toDouble()) - boardRotation
         
         var angleDegrees = Math.toDegrees(angle).toFloat()
-        // Adjust so 0 is top (20 segment)
-        angleDegrees += 9.0f // Shift by half a segment width
+        // Standard board: 20 is at the top. Segments are 18 degrees wide.
+        // The 20 segment spans from -9 to +9 degrees.
+        angleDegrees += 9.0f 
         while (angleDegrees < 0) angleDegrees += 360f
         while (angleDegrees >= 360) angleDegrees -= 360f
         
-        val segmentIndex = ((angleDegrees / 18.0f).toInt()) % 20
+        val segmentIndex = (angleDegrees / 18.0f).toInt() % 20
         val segmentValue = segments[segmentIndex]
 
         // 4. Determine Multiplier
         return when {
-            relativeDistance >= 0.95f && relativeDistance <= 1.02f -> DartScore(segmentValue * 2, 2, "D$segmentValue")
+            relativeDistance >= doubleInner -> DartScore(segmentValue * 2, 2, "D$segmentValue")
             relativeDistance >= tripleInner && relativeDistance <= tripleOuter -> DartScore(segmentValue * 3, 3, "T$segmentValue")
             else -> DartScore(segmentValue, 1, segmentValue.toString())
         }

@@ -396,7 +396,12 @@ export default function PlayOnline() {
     try {
       const { registerPlugin } = await import('@capacitor/core')
       const DartDetection = registerPlugin('DartDetection')
-      await DartDetection.startDetection()
+      await DartDetection.startDetection({
+        playerName: user.username,
+        playerScore: playerScore,
+        opponentName: isOnline ? (gameData?.playerNames?.[gameData.players.find(id => id !== user.id)] || 'Opponent') : (bot?.name || 'Bot'),
+        opponentScore: opponentScore
+      })
       showToast('AI Scorer: Keep board in view', 'info')
     } catch (e) {
       if (!useCamera) await toggleCamera()
@@ -404,7 +409,7 @@ export default function PlayOnline() {
       setIsCalibrating(false)
       showToast('AI Mode: Auto-detecting board...', 'info')
     }
-  }, [useCamera, toggleCamera, showToast])
+  }, [user, playerScore, isOnline, gameData, bot, opponentScore, useCamera, toggleCamera, showToast])
 
   const handleUndo = useCallback(async () => {
     if (currentDarts.length === 0) return
@@ -618,16 +623,63 @@ export default function PlayOnline() {
         )}
 
         {activeTab === 'live' && (
-          <div className="live-games-view"><div className="card glass"><h2 style={{ color: 'var(--accent-cyan)', marginBottom: '20px' }}>Live Matches</h2>
-            <div className="games-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
-              {liveGames.length === 0 ? <p style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No live games.</p> : liveGames.map(g => (
-                <div key={g.id} className="live-game-card card glass"><div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}><span style={{ fontWeight: 800 }}>{g.playerNames[g.players[0]]}</span><span style={{ color: 'var(--accent-cyan)', fontWeight: 900 }}>{g.scores[g.players[0]]}</span></div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ fontWeight: 800 }}>{g.playerNames[g.players[1]]}</span><span style={{ color: 'var(--accent-cyan)', fontWeight: 900 }}>{g.scores[g.players[1]]}</span></div>
-                  <button className="btn btn-secondary btn-block btn-sm" style={{ marginTop: '15px' }} onClick={() => { setGameData(g); setGameStarted(true); setIsOnline(true); document.body.classList.add('fullscreen-match'); }}>Watch</button>
-                </div>
-              ))}
+          <div className="live-games-view">
+            <div className="card glass" style={{ padding: '25px' }}>
+              <h2 className="text-gradient" style={{ marginBottom: '25px' }}>Live Match Previews</h2>
+              <div className="games-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
+                {liveGames.length === 0 ? (
+                  <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '60px', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.02)', borderRadius: '20px', border: '1px dashed var(--border)' }}>
+                    <div style={{ fontSize: '3rem', marginBottom: '15px' }}>🎯</div>
+                    <p>No matches in progress right now.</p>
+                  </div>
+                ) : liveGames.map(g => {
+                  const p1 = g.players[0];
+                  const p2 = g.players[1];
+                  const isFinished = g.status === 'finished';
+
+                  return (
+                    <div key={g.id} className="live-preview-card card glass" onClick={() => { setGameData(g); setGameStarted(true); setIsOnline(true); }}>
+                      <div className="preview-header">
+                        <span className="live-tag">LIVE</span>
+                        <span className="format-tag">{g.config?.startScore || 501}</span>
+                      </div>
+
+                      <div className="preview-matchup">
+                        <div className="preview-player">
+                          <div className="preview-avatar">{g.playerNames[p1]?.[0]}</div>
+                          <span className="preview-name">{g.playerNames[p1]}</span>
+                          <span className="preview-score">{g.scores[p1]}</span>
+                        </div>
+
+                        <div className="preview-vs">VS</div>
+
+                        <div className="preview-player">
+                          <div className="preview-avatar">{g.playerNames[p2]?.[0]}</div>
+                          <span className="preview-name">{g.playerNames[p2]}</span>
+                          <span className="preview-score">{g.scores[p2]}</span>
+                        </div>
+                      </div>
+
+                      {g.lastDarts && g.lastDarts.length > 0 && (
+                        <div className="preview-last-darts">
+                          {g.lastDarts.map((d, i) => (
+                            <span key={i} className={`mini-dart ${d.label.startsWith('T') ? 't' : d.label.startsWith('D') ? 'd' : ''}`}>
+                              {d.label}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="preview-footer">
+                        <span>Best of {g.config?.legs || 3} Legs</span>
+                        <button className="watch-btn">WATCH MATCH</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div></div>
+          </div>
         )}
 
         <style>{`
@@ -646,101 +698,129 @@ export default function PlayOnline() {
   return (
     <div className="page match-mode animate-fade-in" style={{ padding: 0, maxWidth: '100vw', overflow: 'hidden', height: '100vh', display: 'flex', background: '#050816' }}>
 
-      {/* Left Sidebar: Stats */}
-      <aside style={{ width: '320px', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', background: 'rgba(0,0,0,0.3)', flexShrink: 0 }}>
-        <div className={`player-block ${turn === 'player' ? 'active' : ''}`} style={{ flex: 1, padding: '25px', display: 'flex', flexDirection: 'column', justifyContent: 'center', borderBottom: '1px solid var(--border)', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '5px' }}>{user?.username}</div>
-          <div style={{ fontSize: '5.5rem', fontWeight: 900, color: turn === 'player' ? 'var(--accent-cyan)' : 'white', lineHeight: 1, margin: '10px 0' }}>{vPlayerScore}</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+      {/* Left Sidebar: Stats & History */}
+      <aside className="match-sidebar-left" style={{ width: '280px', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', background: 'rgba(0,0,0,0.3)', flexShrink: 0 }}>
+        <div className={`player-block ${turn === 'player' ? 'active' : ''}`} style={{ padding: '20px', borderBottom: '1px solid var(--border)', position: 'relative' }}>
+          <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{user?.username}</div>
+          <div style={{ fontSize: '3.5rem', fontWeight: 900, color: turn === 'player' ? 'var(--accent-cyan)' : 'white' }}>{vPlayerScore}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
             <div className="stat-item"><label>AVG</label><strong>{myStats.avg}</strong></div>
             <div className="stat-item"><label>LAST</label><strong>{myStats.last}</strong></div>
-            <div className="stat-item"><label>DARTS</label><strong>{myStats.darts}</strong></div>
           </div>
           {turn === 'player' && <div className="active-glow" />}
         </div>
 
-        <div className={`player-block ${turn === 'opponent' ? 'active' : ''}`} style={{ flex: 1, padding: '25px', display: 'flex', flexDirection: 'column', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '5px' }}>{oppName}</div>
-          <div style={{ fontSize: '5.5rem', fontWeight: 900, color: turn === 'opponent' ? 'var(--accent-cyan)' : 'white', lineHeight: 1, margin: '10px 0' }}>{vOpponentScore}</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+        <div className={`player-block ${turn === 'opponent' ? 'active' : ''}`} style={{ padding: '20px', borderBottom: '1px solid var(--border)', position: 'relative' }}>
+          <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{oppName}</div>
+          <div style={{ fontSize: '3.5rem', fontWeight: 900, color: turn === 'opponent' ? 'var(--accent-cyan)' : 'white' }}>{vOpponentScore}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
             <div className="stat-item"><label>AVG</label><strong>{oppStats.avg}</strong></div>
             <div className="stat-item"><label>LAST</label><strong>{oppStats.last}</strong></div>
-            <div className="stat-item"><label>DARTS</label><strong>{oppStats.darts}</strong></div>
           </div>
           {turn === 'opponent' && <div className="active-glow" />}
         </div>
+
+        <div className="history-log" style={{ flex: 1, overflowY: 'auto', padding: '15px' }}>
+            <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '10px' }}>LOG</div>
+            {history.map((h, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', padding: '5px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <span style={{ color: h.userId === user.id ? 'var(--accent-cyan)' : 'white' }}>{h.who}</span>
+                    <span style={{ fontWeight: 800 }}>{h.score}</span>
+                    <span style={{ color: 'var(--text-muted)' }}>{h.remaining}</span>
+                </div>
+            ))}
+        </div>
       </aside>
 
-      {/* Main Scoring Area */}
-      <main style={{ flex: 1, display: 'flex', height: '100vh' }}>
-        <div style={{ flex: 1, padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-          <button className="btn btn-danger btn-xs" style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 10, fontWeight: 900 }} onClick={handleLeaveMatch}>LEAVE MATCH</button>
-
-          <CheckoutSuggestion score={vPlayerScore} />
-
-          <DartboardInput
-            onDart={handleDartInput}
-            onUndo={handleUndo}
-            currentDarts={currentDarts}
-            disabled={turn !== 'player'}
-          />
+      {/* Main Area: Camera (Takes most space) */}
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', background: '#000' }}>
+        <div className="match-controls-top" style={{ position: 'absolute', top: '20px', left: '20px', right: '20px', zIndex: 100, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', pointerEvents: 'none' }}>
+            <div style={{ pointerEvents: 'auto' }}>
+                <CheckoutSuggestion score={vPlayerScore} />
+            </div>
+            <button className="btn btn-danger btn-sm" style={{ pointerEvents: 'auto', fontWeight: 900, boxShadow: '0 4px 15px rgba(0,0,0,0.5)' }} onClick={handleLeaveMatch}>QUIT MATCH</button>
         </div>
 
-        {/* Camera Sidebar */}
-        <aside style={{ width: '400px', background: 'rgba(0,0,0,0.5)', borderLeft: '1px solid var(--border)', display: 'flex', flexDirection: 'column', padding: '20px', flexShrink: 0 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button className={`btn btn-xs flex-1 ${useCamera ? 'btn-danger' : 'btn-secondary'}`} onClick={toggleCamera}>
-                {useCamera ? 'CAM OFF' : 'CAM ON'}
-              </button>
-              <button className={`btn btn-xs flex-1 ${isWebAiActive ? 'btn-success' : 'btn-primary'}`} onClick={launchNativeDetection}>
-                {isWebAiActive ? 'AI ACTIVE' : 'AI SCORER'}
-              </button>
-            </div>
-
-            {useCamera && (
-              <select
-                className="glass"
-                style={{ width: '100%', padding: '8px', fontSize: '0.7rem', borderRadius: '8px' }}
-                value={selectedCameraId}
-                onChange={(e) => handleCameraChange(e.target.value)}
-              >
-                {availableCameras.map(c => (
-                  <option key={c.deviceId} value={c.deviceId}>{c.label || `Camera ${availableCameras.indexOf(c) + 1}`}</option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          <div style={{ flex: 1, position: 'relative' }}>
+        <div className="camera-viewport" style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
             {useCamera ? (
               <div
-                style={{ width: '100%', borderRadius: '16px', overflow: 'hidden', background: '#000', position: 'relative', aspectRatio: '9/16', border: `2px solid ${isWebAiActive ? 'var(--accent-primary)' : 'var(--accent-cyan)'}`, boxShadow: '0 0 40px rgba(0,0,0,0.5)', cursor: isWebAiActive ? 'crosshair' : 'default' }}
+                className="main-camera-container"
+                style={{ width: '100%', height: '100%', position: 'relative', cursor: isWebAiActive ? 'crosshair' : 'default' }}
                 onClick={handleVideoTap}
               >
-                <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${zoomLevel})` }} />
+                <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover', // Take full space
+                        transform: `scale(${zoomLevel})`,
+                        transition: 'transform 0.2s ease-out'
+                    }}
+                />
 
-                <div style={{ position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '8px', background: 'rgba(0,0,0,0.6)', padding: '8px', borderRadius: '20px', backdropFilter: 'blur(10px)', zIndex: 10 }}>
-                   <button onClick={(e) => { e.stopPropagation(); setZoomLevel(z => Math.max(1, z - 0.2)) }} className="cam-tool-btn">-</button>
-                   <button onClick={(e) => { e.stopPropagation(); setZoomLevel(z => Math.min(5, z + 0.2)) }} className="cam-tool-btn">+</button>
-                   <button onClick={(e) => { e.stopPropagation(); flipCamera() }} className="cam-tool-btn" style={{ fontSize: '0.6rem' }}>FLIP</button>
+                <div className="camera-controls-overlay" style={{ position: 'absolute', bottom: '40px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '15px', background: 'rgba(5, 8, 22, 0.85)', padding: '12px 25px', borderRadius: '40px', backdropFilter: 'blur(15px)', border: '1px solid var(--accent-cyan)', boxShadow: '0 10px 40px rgba(0,0,0,0.8)', zIndex: 100 }}>
+                   <button onClick={(e) => { e.stopPropagation(); setZoomLevel(z => Math.max(1, z - 0.2)) }} className="cam-tool-btn">Zoom -</button>
+                   <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)' }} />
+                   <button onClick={(e) => { e.stopPropagation(); setZoomLevel(z => Math.min(8, z + 0.2)) }} className="cam-tool-btn">Zoom +</button>
+                   <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)' }} />
+                   <button onClick={(e) => { e.stopPropagation(); flipCamera() }} className="cam-tool-btn">Flip Cam</button>
+                   <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)' }} />
+                   <button onClick={(e) => { e.stopPropagation(); launchNativeDetection() }} className={`cam-tool-btn ${isWebAiActive ? 'active' : ''}`} style={{ color: isWebAiActive ? 'var(--accent-cyan)' : 'white' }}>
+                      {isWebAiActive ? 'AI SCORER: ON' : 'AI SCORER: OFF'}
+                   </button>
                 </div>
 
                 {isWebAiActive && (
                   <div className="ai-overlay">
                      <div className="scanning-line" />
-                     <span>{isCalibrating ? 'ANALYZING BOARD...' : 'AI ACTIVE (AUTO)'}</span>
+                     <div className="ai-status-badge">AUTO-SCORING ACTIVE</div>
+                     {isCalibrating && <div className="ai-status-badge" style={{ marginTop: '50px', background: 'var(--accent-cyan)', color: 'black' }}>DETECTING BOARD...</div>}
                   </div>
                 )}
               </div>
             ) : (
-              <div className="camera-placeholder">
-                <span>CAMERA OFF</span>
+              <div className="camera-placeholder" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '30px', background: 'radial-gradient(circle, #1a1f35 0%, #050816 100%)' }}>
+                <div style={{ fontSize: '5rem', opacity: 0.2 }}>🎯</div>
+                <div style={{ textAlign: 'center' }}>
+                    <h3 style={{ marginBottom: '10px' }}>AI CAMERA IS READY</h3>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '25px' }}>Position your device to see the full dartboard</p>
+                    <button className="btn btn-primary btn-lg" style={{ padding: '15px 40px', borderRadius: '30px' }} onClick={toggleCamera}>START AI SCORER</button>
+                </div>
               </div>
             )}
-          </div>
-        </aside>
+        </div>
       </main>
+
+      {/* Right Sidebar: Input */}
+      <aside className="match-sidebar-right" style={{ width: '380px', borderLeft: '1px solid var(--border)', background: 'rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px', flexShrink: 0 }}>
+        <div style={{ width: '100%', marginBottom: '20px' }}>
+            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--accent-cyan)', marginBottom: '10px', textAlign: 'center' }}>MANUAL INPUT / FALLBACK</div>
+            <DartboardInput
+                onDart={handleDartInput}
+                onUndo={handleUndo}
+                currentDarts={currentDarts}
+                disabled={turn !== 'player'}
+            />
+        </div>
+
+        <div className="input-settings" style={{ width: '100%', marginTop: 'auto' }}>
+            <label style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)' }}>CAMERA SOURCE</label>
+            <select
+                className="glass"
+                style={{ width: '100%', padding: '10px', fontSize: '0.8rem', borderRadius: '8px', marginTop: '5px' }}
+                value={selectedCameraId}
+                onChange={(e) => handleCameraChange(e.target.value)}
+            >
+                {availableCameras.map(c => (
+                  <option key={c.deviceId} value={c.deviceId}>{c.label || `Camera ${availableCameras.indexOf(c) + 1}`}</option>
+                ))}
+            </select>
+        </div>
+      </aside>
 
       <style>{`
         body.fullscreen-match .sidebar, body.fullscreen-match .mobile-bottom-nav, body.fullscreen-match .mobile-header, body.fullscreen-match .mobile-sidebar-overlay { display: none !important; }
@@ -758,8 +838,8 @@ export default function PlayOnline() {
         .camera-placeholder { width: 100%; height: 100%; borderRadius: 16px; border: 2px dashed var(--border); display: flex; alignItems: center; justifyContent: center; color: var(--text-muted); fontSize: 0.8rem; background: rgba(255,255,255,0.02); }
 
         .ai-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
-        .ai-overlay span { background: var(--accent-primary); color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.6rem; font-weight: 900; position: absolute; top: 10px; left: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
-        .scanning-line { width: 100%; height: 2px; background: rgba(255, 60, 60, 0.3); position: absolute; top: 0; animation: scan 2s linear infinite; }
+        .scanning-line { width: 100%; height: 2px; background: rgba(0, 212, 255, 0.4); position: absolute; top: 0; animation: scan 2s linear infinite; }
+        .ai-status-badge { background: var(--accent-primary); color: white; padding: 6px 15px; border-radius: 20px; font-size: 0.75rem; font-weight: 900; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
 
         @keyframes scan {
           0% { top: 0; }
@@ -767,12 +847,82 @@ export default function PlayOnline() {
         }
 
         @media (max-width: 1000px) {
-           .match-mode { flex-direction: column !important; overflow-y: auto !important; }
-           .match-mode aside { width: 100% !important; flex-direction: row !important; height: auto !important; }
-           .match-mode main { flex-direction: column !important; height: auto !important; }
-           .match-mode main aside { width: 100% !important; }
-           .player-block { flex: 1 !important; border-bottom: none !important; border-right: 1px solid var(--border); }
+           .match-mode { flex-direction: column !important; overflow-y: auto !important; height: auto !important; min-height: 100vh; }
+
+           .match-sidebar-left {
+              width: 100% !important;
+              flex-direction: row !important;
+              height: 70px !important;
+              position: sticky;
+              top: 0;
+              z-index: 100;
+              background: #050816 !important;
+              box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+           }
+           .player-block {
+              padding: 10px 15px !important;
+              flex: 1 !important;
+              border-bottom: none !important;
+              border-right: 1px solid var(--border) !important;
+              display: flex !important;
+              flex-direction: row !important;
+              align-items: center !important;
+              justify-content: space-between !important;
+              gap: 10px !important;
+           }
+           .player-block div[style*="font-size: 0.7rem"] { font-size: 0.6rem !important; margin: 0 !important; }
+           .player-block div[style*="font-size: 3.5rem"] { font-size: 1.8rem !important; margin: 0 !important; }
+           .player-block .stat-item { display: none !important; }
+           .history-log { display: none !important; }
+
+           .match-mode main { flex: 1 !important; height: 50vh !important; }
+           .match-sidebar-right { width: 100% !important; height: auto !important; border-left: none !important; border-top: 1px solid var(--border); padding: 15px !important; }
+
+           .mobile-score-overlay {
+              display: flex;
+              position: absolute;
+              top: 10px;
+              left: 10px;
+              right: 10px;
+              justify-content: space-between;
+              pointer-events: none;
+              z-index: 50;
+           }
+           .m-score {
+              background: rgba(0,0,0,0.6);
+              padding: 5px 12px;
+              border-radius: 10px;
+              display: flex;
+              flex-direction: column;
+              backdrop-filter: blur(5px);
+              border: 1px solid rgba(255,255,255,0.1);
+           }
+           .m-score.player { border-left: 3px solid var(--accent-cyan); }
+           .m-name { font-size: 0.5rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; }
+           .m-val { font-size: 1.2rem; font-weight: 900; color: white; }
+
+           .camera-controls-overlay {
+              bottom: 15px !important;
+              padding: 5px 15px !important;
+              gap: 10px !important;
+           }
+           .cam-tool-btn { font-size: 0.65rem !important; }
+
+           .ai-status-badge {
+              position: absolute;
+              top: 50px;
+              left: 50%;
+              transform: translateX(-50%);
+              background: var(--accent-primary);
+              color: white;
+              font-size: 0.6rem;
+              font-weight: 900;
+              padding: 3px 10px;
+              border-radius: 4px;
+              box-shadow: 0 0 15px var(--accent-purple-glow);
+           }
         }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
       `}</style>
     </div>
   )
