@@ -5,6 +5,7 @@ import {
   useEffect,
   useCallback,
   useRef,
+  useMemo,
 } from "react";
 import {
   db,
@@ -1308,7 +1309,7 @@ export function AuthProvider({ children }) {
     // Cleanup of any legacy field removal logic
   }, []);
 
-  const signUp = async (userData, rememberMe = false) => {
+  const signUp = useCallback(async (userData, rememberMe = false) => {
     const emailLower = userData.email.toLowerCase();
     const isAdmin = ADMIN_EMAILS.includes(emailLower);
 
@@ -1361,9 +1362,9 @@ export function AuthProvider({ children }) {
     } catch (error) {
       throw new Error(error.message);
     }
-  };
+  }, [allUsers]);
 
-  const signIn = async (email, password, rememberMe = false) => {
+  const signIn = useCallback(async (email, password, rememberMe = false) => {
     const stopTrace = startTrace('user_sign_in');
     try {
       await setPersistence(
@@ -1378,9 +1379,9 @@ export function AuthProvider({ children }) {
       stopTrace({ success: 'false', error: error.code || 'unknown' });
       throw new Error(error.message);
     }
-  };
+  }, []);
 
-  const handleSignOut = async () => {
+  const handleSignOut = useCallback(async () => {
     if (user) {
       try {
         await setDoc(
@@ -1392,9 +1393,9 @@ export function AuthProvider({ children }) {
     }
     await firebaseSignOut(auth);
     setUser(null);
-  };
+  }, [user]);
 
-  const updateUser = async (updates, showAlert = true) => {
+  const updateUser = useCallback(async (updates, showAlert = true) => {
     if (!user?.id) return;
 
     const cleanUpdates = {};
@@ -1438,9 +1439,9 @@ export function AuthProvider({ children }) {
       if (showAlert) alert("Error updating profile: " + error.message);
       console.error("updateUser error:", error);
     }
-  };
+  }, [user]);
 
-  const updateOtherUser = async (userId, updates) => {
+  const updateOtherUser = useCallback(async (userId, updates) => {
     const cleanUpdates = {};
     Object.keys(updates).forEach((key) => {
       if (updates[key] !== undefined) {
@@ -1478,9 +1479,9 @@ export function AuthProvider({ children }) {
       console.error("Error updating user:", error);
       throw error;
     }
-  };
+  }, [user]);
 
-  const addUserManually = async (userData) => {
+  const addUserManually = useCallback(async (userData) => {
     const emailLower = userData.email.toLowerCase();
     const isAdmin = ADMIN_EMAILS.includes(emailLower);
 
@@ -1505,9 +1506,9 @@ export function AuthProvider({ children }) {
     const tempId = Date.now().toString();
     await setDoc(doc(db, "tempUsers", tempId), newUser);
     return { id: tempId, ...newUser };
-  };
+  }, []);
 
-  const addFriend = async (friendId) => {
+  const addFriend = useCallback(async (friendId) => {
     if (!user) return;
     if ((user.friends || []).includes(friendId)) {
       return;
@@ -1577,9 +1578,9 @@ export function AuthProvider({ children }) {
     } catch (e) {
       // console.log('Error saving to Firebase:', e)
     }
-  };
+  }, [user, getAllUsers, updateUser, updateOtherUser]);
 
-  const acceptFriendRequest = async (userId) => {
+  const acceptFriendRequest = useCallback(async (userId) => {
     if (!user) return;
     const allUsersData = getAllUsers();
     const requestUser = allUsersData.find((u) => u.id === userId);
@@ -1624,9 +1625,9 @@ export function AuthProvider({ children }) {
     } catch (e) {
       // console.log('Error saving to Firebase:', e)
     }
-  };
+  }, [user, getAllUsers, updateUser, updateOtherUser]);
 
-  const declineFriendRequest = async (userId) => {
+  const declineFriendRequest = useCallback(async (userId) => {
     if (!user) return;
     const requestUser = getAllUsers().find((u) => u.id === userId);
     const currentRequests = user.receivedFriendRequests || [];
@@ -1641,9 +1642,9 @@ export function AuthProvider({ children }) {
         ),
       });
     }
-  };
+  }, [user, getAllUsers, updateUser, updateOtherUser]);
 
-  const cancelFriendRequest = async (userId) => {
+  const cancelFriendRequest = useCallback(async (userId) => {
     if (!user) return;
     const requestUser = getAllUsers().find((u) => u.id === userId);
     const currentSent = user.sentFriendRequests || [];
@@ -1658,9 +1659,9 @@ export function AuthProvider({ children }) {
         ).filter((id) => id !== user.id),
       });
     }
-  };
+  }, [user, getAllUsers, updateUser, updateOtherUser]);
 
-  const removeFriend = async (friendId) => {
+  const removeFriend = useCallback(async (friendId) => {
     if (!user) return;
     const friendUser = getAllUsers().find((u) => u.id === friendId);
     const newFriends = (user.friends || []).filter((id) => id !== friendId);
@@ -1670,15 +1671,15 @@ export function AuthProvider({ children }) {
         friends: (friendUser.friends || []).filter((id) => id !== user.id),
       });
     }
-  };
+  }, [user, getAllUsers, updateUser, updateOtherUser]);
 
-  const subscribe = () => {
+  const subscribe = useCallback(() => {
     updateUser({ isSubscribed: true, paymentDate: new Date().toISOString() });
-  };
+  }, [updateUser]);
 
-  const requestAdminRole = () => {
+  const requestAdminRole = useCallback(() => {
     updateUser({ adminRequestPending: true });
-  };
+  }, [updateUser]);
 
   const getAllUsers = useCallback(() => {
     if (Array.isArray(allUsers) && allUsers.length > 0) return allUsers;
@@ -1958,7 +1959,7 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const sendGameInvite = async (toUserId, gameConfig) => {
+  const sendGameInvite = useCallback(async (toUserId, gameConfig) => {
     if (!user) return;
     const inviteId = `invite_${Date.now()}`;
     const invite = {
@@ -1980,9 +1981,9 @@ export function AuthProvider({ children }) {
       { inviteId },
     );
     return inviteId;
-  };
+  }, [user, notifyUser]);
 
-  const acceptGameInvite = async (invite) => {
+  const acceptGameInvite = useCallback(async (invite) => {
     const gameId = `game_${Date.now()}`;
     const gameState = {
       id: gameId,
@@ -2019,9 +2020,9 @@ export function AuthProvider({ children }) {
       { gameId },
     );
     return gameId;
-  };
+  }, [user, notifyUser]);
 
-  const updateLiveGame = async (gameId, updates) => {
+  const updateLiveGame = useCallback(async (gameId, updates) => {
     try {
       const gameRef = doc(db, "liveGames", gameId);
       await updateDoc(gameRef, {
@@ -2031,7 +2032,7 @@ export function AuthProvider({ children }) {
     } catch (e) {
       console.error("Error updating live game:", e);
     }
-  };
+  }, []);
 
   const forceFetchResults = useCallback(async () => {
     try {
@@ -2174,7 +2175,7 @@ export function AuthProvider({ children }) {
     triggerDataRefresh("fixtures");
   };
 
-  const advanceCupBracket = async (result) => {
+  const advanceCupBracket = useCallback(async (result) => {
     if (!result.cupId || !result.matchId) {
       console.warn(
         "advanceCupBracket: result missing cupId or matchId",
@@ -2380,7 +2381,7 @@ export function AuthProvider({ children }) {
       }
       throw err;
     }
-  };
+  }, [getFixtures, triggerCupsRefresh]);
 
   const getCups = useCallback(() => {
     if (Array.isArray(cups) && cups.length > 0) return cups;
@@ -2429,7 +2430,7 @@ export function AuthProvider({ children }) {
     return local;
   }, [news]);
 
-  const postNews = async (title, message, pinned = false) => {
+  const postNews = useCallback(async (title, message, pinned = false) => {
     if (!user) return;
     const newPost = {
       id: `news_${Date.now()}`,
@@ -2449,9 +2450,9 @@ export function AuthProvider({ children }) {
     local.unshift(newPost);
     localStorage.setItem("eliteArrowsNews", JSON.stringify(local));
     setNews(local);
-  };
+  }, [user]);
 
-  const deleteNews = async (newsId) => {
+  const deleteNews = useCallback(async (newsId) => {
     try {
       await deleteDoc(doc(db, "news", newsId));
     } catch (e) {
@@ -2461,9 +2462,9 @@ export function AuthProvider({ children }) {
     const updated = local.filter((n) => n.id !== newsId);
     localStorage.setItem("eliteArrowsNews", JSON.stringify(updated));
     setNews(updated);
-  };
+  }, []);
 
-  const togglePinNews = async (newsId, currentPinned) => {
+  const togglePinNews = useCallback(async (newsId, currentPinned) => {
     try {
       await setDoc(
         doc(db, "news", newsId),
@@ -2479,23 +2480,23 @@ export function AuthProvider({ children }) {
     );
     localStorage.setItem("eliteArrowsNews", JSON.stringify(updated));
     setNews(updated);
-  };
+  }, []);
 
-  const addTokens = async (amount) => {
+  const addTokens = useCallback(async (amount) => {
     if (!user) return;
     const newTokens = (user.eliteTokens || 0) + amount;
     await updateUser({ eliteTokens: newTokens }, false);
-  };
+  }, [user, updateUser]);
 
-  const useTokens = async (amount) => {
+  const useTokens = useCallback(async (amount) => {
     if (!user) return false;
     if ((user.eliteTokens || 0) < amount) return false;
     const newTokens = (user.eliteTokens || 0) - amount;
     await updateUser({ eliteTokens: newTokens });
     return true;
-  };
+  }, [user, updateUser]);
 
-  const updateAdminData = async (newData) => {
+  const updateAdminData = useCallback(async (newData) => {
     try {
       await setDoc(doc(db, "adminData", "main"), newData, { merge: true });
       setAdminData((prev) => {
@@ -2528,9 +2529,9 @@ export function AuthProvider({ children }) {
     } catch (e) {
       console.error("Error updating admin data:", e);
     }
-  };
+  }, []);
 
-  const addToMoneyHistory = async (type, amount, description) => {
+  const addToMoneyHistory = useCallback(async (type, amount, description) => {
     try {
       const docRef = doc(db, "adminData", "main");
       const docSnap = await getDoc(docRef);
@@ -2551,7 +2552,7 @@ export function AuthProvider({ children }) {
     } catch (e) {
       console.error("Error adding to money history:", e);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (!user?.id) {

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { db, doc, getDoc, setDoc, query, collection, where, getDocs, writeBatch } from '../firebase'
 import UserSearchSelect from '../components/UserSearchSelect'
@@ -8,6 +8,7 @@ import { ADMIN_EMAILS } from '../config'
 
 export default function CupBracket() {
   const { cupId } = useParams()
+  const navigate = useNavigate()
   const { user, getAllUsers, getCups, getFixtures, getResults, dataRefreshTrigger, triggerDataRefresh } = useAuth()
   const { showToast } = useToast()
   const [cup, setCup] = useState(null)

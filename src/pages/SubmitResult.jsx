@@ -192,10 +192,22 @@ export default function SubmitResult() {
       if (['approved', 'result_submitted', 'completed'].includes(status)) return false
 
       // Only show fixtures for cups that actually exist
-      const cupExists = cupsData.some(c => String(c.id) === String(fixture.cupId))
-      if (!cupExists) return false
+      const cup = cupsData.find(c => String(c.id) === String(fixture.cupId))
+      if (!cup) return false
+
+      // Only show matches for the currently active round of the cup
+      if (fixture.round !== (cup.currentRound || 1) && cup.currentRound !== 0) {
+        // Exception: if currentRound is 0 (Groups), we only show round 0 fixtures
+        if (cup.currentRound === 0 && fixture.round !== 0) return false
+        // Otherwise, only show matches for the cup's stated current knockout round
+        if (cup.currentRound !== 0 && fixture.round !== cup.currentRound) return false
+      }
 
       const { player1Id, player2Id } = getFixturePlayerIds(fixture)
+
+      // Match must have both players assigned to be "playable"
+      if (!player1Id || !player2Id) return false
+
       if (isAdmin) return true
       return String(player1Id) === String(user.id) || String(player2Id) === String(user.id)
     })
@@ -280,12 +292,10 @@ export default function SubmitResult() {
   const detectedUserDuo = userDuos.length > 0 ? userDuos[0] : null
 
   useEffect(() => {
-    if (formData.gameType === 'Open League Doubles' && !formData.yourDuoId) {
-      if (detectedUserDuo) {
-        setFormData(prev => ({ ...prev, yourDuoId: detectedUserDuo.id }))
-      }
+    if (formData.gameType === 'Cup' && !formData.opponent && cupFixtures.length === 1) {
+      setFormData(prev => ({ ...prev, opponent: String(cupFixtures[0].id) }))
     }
-  }, [formData.gameType, detectedUserDuo])
+  }, [formData.gameType, cupFixtures])
 
   const getDuoDisplayName = (duo) => {
     if (!duo) return 'Unknown Duo'
@@ -1003,31 +1013,48 @@ export default function SubmitResult() {
                     value={formData.opponent}
                     onChange={handleChange}
                     required
-                    style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '2px solid var(--accent-cyan)', color: 'var(--text)', fontWeight: 800 }}
+                    disabled={!!selectedFixture}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      background: 'var(--bg-primary)',
+                      border: '2px solid var(--accent-cyan)',
+                      color: 'var(--text)',
+                      fontWeight: 800,
+                      opacity: selectedFixture ? 0.8 : 1,
+                      cursor: selectedFixture ? 'not-allowed' : 'pointer'
+                    }}
                   >
-                    <option value="">Choose your match...</option>
-                    {cupFixtures.sort((a,b) => (a.cupName || '').localeCompare(b.cupName || '')).map(f => {
-                      const cupsData = (typeof getCups === 'function') ? getCups() : []
-                      const cup = Array.isArray(cupsData) ? cupsData.find(c => String(c.id) === String(f.cupId)) : null
+                    {cupFixtures.length === 0 ? (
+                      <option value="">No active cup matches found</option>
+                    ) : (
+                      <>
+                        {cupFixtures.length > 1 && <option value="">Choose your match...</option>}
+                        {cupFixtures.sort((a,b) => (a.cupName || '').localeCompare(b.cupName || '')).map(f => {
+                          const cupsData = (typeof getCups === 'function') ? getCups() : []
+                          const cup = Array.isArray(cupsData) ? cupsData.find(c => String(c.id) === String(f.cupId)) : null
 
-                      const p1Id = f.player1Id || f.player1
-                      const p2Id = f.player2Id || f.player2
-                      const p1 = allUsers.find(u => String(u.id) === String(p1Id))
-                      const p2 = allUsers.find(u => String(u.id) === String(p2Id))
+                          const p1Id = f.player1Id || f.player1
+                          const p2Id = f.player2Id || f.player2
+                          const p1 = allUsers.find(u => String(u.id) === String(p1Id))
+                          const p2 = allUsers.find(u => String(u.id) === String(p2Id))
 
-                      const getRoundNameShort = (round) => {
-                        if (round === 0) return 'Groups'
-                        return `R${round}`
-                      }
+                          const getRoundNameShort = (round) => {
+                            if (round === 0) return 'Groups'
+                            return `R${round}`
+                          }
 
-                      const label = `${cup?.name?.substring(0, 15) || 'Cup'} - ${getRoundNameShort(f.round)}: ${p1?.username || '?'} vs ${p2?.username || '?'}`
+                          const label = `${cup?.name?.substring(0, 15) || 'Cup'} - ${getRoundNameShort(f.round)}: ${p1?.username || '?'} vs ${p2?.username || '?'}`
 
-                      return (
-                        <option key={f.id} value={f.id}>
-                          {label}
-                        </option>
-                      )
-                    })}
+                          return (
+                            <option key={f.id} value={f.id}>
+                              {label}
+                            </option>
+                          )
+                        })}
+                      </>
+                    )}
                   </select>
                 ) : formData.gameType === 'Open League Doubles' ? (
                   <select
