@@ -102,72 +102,132 @@ export default function PlayOnline() {
   const [activeTab, setActiveTab] = useState('play')
   const [gameStarted, setGameStarted] = useState(false)
   const [gameData, setGameData] = useState(null)
+
+  // Scoring State
   const [playerScore, setPlayerScore] = useState(501)
   const [opponentScore, setOpponentScore] = useState(501)
+  const [vPlayerScore, setVPlayerScore] = useState(501)
+  const [vOpponentScore, setVOpponentScore] = useState(501)
+
   const [turn, setTurn] = useState('player')
   const [currentDarts, setCurrentDarts] = useState([])
   const [history, setHistory] = useState([])
   const [bot, setBot] = useState(null)
   const [isOnline, setIsOnline] = useState(false)
+
+  // Lobby State
   const [availablePlayers, setAvailablePlayers] = useState([])
   const [liveGames, setLiveGames] = useState([])
   const [matchConfig, setMatchConfig] = useState({ startScore: 501, legs: 3, mode: 'bot' })
+
+  // Camera State
   const [useCamera, setUseCamera] = useState(false)
   const [stream, setStream] = useState(null)
   const [availableCameras, setAvailableCameras] = useState([])
   const [selectedCameraId, setSelectedCameraId] = useState('')
   const [zoomLevel, setZoomLevel] = useState(1)
+  const [isWebAiActive, setIsWebAiActive] = useState(false)
   const videoRef = useRef(null)
-  const isAndroid = Capacitor.getPlatform() === 'android'
 
-  // Define ALL handlers first
-  const endTurn = useCallback(async (darts, remaining, isBust = false) => {
-    const turnScore = isBust ? 0 : darts.reduce((sum, d) => sum + d.value, 0)
-    const entry = { who: user.username, darts, score: turnScore, remaining, userId: user.id }
-    const nextHistory = [entry, ...history]
-    setHistory(nextHistory)
-    setCurrentDarts([])
-    if (isOnline && gameData?.id) {
-      const oppId = gameData.players.find(id => id !== user.id)
-      const updates = { history: nextHistory, [`scores.${user.id}`]: remaining, turn: oppId, currentDarts: [], lastDarts: darts }
-      if (remaining === 0) updates.status = 'finished'
-      await updateLiveGame(gameData.id, updates)
-    } else {
-      if (remaining === 0) { showToast('MATCH SHOT!', 'success'); setGameStarted(false) }
-      else setTurn('opponent')
-    }
-  }, [user, history, isOnline, gameData?.id, updateLiveGame, showToast])
-
-  const handleDartInput = useCallback(async (dart) => {
-    if (turn !== 'player') return
-    const nextScore = playerScore - dart.value
-    if (nextScore === 0) {
-      if (dart.multiplier !== 2) { showToast('Must finish on a double!', 'warning'); return }
-      setPlayerScore(0); await endTurn([...currentDarts, dart], 0); return
-    }
-    if (nextScore < 2) { showToast('BUST!', 'error'); await endTurn([...currentDarts, dart], playerScore, true); return }
-    const nextDarts = [...currentDarts, dart]
-    setPlayerScore(nextScore); setCurrentDarts(nextDarts)
-    if (isOnline && gameData?.id) await updateLiveGame(gameData.id, { currentDarts: nextDarts })
-    if (nextDarts.length === 3) await endTurn(nextDarts, nextScore)
-  }, [turn, playerScore, currentDarts, endTurn, isOnline, gameData?.id, updateLiveGame, showToast])
-
+  // Initialize camera list
   const getCameras = useCallback(async () => {
     try {
       const devices = await navigator.mediaDevices.enumerateDevices()
       const videoDevices = devices.filter(d => d.kind === 'videoinput')
       setAvailableCameras(videoDevices)
-      if (videoDevices.length > 0 && !selectedCameraId) setSelectedCameraId(videoDevices[0].deviceId)
+      if (videoDevices.length > 0 && !selectedCameraId) {
+        setSelectedCameraId(videoDevices[0].deviceId)
+      }
     } catch (e) { console.error(e) }
   }, [selectedCameraId])
 
+  // End turn logic
+  const endTurn = useCallback(async (darts, remaining, isBust = false) => {
+    const turnScore = isBust ? 0 : darts.reduce((sum, d) => sum + d.value, 0)
+    const entry = { who: user.username, darts, score: turnScore, remaining, userId: user.id }
+    const nextHistory = [entry, ...history]
+
+    setHistory(nextHistory)
+    setCurrentDarts([])
+    setVPlayerScore(remaining)
+    setPlayerScore(remaining)
+
+    if (isOnline && gameData?.id) {
+      const oppId = gameData.players.find(id => id !== user.id)
+      const updates = {
+        history: nextHistory,
+        [`scores.${user.id}`]: remaining,
+        turn: oppId,
+        currentDarts: [],
+        lastDarts: darts
+      }
+      if (remaining === 0) updates.status = 'finished'
+      await updateLiveGame(gameData.id, updates)
+    } else {
+      if (remaining === 0) {
+        showToast('MATCH SHOT!', 'success')
+        setGameStarted(false)
+      } else {
+        setTurn('opponent')
+      }
+    }
+  }, [user, history, isOnline, gameData?.id, updateLiveGame, showToast])
+
+  // Handle manual input
+  const handleDartInput = useCallback(async (dart) => {
+    if (turn !== 'player') return
+    const nextScore = playerScore - dart.value
+
+    if (nextScore === 0) {
+      if (dart.multiplier !== 2) {
+        showToast('Must finish on a double!', 'warning')
+        return
+      }
+      setVPlayerScore(0)
+      await endTurn([...currentDarts, dart], 0)
+      return
+    }
+
+    if (nextScore < 2) {
+      showToast('BUST!', 'error')
+      await endTurn([...currentDarts, dart], playerScore, true)
+      return
+    }
+
+    const nextDarts = [...currentDarts, dart]
+    setVPlayerScore(nextScore)
+    setPlayerScore(nextScore)
+    setCurrentDarts(nextDarts)
+
+    if (isOnline && gameData?.id) {
+      await updateLiveGame(gameData.id, { currentDarts: nextDarts })
+    }
+
+    if (nextDarts.length === 3) {
+      await endTurn(nextDarts, nextScore)
+    }
+  }, [turn, playerScore, currentDarts, endTurn, isOnline, gameData?.id, updateLiveGame, showToast])
+
+  // Camera Actions
   const toggleCamera = useCallback(async () => {
-    if (useCamera) { if (stream) stream.getTracks().forEach(t => t.stop()); setStream(null); setUseCamera(false) }
-    else {
+    if (useCamera) {
+      if (stream) stream.getTracks().forEach(t => t.stop())
+      setStream(null)
+      setUseCamera(false)
+      setIsWebAiActive(false)
+    } else {
       try {
         await getCameras()
-        const s = await navigator.mediaDevices.getUserMedia({ video: { deviceId: selectedCameraId ? { exact: selectedCameraId } : undefined, width: { ideal: 1280 }, height: { ideal: 720 } } })
-        setStream(s); setUseCamera(true)
+        const constraints = {
+          video: {
+            deviceId: selectedCameraId ? { exact: selectedCameraId } : undefined,
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        }
+        const s = await navigator.mediaDevices.getUserMedia(constraints)
+        setStream(s)
+        setUseCamera(true)
         if (videoRef.current) videoRef.current.srcObject = s
       } catch (e) { showToast('Camera error: ' + e.message, 'error') }
     }
@@ -177,14 +237,21 @@ export default function PlayOnline() {
     try {
       const devices = await navigator.mediaDevices.enumerateDevices()
       const videoDevices = devices.filter(d => d.kind === 'videoinput')
-      if (videoDevices.length < 2) return
+      if (videoDevices.length < 2) {
+        showToast('Only one camera detected', 'info')
+        return
+      }
+
       const currentIdx = videoDevices.findIndex(d => d.deviceId === selectedCameraId)
       const nextIdx = (currentIdx + 1) % videoDevices.length
       const nextId = videoDevices[nextIdx].deviceId
+
       setSelectedCameraId(nextId)
       if (useCamera) {
         if (stream) stream.getTracks().forEach(t => t.stop())
-        const s = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: nextId }, width: { ideal: 1280 }, height: { ideal: 720 } } })
+        const s = await navigator.mediaDevices.getUserMedia({
+          video: { deviceId: { exact: nextId }, width: { ideal: 1280 }, height: { ideal: 720 } }
+        })
         setStream(s)
         if (videoRef.current) videoRef.current.srcObject = s
       }
@@ -196,12 +263,16 @@ export default function PlayOnline() {
     if (useCamera) {
       if (stream) stream.getTracks().forEach(t => t.stop())
       try {
-        const s = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: id }, width: { ideal: 1280 }, height: { ideal: 720 } } })
-        setStream(s); if (videoRef.current) videoRef.current.srcObject = s
+        const s = await navigator.mediaDevices.getUserMedia({
+          video: { deviceId: { exact: id }, width: { ideal: 1280 }, height: { ideal: 720 } }
+        })
+        setStream(s)
+        if (videoRef.current) videoRef.current.srcObject = s
       } catch (e) { showToast('Error: ' + e.message, 'error') }
     }
   }, [useCamera, stream, showToast])
 
+  // AI Scorer Logic
   const launchNativeDetection = useCallback(async () => {
     try {
       const { registerPlugin } = await import('@capacitor/core')
@@ -209,21 +280,43 @@ export default function PlayOnline() {
       await DartDetection.startDetection()
       showToast('AI Auto-Scoring Mode Active', 'info')
     } catch (e) {
-      showToast('Native detection not available on this platform', 'error')
+      // Fallback: Enable Web-based AI logic
+      if (!useCamera) {
+        await toggleCamera()
+      }
+      setIsWebAiActive(true)
+      showToast('AI Auto-Scoring (Web) Enabled', 'info')
     }
-  }, [showToast])
+  }, [useCamera, toggleCamera, showToast])
 
   const handleUndo = useCallback(async () => {
     if (currentDarts.length === 0) return
-    const last = currentDarts[currentDarts.length - 1]; const ns = playerScore + last.value; const nd = currentDarts.slice(0, -1)
-    setPlayerScore(ns); setCurrentDarts(nd)
-    if (isOnline && gameData?.id) await updateLiveGame(gameData.id, { currentDarts: nd, [`scores.${user.id}`]: ns })
+    const last = currentDarts[currentDarts.length - 1]
+    const ns = playerScore + last.value
+    const nd = currentDarts.slice(0, -1)
+    setPlayerScore(ns)
+    setVPlayerScore(ns)
+    setCurrentDarts(nd)
+    if (isOnline && gameData?.id) {
+      await updateLiveGame(gameData.id, { currentDarts: nd, [`scores.${user.id}`]: ns })
+    }
   }, [currentDarts, playerScore, isOnline, gameData?.id, user.id, updateLiveGame])
 
   const startNewMatch = useCallback((s = 501, mode = 'bot', l = 3) => {
-    setPlayerScore(s); setOpponentScore(s); setTurn('player'); setCurrentDarts([]); setHistory([]); setGameStarted(true); setIsOnline(mode === 'online')
-    if (mode === 'bot') setBot(new DartBot({ id: 'pro-1', name: 'Practice Bot', targetAverage: 55, checkoutRate: 0.2 }))
-    else setBot(null)
+    setPlayerScore(s)
+    setOpponentScore(s)
+    setVPlayerScore(s)
+    setVOpponentScore(s)
+    setTurn('player')
+    setCurrentDarts([])
+    setHistory([])
+    setGameStarted(true)
+    setIsOnline(mode === 'online')
+    if (mode === 'bot') {
+      setBot(new DartBot({ id: 'pro-1', name: 'Practice Bot', targetAverage: 55, checkoutRate: 0.2 }))
+    } else {
+      setBot(null)
+    }
     showToast('Match Started!', 'success')
   }, [showToast])
 
@@ -232,12 +325,16 @@ export default function PlayOnline() {
     const inviteId = await sendGameInvite(p.id, { startScore: matchConfig.startScore, gameFormat: 'bestOf', legsToWin: matchConfig.legs })
     onSnapshot(doc(db, 'gameInvites', inviteId), (snap) => {
       if (snap.exists() && snap.data().status === 'accepted') {
-        setGameData({ id: snap.data().gameId }); setGameStarted(true); setIsOnline(true); setActiveTab('play'); showToast('Accepted!', 'success')
+        setGameData({ id: snap.data().gameId })
+        setGameStarted(true)
+        setIsOnline(true)
+        setActiveTab('play')
+        showToast('Accepted!', 'success')
       }
     })
   }, [matchConfig, sendGameInvite, showToast])
 
-  // Effects
+  // UI Effects
   useEffect(() => {
     if (gameStarted) document.body.classList.add('fullscreen-match')
     else document.body.classList.remove('fullscreen-match')
@@ -271,125 +368,84 @@ export default function PlayOnline() {
     return () => window.removeEventListener('dartDetectionScore', onDetection)
   }, [handleDartInput])
 
+  // Online Sync
   useEffect(() => {
     if (gameStarted && isOnline && gameData?.id) {
       return onSnapshot(doc(db, 'liveGames', gameData.id), (snap) => {
         if (snap.exists()) {
-          const data = snap.data(); setGameData(data)
+          const data = snap.data()
+          setGameData(data)
           const oppId = data.players.find(id => id !== user.id)
-          setPlayerScore(data.scores[user.id]); setOpponentScore(data.scores[oppId])
-          setTurn(data.turn === user.id ? 'player' : 'opponent'); setHistory(data.history || [])
-          if (data.turn !== user.id && data.currentDarts) setCurrentDarts(data.currentDarts)
-          if (data.status === 'finished') { showToast(data.scores[user.id] === 0 ? 'Match Won!' : 'Match Lost', 'info'); setGameStarted(false) }
+
+          setPlayerScore(data.scores[user.id])
+          setVPlayerScore(data.scores[user.id])
+          setOpponentScore(data.scores[oppId])
+          setVOpponentScore(data.scores[oppId])
+
+          setTurn(data.turn === user.id ? 'player' : 'opponent')
+          setHistory(data.history || [])
+
+          if (data.turn !== user.id && data.currentDarts) {
+            setCurrentDarts(data.currentDarts)
+            const turnSum = data.currentDarts.reduce((s, d) => s + d.value, 0)
+            setVOpponentScore(data.scores[oppId] - turnSum)
+          }
+
+          if (data.status === 'finished') {
+            showToast(data.scores[user.id] === 0 ? 'Match Won!' : 'Match Lost', 'info')
+            setGameStarted(false)
+          }
         }
       })
     }
   }, [gameStarted, isOnline, gameData?.id, user?.id, showToast])
 
+  // Bot Turn Simulation
   useEffect(() => {
     if (gameStarted && !isOnline && turn === 'opponent' && bot) {
       const run = async () => {
-        let rem = opponentScore; const darts = []
+        let rem = opponentScore
+        const darts = []
         for (let i = 0; i < 3; i++) {
-          await new Promise(r => setTimeout(r, 800 + Math.random() * 500))
+          await new Promise(r => setTimeout(r, 1200 + Math.random() * 800))
           const d = bot.calculateDart(rem, i)
           darts.push(d)
           rem -= d.value
-          // Update current darts so user sees them one by one
+          setVOpponentScore(rem)
           setCurrentDarts([...darts])
           if (rem <= 0) break
         }
-        await new Promise(r => setTimeout(r, 600))
-        const isBust = rem < 0 || rem === 1; const ts = isBust ? 0 : darts.reduce((s, d) => s + d.value, 0); const fr = isBust ? opponentScore : rem
-        setOpponentScore(fr); setHistory(prev => [{ who: bot.name, darts, score: ts, remaining: fr, userId: 'bot' }, ...prev])
-        setCurrentDarts([]) // Clear after turn ends
-        if (fr === 0) { showToast('Bot Wins!', 'error'); setGameStarted(false) } else setTurn('player')
+        await new Promise(r => setTimeout(r, 800))
+        const isBust = rem < 0 || rem === 1
+        const ts = isBust ? 0 : darts.reduce((s, d) => s + d.value, 0)
+        const fr = isBust ? opponentScore : rem
+
+        setOpponentScore(fr)
+        setVOpponentScore(fr)
+        setHistory(prev => [{ who: bot.name, darts, score: ts, remaining: fr, userId: 'bot' }, ...prev])
+        setCurrentDarts([])
+
+        if (fr === 0) {
+          showToast('Bot Wins!', 'error')
+          setGameStarted(false)
+        } else {
+          setTurn('player')
+        }
       }
       run()
     }
-  }, [turn, bot, gameStarted, isOnline, showToast]) // removed opponentScore to avoid extra triggers
-
-  if (!gameStarted) {
-    return (
-      <div className="page animate-fade-in" style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        <Breadcrumbs items={[{ label: 'Home', path: '/home' }, { label: 'Play Online' }]} />
-        <div className="dart-counter-header" style={{ display: 'flex', gap: '15px', marginBottom: '30px', borderBottom: '1px solid var(--border)', paddingBottom: '15px' }}>
-           <button className={`tab-btn ${activeTab === 'play' ? 'active' : ''}`} onClick={() => setActiveTab('play')}>Play</button>
-           <button className={`tab-btn ${activeTab === 'lobby' ? 'active' : ''}`} onClick={() => setActiveTab('lobby')}>Lobby ({availablePlayers.length})</button>
-           <button className={`tab-btn ${activeTab === 'live' ? 'active' : ''}`} onClick={() => setActiveTab('live')}>Live Games ({liveGames.length})</button>
-        </div>
-
-        {activeTab === 'play' && (
-          <div className="setup-grid" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '30px' }}>
-            <div className="setup-card card glass">
-              <h2 className="text-gradient" style={{ marginBottom: '20px' }}>Match Setup</h2>
-              <div className="setup-section"><label>Opponent Type</label>
-                <div className="toggle-group" style={{ marginBottom: '20px' }}>
-                  <button className={matchConfig.mode === 'bot' ? 'active' : ''} onClick={() => setMatchConfig({...matchConfig, mode: 'bot'})}>DartBot</button>
-                  <button className={matchConfig.mode === 'online' ? 'active' : ''} onClick={() => setActiveTab('lobby')}>Friend / Online</button>
-                </div>
-              </div>
-              <div className="setup-section"><label>Starting Score</label>
-                <div className="toggle-group">{[101, 301, 501, 701].map(s => <button key={s} className={matchConfig.startScore === s ? 'active' : ''} onClick={() => setMatchConfig({...matchConfig, startScore: s})}>{s}</button>)}</div>
-              </div>
-              <div className="setup-section" style={{ marginTop: '20px' }}><label>Legs (Best of)</label>
-                <div className="toggle-group">{[1, 3, 5, 7, 9].map(l => <button key={l} className={matchConfig.legs === l ? 'active' : ''} onClick={() => setMatchConfig({...matchConfig, legs: l})}>{l}</button>)}</div>
-              </div>
-              <div className="setup-section" style={{ marginTop: '30px' }}><button className="btn btn-primary btn-block btn-lg" onClick={() => startNewMatch(matchConfig.startScore, 'bot', matchConfig.legs)}>Start Match vs Bot</button></div>
-            </div>
-            <div className="quick-stats-card card glass"><h3 style={{ color: 'var(--accent-cyan)', marginBottom: '15px' }}>Pro Features</h3>
-              <ul style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.6' }}><li>✅ Accurate Dart-by-Dart scoring</li><li>✅ Multi-camera support with zoom</li><li>✅ Real-time opponent sync</li><li>✅ Detailed turn history</li></ul>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'lobby' && (
-          <div className="lobby-view"><div className="card glass"><h2 style={{ color: 'var(--accent-primary)', marginBottom: '20px' }}>Active Players</h2>
-            <div className="player-list">{availablePlayers.length === 0 ? <p style={{ textAlign: 'center', padding: '40px' }}>Waiting for other players...</p> : availablePlayers.map(p => (
-              <div key={p.id} className="player-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', borderBottom: '1px solid var(--border)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}><div className="avatar-ring" style={{ width: '40px', height: '40px' }}><div className="avatar-inner">{p.avatar ? <img src={p.avatar} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (p.username || '?')[0].toUpperCase()}</div></div><span style={{ fontWeight: 800 }}>{p.username}</span></div>
-                <button className="btn btn-primary btn-sm" onClick={() => handleChallenge(p)}>Challenge</button>
-              </div>
-            ))}</div>
-          </div></div>
-        )}
-
-        {activeTab === 'live' && (
-          <div className="live-games-view"><div className="card glass"><h2 style={{ color: 'var(--accent-cyan)', marginBottom: '20px' }}>Live Matches</h2>
-            <div className="games-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
-              {liveGames.length === 0 ? <p style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No live games.</p> : liveGames.map(g => (
-                <div key={g.id} className="live-game-card card glass"><div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}><span style={{ fontWeight: 800 }}>{g.playerNames[g.players[0]]}</span><span style={{ color: 'var(--accent-cyan)', fontWeight: 900 }}>{g.scores[g.players[0]]}</span></div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ fontWeight: 800 }}>{g.playerNames[g.players[1]]}</span><span style={{ color: 'var(--accent-cyan)', fontWeight: 900 }}>{g.scores[g.players[1]]}</span></div>
-                  <button className="btn btn-secondary btn-block btn-sm" style={{ marginTop: '15px' }} onClick={() => { setGameData(g); setGameStarted(true); setIsOnline(true); }}>Watch</button>
-                </div>
-              ))}
-            </div>
-          </div></div>
-        )}
-
-        <style>{`
-           .tab-btn { background: none; border: none; color: var(--text-muted); font-weight: 800; font-size: 1.1rem; cursor: pointer; padding: 10px 20px; transition: 0.3s; position: relative; }
-           .tab-btn.active { color: var(--accent-cyan); }
-           .tab-btn.active::after { content: ''; position: absolute; bottom: 0; left: 20px; right: 20px; height: 3px; background: var(--accent-cyan); border-radius: 2px; }
-           .setup-section label { display: block; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 800; margin-bottom: 10px; }
-           .toggle-group { display: flex; gap: 10px; flex-wrap: wrap; }
-           .toggle-group button { flex: 1; min-width: 60px; padding: 12px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; color: white; font-weight: 800; cursor: pointer; transition: 0.2s; }
-           .toggle-group button.active { border-color: var(--accent-cyan); background: rgba(0, 212, 255, 0.1); box-shadow: 0 0 15px rgba(0, 212, 255, 0.1); }
-        `}</style>
-      </div>
-    )
-  }
+  }, [turn, bot, gameStarted, isOnline, showToast, opponentScore])
 
   const oppName = isOnline ? (gameData?.playerNames?.[gameData.players.find(id => id !== user.id)] || 'Opponent') : (bot?.name || 'Bot')
   const oppId = isOnline ? gameData.players.find(id => id !== user.id) : 'bot'
 
   const getStats = (uid) => {
     const userHistory = history.filter(h => h.userId === uid)
-    const darts = userHistory.reduce((s, h) => s + h.darts.length, 0) + (turn === (uid === user.id ? 'player' : 'opponent') ? currentDarts.length : 0)
-    const totalScore = userHistory.reduce((s, h) => s + h.score, 0)
-    const avg = darts > 0 ? (totalScore / darts * 3).toFixed(1) : '0.0'
+    const dartsThrown = userHistory.reduce((s, h) => s + h.darts.length, 0)
+    const totalScored = userHistory.reduce((s, h) => s + h.score, 0)
+    const avg = dartsThrown > 0 ? (totalScored / dartsThrown * 3).toFixed(1) : '0.0'
     const last = userHistory.length > 0 ? userHistory[0].score : '-'
-    return { avg, last, darts }
+    return { avg, last, darts: dartsThrown }
   }
 
   const myStats = getStats(user.id)
@@ -397,48 +453,96 @@ export default function PlayOnline() {
 
   return (
     <div className="page match-mode animate-fade-in" style={{ padding: 0, maxWidth: '100vw', overflow: 'hidden', height: '100vh', display: 'flex', background: '#050816' }}>
-      {/* Sidebar: Players & Scores */}
-      <aside style={{ width: '320px', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', background: 'rgba(0,0,0,0.3)', flexShrink: 0 }}>
-        {[ { name: user.username, score: playerScore, stats: myStats, active: turn === 'player' }, { name: oppName, score: opponentScore, stats: oppStats, active: turn === 'opponent' } ].map((p, i) => (
-          <div key={i} className={`player-block ${p.active ? 'active' : ''}`} style={{ flex: 1, padding: '25px', display: 'flex', flexDirection: 'column', justifyContent: 'center', borderBottom: i === 0 ? '1px solid var(--border)' : 'none', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '5px' }}>{p.name}</div>
-            <div style={{ fontSize: '5.5rem', fontWeight: 900, color: p.active ? 'var(--accent-cyan)' : 'white', lineHeight: 1, margin: '10px 0' }}>{p.score}</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
-              <div className="stat-item"><label>AVG</label><strong>{p.stats.avg}</strong></div>
-              <div className="stat-item"><label>LAST</label><strong>{p.stats.last}</strong></div>
-              <div className="stat-item"><label>DARTS</label><strong>{p.stats.darts}</strong></div>
-            </div>
-            {p.active && <div style={{ position: 'absolute', inset: 0, borderLeft: '4px solid var(--accent-cyan)', background: 'linear-gradient(to right, rgba(0, 212, 255, 0.05), transparent)' }} />}
-          </div>
-        ))}
-      </aside>
 
-      {/* Main: Scoring & Camera */}
-      <main style={{ flex: 1, display: 'flex', height: '100vh' }}>
-        {/* Scoring Center */}
-        <div style={{ flex: 1, padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-          <button className="btn btn-danger btn-xs" style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 10, fontWeight: 900 }} onClick={() => { if(window.confirm('Quit?')) setGameStarted(false) }}>LEAVE MATCH</button>
-          <CheckoutSuggestion score={playerScore} />
-          <DartboardInput onDart={handleDartInput} onUndo={handleUndo} currentDarts={currentDarts} disabled={turn !== 'player'} />
+      {/* Left Sidebar: Stats */}
+      <aside style={{ width: '320px', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', background: 'rgba(0,0,0,0.3)', flexShrink: 0 }}>
+        <div className={`player-block ${turn === 'player' ? 'active' : ''}`} style={{ flex: 1, padding: '25px', display: 'flex', flexDirection: 'column', justifyContent: 'center', borderBottom: '1px solid var(--border)', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '5px' }}>{user?.username}</div>
+          <div style={{ fontSize: '5.5rem', fontWeight: 900, color: turn === 'player' ? 'var(--accent-cyan)' : 'white', lineHeight: 1, margin: '10px 0' }}>{vPlayerScore}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+            <div className="stat-item"><label>AVG</label><strong>{myStats.avg}</strong></div>
+            <div className="stat-item"><label>LAST</label><strong>{myStats.last}</strong></div>
+            <div className="stat-item"><label>DARTS</label><strong>{myStats.darts}</strong></div>
+          </div>
+          {turn === 'player' && <div className="active-glow" />}
         </div>
 
-        {/* Camera Sidebar Right */}
-        <aside style={{ width: '400px', background: 'rgba(0,0,0,0.5)', borderLeft: '1px solid var(--border)', display: 'flex', flexDirection: 'column', padding: '20px', flexShrink: 0 }}>
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-            <button className="btn btn-secondary btn-xs btn-block" onClick={toggleCamera}>{useCamera ? 'OFF' : 'ON'} CAM</button>
-            <button className="btn btn-primary btn-xs" onClick={launchNativeDetection}>AI SCORER</button>
+        <div className={`player-block ${turn === 'opponent' ? 'active' : ''}`} style={{ flex: 1, padding: '25px', display: 'flex', flexDirection: 'column', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '5px' }}>{oppName}</div>
+          <div style={{ fontSize: '5.5rem', fontWeight: 900, color: turn === 'opponent' ? 'var(--accent-cyan)' : 'white', lineHeight: 1, margin: '10px 0' }}>{vOpponentScore}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+            <div className="stat-item"><label>AVG</label><strong>{oppStats.avg}</strong></div>
+            <div className="stat-item"><label>LAST</label><strong>{oppStats.last}</strong></div>
+            <div className="stat-item"><label>DARTS</label><strong>{oppStats.darts}</strong></div>
           </div>
-          <div style={{ flex: 1 }}>
+          {turn === 'opponent' && <div className="active-glow" />}
+        </div>
+      </aside>
+
+      {/* Main Scoring Area */}
+      <main style={{ flex: 1, display: 'flex', height: '100vh' }}>
+        <div style={{ flex: 1, padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+          <button className="btn btn-danger btn-xs" style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 10, fontWeight: 900 }} onClick={() => { if(window.confirm('Quit match?')) setGameStarted(false) }}>LEAVE MATCH</button>
+
+          <CheckoutSuggestion score={vPlayerScore} />
+
+          <DartboardInput
+            onDart={handleDartInput}
+            onUndo={handleUndo}
+            currentDarts={currentDarts}
+            disabled={turn !== 'player'}
+          />
+        </div>
+
+        {/* Camera Sidebar */}
+        <aside style={{ width: '400px', background: 'rgba(0,0,0,0.5)', borderLeft: '1px solid var(--border)', display: 'flex', flexDirection: 'column', padding: '20px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button className={`btn btn-xs flex-1 ${useCamera ? 'btn-danger' : 'btn-secondary'}`} onClick={toggleCamera}>
+                {useCamera ? 'CAM OFF' : 'CAM ON'}
+              </button>
+              <button className={`btn btn-xs flex-1 ${isWebAiActive ? 'btn-success' : 'btn-primary'}`} onClick={launchNativeDetection}>
+                {isWebAiActive ? 'AI ACTIVE' : 'AI SCORER'}
+              </button>
+            </div>
+
+            {useCamera && (
+              <select
+                className="glass"
+                style={{ width: '100%', padding: '8px', fontSize: '0.7rem', borderRadius: '8px' }}
+                value={selectedCameraId}
+                onChange={(e) => handleCameraChange(e.target.value)}
+              >
+                {availableCameras.map(c => (
+                  <option key={c.deviceId} value={c.deviceId}>{c.label || `Camera ${availableCameras.indexOf(c) + 1}`}</option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          <div style={{ flex: 1, position: 'relative' }}>
             {useCamera ? (
-              <div style={{ width: '100%', borderRadius: '16px', overflow: 'hidden', background: '#000', position: 'relative', aspectRatio: '9/16', border: '2px solid var(--accent-cyan)', boxShadow: '0 0 40px rgba(0,0,0,0.5)' }}>
+              <div style={{ width: '100%', borderRadius: '16px', overflow: 'hidden', background: '#000', position: 'relative', aspectRatio: '9/16', border: `2px solid ${isWebAiActive ? 'var(--accent-primary)' : 'var(--accent-cyan)'}`, boxShadow: '0 0 40px rgba(0,0,0,0.5)' }}>
                 <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${zoomLevel})` }} />
+
                 <div style={{ position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '8px', background: 'rgba(0,0,0,0.6)', padding: '8px', borderRadius: '20px', backdropFilter: 'blur(10px)' }}>
-                   <button onClick={() => setZoomLevel(z => Math.max(1, z - 0.2))} style={{ border: 'none', background: 'none', color: 'white', fontWeight: 900, cursor: 'pointer' }}>-</button>
-                   <button onClick={() => setZoomLevel(z => Math.min(5, z + 0.2))} style={{ border: 'none', background: 'none', color: 'white', fontWeight: 900, cursor: 'pointer' }}>+</button>
-                   <button onClick={flipCamera} style={{ border: 'none', background: 'none', color: 'white', fontWeight: 900, cursor: 'pointer', fontSize: '0.6rem' }}>FLIP</button>
+                   <button onClick={() => setZoomLevel(z => Math.max(1, z - 0.2))} className="cam-tool-btn">-</button>
+                   <button onClick={() => setZoomLevel(z => Math.min(5, z + 0.2))} className="cam-tool-btn">+</button>
+                   <button onClick={flipCamera} className="cam-tool-btn" style={{ fontSize: '0.6rem' }}>FLIP</button>
                 </div>
+
+                {isWebAiActive && (
+                  <div className="ai-overlay">
+                     <div className="scanning-line" />
+                     <span>AI TRACKING</span>
+                  </div>
+                )}
               </div>
-            ) : <div style={{ width: '100%', height: '100%', borderRadius: '16px', border: '2px dashed var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>CAMERA OFF</div>}
+            ) : (
+              <div className="camera-placeholder">
+                <span>CAMERA OFF</span>
+              </div>
+            )}
           </div>
         </aside>
       </main>
@@ -447,14 +551,32 @@ export default function PlayOnline() {
         body.fullscreen-match .sidebar, body.fullscreen-match .bottom-nav, body.fullscreen-match .mobile-header { display: none !important; }
         body.fullscreen-match .main-content { padding: 0 !important; margin: 0 !important; }
         body.fullscreen-match .app-layout { grid-template-columns: 1fr !important; }
+
         .stat-item { text-align: center; }
         .stat-item label { display: block; font-size: 0.55rem; color: var(--text-muted); font-weight: 800; letter-spacing: 1px; }
         .stat-item strong { display: block; font-size: 1.1rem; color: white; }
+
+        .active-glow { position: absolute; inset: 0; border-left: 4px solid var(--accent-cyan); background: linear-gradient(to right, rgba(0, 212, 255, 0.05), transparent); pointer-events: none; }
+
+        .cam-tool-btn { border: none; background: none; color: white; fontWeight: 900; cursor: pointer; width: 30px; height: 30px; display: flex; alignItems: center; justifyContent: center; }
+
+        .camera-placeholder { width: 100%; height: 100%; borderRadius: 16px; border: 2px dashed var(--border); display: flex; alignItems: center; justifyContent: center; color: var(--text-muted); fontSize: 0.8rem; background: rgba(255,255,255,0.02); }
+
+        .ai-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+        .ai-overlay span { background: var(--accent-primary); color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.6rem; font-weight: 900; position: absolute; top: 10px; left: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+        .scanning-line { width: 100%; height: 2px; background: rgba(255, 60, 60, 0.3); position: absolute; top: 0; animation: scan 2s linear infinite; }
+
+        @keyframes scan {
+          0% { top: 0; }
+          100% { top: 100%; }
+        }
+
         @media (max-width: 1000px) {
            .match-mode { flex-direction: column !important; overflow-y: auto !important; }
            .match-mode aside { width: 100% !important; flex-direction: row !important; height: auto !important; }
            .match-mode main { flex-direction: column !important; height: auto !important; }
            .match-mode main aside { width: 100% !important; }
+           .player-block { flex: 1 !important; border-bottom: none !important; border-right: 1px solid var(--border); }
         }
       `}</style>
     </div>
