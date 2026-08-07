@@ -738,7 +738,22 @@ export default function PlayOnline() {
             <div style={{ pointerEvents: 'auto' }}>
                 <CheckoutSuggestion score={vPlayerScore} />
             </div>
-            <button className="btn btn-danger btn-sm" style={{ pointerEvents: 'auto', fontWeight: 900, boxShadow: '0 4px 15px rgba(0,0,0,0.5)' }} onClick={handleLeaveMatch}>QUIT MATCH</button>
+
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', pointerEvents: 'auto' }}>
+                {useCamera && availableCameras.length > 0 && (
+                    <select
+                        className="glass cam-source-select"
+                        style={{ padding: '8px 12px', fontSize: '0.7rem', borderRadius: '8px', background: 'rgba(5, 8, 22, 0.8)', color: 'white', border: '1px solid var(--border)', fontWeight: 800 }}
+                        value={selectedCameraId}
+                        onChange={(e) => handleCameraChange(e.target.value)}
+                    >
+                        {availableCameras.map(c => (
+                            <option key={c.deviceId} value={c.deviceId}>{c.label || `Camera ${availableCameras.indexOf(c) + 1}`}</option>
+                        ))}
+                    </select>
+                )}
+                <button className="btn btn-danger btn-sm" style={{ fontWeight: 900, boxShadow: '0 4px 15px rgba(0,0,0,0.5)' }} onClick={handleLeaveMatch}>QUIT MATCH</button>
+            </div>
         </div>
 
         <div className="camera-viewport" style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
@@ -808,17 +823,7 @@ export default function PlayOnline() {
         </div>
 
         <div className="input-settings" style={{ width: '100%', marginTop: 'auto' }}>
-            <label style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)' }}>CAMERA SOURCE</label>
-            <select
-                className="glass"
-                style={{ width: '100%', padding: '10px', fontSize: '0.8rem', borderRadius: '8px', marginTop: '5px' }}
-                value={selectedCameraId}
-                onChange={(e) => handleCameraChange(e.target.value)}
-            >
-                {availableCameras.map(c => (
-                  <option key={c.deviceId} value={c.deviceId}>{c.label || `Camera ${availableCameras.indexOf(c) + 1}`}</option>
-                ))}
-            </select>
+            {/* Camera source moved to top right */}
         </div>
       </aside>
 
