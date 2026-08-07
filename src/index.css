@@ -68,6 +68,25 @@ body {
   flex-direction: column;
 }
 
+/* Global Fullscreen Overrides */
+body.fullscreen-match {
+  overflow: hidden !important;
+}
+
+body.fullscreen-match .sidebar,
+body.fullscreen-match .mobile-bottom-nav,
+body.fullscreen-match .mobile-header,
+body.fullscreen-match .mobile-sidebar-overlay {
+  display: none !important;
+}
+
+body.fullscreen-match .main-content {
+  margin-left: 0 !important;
+  padding: 0 !important;
+  max-width: 100vw !important;
+  height: 100vh !important;
+}
+
 /* Enhanced Glassmorphism */
 .glass {
   background: linear-gradient(135deg, rgba(13, 20, 46, 0.7) 0%, rgba(10, 15, 36, 0.8) 100%);
