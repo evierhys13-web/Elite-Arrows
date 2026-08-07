@@ -120,6 +120,7 @@ export default function PlayOnline() {
   const videoRef = useRef(null)
   const isAndroid = Capacitor.getPlatform() === 'android'
 
+  // Define ALL handlers first
   const endTurn = useCallback(async (darts, remaining, isBust = false) => {
     const turnScore = isBust ? 0 : darts.reduce((sum, d) => sum + d.value, 0)
     const entry = { who: user.username, darts, score: turnScore, remaining, userId: user.id }
@@ -151,6 +152,92 @@ export default function PlayOnline() {
     if (nextDarts.length === 3) await endTurn(nextDarts, nextScore)
   }, [turn, playerScore, currentDarts, endTurn, isOnline, gameData?.id, updateLiveGame, showToast])
 
+  const getCameras = useCallback(async () => {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices()
+      const videoDevices = devices.filter(d => d.kind === 'videoinput')
+      setAvailableCameras(videoDevices)
+      if (videoDevices.length > 0 && !selectedCameraId) setSelectedCameraId(videoDevices[0].deviceId)
+    } catch (e) { console.error(e) }
+  }, [selectedCameraId])
+
+  const toggleCamera = useCallback(async () => {
+    if (useCamera) { if (stream) stream.getTracks().forEach(t => t.stop()); setStream(null); setUseCamera(false) }
+    else {
+      try {
+        await getCameras()
+        const s = await navigator.mediaDevices.getUserMedia({ video: { deviceId: selectedCameraId ? { exact: selectedCameraId } : undefined, width: { ideal: 1280 }, height: { ideal: 720 } } })
+        setStream(s); setUseCamera(true)
+        if (videoRef.current) videoRef.current.srcObject = s
+      } catch (e) { showToast('Camera error: ' + e.message, 'error') }
+    }
+  }, [useCamera, stream, selectedCameraId, getCameras, showToast])
+
+  const flipCamera = useCallback(async () => {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices()
+      const videoDevices = devices.filter(d => d.kind === 'videoinput')
+      if (videoDevices.length < 2) return
+      const currentIdx = videoDevices.findIndex(d => d.deviceId === selectedCameraId)
+      const nextIdx = (currentIdx + 1) % videoDevices.length
+      const nextId = videoDevices[nextIdx].deviceId
+      setSelectedCameraId(nextId)
+      if (useCamera) {
+        if (stream) stream.getTracks().forEach(t => t.stop())
+        const s = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: nextId }, width: { ideal: 1280 }, height: { ideal: 720 } } })
+        setStream(s)
+        if (videoRef.current) videoRef.current.srcObject = s
+      }
+    } catch (e) { showToast('Flip error: ' + e.message, 'error') }
+  }, [selectedCameraId, useCamera, stream, showToast])
+
+  const handleCameraChange = useCallback(async (id) => {
+    setSelectedCameraId(id)
+    if (useCamera) {
+      if (stream) stream.getTracks().forEach(t => t.stop())
+      try {
+        const s = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: id }, width: { ideal: 1280 }, height: { ideal: 720 } } })
+        setStream(s); if (videoRef.current) videoRef.current.srcObject = s
+      } catch (e) { showToast('Error: ' + e.message, 'error') }
+    }
+  }, [useCamera, stream, showToast])
+
+  const launchNativeDetection = useCallback(async () => {
+    try {
+      const { registerPlugin } = await import('@capacitor/core')
+      const DartDetection = registerPlugin('DartDetection')
+      await DartDetection.startDetection()
+      showToast('AI Auto-Scoring Mode Active', 'info')
+    } catch (e) {
+      showToast('Native detection not available on this platform', 'error')
+    }
+  }, [showToast])
+
+  const handleUndo = useCallback(async () => {
+    if (currentDarts.length === 0) return
+    const last = currentDarts[currentDarts.length - 1]; const ns = playerScore + last.value; const nd = currentDarts.slice(0, -1)
+    setPlayerScore(ns); setCurrentDarts(nd)
+    if (isOnline && gameData?.id) await updateLiveGame(gameData.id, { currentDarts: nd, [`scores.${user.id}`]: ns })
+  }, [currentDarts, playerScore, isOnline, gameData?.id, user.id, updateLiveGame])
+
+  const startNewMatch = useCallback((s = 501, mode = 'bot', l = 3) => {
+    setPlayerScore(s); setOpponentScore(s); setTurn('player'); setCurrentDarts([]); setHistory([]); setGameStarted(true); setIsOnline(mode === 'online')
+    if (mode === 'bot') setBot(new DartBot({ id: 'pro-1', name: 'Practice Bot', targetAverage: 55, checkoutRate: 0.2 }))
+    else setBot(null)
+    showToast('Match Started!', 'success')
+  }, [showToast])
+
+  const handleChallenge = useCallback(async (p) => {
+    showToast(`Inviting ${p.username}...`, 'info')
+    const inviteId = await sendGameInvite(p.id, { startScore: matchConfig.startScore, gameFormat: 'bestOf', legsToWin: matchConfig.legs })
+    onSnapshot(doc(db, 'gameInvites', inviteId), (snap) => {
+      if (snap.exists() && snap.data().status === 'accepted') {
+        setGameData({ id: snap.data().gameId }); setGameStarted(true); setIsOnline(true); setActiveTab('play'); showToast('Accepted!', 'success')
+      }
+    })
+  }, [matchConfig, sendGameInvite, showToast])
+
+  // Effects
   useEffect(() => {
     if (gameStarted) document.body.classList.add('fullscreen-match')
     else document.body.classList.remove('fullscreen-match')
@@ -184,38 +271,6 @@ export default function PlayOnline() {
     return () => window.removeEventListener('dartDetectionScore', onDetection)
   }, [handleDartInput])
 
-  const getCameras = async () => {
-    try {
-      const devices = await navigator.mediaDevices.enumerateDevices()
-      const videoDevices = devices.filter(d => d.kind === 'videoinput')
-      setAvailableCameras(videoDevices)
-      if (videoDevices.length > 0 && !selectedCameraId) setSelectedCameraId(videoDevices[0].deviceId)
-    } catch (e) { console.error(e) }
-  }
-
-  const toggleCamera = async () => {
-    if (useCamera) { if (stream) stream.getTracks().forEach(t => t.stop()); setStream(null); setUseCamera(false) }
-    else {
-      try {
-        await getCameras()
-        const s = await navigator.mediaDevices.getUserMedia({ video: { deviceId: selectedCameraId ? { exact: selectedCameraId } : undefined, width: { ideal: 1280 }, height: { ideal: 720 } } })
-        setStream(s); setUseCamera(true)
-        if (videoRef.current) videoRef.current.srcObject = s
-      } catch (e) { showToast('Camera error: ' + e.message, 'error') }
-    }
-  }
-
-  const handleCameraChange = async (id) => {
-    setSelectedCameraId(id)
-    if (useCamera) {
-      if (stream) stream.getTracks().forEach(t => t.stop())
-      try {
-        const s = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: id }, width: { ideal: 1280 }, height: { ideal: 720 } } })
-        setStream(s); if (videoRef.current) videoRef.current.srcObject = s
-      } catch (e) { showToast('Error: ' + e.message, 'error') }
-    }
-  }
-
   useEffect(() => {
     if (gameStarted && isOnline && gameData?.id) {
       return onSnapshot(doc(db, 'liveGames', gameData.id), (snap) => {
@@ -231,57 +286,28 @@ export default function PlayOnline() {
     }
   }, [gameStarted, isOnline, gameData?.id, user?.id, showToast])
 
-  const startNewMatch = (s = 501, mode = 'bot', l = 3) => {
-    setPlayerScore(s); setOpponentScore(s); setTurn('player'); setCurrentDarts([]); setHistory([]); setGameStarted(true); setIsOnline(mode === 'online')
-    if (mode === 'bot') setBot(new DartBot({ id: 'pro-1', name: 'Practice Bot', targetAverage: 55, checkoutRate: 0.2 }))
-    else setBot(null)
-    showToast('Match Started!', 'success')
-  }
-
-  const handleChallenge = async (p) => {
-    showToast(`Inviting ${p.username}...`, 'info')
-    const inviteId = await sendGameInvite(p.id, { startScore: matchConfig.startScore, gameFormat: 'bestOf', legsToWin: matchConfig.legs })
-    onSnapshot(doc(db, 'gameInvites', inviteId), (snap) => {
-      if (snap.exists() && snap.data().status === 'accepted') {
-        setGameData({ id: snap.data().gameId }); setGameStarted(true); setIsOnline(true); setActiveTab('play'); showToast('Accepted!', 'success')
-      }
-    })
-  }
-
-  const launchNativeDetection = async () => {
-    try {
-      const { registerPlugin } = await import('@capacitor/core')
-      const DartDetection = registerPlugin('DartDetection')
-      await DartDetection.startDetection()
-      showToast('AI Auto-Scoring Mode Active', 'info')
-    } catch (e) {
-      showToast('Native detection not available on this platform', 'error')
-    }
-  }
-
-  const handleUndo = async () => {
-    if (currentDarts.length === 0) return
-    const last = currentDarts[currentDarts.length - 1]; const ns = playerScore + last.value; const nd = currentDarts.slice(0, -1)
-    setPlayerScore(ns); setCurrentDarts(nd)
-    if (isOnline && gameData?.id) await updateLiveGame(gameData.id, { currentDarts: nd, [`scores.${user.id}`]: ns })
-  }
-
   useEffect(() => {
     if (gameStarted && !isOnline && turn === 'opponent' && bot) {
       const run = async () => {
-        await new Promise(r => setTimeout(r, 1500)); let rem = opponentScore; const darts = []
+        let rem = opponentScore; const darts = []
         for (let i = 0; i < 3; i++) {
-          const d = bot.calculateDart(rem, i); darts.push(d); rem -= d.value
+          await new Promise(r => setTimeout(r, 800 + Math.random() * 500))
+          const d = bot.calculateDart(rem, i)
+          darts.push(d)
+          rem -= d.value
+          // Update current darts so user sees them one by one
+          setCurrentDarts([...darts])
           if (rem <= 0) break
-          await new Promise(r => setTimeout(r, 800))
         }
+        await new Promise(r => setTimeout(r, 600))
         const isBust = rem < 0 || rem === 1; const ts = isBust ? 0 : darts.reduce((s, d) => s + d.value, 0); const fr = isBust ? opponentScore : rem
         setOpponentScore(fr); setHistory(prev => [{ who: bot.name, darts, score: ts, remaining: fr, userId: 'bot' }, ...prev])
+        setCurrentDarts([]) // Clear after turn ends
         if (fr === 0) { showToast('Bot Wins!', 'error'); setGameStarted(false) } else setTurn('player')
       }
       run()
     }
-  }, [turn, bot, gameStarted, opponentScore, isOnline, showToast])
+  }, [turn, bot, gameStarted, isOnline, showToast]) // removed opponentScore to avoid extra triggers
 
   if (!gameStarted) {
     return (
