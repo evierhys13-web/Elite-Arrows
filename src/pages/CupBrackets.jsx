@@ -417,7 +417,7 @@ export default function CupBracket() {
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           <Link to="/cups" className="btn btn-secondary">← Back to Cups</Link>
           {isAdmin && (isWorldCupOrGroupKO) && !cup.groupsAdvanced && (
-            <Link to="/cup-management" className="btn btn-primary" style={{ background: 'linear-gradient(to right, #f59e0b, #d97706)', color: 'black', fontWeight: 900 }}>
+            <Link to="/admin?tab=cups" className="btn btn-primary" style={{ background: 'linear-gradient(to right, #f59e0b, #d97706)', color: 'black', fontWeight: 900 }}>
                ⚡ START KNOCKOUT PHASE
             </Link>
           )}

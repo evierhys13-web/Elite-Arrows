@@ -76,7 +76,7 @@ function CupManagement() {
       if (!cupSnap.exists()) throw new Error('Cup not found')
       const cupData = cupSnap.data()
 
-      const allResults = getResults().filter(r => String(r.cupId) === String(cup.id) && String(r.status).toLowerCase() === 'approved')
+      const allResultsData = getResults().filter(r => String(r.cupId) === String(cup.id) && String(r.status).toLowerCase() === 'approved')
 
       const standings = {}
       cupData.matches.filter(m => m.stage === 'groups').forEach(match => {
@@ -87,7 +87,7 @@ function CupManagement() {
         if (p1 && !standings[gId][p1]) standings[gId][p1] = { id: p1, played: 0, won: 0, lost: 0, legsFor: 0, legsAgainst: 0, points: 0 }
         if (p2 && !standings[gId][p2]) standings[gId][p2] = { id: p2, played: 0, won: 0, lost: 0, legsFor: 0, legsAgainst: 0, points: 0 }
 
-        const res = allResults.find(r => String(r.matchId) === String(match.id))
+        const res = allResultsData.find(r => String(r.matchId) === String(match.id))
         if (res && p1 && p2) {
           standings[gId][p1].played++
           standings[gId][p2].played++
@@ -215,7 +215,7 @@ function CupManagement() {
     let errors = 0
     try {
       const allCups = getCups()
-      const allResults = getResults().filter(r => String(r.status).toLowerCase() === 'approved')
+      const allResultsData = getResults().filter(r => String(r.status).toLowerCase() === 'approved')
 
       for (const cup of allCups) {
         try {
@@ -230,7 +230,7 @@ function CupManagement() {
 
             // Sort rounds ascending to process sequentially
             const rounds = Array.from(new Set(matches.map(m => m.round))).sort((a, b) => a - b)
-            const cupResults = allResults.filter(r => String(r.cupId) === String(cup.id))
+            const cupResultsList = allResultsData.filter(r => String(r.cupId) === String(cup.id))
 
             for (const round of rounds) {
               const roundMatches = matches.filter(m => m.round === round)
@@ -241,11 +241,11 @@ function CupManagement() {
 
                 // 1. Check for results if no winner yet
                 if (!winnerId) {
-                  let res = cupResults.find(r => String(r.matchId) === String(m.id))
+                  let res = cupResultsList.find(r => String(r.matchId) === String(m.id))
 
                   // Fallback: search by player names if matchId is missing
                   if (!res && m.player1 && m.player2) {
-                    res = cupResults.find(r =>
+                    res = cupResultsList.find(r =>
                       (String(r.player1Id) === String(m.player1) && String(r.player2Id) === String(m.player2)) ||
                       (String(r.player2Id) === String(m.player1) && String(r.player1Id) === String(m.player2))
                     )
@@ -290,7 +290,7 @@ function CupManagement() {
                     const target = pos === 0 ? 'player1' : 'player2'
 
                     if (matches[nextMIdx][target] !== winnerId) {
-                      console.log(`Advancing ${getPlayerName(winnerId)} to ${target} in ${getRoundName(matches[nextMIdx].round, totalRounds)}`)
+                      console.log(`Advancing ${getPlayerName(winnerId)} to ${target} in ${getRoundName(matches[nextMIdx].round, 5)}`)
                       matches[nextMIdx] = { ...matches[nextMIdx], [target]: winnerId }
                       cupChanges++
                     }
@@ -392,14 +392,14 @@ function CupManagement() {
 
   const getPlayerName = (id) => {
     if (!id) return 'TBD'
-    const user = allUsers.find(u => String(u.id) === String(id))
-    return user?.username || 'Unknown'
+    const userProfile = allUsers.find(u => String(u.id) === String(id))
+    return userProfile?.username || 'Unknown'
   }
 
-  const getRoundName = (round, totalRounds) => {
-    if (Number(round) === Number(totalRounds)) return 'Final'
-    if (Number(round) === Number(totalRounds) - 1) return 'Semi-Final'
-    if (Number(round) === Number(totalRounds) - 2) return 'Quarter-Final'
+  const getRoundName = (round, totalRoundsCount) => {
+    if (Number(round) === Number(totalRoundsCount)) return 'Final'
+    if (Number(round) === Number(totalRoundsCount) - 1) return 'Semi-Final'
+    if (Number(round) === Number(totalRoundsCount) - 2) return 'Quarter-Final'
     return `Round ${round}`
   }
 

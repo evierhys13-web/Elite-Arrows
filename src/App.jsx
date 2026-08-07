@@ -36,7 +36,6 @@ const Support = lazy(() => import('./pages/Support'))
 const Tournaments = lazy(() => import('./pages/Tournaments'))
 const Cups = lazy(() => import('./pages/Cups'))
 const CupBracket = lazy(() => import('./pages/CupBrackets'))
-const CupManagement = lazy(() => import('./pages/CupManagement'))
 const Leaderboards = lazy(() => import('./pages/Leaderboards'))
 const Rewards = lazy(() => import('./pages/Rewards'))
 const Fixtures = lazy(() => import('./pages/Fixtures'))
@@ -316,7 +315,6 @@ function AppRoutes() {
       <Route path="/rewards" element={<ProtectedRoute><AppLayout><Rewards /></AppLayout></ProtectedRoute>} />
       <Route path="/fixtures" element={<ProtectedRoute><AppLayout><Fixtures /></AppLayout></ProtectedRoute>} />
       <Route path="/cup-fixtures" element={<ProtectedRoute><AppLayout><CupFixtures /></AppLayout></ProtectedRoute>} />
-      <Route path="/cup-management" element={<AdminRoute><AppLayout><CupManagement /></AppLayout></AdminRoute>} />
       <Route path="/guide" element={<ProtectedRoute><AppLayout><Guide /></AppLayout></ProtectedRoute>} />
       <Route path="/privacy-policy" element={<ProtectedRoute><AppLayout><PrivacyPolicy /></AppLayout></ProtectedRoute>} />
       <Route path="/delete-account" element={<ProtectedRoute><AppLayout><DeleteAccount /></AppLayout></ProtectedRoute>} />

@@ -1,14 +1,15 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, lazy, Suspense } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { db, doc, setDoc, getDoc, getDocs, collection, deleteDoc, updateDoc, writeBatch, addDoc, query, orderBy, limit } from '../firebase'
 import { ADMIN_EMAILS } from '../config'
 import UserSearchSelect from '../components/UserSearchSelect'
-import CupManagement from './CupManagement'
 import { useToast } from '../context/ToastContext'
 import { logMatchApproved } from '../utils/analytics'
 import { checkMatchAchievements } from '../utils/achievements'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
+
+const CupManagement = lazy(() => import('./CupManagement'))
 
 export default function Admin() {
   const {
@@ -1807,7 +1808,11 @@ export default function Admin() {
         )}
 
         {/* TAB: CUPS */}
-        {activeTab === 'cups' && <CupManagement />}
+        {activeTab === 'cups' && (
+          <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}><div className="spinner"></div></div>}>
+            <CupManagement />
+          </Suspense>
+        )}
 
         {/* TAB: MEMBERS */}
         {activeTab === 'players' && (

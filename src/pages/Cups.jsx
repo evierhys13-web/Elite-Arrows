@@ -909,7 +909,7 @@ export default function CupTournaments() {
                     </button>
                     {(cup.type === 'world_cup' || cup.type === 'group_knockout') && !cup.groupsAdvanced && (
                       <Link
-                        to="/cup-management"
+                        to="/admin?tab=cups"
                         className="btn btn-primary btn-sm"
                         style={{ flex: 1, background: 'linear-gradient(to right, #f59e0b, #d97706)', color: 'black' }}
                       >
