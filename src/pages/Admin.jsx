@@ -337,7 +337,7 @@ export default function Admin() {
       )
       updateResults(updatedResults)
 
-      if (approvedResult.gameType === 'Cup') {
+      if (approvedResult.gameType === 'Cup' || approvedResult.cupId) {
         await advanceCupBracket(approvedResult)
       }
 
