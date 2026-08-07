@@ -5,6 +5,8 @@ import { db, doc, onSnapshot, setDoc, updateDoc, arrayUnion, collection, query, 
 import Breadcrumbs from '../components/Breadcrumbs'
 import { useToast } from '../context/ToastContext'
 import { DartBot } from '../utils/DartBot'
+import { Capacitor } from '@capacitor/core'
+import { ScoringEngine } from '../utils/ScoringEngine'
 
 /* Icons */
 const FlipIcon = () => <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h10V4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-10a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" /><path d="M20 8l-4 4 4 4" /></svg>
@@ -147,9 +149,10 @@ export default function PlayOnline() {
   const [isHost, setIsHost] = useState(false)
 
   // Lobby State
+  const [activeTab, setActiveTab] = useState('play') // 'play', 'lobby', 'live'
   const [availablePlayers, setAvailablePlayers] = useState([])
-  const [isLobbyOpen, setIsLobbyOpen] = useState(false)
-  const [isHosting, setIsHosting] = useState(false)
+  const [liveGames, setLiveGames] = useState([])
+  const [matchConfig, setMatchConfig] = useState({ startScore: 501, legs: 3, mode: 'bot' })
 
   // Camera State
   const [useCamera, setUseCamera] = useState(false)
@@ -158,6 +161,54 @@ export default function PlayOnline() {
   const [selectedCameraId, setSelectedCameraId] = useState('')
   const [zoomLevel, setZoomLevel] = useState(1)
   const videoRef = useRef(null)
+
+  const isAndroid = Capacitor.getPlatform() === 'android'
+
+  // Presence System: Add user to lobby when on page
+  useEffect(() => {
+    if (!user?.id) return
+    const presenceRef = doc(db, 'lobbyPresence', user.id)
+    setDoc(presenceRef, {
+      userId: user.id,
+      username: user.username,
+      avatar: user.profilePicture || null,
+      lastSeen: new Date().toISOString()
+    })
+
+    const interval = setInterval(() => {
+      updateDoc(presenceRef, { lastSeen: new Date().toISOString() })
+    }, 10000)
+
+    return () => {
+      clearInterval(interval)
+      deleteDoc(presenceRef).catch(() => {})
+    }
+  }, [user?.id])
+
+  // Listen for active players (Presence)
+  useEffect(() => {
+    const q = query(collection(db, 'lobbyPresence'))
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const now = new Date().getTime()
+      const players = snapshot.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(p => {
+          const lastSeen = new Date(p.lastSeen).getTime()
+          return p.id !== user?.id && (now - lastSeen) < 30000 // Active within 30s
+        })
+      setAvailablePlayers(players)
+    })
+    return () => unsubscribe()
+  }, [user?.id])
+
+  // Listen for Live Games
+  useEffect(() => {
+    const q = query(collection(db, 'liveGames'), where('status', '==', 'active'))
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setLiveGames(snapshot.docs.map(d => ({ id: d.id, ...d.data() })))
+    })
+    return () => unsubscribe()
+  }, [])
 
   // Fetch available cameras
   const getCameras = async () => {
@@ -173,15 +224,34 @@ export default function PlayOnline() {
     }
   }
 
-  // Fetch available players for lobby
+  const launchNativeDetection = async () => {
+    try {
+      const { registerPlugin } = await import('@capacitor/core')
+      const DartDetection = registerPlugin('DartDetection')
+      await DartDetection.startDetection()
+    } catch (e) {
+      console.error('Failed to launch native detection:', e)
+      showToast('Native detection not available', 'error')
+    }
+  }
+
   useEffect(() => {
-    if (!isLobbyOpen) return
-    const q = query(collection(db, 'users'), where('isOnline', '==', true))
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setAvailablePlayers(snapshot.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.id !== user.id))
-    })
-    return () => unsubscribe()
-  }, [isLobbyOpen, user?.id])
+    const handleScore = (event) => {
+      const { scoreValue, scoreLabel } = event.detail
+      handleDartInput({ value: scoreValue, label: scoreLabel || 'AI' })
+    }
+
+    const handleSubmit = () => {
+      // Automatic submit handled by turn count
+    }
+
+    window.addEventListener('dartDetectionScore', handleScore)
+    window.addEventListener('dartDetectionSubmit', handleSubmit)
+    return () => {
+      window.removeEventListener('dartDetectionScore', handleScore)
+      window.removeEventListener('dartDetectionSubmit', handleSubmit)
+    }
+  }, [handleDartInput])
 
   // Camera Handlers
   const toggleCamera = async () => {
@@ -257,7 +327,7 @@ export default function PlayOnline() {
     }
   }, [gameStarted, isOnline, gameData?.id, user?.id])
 
-  const startNewMatch = (startScore = 501, mode = 'bot') => {
+  const startNewMatch = (startScore = 501, mode = 'bot', legs = 3) => {
     setPlayerScore(startScore)
     setOpponentScore(startScore)
     setTurn('player')
@@ -419,50 +489,151 @@ export default function PlayOnline() {
 
   if (!gameStarted) {
     return (
-      <div className="page animate-fade-in">
+      <div className="page animate-fade-in" style={{ maxWidth: '1200px', margin: '0 auto' }}>
         <Breadcrumbs items={[{ label: 'Home', path: '/home' }, { label: 'Play Online' }]} />
-        <div className="page-header">
-          <h1 className="page-title text-gradient">Play Online</h1>
-          <p style={{ color: 'var(--text-muted)' }}>Real-time matches with dart-by-dart accuracy.</p>
+
+        <div className="dart-counter-header" style={{ display: 'flex', gap: '15px', marginBottom: '30px', borderBottom: '1px solid var(--border)', paddingBottom: '15px' }}>
+           <button className={`tab-btn ${activeTab === 'play' ? 'active' : ''}`} onClick={() => setActiveTab('play')}>Play</button>
+           <button className={`tab-btn ${activeTab === 'lobby' ? 'active' : ''}`} onClick={() => setActiveTab('lobby')}>Lobby ({availablePlayers.length})</button>
+           <button className={`tab-btn ${activeTab === 'live' ? 'active' : ''}`} onClick={() => setActiveTab('live')}>Live Games ({liveGames.length})</button>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
-          <div className="card glass">
-            <h3 style={{ color: 'var(--accent-cyan)' }}>Bot Practice</h3>
-            <p style={{ margin: '15px 0', color: 'var(--text-muted)' }}>Sharpen your skills against our AI before heading online.</p>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button className="btn btn-primary" onClick={() => startNewMatch(501, 'bot')}>501 Bot</button>
-              <button className="btn btn-secondary" onClick={() => startNewMatch(301, 'bot')}>301 Bot</button>
-            </div>
-          </div>
+        {activeTab === 'play' && (
+          <div className="setup-grid" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '30px' }}>
+            <div className="setup-card card glass">
+              <h2 className="text-gradient" style={{ marginBottom: '20px' }}>Match Setup</h2>
 
-          <div className="card glass">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-              <h3 style={{ color: 'var(--accent-primary)', margin: 0 }}>Online Lobby</h3>
-              <button className="btn btn-xs btn-primary" onClick={() => setIsLobbyOpen(!isLobbyOpen)}>{isLobbyOpen ? 'Hide' : 'Open Lobby'}</button>
-            </div>
-
-            {isLobbyOpen ? (
-              <div className="lobby-list" style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                {availablePlayers.length === 0 ? (
-                  <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px' }}>No players online right now.</p>
-                ) : (
-                  availablePlayers.map(p => (
-                    <div key={p.id} className="lobby-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', borderBottom: '1px solid var(--border)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div className="status-dot" style={{ width: '8px', height: '8px', background: '#22c55e', borderRadius: '50%' }} />
-                        <span style={{ fontWeight: 700 }}>{p.username}</span>
-                      </div>
-                      <button className="btn btn-xs btn-primary" onClick={() => handleChallenge(p)}>Challenge</button>
-                    </div>
-                  ))
-                )}
+              <div className="setup-section">
+                <label>Opponent Type</label>
+                <div className="toggle-group" style={{ marginBottom: '20px' }}>
+                  <button className={matchConfig.mode === 'bot' ? 'active' : ''} onClick={() => setMatchConfig({...matchConfig, mode: 'bot'})}>DartBot</button>
+                  <button className={matchConfig.mode === 'online' ? 'active' : ''} onClick={() => setActiveTab('lobby')}>Friend / Online</button>
+                </div>
               </div>
-            ) : (
-              <p style={{ color: 'var(--text-muted)' }}>Connect with other Elite Arrows players for a real-time match.</p>
-            )}
+
+              <div className="setup-section">
+                <label>Starting Score</label>
+                <div className="toggle-group">
+                  {[101, 301, 501, 701].map(s => (
+                    <button key={s} className={matchConfig.startScore === s ? 'active' : ''} onClick={() => setMatchConfig({...matchConfig, startScore: s})}>{s}</button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="setup-section" style={{ marginTop: '20px' }}>
+                <label>Legs (Best of)</label>
+                <div className="toggle-group">
+                  {[1, 3, 5, 7, 9].map(l => (
+                    <button key={l} className={matchConfig.legs === l ? 'active' : ''} onClick={() => setMatchConfig({...matchConfig, legs: l})}>{l}</button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="setup-section" style={{ marginTop: '30px' }}>
+                <button
+                  className="btn btn-primary btn-block btn-lg"
+                  onClick={() => startNewMatch(matchConfig.startScore, 'bot', matchConfig.legs)}
+                >
+                  Start Match vs Bot
+                </button>
+                <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '10px' }}>
+                  To play online, open the **Lobby** tab and challenge a player.
+                </p>
+              </div>
+            </div>
+
+            <div className="quick-stats-card card glass">
+              <h3 style={{ color: 'var(--accent-cyan)', marginBottom: '15px' }}>Pro Features</h3>
+              <ul style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.6' }}>
+                <li>✅ Accurate Dart-by-Dart scoring</li>
+                <li>✅ Multi-camera support with zoom</li>
+                <li>✅ Real-time opponent sync</li>
+                <li>✅ Detailed turn history</li>
+              </ul>
+              {isAndroid && (
+                 <button className="btn btn-secondary btn-block" style={{ marginTop: '20px' }} onClick={launchNativeDetection}>
+                   🎥 Test AI Scorer
+                 </button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
+
+        {activeTab === 'lobby' && (
+          <div className="lobby-view">
+             <div className="card glass">
+                <h2 style={{ color: 'var(--accent-primary)', marginBottom: '20px' }}>Active Players</h2>
+                <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>Only players currently on this page appear here.</p>
+
+                <div className="player-list">
+                   {availablePlayers.length === 0 ? (
+                     <div style={{ textAlign: 'center', padding: '40px' }}>
+                       <p>Waiting for other players to join the lobby...</p>
+                     </div>
+                   ) : (
+                     availablePlayers.map(p => (
+                       <div key={p.id} className="player-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', borderBottom: '1px solid var(--border)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                             <div className="avatar-ring" style={{ width: '40px', height: '40px' }}>
+                                <div className="avatar-inner">
+                                   {p.avatar ? <img src={p.avatar} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (p.username || '?')[0].toUpperCase()}
+                                </div>
+                             </div>
+                             <span style={{ fontWeight: 800 }}>{p.username}</span>
+                          </div>
+                          <button className="btn btn-primary btn-sm" onClick={() => handleChallenge(p)}>Challenge</button>
+                       </div>
+                     ))
+                   )}
+                </div>
+             </div>
+          </div>
+        )}
+
+        {activeTab === 'live' && (
+          <div className="live-games-view">
+             <div className="card glass">
+                <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '20px' }}>Live Matches</h2>
+                <div className="games-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+                   {liveGames.length === 0 ? (
+                     <p style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No live games at the moment.</p>
+                   ) : (
+                     liveGames.map(g => (
+                       <div key={g.id} className="live-game-card card glass" style={{ border: '1px solid rgba(255,255,255,0.05)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                             <span style={{ fontWeight: 800 }}>{g.playerNames[g.players[0]]}</span>
+                             <span style={{ color: 'var(--accent-cyan)', fontWeight: 900 }}>{g.scores[g.players[0]]}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                             <span style={{ fontWeight: 800 }}>{g.playerNames[g.players[1]]}</span>
+                             <span style={{ color: 'var(--accent-cyan)', fontWeight: 900 }}>{g.scores[g.players[1]]}</span>
+                          </div>
+                          <button className="btn btn-secondary btn-block btn-sm" style={{ marginTop: '15px' }} onClick={() => { setGameData(g); setGameStarted(true); setIsOnline(true); }}>Watch</button>
+                       </div>
+                     ))
+                   )}
+                </div>
+             </div>
+          </div>
+        )}
+
+        <style>{`
+           .tab-btn { background: none; border: none; color: var(--text-muted); font-weight: 800; font-size: 1.1rem; cursor: pointer; padding: 10px 20px; transition: 0.3s; position: relative; }
+           .tab-btn.active { color: var(--accent-cyan); }
+           .tab-btn.active::after { content: ''; position: absolute; bottom: 0; left: 20px; right: 20px; height: 3px; background: var(--accent-cyan); border-radius: 2px; }
+           .setup-section label { display: block; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 800; margin-bottom: 10px; }
+           .toggle-group { display: flex; gap: 10px; flex-wrap: wrap; }
+           .toggle-group button { flex: 1; min-width: 60px; padding: 12px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; color: white; font-weight: 800; cursor: pointer; transition: 0.2s; }
+           .toggle-group button.active { border-color: var(--accent-cyan); background: rgba(0, 212, 255, 0.1); box-shadow: 0 0 15px rgba(0, 212, 255, 0.1); }
+
+           .live-game-card { transition: 0.3s; cursor: pointer; }
+           .live-game-card:hover { transform: translateY(-5px); border-color: var(--accent-cyan); }
+
+           @media (max-width: 768px) {
+             .setup-grid { grid-template-columns: 1fr; }
+             .quick-stats-card { order: -1; }
+           }
+        `}</style>
       </div>
     )
   }
@@ -491,6 +662,11 @@ export default function PlayOnline() {
              <button className={`btn btn-xs ${useCamera ? 'btn-danger' : 'btn-primary'}`} onClick={toggleCamera}>
                {useCamera ? 'Disable Camera' : 'Enable Camera'}
              </button>
+             {isAndroid && (
+               <button className="btn btn-xs btn-primary" style={{ background: 'linear-gradient(135deg, #00D4FF, #0055FF)', border: 'none' }} onClick={launchNativeDetection}>
+                 🎥 Launch AI Scorer
+               </button>
+             )}
              {useCamera && (
                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flex: 1, justifyContent: 'flex-end' }}>
                  <select
