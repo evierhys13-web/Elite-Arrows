@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { db, doc, onSnapshot, setDoc, updateDoc, collection, query, where, deleteField } from '../firebase'
+import { db, doc, onSnapshot, setDoc, updateDoc, collection, query, where } from '../firebase'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { useToast } from '../context/ToastContext'
 import { DartBot } from '../utils/DartBot'
@@ -229,7 +229,7 @@ export default function PlayOnline() {
 
   // AI Scoring Engine (Web Version)
   const scoreFromPoint = useCallback((x, y) => {
-    if (!calibrationData) return
+    if (!calibrationData) return null
     const { bull, top20 } = calibrationData
     const dx = x - bull.x
     const dy = bull.y - y
