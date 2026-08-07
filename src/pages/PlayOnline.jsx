@@ -154,9 +154,24 @@ export default function PlayOnline() {
   // Camera State
   const [useCamera, setUseCamera] = useState(false)
   const [stream, setStream] = useState(null)
+  const [availableCameras, setAvailableCameras] = useState([])
+  const [selectedCameraId, setSelectedCameraId] = useState('')
   const [zoomLevel, setZoomLevel] = useState(1)
-  const [facingMode, setFacingMode] = useState('environment')
   const videoRef = useRef(null)
+
+  // Fetch available cameras
+  const getCameras = async () => {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices()
+      const videoDevices = devices.filter(device => device.kind === 'videoinput')
+      setAvailableCameras(videoDevices)
+      if (videoDevices.length > 0 && !selectedCameraId) {
+        setSelectedCameraId(videoDevices[0].deviceId)
+      }
+    } catch (e) {
+      console.error("Error enumerating devices:", e)
+    }
+  }
 
   // Fetch available players for lobby
   useEffect(() => {
@@ -176,9 +191,15 @@ export default function PlayOnline() {
       setUseCamera(false)
     } else {
       try {
-        const newStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: facingMode, width: { ideal: 1280 }, height: { ideal: 720 } }
-        })
+        await getCameras()
+        const constraints = {
+          video: {
+            deviceId: selectedCameraId ? { exact: selectedCameraId } : undefined,
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        }
+        const newStream = await navigator.mediaDevices.getUserMedia(constraints)
         setStream(newStream)
         setUseCamera(true)
         if (videoRef.current) videoRef.current.srcObject = newStream
@@ -188,16 +209,19 @@ export default function PlayOnline() {
     }
   }
 
-  const flipCamera = async () => {
-    const nextMode = facingMode === 'user' ? 'environment' : 'user'
-    setFacingMode(nextMode)
+  const handleCameraChange = async (deviceId) => {
+    setSelectedCameraId(deviceId)
     if (useCamera) {
       if (stream) stream.getTracks().forEach(t => t.stop())
-      const newStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: nextMode, width: { ideal: 1280 }, height: { ideal: 720 } }
-      })
-      setStream(newStream)
-      if (videoRef.current) videoRef.current.srcObject = newStream
+      try {
+        const newStream = await navigator.mediaDevices.getUserMedia({
+          video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
+        })
+        setStream(newStream)
+        if (videoRef.current) videoRef.current.srcObject = newStream
+      } catch (e) {
+        showToast('Error switching camera: ' + e.message, 'error')
+      }
     }
   }
 
@@ -463,15 +487,26 @@ export default function PlayOnline() {
 
       <div className="match-main" style={{ display: 'grid', gridTemplateColumns: '1fr 380px', flex: 1, minHeight: 0 }}>
         <div className="match-play-area" style={{ padding: '20px', overflowY: 'auto' }}>
-          <div className="match-controls-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+          <div className="match-controls-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', gap: '10px' }}>
              <button className={`btn btn-xs ${useCamera ? 'btn-danger' : 'btn-primary'}`} onClick={toggleCamera}>
                {useCamera ? 'Disable Camera' : 'Enable Camera'}
              </button>
              {useCamera && (
-               <div style={{ display: 'flex', gap: '8px' }}>
+               <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flex: 1, justifyContent: 'flex-end' }}>
+                 <select
+                    className="glass"
+                    style={{ fontSize: '0.7rem', padding: '4px 8px', borderRadius: '4px', maxWidth: '150px' }}
+                    value={selectedCameraId}
+                    onChange={(e) => handleCameraChange(e.target.value)}
+                 >
+                   {availableCameras.map(cam => (
+                     <option key={cam.deviceId} value={cam.deviceId}>
+                       {cam.label || `Camera ${availableCameras.indexOf(cam) + 1}`}
+                     </option>
+                   ))}
+                 </select>
                  <button className="btn btn-xs btn-secondary" onClick={() => setZoomLevel(prev => Math.max(1, prev - 0.2))}><ZoomOutIcon /></button>
                  <button className="btn btn-xs btn-secondary" onClick={() => setZoomLevel(prev => Math.min(3, prev + 0.2))}><ZoomInIcon /></button>
-                 <button className="btn btn-xs btn-secondary" onClick={flipCamera}><FlipIcon /></button>
                </div>
              )}
           </div>
