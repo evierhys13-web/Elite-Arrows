@@ -66,7 +66,7 @@ class DartboardOverlayView(context: Context, attrs: AttributeSet?) : View(contex
             }
         }
         
-        canvas.drawText("AI DART DETECTION ACTIVE", width / 2f, 80f, textPaint)
+        canvas.drawText("AI ACTIVE", width / 2f, height - 250f, textPaint)
     }
     
     fun updateCalibration(x: Float, y: Float, r: Float) {

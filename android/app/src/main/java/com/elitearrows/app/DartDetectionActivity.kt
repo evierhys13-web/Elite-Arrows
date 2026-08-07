@@ -59,6 +59,13 @@ class DartDetectionActivity : AppCompatActivity() {
     private var lastFrameData: ByteArray? = null
     private var frameWidth = 0
     private var frameHeight = 0
+    
+    // Landing detection state
+    private var isWaitingForLanding = false
+    private var landingSumSX = 0L
+    private var landingSumSY = 0L
+    private var landingDiffCount = 0
+    private var landingFrames = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -429,15 +436,15 @@ class DartDetectionActivity : AppCompatActivity() {
 
     private fun detectDartHit(currentData: ByteArray, width: Int, height: Int, rotation: Int, scale: Float, offsetX: Float, offsetY: Float) {
         var diffCount = 0
-        var sumSX = 0L
-        var sumSY = 0L
+        var currentSumSX = 0L
+        var currentSumSY = 0L
         
         val step = 2 // Higher resolution for better accuracy
         for (y in 0 until height step step) {
             for (x in 0 until width step step) {
                 val idx = y * width + x
                 val diff = kotlin.math.abs((currentData[idx].toInt() and 0xFF) - (lastFrameData!![idx].toInt() and 0xFF))
-                if (diff > 50) { // Higher threshold
+                if (diff > 50) { 
                     diffCount++
                     
                     val sx: Float
@@ -448,8 +455,8 @@ class DartDetectionActivity : AppCompatActivity() {
                         270 -> { sx = y.toFloat(); sy = (width - x).toFloat() }
                         else -> { sx = x.toFloat(); sy = y.toFloat() }
                     }
-                    sumSX += sx.toLong()
-                    sumSY += sy.toLong()
+                    currentSumSX += sx.toLong()
+                    currentSumSY += sy.toLong()
                 }
             }
         }
@@ -457,16 +464,28 @@ class DartDetectionActivity : AppCompatActivity() {
         val totalPixels = (width / step) * (height / step)
         val changePercentage = diffCount.toFloat() / totalPixels
 
-        if (changePercentage in 0.0005f..0.02f) { 
-            if (isStable) {
-                isStable = false
-                val avgSX = (sumSX.toFloat() / diffCount) * scale + offsetX
-                val avgSY = (sumSY.toFloat() / diffCount) * scale + offsetY
+        // If we see significant motion, start tracking the "landing"
+        if (changePercentage > 0.0005f) { 
+            isStable = false
+            if (changePercentage < 0.03f) { // Ignore huge changes (like a person walking)
+                landingSumSX += currentSumSX
+                landingSumSY += currentSumSY
+                landingDiffCount += diffCount
+                landingFrames++
+                isWaitingForLanding = true
+            }
+        } else if (!isStable && changePercentage < 0.0002f) {
+            // Motion stopped!
+            isStable = true
+            
+            if (isWaitingForLanding && landingDiffCount > 0) {
+                val avgSX = (landingSumSX.toFloat() / landingDiffCount) * scale + offsetX
+                val avgSY = (landingSumSY.toFloat() / landingDiffCount) * scale + offsetY
                 
                 runOnUiThread {
-                    // Tip detection correction
-                    val correctedX = bullX + (avgSX - bullX) * 0.95f
-                    val correctedY = bullY + (avgSY - bullY) * 0.95f
+                    // Tip detection correction (0.98 pulls it closer to the tip vs the flight)
+                    val correctedX = bullX + (avgSX - bullX) * 0.98f
+                    val correctedY = bullY + (avgSY - bullY) * 0.98f
 
                     val score = scoringEngine.calculateScore(correctedX, correctedY, bullX, bullY, top20X, top20Y)
                     if (score.value >= 0 && score.label != "MISS") {
@@ -481,9 +500,14 @@ class DartDetectionActivity : AppCompatActivity() {
                         sendScoreToWeb(score.label, score.value)
                     }
                 }
+                
+                // Reset landing trackers
+                isWaitingForLanding = false
+                landingSumSX = 0L
+                landingSumSY = 0L
+                landingDiffCount = 0
+                landingFrames = 0
             }
-        } else if (changePercentage < 0.0002f) {
-            isStable = true
         }
     }
 

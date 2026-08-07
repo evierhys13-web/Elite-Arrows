@@ -790,10 +790,10 @@ export default function PlayOnline() {
                 </div>
 
                 {isWebAiActive && (
-                  <div className="ai-overlay">
+                  <div className="ai-overlay" style={{ justifyContent: 'flex-start', paddingTop: '120px' }}>
                      <div className="scanning-line" />
-                     <div className="ai-status-badge">AUTO-SCORING ACTIVE</div>
-                     {isCalibrating && <div className="ai-status-badge" style={{ marginTop: '50px', background: 'var(--accent-cyan)', color: 'black' }}>DETECTING BOARD...</div>}
+                     <div className="ai-status-badge" style={{ opacity: 0.8, scale: '0.8' }}>AI AUTO-SCORING</div>
+                     {isCalibrating && <div className="ai-status-badge" style={{ marginTop: '10px', background: 'var(--accent-cyan)', color: 'black' }}>DETECTING BOARD...</div>}
                   </div>
                 )}
               </div>
