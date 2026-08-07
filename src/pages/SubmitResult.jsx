@@ -726,7 +726,6 @@ export default function SubmitResult() {
       setSuccessMessage('Saving match results...')
 
       const resultId = Date.now().toString()
-      const fixtureForResult = cupFixture || selectedFixture
       const currentResults = [...allResults]
 
       let finalResultObj;
