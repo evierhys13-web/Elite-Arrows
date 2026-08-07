@@ -71,6 +71,10 @@ export default function SubmitResult() {
   const allResults = getResults()
   const seasons = getSeasons()
 
+  const isLocked = new Date() < new Date("2026-07-01T00:00:00")
+  const isAdmin = user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin
+  const isOpenLeague = formData.gameType === 'Open League Singles' || formData.gameType === 'Open League Doubles'
+
   // Robust season detection
   const getDefaultSeason = () => {
     return formData.season || searchParams.get('season') || adminData?.currentSeason || 'Season 1'
@@ -246,10 +250,6 @@ export default function SubmitResult() {
     
     return existingMatches.length > 0 ? existingMatches[0] : null
   }
-
-  const isLocked = new Date() < new Date("2026-07-01T00:00:00")
-  const isAdmin = user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin
-  const isOpenLeague = formData.gameType === 'Open League Singles' || formData.gameType === 'Open League Doubles'
 
   const userDuos = useMemo(() => {
     if (!user) return []
