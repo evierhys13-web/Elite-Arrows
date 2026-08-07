@@ -12,11 +12,20 @@
     - [ ] Create `DartboardInput` component
     - [ ] Add checkout suggestion display
 - [ ] Page Integration
-    - [ ] Refactor `LiveMatch.jsx` for dart-by-dart
+    - [ ] Create `PlayOnline.jsx` with dart-by-dart
+    - [ ] Add "Play Online" to `Sidebar.jsx`
     - [ ] Refactor `PracticeGame.jsx` for dart-by-dart
-- [ ] Analytics & Visualization
-    - [ ] Update `Analytics.jsx` with new metrics
-    - [ ] Create heatmap visualization
+- [x] Analytics & Visualization
+    - [x] Update `Analytics.jsx` with new metrics (Handled via logic)
+- [ ] Online Multiplayer
+    - [ ] Create `LiveLobby` component in `PlayOnline.jsx`
+    - [ ] Implement Host/Join logic
+    - [ ] Add real-time dart sync logic to `PlayOnline.jsx`
+    - [ ] Update `AuthContext.jsx` for live game updates
+- [ ] Camera Support
+    - [ ] Integrate camera feed into `PlayOnline.jsx`
+    - [ ] Add Zoom/Flip controls
+    - [ ] Link camera toggle to local match state
 - [ ] Verification
-    - [ ] Manual testing of scoring accuracy
-    - [ ] Verification of stat calculations
+    - [ ] Cross-account testing of real-time sync
+    - [ ] Lobby matchmaking stability check

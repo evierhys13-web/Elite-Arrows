@@ -1,67 +1,81 @@
-# Enhanced "Accurate" Scoring System (Dartsmind Inspired)
+# Real-Time Online Lobby & Multiplayer Matches
 
-Following a study of Dartsmind, this plan outlines improvements to the Elite Arrows scoring system to move from "Total Score" input to a more accurate and data-rich "Dart-by-Dart" model.
+Following the implementation of the dart-by-dart scoring system, this plan outlines the technical steps to enable live real-time matches between players.
 
 ## User Review Required
 
-- **Input Method**: Should "Dart-by-Dart" be the *only* way to score live matches, or should we keep a "Total Score" toggle for those who prefer speed?
-- **Checkout Suggestions**: Should we display a "Suggested Checkout" (e.g., T20-T19-D12 for 155) in real-time?
-- **Detailed Stats**: Are "First 9 Average" and "Double Success Rate" metrics you'd like to see on player profiles?
+- **Lobby Visibility**: Should the lobby show all online users, or only those who have explicitly marked themselves as "Looking for Game"?
+- **Game Types**: Should we support "Best of X" legs for online play immediately, or start with single-leg matches?
+- **Rematch Feature**: Should players have a "Rematch" button at the end of an online game?
 
 ## Proposed Changes
 
-### [Core Logic]
+### [Database Schema Enhancements]
 
-Update the result tracking logic to handle dart-by-dart data.
+Extend existing collections to support real-time sync.
 
-#### [leagueResults.js](file:///C:/Developer/Elite-Arrows/src/utils/leagueResults.js)
-- Add functions to calculate `first9Avg` and `doubleAccuracy` from a sequence of darts.
-
----
-
-### [Live Match Enhancements]
-
-Refactor the live match interface to support granular input.
-
-#### [LiveMatch.jsx](file:///C:/Developer/Elite-Arrows/src/pages/LiveMatch.jsx)
-- **New Component**: `DartboardInput` - A visual segment-based input (S/D/T for numbers 1-20 + Bull).
-- **Turn State**: Track each dart individual (up to 3) per turn.
-- **Validation**: Prevent "illegal" scores (e.g., trying to finish with a single dart if double is required).
-- **UI**: Display the specific darts thrown in the turn (e.g., "T20, S20, S5").
+#### `liveGames` Collection
+- **`currentDarts`**: Store the array of darts (max 3) for the active turn.
+- **`lastDarts`**: Store the previous turn's darts for visual confirmation.
+- **`history`**: Array of turn objects, each containing 3 darts and the resultant score.
+- **`turn`**: The UID of the player whose turn it is.
 
 ---
 
-### [Practice Mode Enhancements]
+### [Online Lobby Interface]
 
-Bring the same accuracy to practice games.
+Create a functional lobby within the "Play Online" page.
 
-#### [PracticeGame.jsx](file:///C:/Developer/Elite-Arrows/src/pages/PracticeGame.jsx)
-- Update `handleInput` to support dart-by-dart logging.
-- For "Around the Clock", track exactly which darts hit the target.
+#### [PlayOnline.jsx](file:///C:/Developer/Elite-Arrows/src/pages/PlayOnline.jsx)
+- **Lobby Component**:
+    - Real-time list of "Ready" players (using Firestore `onSnapshot`).
+    - "Host Game" button to create a public invite.
+    - "Join" button next to other players to send a challenge.
+- **Game Component**:
+    - Listener for `liveGames` document.
+    - Update local UI (scores, darts, turn) instantly when the opponent throws.
+    - Broadcast local dart throws to Firestore.
 
 ---
 
-### [Statistics & Visualization]
+### [Authentication & Context]
 
-Leverage the new granular data.
+Update context to handle live game state more robustly.
 
-#### [Analytics.jsx](file:///C:/Developer/Elite-Arrows/src/pages/Analytics.jsx)
-- Add new charts for:
-    - **Heatmaps**: Showing common landing zones.
-    - **Checkout Success**: A bar chart of percentage success per double.
-    - **First 9 vs Overall Average**: A line chart comparing starting strength to finishing strength.
+#### [AuthContext.jsx](file:///C:/Developer/Elite-Arrows/src/context/AuthContext.jsx)
+- Add `updateLiveGame` function to push dart-by-dart data.
+- Ensure `acceptGameInvite` correctly initializes the new data fields.
+
+### [Online & Local Camera Integration]
+
+Enable device camera for all match types (Bot, Local, Online).
+
+#### [PlayOnline.jsx](file:///C:/Developer/Elite-Arrows/src/pages/PlayOnline.jsx)
+- **Camera Module**:
+    - "Enable Camera" toggle in the match header.
+    - Mini-preview/HUD overlay showing the live camera feed.
+    - Zoom and Flip controls (similar to legacy `LiveMatch`).
+    - Optimization for mobile browsers (using `environment` camera by default).
+
+---
+
+### [UX & Feedback]
+
+- **Thinking Indicator**: Show "Opponent is throwing..." when the other player is active.
+- **Victory Screen**: Shared celebration/stats summary at the end of the match.
+- **Bust Alerts**: Synchronized bust animations for both players.
 
 ## Verification Plan
 
-### Automated Tests
-- No existing unit test framework detected. I will perform manual verification of scoring logic.
-
 ### Manual Verification
-1. **Live Match**:
-    - Start a match. Input darts one-by-one (e.g., T20, T20, T20).
-    - Verify the total (180) is calculated correctly.
-    - Verify "First 9" stats are updated after the first 3 turns.
-2. **Finishing**:
-    - Try to finish a leg with a single. Verify the app requires a double to finish.
-3. **Analytics**:
-    - Complete a match and verify the "Double Success" stat reflects the actual darts thrown.
+1. **Matchmaking**:
+    - Open the app in two different browsers/accounts.
+    - Host a game on Account A.
+    - Join the game on Account B.
+    - Verify both enter the same `liveGame` session.
+2. **Real-time Sync**:
+    - Throw a T20 on Account A.
+    - Verify Account B sees "T20" in the current turn slot instantly.
+    - Complete turn on Account A and verify turn switches to Account B on both screens.
+3. **Finish/Bust**:
+    - Attempt a checkout. Verify both players see the "Match Shot" notification simultaneously.

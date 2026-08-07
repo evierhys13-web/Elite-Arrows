@@ -31,6 +31,35 @@ export default function PracticeGame() {
 
   const isAndroid = Capacitor.getPlatform() === 'android'
 
+  useEffect(() => {
+    const handleScore = (event) => {
+      const { scoreValue, scoreLabel } = event.detail
+      processDart({ value: scoreValue, label: scoreLabel || 'AI' })
+    }
+
+    const handleSubmit = () => {
+      // In practice mode, we just keep going
+    }
+
+    window.addEventListener('dartDetectionScore', handleScore)
+    window.addEventListener('dartDetectionSubmit', handleSubmit)
+    return () => {
+      window.removeEventListener('dartDetectionScore', handleScore)
+      window.removeEventListener('dartDetectionSubmit', handleSubmit)
+    }
+  }, [processDart])
+
+  const launchNativeDetection = async () => {
+    try {
+      const { registerPlugin } = await import('@capacitor/core')
+      const DartDetection = registerPlugin('DartDetection')
+      await DartDetection.startDetection()
+    } catch (e) {
+      console.error('Failed to launch native detection:', e)
+      showToast('Native detection not available', 'error')
+    }
+  }
+
   const handleDart = (val, mult = 1) => {
     const score = val * mult
     processDart({ value: score, label: mult === 3 ? `T${val}` : mult === 2 ? `D${val}` : `S${val}`, multiplier: mult })
