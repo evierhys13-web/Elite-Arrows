@@ -174,9 +174,10 @@ export default function SubmitResult() {
       if (!cupExists) return false
 
       const { player1Id, player2Id } = getFixturePlayerIds(fixture)
+      if (isAdmin) return true
       return String(player1Id) === String(user.id) || String(player2Id) === String(user.id)
     })
-  }, [allFixtures, getCups, user.id])
+  }, [allFixtures, getCups, user.id, isAdmin])
 
   const getDisplayName = (profile, fallback = 'Unknown player') => (
     profile?.username || profile?.name || profile?.displayName || profile?.email || fallback
@@ -545,12 +546,10 @@ export default function SubmitResult() {
     let cupId = null
     let matchId = null
     if (formData.gameType === 'Cup') {
-      cupFixture = selectedFixture?.cupId
-        ? selectedFixture
-        : cupFixtures.find(f => {
-          const opponentId = getFixtureOpponentId(f)
-          return opponentId === formData.opponent
-        })
+      // Find the fixture either by the specific ID (new dropdown mode) or by opponent search (fallback)
+      cupFixture = allFixtures.find(f => String(f.id) === String(formData.opponent)) ||
+                   cupFixtures.find(f => getFixtureOpponentId(f) === formData.opponent)
+
       if (!cupFixture) {
         setError('Please select a valid cup match')
         return
@@ -608,16 +607,36 @@ export default function SubmitResult() {
       const submitterName = getDisplayName(user, 'You')
       const opponentName = opponentDuo ? getDuoDisplayName(opponentDuo) : getDisplayName(opponentUser, formData.opponent || 'Selected opponent')
 
+      const fixtureForResult = cupFixture || selectedFixture
+
+      // Determine correct player names/IDs for Cup matches (especially if admin is submitting)
+      let finalPlayer1Name = submitterName
+      let finalPlayer1Id = user.id
+      let finalPlayer2Name = opponentName
+      let finalPlayer2Id = opponentUser?.id || formData.opponent
+
+      if (formData.gameType === 'Cup' && fixtureForResult) {
+          const p1Id = fixtureForResult.player1Id || fixtureForResult.player1
+          const p2Id = fixtureForResult.player2Id || fixtureForResult.player2
+          const p1 = allUsers.find(u => String(u.id) === String(p1Id))
+          const p2 = allUsers.find(u => String(u.id) === String(p2Id))
+
+          finalPlayer1Id = p1Id
+          finalPlayer1Name = getDisplayName(p1, 'Player 1')
+          finalPlayer2Id = p2Id
+          finalPlayer2Name = getDisplayName(p2, 'Player 2')
+      }
+
       // Helper for creating the document structure
       const createResultDoc = (s1, s2, idSuffix = '', proofOverride = null) => {
         const resId = resultId + idSuffix
         const docData = {
           id: resId,
           firestoreId: resId,
-          player1: submitterName,
-          player1Id: user.id,
-          player2: opponentName,
-          player2Id: opponentUser?.id || formData.opponent,
+          player1: finalPlayer1Name,
+          player1Id: finalPlayer1Id,
+          player2: finalPlayer2Name,
+          player2Id: finalPlayer2Id,
           score1: parseInt(s1),
           score2: parseInt(s2),
           division: effectiveDivision,
@@ -958,23 +977,28 @@ export default function SubmitResult() {
                     required
                     style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text)' }}
                   >
-                    <option value="">Select match</option>
-                    {cupFixtures.map(f => {
+                    <option value="">Select Cup Match...</option>
+                    {cupFixtures.sort((a,b) => (a.cupName || '').localeCompare(b.cupName || '')).map(f => {
                       const cupsData = (typeof getCups === 'function') ? getCups() : []
                       const cup = Array.isArray(cupsData) ? cupsData.find(c => String(c.id) === String(f.cupId)) : null
-                      const opponentId = getFixtureOpponentId(f)
-                      const opponent = allUsers.find(u => String(u.id) === String(opponentId))
+
+                      const p1Id = f.player1Id || f.player1
+                      const p2Id = f.player2Id || f.player2
+                      const p1 = allUsers.find(u => String(u.id) === String(p1Id))
+                      const p2 = allUsers.find(u => String(u.id) === String(p2Id))
 
                       const getRoundName = (round, totalRounds = 5) => {
-                        if (round === 0) return 'Group Stage'
+                        if (round === 0) return 'Groups'
                         if (round === totalRounds) return 'Final'
                         if (round === totalRounds - 1) return 'Semi-Final'
-                        return `Round ${round}`
+                        return `R${round}`
                       }
 
+                      const label = `${cup?.name || 'Cup'} - ${getRoundName(f.round)}: ${getDisplayName(p1)} vs ${getDisplayName(p2)}`
+
                       return (
-                        <option key={f.id} value={opponentId}>
-                          {cup?.name || 'Cup'} - {getRoundName(f.round)} vs {getDisplayName(opponent, 'Unknown')}
+                        <option key={f.id} value={f.id}>
+                          {label}
                         </option>
                       )
                     })}
@@ -993,23 +1017,14 @@ export default function SubmitResult() {
                     ))}
                   </select>
                 ) : (
-                  <select
-                    name="opponent"
-                    value={formData.opponent}
-                    onChange={handleChange}
-                    required
-                    style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text)' }}
-                  >
-                    <option value="">Select opponent</option>
-                    {opponentOptions.map(p => {
-                      const status = getOpponentStatus(p.id)
-                      return (
-                        <option key={p.id} value={p.id}>
-                          {getDisplayName(p)} ({p.effectiveDiv}){formData.gameType === 'League' && status?.played ? ' - Played' : ''}
-                        </option>
-                      )
-                    })}
-                  </select>
+                  <UserSearchSelect
+                    users={opponentOptions}
+                    selectedId={formData.opponent}
+                    onSelect={id => handleChange({ target: { name: 'opponent', value: id } })}
+                    placeholder="Search by name or DartCounter..."
+                    label=""
+                    onQueryChange={searchUsers}
+                  />
                 )}
               </div>
             </div>
