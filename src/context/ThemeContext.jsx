@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState, useMemo } from 'react'
 
 const ThemeContext = createContext(null)
 
@@ -58,19 +58,19 @@ export function ThemeProvider({ children }) {
     setNavMode(mode)
   }
 
+  const value = useMemo(() => ({
+    theme,
+    toggleTheme,
+    language,
+    setLanguage,
+    chatSettings,
+    setChatSettings,
+    navMode,
+    updateNavMode
+  }), [theme, language, chatSettings, navMode]);
+
   return (
-    <ThemeContext.Provider
-      value={{
-        theme,
-        toggleTheme,
-        language,
-        setLanguage,
-        chatSettings,
-        setChatSettings,
-        navMode,
-        updateNavMode
-      }}
-    >
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   )

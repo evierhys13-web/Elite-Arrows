@@ -652,7 +652,6 @@ export function AuthProvider({ children }) {
   );
 
   useEffect(() => {
-    // Admin data and News should be available even if not logged in
     const unsubscribeAdmin = onSnapshot(
       doc(db, "adminData", "main"),
       (docSnap) => {
@@ -683,27 +682,10 @@ export function AuthProvider({ children }) {
               "eliteArrowsResultStatusOverrides",
               JSON.stringify(data.resultStatusOverrides || {}),
             );
-            localStorage.setItem(
-              "eliteArrowsSubscriptionPot",
-              String(data.subscriptionPot || 0),
-            );
-            localStorage.setItem(
-              "eliteArrowsSubscriptionPot10",
-              String(data.subscriptionPot10 || 0),
-            );
-            localStorage.setItem(
-              "eliteArrowsMoneyHistory",
-              JSON.stringify(data.moneyHistory || []),
-            );
-          } catch (e) {
-            console.warn("Admin cache failed", e);
-          }
+          } catch (e) {}
 
           publishResults({ announce: false });
         }
-      },
-      (error) => {
-        // console.log('Admin data listener error:', error)
       },
     );
 
@@ -718,31 +700,32 @@ export function AuthProvider({ children }) {
           localStorage.setItem("eliteArrowsNews", JSON.stringify(newsData));
         } catch (e) {}
       },
-      (error) => {
-        // console.log('News listener error:', error)
-        setNews([]);
-      },
     );
 
-    let unsubscribeInvites = null;
-    if (user?.id) {
-      // Listen for Game Invites
-      const invitesQuery = query(
-        collection(db, "gameInvites"),
-        where("toUserId", "==", user.id),
-        where("status", "==", "pending"),
-      );
-      unsubscribeInvites = onSnapshot(invitesQuery, (snapshot) => {
-        snapshot.docChanges().forEach((change) => {
-          if (change.type === "added") {
-            const invite = change.doc.data();
-            setPendingGameInvite(invite);
-          }
-        });
-      });
-    }
+    return () => {
+      unsubscribeAdmin();
+      unsubscribeNews();
+    };
+  }, [publishResults]);
 
+  useEffect(() => {
     if (!user?.id) return;
+
+    let unsubscribeInvites = null;
+    // Listen for Game Invites
+    const invitesQuery = query(
+      collection(db, "gameInvites"),
+      where("toUserId", "==", user.id),
+      where("status", "==", "pending"),
+    );
+    unsubscribeInvites = onSnapshot(invitesQuery, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === "added") {
+          const invite = change.doc.data();
+          setPendingGameInvite(invite);
+        }
+      });
+    });
 
     const hydratedCollections = new Set();
     const announceAfterHydration = (collectionName) => {
@@ -770,7 +753,6 @@ export function AuthProvider({ children }) {
           (item) => String(item.id) === String(user.id),
         );
 
-        // Sync the current user state if changed on another device
         if (currentUserData) {
           setUser(prev => {
              if (JSON.stringify(prev) === JSON.stringify(currentUserData)) return prev;
@@ -787,14 +769,9 @@ export function AuthProvider({ children }) {
           }
         }
         announceAfterHydration("users");
-      },
-      (error) => {
-        // console.log('Users listener error:', error)
-      },
+      }
     );
 
-    // Instead of listening to ALL results, we only listen to PENDING results for admins
-    // or RECENT results for everyone.
     const resultsQuery = user?.isAdmin
       ? query(
           collection(db, "results"),
@@ -808,8 +785,6 @@ export function AuthProvider({ children }) {
           limit(500),
         );
 
-    // Targeted listener for user's own results to ensure Home page accuracy.
-    // orderBy("submittedAt", "desc") ensures we get the MOST RECENT 50, not the oldest.
     const userResultsQuery1 = !user?.isAdmin
       ? query(
           collection(db, "results"),
@@ -862,10 +837,7 @@ export function AuthProvider({ children }) {
         const shouldAnnounce = hydratedCollections.has("results");
         hydratedCollections.add("results");
         publishResults({ announce: shouldAnnounce });
-      },
-      (error) => {
-        // console.log('Results listener error:', error)
-      },
+      }
     );
 
     let unsubscribeUserResults1 = null;
@@ -926,9 +898,6 @@ export function AuthProvider({ children }) {
       });
     }
 
-    let unsubscribeSeasonResults = null;
-
-    // Instead of listening to ALL fixtures, we only listen to user's fixtures or recent ones
     const fixturesQuery = user?.isAdmin
       ? query(
           collection(db, "fixtures"),
@@ -941,7 +910,6 @@ export function AuthProvider({ children }) {
           limit(50),
         );
 
-    // Fallback query for user as player2
     const fixturesQuery2 = !user?.isAdmin
       ? query(
           collection(db, "fixtures"),
@@ -968,10 +936,7 @@ export function AuthProvider({ children }) {
           return merged;
         });
         announceAfterHydration("fixtures");
-      },
-      (error) => {
-        // console.log('Fixtures listener error:', error)
-      },
+      }
     );
 
     let unsubscribeFixtures2 = null;
@@ -994,8 +959,6 @@ export function AuthProvider({ children }) {
       });
     }
 
-    // We fetch cups, supportRequests and seasons on-demand now instead of full listeners
-    // but we can keep a small one for seasons as it's small and controls logic
     const unsubscribeSeasons = onSnapshot(
       collection(db, "seasons"),
       (snapshot) => {
@@ -1017,10 +980,7 @@ export function AuthProvider({ children }) {
           }
         }
         announceAfterHydration("seasons");
-      },
-      (error) => {
-        // console.log('Seasons listener error:', error)
-      },
+      }
     );
 
     const unsubscribeBets = onSnapshot(
@@ -1035,27 +995,75 @@ export function AuthProvider({ children }) {
           localStorage.setItem("eliteArrowsBets", JSON.stringify(betsData));
         } catch (e) {}
         announceAfterHydration("bets");
-      },
-      (error) => {
-        // console.log('Bets listener error:', error)
-      },
+      }
+    );
+
+    const notificationsQuery = query(
+      collection(db, "notifications"),
+      where("toUserId", "==", user.id),
+    );
+    const unsubscribeNotifications = onSnapshot(
+      notificationsQuery,
+      (snapshot) => {
+        const userNotifs = snapshot.docs
+          .map((docSnap) => {
+            const data = docSnap.data();
+            return {
+              ...data,
+              id: data.id || docSnap.id,
+              notificationDocId: docSnap.id,
+            };
+          })
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        const previousIds = seenNotificationIdsRef.current;
+        const nextIds = new Set(
+          userNotifs.map((notification) => notification.id),
+        );
+        const shouldAnnounceNewNotifications = previousIds.size > 0;
+
+        userNotifs.forEach((notification) => {
+          if (
+            shouldAnnounceNewNotifications &&
+            !previousIds.has(notification.id) &&
+            !notification.isRead
+          ) {
+            showLocalNotification(notification.title || "Elite Arrows", {
+              body: notification.message || "New notification",
+              data: notification.data,
+            });
+            showToast(
+              notification.message || notification.title || "New notification",
+              "info",
+            );
+          }
+        });
+
+        seenNotificationIdsRef.current = nextIds;
+        setNotifications(userNotifs);
+        localStorage.setItem(
+          "eliteArrowsNotifications",
+          JSON.stringify(userNotifs),
+        );
+        const unread = userNotifs.filter((n) => !n.isRead).length;
+        setUnreadCount(unread);
+        updateBadgeCount(unread);
+      }
     );
 
     return () => {
+      if (unsubscribeInvites) unsubscribeInvites();
       unsubscribeUsers();
       unsubscribeResults();
       if (unsubscribeUserResults1) unsubscribeUserResults1();
       if (unsubscribeUserResults2) unsubscribeUserResults2();
-      if (unsubscribeSeasonResults) unsubscribeSeasonResults();
       unsubscribeFixtures();
       if (unsubscribeFixtures2) unsubscribeFixtures2();
       unsubscribeSeasons();
       unsubscribeBets();
-      unsubscribeNews();
-      unsubscribeAdmin();
-      if (unsubscribeInvites) unsubscribeInvites();
+      unsubscribeNotifications();
     };
-  }, [user?.id, triggerDataRefresh, publishResults]);
+  }, [user?.id, triggerDataRefresh, publishResults, showLocalNotification, updateBadgeCount, showToast]);
 
   // Re-fetch cups from Firestore when cupsRefreshTrigger changes
   useEffect(() => {
