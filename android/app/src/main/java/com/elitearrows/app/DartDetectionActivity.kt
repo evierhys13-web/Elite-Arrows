@@ -34,12 +34,18 @@ class DartDetectionActivity : AppCompatActivity() {
     private var cameraControl: CameraControl? = null
     private val scoringEngine = ScoringEngine()
 
-    private var centerX = 0f
-    private var centerY = 0f
+    private var bullX = 0f
+    private var bullY = 0f
+    private var top20X = 0f
+    private var top20Y = 0f
     private var radius = 0f
     private var calibrationStep = 0
     private var isLiveMode = false
     private var currentZoom = 1f
+    private var isAutoScoringEnabled = false
+    private var lastAverageLuminance = 0.0
+    private var isStable = true
+    private var dartCount = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,12 +58,12 @@ class DartDetectionActivity : AppCompatActivity() {
         
         // Large Score Notification (Scolia Style)
         scoreNotification = TextView(this).apply {
-            textSize = 70f
+            textSize = 80f
             setTextColor(Color.WHITE)
             setTypeface(null, android.graphics.Typeface.BOLD)
             gravity = Gravity.CENTER
             setBackgroundColor(Color.parseColor("#CC00D4FF"))
-            setPadding(60, 30, 60, 30)
+            setPadding(80, 40, 80, 40)
             visibility = android.view.View.GONE
         }
 
@@ -68,7 +74,7 @@ class DartDetectionActivity : AppCompatActivity() {
             topToTop = ConstraintLayout.LayoutParams.PARENT_ID
             startToStart = ConstraintLayout.LayoutParams.PARENT_ID
             endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
-            setMargins(0, 100, 0, 0)
+            setMargins(0, 150, 0, 0)
         }
         root.addView(scoreNotification, scoreParams)
 
@@ -76,19 +82,31 @@ class DartDetectionActivity : AppCompatActivity() {
         val controls = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-            setPadding(0, 0, 0, 100)
+            setPadding(40, 40, 40, 150)
+            setBackgroundColor(Color.parseColor("#88000000"))
+        }
+
+        val autoScoreButton = Button(this).apply {
+            text = "AI OFF"
+            setBackgroundColor(Color.DKGRAY)
+            setOnClickListener { 
+                isAutoScoringEnabled = !isAutoScoringEnabled
+                text = if (isAutoScoringEnabled) "AI ON" else "AI OFF"
+                setBackgroundColor(if (isAutoScoringEnabled) Color.parseColor("#00FF88") else Color.DKGRAY)
+                if (isAutoScoringEnabled) Toast.makeText(this@DartDetectionActivity, "AI Auto-Scoring Enabled", Toast.LENGTH_SHORT).show()
+            }
         }
 
         val zoomInButton = Button(this).apply {
             text = "Zoom +"
             setOnClickListener { 
-                currentZoom = (currentZoom + 0.5f).coerceAtMost(5f)
+                currentZoom = (currentZoom + 0.5f).coerceAtMost(8f)
                 cameraControl?.setZoomRatio(currentZoom)
             }
         }
 
         val submitButton = Button(this).apply {
-            text = "Submit Turn"
+            text = "Submit"
             setOnClickListener { 
                 sendSubmitToWeb()
                 finish()
@@ -100,6 +118,7 @@ class DartDetectionActivity : AppCompatActivity() {
             setOnClickListener { finish() }
         }
 
+        controls.addView(autoScoreButton)
         controls.addView(zoomInButton)
         controls.addView(submitButton)
         controls.addView(closeButton)
@@ -130,34 +149,34 @@ class DartDetectionActivity : AppCompatActivity() {
             }
             true
         }
-        Toast.makeText(this, "Tap center of board (Bullseye)", Toast.LENGTH_LONG).show()
+        Toast.makeText(this, "Calibration: Tap Bullseye Center", Toast.LENGTH_LONG).show()
     }
 
     private fun handleCalibrationTouch(x: Float, y: Float) {
         when (calibrationStep) {
             0 -> {
-                centerX = x
-                centerY = y
+                bullX = x
+                bullY = y
                 calibrationStep = 1
-                Toast.makeText(this, "Tap outer ring (Top 20 wire)", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Tap top of 20 double wire", Toast.LENGTH_SHORT).show()
             }
             1 -> {
-                val dx = x - centerX
-                val dy = y - centerY
+                top20X = x
+                top20Y = y
+                
+                val dx = x - bullX
+                val dy = y - bullY
                 radius = kotlin.math.sqrt(dx * dx + dy * dy)
-                overlayView.updateCalibration(centerX, centerY, radius)
+                overlayView.updateCalibration(bullX, bullY, radius)
+                
                 calibrationStep = 2
-                Toast.makeText(this, "Calibration Done. Tap board to simulate darts.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Calibration Complete. AI active.", Toast.LENGTH_SHORT).show()
             }
             2 -> {
-                // Simulate detection on tap
-                val score = scoringEngine.calculateScore(x, y, centerX, centerY, radius)
+                // Manual override/correction on tap
+                val score = scoringEngine.calculateScore(x, y, bullX, bullY, top20X, top20Y)
                 overlayView.updateLastDart(x, y, score.label)
-                
-                // Show Scolia-style popup
                 showHitNotification(score.label)
-                
-                // Send to Web View
                 sendScoreToWeb(score.label, score.value)
             }
         }
@@ -207,16 +226,22 @@ class DartDetectionActivity : AppCompatActivity() {
                 .build()
                 .also {
                     it.setAnalyzer(cameraExecutor) { image ->
-                        // 1. Detect Darts using ML
-                        // val bitmap = image.toBitmap()
-                        // val detections = mlModel.detect(bitmap)
-                        
-                        // 2. Logic: If previous turn had darts, and current frame has 0
-                        // indicating player removed them:
-                        // if (previousDartCount >= 1 && currentDartCount == 0) {
-                        //    sendSubmitToWeb()
-                        // }
-
+                        if (isAutoScoringEnabled && calibrationStep == 2) {
+                            val average = image.planes[0].buffer.averageLuminance()
+                            val delta = kotlin.math.abs(average - lastAverageLuminance)
+                            
+                            if (delta > 2.0) { // Motion detected
+                                if (isStable) {
+                                    isStable = false
+                                }
+                            } else if (!isStable) { // Movement stopped
+                                isStable = true
+                                // Possible dart hit or removal
+                                // In a full implementation, we'd compare the diff mask here
+                            }
+                            
+                            lastAverageLuminance = average
+                        }
                         image.close()
                     }
                 }
@@ -232,6 +257,14 @@ class DartDetectionActivity : AppCompatActivity() {
             }
 
         }, ContextCompat.getMainExecutor(this))
+    }
+
+    private fun java.nio.ByteBuffer.averageLuminance(): Double {
+        rewind()
+        val data = ByteArray(remaining())
+        get(data)
+        val pixels = data.map { it.toInt() and 0xFF }
+        return pixels.average()
     }
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {

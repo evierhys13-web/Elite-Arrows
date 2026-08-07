@@ -61,22 +61,22 @@ const DartboardInput = ({ onDart, onUndo, currentDarts, disabled }) => {
         <button className="undo-btn" onClick={onUndo} disabled={currentDarts.length === 0 || disabled}>Undo</button>
       </div>
       <style>{`
-        .dart-input-grid { display: flex; flex-direction: column; gap: 15px; width: 100%; max-width: 400px; margin: 0 auto; }
-        .multipliers { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
-        .multi-btn { padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-secondary); color: white; font-weight: 800; cursor: pointer; }
-        .multi-btn.active { border-color: var(--accent-cyan); background: rgba(0, 212, 255, 0.1); box-shadow: 0 0 10px var(--accent-cyan-glow); }
-        .multi-btn.dbl.active { border-color: #22c55e; background: rgba(34, 197, 129, 0.1); }
-        .multi-btn.trb.active { border-color: #ef4444; background: rgba(239, 68, 68, 0.1); }
-        .numbers-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
-        .num-btn { aspect-ratio: 1; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-primary); color: white; font-weight: 700; cursor: pointer; transition: 0.1s; }
+        .dart-input-grid { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 380px; }
+        .multipliers { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+        .multi-btn { padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-secondary); color: white; font-weight: 800; cursor: pointer; font-size: 0.8rem; }
+        .multi-btn.active { border-color: var(--accent-cyan); background: rgba(0, 212, 255, 0.1); }
+        .multi-btn.dbl.active { border-color: #22c55e; }
+        .multi-btn.trb.active { border-color: #ef4444; }
+        .numbers-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+        .num-btn { aspect-ratio: 1; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-primary); color: white; font-weight: 700; cursor: pointer; transition: 0.1s; font-size: 0.9rem; }
         .num-btn:active { transform: scale(0.9); }
         .num-btn.bull { background: #eab308; color: black; font-weight: 900; }
         .num-btn.miss { background: #334155; }
-        .input-footer { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 12px; }
-        .current-turn-darts { display: flex; gap: 8px; }
-        .dart-slot { width: 45px; height: 35px; border-radius: 6px; background: var(--bg-primary); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 800; color: var(--text-muted); }
+        .input-footer { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 12px; }
+        .current-turn-darts { display: flex; gap: 6px; }
+        .dart-slot { width: 40px; height: 32px; border-radius: 6px; background: var(--bg-primary); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 800; color: var(--text-muted); }
         .dart-slot.filled { color: var(--accent-cyan); border-color: var(--accent-cyan); }
-        .undo-btn { padding: 8px 16px; border-radius: 6px; border: none; background: #ef4444; color: white; font-weight: 700; cursor: pointer; }
+        .undo-btn { padding: 6px 12px; border-radius: 6px; border: none; background: #ef4444; color: white; font-weight: 700; cursor: pointer; font-size: 0.75rem; }
       `}</style>
     </div>
   )
@@ -87,14 +87,9 @@ const CheckoutSuggestion = ({ score }) => {
   const suggestion = checkouts[score]
   if (!suggestion) return null
   return (
-    <div className="checkout-hint">
-      <span className="label">CHECKOUT:</span>
-      <span className="path">{suggestion}</span>
-      <style>{`
-        .checkout-hint { background: rgba(34, 197, 94, 0.1); border: 1px solid #22c55e; padding: 10px; border-radius: 8px; text-align: center; margin-bottom: 15px; }
-        .checkout-hint .label { color: #22c55e; font-weight: 800; font-size: 0.7rem; margin-right: 8px; }
-        .checkout-hint .path { color: white; font-weight: 700; }
-      `}</style>
+    <div style={{ background: 'rgba(34, 197, 94, 0.1)', border: '1px solid #22c55e', padding: '8px 15px', borderRadius: '8px', textAlign: 'center', marginBottom: '10px', fontSize: '0.75rem' }}>
+      <span style={{ color: '#22c55e', fontWeight: 800, marginRight: '8px' }}>CHECKOUT:</span>
+      <span style={{ color: 'white', fontWeight: 700 }}>{suggestion}</span>
     </div>
   )
 }
@@ -147,14 +142,11 @@ export default function PlayOnline() {
     const nextScore = playerScore - dart.value
     if (nextScore === 0) {
       if (dart.multiplier !== 2) { showToast('Must finish on a double!', 'warning'); return }
-      setPlayerScore(0)
-      await endTurn([...currentDarts, dart], 0)
-      return
+      setPlayerScore(0); await endTurn([...currentDarts, dart], 0); return
     }
     if (nextScore < 2) { showToast('BUST!', 'error'); await endTurn([...currentDarts, dart], playerScore, true); return }
     const nextDarts = [...currentDarts, dart]
-    setPlayerScore(nextScore)
-    setCurrentDarts(nextDarts)
+    setPlayerScore(nextScore); setCurrentDarts(nextDarts)
     if (isOnline && gameData?.id) await updateLiveGame(gameData.id, { currentDarts: nextDarts })
     if (nextDarts.length === 3) await endTurn(nextDarts, nextScore)
   }, [turn, playerScore, currentDarts, endTurn, isOnline, gameData?.id, updateLiveGame, showToast])
@@ -256,6 +248,17 @@ export default function PlayOnline() {
     })
   }
 
+  const launchNativeDetection = async () => {
+    try {
+      const { registerPlugin } = await import('@capacitor/core')
+      const DartDetection = registerPlugin('DartDetection')
+      await DartDetection.startDetection()
+      showToast('AI Auto-Scoring Mode Active', 'info')
+    } catch (e) {
+      showToast('Native detection not available on this platform', 'error')
+    }
+  }
+
   const handleUndo = async () => {
     if (currentDarts.length === 0) return
     const last = currentDarts[currentDarts.length - 1]; const ns = playerScore + last.value; const nd = currentDarts.slice(0, -1)
@@ -352,53 +355,81 @@ export default function PlayOnline() {
   }
 
   const oppName = isOnline ? (gameData?.playerNames?.[gameData.players.find(id => id !== user.id)] || 'Opponent') : (bot?.name || 'Bot')
+  const oppId = isOnline ? gameData.players.find(id => id !== user.id) : 'bot'
+
+  const getStats = (uid) => {
+    const userHistory = history.filter(h => h.userId === uid)
+    const darts = userHistory.reduce((s, h) => s + h.darts.length, 0) + (turn === (uid === user.id ? 'player' : 'opponent') ? currentDarts.length : 0)
+    const totalScore = userHistory.reduce((s, h) => s + h.score, 0)
+    const avg = darts > 0 ? (totalScore / darts * 3).toFixed(1) : '0.0'
+    const last = userHistory.length > 0 ? userHistory[0].score : '-'
+    return { avg, last, darts }
+  }
+
+  const myStats = getStats(user.id)
+  const oppStats = getStats(oppId)
 
   return (
-    <div className="page match-mode animate-fade-in" style={{ padding: 0, maxWidth: '100vw', overflow: 'hidden', height: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <div className="match-header" style={{ padding: '15px 20px', background: 'var(--bg-card)', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, position: 'relative' }}>
-        <div className={`player-box ${turn === 'player' ? 'active' : ''}`}><div className="name">{user?.username}</div><div className="score">{playerScore}</div>{turn === 'player' && <div className="turn-indicator">Your Turn</div>}</div>
-        <div className="vs">VS</div>
-        <div className={`player-box ${turn === 'opponent' ? 'active' : ''}`}><div className="name">{oppName}</div><div className="score">{opponentScore}</div>{turn === 'opponent' && <div className="turn-indicator">{isOnline ? 'Opponent Throws' : 'Bot Throws'}</div>}</div>
-        <button className="btn btn-danger btn-xs" style={{ position: 'absolute', top: '15px', right: '20px', padding: '8px 12px', fontSize: '0.65rem', fontWeight: 900 }} onClick={() => { if(window.confirm('Quit match?')) setGameStarted(false) }}>LEAVE MATCH</button>
-      </div>
-      <div className="match-main" style={{ display: 'grid', gridTemplateColumns: '1fr 380px', flex: 1, minHeight: 0 }}>
-        <div className="match-play-area" style={{ padding: '20px', overflowY: 'auto' }}>
-          <div className="match-controls-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', gap: '10px' }}>
-             <button className={`btn btn-xs ${useCamera ? 'btn-danger' : 'btn-primary'}`} onClick={toggleCamera}>{useCamera ? 'Disable Camera' : 'Enable Camera'}</button>
-             {isAndroid && <button className="btn btn-xs btn-primary" onClick={launchNativeDetection}>🎥 Launch AI Scorer</button>}
-             {useCamera && <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flex: 1, justifyContent: 'flex-end' }}>
-               <select className="glass" style={{ fontSize: '0.7rem', padding: '4px 8px' }} value={selectedCameraId} onChange={(e) => handleCameraChange(e.target.value)}>{availableCameras.map(c => <option key={c.deviceId} value={c.deviceId}>{c.label || 'Camera'}</option>)}</select>
-               <button className="btn btn-xs btn-secondary" onClick={() => setZoomLevel(p => Math.max(1, p - 0.2))}><ZoomOutIcon /></button>
-               <button className="btn btn-xs btn-secondary" onClick={() => setZoomLevel(p => Math.min(3, p + 0.2))}><ZoomInIcon /></button>
-             </div>}
-          </div>
-          {useCamera && <div className="camera-preview-container" style={{ width: '100%', borderRadius: '12px', overflow: 'hidden', background: '#000', marginBottom: '20px', aspectRatio: '16/9' }}><video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${zoomLevel})` }} /></div>}
-          <CheckoutSuggestion score={playerScore} /><DartboardInput onDart={handleDartInput} onUndo={handleUndo} currentDarts={currentDarts} disabled={turn !== 'player'} />
-          <div className="history-list" style={{ marginTop: '30px' }}>{history.map((h, i) => (
-            <div key={i} className={`history-item ${h.userId === user.id ? 'mine' : 'theirs'}`} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', marginBottom: '8px', borderLeft: `4px solid ${h.userId === user.id ? 'var(--accent-cyan)' : 'var(--accent-primary)'}` }}>
-              <div><div style={{ fontWeight: 800 }}>{h.who}</div><div style={{ fontSize: '0.7rem' }}>{h.darts.map(d => d.label).join(', ')}</div></div>
-              <div style={{ textAlign: 'right' }}><div style={{ fontWeight: 900 }}>{h.score}</div><div style={{ fontSize: '0.7rem' }}>Left: {h.remaining}</div></div>
+    <div className="page match-mode animate-fade-in" style={{ padding: 0, maxWidth: '100vw', overflow: 'hidden', height: '100vh', display: 'flex', background: '#050816' }}>
+      {/* Sidebar: Players & Scores */}
+      <aside style={{ width: '320px', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', background: 'rgba(0,0,0,0.3)', flexShrink: 0 }}>
+        {[ { name: user.username, score: playerScore, stats: myStats, active: turn === 'player' }, { name: oppName, score: opponentScore, stats: oppStats, active: turn === 'opponent' } ].map((p, i) => (
+          <div key={i} className={`player-block ${p.active ? 'active' : ''}`} style={{ flex: 1, padding: '25px', display: 'flex', flexDirection: 'column', justifyContent: 'center', borderBottom: i === 0 ? '1px solid var(--border)' : 'none', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '5px' }}>{p.name}</div>
+            <div style={{ fontSize: '5.5rem', fontWeight: 900, color: p.active ? 'var(--accent-cyan)' : 'white', lineHeight: 1, margin: '10px 0' }}>{p.score}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+              <div className="stat-item"><label>AVG</label><strong>{p.stats.avg}</strong></div>
+              <div className="stat-item"><label>LAST</label><strong>{p.stats.last}</strong></div>
+              <div className="stat-item"><label>DARTS</label><strong>{p.stats.darts}</strong></div>
             </div>
-          ))}</div>
+            {p.active && <div style={{ position: 'absolute', inset: 0, borderLeft: '4px solid var(--accent-cyan)', background: 'linear-gradient(to right, rgba(0, 212, 255, 0.05), transparent)' }} />}
+          </div>
+        ))}
+      </aside>
+
+      {/* Main: Scoring & Camera */}
+      <main style={{ flex: 1, display: 'flex', height: '100vh' }}>
+        {/* Scoring Center */}
+        <div style={{ flex: 1, padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+          <button className="btn btn-danger btn-xs" style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 10, fontWeight: 900 }} onClick={() => { if(window.confirm('Quit?')) setGameStarted(false) }}>LEAVE MATCH</button>
+          <CheckoutSuggestion score={playerScore} />
+          <DartboardInput onDart={handleDartInput} onUndo={handleUndo} currentDarts={currentDarts} disabled={turn !== 'player'} />
         </div>
-        <aside className="match-stats-sidebar" style={{ background: 'var(--bg-secondary)', borderLeft: '1px solid var(--border)', padding: '20px' }}>
-          <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '15px' }}>Live Statistics</h4>
-          <div className="stat-card glass" style={{ padding: '15px' }}>
-            <div className="stat-row"><span>Turn Average</span><strong>{history.length > 0 ? (history.filter(h => h.userId === user.id).reduce((s, h) => s + h.score, 0) / Math.max(1, history.filter(h => h.userId === user.id).length)).toFixed(1) : '0.0'}</strong></div>
-            <div className="stat-row"><span>Highest Score</span><strong>{history.length > 0 ? Math.max(...history.filter(h => h.userId === user.id).map(h => h.score), 0) : '0'}</strong></div>
+
+        {/* Camera Sidebar Right */}
+        <aside style={{ width: '400px', background: 'rgba(0,0,0,0.5)', borderLeft: '1px solid var(--border)', display: 'flex', flexDirection: 'column', padding: '20px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+            <button className="btn btn-secondary btn-xs btn-block" onClick={toggleCamera}>{useCamera ? 'OFF' : 'ON'} CAM</button>
+            <button className="btn btn-primary btn-xs" onClick={launchNativeDetection}>AI SCORER</button>
+          </div>
+          <div style={{ flex: 1 }}>
+            {useCamera ? (
+              <div style={{ width: '100%', borderRadius: '16px', overflow: 'hidden', background: '#000', position: 'relative', aspectRatio: '9/16', border: '2px solid var(--accent-cyan)', boxShadow: '0 0 40px rgba(0,0,0,0.5)' }}>
+                <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${zoomLevel})` }} />
+                <div style={{ position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '8px', background: 'rgba(0,0,0,0.6)', padding: '8px', borderRadius: '20px', backdropFilter: 'blur(10px)' }}>
+                   <button onClick={() => setZoomLevel(z => Math.max(1, z - 0.2))} style={{ border: 'none', background: 'none', color: 'white', fontWeight: 900, cursor: 'pointer' }}>-</button>
+                   <button onClick={() => setZoomLevel(z => Math.min(5, z + 0.2))} style={{ border: 'none', background: 'none', color: 'white', fontWeight: 900, cursor: 'pointer' }}>+</button>
+                   <button onClick={flipCamera} style={{ border: 'none', background: 'none', color: 'white', fontWeight: 900, cursor: 'pointer', fontSize: '0.6rem' }}>FLIP</button>
+                </div>
+              </div>
+            ) : <div style={{ width: '100%', height: '100%', borderRadius: '16px', border: '2px dashed var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>CAMERA OFF</div>}
           </div>
         </aside>
-      </div>
+      </main>
+
       <style>{`
         body.fullscreen-match .sidebar, body.fullscreen-match .bottom-nav, body.fullscreen-match .mobile-header { display: none !important; }
         body.fullscreen-match .main-content { padding: 0 !important; margin: 0 !important; }
         body.fullscreen-match .app-layout { grid-template-columns: 1fr !important; }
-        .player-box { text-align: center; flex: 1; padding: 15px; border-radius: 12px; transition: 0.3s; position: relative; }
-        .player-box.active { background: rgba(0, 212, 255, 0.1); border: 1px solid var(--accent-cyan); }
-        .player-box .score { font-size: 3.5rem; font-weight: 900; color: white; }
-        .player-box.active .score { color: var(--accent-cyan); }
-        .stat-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        @media (max-width: 1100px) { .match-main { grid-template-columns: 1fr; } .match-stats-sidebar { display: none; } .match-header { padding-right: 120px !important; } }
+        .stat-item { text-align: center; }
+        .stat-item label { display: block; font-size: 0.55rem; color: var(--text-muted); font-weight: 800; letter-spacing: 1px; }
+        .stat-item strong { display: block; font-size: 1.1rem; color: white; }
+        @media (max-width: 1000px) {
+           .match-mode { flex-direction: column !important; overflow-y: auto !important; }
+           .match-mode aside { width: 100% !important; flex-direction: row !important; height: auto !important; }
+           .match-mode main { flex-direction: column !important; height: auto !important; }
+           .match-mode main aside { width: 100% !important; }
+        }
       `}</style>
     </div>
   )

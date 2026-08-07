@@ -24,15 +24,28 @@ export class ScoringEngine {
     const baseValue = this.segments[segmentIndex];
 
     // Multipliers based on ratio
-    // Standard board proportions:
-    // Bullseye: 0.0 - 0.08
-    // Single: 0.08 - 0.58
-    // Treble: 0.58 - 0.65
-    // Single: 0.65 - 0.95
-    // Double: 0.95 - 1.05
+    // Standard board proportions relative to radius (radius is bull center to outer double wire)
+    const bullOuter = 0.12;
+    const bullInner = 0.05;
+    const tripleInner = 0.58;
+    const tripleOuter = 0.65;
+    const doubleInner = 0.95;
+    const doubleOuter = 1.02;
 
-    if (ratio >= 0.58 && ratio <= 0.65) return { value: baseValue * 3, label: `T${baseValue}` };
-    if (ratio >= 0.95 && ratio <= 1.05) return { value: baseValue * 2, label: `D${baseValue}` };
+    if (ratio <= bullInner) return { value: 50, label: 'D-BULL' };
+    if (ratio <= bullOuter) return { value: 25, label: 'S-BULL' };
+    if (ratio > doubleOuter) return { value: 0, label: 'MISS' };
+
+    // Calculate angle in degrees (0 is top 20)
+    let angle = Math.atan2(-dx, dy) * (180 / Math.PI) + 180;
+
+    // Rotate 9 degrees so each segment is centered
+    angle = (angle + 9) % 360;
+    const segmentIndex = Math.floor(angle / 18);
+    const baseValue = this.segments[segmentIndex];
+
+    if (ratio >= tripleInner && ratio <= tripleOuter) return { value: baseValue * 3, label: `T${baseValue}` };
+    if (ratio >= doubleInner && ratio <= doubleOuter) return { value: baseValue * 2, label: `D${baseValue}` };
 
     return { value: baseValue, label: `S${baseValue}` };
   }
