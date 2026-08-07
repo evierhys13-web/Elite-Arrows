@@ -562,7 +562,7 @@ function CupManagement() {
     }
   }
 
-  const handleSwapPlayer = async () => {
+  const handleSwapPlayerInBracket = async () => {
     if (!swapCup || !playerToRemove || !playerToAdd) return showToast('Please select both players', 'error')
 
     setIsSubmitting(true)
@@ -1136,7 +1136,7 @@ function CupManagement() {
               <button className="btn btn-secondary btn-block" onClick={() => setShowSwapModal(false)}>Cancel</button>
               <button
                 className="btn btn-primary btn-block"
-                onClick={handleSwapPlayer}
+                onClick={handleSwapPlayerInBracket}
                 disabled={isSubmitting || !playerToRemove || !playerToAdd}
               >
                 {isSubmitting ? 'Swapping...' : 'Perform Swap'}
