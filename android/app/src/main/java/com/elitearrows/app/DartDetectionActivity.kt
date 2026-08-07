@@ -22,6 +22,10 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.getcapacitor.BridgeActivity
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.objects.ObjectDetection
+import com.google.mlkit.vision.objects.ObjectDetector
+import com.google.mlkit.vision.objects.defaults.ObjectDetectorOptions
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -33,24 +37,34 @@ class DartDetectionActivity : AppCompatActivity() {
     private lateinit var scoreNotification: TextView
     private var cameraControl: CameraControl? = null
     private val scoringEngine = ScoringEngine()
+    private lateinit var objectDetector: ObjectDetector
 
     private var bullX = 0f
     private var bullY = 0f
     private var top20X = 0f
     private var top20Y = 0f
     private var radius = 0f
-    private var calibrationStep = 0
+    private var calibrationStep = 0 // 0: Searching, 2: Active
     private var isLiveMode = false
     private var currentZoom = 1f
-    private var isAutoScoringEnabled = false
-    private var lastAverageLuminance = 0.0
+    private var isAutoScoringEnabled = true
     private var isStable = true
-    private var dartCount = 0
+    private var lastFrameData: ByteArray? = null
+    private var frameWidth = 0
+    private var frameHeight = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
         isLiveMode = intent.getBooleanExtra("isLiveMode", false)
+
+        // Initialize ML Kit Object Detector
+        val options = ObjectDetectorOptions.Builder()
+            .setDetectorMode(ObjectDetectorOptions.STREAM_MODE)
+            .enableMultipleObjects()
+            .enableClassification() // To identify "Sports equipment"
+            .build()
+        objectDetector = ObjectDetection.getClient(options)
 
         val root = ConstraintLayout(this)
         previewView = PreviewView(this)
@@ -145,11 +159,14 @@ class DartDetectionActivity : AppCompatActivity() {
     private fun setupCalibration() {
         overlayView.setOnTouchListener { _, event ->
             if (event.action == MotionEvent.ACTION_DOWN) {
-                handleCalibrationTouch(event.x, event.y)
+                // Manual override if needed
+                if (calibrationStep == 2) {
+                    handleCalibrationTouch(event.x, event.y)
+                }
             }
             true
         }
-        Toast.makeText(this, "Calibration: Tap Bullseye Center", Toast.LENGTH_LONG).show()
+        Toast.makeText(this, "Scanning for Dartboard...", Toast.LENGTH_LONG).show()
     }
 
     private fun handleCalibrationTouch(x: Float, y: Float) {
@@ -223,26 +240,11 @@ class DartDetectionActivity : AppCompatActivity() {
 
             val imageAnalyzer = ImageAnalysis.Builder()
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_YUV_420_888)
                 .build()
                 .also {
-                    it.setAnalyzer(cameraExecutor) { image ->
-                        if (isAutoScoringEnabled && calibrationStep == 2) {
-                            val average = image.planes[0].buffer.averageLuminance()
-                            val delta = kotlin.math.abs(average - lastAverageLuminance)
-                            
-                            if (delta > 2.0) { // Motion detected
-                                if (isStable) {
-                                    isStable = false
-                                }
-                            } else if (!isStable) { // Movement stopped
-                                isStable = true
-                                // Possible dart hit or removal
-                                // In a full implementation, we'd compare the diff mask here
-                            }
-                            
-                            lastAverageLuminance = average
-                        }
-                        image.close()
+                    it.setAnalyzer(cameraExecutor) { imageProxy ->
+                        processImageProxy(imageProxy)
                     }
                 }
 
@@ -259,12 +261,105 @@ class DartDetectionActivity : AppCompatActivity() {
         }, ContextCompat.getMainExecutor(this))
     }
 
-    private fun java.nio.ByteBuffer.averageLuminance(): Double {
-        rewind()
-        val data = ByteArray(remaining())
-        get(data)
-        val pixels = data.map { it.toInt() and 0xFF }
-        return pixels.average()
+    @SuppressLint("UnsafeOptInUsageError")
+    private fun processImageProxy(imageProxy: ImageProxy) {
+        val mediaImage = imageProxy.image
+        if (mediaImage != null) {
+            val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
+            
+            if (calibrationStep < 2) {
+                // AUTO-CALIBRATION MODE: Search for dartboard
+                objectDetector.process(image)
+                    .addOnSuccessListener { objects ->
+                        for (obj in objects) {
+                            // Heuristic: Dartboards are circular/square and usually classified as Sports equipment
+                            val bounds = obj.boundingBox
+                            val aspect = bounds.width().toFloat() / bounds.height().toFloat()
+                            
+                            if (aspect in 0.8f..1.2f && bounds.width() > imageProxy.width / 3) {
+                                // Found a potential board!
+                                // Map image coordinates to View coordinates
+                                val scaleX = previewView.width.toFloat() / imageProxy.width.toFloat()
+                                val scaleY = previewView.height.toFloat() / imageProxy.height.toFloat()
+                                
+                                bullX = bounds.centerX().toFloat() * scaleX
+                                bullY = bounds.centerY().toFloat() * scaleY
+                                radius = (bounds.width() / 2f) * scaleX * 0.9f
+                                top20X = bullX
+                                top20Y = bullY - radius
+                                
+                                runOnUiThread {
+                                    overlayView.updateCalibration(bullX, bullY, radius)
+                                    calibrationStep = 2
+                                    Toast.makeText(this, "Board Detected Automatically", Toast.LENGTH_SHORT).show()
+                                }
+                                break
+                            }
+                        }
+                    }
+                    .addOnCompleteListener { imageProxy.close() }
+            } else {
+                // DART DETECTION MODE: Frame Differencing
+                val buffer = mediaImage.planes[0].buffer
+                val data = ByteArray(buffer.remaining())
+                buffer.get(data)
+                
+                if (lastFrameData != null && isAutoScoringEnabled) {
+                    val scaleX = previewView.width.toFloat() / imageProxy.width.toFloat()
+                    val scaleY = previewView.height.toFloat() / imageProxy.height.toFloat()
+                    detectDartHit(data, imageProxy.width, imageProxy.height, scaleX, scaleY)
+                }
+                
+                lastFrameData = data
+                frameWidth = imageProxy.width
+                frameHeight = imageProxy.height
+                imageProxy.close()
+            }
+        } else {
+            imageProxy.close()
+        }
+    }
+
+    private fun detectDartHit(currentData: ByteArray, width: Int, height: Int, scaleX: Float, scaleY: Float) {
+        // Simple pixel-wise difference logic
+        var diffCount = 0
+        var sumX = 0L
+        var sumY = 0L
+        
+        val step = 4 // Subsample for performance
+        for (y in 0 until height step step) {
+            for (x in 0 until width step step) {
+                val idx = y * width + x
+                val diff = kotlin.math.abs((currentData[idx].toInt() and 0xFF) - (lastFrameData!![idx].toInt() and 0xFF))
+                if (diff > 40) { // Threshold for change
+                    diffCount++
+                    sumX += x
+                    sumY += y
+                }
+            }
+        }
+
+        val totalPixels = (width / step) * (height / step)
+        val changePercentage = diffCount.toFloat() / totalPixels
+
+        if (changePercentage in 0.001f..0.05f) { // Significant but small (like a dart)
+            if (isStable) {
+                isStable = false
+                val avgX = (sumX.toFloat() / diffCount) * scaleX
+                val avgY = (sumY.toFloat() / diffCount) * scaleY
+                
+                runOnUiThread {
+                    val score = scoringEngine.calculateScore(avgX, avgY, bullX, bullY, top20X, top20Y)
+                    if (score.value >= 0) {
+                        overlayView.updateLastDart(avgX, avgY, score.label)
+                        showHitNotification(score.label)
+                        sendScoreToWeb(score.label, score.value)
+                    }
+                }
+            }
+        } else if (changePercentage < 0.0005f) {
+            isStable = true
+        }
     }
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
@@ -274,6 +369,7 @@ class DartDetectionActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         cameraExecutor.shutdown()
+        objectDetector.close()
     }
 
     companion object {

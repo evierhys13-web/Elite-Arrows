@@ -114,6 +114,10 @@ dependencies {
     implementation "androidx.camera:camera-view:${camerax_version}"
     implementation "androidx.camera:camera-extensions:${camerax_version}"
 
+    // ML Kit for Auto-Scoring (Object Detection & Custom Models)
+    implementation 'com.google.mlkit:object-detection:17.0.2'
+    implementation 'com.google.mlkit:object-detection-custom:17.0.2'
+
     // JDK Desugaring for Java 21 features on older devices
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
 }

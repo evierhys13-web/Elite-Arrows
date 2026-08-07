@@ -68,7 +68,7 @@ export const openLeagueDuosCollection = collection(db, 'openLeagueDuos')
 export const openLeagueSinglesCollection = collection(db, 'openLeagueSingles')
 
 export { 
-  doc, setDoc, getDoc, getDocFromServer, getDocs, getDocsFromServer, query, where, orderBy, onSnapshot, deleteDoc, collection, addDoc, updateDoc, writeBatch, runTransaction, limit, arrayUnion, serverTimestamp, increment,
+  doc, setDoc, getDoc, getDocFromServer, getDocs, getDocsFromServer, query, where, orderBy, onSnapshot, deleteDoc, collection, addDoc, updateDoc, writeBatch, runTransaction, limit, arrayUnion, serverTimestamp, increment, deleteFieldFirestore as deleteField,
   signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged,
   setPersistence, browserSessionPersistence, browserLocalPersistence,
   sendPasswordResetEmail,

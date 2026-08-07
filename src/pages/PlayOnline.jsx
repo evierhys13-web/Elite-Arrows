@@ -229,15 +229,16 @@ export default function PlayOnline() {
 
   // AI Scoring Engine (Web Version)
   const scoreFromPoint = useCallback((x, y) => {
-    if (!calibrationData) return null
-    const { bull, top20 } = calibrationData
+    // Assuming standard centering: Bull at 50,50, Top 20 at 50,15
+    const bull = { x: 50, y: 50 }
+    const top20 = { x: 50, y: 15 }
     const dx = x - bull.x
     const dy = bull.y - y
-    const radius = Math.sqrt(Math.pow(top20.x - bull.x, 2) + Math.pow(bull.y - top20.y, 2))
+    const radius = Math.abs(bull.y - top20.y)
     const dist = Math.sqrt(dx*dx + dy*dy)
     const ratio = dist / radius
 
-    if (ratio > 1.05) return { value: 0, label: 'MISS', multiplier: 0 }
+    if (ratio > 1.1) return { value: 0, label: 'MISS', multiplier: 0 }
     if (ratio <= 0.05) return { value: 50, label: 'D-BULL', multiplier: 2 }
     if (ratio <= 0.12) return { value: 25, label: 'S-BULL', multiplier: 1 }
 
@@ -249,10 +250,73 @@ export default function PlayOnline() {
     const segments = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5]
     const val = segments[segIdx]
 
-    if (ratio >= 0.95 && ratio <= 1.02) return { value: val * 2, label: `D${val}`, multiplier: 2 }
+    if (ratio >= 0.95 && ratio <= 1.05) return { value: val * 2, label: `D${val}`, multiplier: 2 }
     if (ratio >= 0.58 && ratio <= 0.65) return { value: val * 3, label: `T${val}`, multiplier: 3 }
     return { value: val, label: `S${val}`, multiplier: 1 }
-  }, [calibrationData])
+  }, [])
+
+  // Auto-Scoring Computer Vision Loop (Dartsmind Style)
+  const lastFrameRef = useRef(null)
+  const isProcessingRef = useRef(false)
+  const canvasRef = useRef(null)
+
+  useEffect(() => {
+    if (!isWebAiActive || !videoRef.current) return
+
+    let frameId
+    const canvas = document.createElement('canvas')
+    canvas.width = 160
+    canvas.height = 284
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })
+
+    const analyze = () => {
+      if (!videoRef.current || videoRef.current.paused || videoRef.current.ended) return
+
+      ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height)
+      const currentFrame = ctx.getImageData(0, 0, canvas.width, canvas.height)
+
+      if (lastFrameRef.current && !isProcessingRef.current) {
+        const last = lastFrameRef.current.data
+        const curr = currentFrame.data
+        let diffPoints = []
+
+        for (let i = 0; i < curr.length; i += 16) {
+          const rD = Math.abs(curr[i] - last[i])
+          const gD = Math.abs(curr[i+1] - last[i+1])
+          const bD = Math.abs(curr[i+2] - last[i+2])
+
+          if (rD + gD + bD > 115) {
+            const px = (i / 4) % canvas.width
+            const py = Math.floor((i / 4) / canvas.width)
+            const relX = (px / canvas.width) * 100
+            const relY = (py / canvas.height) * 100
+            if (relX > 15 && relX < 85 && relY > 15 && relY < 85) {
+              diffPoints.push({ x: relX, y: relY })
+            }
+          }
+        }
+
+        if (diffPoints.length > 5 && diffPoints.length < 100) {
+          isProcessingRef.current = true
+          const avgX = diffPoints.reduce((s, p) => s + p.x, 0) / diffPoints.length
+          const avgY = diffPoints.reduce((s, p) => s + p.y, 0) / diffPoints.length
+
+          const score = scoreFromPoint(avgX, avgY)
+          if (score && score.label !== 'MISS' && turn === 'player') {
+            handleDartInput(score)
+            showToast(`Auto: ${score.label}`, 'success')
+          }
+          setTimeout(() => { isProcessingRef.current = false }, 2500)
+        }
+      }
+
+      lastFrameRef.current = currentFrame
+      frameId = requestAnimationFrame(analyze)
+    }
+
+    frameId = requestAnimationFrame(analyze)
+    return () => cancelAnimationFrame(frameId)
+  }, [isWebAiActive, turn, scoreFromPoint, handleDartInput, showToast])
 
   const handleVideoTap = useCallback((e) => {
     if (!isWebAiActive || turn !== 'player' || !videoRef.current) return
@@ -260,21 +324,9 @@ export default function PlayOnline() {
     const x = ((e.clientX - rect.left) / rect.width) * 100
     const y = ((e.clientY - rect.top) / rect.height) * 100
 
-    if (isCalibrating) {
-      if (!calibrationData) {
-        setCalibrationData({ bull: { x, y } })
-        showToast('Now tap Top 20 Double Wire', 'info')
-      } else {
-        setCalibrationData(prev => ({ ...prev, top20: { x, y } }))
-        setIsCalibrating(false)
-        showToast('AI Ready! Tap board to score.', 'success')
-      }
-      return
-    }
-
     const score = scoreFromPoint(x, y)
     if (score) handleDartInput(score)
-  }, [isWebAiActive, isCalibrating, calibrationData, turn, scoreFromPoint, handleDartInput, showToast])
+  }, [isWebAiActive, turn, scoreFromPoint, handleDartInput])
 
   // Camera Actions
   const toggleCamera = useCallback(async () => {
@@ -345,13 +397,12 @@ export default function PlayOnline() {
       const { registerPlugin } = await import('@capacitor/core')
       const DartDetection = registerPlugin('DartDetection')
       await DartDetection.startDetection()
-      showToast('AI Auto-Scoring Mode Active', 'info')
+      showToast('AI Scorer: Keep board in view', 'info')
     } catch (e) {
       if (!useCamera) await toggleCamera()
       setIsWebAiActive(true)
-      setIsCalibrating(true)
-      setCalibrationData(null)
-      showToast('AI Mode: Tap Bullseye Center', 'info')
+      setIsCalibrating(false)
+      showToast('AI Mode: Auto-detecting board...', 'info')
     }
   }, [useCamera, toggleCamera, showToast])
 
@@ -678,7 +729,7 @@ export default function PlayOnline() {
                 {isWebAiActive && (
                   <div className="ai-overlay">
                      <div className="scanning-line" />
-                     <span>{isCalibrating ? (calibrationData ? 'CALIBRATING TOP 20...' : 'CALIBRATING BULL...') : 'AI ACTIVE (TAP BOARD)'}</span>
+                     <span>{isCalibrating ? 'ANALYZING BOARD...' : 'AI ACTIVE (AUTO)'}</span>
                   </div>
                 )}
               </div>
