@@ -245,11 +245,14 @@ export default function CupBracket() {
     return { round, matches }
   })
 
-  const upcomingFixtures = fixtures.filter(fixture => {
-    const match = safeCupMatches.find(m => m && String(m.id) === String(fixture.matchId))
-    const hasResult = ['approved', 'result_submitted', 'completed'].includes(fixture.status)
-    return !hasResult && !match?.winner
-  })
+  const upcomingFixtures = useMemo(() => {
+    return fixtures.filter(fixture => {
+      const match = safeCupMatches.find(m => m && String(m.id) === String(fixture.matchId))
+      const status = String(fixture.status || 'pending').toLowerCase()
+      const isPending = !['approved', 'result_submitted', 'completed', 'rejected'].includes(status)
+      return isPending && !match?.winner && fixture.player1 && fixture.player2
+    }).sort((a, b) => (a.round || 0) - (b.round || 0))
+  }, [fixtures, safeCupMatches])
 
   const { sortedStandings, bestThirdIds, sortedThirdPlaced, numThirdNeeded, advanceCount = 2 } = groupStandings
 
@@ -938,49 +941,87 @@ export default function CupBracket() {
       </div>
     )}
 
-      <div className="card" style={{ marginTop: '20px' }}>
-        <h3 className="card-title">Upcoming Matches</h3>
+      <div className="card glass" style={{ marginTop: '30px', padding: '24px', borderRadius: '24px', border: '1px solid var(--border)' }}>
+        <h3 className="card-title" style={{ color: 'var(--accent-cyan)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span>📅</span> Upcoming Matches
+        </h3>
         {upcomingFixtures.length === 0 ? (
-          <p style={{ color: 'var(--success)', textAlign: 'center' }}>✓ All matches completed!</p>
+          <div style={{ textAlign: 'center', padding: '40px', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: '1px dashed var(--border)' }}>
+            <p style={{ color: 'var(--success)', fontWeight: 800, margin: 0 }}>✓ All scheduled matches for this stage are completed!</p>
+          </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px' }}>
-            {upcomingFixtures.map(fixture => (
-              <div key={fixture.id} style={{ 
-                padding: '15px', 
-                background: '#1e1e3f', 
-                borderRadius: '10px',
-                border: '1px solid var(--accent-cyan)'
-              }}>
-                <div style={{ 
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
+            {upcomingFixtures.map(fixture => {
+              const p1 = allUsers.find(u => String(u.id) === String(fixture.player1Id || fixture.player1))
+              const p2 = allUsers.find(u => String(u.id) === String(fixture.player2Id || fixture.player2))
+              const isUserInMatch = user?.id === p1?.id || user?.id === p2?.id
+
+              return (
+                <div key={fixture.id} style={{
+                  padding: '20px',
+                  background: isUserInMatch ? 'rgba(0, 212, 255, 0.05)' : 'rgba(255, 255, 255, 0.03)',
+                  borderRadius: '16px',
+                  border: isUserInMatch ? '1px solid var(--accent-cyan)' : '1px solid rgba(255,255,255,0.08)',
                   display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '8px'
+                  flexDirection: 'column',
+                  gap: '12px',
+                  transition: 'transform 0.2s',
+                  position: 'relative'
                 }}>
-                  <span style={{ 
-                    fontSize: '0.8rem', 
-                    color: 'var(--accent-cyan)',
-                    fontWeight: 'bold'
-                  }}>
-                    {getRoundName(fixture.round)}
-                  </span>
-                  <span style={{ 
-                    fontSize: '0.7rem', 
-                    color: 'var(--text-muted)',
-                    background: 'rgba(255,255,255,0.1)',
-                    padding: '2px 8px',
-                    borderRadius: '4px'
-                  }}>
-                    {fixture.startScore || 501} / {fixture.firstTo ? `FT${fixture.firstTo}` : `Bo${fixture.bestOf || 3}`}
-                  </span>
+                  {isUserInMatch && <div style={{ position: 'absolute', top: '10px', right: '10px', background: 'var(--accent-cyan)', color: 'black', fontSize: '0.6rem', fontWeight: 900, padding: '2px 8px', borderRadius: '4px' }}>YOUR MATCH</div>}
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                      {getRoundName(fixture.round)}
+                    </span>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', fontWeight: 800 }}>
+                      {fixture.startScore || 501} / {fixture.firstTo ? `FT${fixture.firstTo}` : `Bo${fixture.bestOf || 3}`}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                    <div style={{ flex: 1, textAlign: 'right', fontWeight: 800, fontSize: '0.95rem' }}>{p1?.username || 'TBD'}</div>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--text-muted)', opacity: 0.5 }}>VS</div>
+                    <div style={{ flex: 1, textAlign: 'left', fontWeight: 800, fontSize: '0.95rem' }}>{p2?.username || 'TBD'}</div>
+                  </div>
+
+                  {fixture.date ? (
+                    <div style={{
+                      marginTop: '8px',
+                      padding: '8px',
+                      background: 'rgba(0,0,0,0.2)',
+                      borderRadius: '8px',
+                      textAlign: 'center',
+                      fontSize: '0.8rem',
+                      color: 'var(--success)',
+                      fontWeight: 700
+                    }}>
+                      🕒 {new Date(fixture.date).toLocaleDateString()} at {fixture.time}
+                    </div>
+                  ) : (
+                    <div style={{
+                      marginTop: '8px',
+                      textAlign: 'center',
+                      fontSize: '0.75rem',
+                      color: 'var(--warning)',
+                      fontStyle: 'italic'
+                    }}>
+                      TBD - Not yet scheduled
+                    </div>
+                  )}
+
+                  {isUserInMatch && (
+                    <button
+                      className="btn btn-primary btn-sm"
+                      onClick={() => navigate(`/submit-result?fixtureId=${fixture.id}`)}
+                      style={{ marginTop: '10px' }}
+                    >
+                      Submit Result
+                    </button>
+                  )}
                 </div>
-                <div style={{ fontSize: '1rem', color: 'white' }}>
-                  {getPlayerName(fixture.player1) || 'TBD'} 
-                  <span style={{ color: '#666', margin: '0 10px' }}>vs</span>
-                  {getPlayerName(fixture.player2) || 'TBD'}
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>

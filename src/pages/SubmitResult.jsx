@@ -108,12 +108,30 @@ export default function SubmitResult() {
 
   const opponentOptions = useMemo(() => {
     if (!user) return []
-    return formData.gameType === 'League'
-      ? availablePlayers.filter(u => u.effectiveDiv === userEffectiveDiv)
-      : formData.gameType === 'Champions League'
-        ? availablePlayers.filter(u => u.superLeagueDivision === 'Champions')
-        : availablePlayers
-  }, [availablePlayers, formData.gameType, userEffectiveDiv])
+
+    let baseOptions = availablePlayers
+
+    if (formData.gameType === 'League') {
+      baseOptions = availablePlayers.filter(u => u.effectiveDiv === userEffectiveDiv)
+
+      // Filter out players already played 1x in the current season for League matches
+      const playedOpponentIds = allResults
+        .filter(r =>
+          r.gameType === 'League' &&
+          r.season === currentSeasonLabel &&
+          String(r.status).toLowerCase() !== 'rejected' &&
+          (String(r.player1Id) === String(user.id) || String(r.player2Id) === String(user.id))
+        )
+        .map(r => String(r.player1Id) === String(user.id) ? String(r.player2Id) : String(r.player1Id))
+
+      baseOptions = baseOptions.filter(u => !playedOpponentIds.includes(String(u.id)))
+    }
+    else if (formData.gameType === 'Champions League') {
+      baseOptions = availablePlayers.filter(u => u.superLeagueDivision === 'Champions')
+    }
+
+    return baseOptions
+  }, [availablePlayers, formData.gameType, userEffectiveDiv, allResults, currentSeasonLabel, user.id])
 
   const effectiveDivision = useMemo(() => {
     if (!user) return 'Unassigned'
@@ -1029,7 +1047,7 @@ export default function SubmitResult() {
                     users={opponentOptions}
                     selectedId={formData.opponent}
                     onSelect={id => handleChange({ target: { name: 'opponent', value: id } })}
-                    placeholder="Search by name or DartCounter..."
+                    placeholder="Search by name..."
                     label=""
                     onQueryChange={searchUsers}
                   />

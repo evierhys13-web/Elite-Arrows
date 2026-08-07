@@ -44,8 +44,7 @@ export default function UserSearchSelect({
       const searchTerm = query.toLowerCase()
       return (
         u.username?.toLowerCase().includes(searchTerm) ||
-        u.nickname?.toLowerCase().includes(searchTerm) ||
-        u.dartCounterUsername?.toLowerCase().includes(searchTerm)
+        u.nickname?.toLowerCase().includes(searchTerm)
       )
     })
     .slice(0, maxResults)
@@ -85,7 +84,7 @@ export default function UserSearchSelect({
           color: selectedUser ? 'var(--text)' : 'var(--text-muted)'
         }}>
           {selectedUser 
-            ? `${selectedUser.username}${selectedUser.dartCounterUsername ? ` (${selectedUser.dartCounterUsername})` : ''}`
+            ? `${selectedUser.username}`
             : placeholder
           }
         </span>
@@ -121,7 +120,7 @@ export default function UserSearchSelect({
           }}>
             <input
               type="text"
-              placeholder="Search by username or DartCounter..."
+              placeholder="Search by name..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               autoFocus
@@ -181,7 +180,6 @@ export default function UserSearchSelect({
                     {user.nickname && <span style={{ color: 'var(--accent-cyan)', marginLeft: '4px' }}>"{user.nickname}"</span>}
                   </div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    {user.dartCounterUsername && <span>{user.dartCounterUsername} • </span>}
                     <span style={{ color: 'var(--accent-cyan)' }}>{user.division || 'Unassigned'}</span>
                     {' • '}{user.threeDartAverage?.toFixed(2) || 0} avg
                   </div>
