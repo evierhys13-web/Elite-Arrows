@@ -82,6 +82,8 @@ class DartDetectionActivity : AppCompatActivity() {
         }
 
         root.addView(previewView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        previewView.scaleType = PreviewView.ScaleType.FILL_CENTER
+
         root.addView(overlayView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         
         val scoreParams = ConstraintLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
@@ -272,29 +274,38 @@ class DartDetectionActivity : AppCompatActivity() {
                 objectDetector.process(image)
                     .addOnSuccessListener { objects ->
                         for (obj in objects) {
-                            // Heuristic: Dartboards are circular/square and usually classified as Sports equipment
                             val bounds = obj.boundingBox
-                            val aspect = bounds.width().toFloat() / bounds.height().toFloat()
                             
-                            if (aspect in 0.8f..1.2f && bounds.width() > imageProxy.width / 3) {
-                                // Found a potential board!
-                                // Map image coordinates to View coordinates
-                                val scaleX = previewView.width.toFloat() / imageProxy.width.toFloat()
-                                val scaleY = previewView.height.toFloat() / imageProxy.height.toFloat()
-                                
-                                bullX = bounds.centerX().toFloat() * scaleX
-                                bullY = bounds.centerY().toFloat() * scaleY
-                                radius = (bounds.width() / 2f) * scaleX * 0.9f
-                                top20X = bullX
-                                top20Y = bullY - radius
-                                
-                                runOnUiThread {
-                                    overlayView.updateCalibration(bullX, bullY, radius)
-                                    calibrationStep = 2
-                                    Toast.makeText(this, "Board Detected Automatically", Toast.LENGTH_SHORT).show()
-                                }
-                                break
+                            val rotation = imageProxy.imageInfo.rotationDegrees
+                            val isRotated = rotation == 90 || rotation == 270
+                            
+                            val rotatedWidth = if (isRotated) imageProxy.height else imageProxy.width
+                            val rotatedHeight = if (isRotated) imageProxy.width else imageProxy.height
+                            
+                            // Calculate scale for FILL_CENTER
+                            val scale = Math.max(
+                                previewView.width.toFloat() / rotatedWidth.toFloat(),
+                                previewView.height.toFloat() / rotatedHeight.toFloat()
+                            )
+                            
+                            val offsetX = (previewView.width - rotatedWidth * scale) / 2f
+                            val offsetY = (previewView.height - rotatedHeight * scale) / 2f
+                            
+                            // Found a potential board!
+                            bullX = bounds.centerX().toFloat() * scale + offsetX
+                            bullY = bounds.centerY().toFloat() * scale + offsetY
+                            
+                            // Radius adjustment: Double wire is ~75% of full board width
+                            radius = (bounds.width() / 2f) * scale * 0.75f
+                            top20X = bullX
+                            top20Y = bullY - radius
+                            
+                            runOnUiThread {
+                                overlayView.updateCalibration(bullX, bullY, radius)
+                                calibrationStep = 2
+                                Toast.makeText(this, "Board Detected Automatically", Toast.LENGTH_SHORT).show()
                             }
+                            break
                         }
                     }
                     .addOnCompleteListener { imageProxy.close() }
@@ -305,9 +316,19 @@ class DartDetectionActivity : AppCompatActivity() {
                 buffer.get(data)
                 
                 if (lastFrameData != null && isAutoScoringEnabled) {
-                    val scaleX = previewView.width.toFloat() / imageProxy.width.toFloat()
-                    val scaleY = previewView.height.toFloat() / imageProxy.height.toFloat()
-                    detectDartHit(data, imageProxy.width, imageProxy.height, scaleX, scaleY)
+                    val rotation = imageProxy.imageInfo.rotationDegrees
+                    
+                    val rotatedWidth = if (rotation == 90 || rotation == 270) imageProxy.height else imageProxy.width
+                    val rotatedHeight = if (rotation == 90 || rotation == 270) imageProxy.width else imageProxy.height
+                    
+                    val scale = Math.max(
+                        previewView.width.toFloat() / rotatedWidth.toFloat(),
+                        previewView.height.toFloat() / rotatedHeight.toFloat()
+                    )
+                    val offsetX = (previewView.width - rotatedWidth * scale) / 2f
+                    val offsetY = (previewView.height - rotatedHeight * scale) / 2f
+                    
+                    detectDartHit(data, imageProxy.width, imageProxy.height, rotation, scale, offsetX, offsetY)
                 }
                 
                 lastFrameData = data
@@ -320,11 +341,10 @@ class DartDetectionActivity : AppCompatActivity() {
         }
     }
 
-    private fun detectDartHit(currentData: ByteArray, width: Int, height: Int, scaleX: Float, scaleY: Float) {
-        // Simple pixel-wise difference logic
+    private fun detectDartHit(currentData: ByteArray, width: Int, height: Int, rotation: Int, scale: Float, offsetX: Float, offsetY: Float) {
         var diffCount = 0
-        var sumX = 0L
-        var sumY = 0L
+        var sumSX = 0L
+        var sumSY = 0L
         
         val step = 4 // Subsample for performance
         for (y in 0 until height step step) {
@@ -333,8 +353,30 @@ class DartDetectionActivity : AppCompatActivity() {
                 val diff = kotlin.math.abs((currentData[idx].toInt() and 0xFF) - (lastFrameData!![idx].toInt() and 0xFF))
                 if (diff > 40) { // Threshold for change
                     diffCount++
-                    sumX += x
-                    sumY += y
+                    
+                    // Map buffer (x, y) to screen-oriented (sx, sy)
+                    val sx: Float
+                    val sy: Float
+                    when (rotation) {
+                        90 -> {
+                            sx = (height - y).toFloat()
+                            sy = x.toFloat()
+                        }
+                        180 -> {
+                            sx = (width - x).toFloat()
+                            sy = (height - y).toFloat()
+                        }
+                        270 -> {
+                            sx = y.toFloat()
+                            sy = (width - x).toFloat()
+                        }
+                        else -> { // 0
+                            sx = x.toFloat()
+                            sy = y.toFloat()
+                        }
+                    }
+                    sumSX += sx.toLong()
+                    sumSY += sy.toLong()
                 }
             }
         }
@@ -345,13 +387,13 @@ class DartDetectionActivity : AppCompatActivity() {
         if (changePercentage in 0.001f..0.05f) { // Significant but small (like a dart)
             if (isStable) {
                 isStable = false
-                val avgX = (sumX.toFloat() / diffCount) * scaleX
-                val avgY = (sumY.toFloat() / diffCount) * scaleY
+                val avgSX = (sumSX.toFloat() / diffCount) * scale + offsetX
+                val avgSY = (sumSY.toFloat() / diffCount) * scale + offsetY
                 
                 runOnUiThread {
-                    val score = scoringEngine.calculateScore(avgX, avgY, bullX, bullY, top20X, top20Y)
+                    val score = scoringEngine.calculateScore(avgSX, avgSY, bullX, bullY, top20X, top20Y)
                     if (score.value >= 0) {
-                        overlayView.updateLastDart(avgX, avgY, score.label)
+                        overlayView.updateLastDart(avgSX, avgSY, score.label)
                         showHitNotification(score.label)
                         sendScoreToWeb(score.label, score.value)
                     }

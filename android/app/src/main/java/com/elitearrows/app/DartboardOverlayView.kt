@@ -32,17 +32,28 @@ class DartboardOverlayView(context: Context, attrs: AttributeSet?) : View(contex
         super.onDraw(canvas)
 
         if (centerX > 0 && centerY > 0 && radius > 0) {
+            paint.style = Paint.Style.STROKE
+            
             // Draw calibration circles
             paint.color = Color.CYAN
             canvas.drawCircle(centerX, centerY, radius, paint) // Outer
             canvas.drawCircle(centerX, centerY, radius * 0.95f, paint) // Double Inner
             
             canvas.drawCircle(centerX, centerY, radius * 0.65f, paint) // Triple Outer
-            canvas.drawCircle(centerX, centerY, radius * 0.60f, paint) // Triple Inner
+            canvas.drawCircle(centerX, centerY, radius * 0.58f, paint) // Triple Inner
 
             paint.color = Color.RED
             canvas.drawCircle(centerX, centerY, radius * 0.12f, paint) // Outer Bull
             canvas.drawCircle(centerX, centerY, radius * 0.05f, paint) // Inner Bull
+
+            // Draw segment lines for debugging orientation
+            paint.color = Color.argb(100, 0, 255, 255)
+            for (i in 0 until 20) {
+                val angle = Math.toRadians((i * 18.0) - 9.0) // Shift by half segment
+                val stopX = centerX + radius * Math.sin(angle).toFloat()
+                val stopY = centerY - radius * Math.cos(angle).toFloat()
+                canvas.drawLine(centerX, centerY, stopX, stopY, paint)
+            }
 
             // Draw last detected dart
             if (lastDartX > 0 && lastDartY > 0) {
@@ -55,7 +66,7 @@ class DartboardOverlayView(context: Context, attrs: AttributeSet?) : View(contex
             }
         }
         
-        canvas.drawText("ADMIN DART DETECTION TEST", width / 2f, 80f, textPaint)
+        canvas.drawText("AI DART DETECTION ACTIVE", width / 2f, 80f, textPaint)
     }
     
     fun updateCalibration(x: Float, y: Float, r: Float) {
