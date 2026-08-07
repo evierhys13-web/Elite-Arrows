@@ -134,3 +134,20 @@ export const getResultPlayerId = (result, playerNumber, users = []) => {
 
   return matchedUser?.id ? String(matchedUser.id) : ''
 }
+
+export const calculateDartStats = (darts) => {
+  if (!darts || darts.length === 0) return { avg: 0, first9Avg: 0, doubleAcc: 0 }
+
+  const totalScore = darts.reduce((sum, d) => sum + (d.value || 0), 0)
+  const avg = (totalScore / darts.length) * 3
+
+  const first9Darts = darts.slice(0, 9)
+  const first9Score = first9Darts.reduce((sum, d) => sum + (d.value || 0), 0)
+  const first9Avg = first9Darts.length > 0 ? (first9Score / first9Darts.length) * 3 : 0
+
+  const doubleAttempts = darts.filter(d => d.isDoubleAttempt)
+  const doubleHits = darts.filter(d => d.isDoubleHit)
+  const doubleAcc = doubleAttempts.length > 0 ? (doubleHits.length / doubleAttempts.length) * 100 : 0
+
+  return { avg, first9Avg, doubleAcc }
+}

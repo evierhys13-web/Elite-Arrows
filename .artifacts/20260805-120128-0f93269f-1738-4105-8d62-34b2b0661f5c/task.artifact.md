@@ -1,0 +1,22 @@
+# Task: Implement "Accurate" Dart-by-Dart Scoring
+
+- [ ] Research & Planning
+    - [x] Study Dartsmind scoring system
+    - [x] Audit existing scoring in Elite Arrows
+    - [x] Create implementation plan
+- [ ] Core Scoring Logic
+    - [ ] Add dart-by-dart calculation utilities
+    - [ ] Implement First 9 Average logic
+    - [ ] Implement Double Success tracking
+- [ ] UI Components
+    - [ ] Create `DartboardInput` component
+    - [ ] Add checkout suggestion display
+- [ ] Page Integration
+    - [ ] Refactor `LiveMatch.jsx` for dart-by-dart
+    - [ ] Refactor `PracticeGame.jsx` for dart-by-dart
+- [ ] Analytics & Visualization
+    - [ ] Update `Analytics.jsx` with new metrics
+    - [ ] Create heatmap visualization
+- [ ] Verification
+    - [ ] Manual testing of scoring accuracy
+    - [ ] Verification of stat calculations
