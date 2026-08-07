@@ -907,7 +907,7 @@ export default function CupTournaments() {
                     >
                       🔄 Swap Participant
                     </button>
-                    {cup.type === 'world_cup' && !cup.groupsAdvanced && (
+                    {(cup.type === 'world_cup' || cup.type === 'group_knockout') && !cup.groupsAdvanced && (
                       <Link
                         to="/cup-management"
                         className="btn btn-primary btn-sm"

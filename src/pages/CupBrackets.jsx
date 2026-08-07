@@ -417,8 +417,15 @@ export default function CupBracket() {
 
   return (
     <div className="page" style={{ padding: '20px' }}>
-      <div className="page-header" style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Link to="/cups" className="btn btn-secondary">← Back to Cups</Link>
+      <div className="page-header" style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <Link to="/cups" className="btn btn-secondary">← Back to Cups</Link>
+          {isAdmin && (isWorldCupOrGroupKO) && !cup.groupsAdvanced && (
+            <Link to="/cup-management" className="btn btn-primary" style={{ background: 'linear-gradient(to right, #f59e0b, #d97706)', color: 'black', fontWeight: 900 }}>
+               ⚡ START KNOCKOUT PHASE
+            </Link>
+          )}
+        </div>
         {isAdmin && (
           <button className="btn btn-secondary" onClick={() => setShowSwapModal(true)}>
             🔄 Swap Participant
