@@ -164,6 +164,16 @@ export default function PlayOnline() {
 
   const isAndroid = Capacitor.getPlatform() === 'android'
 
+  // Fullscreen mode handling
+  useEffect(() => {
+    if (gameStarted) {
+      document.body.classList.add('fullscreen-match')
+    } else {
+      document.body.classList.remove('fullscreen-match')
+    }
+    return () => document.body.classList.remove('fullscreen-match')
+  }, [gameStarted])
+
   // Presence System: Add user to lobby when on page
   useEffect(() => {
     if (!user?.id) return
@@ -642,7 +652,7 @@ export default function PlayOnline() {
 
   return (
     <div className="page match-mode animate-fade-in" style={{ padding: 0, maxWidth: '100vw', overflow: 'hidden', height: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <div className="match-header" style={{ padding: '15px 20px', background: 'var(--bg-card)', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+      <div className="match-header" style={{ padding: '15px 20px', background: 'var(--bg-card)', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, position: 'relative' }}>
         <div className={`player-box ${turn === 'player' ? 'active' : ''}`}>
           <div className="name">{user?.username}</div>
           <div className="score">{playerScore}</div>
@@ -654,6 +664,14 @@ export default function PlayOnline() {
           <div className="score">{opponentScore}</div>
           {turn === 'opponent' && <div className="turn-indicator">{isOnline ? 'Opponent Throws' : 'Bot Throws'}</div>}
         </div>
+
+        <button
+          className="btn btn-danger btn-xs"
+          style={{ position: 'absolute', top: '15px', right: '20px', padding: '8px 12px', fontSize: '0.65rem', fontWeight: 900 }}
+          onClick={() => { if(window.confirm('Quit match?')) setGameStarted(false) }}
+        >
+          LEAVE MATCH
+        </button>
       </div>
 
       <div className="match-main" style={{ display: 'grid', gridTemplateColumns: '1fr 380px', flex: 1, minHeight: 0 }}>
@@ -728,9 +746,7 @@ export default function PlayOnline() {
         </div>
 
         <aside className="match-stats-sidebar" style={{ background: 'var(--bg-secondary)', borderLeft: '1px solid var(--border)', padding: '20px', display: 'flex', flexDirection: 'column' }}>
-          <button className="btn btn-danger btn-block" onClick={() => { if(window.confirm('Quit match?')) setGameStarted(false) }}>Quit Match</button>
-
-          <div style={{ marginTop: '30px', flex: 1 }}>
+          <div style={{ flex: 1 }}>
             <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '15px', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px' }}>Live Statistics</h4>
 
             <div className="stat-card glass" style={{ marginBottom: '15px', padding: '15px' }}>
@@ -756,6 +772,12 @@ export default function PlayOnline() {
       </div>
 
       <style>{`
+        body.fullscreen-match .sidebar,
+        body.fullscreen-match .bottom-nav,
+        body.fullscreen-match .mobile-header { display: none !important; }
+        body.fullscreen-match .main-content { padding: 0 !important; margin: 0 !important; }
+        body.fullscreen-match .app-layout { grid-template-columns: 1fr !important; }
+
         .player-box { text-align: center; flex: 1; padding: 15px; border-radius: 12px; transition: 0.3s; position: relative; }
         .player-box.active { background: rgba(0, 212, 255, 0.1); border: 1px solid var(--accent-cyan); box-shadow: 0 0 20px rgba(0, 212, 255, 0.1); }
         .player-box .name { font-weight: 800; font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
@@ -772,6 +794,7 @@ export default function PlayOnline() {
         @media (max-width: 1100px) {
           .match-main { grid-template-columns: 1fr; }
           .match-stats-sidebar { display: none; }
+          .match-header { padding-right: 120px !important; }
         }
       `}</style>
     </div>
