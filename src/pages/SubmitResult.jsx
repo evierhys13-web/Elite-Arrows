@@ -201,12 +201,23 @@ export default function SubmitResult() {
 
   useEffect(() => {
     if (selectedFixture) {
-      const opponentId = getFixtureOpponentId(selectedFixture)
-      if (opponentId) {
+      if (selectedFixture.cupId) {
+        // For Cup matches, the "opponent" field stores the FIXTURE ID
         setFormData((prev) => ({
           ...prev,
-          gameType: selectedFixture.cupId ? 'Cup' : (selectedFixture.gameType || 'Friendly'),
-          opponent: opponentId,
+          gameType: 'Cup',
+          opponent: String(selectedFixture.id),
+          bestOf: selectedFixture.bestOf ? selectedFixture.bestOf.toString() : prev.bestOf,
+          firstTo: selectedFixture.firstTo ? selectedFixture.firstTo.toString() : prev.firstTo,
+          yourAvg: '',
+          opponentAvg: ''
+        }))
+      } else {
+        const opponentId = getFixtureOpponentId(selectedFixture)
+        setFormData((prev) => ({
+          ...prev,
+          gameType: selectedFixture.gameType || 'Friendly',
+          opponent: opponentId || '',
           bestOf: selectedFixture.bestOf ? selectedFixture.bestOf.toString() : prev.bestOf,
           firstTo: selectedFixture.firstTo ? selectedFixture.firstTo.toString() : prev.firstTo
         }))
@@ -965,7 +976,7 @@ export default function SubmitResult() {
 
             <div style={{ textAlign: 'center' }}>
               <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
-                {formData.gameType === 'Open League Doubles' ? 'Away Team (Opposing Duo)' : 'Opponent'}
+                {formData.gameType === 'Cup' ? 'Select Match' : formData.gameType === 'Open League Doubles' ? 'Away Team (Opposing Duo)' : 'Opponent'}
               </label>
               <div style={{ display: 'grid', gap: '8px' }}>
                 {formData.gameType === 'Cup' ? (
@@ -974,9 +985,9 @@ export default function SubmitResult() {
                     value={formData.opponent}
                     onChange={handleChange}
                     required
-                    style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                    style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '2px solid var(--accent-cyan)', color: 'var(--text)', fontWeight: 800 }}
                   >
-                    <option value="">Select Cup Match...</option>
+                    <option value="">Choose your match...</option>
                     {cupFixtures.sort((a,b) => (a.cupName || '').localeCompare(b.cupName || '')).map(f => {
                       const cupsData = (typeof getCups === 'function') ? getCups() : []
                       const cup = Array.isArray(cupsData) ? cupsData.find(c => String(c.id) === String(f.cupId)) : null
@@ -986,14 +997,12 @@ export default function SubmitResult() {
                       const p1 = allUsers.find(u => String(u.id) === String(p1Id))
                       const p2 = allUsers.find(u => String(u.id) === String(p2Id))
 
-                      const getRoundName = (round, totalRounds = 5) => {
+                      const getRoundNameShort = (round) => {
                         if (round === 0) return 'Groups'
-                        if (round === totalRounds) return 'Final'
-                        if (round === totalRounds - 1) return 'Semi-Final'
                         return `R${round}`
                       }
 
-                      const label = `${cup?.name || 'Cup'} - ${getRoundName(f.round)}: ${getDisplayName(p1)} vs ${getDisplayName(p2)}`
+                      const label = `${cup?.name?.substring(0, 15) || 'Cup'} - ${getRoundNameShort(f.round)}: ${p1?.username || '?'} vs ${p2?.username || '?'}`
 
                       return (
                         <option key={f.id} value={f.id}>
