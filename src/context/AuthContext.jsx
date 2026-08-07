@@ -1994,6 +1994,8 @@ export function AuthProvider({ children }) {
         [invite.toUserId]: invite.config.startScore || 501,
       },
       turn: invite.fromUserId,
+      currentDarts: [],
+      lastDarts: [],
       history: [],
       status: "active",
       config: invite.config,
@@ -2015,6 +2017,18 @@ export function AuthProvider({ children }) {
       { gameId },
     );
     return gameId;
+  };
+
+  const updateLiveGame = async (gameId, updates) => {
+    try {
+      const gameRef = doc(db, "liveGames", gameId);
+      await updateDoc(gameRef, {
+        ...updates,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (e) {
+      console.error("Error updating live game:", e);
+    }
   };
 
   const forceFetchResults = useCallback(async () => {
@@ -2731,6 +2745,7 @@ export function AuthProvider({ children }) {
         getSeasons,
         sendGameInvite,
         acceptGameInvite,
+        updateLiveGame,
         getNews,
         postNews,
         deleteNews,
