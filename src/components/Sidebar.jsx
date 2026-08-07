@@ -73,7 +73,6 @@ export default function Sidebar() {
       {
         title: 'Compete',
         items: [
-          { path: '/play-online', label: 'Play Online', icon: TargetIcon },
           { path: '/cups', label: 'Cups', icon: TrophyIcon },
           { path: '/practice', label: 'Practice Hub', icon: TargetIcon },
           { path: '/progress-tracker', label: 'Progress Tracker', icon: BarChartIcon },
