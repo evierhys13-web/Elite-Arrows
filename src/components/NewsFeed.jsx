@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContextInternal'
 
 const PinIcon = () => (
   <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 14, height: 14 }}>

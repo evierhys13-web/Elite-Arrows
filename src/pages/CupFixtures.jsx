@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContextInternal'
 import { useNavigate } from 'react-router-dom'
 import { db, doc, setDoc } from '../firebase'
 import { useToast } from '../context/ToastContext'

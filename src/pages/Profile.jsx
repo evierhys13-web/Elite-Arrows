@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContextInternal'
 import Tooltip from '../components/Tooltip'
 import { compressImage, compressImageToBlob } from '../components/ImageUtils'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'

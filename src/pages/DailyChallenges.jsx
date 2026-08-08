@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContextInternal'
 import { db, doc, setDoc, getDocs, collection, query, where, orderBy, limit, storage, ref, uploadBytesResumable, getDownloadURL, deleteDoc, updateDoc } from '../firebase'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { useToast } from '../context/ToastContext'

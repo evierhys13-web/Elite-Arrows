@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContextInternal'
 import { useToast } from '../context/ToastContext'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { saveProgressLog, fetchProgressLogs, deleteProgressLog } from '../utils/progressService'

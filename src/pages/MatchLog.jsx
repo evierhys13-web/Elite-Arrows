@@ -1,6 +1,6 @@
 import { useState, useMemo, Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContextInternal'
 import { getResultPlayerId, isLeagueResult, isPlayoffResult, isSuperLeagueResult, isOpenLeagueResult, isOpenLeagueDoublesResult } from '../utils/leagueResults'
 import UserSearchSelect from '../components/UserSearchSelect'
 import { db, doc, setDoc, getDocs, collection } from '../firebase'

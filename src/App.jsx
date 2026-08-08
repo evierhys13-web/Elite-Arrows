@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
-import { AuthProvider, useAuth } from './context/AuthContext'
+import { AuthProvider } from './context/AuthContext'
+import { useAuth } from './context/AuthContextInternal'
 import { ThemeProvider, useTheme } from './context/ThemeContext'
 import { ToastProvider } from './context/ToastContext'
 import Sidebar from './components/Sidebar'

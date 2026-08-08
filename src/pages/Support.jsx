@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContextInternal'
 import { db, supportRequestsCollection, doc, setDoc } from '../firebase'
 import { DiagnosticBot } from '../utils/DiagnosticBot'
 

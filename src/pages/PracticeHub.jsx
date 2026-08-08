@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContextInternal'
 import { db, collection, query, where, getDocs, orderBy, limit } from '../firebase'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { PRACTICE_MODES } from '../utils/practiceService'

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { db, collection, query, orderBy, getDocs, doc, updateDoc, increment, limit } from '../firebase'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContextInternal'
 
 export default function GlobalHighlightReel() {
   const [highlights, setHighlights] = useState([])

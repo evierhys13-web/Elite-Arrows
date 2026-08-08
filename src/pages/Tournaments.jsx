@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContextInternal'
 import { db, collection, addDoc, getDocs, query, orderBy, doc, deleteDoc } from '../firebase'
 import UserSearchSelect from '../components/UserSearchSelect'
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContextInternal'
 import { useToast } from '../context/ToastContext'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { PRACTICE_MODES, savePracticeSession, calculatePracticeTokens } from '../utils/practiceService'

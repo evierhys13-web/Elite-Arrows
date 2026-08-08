@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContextInternal'
 import { db, doc, setDoc } from '../firebase'
 import NewsFeed from '../components/NewsFeed'
 import { SkeletonList } from '../components/Skeleton'

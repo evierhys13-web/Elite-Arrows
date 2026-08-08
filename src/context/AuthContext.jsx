@@ -54,152 +54,25 @@ import { logSubscriptionActivated, logUserLogin, startTrace } from "../utils/ana
 import { useToast } from "./ToastContext";
 
 import { DIVISIONS, EMPTY_ARRAY } from "./constants";
-
 import { AuthContext } from "./AuthContextInternal";
-
-export { useAuth } from "./AuthContextInternal";
+import {
+  RESULT_CACHE_KEY,
+  SENSITIVE_FIELDS,
+  saveUsersCache,
+  getCachedResults,
+  saveResultsCache,
+  stripResultProofForCache,
+} from "./AuthHelpers";
 
 const SEASON_ONE_WELCOME_START = new Date(
   "2026-05-01T00:00:00+01:00",
 ).getTime();
 
-const RESULT_CACHE_KEY = "eliteArrowsResults";
-const RESULT_PROOF_FIELDS = [
-  "proofImage",
-  "proof",
-  "proofUrl",
-  "proofImageUrl",
-  "proofFile",
-];
-const MINIMAL_RESULT_CACHE_FIELDS = [
-  "id",
-  "firestoreId",
-  "fixtureId",
-  "cupId",
-  "matchId",
-  "player1",
-  "player1Id",
-  "player2",
-  "player2Id",
-  "score1",
-  "score2",
-  "division",
-  "gameType",
-  "season",
-  "date",
-  "submittedAt",
-  "approvedAt",
-  "updatedAt",
-  "status",
-  "submittedBy",
-  "bestOf",
-  "firstTo",
-  "player1Stats",
-  "player2Stats",
-];
-
-const stripResultProofForCache = (result) => {
-  const cached = { ...result };
-  let hasProofImage = Boolean(cached.hasProofImage);
-  RESULT_PROOF_FIELDS.forEach((field) => {
-    if (cached[field]) hasProofImage = true;
-    delete cached[field];
-  });
-  if (hasProofImage) cached.hasProofImage = true;
-  return cached;
-};
-
-const minimizeResultForCache = (result) => {
-  const cached = {};
-  MINIMAL_RESULT_CACHE_FIELDS.forEach((field) => {
-    if (result[field] !== undefined) cached[field] = result[field];
-  });
-  if (RESULT_PROOF_FIELDS.some((field) => result[field]))
-    cached.hasProofImage = true;
-  return cached;
-};
-
-// Only cache the fields actually needed from allUsers to prevent localStorage quota errors.
-// Large per-user arrays (tokenHistory, matchHistory, stats sub-docs, etc.) are intentionally
-// excluded. The current user is already stored in full under eliteArrowsCurrentUser.
-const USER_CACHE_FIELDS = [
-  "id",
-  "username",
-  "name",
-  "displayName",
-  "email",
-  "profilePicture",
-  "division",
-  "superLeagueDivision",
-  "isAdmin",
-  "isTournamentAdmin",
-  "isCupAdmin",
-  "isSubscribed",
-  "isBanned",
-  "subscribedSeasons",
-  "manualStats",
-  "friends",
-  "tokens",
-  "isBot",
-];
-
-const stripUserForCache = (u) => {
-  const stripped = {};
-  USER_CACHE_FIELDS.forEach((field) => {
-    if (u[field] !== undefined) stripped[field] = u[field];
-  });
-  return stripped;
-};
-
-const saveUsersCache = (users) => {
-  try {
-    localStorage.setItem(
-      "eliteArrowsUsers",
-      JSON.stringify((users || []).map(stripUserForCache)),
-    );
-  } catch (error) {
-    console.warn("Could not cache users locally (quota exceeded):", error);
-    // Clear rather than leave a partial / stale blob
-    localStorage.removeItem("eliteArrowsUsers");
-  }
-};
-
-const getCachedResults = () => {
-  try {
-    return JSON.parse(localStorage.getItem(RESULT_CACHE_KEY) || "[]");
-  } catch (error) {
-    console.warn("Could not read cached results:", error);
-    localStorage.removeItem(RESULT_CACHE_KEY);
-    return [];
-  }
-};
-
-const saveResultsCache = (results) => {
-  const resultList = Array.isArray(results) ? results : [];
-  // Cache up to 1000 results to ensure standings accuracy across refreshes
-  const limitedResults = resultList
-    .sort(
-      (a, b) =>
-        new Date(b.date || b.submittedAt || 0) -
-        new Date(a.date || a.submittedAt || 0),
-    )
-    .slice(0, 1000);
-
-  try {
-    localStorage.setItem(
-      RESULT_CACHE_KEY,
-      JSON.stringify(limitedResults.map(stripResultProofForCache)),
-    );
-  } catch (error) {
-    console.warn("Could not cache results locally (quota exceeded):", error);
-    localStorage.removeItem(RESULT_CACHE_KEY);
-  }
-};
-
 
 export function AuthProvider({ children }) {
   const { showToast } = useToast();
-  // Initialize state from local cache to prevent data flickering on refresh
+  // Initialize state from local cache to prevent data flickering on
+efresh
   const [user, setUser] = useState(() => {
     try {
       const saved = localStorage.getItem("eliteArrowsCurrentUser");
@@ -322,19 +195,6 @@ export function AuthProvider({ children }) {
       }
     })(),
   );
-
-  const SENSITIVE_FIELDS = [
-    "password",
-    "passwordString",
-    "passwordHash",
-    "passwordKey",
-    "passwordStringValue",
-    "password",
-    "firebaseId",
-    "pwd",
-    "pass",
-    "passwd",
-  ];
 
   const requestNotificationPermission = useCallback(async () => {
     if (!("Notification" in window)) {

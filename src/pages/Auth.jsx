@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContextInternal'
 import BackgroundDecor from '../components/BackgroundDecor'
 import { auth, sendPasswordResetEmail } from '../firebase'
 

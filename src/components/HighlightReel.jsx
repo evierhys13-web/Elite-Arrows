@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { db, collection, query, where, orderBy, getDocs, doc, updateDoc, increment } from '../firebase'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContextInternal'
 
 export default function HighlightReel({ userId, isAdmin = false }) {
   const { user } = useAuth()

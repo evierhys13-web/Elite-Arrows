@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContextInternal'
 import { Link } from 'react-router-dom'
 import { db, doc, setDoc, deleteDoc, getDoc, collection, query, where, getDocs, writeBatch } from '../firebase'
 import { ADMIN_EMAILS } from '../config'

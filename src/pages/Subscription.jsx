@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/AuthContextInternal";
 import { initStore, requestPurchase } from "../utils/store";
 import { Capacitor } from "@capacitor/core";
 import { storage, ref, uploadBytesResumable, getDownloadURL } from '../firebase'

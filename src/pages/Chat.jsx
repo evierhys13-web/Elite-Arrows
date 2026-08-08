@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContextInternal'
 import { db, chatMessagesCollection, doc, setDoc, deleteDoc, query, where, onSnapshot, storage, ref, uploadBytesResumable, getDownloadURL } from '../firebase'
 import { useToast } from '../context/ToastContext'
 

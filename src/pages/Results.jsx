@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContextInternal'
 import { db, setDoc, getDocs, doc, collection, addDoc } from '../firebase'
 import { ADMIN_EMAILS } from '../config'
 import { derivePlayerStatsFromResults, getPersistedPlayerStats } from '../utils/playerStats'

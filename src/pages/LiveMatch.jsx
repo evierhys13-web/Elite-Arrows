@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContextInternal';
 import { DartBot } from '../utils/DartBot';
 import Breadcrumbs from '../components/Breadcrumbs';
 import { useToast } from '../context/ToastContext';

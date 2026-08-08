@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContextInternal'
 import { useToast } from '../context/ToastContext'
 import {
   PieChart, Pie, Cell, LineChart, Line, BarChart, Bar, XAxis, YAxis,

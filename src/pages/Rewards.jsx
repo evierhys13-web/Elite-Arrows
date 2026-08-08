@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContextInternal'
 import { db, doc, updateDoc, writeBatch } from '../firebase'
 
 const DIVISIONS = ['Elite', 'Emerald', 'Diamond', 'Platinum']
