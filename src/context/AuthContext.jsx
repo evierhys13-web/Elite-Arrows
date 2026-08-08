@@ -71,8 +71,7 @@ const SEASON_ONE_WELCOME_START = new Date(
 
 export function AuthProvider({ children }) {
   const { showToast } = useToast();
-  // Initialize state from local cache to prevent data flickering on
-efresh
+  // Initialize state from local cache to prevent data flickering on refresh
   const [user, setUser] = useState(() => {
     try {
       const saved = localStorage.getItem("eliteArrowsCurrentUser");
