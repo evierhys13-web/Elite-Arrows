@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useAuth } from '../context/AuthContextInternal'
 import { db, doc, setDoc, getDocs, collection, deleteDoc, updateDoc, storage, ref, uploadBytesResumable, getDownloadURL } from '../firebase'
 import Breadcrumbs from '../components/Breadcrumbs'
@@ -24,11 +24,7 @@ export default function Challenges() {
     return ADMIN_EMAILS.includes(user?.email?.toLowerCase()) || user?.isAdmin || user?.isTournamentAdmin
   }, [user])
 
-  useEffect(() => {
-    fetchData()
-  }, [])
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true)
     try {
       const cSnap = await getDocs(collection(db, 'challenges'))
@@ -41,7 +37,11 @@ export default function Challenges() {
       console.error(e)
     }
     setLoading(false)
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
 
   const handleCreateChallenge = async () => {
     if (!newChallenge.title || !newChallenge.description) return

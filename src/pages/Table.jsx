@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContextInternal";
 import { derivePlayerStatsFromResults } from "../utils/playerStats";
@@ -15,7 +15,6 @@ const DIVISION_COLORS = {
 };
 
 export default function Table() {
-  const [activeDivision, setActiveDivision] = useState("Overall");
   const {
     user,
     getAllUsers,
@@ -28,6 +27,12 @@ export default function Table() {
     fetchResultsBySeason,
     fetchUsersByDivision,
   } = useAuth();
+
+  const allUsers = getAllUsers();
+  const fixtures = getFixtures();
+  const results = getResults();
+
+  const [activeDivision, setActiveDivision] = useState("Overall");
   const { showToast } = useToast();
   const [refreshKey, setRefreshKey] = useState(0);
   const [selectedSeason, setSelectedSeason] = useState("Season 4");
@@ -64,17 +69,17 @@ export default function Table() {
 
   const isAdmin = user?.isAdmin === true;
 
-  const getDivisionsForSeason = () => {
+  const getDivisionsForSeason = useCallback(() => {
     // For Season 4 and beyond, use the new division structure
     if (selectedSeason === "Season 4" || selectedSeason === "Season 5") {
       return ["Overall", "Elite", "Emerald", "Diamond", "Platinum"];
     }
     // Fallback for older seasons
     return ["Overall", "Elite", "Emerald", "Diamond", "Platinum", "Gold", "Silver", "Bronze"];
-  };
+  }, [selectedSeason]);
 
   const divisions = getDivisionsForSeason();
-  const seasons = getSeasons().filter(s => s.name === "Season 4");
+  const seasons = useMemo(() => getSeasons().filter(s => s.name === "Season 4"), [getSeasons]);
 
   useEffect(() => {
     if (!hasInitializedSeason) {

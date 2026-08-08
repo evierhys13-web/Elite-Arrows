@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useAuth } from '../context/AuthContextInternal'
 import { db, doc, setDoc, getDocs, collection, query, where, orderBy, limit, storage, ref, uploadBytesResumable, getDownloadURL, deleteDoc, updateDoc } from '../firebase'
 import Breadcrumbs from '../components/Breadcrumbs'
@@ -25,11 +25,7 @@ export default function DailyChallenges() {
     return ADMIN_EMAILS.includes(user?.email?.toLowerCase()) || user?.isAdmin || user?.isTournamentAdmin
   }, [user])
 
-  useEffect(() => {
-    fetchData()
-  }, [])
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true)
     try {
       const today = new Date().toISOString().split('T')[0]
@@ -52,7 +48,11 @@ export default function DailyChallenges() {
       console.error(e)
     }
     setLoading(false)
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
 
   const handleCreateChallenge = async () => {
     if (!newChallenge.title || !newChallenge.description) return

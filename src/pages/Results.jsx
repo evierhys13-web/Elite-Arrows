@@ -9,6 +9,9 @@ import PullToRefresh from '../components/PullToRefresh'
 
 export default function Results() {
   const { user, getAllUsers, getResults, triggerDataRefresh, notifyAdmins, loading, fetchMoreResults } = useAuth()
+
+  const allResults = getResults() || []
+
   const { showToast } = useToast()
   const [activeTab, setActiveTab] = useState('approved')
   const [fetchingMore, setFetchingMore] = useState(false)

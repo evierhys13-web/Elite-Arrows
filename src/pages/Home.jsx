@@ -16,6 +16,10 @@ const DEFAULT_LEAGUE_TABLE_RESET_AT = '2026-04-29T16:14:21.338+01:00'
 export default function Home() {
   const { user, getAllUsers, getFixtures, getResults, loading, adminData, updateUser, getSeasons } = useAuth()
   
+  const allUsers = getAllUsers()
+  const fixtures = getFixtures()
+  const allResults = getResults()
+
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
   const [seasonPhase, setSeasonPhase] = useState('upcoming')
   const [visible, setVisible] = useState(false)

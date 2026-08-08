@@ -25,8 +25,12 @@ export default function Profile() {
   const { user, updateUser, getAllUsers, getResults, getFixtures, adminData, addFriend } = useAuth()
   const { id } = useParams()
   
+  const allUsers = getAllUsers()
+  const allResults = getResults()
+  const fixtures = getFixtures()
+
   const isViewingOther = id && id !== user.id
-  const viewedUser = isViewingOther ? getAllUsers().find(u => u.id === id) : null
+  const viewedUser = isViewingOther ? allUsers.find(u => u.id === id) : null
   const displayUser = isViewingOther ? viewedUser : user
   
   const [formData, setFormData] = useState({

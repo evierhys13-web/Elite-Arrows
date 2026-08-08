@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContextInternal'
 import { useToast } from '../context/ToastContext'
@@ -11,7 +11,13 @@ export default function PracticeGame() {
   const navigate = useNavigate()
   const { user, addTokens } = useAuth()
   const { showToast } = useToast()
-  const mode = PRACTICE_MODES[Object.keys(PRACTICE_MODES).find(k => PRACTICE_MODES[k].id === modeId)]
+
+  const isAndroid = Capacitor.getPlatform() === 'android'
+
+  const mode = useMemo(() =>
+    PRACTICE_MODES[Object.keys(PRACTICE_MODES).find(k => PRACTICE_MODES[k].id === modeId)],
+    [modeId]
+  )
 
   const [gameState, setGameState] = useState({
     target: modeId === 'atc' ? 1 : (modeId === '170' ? 170 : 'Score'),
@@ -28,8 +34,6 @@ export default function PracticeGame() {
   const [currentInput, setCurrentInput] = useState('')
   const [useAccurateScoring, setUseAccurateScoring] = useState(true)
   const [multiplier, setMultiplier] = useState(1)
-
-  const isAndroid = Capacitor.getPlatform() === 'android'
 
   const processDart = useCallback((dart) => {
     setGameState(prev => {
@@ -83,24 +87,6 @@ export default function PracticeGame() {
     processDart({ value: score, label: mult === 3 ? `T${val}` : mult === 2 ? `D${val}` : `S${val}`, multiplier: mult })
   }, [processDart])
 
-  useEffect(() => {
-    const handleScore = (event) => {
-      const { scoreValue, scoreLabel } = event.detail
-      processDart({ value: scoreValue, label: scoreLabel || 'AI' })
-    }
-
-    const handleSubmit = () => {
-      // In practice mode, we just keep going
-    }
-
-    window.addEventListener('dartDetectionScore', handleScore)
-    window.addEventListener('dartDetectionSubmit', handleSubmit)
-    return () => {
-      window.removeEventListener('dartDetectionScore', handleScore)
-      window.removeEventListener('dartDetectionSubmit', handleSubmit)
-    }
-  }, [processDart])
-
   const launchNativeDetection = async () => {
     try {
       const { registerPlugin } = await import('@capacitor/core')
@@ -136,6 +122,24 @@ export default function PracticeGame() {
       setCurrentInput(prev => prev + val)
     }
   }
+
+  useEffect(() => {
+    const handleScore = (event) => {
+      const { scoreValue, scoreLabel } = event.detail
+      processDart({ value: scoreValue, label: scoreLabel || 'AI' })
+    }
+
+    const handleSubmit = () => {
+      // In practice mode, we just keep going
+    }
+
+    window.addEventListener('dartDetectionScore', handleScore)
+    window.addEventListener('dartDetectionSubmit', handleSubmit)
+    return () => {
+      window.removeEventListener('dartDetectionScore', handleScore)
+      window.removeEventListener('dartDetectionSubmit', handleSubmit)
+    }
+  }, [processDart])
 
   if (!mode) return <div className="page">Invalid practice mode</div>
 

@@ -1,4 +1,4 @@
-import { useState, useMemo, Fragment } from 'react'
+import { useState, useMemo, Fragment, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContextInternal'
 import { getResultPlayerId, isLeagueResult, isPlayoffResult, isSuperLeagueResult, isOpenLeagueResult, isOpenLeagueDoublesResult } from '../utils/leagueResults'
@@ -219,7 +219,7 @@ export default function MatchLog() {
     return counts
   }, [competitionResults])
   
-  const getPlayoffOpponent = () => {
+  const getPlayoffOpponent = useCallback(() => {
     if (!targetUser.id || competition !== 'League') return null
     const allPlayoffs = fixtures.filter(f => {
       if (f._deleted) return false
@@ -239,7 +239,8 @@ export default function MatchLog() {
     const opponentId = p1 === String(targetUser.id) ? p2 : p1
     const u = allUsers.find(u => String(u.id) === opponentId)
     return u ? { ...u, _playoff: true, _fixtureId: playoff.id } : null
-  }
+  }, [targetUser.id, competition, fixtures, allUsers])
+
   const playoffOpponent = getPlayoffOpponent()
 
   const playoffAlreadyPlayed = useMemo(() => {
