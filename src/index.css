@@ -520,6 +520,17 @@ body.nav-mode-bottom .mobile-bottom-nav { display: flex; }
 .animate-fade-in { animation: fadeIn 0.5s ease-out; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
 @media (max-width: 640px) {
   .page-title { font-size: 1.8rem; font-weight: 900; }
   .card { padding: 20px; }

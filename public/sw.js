@@ -2,7 +2,7 @@ const CACHE_NAME = 'elite-arrows-v43';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
-  '/logo.jpg',
+  '/elite arrows.jpg',
   '/firebase-messaging-sw.js'
 ];
 
@@ -128,8 +128,8 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
     self.registration.showNotification(event.data.title, {
       body: event.data.body,
-      icon: event.data.icon || '/logo.jpg',
-      badge: event.data.badge || '/logo.jpg',
+      icon: event.data.icon || '/elite arrows.jpg',
+      badge: event.data.badge || '/elite arrows.jpg',
       data: event.data.data || {}
     });
   }

@@ -47,7 +47,14 @@ if ('serviceWorker' in navigator) {
 window.addEventListener('error', (e) => {
   if (e.message && (e.message.includes('chunk') || e.message.includes('Loading chunk'))) {
     console.log('Chunk error detected, reloading...');
-    window.location.reload();
+    const lastReload = parseInt(sessionStorage.getItem('eliteArrowsLastChunkReload') || '0');
+    const now = Date.now();
+    if (now - lastReload > 5000) { // Only reload once every 5 seconds to avoid loops
+      sessionStorage.setItem('eliteArrowsLastChunkReload', String(now));
+      window.location.reload();
+    } else {
+      console.error('Infinite reload loop detected. Stopping.');
+    }
   }
 }, true);
 
@@ -55,12 +62,23 @@ window.addEventListener('error', (e) => {
 window.addEventListener('unhandledrejection', (e) => {
   if (e.reason && (e.reason.name === 'ChunkLoadError' || (e.reason.message && e.reason.message.includes('Loading chunk')))) {
     console.log('Chunk load rejection detected, reloading...');
-    window.location.reload();
+    const lastReload = parseInt(sessionStorage.getItem('eliteArrowsLastChunkReload') || '0');
+    const now = Date.now();
+    if (now - lastReload > 5000) {
+      sessionStorage.setItem('eliteArrowsLastChunkReload', String(now));
+      window.location.reload();
+    } else {
+      console.error('Infinite reload loop detected. Stopping.');
+    }
   }
 });
 
+import ErrorBoundary from './components/ErrorBoundary.jsx'
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </React.StrictMode>,
 )

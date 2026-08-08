@@ -19,8 +19,8 @@ self.addEventListener('push', (event) => {
   let data = {
     title: 'Elite Arrows',
     body: 'You have a new notification',
-    icon: '/logo.jpg',
-    badge: '/logo.jpg',
+    icon: '/elite arrows.jpg',
+    badge: '/elite arrows.jpg',
     data: {}
   }
 

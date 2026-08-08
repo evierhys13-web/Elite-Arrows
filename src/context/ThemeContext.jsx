@@ -3,26 +3,50 @@ import { createContext, useContext, useEffect, useState, useMemo } from 'react'
 const ThemeContext = createContext(null)
 
 export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState(() => localStorage.getItem('eliteArrowsTheme') || 'light')
-  const [language, setLanguage] = useState(() => localStorage.getItem('eliteArrowsLanguage') || 'en')
-  const [chatSettings, setChatSettings] = useState(() => {
-    return JSON.parse(
-      localStorage.getItem('eliteArrowsChatSettings') ||
-      '{"soundEnabled": true, "notificationsEnabled": true}'
-    )
+  const [theme, setTheme] = useState(() => {
+    try {
+      return localStorage.getItem('eliteArrowsTheme') || 'light'
+    } catch (e) {
+      return 'light'
+    }
   })
-  const [navMode, setNavMode] = useState(() => localStorage.getItem('eliteArrowsNavMode') || 'sidebar')
+  const [language, setLanguage] = useState(() => {
+    try {
+      return localStorage.getItem('eliteArrowsLanguage') || 'en'
+    } catch (e) {
+      return 'en'
+    }
+  })
+  const [chatSettings, setChatSettings] = useState(() => {
+    try {
+      return JSON.parse(
+        localStorage.getItem('eliteArrowsChatSettings') ||
+        '{"soundEnabled": true, "notificationsEnabled": true}'
+      )
+    } catch (e) {
+      return { soundEnabled: true, notificationsEnabled: true }
+    }
+  })
+  const [navMode, setNavMode] = useState(() => {
+    try {
+      return localStorage.getItem('eliteArrowsNavMode') || 'sidebar'
+    } catch (e) {
+      return 'sidebar'
+    }
+  })
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
-    localStorage.setItem('eliteArrowsTheme', theme)
+    try {
+      localStorage.setItem('eliteArrowsTheme', theme)
+    } catch (e) {}
   }, [theme])
 
   useEffect(() => {
-    const savedColors = localStorage.getItem('eliteArrowsColors')
-    if (!savedColors) return
-
     try {
+      const savedColors = localStorage.getItem('eliteArrowsColors')
+      if (!savedColors) return
+
       const colors = JSON.parse(savedColors)
       if (colors.primary) {
         document.documentElement.style.setProperty('--accent-primary', colors.primary)
@@ -39,15 +63,21 @@ export function ThemeProvider({ children }) {
   }, [])
 
   useEffect(() => {
-    localStorage.setItem('eliteArrowsLanguage', language)
+    try {
+      localStorage.setItem('eliteArrowsLanguage', language)
+    } catch (e) {}
   }, [language])
 
   useEffect(() => {
-    localStorage.setItem('eliteArrowsChatSettings', JSON.stringify(chatSettings))
+    try {
+      localStorage.setItem('eliteArrowsChatSettings', JSON.stringify(chatSettings))
+    } catch (e) {}
   }, [chatSettings])
 
   useEffect(() => {
-    localStorage.setItem('eliteArrowsNavMode', navMode)
+    try {
+      localStorage.setItem('eliteArrowsNavMode', navMode)
+    } catch (e) {}
   }, [navMode])
 
   const toggleTheme = () => {

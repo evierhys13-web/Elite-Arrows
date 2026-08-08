@@ -216,10 +216,12 @@ export function AuthProvider({ children }) {
   const [allUsers, setAllUsers] = useState(() => {
     try {
       const saved = localStorage.getItem("eliteArrowsUsers");
-      return saved && saved !== "undefined" ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
+      if (saved && saved !== "undefined") {
+        const parsed = JSON.parse(saved);
+        return Array.isArray(parsed) ? parsed : [];
+      }
+    } catch (e) {}
+    return [];
   });
   const [notifications, setNotifications] = useState(() => {
     try {
@@ -687,6 +689,9 @@ export function AuthProvider({ children }) {
           publishResults({ announce: false });
         }
       },
+      (error) => {
+        console.error("Admin data listener error:", error);
+      }
     );
 
     const unsubscribeNews = onSnapshot(
@@ -700,6 +705,9 @@ export function AuthProvider({ children }) {
           localStorage.setItem("eliteArrowsNews", JSON.stringify(newsData));
         } catch (e) {}
       },
+      (error) => {
+        console.error("News listener error:", error);
+      }
     );
 
     return () => {
@@ -750,7 +758,7 @@ export function AuthProvider({ children }) {
         saveUsersCache(allFetchedUsers);
 
         const currentUserData = allFetchedUsers.find(
-          (item) => String(item.id) === String(user.id),
+          (item) => String(item.id) === String(user?.id),
         );
 
         if (currentUserData) {
@@ -758,17 +766,24 @@ export function AuthProvider({ children }) {
              if (JSON.stringify(prev) === JSON.stringify(currentUserData)) return prev;
              return currentUserData;
           });
-          localStorage.setItem("eliteArrowsCurrentUser", JSON.stringify(currentUserData));
+          try {
+            localStorage.setItem("eliteArrowsCurrentUser", JSON.stringify(currentUserData));
+          } catch (e) {}
 
           if (currentUserData.isBanned) {
             firebaseSignOut(auth);
             setUser(null);
-            localStorage.removeItem("eliteArrowsCurrentUser");
+            try {
+              localStorage.removeItem("eliteArrowsCurrentUser");
+            } catch (e) {}
             window.location.href = "/auth";
             return;
           }
         }
         announceAfterHydration("users");
+      },
+      (error) => {
+        console.error("Users listener error:", error);
       }
     );
 
@@ -837,6 +852,9 @@ export function AuthProvider({ children }) {
         const shouldAnnounce = hydratedCollections.has("results");
         hydratedCollections.add("results");
         publishResults({ announce: shouldAnnounce });
+      },
+      (error) => {
+        console.error("Results listener error:", error);
       }
     );
 
@@ -868,6 +886,8 @@ export function AuthProvider({ children }) {
         });
         resultRowsRef.current = merged;
         publishResults({ announce: true });
+      }, (error) => {
+        console.error("UserResults1 listener error:", error);
       });
     }
     if (userResultsQuery2) {
@@ -895,6 +915,8 @@ export function AuthProvider({ children }) {
         });
         resultRowsRef.current = merged;
         publishResults({ announce: true });
+      }, (error) => {
+        console.error("UserResults2 listener error:", error);
       });
     }
 
@@ -936,6 +958,9 @@ export function AuthProvider({ children }) {
           return merged;
         });
         announceAfterHydration("fixtures");
+      },
+      (error) => {
+        console.error("Fixtures listener error:", error);
       }
     );
 
@@ -956,6 +981,8 @@ export function AuthProvider({ children }) {
           });
           return merged;
         });
+      }, (error) => {
+        console.error("Fixtures2 listener error:", error);
       });
     }
 
@@ -976,10 +1003,15 @@ export function AuthProvider({ children }) {
         if (seasonsData.length > 0) {
           const activeSeason = seasonsData.find((s) => s.isActive);
           if (activeSeason) {
-            localStorage.setItem("eliteArrowsCurrentSeason", activeSeason.name);
+            try {
+              localStorage.setItem("eliteArrowsCurrentSeason", activeSeason.name);
+            } catch (e) {}
           }
         }
         announceAfterHydration("seasons");
+      },
+      (error) => {
+        console.error("Seasons listener error:", error);
       }
     );
 
@@ -995,6 +1027,9 @@ export function AuthProvider({ children }) {
           localStorage.setItem("eliteArrowsBets", JSON.stringify(betsData));
         } catch (e) {}
         announceAfterHydration("bets");
+      },
+      (error) => {
+        console.error("Bets listener error:", error);
       }
     );
 
@@ -1032,7 +1067,7 @@ export function AuthProvider({ children }) {
               body: notification.message || "New notification",
               data: notification.data,
             });
-            showToast(
+            showToast?.(
               notification.message || notification.title || "New notification",
               "info",
             );
@@ -1048,6 +1083,16 @@ export function AuthProvider({ children }) {
         const unread = userNotifs.filter((n) => !n.isRead).length;
         setUnreadCount(unread);
         updateBadgeCount(unread);
+      },
+      (error) => {
+        console.error("Notifications listener error:", error);
+        // Attempt to load from cache on error
+        try {
+          const saved = localStorage.getItem("eliteArrowsNotifications");
+          if (saved) {
+            setNotifications(JSON.parse(saved));
+          }
+        } catch (e) {}
       }
     );
 
@@ -2174,14 +2219,16 @@ export function AuthProvider({ children }) {
     window.location.reload();
   };
 
-  const updateFixtures = (updatedFixtures) => {
+  const updateFixtures = useCallback((updatedFixtures) => {
     setFixtures(updatedFixtures);
-    localStorage.setItem(
-      "eliteArrowsFixtures",
-      JSON.stringify(updatedFixtures),
-    );
+    try {
+      localStorage.setItem(
+        "eliteArrowsFixtures",
+        JSON.stringify(updatedFixtures),
+      );
+    } catch (e) {}
     triggerDataRefresh("fixtures");
-  };
+  }, [triggerDataRefresh]);
 
   const advanceCupBracket = useCallback(async (result) => {
     if (!result.cupId || !result.matchId) {
@@ -2561,82 +2608,6 @@ export function AuthProvider({ children }) {
       console.error("Error adding to money history:", e);
     }
   }, []);
-
-  useEffect(() => {
-    if (!user?.id) {
-      setNotifications([]);
-      setUnreadCount(0);
-      updateBadgeCount(0);
-      seenNotificationIdsRef.current = new Set();
-      return;
-    }
-
-    const notificationsQuery = query(
-      collection(db, "notifications"),
-      where("toUserId", "==", user.id),
-    );
-    const unsubscribeNotifications = onSnapshot(
-      notificationsQuery,
-      (snapshot) => {
-        const userNotifs = snapshot.docs
-          .map((docSnap) => {
-            const data = docSnap.data();
-            return {
-              ...data,
-              id: data.id || docSnap.id,
-              notificationDocId: docSnap.id,
-            };
-          })
-          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-        const previousIds = seenNotificationIdsRef.current;
-        const nextIds = new Set(
-          userNotifs.map((notification) => notification.id),
-        );
-        const shouldAnnounceNewNotifications = previousIds.size > 0;
-
-        userNotifs.forEach((notification) => {
-          if (
-            shouldAnnounceNewNotifications &&
-            !previousIds.has(notification.id) &&
-            !notification.isRead
-          ) {
-            showLocalNotification(notification.title || "Elite Arrows", {
-              body: notification.message || "New notification",
-              data: notification.data,
-            });
-            showToast(
-              notification.message || notification.title || "New notification",
-              "info",
-            );
-          }
-        });
-
-        seenNotificationIdsRef.current = nextIds;
-        setNotifications(userNotifs);
-        localStorage.setItem(
-          "eliteArrowsNotifications",
-          JSON.stringify(userNotifs),
-        );
-        const unread = userNotifs.filter((n) => !n.isRead).length;
-        setUnreadCount(unread);
-        updateBadgeCount(unread);
-      },
-      (error) => {
-        console.log("Notifications listener error:", error);
-        const storedNotifs = JSON.parse(
-          localStorage.getItem("eliteArrowsNotifications") || "[]",
-        );
-        const userNotifs = storedNotifs.filter((n) => n.toUserId === user.id);
-        setNotifications(userNotifs);
-        const unread = userNotifs.filter((n) => !n.isRead).length;
-        setUnreadCount(unread);
-        updateBadgeCount(unread);
-      },
-    );
-
-    return () => unsubscribeNotifications();
-  }, [user?.id, showLocalNotification, updateBadgeCount]);
 
   useEffect(() => {
     const setupForegroundMessages = async () => {

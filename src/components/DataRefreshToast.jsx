@@ -42,18 +42,6 @@ export default function DataRefreshToast({ refreshTrigger }) {
       fontSize: '0.95rem'
     }}>
       {message}
-      <style>{`
-        @keyframes slideIn {
-          from {
-            transform: translateX(100%);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
-        }
-      `}</style>
     </div>
   )
 }
