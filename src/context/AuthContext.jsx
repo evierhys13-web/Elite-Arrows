@@ -55,15 +55,9 @@ import { useToast } from "./ToastContext";
 
 import { DIVISIONS, EMPTY_ARRAY } from "./constants";
 
-const AuthContext = createContext(null);
+import { AuthContext } from "./AuthContextInternal";
 
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within AuthProvider");
-  }
-  return context;
-}
+export { useAuth } from "./AuthContextInternal";
 
 const SEASON_ONE_WELCOME_START = new Date(
   "2026-05-01T00:00:00+01:00",
