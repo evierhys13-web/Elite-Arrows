@@ -71,6 +71,40 @@ export default function SubmitResult() {
   const allResults = getResults()
   const seasons = getSeasons()
 
+  const getFixturePlayerIds = (fixture) => {
+    const player1Id = fixture.player1Id || fixture.player1
+    const player2Id = fixture.player2Id || fixture.player2
+    return { player1Id, player2Id }
+  }
+
+  const getFixtureOpponentId = (fixture) => {
+    const { player1Id, player2Id } = getFixturePlayerIds(fixture)
+    if (String(player1Id) === String(user.id)) return player2Id
+    if (String(player2Id) === String(user.id)) return player1Id
+    return null
+  }
+
+  const getDisplayName = (profile, fallback = 'Unknown player') => (
+    profile?.username || profile?.name || profile?.displayName || profile?.email || fallback
+  )
+
+  const getDuoDisplayName = (duo) => {
+    if (!duo) return 'Unknown Duo'
+    const u1 = allUsers.find(u => String(u.id) === String(duo.p1Id))
+    const u2 = allUsers.find(u => String(u.id) === String(duo.p2Id))
+
+    const playersStr = (u1 && u2) ? `(${u1.username} & ${u2.username})` : ''
+
+    if (duo.teamName) return `${duo.teamName} ${playersStr}`
+
+    if (duo.captainId) {
+      const cap = allUsers.find(u => String(u.id) === String(duo.captainId))
+      if (cap) return `${cap.username}'s Team ${playersStr}`
+    }
+
+    return u1 && u2 ? `${u1.username} & ${u2.username}` : `Unnamed Team (${duo.id})`
+  }
+
   const isLocked = new Date() < new Date("2026-07-01T00:00:00")
   const isAdmin = user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin
   const isOpenLeague = formData.gameType === 'Open League Singles' || formData.gameType === 'Open League Doubles'
@@ -168,19 +202,6 @@ export default function SubmitResult() {
     .sort((a, b) => new Date(b.submittedAt || b.updatedAt || b.approvedAt || b.date || 0) - new Date(a.submittedAt || a.updatedAt || a.approvedAt || a.date || 0))
     .slice(0, 5)
 
-  const getFixturePlayerIds = (fixture) => {
-    const player1Id = fixture.player1Id || fixture.player1
-    const player2Id = fixture.player2Id || fixture.player2
-    return { player1Id, player2Id }
-  }
-
-  const getFixtureOpponentId = (fixture) => {
-    const { player1Id, player2Id } = getFixturePlayerIds(fixture)
-    if (String(player1Id) === String(user.id)) return player2Id
-    if (String(player2Id) === String(user.id)) return player1Id
-    return null
-  }
-
   const cupFixtures = useMemo(() => {
     if (!getCups || typeof getCups !== 'function') return []
     const cupsData = getCups()
@@ -212,10 +233,6 @@ export default function SubmitResult() {
       return String(player1Id) === String(user.id) || String(player2Id) === String(user.id)
     })
   }, [allFixtures, getCups, user.id, isAdmin])
-
-  const getDisplayName = (profile, fallback = 'Unknown player') => (
-    profile?.username || profile?.name || profile?.displayName || profile?.email || fallback
-  )
 
   const currentUserName = getDisplayName(user, 'You')
 
@@ -296,23 +313,6 @@ export default function SubmitResult() {
       setFormData(prev => ({ ...prev, opponent: String(cupFixtures[0].id) }))
     }
   }, [formData.gameType, cupFixtures])
-
-  const getDuoDisplayName = (duo) => {
-    if (!duo) return 'Unknown Duo'
-    const u1 = allUsers.find(u => String(u.id) === String(duo.p1Id))
-    const u2 = allUsers.find(u => String(u.id) === String(duo.p2Id))
-
-    const playersStr = (u1 && u2) ? `(${u1.username} & ${u2.username})` : ''
-
-    if (duo.teamName) return `${duo.teamName} ${playersStr}`
-
-    if (duo.captainId) {
-      const cap = allUsers.find(u => String(u.id) === String(duo.captainId))
-      if (cap) return `${cap.username}'s Team ${playersStr}`
-    }
-
-    return u1 && u2 ? `${u1.username} & ${u2.username}` : `Unnamed Team (${duo.id})`
-  }
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -636,6 +636,8 @@ export default function SubmitResult() {
     try {
       setIsSubmitting(true)
 
+      const resultId = Date.now().toString()
+
       const opponentDuo = formData.gameType === 'Open League Doubles' ? openLeagueDuos.find(d => d.id === formData.opponent) : null
 
       // Find Your Duo using the dropdown selection
@@ -764,7 +766,6 @@ export default function SubmitResult() {
 
       setSuccessMessage('Saving match results...')
 
-      const resultId = Date.now().toString()
       const currentResults = [...allResults]
 
       let finalResultObj;
