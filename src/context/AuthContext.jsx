@@ -53,18 +53,21 @@ import {
 import { logSubscriptionActivated, logUserLogin, startTrace } from "../utils/analytics";
 import { useToast } from "./ToastContext";
 
+import { DIVISIONS, EMPTY_ARRAY } from "./constants";
+
 const AuthContext = createContext(null);
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within AuthProvider");
+  }
+  return context;
+}
 
 const SEASON_ONE_WELCOME_START = new Date(
   "2026-05-01T00:00:00+01:00",
 ).getTime();
-
-export const DIVISIONS = [
-  "Elite",
-  "Emerald",
-  "Diamond",
-  "Platinum",
-];
 
 const RESULT_CACHE_KEY = "eliteArrowsResults";
 const RESULT_PROOF_FIELDS = [
@@ -199,7 +202,6 @@ const saveResultsCache = (results) => {
   }
 };
 
-const EMPTY_ARRAY = [];
 
 export function AuthProvider({ children }) {
   const { showToast } = useToast();
@@ -2848,12 +2850,4 @@ export function AuthProvider({ children }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within AuthProvider");
-  }
-  return context;
 }

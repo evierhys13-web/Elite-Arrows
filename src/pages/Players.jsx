@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth, DIVISIONS } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContext'
+import { DIVISIONS } from '../context/constants'
 import { SkeletonList } from '../components/Skeleton'
 import Breadcrumbs from '../components/Breadcrumbs'
 import Tooltip from '../components/Tooltip'
