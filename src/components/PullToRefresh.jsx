@@ -42,7 +42,7 @@ export default function PullToRefresh({ onRefresh, children }) {
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      style={{ touchAction: 'pan-y' }}
+      style={{ touchAction: 'pan-x pan-y' }}
     >
       <div
         style={{

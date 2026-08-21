@@ -212,7 +212,7 @@ export default function Leaderboards() {
                   ))}
                 </div>
 
-                <div style={{ overflowX: 'auto' }}>
+                <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                   {leaderboard.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '60px 20px' }}>
                        <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>No matches played in this period.</p>
@@ -281,7 +281,7 @@ export default function Leaderboards() {
                   <h3 className="card-title" style={{ margin: 0 }}>🎯 Practice Drills Leaderboard</h3>
                 </div>
 
-                <div style={{ overflowX: 'auto' }}>
+                <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                   {practiceLeaderboard.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '60px 20px' }}>
                        <p style={{ color: 'var(--text-muted)' }}>No practice sessions recorded yet.</p>
