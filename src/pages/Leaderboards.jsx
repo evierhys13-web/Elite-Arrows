@@ -69,9 +69,18 @@ export default function Leaderboards() {
 
   const divisions = ['all', 'Elite', 'Emerald', 'Diamond', 'Platinum']
 
-  const top180s = useMemo(() =>
-    leaderboard.length > 0 ? leaderboard.reduce((max, player) => (!max || player['180s'] > max['180s']) ? player : max, null) : null
-  , [leaderboard])
+  // All-time totals across every season (ignores time filter and soft reset)
+  const allTimeStats = useMemo(() => derivePlayerStatsFromResults(allUsers, results, {
+    fixtures,
+    adminData,
+    leagueOnly: true,
+    timePeriod: 'all',
+    includeReset: false
+  }), [allUsers, results, fixtures, adminData, refreshKey])
+
+  const allTime180s = useMemo(() =>
+    Object.values(allTimeStats).reduce((max, player) => (!max || player['180s'] > max['180s']) ? player : max, null)
+  , [allTimeStats])
 
   const top170s = useMemo(() =>
     leaderboard.length > 0 ? leaderboard.reduce((max, player) => (!max || player['170s'] > max['170s']) ? player : max, null) : null
@@ -149,9 +158,10 @@ export default function Leaderboards() {
         {/* Top Stats Cards */}
         <div className="card glass" style={{ padding: '24px', textAlign: 'center', borderBottom: '4px solid #fbbf24' }}>
           <div style={{ fontSize: '2.5rem', marginBottom: '12px' }}>🎯</div>
-          <h4 style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px' }}>Season 180s King</h4>
-          <div style={{ fontWeight: 800, fontSize: '1.2rem', color: 'white' }}>{top180s?.username || 'TBD'}</div>
-          <div style={{ fontSize: '0.9rem', color: '#fbbf24', fontWeight: 700 }}>{top180s?.['180s'] || 0} Maxes</div>
+          <h4 style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px' }}>All-Time 180s King</h4>
+          <div style={{ fontWeight: 800, fontSize: '1.2rem', color: 'white' }}>{allTime180s?.username || 'TBD'}</div>
+          <div style={{ fontSize: '0.9rem', color: '#fbbf24', fontWeight: 700 }}>{allTime180s?.['180s'] || 0} Maxes</div>
+          <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '4px' }}>All seasons combined</div>
         </div>
 
         <div className="card glass" style={{ padding: '24px', textAlign: 'center', borderBottom: '4px solid var(--accent-cyan)' }}>

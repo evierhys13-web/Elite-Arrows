@@ -301,7 +301,7 @@ export default function Home() {
               <span style={{ fontWeight: 'bold', textAlign: 'right' }}>Best of 8 legs</span>
             </div>
           </Tooltip>
-          <Tooltip content="Computer Aided Marking - scores are automatically calculated">
+          <Tooltip content="Camera pointed at dartboard - scores are automatically calculated">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px', cursor: 'help', gap: '16px' }}>
               <span>CAM</span>
               <span style={{ fontWeight: 'bold', textAlign: 'right' }}>Must be on</span>
