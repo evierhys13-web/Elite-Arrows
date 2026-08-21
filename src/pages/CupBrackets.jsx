@@ -199,6 +199,17 @@ export default function CupBracket() {
   const isGroupKnockout = cup?.type === 'group_knockout'
   const isWorldCupOrGroupKO = isWorldCup || isGroupKnockout
 
+  const safeCupMatches = Array.isArray(cup?.matches) ? cup.matches : []
+
+  const upcomingFixtures = useMemo(() => {
+    return fixtures.filter(fixture => {
+      const match = safeCupMatches.find(m => m && String(m.id) === String(fixture.matchId))
+      const status = String(fixture.status || 'pending').toLowerCase()
+      const isPending = !['approved', 'result_submitted', 'completed', 'rejected'].includes(status)
+      return isPending && !match?.winner && fixture.player1 && fixture.player2
+    }).sort((a, b) => (a.round || 0) - (b.round || 0))
+  }, [fixtures, safeCupMatches])
+
   if (!cup) {
     return (
       <div className="page">
@@ -211,8 +222,6 @@ export default function CupBracket() {
       </div>
     )
   }
-
-  const safeCupMatches = Array.isArray(cup?.matches) ? cup.matches : []
 
   const totalRounds = safeCupMatches.length > 0
     ? Math.max(...safeCupMatches.filter(m => m && m.round).map(m => m.round), 1)
@@ -245,15 +254,6 @@ export default function CupBracket() {
     const matches = safeCupMatches.filter(m => m && m.round === round).sort((a, b) => (a.id || 0) - (b.id || 0))
     return { round, matches }
   })
-
-  const upcomingFixtures = useMemo(() => {
-    return fixtures.filter(fixture => {
-      const match = safeCupMatches.find(m => m && String(m.id) === String(fixture.matchId))
-      const status = String(fixture.status || 'pending').toLowerCase()
-      const isPending = !['approved', 'result_submitted', 'completed', 'rejected'].includes(status)
-      return isPending && !match?.winner && fixture.player1 && fixture.player2
-    }).sort((a, b) => (a.round || 0) - (b.round || 0))
-  }, [fixtures, safeCupMatches])
 
   const { sortedStandings, bestThirdIds, sortedThirdPlaced, numThirdNeeded, advanceCount = 2 } = groupStandings
 
