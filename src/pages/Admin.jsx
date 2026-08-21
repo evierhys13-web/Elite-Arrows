@@ -9,7 +9,7 @@ import { logMatchApproved } from '../utils/analytics'
 import { checkMatchAchievements } from '../utils/achievements'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
 
-const CupManagement = lazy(() => import('./CupManagement'))
+import CupManagement from './CupManagement'
 
 export default function Admin() {
   const {
@@ -147,21 +147,9 @@ export default function Admin() {
   }, [activeTab, refreshKey])
 
   // Guard: wait for auth
-  if (authLoading) return <div className="page glass"><div style={{ padding: '60px', textAlign: 'center', color: 'var(--accent-cyan)', fontWeight: 800 }}>Validating Admin Access...</div></div>
-  if (!user) return <div className="page glass"><div style={{ padding: '60px', textAlign: 'center' }}>Please sign in to access the Admin Panel.</div></div>
-
   const isEmailAdmin = user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase())
   const isAdminFromDoc = user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin
   const canAccess = isEmailAdmin || isAdminFromDoc
-
-  if (!canAccess) {
-    return (
-      <div className="page glass">
-        <h1 className="page-title">Access Denied</h1>
-        <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>You do not have administrative permissions.</p>
-      </div>
-    )
-  }
 
   const isFullAdmin = user?.isAdmin || isEmailAdmin
 
@@ -189,6 +177,31 @@ export default function Admin() {
   useEffect(() => {
     setRefreshKey(prev => prev + 1)
   }, [dataRefreshTrigger])
+
+  const filteredResultsList = useMemo(() => {
+    let list = allResults.filter(r => String(r.status).toLowerCase() === resultFilter)
+    if (resultSearch) { const s = resultSearch.toLowerCase(); list = list.filter(r => String(r.player1).toLowerCase().includes(s) || String(r.player2).toLowerCase().includes(s)) }
+    if (resultTypeFilter !== 'all') {
+      if (resultTypeFilter === 'cup') {
+        list = list.filter(r => String(r.gameType).toLowerCase() === 'cup' || !!r.cupId)
+      } else if (resultTypeFilter === 'open league') {
+        list = list.filter(r => String(r.gameType).toLowerCase().includes('open league'))
+      } else {
+        list = list.filter(r => String(r.gameType).toLowerCase() === resultTypeFilter.toLowerCase())
+      }
+    }
+    return list.sort((a, b) => new Date(b.date || b.submittedAt) - new Date(a.date || a.submittedAt))
+  }, [allResults, resultFilter, resultSearch, resultTypeFilter])
+
+  const betsList = useMemo(() => bets || [], [bets])
+
+  const stats = useMemo(() => {
+    const lastWeek = new Date(); lastWeek.setDate(lastWeek.getDate() - 7)
+    const newMembersList = allPlayers.filter(u => new Date(u.createdAt || 0) > lastWeek).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+    return { newUsers: newMembersList.length, newMembers: newMembersList, pendingResults: pendingResults.length, pendingPayments: pendingPayments.length + entryRequests.length, totalPot: subscriptionPot + subscriptionPot10 }
+  }, [allPlayers, pendingResults, pendingPayments, entryRequests, subscriptionPot, subscriptionPot10])
+
+  // --- Handlers ---
 
   const logAudit = async (action, details) => {
     try {
@@ -1112,6 +1125,32 @@ export default function Admin() {
     setIsApproving(false)
   }
 
+  // --- Render Guard ---
+  if (authLoading) return <div className="page glass"><div style={{ padding: '60px', textAlign: 'center', color: 'var(--accent-cyan)', fontWeight: 800 }}>Validating Admin Access...</div></div>
+  if (!user) return <div className="page glass"><div style={{ padding: '60px', textAlign: 'center' }}>Please sign in to access the Admin Panel.</div></div>
+  if (!canAccess) {
+    return (
+      <div className="page glass">
+        <h1 className="page-title">Access Denied</h1>
+        <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>You do not have administrative permissions.</p>
+      </div>
+    )
+  }
+
+  const handleSoftResetStandings = async () => {
+    if (!window.confirm("Soft Reset will hide current results from standings. Proceed?")) return;
+    try {
+      const now = new Date().toISOString(); await updateAdminData({ leagueTableResetAt: now }); await logAudit('SOFT_RESET_TABLE', `Reset at ${now}`); triggerDataRefresh('all'); showToast('Standings table reset!', 'success')
+    } catch (e) { showToast(e.message, 'error') }
+  };
+
+  const handleClearTableReset = async () => {
+    if (!window.confirm("Restore all historical matches?")) return;
+    try {
+      await updateAdminData({ leagueTableResetAt: null }); await logAudit('CLEAR_TABLE_RESET', 'Cleared reset'); triggerDataRefresh('all'); showToast('Full history restored!', 'success')
+    } catch (e) { showToast(e.message, 'error') }
+  };
+
   const handleResetSuperLeagueTable = async () => {
     const currentSeason = adminData?.currentSeason || 'Season 2'
     if (!window.confirm(`Reset Champions League standings?`)) return
@@ -1135,43 +1174,6 @@ export default function Admin() {
     } catch (e) { showToast('Reset failed: ' + e.message, 'error') }
     setIsApproving(false)
   }
-
-  const handleSoftResetStandings = async () => {
-    if (!window.confirm("Soft Reset will hide current results from standings. Proceed?")) return;
-    try {
-      const now = new Date().toISOString(); await updateAdminData({ leagueTableResetAt: now }); await logAudit('SOFT_RESET_TABLE', `Reset at ${now}`); triggerDataRefresh('all'); showToast('Standings table reset!', 'success')
-    } catch (e) { showToast(e.message, 'error') }
-  };
-
-  const handleClearTableReset = async () => {
-    if (!window.confirm("Restore all historical matches?")) return;
-    try {
-      await updateAdminData({ leagueTableResetAt: null }); await logAudit('CLEAR_TABLE_RESET', 'Cleared reset'); triggerDataRefresh('all'); showToast('Full history restored!', 'success')
-    } catch (e) { showToast(e.message, 'error') }
-  };
-
-  const filteredResultsList = useMemo(() => {
-    let list = allResults.filter(r => String(r.status).toLowerCase() === resultFilter)
-    if (resultSearch) { const s = resultSearch.toLowerCase(); list = list.filter(r => String(r.player1).toLowerCase().includes(s) || String(r.player2).toLowerCase().includes(s)) }
-    if (resultTypeFilter !== 'all') {
-      if (resultTypeFilter === 'cup') {
-        list = list.filter(r => String(r.gameType).toLowerCase() === 'cup' || !!r.cupId)
-      } else if (resultTypeFilter === 'open league') {
-        list = list.filter(r => String(r.gameType).toLowerCase().includes('open league'))
-      } else {
-        list = list.filter(r => String(r.gameType).toLowerCase() === resultTypeFilter.toLowerCase())
-      }
-    }
-    return list.sort((a, b) => new Date(b.date || b.submittedAt) - new Date(a.date || a.submittedAt))
-  }, [allResults, resultFilter, resultSearch, resultTypeFilter])
-
-  const betsList = useMemo(() => bets || [], [bets])
-
-  const stats = useMemo(() => {
-    const lastWeek = new Date(); lastWeek.setDate(lastWeek.getDate() - 7)
-    const newMembersList = allPlayers.filter(u => new Date(u.createdAt || 0) > lastWeek).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
-    return { newUsers: newMembersList.length, newMembers: newMembersList, pendingResults: pendingResults.length, pendingPayments: pendingPayments.length + entryRequests.length, totalPot: subscriptionPot + subscriptionPot10 }
-  }, [allPlayers, pendingResults, pendingPayments, entryRequests, subscriptionPot, subscriptionPot10])
 
   const tabs = [
     { id: 'dashboard', label: 'Dashboard' },

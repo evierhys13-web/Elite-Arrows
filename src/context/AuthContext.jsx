@@ -1416,6 +1416,18 @@ export function AuthProvider({ children }) {
     return { id: tempId, ...newUser };
   }, []);
 
+  const getAllUsers = useCallback(() => {
+    if (Array.isArray(allUsers) && allUsers.length > 0) return allUsers;
+    try {
+      const localUsers = JSON.parse(
+        localStorage.getItem("eliteArrowsUsers") || "[]",
+      );
+      return Array.isArray(localUsers) && localUsers.length > 0 ? localUsers : EMPTY_ARRAY;
+    } catch (e) {
+      return EMPTY_ARRAY;
+    }
+  }, [allUsers]);
+
   const addFriend = useCallback(async (friendId) => {
     if (!user) return;
     if ((user.friends || []).includes(friendId)) {
@@ -1588,18 +1600,6 @@ export function AuthProvider({ children }) {
   const requestAdminRole = useCallback(() => {
     updateUser({ adminRequestPending: true });
   }, [updateUser]);
-
-  const getAllUsers = useCallback(() => {
-    if (Array.isArray(allUsers) && allUsers.length > 0) return allUsers;
-    try {
-      const localUsers = JSON.parse(
-        localStorage.getItem("eliteArrowsUsers") || "[]",
-      );
-      return Array.isArray(localUsers) && localUsers.length > 0 ? localUsers : EMPTY_ARRAY;
-    } catch (e) {
-      return EMPTY_ARRAY;
-    }
-  }, [allUsers]);
 
   const getFriends = useCallback(() => {
     return allUsers.filter((u) => (user?.friends || []).includes(u.id));
