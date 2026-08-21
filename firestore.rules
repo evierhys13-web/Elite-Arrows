@@ -163,6 +163,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /hallOfFame/{entryId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
     match /auditLogs/{logId} {
       allow read, create: if isAdmin();
     }

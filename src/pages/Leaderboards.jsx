@@ -229,6 +229,9 @@ export default function Leaderboards() {
                           <th style={{ padding: '12px 8px', textAlign: 'center' }}>Pts</th>
                           <th style={{ padding: '12px 8px', textAlign: 'center' }}>W-L</th>
                           <th style={{ padding: '12px 8px', textAlign: 'center' }}>GP</th>
+                          <th style={{ padding: '12px 8px', textAlign: 'center' }} title="3-Dart Average">Avg</th>
+                          <th style={{ padding: '12px 8px', textAlign: 'center' }} title="Highest Checkout">HC</th>
+                          <th style={{ padding: '12px 8px', textAlign: 'center' }} title="Number of 180s">180s</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -256,6 +259,15 @@ export default function Leaderboards() {
                               <span style={{ color: 'var(--success)' }}>{player.wins}</span>-<span style={{ color: 'var(--error)' }}>{player.losses}</span>
                             </td>
                             <td style={{ padding: '12px 8px', textAlign: 'center', color: 'var(--text-muted)' }}>{player.played}</td>
+                            <td style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 700, color: player.average > 0 ? '#10b981' : 'var(--text-muted)' }}>
+                              {player.average > 0 ? player.average.toFixed(1) : '-'}
+                            </td>
+                            <td style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 700, color: player.highestCheckout > 0 ? 'var(--accent-cyan)' : 'var(--text-muted)' }}>
+                              {player.highestCheckout > 0 ? player.highestCheckout : '-'}
+                            </td>
+                            <td style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 700, color: player['180s'] > 0 ? '#fbbf24' : 'var(--text-muted)' }}>
+                              {player['180s'] || '-'}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -318,7 +330,10 @@ export default function Leaderboards() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           {/* Honours List / Hall of Fame */}
           <div className="card glass" style={{ padding: '24px' }}>
-            <h3 className="card-title">🎖️ Hall of Fame</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <h3 className="card-title" style={{ margin: 0 }}>🎖️ Hall of Fame</h3>
+              <button className="btn btn-secondary btn-sm" style={{ fontSize: '0.7rem', padding: '5px 12px' }} onClick={() => navigate('/hall-of-fame')}>Full Page ➔</button>
+            </div>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '20px' }}>Historical league and cup winners</p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

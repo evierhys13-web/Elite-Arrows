@@ -60,6 +60,7 @@ const OpenLeague = lazy(() => import('./pages/OpenLeague'))
 const ProgressTracker = lazy(() => import('./pages/ProgressTracker'))
 const DailyChallenges = lazy(() => import('./pages/DailyChallenges'))
 const PlayOnline = lazy(() => import('./pages/PlayOnline'))
+const HallOfFame = lazy(() => import('./pages/HallOfFame'))
 
 function PageLoader() {
   const [showRefresh, setShowRefresh] = useState(false)
@@ -313,6 +314,7 @@ function AppRoutes() {
       <Route path="/cups" element={<ProtectedRoute><AppLayout><Cups /></AppLayout></ProtectedRoute>} />
       <Route path="/cups/:cupId" element={<ProtectedRoute><AppLayout><CupBracket /></AppLayout></ProtectedRoute>} />
       <Route path="/leaderboards" element={<ProtectedRoute><AppLayout><Leaderboards /></AppLayout></ProtectedRoute>} />
+      <Route path="/hall-of-fame" element={<ProtectedRoute><AppLayout><HallOfFame /></AppLayout></ProtectedRoute>} />
       <Route path="/rewards" element={<ProtectedRoute><AppLayout><Rewards /></AppLayout></ProtectedRoute>} />
       <Route path="/fixtures" element={<ProtectedRoute><AppLayout><Fixtures /></AppLayout></ProtectedRoute>} />
       <Route path="/cup-fixtures" element={<ProtectedRoute><AppLayout><CupFixtures /></AppLayout></ProtectedRoute>} />

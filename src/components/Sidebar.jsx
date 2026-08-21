@@ -79,6 +79,7 @@ export default function Sidebar() {
           { path: '/fixtures', label: 'Arrangements', icon: HistoryIcon },
           { path: '/tournaments', label: 'Tournaments', icon: TournamentIcon },
           { path: '/leaderboards', label: 'Leaderboards', icon: TrophyIcon },
+          { path: '/hall-of-fame', label: 'Hall of Fame', icon: TrophyIcon },
           { path: '/analytics', label: 'Analytics', icon: BarChartIcon },
         ]
       },
