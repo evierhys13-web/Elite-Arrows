@@ -1439,6 +1439,58 @@ export default function Admin() {
                       />
                     </div>
                   </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+                    <div className="form-group">
+                      <label>P1 180s</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={editingResult.player1Stats?.['180s'] || ''}
+                        onChange={e => setEditingResult({
+                          ...editingResult,
+                          player1Stats: { ...(editingResult.player1Stats || {}), '180s': parseInt(e.target.value) || 0 }
+                        })}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>P2 180s</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={editingResult.player2Stats?.['180s'] || ''}
+                        onChange={e => setEditingResult({
+                          ...editingResult,
+                          player2Stats: { ...(editingResult.player2Stats || {}), '180s': parseInt(e.target.value) || 0 }
+                        })}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>P1 High Checkout</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="170"
+                        value={editingResult.player1Stats?.highestCheckout || ''}
+                        onChange={e => setEditingResult({
+                          ...editingResult,
+                          player1Stats: { ...(editingResult.player1Stats || {}), highestCheckout: parseInt(e.target.value) || 0 }
+                        })}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>P2 High Checkout</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="170"
+                        value={editingResult.player2Stats?.highestCheckout || ''}
+                        onChange={e => setEditingResult({
+                          ...editingResult,
+                          player2Stats: { ...(editingResult.player2Stats || {}), highestCheckout: parseInt(e.target.value) || 0 }
+                        })}
+                      />
+                    </div>
+                  </div>
                   <div style={{ display: 'flex', gap: '10px' }}><button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Save Changes</button><button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setEditingResult(null)}>Cancel</button></div>
                 </form>
               </div>
