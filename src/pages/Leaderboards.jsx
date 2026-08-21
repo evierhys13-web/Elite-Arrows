@@ -17,6 +17,7 @@ export default function Leaderboards() {
   const [refreshKey, setRefreshKey] = useState(0)
   const [isSyncing, setIsSyncing] = useState(false)
   const [practiceLeaderboard, setPracticeLeaderboard] = useState([])
+  const [hallOfFame, setHallOfFame] = useState([])
 
   useEffect(() => {
     const fetchPracticeData = async () => {
@@ -30,6 +31,16 @@ export default function Leaderboards() {
     }
     if (activeTab === 'practice') fetchPracticeData()
   }, [activeTab, refreshKey])
+
+  useEffect(() => {
+    const fetchHallOfFame = async () => {
+      try {
+        const snap = await getDocs(collection(db, 'hallOfFame'))
+        setHallOfFame(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      } catch (e) { console.error('Error fetching hall of fame:', e) }
+    }
+    fetchHallOfFame()
+  }, [refreshKey])
 
   useEffect(() => {
     setRefreshKey(prev => prev + 1)
@@ -71,6 +82,16 @@ export default function Leaderboards() {
   , [leaderboard])
 
   const honoursList = useMemo(() => {
+    // Priority: Curated Hall of Fame
+    const curated = hallOfFame.map(h => {
+      const u = allUsers.find(user => user.id === h.userId)
+      return { ...h, profilePicture: u?.profilePicture }
+    })
+
+    if (curated.length > 0) {
+      return curated.sort((a, b) => new Date(b.awardedAt || 0) - new Date(a.awardedAt || 0))
+    }
+
     const list = []
     if (!Array.isArray(allUsers)) return list
     allUsers.forEach(u => {
@@ -86,7 +107,7 @@ export default function Leaderboards() {
       }
     })
     return list.sort((a, b) => new Date(b.awardedAt || 0) - new Date(a.awardedAt || 0))
-  }, [allUsers])
+  }, [allUsers, hallOfFame])
 
   return (
     <div className="page animate-fade-in">

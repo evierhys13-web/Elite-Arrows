@@ -73,6 +73,8 @@ export default function Admin() {
   const [bulkDivision, setBulkDivision] = useState('')
   const [bulkSeason, setBulkSeason] = useState('')
   const [trophyForm, setTrophyForm] = useState({ player: '', name: '', icon: '🏆', season: '' })
+  const [hallOfFameForm, setHallOfFameForm] = useState({ player: '', name: '', icon: '🏆', season: '', visible: true })
+  const [hallOfFame, setHallOfFame] = useState([])
   const [playoffForm, setPlayoffForm] = useState({ player1: '', player2: '', division: '', date: '', time: '', bestOf: '3' })
   const [surveyForm, setSurveyForm] = useState({ title: '', description: '', targetType: 'all', targetUserIds: [] })
   const [surveyQuestions, setSurveyQuestions] = useState([{ id: 'q1', text: '', type: 'text', options: '' }])
@@ -113,6 +115,18 @@ export default function Admin() {
       fetchData()
     }
   }, [activeTab, refreshKey, dataRefreshTrigger])
+
+  useEffect(() => {
+    if (activeTab === 'halloffame') {
+      const fetchHallOfFame = async () => {
+        try {
+          const snap = await getDocs(collection(db, 'hallOfFame'))
+          setHallOfFame(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+        } catch (e) { console.error('Failed to fetch Hall of Fame', e) }
+      }
+      fetchHallOfFame()
+    }
+  }, [activeTab, refreshKey])
 
   useEffect(() => {
     if (activeTab === 'audit') {
@@ -167,7 +181,7 @@ export default function Admin() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    const allowed = ['dashboard', 'results', 'payments', 'moneypot', 'cups', 'playoffs', 'players', 'admins', 'seasons', 'trophies', 'tokens', 'surveys', 'maintenance', 'audit', 'openleague', 'new', 'bets', 'practice']
+    const allowed = ['dashboard', 'results', 'payments', 'moneypot', 'cups', 'playoffs', 'players', 'admins', 'seasons', 'trophies', 'halloffame', 'tokens', 'surveys', 'maintenance', 'audit', 'openleague', 'new', 'bets', 'practice']
     if (tab && allowed.includes(tab)) setActiveTab(tab)
   }, [searchParams])
 
@@ -843,6 +857,45 @@ export default function Admin() {
     } catch (e) { showToast(e.message, 'error') }
   }
 
+  const handleAddHallOfFame = async () => {
+    if (!hallOfFameForm.player || !hallOfFameForm.name) return showToast('Player and Title required', 'error')
+    try {
+      const target = allPlayers.find(p => p.id === hallOfFameForm.player)
+      const entry = {
+        userId: target.id,
+        username: target.username,
+        name: hallOfFameForm.name,
+        icon: hallOfFameForm.icon,
+        season: hallOfFameForm.season || adminData?.currentSeason || 'Season 1',
+        visible: hallOfFameForm.visible,
+        awardedAt: new Date().toISOString()
+      }
+      const docRef = await addDoc(collection(db, 'hallOfFame'), entry)
+      setHallOfFame(prev => [...prev, { id: docRef.id, ...entry }])
+      await logAudit('ADD_HALL_OF_FAME', `Added ${target.username} to Hall of Fame: ${hallOfFameForm.name}`)
+      showToast('Added to Hall of Fame!', 'success')
+      setHallOfFameForm({ player: '', name: '', icon: '🏆', season: '', visible: true })
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
+  const handleRemoveHallOfFame = async (id) => {
+    if (!window.confirm('Remove this entry from Hall of Fame?')) return
+    try {
+      await deleteDoc(doc(db, 'hallOfFame', id))
+      setHallOfFame(prev => prev.filter(h => h.id !== id))
+      await logAudit('REMOVE_HALL_OF_FAME', `Removed Hall of Fame entry: ${id}`)
+      showToast('Entry removed', 'info')
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
+  const handleToggleHallOfFameVisibility = async (id, currentVisible) => {
+    try {
+      await updateDoc(doc(db, 'hallOfFame', id), { visible: !currentVisible })
+      setHallOfFame(prev => prev.map(h => h.id === id ? { ...h, visible: !currentVisible } : h))
+      showToast(`Visibility updated`, 'success')
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
   const handleCreateSurvey = async () => {
     if (!surveyForm.title) return showToast('Survey title required', 'error')
     if (!surveyQuestions[0]?.text) return showToast('At least one question required', 'error')
@@ -1130,6 +1183,8 @@ export default function Admin() {
     { id: 'admins', label: 'Staff' },
     { id: 'cups', label: 'Cups' },
     { id: 'surveys', label: 'Surveys' },
+    { id: 'trophies', label: 'Trophies' },
+    { id: 'halloffame', label: 'Hall of Fame' },
     { id: 'bets', label: 'Bets' },
     { id: 'tokens', label: 'Tokens' },
     { id: 'practice', label: 'Practice Hub' },
@@ -1980,7 +2035,61 @@ export default function Admin() {
             <div className="glass" style={{ padding: '24px', borderRadius: '16px', marginTop: '20px' }}>
               <UserSearchSelect users={allPlayers} selectedId={trophyForm.player} onSelect={id => setTrophyForm({...trophyForm, player: id})} label="Player" onQueryChange={searchUsers} />
               <input className="glass" placeholder="Trophy Name" value={trophyForm.name} onChange={e => setTrophyForm({...trophyForm, name: e.target.value})} style={{ marginTop: '15px' }} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '15px' }}>
+                <input className="glass" placeholder="Icon (emoji)" value={trophyForm.icon} onChange={e => setTrophyForm({...trophyForm, icon: e.target.value})} />
+                <select className="glass" value={trophyForm.season} onChange={e => setTrophyForm({...trophyForm, season: e.target.value})}>
+                  <option value="">Season...</option>
+                  {getSeasons().map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                </select>
+              </div>
               <button className="btn btn-primary btn-block" style={{ marginTop: '15px' }} onClick={handleAwardTrophy}>Award Trophy</button>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: HALL OF FAME */}
+        {activeTab === 'halloffame' && (
+          <div className="card glass">
+            <h3>Hall of Fame Management</h3>
+            <div className="glass" style={{ padding: '24px', borderRadius: '16px', marginTop: '20px', marginBottom: '24px' }}>
+              <UserSearchSelect users={allPlayers} selectedId={hallOfFameForm.player} onSelect={id => setHallOfFameForm({...hallOfFameForm, player: id})} label="Select Player" onQueryChange={searchUsers} />
+              <input className="glass" placeholder="Hall of Fame Title (e.g. Season 1 Champion)" value={hallOfFameForm.name} onChange={e => setHallOfFameForm({...hallOfFameForm, name: e.target.value})} style={{ marginTop: '15px' }} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '15px' }}>
+                <input className="glass" placeholder="Icon (emoji)" value={hallOfFameForm.icon} onChange={e => setHallOfFameForm({...hallOfFameForm, icon: e.target.value})} />
+                <select className="glass" value={hallOfFameForm.season} onChange={e => setHallOfFameForm({...hallOfFameForm, season: e.target.value})}>
+                  <option value="">Season...</option>
+                  {getSeasons().map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                </select>
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '15px', fontSize: '0.9rem' }}>
+                <input type="checkbox" checked={hallOfFameForm.visible} onChange={e => setHallOfFameForm({...hallOfFameForm, visible: e.target.checked})} />
+                Visible on Home Screen
+              </label>
+              <button className="btn btn-primary btn-block" style={{ marginTop: '15px' }} onClick={handleAddHallOfFame}>Add to Hall of Fame</button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {hallOfFame.sort((a, b) => new Date(b.awardedAt) - new Date(a.awardedAt)).map(entry => (
+                <div key={entry.id} className="glass" style={{ padding: '16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <div style={{ fontSize: '2rem' }}>{entry.icon || '🏆'}</div>
+                    <div>
+                      <div style={{ fontWeight: 800 }}>{entry.username}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>{entry.name}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{entry.season}</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <button
+                      className={`btn btn-sm ${entry.visible ? 'btn-success' : 'btn-secondary'}`}
+                      onClick={() => handleToggleHallOfFameVisibility(entry.id, entry.visible)}
+                    >
+                      {entry.visible ? 'Visible' : 'Hidden'}
+                    </button>
+                    <button className="btn btn-danger btn-sm" onClick={() => handleRemoveHallOfFame(entry.id)}>🗑️</button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}

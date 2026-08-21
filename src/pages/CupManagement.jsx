@@ -100,7 +100,7 @@ function CupManagement() {
         }
       })
 
-      const advanceCount = cupData.type === 'group_knockout' ? (cupData.advancePerGroup || 2) : 2
+      const advanceCount = (cupData.type === 'group_knockout' || cupData.type === 'season') ? (cupData.advancePerGroup || (cupData.type === 'season' ? Math.max(1, Math.floor(4 / Object.keys(standings).length)) : 2)) : 2
 
       const sortedGroups = {}
       const extraPlacedPlayers = []
@@ -110,19 +110,20 @@ function CupManagement() {
         sortedGroups[gId] = sorted
 
         // Collect the next-placed player beyond the direct qualifiers
-        if (cupData.type === 'group_knockout' || cupData.allowBestThird) {
+        if (cupData.type === 'group_knockout' || cupData.type === 'season' || cupData.allowBestThird) {
           const nextIndex = advanceCount
           // RULE: Only consider if they are NOT the last placed player in the group
-          if (sorted[nextIndex] && nextIndex < sorted.length - 1) {
+          if (sorted[nextIndex] && (cupData.type === 'season' || nextIndex < sorted.length - 1)) {
             extraPlacedPlayers.push({ ...sorted[nextIndex], group: gId })
           }
         }
       })
 
-      // Sort extras and limit to Top 4 as per specific league rules
+      // Sort extras and limit to reach 4 players if season cup, or top 4 if world cup
+      const extraLimit = cupData.type === 'season' ? (4 - (Object.keys(sortedGroups).length * advanceCount)) : 4
       const bestExtraPlaced = extraPlacedPlayers
         .sort((a, b) => (b.points - a.points) || (b.legsFor - b.legsAgainst) - (a.legsFor - a.legsAgainst) || (b.legsFor - a.legsFor))
-        .slice(0, 4)
+        .slice(0, Math.max(0, extraLimit))
 
       const updatedMatches = [...cupData.matches]
       const newFixtures = []
@@ -826,6 +827,13 @@ function CupManagement() {
                       </span>
                     </div>
                   )}
+                  {cup.type === 'season' && cup.finalsDate && (
+                    <div style={{ marginTop: '8px' }}>
+                      <span style={{ fontSize: '0.75rem', color: '#fbbf24', background: 'rgba(251, 191, 36, 0.1)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
+                        📅 FINALS DATE: {cup.finalsDate.toUpperCase()}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -854,7 +862,7 @@ function CupManagement() {
                 >
                   💰 Prize
                 </button>
-                {(cup.type === 'group_knockout' || cup.type === 'world_cup') && !cup.groupsAdvanced && (
+                {(cup.type === 'group_knockout' || cup.type === 'world_cup' || cup.type === 'season') && !cup.groupsAdvanced && (
                    <button
                      className="btn btn-primary btn-sm"
                      onClick={(e) => { e.stopPropagation(); handleAdvanceGroups(cup); }}

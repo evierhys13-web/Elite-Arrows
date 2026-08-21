@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContextInternal'
-import { db, doc, setDoc } from '../firebase'
+import { db, doc, setDoc, getDocs, collection } from '../firebase'
 import NewsFeed from '../components/NewsFeed'
 import { SkeletonList } from '../components/Skeleton'
 import Tooltip from '../components/Tooltip'
@@ -25,7 +25,7 @@ export default function Home() {
   const [visible, setVisible] = useState(false)
   const [surveyAnswers, setSurveyAnswers] = useState({})
   const [submittingSurvey, setSubmittingSurvey] = useState(null)
-
+  const [hallOfFame, setHallOfFame] = useState([])
 
   const activeSeason = useMemo(() => {
     const seasons = typeof getSeasons === 'function' ? getSeasons() : []
@@ -40,6 +40,13 @@ export default function Home() {
 
   useEffect(() => {
     setVisible(true)
+    const fetchHallOfFame = async () => {
+      try {
+        const snap = await getDocs(collection(db, 'hallOfFame'))
+        setHallOfFame(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      } catch (e) { console.error('Failed to fetch Hall of Fame', e) }
+    }
+    fetchHallOfFame()
   }, [])
 
 
@@ -71,10 +78,6 @@ export default function Home() {
     const timer = setInterval(calculateTimeLeft, 1000)
     return () => clearInterval(timer)
   }, [activeSeason])
-
-  const allUsers = getAllUsers()
-  const fixtures = getFixtures()
-  const allResults = getResults()
 
   const tournaments = useMemo(() => {
     try {
@@ -135,6 +138,22 @@ export default function Home() {
   }, { played: 0, wins: 0, losses: 0, draws: 0, points: 0 }), [userResults, fixturesById, allUsers, user?.id, leagueTableResetTime])
 
   const champions = useMemo(() => {
+    // Priority 1: Curated Hall of Fame entries
+    const curated = hallOfFame
+      .filter(h => h.visible)
+      .map(h => {
+        const u = allUsers.find(user => user.id === h.userId)
+        return {
+          ...h,
+          profilePicture: u?.profilePicture
+        }
+      })
+
+    if (curated.length > 0) {
+      return curated.sort((a, b) => new Date(b.awardedAt || 0) - new Date(a.awardedAt || 0))
+    }
+
+    // Priority 2: Fallback to trophy-derived champions if no curated list exists
     const list = []
     allUsers.forEach(u => {
       if (u.trophies && Array.isArray(u.trophies)) {
@@ -151,7 +170,7 @@ export default function Home() {
       }
     })
     return list.sort((a, b) => new Date(b.awardedAt || 0) - new Date(a.awardedAt || 0)).slice(0, 12)
-  }, [allUsers])
+  }, [allUsers, hallOfFame])
 
   const isSeasonActive = seasonPhase === 'active'
   const seasonTimerTitle = seasonPhase === 'active' ? 'Season 4 Ends In:' : seasonPhase === 'ended' ? 'Season 4 Ended' : 'Season 4 Starts In'

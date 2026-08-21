@@ -88,10 +88,6 @@ export default function Table() {
     }
   }, [hasInitializedSeason]);
 
-  const allUsers = getAllUsers();
-  const fixtures = getFixtures();
-  const results = getResults();
-
   const activeSeasonDoc = useMemo(
     () => seasons.find((s) => s.name === selectedSeason),
     [seasons, selectedSeason],

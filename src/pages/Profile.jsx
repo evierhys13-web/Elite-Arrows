@@ -91,9 +91,6 @@ export default function Profile() {
     }
   }
 
-  const allUsers = getAllUsers()
-  const allResults = getResults()
-  const fixtures = getFixtures()
   const statsByUserId = derivePlayerStatsFromResults(allUsers, allResults, {
     fixtures,
     adminData,

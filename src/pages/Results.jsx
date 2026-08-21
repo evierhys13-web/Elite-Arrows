@@ -37,8 +37,6 @@ export default function Results() {
   
   const isAdmin = user?.isAdmin || user?.isTournamentAdmin || ADMIN_EMAILS.includes(user?.email?.toLowerCase())
   const isSubscribed = user?.isSubscribed === true || isAdmin
-  
-  const allResults = getResults() || []
 
   const filteredResults = allResults.filter(r => {
     if (typeFilter === 'all') return true

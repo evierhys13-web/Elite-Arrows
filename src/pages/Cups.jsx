@@ -18,7 +18,9 @@ export default function CupTournaments() {
     playersPerGroup: 4,
     advancePerGroup: 2,
     allowBestThird: true,
-    targetDurationDays: 14
+    targetDurationDays: 14,
+    seasonIterations: 3,
+    finalsDate: '21st December'
   })
   const [selectedPlayers, setSelectedPlayers] = useState([])
   const [matches, setMatches] = useState([])
@@ -159,9 +161,10 @@ export default function CupTournaments() {
 
       newMatches = buildKnockoutMatches(shuffled, numKnockoutRounds, 1)
     }
-    else if (formData.type === 'groups' || formData.type === 'world_cup' || formData.type === 'group_knockout') {
+    else if (formData.type === 'groups' || formData.type === 'world_cup' || formData.type === 'group_knockout' || formData.type === 'season') {
       const pPerG = formData.playersPerGroup
       const numGroups = Math.ceil(shuffled.length / pPerG)
+      const iterations = formData.type === 'season' ? (formData.seasonIterations || 1) : 1
 
       // Assign players to groups
       for (let i = 0; i < numGroups; i++) {
@@ -173,33 +176,36 @@ export default function CupTournaments() {
 
         // Generate round-robin matches for this group
         // Stage 0 will be the group stage
-        for (let j = 0; j < groupPlayers.length; j++) {
-          for (let k = j + 1; k < groupPlayers.length; k++) {
-            newMatches.push({
-              id: `g_${newGroups[i].id}_${j}_${k}`,
-              stage: 'groups',
-              group: newGroups[i].id,
-              player1: groupPlayers[j],
-              player2: groupPlayers[k],
-              winner: null,
-              score1: null,
-              score2: null
-            })
+        for (let iter = 1; iter <= iterations; iter++) {
+          for (let j = 0; j < groupPlayers.length; j++) {
+            for (let k = j + 1; k < groupPlayers.length; k++) {
+              newMatches.push({
+                id: `g_${newGroups[i].id}_${iter}_${j}_${k}`,
+                stage: 'groups',
+                iteration: iter,
+                group: newGroups[i].id,
+                player1: groupPlayers[j],
+                player2: groupPlayers[k],
+                winner: null,
+                score1: null,
+                score2: null
+              })
+            }
           }
         }
       }
 
       defaultFormats[0] = { startScore: 501, bestOf: 5, firstTo: 3 } // Group stage format (FT3)
 
-      if (formData.type === 'world_cup' || formData.type === 'group_knockout') {
-        const advanceCount = formData.type === 'group_knockout' ? (formData.advancePerGroup || 2) : 2
-        const totalAdvancers = numGroups * advanceCount
+      if (formData.type === 'world_cup' || formData.type === 'group_knockout' || formData.type === 'season') {
+        const advanceCount = formData.type === 'season' ? Math.max(1, Math.floor(4 / numGroups)) : (formData.type === 'group_knockout' ? (formData.advancePerGroup || 2) : 2)
+        const totalAdvancers = formData.type === 'season' ? 4 : numGroups * advanceCount
 
         // If best 3rd is disabled, we only take the direct advancers and fill with Byes
         const effectiveAdvancers = (formData.type === 'world_cup' && !formData.allowBestThird) ? totalAdvancers : totalAdvancers
 
         totalPlayersInKnockout = Math.pow(2, Math.ceil(Math.log2(totalAdvancers)))
-        const numExtraNeeded = totalPlayersInKnockout - totalAdvancers
+        const numExtraNeeded = totalPlayersInKnockout - (formData.type === 'season' ? 4 : totalAdvancers)
 
         numKnockoutRounds = Math.ceil(Math.log2(totalPlayersInKnockout))
 
@@ -215,35 +221,47 @@ export default function CupTournaments() {
         // Implementation of standard crossover: A1 vs B2, B1 vs A2, C1 vs D2, D1 vs C2...
 
         let mIdx = 0
-        for (let g = 0; g < numGroups; g += 2) {
-          const g1 = String.fromCharCode(65 + g)
-          const g2 = (g + 1 < numGroups) ? String.fromCharCode(65 + g + 1) : null
+        if (formData.type === 'season' && numGroups === 1) {
+          // Special case for single group: 1st vs 4th, 2nd vs 3rd
+          if (round1Matches[0]) {
+            round1Matches[0].sourceP1 = { group: 'A', position: 1 }
+            round1Matches[0].sourceP2 = { group: 'A', position: 4 }
+          }
+          if (round1Matches[1]) {
+            round1Matches[1].sourceP1 = { group: 'A', position: 2 }
+            round1Matches[1].sourceP2 = { group: 'A', position: 3 }
+          }
+        } else {
+          for (let g = 0; g < numGroups; g += 2) {
+            const g1 = String.fromCharCode(65 + g)
+            const g2 = (g + 1 < numGroups) ? String.fromCharCode(65 + g + 1) : null
 
-          if (g2) {
-            // Match for G1 Winner vs G2 Runner-up
-            if (round1Matches[mIdx]) {
-              round1Matches[mIdx].sourceP1 = { group: g1, position: 1 }
-              round1Matches[mIdx].sourceP2 = { group: g2, position: 2 }
-              mIdx++
-            }
-            // Match for G2 Winner vs G1 Runner-up
-            if (round1Matches[mIdx]) {
-              round1Matches[mIdx].sourceP1 = { group: g2, position: 1 }
-              round1Matches[mIdx].sourceP2 = { group: g1, position: 2 }
-              mIdx++
-            }
-          } else {
-            // Odd group left over - Winner vs Runner-up from same group (unideal but only happens with odd group counts)
-            if (round1Matches[mIdx]) {
-              round1Matches[mIdx].sourceP1 = { group: g1, position: 1 }
-              round1Matches[mIdx].sourceP2 = { group: g1, position: 2 }
-              mIdx++
+            if (g2) {
+              // Match for G1 Winner vs G2 Runner-up
+              if (round1Matches[mIdx]) {
+                round1Matches[mIdx].sourceP1 = { group: g1, position: 1 }
+                round1Matches[mIdx].sourceP2 = { group: g2, position: 2 }
+                mIdx++
+              }
+              // Match for G2 Winner vs G1 Runner-up
+              if (round1Matches[mIdx]) {
+                round1Matches[mIdx].sourceP1 = { group: g2, position: 1 }
+                round1Matches[mIdx].sourceP2 = { group: g1, position: 2 }
+                mIdx++
+              }
+            } else {
+              // Odd group left over - Winner vs Runner-up from same group (unideal but only happens with odd group counts)
+              if (round1Matches[mIdx]) {
+                round1Matches[mIdx].sourceP1 = { group: g1, position: 1 }
+                round1Matches[mIdx].sourceP2 = { group: g1, position: 2 }
+                mIdx++
+              }
             }
           }
         }
 
-        // 3. Assign best next-placed players to fill remaining bracket spots (if enabled)
-        if (formData.type === 'group_knockout' || (formData.type === 'world_cup' && formData.allowBestThird)) {
+        // 3. Assign best next-placed players to fill remaining bracket spots (if enabled or season)
+        if (formData.type === 'group_knockout' || (formData.type === 'world_cup' && formData.allowBestThird) || formData.type === 'season') {
           // Find all empty slots (P1 or P2) in knockout round 1
           const emptySlots = []
           round1Matches.forEach((m) => {
@@ -251,7 +269,9 @@ export default function CupTournaments() {
             if (!m.sourceP2) emptySlots.push({ match: m, target: 'sourceP2' })
           })
 
-          for (let i = 0; i < numExtraNeeded && i < emptySlots.length; i++) {
+          const extraNeeded = formData.type === 'season' ? (4 - (numGroups * Math.min(advanceCount, 2))) : numExtraNeeded
+
+          for (let i = 0; i < extraNeeded && i < emptySlots.length; i++) {
             const { match, target } = emptySlots[i]
             match[target] = { bestExtra: true, position: i + 1 }
           }
@@ -426,7 +446,11 @@ export default function CupTournaments() {
       roundFormats,
       createdAt: new Date().toISOString(),
       status: 'active',
-      currentRound: (formData.type === 'groups' || formData.type === 'world_cup' || formData.type === 'group_knockout') ? 0 : 1
+      currentRound: (formData.type === 'groups' || formData.type === 'world_cup' || formData.type === 'group_knockout' || formData.type === 'season') ? 0 : 1,
+      deadlines: formData.type === 'season' ? {
+        [numKnockoutRounds]: formData.finalsDate,
+        [numKnockoutRounds - 1]: formData.finalsDate
+      } : {}
     }
     
     const initialMatches = matches.filter(m => m.stage === 'groups' || (m.stage === 'knockout' && m.round === 1))
@@ -556,12 +580,21 @@ export default function CupTournaments() {
               >
                 🏆 World Cup
               </button>
+              <button
+                type="button"
+                className={`btn ${formData.type === 'season' ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ fontSize: '0.8rem', padding: '10px 5px', border: formData.type === 'season' ? '2px solid var(--accent-cyan)' : 'none' }}
+                onClick={() => { setFormData({...formData, type: 'season'}); setMatches([]); }}
+              >
+                📅 Season Cup
+              </button>
             </div>
             <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px' }}>
               {formData.type === 'knockout' && 'Standard single-elimination bracket. Losers are out instantly.'}
               {formData.type === 'groups' && 'Players split into groups and play everyone in their group. No knockout phase.'}
               {formData.type === 'group_knockout' && 'Group stage followed by a knockout bracket for qualifiers.'}
               {formData.type === 'world_cup' && 'The professional format: Group stage followed by a knockout bracket for qualifiers.'}
+              {formData.type === 'season' && '3-month season: Multiple round-robins followed by semi-finals and finals on a fixed date.'}
             </p>
           </div>
 
@@ -606,7 +639,7 @@ export default function CupTournaments() {
             </p>
           </div>
 
-          {(formData.type === 'groups' || formData.type === 'world_cup' || formData.type === 'group_knockout') && (
+          {(formData.type === 'groups' || formData.type === 'world_cup' || formData.type === 'group_knockout' || formData.type === 'season') && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
               <div className="form-group">
                 <label>Players per Group</label>
@@ -620,20 +653,43 @@ export default function CupTournaments() {
                   <option value={6}>6</option>
                 </select>
               </div>
-              {formData.type === 'world_cup' && (
+              {(formData.type === 'world_cup' || formData.type === 'season') && (
                 <div className="form-group">
-                  <label>Advancement Rule</label>
-                  <div style={{ padding: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', fontSize: '0.85rem', border: '1px solid rgba(255,255,255,0.1)' }}>
-                    <span style={{ color: 'var(--success)', fontWeight: 800 }}>✓ Top 2</span> from every group advance.<br/>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginTop: '8px', color: formData.allowBestThird ? 'white' : 'var(--text-muted)' }}>
-                      <input
-                        type="checkbox"
-                        checked={formData.allowBestThird}
-                        onChange={(e) => setFormData({...formData, allowBestThird: e.target.checked})}
-                      />
-                      <span>Include best 3rd placed players to fill bracket</span>
-                    </label>
-                  </div>
+                  <label>{formData.type === 'season' ? 'Finals Date' : 'Advancement Rule'}</label>
+                  {formData.type === 'season' ? (
+                    <input
+                      type="text"
+                      value={formData.finalsDate}
+                      onChange={(e) => setFormData({...formData, finalsDate: e.target.value})}
+                      placeholder="e.g. 21st December"
+                    />
+                  ) : (
+                    <div style={{ padding: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', fontSize: '0.85rem', border: '1px solid rgba(255,255,255,0.1)' }}>
+                      <span style={{ color: 'var(--success)', fontWeight: 800 }}>✓ Top 2</span> from every group advance.<br/>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginTop: '8px', color: formData.allowBestThird ? 'white' : 'var(--text-muted)' }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.allowBestThird}
+                          onChange={(e) => setFormData({...formData, allowBestThird: e.target.checked})}
+                        />
+                        <span>Include best 3rd placed players to fill bracket</span>
+                      </label>
+                    </div>
+                  )}
+                </div>
+              )}
+              {formData.type === 'season' && (
+                <div className="form-group">
+                  <label>Months of Group Play</label>
+                  <select
+                    value={formData.seasonIterations}
+                    onChange={(e) => setFormData({...formData, seasonIterations: parseInt(e.target.value)})}
+                  >
+                    <option value={1}>1 Month (1x each)</option>
+                    <option value={2}>2 Months (2x each)</option>
+                    <option value={3}>3 Months (3x each)</option>
+                    <option value={4}>4 Months (4x each)</option>
+                  </select>
                 </div>
               )}
               {formData.type === 'group_knockout' && (
@@ -716,8 +772,8 @@ export default function CupTournaments() {
           {matches.length > 0 && (
             <>
               <h4 style={{ marginTop: '20px', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                {formData.type === 'world_cup' ? '🏆 World Cup Structure' : formData.type === 'group_knockout' ? '📋 Groups → Knockout Structure' : 'Bracket Preview & Round Formats'}
-                {formData.type === 'world_cup' && <span style={{ fontSize: '0.7rem', background: 'gold', color: 'black', padding: '2px 8px', borderRadius: '4px', fontWeight: 900 }}>ELITE FORMAT</span>}
+                {formData.type === 'world_cup' ? '🏆 World Cup Structure' : formData.type === 'season' ? '📅 Season Cup Structure' : formData.type === 'group_knockout' ? '📋 Groups → Knockout Structure' : 'Bracket Preview & Round Formats'}
+                {(formData.type === 'world_cup' || formData.type === 'season') && <span style={{ fontSize: '0.7rem', background: formData.type === 'world_cup' ? 'gold' : 'var(--accent-cyan)', color: 'black', padding: '2px 8px', borderRadius: '4px', fontWeight: 900 }}>ELITE FORMAT</span>}
               </h4>
 
                 {formData.type === 'world_cup' && (
@@ -726,6 +782,16 @@ export default function CupTournaments() {
                     <strong>Phase 1:</strong> {groups.length} Groups of {formData.playersPerGroup} players. Top 2 from each group {formData.allowBestThird ? '+ best 3rd placed ' : ''}qualify.<br/>
                     <strong>Phase 2:</strong> {Math.ceil(Math.log2(matches.filter(m => m.stage === 'knockout' && m.round === 1).length * 2))}-round knockout bracket ({matches.filter(m => m.stage === 'knockout' && m.round === 1).length * 2} players).<br/>
                     <strong style={{ color: 'var(--accent-cyan)' }}>⏱ Estimated Pace:</strong> {roundFormats._stageDays} days per stage.
+                  </p>
+                </div>
+              )}
+
+              {formData.type === 'season' && (
+                <div style={{ background: 'rgba(56,189,248,0.05)', padding: '15px', borderRadius: '12px', border: '1px solid rgba(56,189,248,0.2)', marginBottom: '20px' }}>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    <strong>Phase 1:</strong> {groups.length} Groups, each player playing others {formData.seasonIterations} times ({formData.seasonIterations} months).<br/>
+                    <strong>Phase 2:</strong> Semi-Finals & Finals on <strong style={{ color: 'var(--accent-cyan)' }}>{formData.finalsDate}</strong>.<br/>
+                    <strong style={{ color: 'var(--accent-cyan)' }}>🏆 Knockout:</strong> Top 4 players total will qualify.
                   </p>
                 </div>
               )}
@@ -783,7 +849,7 @@ export default function CupTournaments() {
               </div>
 
               <button className="btn btn-primary btn-block" style={{ marginTop: '20px', background: formData.type === 'world_cup' ? 'linear-gradient(45deg, #f59e0b, #d97706)' : '' }} onClick={saveCup}>
-                {formData.type === 'world_cup' ? '🏆 Create World Cup' : formData.type === 'group_knockout' ? '📋 Create Groups → Knockout Cup' : 'Create Cup Tournament'}
+                {formData.type === 'world_cup' ? '🏆 Create World Cup' : formData.type === 'season' ? '📅 Create Season Cup' : formData.type === 'group_knockout' ? '📋 Create Groups → Knockout Cup' : 'Create Cup Tournament'}
               </button>
             </>
           )}
@@ -909,7 +975,7 @@ export default function CupTournaments() {
                     >
                       🔄 Swap Participant
                     </button>
-                    {(cup.type === 'world_cup' || cup.type === 'group_knockout') && !cup.groupsAdvanced && (
+                    {(cup.type === 'world_cup' || cup.type === 'group_knockout' || cup.type === 'season') && !cup.groupsAdvanced && (
                       <Link
                         to="/admin?tab=cups"
                         className="btn btn-primary btn-sm"
@@ -921,20 +987,25 @@ export default function CupTournaments() {
                   </div>
                 )}
                 <div style={{
-                  background: cup.type === 'world_cup' ? 'rgba(251, 191, 36, 0.05)' : 'rgba(255,255,255,0.02)',
+                  background: (cup.type === 'world_cup' || cup.type === 'season') ? 'rgba(251, 191, 36, 0.05)' : 'rgba(255,255,255,0.02)',
                   padding: '15px',
                   borderRadius: '12px',
                   marginTop: '15px',
-                  border: cup.type === 'world_cup' ? '1px solid rgba(251, 191, 36, 0.1)' : '1px solid rgba(255,255,255,0.05)'
+                  border: (cup.type === 'world_cup' || cup.type === 'season') ? '1px solid rgba(251, 191, 36, 0.1)' : '1px solid rgba(255,255,255,0.05)'
                 }}>
                   <p style={{ color: 'var(--text-muted)', margin: 0 }}>
                     Entry: £{cup.entryFee} | Players: {cup.players?.length || 0} | Prize Pot: £{prizePot}
                   </p>
-                  {cup.type === 'world_cup' && (
+                  {(cup.type === 'world_cup' || cup.type === 'season') && (
                     <div style={{ marginTop: '12px' }}>
                       <p style={{ color: '#fbbf24', fontSize: '0.8rem', fontWeight: 800, margin: 0, textTransform: 'uppercase' }}>
                         {cup.groupsAdvanced ? '✓ Knockout Phase In Progress' : '⏳ Group Stage In Progress'}
                       </p>
+                      {cup.type === 'season' && cup.finalsDate && (
+                        <p style={{ color: 'var(--accent-cyan)', fontSize: '0.75rem', marginTop: '4px' }}>
+                          📅 Finals Date: {cup.finalsDate}
+                        </p>
+                      )}
                       {cup.roundFormats?._stageDays && (
                         <p style={{ color: 'var(--accent-cyan)', fontSize: '0.75rem', marginTop: '4px' }}>
                           ⏱ Estimated Pace: {cup.roundFormats._stageDays} days per stage
