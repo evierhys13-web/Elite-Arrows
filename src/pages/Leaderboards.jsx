@@ -373,6 +373,8 @@ export default function Leaderboards() {
       </div>
 
       <style>{`
+        .leaderboard-grid > div { min-width: 0; }
+        .leaderboard-grid .card { min-width: 0; max-width: 100%; }
         @media (max-width: 900px) {
           .leaderboard-grid { grid-template-columns: 1fr !important; }
         }
