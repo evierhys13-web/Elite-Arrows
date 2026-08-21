@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContextInternal'
-import { db, collection, query, where, getDocs, orderBy, limit } from '../firebase'
+import { db, collection, query, getDocs, orderBy, limit } from '../firebase'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { useToast } from '../context/ToastContext'
@@ -44,15 +44,29 @@ export default function Leaderboards() {
   }, [refreshKey])
 
   // Full history (all seasons) - the context listener caps results at the newest 500,
-  // so all-time stats need their own unbounded fetch.
+  // so all-time stats need their own unbounded fetch. No server-side status filter:
+  // legacy season docs may not have a status field at all.
   useEffect(() => {
-    const fetchAllResults = async () => {
+    let cancelled = false
+    const fetchAllResults = async (attempt = 0) => {
       try {
-        const snap = await getDocs(query(collection(db, 'results'), where('status', '==', 'approved')))
-        setAllLeagueResults(snap.docs.map(d => ({ ...d.data(), id: d.data().id || d.id, firestoreId: d.id })))
-      } catch (e) { console.error('Error fetching all-time results:', e) }
+        const snap = await getDocs(collection(db, 'results'))
+        if (cancelled) return
+        const usable = snap.docs.map(d => ({ ...d.data(), id: d.data().id || d.id, firestoreId: d.id }))
+          .filter(r => {
+            const status = String(r.status || '').toLowerCase()
+            if (status === 'approved') return true
+            // Legacy imports may lack status entirely - treat scored docs as approved
+            return !status && r.score1 !== undefined && r.score2 !== undefined
+          })
+        setAllLeagueResults(usable)
+      } catch (e) {
+        console.error('Error fetching all-time results:', e)
+        if (attempt < 2 && !cancelled) setTimeout(() => fetchAllResults(attempt + 1), 3000 * (attempt + 1))
+      }
     }
     fetchAllResults()
+    return () => { cancelled = true }
   }, [refreshKey])
 
   useEffect(() => {
@@ -88,7 +102,8 @@ export default function Leaderboards() {
     adminData,
     leagueOnly: true,
     timePeriod: 'all',
-    includeReset: false
+    includeReset: false,
+    dedupe: false
   }), [allUsers, results, allLeagueResults, fixtures, adminData, refreshKey])
 
   const allTime180s = useMemo(() =>

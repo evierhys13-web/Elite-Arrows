@@ -49,7 +49,8 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
     timePeriod = 'all',
     requireProof = false,
     currentSeason = null,
-    includePlayoffs = true
+    includePlayoffs = true,
+    dedupe = true
   } = options
 
   const fixturesById = Object.fromEntries(fixtures.map(fixture => [String(fixture.id), fixture]))
@@ -109,6 +110,10 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
 
     return isWithinPeriod(result, timePeriod)
   })
+
+  // Single-source result sets (e.g. a dedicated Firestore fetch) are already unique
+  // per document - signature dedup could wrongly merge distinct games.
+  if (!dedupe) return approvedResults
 
   // 2. Merge duplicates based on logical identity as a fallback
   const uniqueResults = []
