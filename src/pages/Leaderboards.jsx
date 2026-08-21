@@ -18,6 +18,7 @@ export default function Leaderboards() {
   const [isSyncing, setIsSyncing] = useState(false)
   const [practiceLeaderboard, setPracticeLeaderboard] = useState([])
   const [hallOfFame, setHallOfFame] = useState([])
+  const [allLeagueResults, setAllLeagueResults] = useState(null)
 
   useEffect(() => {
     const fetchPracticeData = async () => {
@@ -40,6 +41,18 @@ export default function Leaderboards() {
       } catch (e) { console.error('Error fetching hall of fame:', e) }
     }
     fetchHallOfFame()
+  }, [refreshKey])
+
+  // Full history (all seasons) - the context listener caps results at the newest 500,
+  // so all-time stats need their own unbounded fetch.
+  useEffect(() => {
+    const fetchAllResults = async () => {
+      try {
+        const snap = await getDocs(query(collection(db, 'results'), where('status', '==', 'approved')))
+        setAllLeagueResults(snap.docs.map(d => ({ ...d.data(), id: d.data().id || d.id, firestoreId: d.id })))
+      } catch (e) { console.error('Error fetching all-time results:', e) }
+    }
+    fetchAllResults()
   }, [refreshKey])
 
   useEffect(() => {
@@ -69,14 +82,14 @@ export default function Leaderboards() {
 
   const divisions = ['all', 'Elite', 'Emerald', 'Diamond', 'Platinum']
 
-  // All-time totals across every season (ignores time filter and soft reset)
-  const allTimeStats = useMemo(() => derivePlayerStatsFromResults(allUsers, results, {
+  // All-time totals across every season (Seasons 1-4 league games, ignores time filter and soft reset)
+  const allTimeStats = useMemo(() => derivePlayerStatsFromResults(allUsers, allLeagueResults || results, {
     fixtures,
     adminData,
     leagueOnly: true,
     timePeriod: 'all',
     includeReset: false
-  }), [allUsers, results, fixtures, adminData, refreshKey])
+  }), [allUsers, results, allLeagueResults, fixtures, adminData, refreshKey])
 
   const allTime180s = useMemo(() =>
     Object.values(allTimeStats).reduce((max, player) => (!max || player['180s'] > max['180s']) ? player : max, null)
