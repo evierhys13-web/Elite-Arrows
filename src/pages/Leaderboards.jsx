@@ -95,6 +95,12 @@ export default function Leaderboards() {
     Object.values(allTimeStats).reduce((max, player) => (!max || player['180s'] > max['180s']) ? player : max, null)
   , [allTimeStats])
 
+  const allTime180sBoard = useMemo(() =>
+    Object.values(allTimeStats)
+      .filter(p => p.played > 0 && p['180s'] > 0)
+      .sort((a, b) => b['180s'] - a['180s'] || b.played - a.played)
+  , [allTimeStats])
+
   const top170s = useMemo(() =>
     leaderboard.length > 0 ? leaderboard.reduce((max, player) => (!max || player['170s'] > max['170s']) ? player : max, null) : null
   , [leaderboard])
@@ -196,6 +202,9 @@ export default function Leaderboards() {
         <button className={`division-tab ${activeTab === 'league' ? 'active' : ''}`} onClick={() => setActiveTab('league')}>
           🏆 League Rankings
         </button>
+        <button className={`division-tab ${activeTab === 'alltime' ? 'active' : ''}`} onClick={() => setActiveTab('alltime')}>
+          💯 All-Time 180s
+        </button>
         <button className={`division-tab ${activeTab === 'practice' ? 'active' : ''}`} onClick={() => setActiveTab('practice')}>
           🎯 Practice Drills
         </button>
@@ -291,6 +300,57 @@ export default function Leaderboards() {
                             <td style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 700, color: player['180s'] > 0 ? '#fbbf24' : 'var(--text-muted)' }}>
                               {player['180s'] || '-'}
                             </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </>
+            ) : activeTab === 'alltime' ? (
+              <>
+                <div style={{ marginBottom: '20px' }}>
+                  <h3 className="card-title" style={{ margin: 0 }}>💯 All-Time 180s Leaderboard</h3>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '6px', marginBottom: 0 }}>Total 180s across all league games, all seasons combined</p>
+                </div>
+
+                <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                  {allTime180sBoard.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+                      <p style={{ color: 'var(--text-muted)' }}>No 180s recorded yet.</p>
+                    </div>
+                  ) : (
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)', fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                          <th style={{ padding: '12px 8px' }}>Rank</th>
+                          <th style={{ padding: '12px 8px' }}>Player</th>
+                          <th style={{ padding: '12px 8px', textAlign: 'center' }}>180s</th>
+                          <th style={{ padding: '12px 8px', textAlign: 'center' }}>GP</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allTime180sBoard.map((player, index) => (
+                          <tr key={player.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', fontSize: '0.9rem' }}>
+                            <td style={{ padding: '12px 8px', fontWeight: 900, color: index === 0 ? '#fbbf24' : index === 1 ? '#94a3b8' : index === 2 ? '#d97706' : 'inherit' }}>
+                              #{index + 1}
+                            </td>
+                            <td style={{ padding: '12px 8px' }}>
+                              <div
+                                style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+                                onClick={() => navigate(`/profile/${player.id}`)}
+                              >
+                                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)', overflow: 'hidden' }}>
+                                  {player.profilePicture ? <img src={player.profilePicture} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontWeight: 800, fontSize: '0.8rem' }}>{player.username.charAt(0)}</span>}
+                                </div>
+                                <div>
+                                  <div style={{ fontWeight: 700 }}>{player.username}</div>
+                                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{player.division}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 900, color: '#fbbf24' }}>{player['180s']}</td>
+                            <td style={{ padding: '12px 8px', textAlign: 'center', color: 'var(--text-muted)' }}>{player.played}</td>
                           </tr>
                         ))}
                       </tbody>
