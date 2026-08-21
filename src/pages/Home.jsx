@@ -307,6 +307,12 @@ export default function Home() {
               <span style={{ fontWeight: 'bold', textAlign: 'right' }}>Must be on</span>
             </div>
           </Tooltip>
+          <Tooltip content="Omni is optional to use, but CAM must be used">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px', cursor: 'help', gap: '16px' }}>
+              <span>Omni</span>
+              <span style={{ fontWeight: 'bold', textAlign: 'right' }}>Optional</span>
+            </div>
+          </Tooltip>
           <Tooltip content="Play online using DartCounter app">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px', cursor: 'help', gap: '16px' }}>
               <span>Platform</span>
