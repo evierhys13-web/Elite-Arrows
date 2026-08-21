@@ -49,6 +49,7 @@ export default function Admin() {
   const [approvingPaymentId, setApprovingPaymentId] = useState(null)
   const [approvalOverride, setApprovalOverride] = useState({ tier: 'elite', season: '' })
   const [isProcessing, setIsProcessing] = useState(false)
+  const [previewImage, setPreviewImage] = useState(null)
 
   // Form states
   const [showSubmitGame, setShowSubmitGame] = useState(false)
@@ -2139,6 +2140,50 @@ export default function Admin() {
         )}
 
       </div>
+
+      {previewImage && (
+        <div
+          className="modal-overlay animate-fade-in"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.9)',
+            zIndex: 99999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+            cursor: 'pointer'
+          }}
+          onClick={() => setPreviewImage(null)}
+        >
+          <img
+            src={previewImage}
+            alt="Preview"
+            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 0 40px rgba(0,0,0,0.5)' }}
+          />
+          <button
+            style={{
+              position: 'absolute',
+              top: '20px',
+              right: '20px',
+              background: 'white',
+              color: 'black',
+              border: 'none',
+              borderRadius: '50%',
+              width: '40px',
+              height: '40px',
+              fontSize: '24px',
+              fontWeight: 'bold',
+              cursor: 'pointer'
+            }}
+            onClick={() => setPreviewImage(null)}
+          >×</button>
+        </div>
+      )}
     </div>
   )
 }

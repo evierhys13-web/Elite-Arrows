@@ -359,7 +359,7 @@ export default function Leaderboards() {
 
       <style>{`
         @media (max-width: 900px) {
-          .leaderboard-grid { grid-template-columns: 1fr !material; }
+          .leaderboard-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
     </div>
