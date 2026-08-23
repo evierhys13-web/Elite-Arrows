@@ -3,13 +3,28 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContextInternal'
 import { getResultPlayerId, isLeagueResult, isPlayoffResult, isSuperLeagueResult, isOpenLeagueResult, isOpenLeagueDoublesResult } from '../utils/leagueResults'
 import UserSearchSelect from '../components/UserSearchSelect'
-import { db, doc, setDoc, getDocs, collection } from '../firebase'
+import { db, doc, setDoc, getDocs, collection, deleteDoc, addDoc } from '../firebase'
 import { useToast } from '../context/ToastContext'
+import { ADMIN_EMAILS } from '../config'
 
 export default function MatchLog() {
-  const { user, getAllUsers, getFixtures, getResults, getCups, adminData, getSeasons, bets, useTokens, triggerDataRefresh } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, getCups, adminData, getSeasons, bets, useTokens, triggerDataRefresh, updateFixtures } = useAuth()
   const navigate = useNavigate()
   const { showToast } = useToast()
+
+  const isAdmin = user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin || (user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase()))
+
+  const logAudit = async (action, details) => {
+    try {
+      await addDoc(collection(db, 'auditLogs'), {
+        adminId: user.id,
+        adminName: user.username,
+        action,
+        details,
+        timestamp: new Date().toISOString()
+      })
+    } catch (e) { console.error('Audit log failed', e) }
+  }
   const [activeTab, setActiveTab] = useState('toPlay')
   const [competition, setCompetition] = useState('League') // 'League', 'Champions League', 'Open Singles', 'Open Doubles'
   const [targetPlayerId, setTargetPlayerId] = useState(user?.id)
@@ -130,6 +145,23 @@ export default function MatchLog() {
   }, [targetRaw, activeSeasonDoc])
 
   const isMe = String(targetUser.id) === String(user?.id)
+
+  const handleRemoveFixture = async (fixtureId, opponentName) => {
+    if (!window.confirm(`Are you sure you want to remove the scheduled game against ${opponentName}?`)) return
+    try {
+      await deleteDoc(doc(db, 'fixtures', String(fixtureId)))
+
+      // Update local state
+      const updatedFixtures = fixtures.filter(f => String(f.id) !== String(fixtureId))
+      updateFixtures(updatedFixtures)
+
+      await logAudit('REMOVE_FIXTURE_MATCHLOG', `Removed fixture ${fixtureId} between ${targetUser.username} and ${opponentName}`)
+      showToast('Scheduled game removed', 'info')
+      triggerDataRefresh('fixtures')
+    } catch (e) {
+      showToast('Error removing fixture: ' + e.message, 'error')
+    }
+  }
 
   const competitionResults = useMemo(() => {
     if (!targetUser.id) return []
@@ -260,11 +292,23 @@ export default function MatchLog() {
         ? allUsers.map(u => {
             const sDiv = activeSeasonDoc?.stagedDivisions?.[String(u.id)]
             return { ...u, effectiveDiv: sDiv || u.division || 'Unassigned' }
-          }).filter(u =>
-            String(u.id) !== String(targetUser.id) &&
-            u.effectiveDiv === targetUser.division &&
-            !playedOpponentCounts[String(u.id)]
-          )
+          }).filter(u => {
+            if (u.id === targetUser.id) return false;
+            // Specifically remove Tom Beaumont from Season 4 as requested
+            if (currentSeasonName === "Season 4" && (u.username === "Tom Beaumont" || u.name === "Tom Beaumont")) return false;
+
+            return u.effectiveDiv === targetUser.division && !playedOpponentCounts[String(u.id)]
+          })
+          .map(u => {
+            // Find existing fixture
+            const fixture = fixtures.find(f =>
+              !f._deleted &&
+              String(f.gameType || '').toLowerCase() === 'league' &&
+              ((String(f.player1Id) === String(targetUser.id) && String(f.player2Id) === String(u.id)) ||
+               (String(f.player1Id) === String(u.id) && String(f.player2Id) === String(targetUser.id)))
+            )
+            return { ...u, _fixtureId: fixture?.id }
+          })
         : []
 
       const seen = new Set()
@@ -279,13 +323,22 @@ export default function MatchLog() {
       if (!slDivision) return []
 
       return allUsers
-        .filter(u =>
-          String(u.id) !== String(targetUser.id) &&
-          u.superLeagueDivision === slDivision
-        )
+        .filter(u => {
+          if (String(u.id) === String(targetUser.id)) return false;
+          // Specifically remove Tom Beaumont from Season 4 as requested
+          if (currentSeasonName === "Season 4" && (u.username === "Tom Beaumont" || u.name === "Tom Beaumont")) return false;
+
+          return u.superLeagueDivision === slDivision;
+        })
         .map(u => {
           const playedCount = playedOpponentCounts[String(u.id)] || 0
-          return { ...u, _playedCount: playedCount, _remaining: 2 - playedCount }
+          const fixture = fixtures.find(f =>
+            !f._deleted &&
+            String(f.gameType || '').toLowerCase() === 'champions league' &&
+            ((String(f.player1Id) === String(targetUser.id) && String(f.player2Id) === String(u.id)) ||
+             (String(f.player1Id) === String(u.id) && String(f.player2Id) === String(targetUser.id)))
+          )
+          return { ...u, _playedCount: playedCount, _remaining: 2 - playedCount, _fixtureId: fixture?.id }
         })
         .filter(u => u._remaining > 0)
     } else if (competition === 'Cup') {
@@ -316,11 +369,22 @@ export default function MatchLog() {
       if (!isInOpenSingles) return []
 
       return allUsers
-        .filter(u =>
-          String(u.id) !== String(targetUser.id) &&
-          openSinglesEntries.some(e => String(e.userId) === String(u.id)) &&
-          !playedOpponentCounts[String(u.id)]
-        )
+        .filter(u => {
+          if (String(u.id) === String(targetUser.id)) return false;
+          // Specifically remove Tom Beaumont from Season 4 as requested
+          if (currentSeasonName === "Season 4" && (u.username === "Tom Beaumont" || u.name === "Tom Beaumont")) return false;
+
+          return openSinglesEntries.some(e => String(e.userId) === String(u.id)) && !playedOpponentCounts[String(u.id)];
+        })
+        .map(u => {
+          const fixture = fixtures.find(f =>
+            !f._deleted &&
+            String(f.gameType || '').toLowerCase().includes('open league singles') &&
+            ((String(f.player1Id) === String(targetUser.id) && String(f.player2Id) === String(u.id)) ||
+             (String(f.player1Id) === String(u.id) && String(f.player2Id) === String(targetUser.id)))
+          )
+          return { ...u, _fixtureId: fixture?.id }
+        })
     } else if (competition === 'Open Doubles') {
       const targetDuo = openDuoEntries.find(e => String(e.p1Id) === String(targetUser.id) || String(e.p2Id) === String(targetUser.id))
       if (!targetDuo) return []
@@ -538,6 +602,19 @@ export default function MatchLog() {
                         }}
                       >
                         Submit Score
+                      </button>
+                    )}
+
+                    {isAdmin && player._fixtureId && (
+                      <button
+                        className="btn btn-danger btn-sm"
+                        style={{ padding: '6px 12px', fontSize: '0.75rem' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveFixture(player._fixtureId, player.username);
+                        }}
+                      >
+                        🗑️ Remove Schedule
                       </button>
                     )}
 
