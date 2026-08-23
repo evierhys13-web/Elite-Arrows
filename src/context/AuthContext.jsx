@@ -319,10 +319,26 @@ export function AuthProvider({ children }) {
       };
 
       try {
+        // 1. Save to Firestore for the internal inbox
         await setDoc(
           doc(db, "notifications", newNotification.id),
           newNotification,
         );
+
+        // 2. Trigger Device Push Notification via Vercel Proxy
+        // We only trigger if it's for another user (the current user gets local notification below)
+        // Actually, we trigger for everyone to ensure it hits their other devices if logged in.
+        fetch("/api/notify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            toUserId,
+            title: notification.title,
+            body: notification.message,
+            data: notification.data || {}
+          })
+        }).catch(err => console.error("Push trigger error:", err));
+
       } catch (e) {
         console.log("Error saving notification to Firebase:", e);
       }
@@ -2465,34 +2481,51 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    const setupForegroundMessages = async () => {
+    const setupNotifications = async () => {
+      if (!user?.id) return;
+
       try {
         const messaging = await getMessagingInstance();
         if (!messaging) return;
 
+        // 1. If permission already granted, ensure token is registered
+        if (Notification.permission === "granted") {
+          const storedToken = localStorage.getItem("eliteArrowsFcmToken");
+          // If no token stored or we want to ensure it's fresh in DB
+          if (!storedToken) {
+            await registerFCMToken();
+          }
+        }
+
+        // 2. Setup foreground listener
         onMessage(messaging, (payload) => {
           console.log("Foreground message received:", payload);
-
           const { title, body, data } = payload;
 
           if (Notification.permission === "granted") {
-            new Notification(title || "Elite Arrows", {
+            const notification = new Notification(title || "Elite Arrows", {
               body: body || "New notification",
               icon: "/elite arrows.jpg",
               badge: "/elite arrows.jpg",
               data: data,
             });
+
+            notification.onclick = () => {
+              window.focus();
+              notification.close();
+              if (data?.url) {
+                window.location.href = data.url;
+              }
+            };
           }
         });
       } catch (error) {
-        console.log("FCM onMessage setup error:", error);
+        console.log("FCM setup error:", error);
       }
     };
 
-    if (user?.id) {
-      setupForegroundMessages();
-    }
-  }, [user?.id]);
+    setupNotifications();
+  }, [user?.id, registerFCMToken]);
 
   useEffect(() => {
     if (typeof window !== "undefined" && "Notification" in window) {

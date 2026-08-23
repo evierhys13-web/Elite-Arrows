@@ -228,7 +228,7 @@ export default function Home() {
             <Link to="/match-log" style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontWeight: 700, textDecoration: 'none' }}>Full Log ➔</Link>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {opponentsToPlay.slice(0, 5).map(player => (
+            {opponentsToPlay.map(player => (
               <div key={`${player.id}_${player.type}_${player.fixture?.id || ''}`} className="glass" style={{
                 padding: '12px 16px', borderRadius: '12px', background: 'rgba(255,255,255,0.02)',
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid rgba(255,255,255,0.05)'
@@ -255,11 +255,6 @@ export default function Home() {
                 </div>
               </div>
             ))}
-            {opponentsToPlay.length > 5 && (
-              <Link to="/match-log" style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '5px', textDecoration: 'none' }}>
-                + {opponentsToPlay.length - 5} more opponents to play
-              </Link>
-            )}
           </div>
         </div>
       )}
