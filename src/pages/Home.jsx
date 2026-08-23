@@ -1,21 +1,19 @@
-import { useState, useEffect, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContextInternal'
 import { db, doc, setDoc } from '../firebase'
 import NewsFeed from '../components/NewsFeed'
-import { SkeletonList } from '../components/Skeleton'
-import Tooltip from '../components/Tooltip'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { getLeaguePoints } from '../utils/leagueScoring'
-import { getResultEffectiveTime, getResultPlayerId, isLeagueResult, isSuperLeagueResult, isPlayoffResult, isOpenLeagueResult, isOpenLeagueDoublesResult } from '../utils/leagueResults'
+import { getResultEffectiveTime, getResultPlayerId, isLeagueResult } from '../utils/leagueResults'
 import GlobalHighlightReel from '../components/GlobalHighlightReel'
 import { collection, getDocs } from '../firebase'
-
 
 const DEFAULT_LEAGUE_TABLE_RESET_AT = '2026-04-29T16:14:21.338+01:00'
 
 export default function Home() {
-  const { user, getAllUsers, getFixtures, getResults, loading, adminData, updateUser, getSeasons } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, loading, adminData, getSeasons, getCups } = useAuth()
+  const navigate = useNavigate()
   
   const allUsers = getAllUsers()
   const fixtures = getFixtures()
@@ -27,37 +25,30 @@ export default function Home() {
   const [surveyAnswers, setSurveyAnswers] = useState({})
   const [submittingSurvey, setSubmittingSurvey] = useState(null)
   const [openSinglesEntries, setOpenSinglesEntries] = useState([])
-  const [openDuoEntries, setOpenDuoEntries] = useState([])
 
   useEffect(() => {
     const fetchOpenLeagueData = async () => {
       try {
-        const [sSnap, dSnap] = await Promise.all([
-          getDocs(collection(db, 'openLeagueSingles')),
-          getDocs(collection(db, 'openLeagueDuos'))
+        const [sSnap] = await Promise.all([
+          getDocs(collection(db, 'openLeagueSingles'))
         ])
         setOpenSinglesEntries(sSnap.docs.map(d => ({ id: d.id, ...d.data() })))
-        setOpenDuoEntries(dSnap.docs.map(d => ({ id: d.id, ...d.data() })))
       } catch (e) { console.error(e) }
     }
     fetchOpenLeagueData()
   }, [])
 
   const activeSeason = useMemo(() => {
-    const seasons = typeof getSeasons === 'function' ? getSeasons() : []
-
-    // 1. Force Season 4 dates as requested: Aug 1st to Sept 1st
     return {
       name: 'Season 4',
       startDate: '2026-08-01T00:00:00',
       endDate: '2026-09-01T00:00:00'
     }
-  }, [getSeasons])
+  }, [])
 
   useEffect(() => {
     setVisible(true)
   }, [])
-
 
   useEffect(() => {
     const calculateTimeLeft = () => {
@@ -88,12 +79,6 @@ export default function Home() {
     return () => clearInterval(timer)
   }, [activeSeason])
 
-  const tournaments = useMemo(() => {
-    try {
-      return JSON.parse(localStorage.getItem('eliteArrowsTournaments') || '[]')
-    } catch (e) { return [] }
-  }, [])
-
   const fixturesById = useMemo(() =>
     Object.fromEntries(fixtures.map(fixture => [String(fixture.id), fixture])),
   [fixtures])
@@ -121,15 +106,46 @@ export default function Home() {
 
   const currentSeasonName = activeSeason.name
 
+  const getPlayoffOpponent = useCallback(() => {
+    if (!user.id) return null
+    const allPlayoffs = fixtures.filter(f => {
+      if (f._deleted) return false
+      return String(f.gameType || '').toLowerCase() === 'playoff'
+    })
+    const playoff = allPlayoffs.find(f => {
+      const status = (f.status || '').toLowerCase()
+      const proposal = (f.proposalStatus || '').toLowerCase()
+      if (status !== 'accepted' && proposal !== 'accepted') return false
+      const p1 = String(f.player1Id || f.player1 || '')
+      const p2 = String(f.player2Id || f.player2 || '')
+      return p1 === String(user.id) || p2 === String(user.id)
+    })
+    if (!playoff) return null
+    const p1 = String(playoff.player1Id || playoff.player1 || '')
+    const p2 = String(playoff.player2Id || playoff.player2 || '')
+    const opponentId = p1 === String(user.id) ? p2 : p1
+    const u = allUsers.find(u => String(u.id) === opponentId)
+    return u ? { ...u, _playoff: true, _fixtureId: playoff.id } : null
+  }, [user.id, fixtures, allUsers])
+
+  const playoffOpponent = getPlayoffOpponent()
+
+  const playoffAlreadyPlayed = useMemo(() => {
+    if (!playoffOpponent) return false
+    return allResults.some(r => {
+      if (String(r.status || '').toLowerCase() !== 'approved') return false
+      if (!r.fixtureId) return false
+      return String(r.fixtureId) === String(playoffOpponent._fixtureId)
+    })
+  }, [allResults, playoffOpponent])
+
   const opponentsToPlay = useMemo(() => {
     if (!user || !user.id || user.division === 'Unassigned' || user.division === 'Admin') return []
 
-    // Specifically clear "To Play" list for Tom Beaumont in Season 4 as requested
     if (currentSeasonName === "Season 4" && (user.username === "Tom Beaumont" || user.name === "Tom Beaumont")) {
       return []
     }
 
-    // 1. Get competition results for the current season to see who is already played
     const playedOpponentCounts = {}
     allResults
       .filter(r => {
@@ -144,18 +160,14 @@ export default function Home() {
         let opponentId = ''
         if (p1Id === String(user.id)) opponentId = p2Id
         else if (p2Id === String(user.id)) opponentId = p1Id
-
-        if (opponentId) {
-          playedOpponentCounts[opponentId] = (playedOpponentCounts[opponentId] || 0) + 1
-        }
+        if (opponentId) playedOpponentCounts[opponentId] = (playedOpponentCounts[opponentId] || 0) + 1
       })
 
-    // 2. Identify remaining opponents
     const remaining = []
 
     // Standard League
     if (user.division && user.division !== 'Unassigned') {
-      allUsers
+      const divisionOpponents = allUsers
         .map(u => {
           const activeSeasonDoc = (getSeasons ? getSeasons() : []).find(s => s.name === currentSeasonName)
           const stagedDiv = activeSeasonDoc?.stagedDivisions?.[String(u.id)]
@@ -168,15 +180,20 @@ export default function Home() {
           if (currentSeasonName === "Season 4" && (u.username === "Tom Beaumont" || u.name === "Tom Beaumont")) return false
           return true
         })
-        .forEach(u => {
-          const fixture = fixtures.find(f =>
-            !f._deleted &&
-            String(f.gameType || '').toLowerCase() === 'league' &&
-            ((String(f.player1Id) === String(user.id) && String(f.player2Id) === String(u.id)) ||
-             (String(f.player1Id) === String(u.id) && String(f.player2Id) === String(user.id)))
-          )
-          remaining.push({ ...u, type: 'League', fixture })
-        })
+
+      divisionOpponents.forEach(u => {
+        const fixture = fixtures.find(f =>
+          !f._deleted &&
+          String(f.gameType || '').toLowerCase() === 'league' &&
+          ((String(f.player1Id) === String(user.id) && String(f.player2Id) === String(u.id)) ||
+           (String(f.player1Id) === String(u.id) && String(f.player2Id) === String(user.id)))
+        )
+        remaining.push({ ...u, type: 'League', fixture })
+      })
+
+      if (playoffOpponent && !playoffAlreadyPlayed) {
+        remaining.push({ ...playoffOpponent, type: 'Playoff', fixture: fixtures.find(f => f.id === playoffOpponent._fixtureId) })
+      }
     }
 
     // Champions League
@@ -202,411 +219,189 @@ export default function Home() {
         })
     }
 
+    // Cups
+    fixtures
+      .filter(f => {
+        if (!f.cupId || f._deleted) return false
+        const status = String(f.status).toLowerCase()
+        if (['approved', 'result_submitted', 'completed'].includes(status)) return false
+        return String(f.player1Id) === String(user.id) || String(f.player2Id) === String(user.id)
+      })
+      .forEach(f => {
+        const opponentId = String(f.player1Id) === String(user.id) ? f.player2Id : f.player1Id
+        const opponent = allUsers.find(u => String(u.id) === String(opponentId))
+        const cupsData = getCups ? getCups() : []
+        const cup = cupsData.find(c => String(c.id) === String(f.cupId))
+        remaining.push({
+          ...opponent,
+          id: opponent?.id || opponentId,
+          username: opponent?.username || 'Unknown',
+          type: 'Cup',
+          fixture: f,
+          _cupName: cup?.name || f.cupName || 'Cup',
+          _round: f.round
+        })
+      })
+
+    // Open Singles
+    if (openSinglesEntries.some(e => String(e.userId) === String(user.id))) {
+      allUsers
+        .filter(u => {
+          if (String(u.id) === String(user.id)) return false
+          if (currentSeasonName === "Season 4" && (u.username === "Tom Beaumont" || u.name === "Tom Beaumont")) return false
+          return openSinglesEntries.some(e => String(e.userId) === String(u.id)) && !playedOpponentCounts[String(u.id)]
+        })
+        .forEach(u => {
+          const fixture = fixtures.find(f =>
+            !f._deleted &&
+            String(f.gameType || '').toLowerCase().includes('open league singles') &&
+            ((String(f.player1Id) === String(user.id) && String(f.player2Id) === String(u.id)) ||
+             (String(f.player1Id) === String(u.id) && String(f.player2Id) === String(user.id)))
+          )
+          remaining.push({ ...u, type: 'Open Singles', fixture })
+        })
+    }
+
     return remaining.sort((a, b) => {
-      // Show confirmed fixtures first
       if (a.fixture && !b.fixture) return -1
       if (!a.fixture && b.fixture) return 1
+      if (a.type === 'Cup' && b.type !== 'Cup') return -1
+      if (a.type !== 'Cup' && b.type === 'Cup') return 1
+      if (a.type === 'Playoff' && b.type !== 'Playoff') return -1
+      if (a.type !== 'Playoff' && b.type === 'Playoff') return 1
       return 0
     })
-  }, [user, allUsers, allResults, fixtures, getSeasons, currentSeasonName])
+  }, [user, allUsers, allResults, fixtures, getSeasons, getCups, currentSeasonName, playoffOpponent, playoffAlreadyPlayed, openSinglesEntries])
 
   const stats = useMemo(() => userResults.reduce((acc, r) => {
-    const isLeague = isLeagueResult(r, fixturesById)
-    if (!isLeague) return acc
-
+    if (!isLeagueResult(r, fixturesById)) return acc
     acc.played++
     const isPlayer1 = String(getResultPlayerId(r, 1, allUsers)) === String(user?.id)
     const score1 = Number(r.score1) || 0
     const score2 = Number(r.score2) || 0
-    if (isPlayer1) {
-      if (score1 > score2) acc.wins++
-      else if (score1 < score2) acc.losses++
-      else acc.draws++
-    } else {
-      if (score2 > score1) acc.wins++
-      else if (score2 < score1) acc.losses++
-      else acc.draws++
-    }
+    const myScore = isPlayer1 ? score1 : score2
+    const opponentScore = isPlayer1 ? score2 : score1
 
-    const countsForLeaguePoints = !leagueTableResetTime || getResultEffectiveTime(r) > leagueTableResetTime
-    if (countsForLeaguePoints) {
-      const myScore = isPlayer1 ? score1 : score2
-      const opponentScore = isPlayer1 ? score2 : score1
+    if (myScore > opponentScore) acc.wins++
+    else if (myScore < opponentScore) acc.losses++
+    else acc.draws++
+
+    if (!leagueTableResetTime || getResultEffectiveTime(r) > leagueTableResetTime) {
       acc.points += getLeaguePoints(myScore, opponentScore)
     }
     return acc
   }, { played: 0, wins: 0, losses: 0, draws: 0, points: 0 }), [userResults, fixturesById, allUsers, user?.id, leagueTableResetTime])
 
-  if (loading) return <div className="page glass"><div style={{ padding: '60px', textAlign: 'center', color: 'var(--accent-cyan)' }}><div className="spinner"></div></div></div>
-  if (!user) return <div className="page glass"><div style={{ padding: '60px', textAlign: 'center' }}>Please sign in to access Elite Arrows.</div></div>
+  if (loading) return <div className="page glass"><div style={{ padding: '60px', textAlign: 'center' }}><div className="spinner"></div></div></div>
+  if (!user) return <div className="page glass"><div style={{ padding: '60px', textAlign: 'center' }}>Please sign in.</div></div>
 
   const isSeasonActive = seasonPhase === 'active'
   const seasonTimerTitle = seasonPhase === 'active' ? 'Season 4 Ends In:' : seasonPhase === 'ended' ? 'Season 4 Ended' : 'Season 4 Starts In'
 
   return (
-    <>
     <div className="page">
       <Breadcrumbs items={[{ label: 'Home', path: '/home' }]} />
 
-      <div style={{ marginBottom: '20px', textAlign: 'center' }}>
-        <a
-          href="https://chat.whatsapp.com/GNaYyJDxzMADbA1ARI1kne"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '12px 24px',
-            background: '#25D366',
-            color: 'white',
-            borderRadius: '8px',
-            textDecoration: 'none',
-            fontWeight: '600',
-            width: '100%',
-            justifyContent: 'center',
-            boxSizing: 'border-box'
-          }}
-        >
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="white">
-            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-          </svg>
-          Join Elite Arrows WhatsApp Community
-        </a>
-      </div>
-
-      <div className={`animate-fade-in-up ${visible ? '' : 'opacity-0'}`}>
-        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-          <img src="/elite arrows.jpg" alt="Elite Arrows" style={{ width: '80px', height: '80px', borderRadius: '12px', objectFit: 'cover', marginBottom: '15px' }} />
-          <h1 style={{ color: 'var(--accent-cyan)', fontSize: '1.8rem' }}>Welcome back{user?.username ? `, ${user.username}` : ''}!</h1>
-          <p style={{ color: 'var(--text-muted)' }}>Here's your darts overview</p>
-        </div>
-      </div>
-
-      <div className={`animate-fade-in-up stagger-item`}>
-        <NewsFeed />
-      </div>
-
-      <div className={`card animate-fade-in-up stagger-item`} style={{ marginBottom: '20px', border: '2px solid var(--accent-cyan)' }}>
+      {/* 1. Season Ends (Timer) */}
+      <div className={`card animate-fade-in-up`} style={{ marginBottom: '20px', border: '2px solid var(--accent-cyan)' }}>
         <div style={{ textAlign: 'center' }}>
-          <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>
-            {seasonTimerTitle}
-          </h2>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>
-            {isSeasonActive
-              ? `${new Date(activeSeason.startDate).toLocaleString()} - ${new Date(activeSeason.endDate).toLocaleString()}`
-              : `${activeSeason.name}: ${new Date(activeSeason.startDate).toLocaleString()} - ${new Date(activeSeason.endDate).toLocaleString()}`
-            }
-          </p>
+          <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>{seasonTimerTitle}</h2>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '20px' }}>
-            <div className="stat-card" style={{ padding: '15px' }}>
-              <div className="stat-value" style={{ fontSize: '1.5rem' }}>{timeLeft.days}</div>
-              <div className="stat-label">Days</div>
-            </div>
-            <div className="stat-card" style={{ padding: '15px' }}>
-              <div className="stat-value" style={{ fontSize: '1.5rem' }}>{timeLeft.hours}</div>
-              <div className="stat-label">Hours</div>
-            </div>
-            <div className="stat-card" style={{ padding: '15px' }}>
-              <div className="stat-value" style={{ fontSize: '1.5rem' }}>{timeLeft.minutes}</div>
-              <div className="stat-label">Mins</div>
-            </div>
-            <div className="stat-card" style={{ padding: '15px' }}>
-              <div className="stat-value" style={{ fontSize: '1.5rem' }}>{timeLeft.seconds}</div>
-              <div className="stat-label">Secs</div>
-            </div>
+            {Object.entries(timeLeft).map(([label, value]) => (
+              <div key={label} className="stat-card" style={{ padding: '15px' }}>
+                <div className="stat-value" style={{ fontSize: '1.5rem' }}>{value}</div>
+                <div className="stat-label">{label.charAt(0).toUpperCase() + label.slice(1, 4)}</div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Your Season Schedule */}
+      {/* 2. Season Schedule */}
       {opponentsToPlay.length > 0 && (
         <div className="card animate-fade-in-up stagger-item" style={{ marginBottom: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
             <h2 className="card-title" style={{ margin: 0, color: 'var(--accent-cyan)' }}>Your Season Schedule</h2>
-            <Link to="/match-log" style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontWeight: 700, textDecoration: 'none' }}>View Full Log ➔</Link>
+            <Link to="/match-log" style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontWeight: 700, textDecoration: 'none' }}>Full Log ➔</Link>
           </div>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '15px' }}>
-            Remaining opponents in the {user.division} division.
-          </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {opponentsToPlay.slice(0, 5).map(player => (
-              <div key={`${player.id}_${player.type}`} className="glass" style={{
-                padding: '12px 16px',
-                borderRadius: '12px',
-                background: 'rgba(255,255,255,0.02)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                border: '1px solid rgba(255,255,255,0.05)'
+              <div key={`${player.id}_${player.type}_${player.fixture?.id || ''}`} className="glass" style={{
+                padding: '12px 16px', borderRadius: '12px', background: 'rgba(255,255,255,0.02)',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid rgba(255,255,255,0.05)'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div className="avatar-ring" style={{ width: '36px', height: '36px', padding: '2px' }}>
                     <div className="avatar-inner" style={{ background: '#050816', fontSize: '0.8rem' }}>
-                      {player.profilePicture ? (
-                        <img src={player.profilePicture} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      ) : (
-                        <span>{player.username.charAt(0).toUpperCase()}</span>
-                      )}
+                      {player.profilePicture ? <img src={player.profilePicture} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span>{player.username.charAt(0).toUpperCase()}</span>}
                     </div>
                   </div>
                   <div>
                     <div style={{ fontWeight: '700', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       {player.username}
-                      <span style={{
-                        fontSize: '0.6rem',
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                        background: player.type === 'Champions League' ? 'rgba(251, 191, 36, 0.1)' : 'rgba(0, 212, 255, 0.1)',
-                        color: player.type === 'Champions League' ? '#fbbf24' : 'var(--accent-cyan)',
-                        border: `1px solid ${player.type === 'Champions League' ? 'rgba(251, 191, 36, 0.2)' : 'rgba(0, 212, 255, 0.2)'}`
-                      }}>
-                        {player.type === 'Champions League' ? 'CL' : 'League'}
-                      </span>
+                      <span style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(0, 212, 255, 0.1)', color: 'var(--accent-cyan)', border: '1px solid rgba(0, 212, 255, 0.2)' }}>{player.type}</span>
                     </div>
-                    {player.fixture ? (
-                      <div style={{ color: 'var(--success)', fontSize: '0.7rem', fontWeight: 600 }}>
-                        📅 {player.fixture.fixtureDate} {player.fixture.fixtureTime}
-                      </div>
-                    ) : (
-                      <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>
-                        {player.type === 'Champions League' ? `To Play: ${player._remaining}x` : 'Not yet scheduled'}
-                      </div>
-                    )}
+                    <div style={{ color: player.fixture ? 'var(--success)' : 'var(--text-muted)', fontSize: '0.7rem' }}>
+                      {player.fixture ? `📅 ${player.fixture.fixtureDate || player.fixture.date} ${player.fixture.fixtureTime || player.fixture.time}` : player._remaining ? `To Play: ${player._remaining}x` : 'Not scheduled'}
+                    </div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <Link
-                    to={`/submit-result?opponent=${player.id}&gameType=${player.type}&season=${currentSeasonName}`}
-                    className="btn btn-primary btn-sm"
-                    style={{ padding: '4px 10px', fontSize: '0.7rem' }}
-                  >
-                    Submit
-                  </Link>
-                  {!player.fixture && (
-                    <Link
-                      to={`/chat?openChat=friend_${player.id}`}
-                      className="btn btn-secondary btn-sm"
-                      style={{ padding: '4px 10px', fontSize: '0.7rem' }}
-                    >
-                      Arrange
-                    </Link>
-                  )}
+                  <Link to={player.type === 'Cup' ? `/submit-result?fixtureId=${player.fixture.id}&gameType=Cup&season=${currentSeasonName}` : `/submit-result?opponent=${player.id}&gameType=${player.type}&season=${currentSeasonName}`} className="btn btn-primary btn-sm" style={{ padding: '4px 10px', fontSize: '0.7rem' }}>Submit</Link>
+                  {!player.fixture && <Link to={`/chat?openChat=friend_${player.id}`} className="btn btn-secondary btn-sm" style={{ padding: '4px 10px', fontSize: '0.7rem' }}>Arrange</Link>}
                 </div>
               </div>
             ))}
-            {opponentsToPlay.length > 5 && (
-              <Link to="/match-log" style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '5px', textDecoration: 'none' }}>
-                + {opponentsToPlay.length - 5} more opponents to play
-              </Link>
-            )}
           </div>
         </div>
       )}
 
+      {/* 3. Community Highlights */}
       <GlobalHighlightReel />
 
-      {/* Surveys */}
-      {(() => {
-        const allSurveys = adminData?.surveys || []
-        const pendingSurveys = allSurveys.filter(s => {
-          if (!s.active) return false
-          if (s.targetType === 'all') return true
-          return (s.targetUserIds || []).includes(user.id)
-        }).filter(s => {
-          const responses = s.responses || []
-          return !responses.find(r => r.userId === user.id)
-        })
-
-        if (pendingSurveys.length === 0) return null
-
-        return pendingSurveys.map(survey => (
-          <div key={survey.id} className="card animate-fade-in-up stagger-item" style={{ marginBottom: '20px', border: '2px solid var(--accent-primary)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h3 style={{ color: 'var(--accent-primary)', margin: 0 }}>📋 {survey.title}</h3>
-              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.1)', padding: '4px 10px', borderRadius: '20px' }}>Survey</span>
-            </div>
-            {survey.description && <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '16px' }}>{survey.description}</p>}
-
-            {survey.questions.map((q, qi) => (
-              <div key={q.id} className="form-group" style={{ marginBottom: '12px' }}>
-                <label>{q.text}</label>
-                {q.type === 'text' && (
-                  <input value={surveyAnswers[`${survey.id}_${q.id}`] || ''} onChange={e => setSurveyAnswers({...surveyAnswers, [`${survey.id}_${q.id}`]: e.target.value})} placeholder="Your answer..." />
-                )}
-                {q.type === 'radio' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {(q.options || []).map(opt => (
-                      <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', cursor: 'pointer' }}>
-                        <input type="radio" name={`${survey.id}_${q.id}`} value={opt} checked={surveyAnswers[`${survey.id}_${q.id}`] === opt} onChange={e => setSurveyAnswers({...surveyAnswers, [`${survey.id}_${q.id}`]: e.target.value})} />
-                        {opt}
-                      </label>
-                    ))}
-                  </div>
-                )}
-                {q.type === 'checkbox' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {(q.options || []).map(opt => (
-                      <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', cursor: 'pointer' }}>
-                        <input type="checkbox" value={opt} checked={(surveyAnswers[`${survey.id}_${q.id}`] || []).includes(opt)} onChange={e => {
-                          const current = surveyAnswers[`${survey.id}_${q.id}`] || []
-                          const next = e.target.checked ? [...current, opt] : current.filter(x => x !== opt)
-                          setSurveyAnswers({...surveyAnswers, [`${survey.id}_${q.id}`]: next})
-                        }} />
-                        {opt}
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-
-            <button className="btn btn-primary btn-block" disabled={submittingSurvey === survey.id} onClick={async () => {
-              setSubmittingSurvey(survey.id)
-              const answers = survey.questions.map(q => ({
-                questionId: q.id,
-                question: q.text,
-                answer: q.type === 'checkbox' ? (surveyAnswers[`${survey.id}_${q.id}`] || []).join(', ') : (surveyAnswers[`${survey.id}_${q.id}`] || '')
-              }))
-              const response = { userId: user.id, username: user.username, answers, submittedAt: new Date().toISOString() }
-              const surveys = [...(adminData?.surveys || [])]
-              const idx = surveys.findIndex(s => s.id === survey.id)
-              if (idx !== -1) {
-                surveys[idx] = { ...surveys[idx], responses: [...(surveys[idx].responses || []), response] }
-                try {
-                  await setDoc(doc(db, 'admin', 'data'), { surveys }, { merge: true })
-                  setSurveyAnswers({})
-                  setSubmittingSurvey(null)
-                  window.location.reload()
-                } catch (e) { alert('Error: ' + e.message); setSubmittingSurvey(null) }
-              } else { setSubmittingSurvey(null) }
-            }}>{submittingSurvey === survey.id ? 'Submitting...' : 'Submit Answers'}</button>
-          </div>
-        ))
-      })()}
-
-      <div className="card" style={{ marginBottom: '20px', background: 'var(--bg-secondary)' }}>
-        <h3 className="card-title" style={{ color: 'var(--accent-cyan)' }}>League Game Rules</h3>
-        <div style={{ display: 'grid', gap: '10px' }}>
-          <Tooltip content="Standard league format: First to win 5 legs wins the match. If the score is 4-4, the match is a draw.">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px', cursor: 'help', gap: '16px' }}>
-              <span>Format</span>
-              <span style={{ fontWeight: 'bold', textAlign: 'right' }}>Best of 8 legs</span>
-            </div>
-          </Tooltip>
-          <Tooltip content="Camera pointed at dartboard - scores are automatically calculated">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px', cursor: 'help', gap: '16px' }}>
-              <span>CAM</span>
-              <span style={{ fontWeight: 'bold', textAlign: 'right' }}>Must be on</span>
-            </div>
-          </Tooltip>
-          <Tooltip content="Omni is optional to use, but CAM must be used">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px', cursor: 'help', gap: '16px' }}>
-              <span>Omni</span>
-              <span style={{ fontWeight: 'bold', textAlign: 'right' }}>Optional</span>
-            </div>
-          </Tooltip>
-          <Tooltip content="Play online using DartCounter app">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px', cursor: 'help', gap: '16px' }}>
-              <span>Platform</span>
-              <span style={{ fontWeight: 'bold', textAlign: 'right' }}>DartCounter</span>
-            </div>
-          </Tooltip>
-          <Tooltip content="Earn Elite Tokens for winning league games">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px', cursor: 'help', gap: '16px' }}>
-              <span>Tokens</span>
-              <span style={{ fontWeight: 'bold', color: 'var(--success)', textAlign: 'right' }}>+100 for win</span>
-            </div>
-          </Tooltip>
-          <Tooltip content="League table scoring: legs won plus win/draw/loss bonus. A 5-3 win is 5 legs + 3 win points = 8.">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px', cursor: 'help', gap: '16px' }}>
-              <span>Points</span>
-              <span style={{ fontWeight: 'bold', textAlign: 'right' }}>Legs + W/D/L</span>
-            </div>
-          </Tooltip>
-          <Tooltip content="Zero tolerance for cheating or toxic behavior. Breaking rules results in a one-time final warning followed by an immediate season ban for any subsequent offense.">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', cursor: 'help', gap: '16px' }}>
-              <span style={{ color: 'var(--error)', fontWeight: 'bold' }}>Strict Policy</span>
-              <span style={{ fontWeight: 'bold', color: 'var(--error)', textAlign: 'right' }}>Warning & Ban</span>
-            </div>
-          </Tooltip>
-          <Tooltip content="Elite Pass subscriptions are eligible for a full refund within 14 days of purchase, provided no tournament prizes have been won.">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'var(--bg-primary)', borderRadius: '8px', cursor: 'help', gap: '16px' }}>
-              <span>Refunds</span>
-              <span style={{ fontWeight: 'bold', textAlign: 'right' }}>14-Day Window</span>
-            </div>
-          </Tooltip>
-        </div>
-        <p style={{ marginTop: '16px', fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-          By playing, you agree to the Elite Arrows Code of Conduct. Play fair, or don't play.
-        </p>
+      {/* News Feed / Welcome (Just below highlights) */}
+      <div style={{ textAlign: 'center', margin: '20px 0' }}>
+        <h1 style={{ color: 'var(--accent-cyan)', fontSize: '1.5rem' }}>Welcome back, {user.username}!</h1>
       </div>
+      <NewsFeed />
 
-      <div className="card" style={{ marginBottom: '20px' }}>
+      {/* 4. Pro Overview */}
+      <div className="card" style={{ marginBottom: '20px', marginTop: '20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
           <h2 className="card-title" style={{ margin: 0 }}>Pro Overview</h2>
           <Link to="/analytics" style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontWeight: 700, textDecoration: 'none' }}>Full Analytics ➔</Link>
         </div>
         <div className="home-stats-grid">
-          <div className="stat-card">
-            <div className="stat-value">{stats.played}</div>
-            <div className="stat-label">Played</div>
-          </div>
-          <div className="stat-card" style={{ borderBottom: '2px solid var(--success)' }}>
-            <div className="stat-value" style={{ color: 'var(--success)' }}>{stats.wins}</div>
-            <div className="stat-label">Wins</div>
-          </div>
-          <div className="stat-card" style={{ borderBottom: '2px solid #fbbf24' }}>
-            <div className="stat-value" style={{ color: '#fbbf24' }}>{user.threeDartAverage?.toFixed(1) || '0.0'}</div>
-            <div className="stat-label">Avg</div>
-          </div>
-          <div className="stat-card" style={{ borderBottom: '2px solid var(--accent-cyan)' }}>
-            <div className="stat-value" style={{ color: 'var(--accent-cyan)' }}>{stats.points}</div>
-            <div className="stat-label">Pts</div>
-          </div>
-        </div>
-      </div>
-
-      {tournaments.length > 0 && (
-        <div className="card" style={{ marginBottom: '20px' }}>
-          <h2 className="card-title">Tournaments</h2>
-          {tournaments.map(t => (
-            <div key={t.id} style={{ padding: '12px', borderBottom: '1px solid var(--border)' }}>
-              <div style={{ fontWeight: '600' }}>{t.name}</div>
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                {t.type} • {t.divisions?.join(', ') || 'All divisions'}
-              </div>
+          {[{l: 'Played', v: stats.played}, {l: 'Wins', v: stats.wins, c: 'var(--success)'}, {l: 'Avg', v: user.threeDartAverage?.toFixed(1) || '0.0', c: '#fbbf24'}, {l: 'Pts', v: stats.points, c: 'var(--accent-cyan)'}].map(s => (
+            <div key={s.l} className="stat-card" style={s.c ? { borderBottom: `2px solid ${s.c}` } : {}}>
+              <div className="stat-value" style={s.c ? { color: s.c } : {}}>{s.v}</div>
+              <div className="stat-label">{s.l}</div>
             </div>
           ))}
         </div>
-      )}
+      </div>
 
+      {/* 5. Recent Activity (Standard League) */}
       <div className="card">
-        <h2 className="card-title">Recent Activity</h2>
+        <h2 className="card-title">Recent League Activity</h2>
         {userResults.length === 0 ? (
-          <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>
-            No recent matches. Submit a result to get started!
-          </p>
+          <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>No recent league matches.</p>
         ) : (
           <div>
-            {userResults.slice(-5).reverse().map(r => {
+            {userResults.slice(-10).reverse().map(r => {
+              if (!isLeagueResult(r, fixturesById)) return null
               const isPlayer1 = String(getResultPlayerId(r, 1, allUsers)) === String(user.id)
-              const score1 = Number(r.score1) || 0
-              const score2 = Number(r.score2) || 0
+              const score1 = Number(r.score1) || 0, score2 = Number(r.score2) || 0
               const result = isPlayer1 ? (score1 > score2 ? 'Win' : score1 < score2 ? 'Loss' : 'Draw') : (score2 > score1 ? 'Win' : score2 < score1 ? 'Loss' : 'Draw')
-              const score = isPlayer1 ? `${score1}-${score2}` : `${score2}-${score1}`
               const opponent = isPlayer1 ? r.player2 : r.player1
-              const opponentId = isPlayer1 ? r.player2Id : r.player1Id
               return (
-                <Link key={r.id} to={`/profile/${opponentId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                  <div style={{ padding: '12px', borderBottom: '1px solid var(--border)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>vs {opponent}</span>
-                      <span style={{ color: result === 'Win' ? 'var(--success)' : result === 'Loss' ? 'var(--error)' : 'var(--warning)' }}>{result}</span>
+                <Link key={r.id} to={`/profile/${isPlayer1 ? r.player2Id : r.player1Id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                  <div style={{ padding: '12px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between' }}>
+                    <div>
+                      <div>vs {opponent}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{isPlayer1 ? `${score1}-${score2}` : `${score2}-${score1}`} • {r.date}</div>
                     </div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                      {score} • {r.date}
-                    </div>
+                    <span style={{ color: result === 'Win' ? 'var(--success)' : result === 'Loss' ? 'var(--error)' : 'var(--warning)', fontWeight: 800 }}>{result}</span>
                   </div>
                 </Link>
               )
@@ -615,7 +410,16 @@ export default function Home() {
         )}
       </div>
 
+      {/* Surveys (Bottom) */}
+      {(() => {
+        const surveys = (adminData?.surveys || []).filter(s => s.active && (s.targetType === 'all' || (s.targetUserIds || []).includes(user.id)) && !(s.responses || []).find(r => r.userId === user.id))
+        return surveys.map(s => (
+          <div key={s.id} className="card" style={{ marginTop: '20px', border: '1px solid var(--accent-primary)' }}>
+            <h3 style={{ color: 'var(--accent-primary)' }}>📋 {s.title}</h3>
+            <button className="btn btn-primary btn-block" onClick={() => navigate('/settings')}>Open Surveys in Settings</button>
+          </div>
+        ))
+      })()}
     </div>
-    </>
   )
 }

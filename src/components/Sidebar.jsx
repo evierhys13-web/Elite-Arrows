@@ -62,6 +62,7 @@ export default function Sidebar() {
           { path: '/table', label: 'Standings', icon: TableIcon },
           ...(isOpenLeagueVisible ? [{ path: '/open-league', label: 'Open League', icon: TrophyIcon }] : []),
           { path: '/match-log', label: 'Schedule', icon: CalendarIcon },
+          { path: '/rules', label: 'League Rules', icon: ShieldIcon },
           { path: '/submit-result', label: 'Submit Score', icon: PlusCircleIcon },
           { path: '/results', label: 'Results', icon: TrophyIcon },
           { path: '/daily-challenges', label: 'Daily Challenges', icon: StarIcon },
