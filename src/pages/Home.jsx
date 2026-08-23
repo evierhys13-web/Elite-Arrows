@@ -319,8 +319,6 @@ export default function Home() {
         </div>
       </div>
 
-      <GlobalHighlightReel />
-
       {/* Your Season Schedule */}
       {opponentsToPlay.length > 0 && (
         <div className="card animate-fade-in-up stagger-item" style={{ marginBottom: '20px' }}>
@@ -405,6 +403,8 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      <GlobalHighlightReel />
 
       {/* Surveys */}
       {(() => {
