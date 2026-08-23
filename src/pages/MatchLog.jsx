@@ -287,6 +287,11 @@ export default function MatchLog() {
   const opponentsToPlay = useMemo(() => {
     if (!targetUser.id) return []
 
+    // Specifically clear "To Play" list for Tom Beaumont in Season 4 as requested
+    if (currentSeasonName === "Season 4" && (targetUser.username === "Tom Beaumont" || targetUser.name === "Tom Beaumont")) {
+      return []
+    }
+
     if (competition === 'League') {
       const divisionOpponents = targetUser.division && targetUser.division !== 'Unassigned'
         ? allUsers.map(u => {
