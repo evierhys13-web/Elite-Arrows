@@ -7,8 +7,9 @@ import { SkeletonList } from '../components/Skeleton'
 import Tooltip from '../components/Tooltip'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { getLeaguePoints } from '../utils/leagueScoring'
-import { getResultEffectiveTime, getResultPlayerId, isLeagueResult } from '../utils/leagueResults'
+import { getResultEffectiveTime, getResultPlayerId, isLeagueResult, isSuperLeagueResult, isPlayoffResult, isOpenLeagueResult, isOpenLeagueDoublesResult } from '../utils/leagueResults'
 import GlobalHighlightReel from '../components/GlobalHighlightReel'
+import { collection, getDocs } from '../firebase'
 
 
 const DEFAULT_LEAGUE_TABLE_RESET_AT = '2026-04-29T16:14:21.338+01:00'
@@ -25,6 +26,22 @@ export default function Home() {
   const [visible, setVisible] = useState(false)
   const [surveyAnswers, setSurveyAnswers] = useState({})
   const [submittingSurvey, setSubmittingSurvey] = useState(null)
+  const [openSinglesEntries, setOpenSinglesEntries] = useState([])
+  const [openDuoEntries, setOpenDuoEntries] = useState([])
+
+  useEffect(() => {
+    const fetchOpenLeagueData = async () => {
+      try {
+        const [sSnap, dSnap] = await Promise.all([
+          getDocs(collection(db, 'openLeagueSingles')),
+          getDocs(collection(db, 'openLeagueDuos'))
+        ])
+        setOpenSinglesEntries(sSnap.docs.map(d => ({ id: d.id, ...d.data() })))
+        setOpenDuoEntries(dSnap.docs.map(d => ({ id: d.id, ...d.data() })))
+      } catch (e) { console.error(e) }
+    }
+    fetchOpenLeagueData()
+  }, [])
 
   const activeSeason = useMemo(() => {
     const seasons = typeof getSeasons === 'function' ? getSeasons() : []
@@ -101,7 +118,98 @@ export default function Home() {
   const leagueTableResetTime = useMemo(() =>
     resetTimes.length ? Math.max(...resetTimes) : 0,
   [resetTimes])
-  
+
+  const currentSeasonName = activeSeason.name
+
+  const opponentsToPlay = useMemo(() => {
+    if (!user || !user.id || user.division === 'Unassigned' || user.division === 'Admin') return []
+
+    // Specifically clear "To Play" list for Tom Beaumont in Season 4 as requested
+    if (currentSeasonName === "Season 4" && (user.username === "Tom Beaumont" || user.name === "Tom Beaumont")) {
+      return []
+    }
+
+    // 1. Get competition results for the current season to see who is already played
+    const playedOpponentCounts = {}
+    allResults
+      .filter(r => {
+        const isApproved = String(r.status || '').toLowerCase() === 'approved'
+        const resSeason = String(r.season || '').trim()
+        const isSeasonMatch = resSeason === currentSeasonName || (!resSeason && currentSeasonName === 'Season 1')
+        return isApproved && isSeasonMatch
+      })
+      .forEach(r => {
+        const p1Id = String(r.player1Id || '')
+        const p2Id = String(r.player2Id || '')
+        let opponentId = ''
+        if (p1Id === String(user.id)) opponentId = p2Id
+        else if (p2Id === String(user.id)) opponentId = p1Id
+
+        if (opponentId) {
+          playedOpponentCounts[opponentId] = (playedOpponentCounts[opponentId] || 0) + 1
+        }
+      })
+
+    // 2. Identify remaining opponents
+    const remaining = []
+
+    // Standard League
+    if (user.division && user.division !== 'Unassigned') {
+      allUsers
+        .map(u => {
+          const activeSeasonDoc = (getSeasons ? getSeasons() : []).find(s => s.name === currentSeasonName)
+          const stagedDiv = activeSeasonDoc?.stagedDivisions?.[String(u.id)]
+          return { ...u, effectiveDiv: stagedDiv || u.division || 'Unassigned' }
+        })
+        .filter(u => {
+          if (String(u.id) === String(user.id)) return false
+          if (u.effectiveDiv !== user.division) return false
+          if (playedOpponentCounts[String(u.id)]) return false
+          if (currentSeasonName === "Season 4" && (u.username === "Tom Beaumont" || u.name === "Tom Beaumont")) return false
+          return true
+        })
+        .forEach(u => {
+          const fixture = fixtures.find(f =>
+            !f._deleted &&
+            String(f.gameType || '').toLowerCase() === 'league' &&
+            ((String(f.player1Id) === String(user.id) && String(f.player2Id) === String(u.id)) ||
+             (String(f.player1Id) === String(u.id) && String(f.player2Id) === String(user.id)))
+          )
+          remaining.push({ ...u, type: 'League', fixture })
+        })
+    }
+
+    // Champions League
+    if (user.superLeagueDivision) {
+      allUsers
+        .filter(u => {
+          if (String(u.id) === String(user.id)) return false
+          if (u.superLeagueDivision !== user.superLeagueDivision) return false
+          const played = playedOpponentCounts[String(u.id)] || 0
+          if (played >= 2) return false
+          if (currentSeasonName === "Season 4" && (u.username === "Tom Beaumont" || u.name === "Tom Beaumont")) return false
+          return true
+        })
+        .forEach(u => {
+          const played = playedOpponentCounts[String(u.id)] || 0
+          const fixture = fixtures.find(f =>
+            !f._deleted &&
+            String(f.gameType || '').toLowerCase() === 'champions league' &&
+            ((String(f.player1Id) === String(user.id) && String(f.player2Id) === String(u.id)) ||
+             (String(f.player1Id) === String(u.id) && String(f.player2Id) === String(user.id)))
+          )
+          remaining.push({ ...u, type: 'Champions League', fixture, _remaining: 2 - played })
+        })
+    }
+
+    return remaining.sort((a, b) => {
+      // Show confirmed fixtures first
+      if (a.fixture && !b.fixture) return -1
+      if (!a.fixture && b.fixture) return 1
+      return 0
+    })
+  }, [user, allUsers, allResults, fixtures, getSeasons, currentSeasonName])
+
   const stats = useMemo(() => userResults.reduce((acc, r) => {
     const isLeague = isLeagueResult(r, fixturesById)
     if (!isLeague) return acc
@@ -212,6 +320,91 @@ export default function Home() {
       </div>
 
       <GlobalHighlightReel />
+
+      {/* Your Season Schedule */}
+      {opponentsToPlay.length > 0 && (
+        <div className="card animate-fade-in-up stagger-item" style={{ marginBottom: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+            <h2 className="card-title" style={{ margin: 0, color: 'var(--accent-cyan)' }}>Your Season Schedule</h2>
+            <Link to="/match-log" style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontWeight: 700, textDecoration: 'none' }}>View Full Log ➔</Link>
+          </div>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '15px' }}>
+            Remaining opponents in the {user.division} division.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {opponentsToPlay.slice(0, 5).map(player => (
+              <div key={`${player.id}_${player.type}`} className="glass" style={{
+                padding: '12px 16px',
+                borderRadius: '12px',
+                background: 'rgba(255,255,255,0.02)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                border: '1px solid rgba(255,255,255,0.05)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div className="avatar-ring" style={{ width: '36px', height: '36px', padding: '2px' }}>
+                    <div className="avatar-inner" style={{ background: '#050816', fontSize: '0.8rem' }}>
+                      {player.profilePicture ? (
+                        <img src={player.profilePicture} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <span>{player.username.charAt(0).toUpperCase()}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: '700', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {player.username}
+                      <span style={{
+                        fontSize: '0.6rem',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        background: player.type === 'Champions League' ? 'rgba(251, 191, 36, 0.1)' : 'rgba(0, 212, 255, 0.1)',
+                        color: player.type === 'Champions League' ? '#fbbf24' : 'var(--accent-cyan)',
+                        border: `1px solid ${player.type === 'Champions League' ? 'rgba(251, 191, 36, 0.2)' : 'rgba(0, 212, 255, 0.2)'}`
+                      }}>
+                        {player.type === 'Champions League' ? 'CL' : 'League'}
+                      </span>
+                    </div>
+                    {player.fixture ? (
+                      <div style={{ color: 'var(--success)', fontSize: '0.7rem', fontWeight: 600 }}>
+                        📅 {player.fixture.fixtureDate} {player.fixture.fixtureTime}
+                      </div>
+                    ) : (
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>
+                        {player.type === 'Champions League' ? `To Play: ${player._remaining}x` : 'Not yet scheduled'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <Link
+                    to={`/submit-result?opponent=${player.id}&gameType=${player.type}&season=${currentSeasonName}`}
+                    className="btn btn-primary btn-sm"
+                    style={{ padding: '4px 10px', fontSize: '0.7rem' }}
+                  >
+                    Submit
+                  </Link>
+                  {!player.fixture && (
+                    <Link
+                      to={`/chat?openChat=friend_${player.id}`}
+                      className="btn btn-secondary btn-sm"
+                      style={{ padding: '4px 10px', fontSize: '0.7rem' }}
+                    >
+                      Arrange
+                    </Link>
+                  )}
+                </div>
+              </div>
+            ))}
+            {opponentsToPlay.length > 5 && (
+              <Link to="/match-log" style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '5px', textDecoration: 'none' }}>
+                + {opponentsToPlay.length - 5} more opponents to play
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Surveys */}
       {(() => {
