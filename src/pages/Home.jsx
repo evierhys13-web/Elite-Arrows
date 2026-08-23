@@ -12,7 +12,7 @@ import { collection, getDocs } from '../firebase'
 const DEFAULT_LEAGUE_TABLE_RESET_AT = '2026-04-29T16:14:21.338+01:00'
 
 export default function Home() {
-  const { user, getAllUsers, getFixtures, getResults, loading, adminData, getSeasons, getCups } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, loading, adminData, getSeasons } = useAuth()
   const navigate = useNavigate()
   
   const allUsers = getAllUsers()
@@ -106,46 +106,15 @@ export default function Home() {
 
   const currentSeasonName = activeSeason.name
 
-  const getPlayoffOpponent = useCallback(() => {
-    if (!user.id) return null
-    const allPlayoffs = fixtures.filter(f => {
-      if (f._deleted) return false
-      return String(f.gameType || '').toLowerCase() === 'playoff'
-    })
-    const playoff = allPlayoffs.find(f => {
-      const status = (f.status || '').toLowerCase()
-      const proposal = (f.proposalStatus || '').toLowerCase()
-      if (status !== 'accepted' && proposal !== 'accepted') return false
-      const p1 = String(f.player1Id || f.player1 || '')
-      const p2 = String(f.player2Id || f.player2 || '')
-      return p1 === String(user.id) || p2 === String(user.id)
-    })
-    if (!playoff) return null
-    const p1 = String(playoff.player1Id || playoff.player1 || '')
-    const p2 = String(playoff.player2Id || playoff.player2 || '')
-    const opponentId = p1 === String(user.id) ? p2 : p1
-    const u = allUsers.find(u => String(u.id) === opponentId)
-    return u ? { ...u, _playoff: true, _fixtureId: playoff.id } : null
-  }, [user.id, fixtures, allUsers])
-
-  const playoffOpponent = getPlayoffOpponent()
-
-  const playoffAlreadyPlayed = useMemo(() => {
-    if (!playoffOpponent) return false
-    return allResults.some(r => {
-      if (String(r.status || '').toLowerCase() !== 'approved') return false
-      if (!r.fixtureId) return false
-      return String(r.fixtureId) === String(playoffOpponent._fixtureId)
-    })
-  }, [allResults, playoffOpponent])
-
   const opponentsToPlay = useMemo(() => {
     if (!user || !user.id || user.division === 'Unassigned' || user.division === 'Admin') return []
 
+    // Specifically clear "To Play" list for Tom Beaumont in Season 4 as requested
     if (currentSeasonName === "Season 4" && (user.username === "Tom Beaumont" || user.name === "Tom Beaumont")) {
       return []
     }
 
+    // 1. Get competition results for the current season to see who is already played
     const playedOpponentCounts = {}
     allResults
       .filter(r => {
@@ -165,7 +134,7 @@ export default function Home() {
 
     const remaining = []
 
-    // Standard League
+    // Standard League ONLY
     if (user.division && user.division !== 'Unassigned') {
       const divisionOpponents = allUsers
         .map(u => {
@@ -190,88 +159,14 @@ export default function Home() {
         )
         remaining.push({ ...u, type: 'League', fixture })
       })
-
-      if (playoffOpponent && !playoffAlreadyPlayed) {
-        remaining.push({ ...playoffOpponent, type: 'Playoff', fixture: fixtures.find(f => f.id === playoffOpponent._fixtureId) })
-      }
-    }
-
-    // Champions League
-    if (user.superLeagueDivision) {
-      allUsers
-        .filter(u => {
-          if (String(u.id) === String(user.id)) return false
-          if (u.superLeagueDivision !== user.superLeagueDivision) return false
-          const played = playedOpponentCounts[String(u.id)] || 0
-          if (played >= 2) return false
-          if (currentSeasonName === "Season 4" && (u.username === "Tom Beaumont" || u.name === "Tom Beaumont")) return false
-          return true
-        })
-        .forEach(u => {
-          const played = playedOpponentCounts[String(u.id)] || 0
-          const fixture = fixtures.find(f =>
-            !f._deleted &&
-            String(f.gameType || '').toLowerCase() === 'champions league' &&
-            ((String(f.player1Id) === String(user.id) && String(f.player2Id) === String(u.id)) ||
-             (String(f.player1Id) === String(u.id) && String(f.player2Id) === String(user.id)))
-          )
-          remaining.push({ ...u, type: 'Champions League', fixture, _remaining: 2 - played })
-        })
-    }
-
-    // Cups
-    fixtures
-      .filter(f => {
-        if (!f.cupId || f._deleted) return false
-        const status = String(f.status).toLowerCase()
-        if (['approved', 'result_submitted', 'completed'].includes(status)) return false
-        return String(f.player1Id) === String(user.id) || String(f.player2Id) === String(user.id)
-      })
-      .forEach(f => {
-        const opponentId = String(f.player1Id) === String(user.id) ? f.player2Id : f.player1Id
-        const opponent = allUsers.find(u => String(u.id) === String(opponentId))
-        const cupsData = getCups ? getCups() : []
-        const cup = cupsData.find(c => String(c.id) === String(f.cupId))
-        remaining.push({
-          ...opponent,
-          id: opponent?.id || opponentId,
-          username: opponent?.username || 'Unknown',
-          type: 'Cup',
-          fixture: f,
-          _cupName: cup?.name || f.cupName || 'Cup',
-          _round: f.round
-        })
-      })
-
-    // Open Singles
-    if (openSinglesEntries.some(e => String(e.userId) === String(user.id))) {
-      allUsers
-        .filter(u => {
-          if (String(u.id) === String(user.id)) return false
-          if (currentSeasonName === "Season 4" && (u.username === "Tom Beaumont" || u.name === "Tom Beaumont")) return false
-          return openSinglesEntries.some(e => String(e.userId) === String(u.id)) && !playedOpponentCounts[String(u.id)]
-        })
-        .forEach(u => {
-          const fixture = fixtures.find(f =>
-            !f._deleted &&
-            String(f.gameType || '').toLowerCase().includes('open league singles') &&
-            ((String(f.player1Id) === String(user.id) && String(f.player2Id) === String(u.id)) ||
-             (String(f.player1Id) === String(u.id) && String(f.player2Id) === String(user.id)))
-          )
-          remaining.push({ ...u, type: 'Open Singles', fixture })
-        })
     }
 
     return remaining.sort((a, b) => {
       if (a.fixture && !b.fixture) return -1
       if (!a.fixture && b.fixture) return 1
-      if (a.type === 'Cup' && b.type !== 'Cup') return -1
-      if (a.type !== 'Cup' && b.type === 'Cup') return 1
-      if (a.type === 'Playoff' && b.type !== 'Playoff') return -1
-      if (a.type !== 'Playoff' && b.type === 'Playoff') return 1
       return 0
     })
-  }, [user, allUsers, allResults, fixtures, getSeasons, getCups, currentSeasonName, playoffOpponent, playoffAlreadyPlayed, openSinglesEntries])
+  }, [user, allUsers, allResults, fixtures, getSeasons, currentSeasonName])
 
   const stats = useMemo(() => userResults.reduce((acc, r) => {
     if (!isLeagueResult(r, fixturesById)) return acc
@@ -302,7 +197,15 @@ export default function Home() {
     <div className="page">
       <Breadcrumbs items={[{ label: 'Home', path: '/home' }]} />
 
-      {/* 1. Season Ends (Timer) */}
+      {/* 1. Welcome Back (Top Header) */}
+      <div className={`animate-fade-in-up ${visible ? '' : 'opacity-0'}`} style={{ marginBottom: '24px' }}>
+        <div style={{ textAlign: 'center' }}>
+          <h1 style={{ color: 'var(--accent-cyan)', fontSize: '2rem', fontWeight: 800, margin: 0 }}>Welcome back, {user.username}!</h1>
+          <p style={{ color: 'var(--text-muted)', marginTop: '4px' }}>Here's your darts overview</p>
+        </div>
+      </div>
+
+      {/* 2. Season Ends (Timer) */}
       <div className={`card animate-fade-in-up`} style={{ marginBottom: '20px', border: '2px solid var(--accent-cyan)' }}>
         <div style={{ textAlign: 'center' }}>
           <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>{seasonTimerTitle}</h2>
@@ -317,7 +220,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* 2. Season Schedule */}
+      {/* 3. Season Schedule (Standard League ONLY) */}
       {opponentsToPlay.length > 0 && (
         <div className="card animate-fade-in-up stagger-item" style={{ marginBottom: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
@@ -339,33 +242,35 @@ export default function Home() {
                   <div>
                     <div style={{ fontWeight: '700', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       {player.username}
-                      <span style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(0, 212, 255, 0.1)', color: 'var(--accent-cyan)', border: '1px solid rgba(0, 212, 255, 0.2)' }}>{player.type}</span>
+                      <span style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(0, 212, 255, 0.1)', color: 'var(--accent-cyan)', border: '1px solid rgba(0, 212, 255, 0.2)' }}>League</span>
                     </div>
                     <div style={{ color: player.fixture ? 'var(--success)' : 'var(--text-muted)', fontSize: '0.7rem' }}>
-                      {player.fixture ? `📅 ${player.fixture.fixtureDate || player.fixture.date} ${player.fixture.fixtureTime || player.fixture.time}` : player._remaining ? `To Play: ${player._remaining}x` : 'Not scheduled'}
+                      {player.fixture ? `📅 ${player.fixture.fixtureDate || player.fixture.date} ${player.fixture.fixtureTime || player.fixture.time}` : 'Not scheduled'}
                     </div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <Link to={player.type === 'Cup' ? `/submit-result?fixtureId=${player.fixture.id}&gameType=Cup&season=${currentSeasonName}` : `/submit-result?opponent=${player.id}&gameType=${player.type}&season=${currentSeasonName}`} className="btn btn-primary btn-sm" style={{ padding: '4px 10px', fontSize: '0.7rem' }}>Submit</Link>
+                  <Link to={`/submit-result?opponent=${player.id}&gameType=League&season=${currentSeasonName}`} className="btn btn-primary btn-sm" style={{ padding: '4px 10px', fontSize: '0.7rem' }}>Submit</Link>
                   {!player.fixture && <Link to={`/chat?openChat=friend_${player.id}`} className="btn btn-secondary btn-sm" style={{ padding: '4px 10px', fontSize: '0.7rem' }}>Arrange</Link>}
                 </div>
               </div>
             ))}
+            {opponentsToPlay.length > 5 && (
+              <Link to="/match-log" style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '5px', textDecoration: 'none' }}>
+                + {opponentsToPlay.length - 5} more opponents to play
+              </Link>
+            )}
           </div>
         </div>
       )}
 
-      {/* 3. Community Highlights */}
+      {/* 4. Community Highlights */}
       <GlobalHighlightReel />
 
-      {/* News Feed / Welcome (Just below highlights) */}
-      <div style={{ textAlign: 'center', margin: '20px 0' }}>
-        <h1 style={{ color: 'var(--accent-cyan)', fontSize: '1.5rem' }}>Welcome back, {user.username}!</h1>
-      </div>
+      {/* 5. News Feed */}
       <NewsFeed />
 
-      {/* 4. Pro Overview */}
+      {/* 6. Pro Overview */}
       <div className="card" style={{ marginBottom: '20px', marginTop: '20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
           <h2 className="card-title" style={{ margin: 0 }}>Pro Overview</h2>
@@ -381,7 +286,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* 5. Recent Activity (Standard League) */}
+      {/* 7. Recent Activity (Standard League) */}
       <div className="card">
         <h2 className="card-title">Recent League Activity</h2>
         {userResults.length === 0 ? (
