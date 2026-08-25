@@ -169,9 +169,14 @@ export default function Statistics() {
     allUsers.forEach(u => {
       const div = u.division || 'Unassigned'
       if (!divisionData[div]) {
-        divisionData[div] = { name: div, playerCount: 0, total180s: 0, matchesPlayed: 0, avgAvg: 0, avgCount: 0, topCheckout: 0 }
+        divisionData[div] = { name: div, playerCount: 0, total180s: 0, matchesPlayed: 0, avgAvg: 0, avgPlayerCount: 0, topCheckout: 0 }
       }
       divisionData[div].playerCount++
+      const ps = playerStatsMap[String(u.id)]
+      if (ps && ps.played > 0 && ps.average > 0) {
+        divisionData[div].avgAvg += ps.average
+        divisionData[div].avgPlayerCount++
+      }
     })
     approvedResults.forEach(r => {
       const p1 = allUsers.find(u => u.id === r.player1Id)
@@ -180,15 +185,11 @@ export default function Statistics() {
         const div = divisionData[p1.division]
         div.matchesPlayed++
         div.total180s += Number(r.player1Stats?.['180s'] || 0)
-        const p1Avg = Number(r.player1Stats?.avg || r.player1ExplicitAverage || 0)
-        if (p1Avg > 0) { div.avgAvg += p1Avg; div.avgCount++ }
         if (Number(r.player1Stats?.highestCheckout || 0) > div.topCheckout) div.topCheckout = Number(r.player1Stats.highestCheckout)
       }
       if (p2 && p2.division && divisionData[p2.division]) {
         const div = divisionData[p2.division]
         div.total180s += Number(r.player2Stats?.['180s'] || 0)
-        const p2Avg = Number(r.player2Stats?.avg || r.player2ExplicitAverage || 0)
-        if (p2Avg > 0) { div.avgAvg += p2Avg; div.avgCount++ }
         if (Number(r.player2Stats?.highestCheckout || 0) > div.topCheckout) div.topCheckout = Number(r.player2Stats.highestCheckout)
         if (p1?.division !== p2.division) div.matchesPlayed++
       }
@@ -197,10 +198,10 @@ export default function Statistics() {
       .filter(div => div.name !== 'Unassigned' && div.playerCount > 0)
       .map(div => ({
         ...div,
-        avgAvg: div.avgCount > 0 ? (div.avgAvg / div.avgCount).toFixed(1) : '0',
+        avgAvg: div.avgPlayerCount > 0 ? (div.avgAvg / div.avgPlayerCount).toFixed(1) : '0',
         avg180s: div.matchesPlayed > 0 ? (div.total180s / div.matchesPlayed).toFixed(2) : 0
       }))
-  }, [allUsers, approvedResults])
+  }, [allUsers, approvedResults, playerStatsMap])
 
   const division180sByDivision = useMemo(() => {
     const divPlayers = {}
