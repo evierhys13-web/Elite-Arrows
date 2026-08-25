@@ -98,19 +98,19 @@ export default function Leaderboards() {
   }, [allTimeStats, selectedDivision])
 
   const boardCheckouts = useMemo(() => {
-    let list = Object.values(allTimeStats).filter(p => p.played > 0 && p.highestCheckout > 0)
+    let list = Object.values(playerStats).filter(p => p.played > 0 && p.highestCheckout > 0)
       .sort((a, b) => b.highestCheckout - a.highestCheckout || b.played - a.played)
     if (selectedDivision !== 'all') list = list.filter(p => p.division === selectedDivision)
     return list
-  }, [allTimeStats, selectedDivision])
+  }, [playerStats, selectedDivision])
 
   const allTime180s = useMemo(() =>
     Object.values(allTimeStats).reduce((max, p) => (!max || p['180s'] > max['180s']) ? p : max, null)
   , [allTimeStats])
 
   const topCheckout = useMemo(() =>
-    Object.values(allTimeStats).reduce((max, p) => (!max || p.highestCheckout > max.highestCheckout) ? p : max, null)
-  , [allTimeStats])
+    Object.values(playerStats).reduce((max, p) => (!max || p.highestCheckout > max.highestCheckout) ? p : max, null)
+  , [playerStats])
 
   const honoursList = useMemo(() => {
     const curated = hallOfFame.map(h => {
