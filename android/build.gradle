@@ -4,7 +4,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.13.2'
+        classpath 'com.android.tools.build:gradle:9.3.2'
         classpath 'com.google.gms:google-services:4.4.4'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:2.2.10"
     }
@@ -12,12 +12,12 @@ buildscript {
 
 ext {
     kotlin_version = '2.2.10'
-    compileSdkVersion = 36
+    compileSdkVersion = 37
     targetSdkVersion = 36
     minSdkVersion = 24
-    androidxAppCompatVersion = '1.7.1'
-    androidxCoreVersion = '1.15.0'
-    androidxMaterialVersion = '1.13.0'
+    androidxAppCompatVersion = '1.8.0'
+    androidxCoreVersion = '1.19.0'
+    androidxMaterialVersion = '1.14.0'
 }
 
 allprojects {
