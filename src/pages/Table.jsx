@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContextInternal";
 import { derivePlayerStatsFromResults } from "../utils/playerStats";
+import { getResultPlayerId } from "../utils/leagueResults";
 import Breadcrumbs from "../components/Breadcrumbs";
 import { useToast } from "../context/ToastContext";
 import { db, doc, setDoc } from "../firebase";
@@ -109,15 +110,32 @@ export default function Table() {
     });
   }, [allUsers, activeSeasonDoc, selectedSeason, adminData?.currentSeason]);
 
+  const divisionFilteredResults = useMemo(() => {
+    const divMap = {}
+    usersWithCorrectDivisions.forEach(u => {
+      divMap[String(u.id)] = u.division
+    })
+
+    return results.filter(r => {
+      const p1Id = getResultPlayerId(r, 1, usersWithCorrectDivisions)
+      const p2Id = getResultPlayerId(r, 2, usersWithCorrectDivisions)
+      if (!p1Id || !p2Id) return false
+      const d1 = divMap[p1Id]
+      const d2 = divMap[p2Id]
+      if (!d1 || !d2 || d1 === 'Unassigned' || d2 === 'Unassigned' || d1 === 'Admin' || d2 === 'Admin') return false
+      return d1 === d2
+    })
+  }, [results, usersWithCorrectDivisions])
+
   const playerStats = useMemo(() => {
-    return derivePlayerStatsFromResults(usersWithCorrectDivisions, results, {
+    return derivePlayerStatsFromResults(usersWithCorrectDivisions, divisionFilteredResults, {
       fixtures,
       adminData,
       leagueOnly: true,
       currentSeason: selectedSeason,
       includePlayoffs: false,
     });
-  }, [usersWithCorrectDivisions, results, fixtures, adminData, selectedSeason]);
+  }, [usersWithCorrectDivisions, divisionFilteredResults, fixtures, adminData, selectedSeason]);
 
   const playersInDivision = useMemo(() => {
     const source =
