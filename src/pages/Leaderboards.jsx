@@ -112,10 +112,6 @@ export default function Leaderboards() {
     Object.values(allTimeStats).reduce((max, p) => (!max || p.highestCheckout > max.highestCheckout) ? p : max, null)
   , [allTimeStats])
 
-  const top170s = useMemo(() =>
-    Object.values(allTimeStats).reduce((max, p) => (!max || p['170s'] > max['170s']) ? p : max, null)
-  , [allTimeStats])
-
   const honoursList = useMemo(() => {
     const curated = hallOfFame.map(h => {
       const u = allUsers.find(user => user.id === h.userId)
@@ -377,13 +373,6 @@ export default function Leaderboards() {
           <h4 style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px' }}>Highest Checkout</h4>
           <div style={{ fontWeight: 800, fontSize: '1.2rem', color: 'white' }}>{topCheckout?.username || 'TBD'}</div>
           <div style={{ fontSize: '0.9rem', color: 'var(--accent-cyan)', fontWeight: 700 }}>{topCheckout?.highestCheckout || 0} Finish</div>
-        </div>
-
-        <div className="card glass" style={{ padding: '24px', textAlign: 'center', borderBottom: '4px solid #10b981' }}>
-          <div style={{ fontSize: '2.5rem', marginBottom: '12px' }}>🏆</div>
-          <h4 style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px' }}>Big Fish 170+</h4>
-          <div style={{ fontWeight: 800, fontSize: '1.2rem', color: 'white' }}>{top170s?.username || 'None'}</div>
-          <div style={{ fontSize: '0.9rem', color: '#10b981', fontWeight: 700 }}>{top170s?.['170s'] || 0} Recorded</div>
         </div>
       </div>
 

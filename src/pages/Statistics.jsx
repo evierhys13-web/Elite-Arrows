@@ -7,7 +7,6 @@ import {
   CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area,
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, LineChart, Line
 } from 'recharts'
-import { getLeaguePoints } from '../utils/leagueScoring'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
 import Breadcrumbs from '../components/Breadcrumbs'
 
@@ -170,7 +169,7 @@ export default function Statistics() {
     allUsers.forEach(u => {
       const div = u.division || 'Unassigned'
       if (!divisionData[div]) {
-        divisionData[div] = { name: div, playerCount: 0, total180s: 0, totalPoints: 0, matchesPlayed: 0, avgPoints: 0, topCheckout: 0 }
+        divisionData[div] = { name: div, playerCount: 0, total180s: 0, matchesPlayed: 0, avgAvg: 0, avgCount: 0, topCheckout: 0 }
       }
       divisionData[div].playerCount++
     })
@@ -181,13 +180,15 @@ export default function Statistics() {
         const div = divisionData[p1.division]
         div.matchesPlayed++
         div.total180s += Number(r.player1Stats?.['180s'] || 0)
-        div.totalPoints += getLeaguePoints(r.score1, r.score2)
+        const p1Avg = Number(r.player1Stats?.avg || r.player1ExplicitAverage || 0)
+        if (p1Avg > 0) { div.avgAvg += p1Avg; div.avgCount++ }
         if (Number(r.player1Stats?.highestCheckout || 0) > div.topCheckout) div.topCheckout = Number(r.player1Stats.highestCheckout)
       }
       if (p2 && p2.division && divisionData[p2.division]) {
         const div = divisionData[p2.division]
         div.total180s += Number(r.player2Stats?.['180s'] || 0)
-        div.totalPoints += getLeaguePoints(r.score2, r.score1)
+        const p2Avg = Number(r.player2Stats?.avg || r.player2ExplicitAverage || 0)
+        if (p2Avg > 0) { div.avgAvg += p2Avg; div.avgCount++ }
         if (Number(r.player2Stats?.highestCheckout || 0) > div.topCheckout) div.topCheckout = Number(r.player2Stats.highestCheckout)
         if (p1?.division !== p2.division) div.matchesPlayed++
       }
@@ -196,7 +197,7 @@ export default function Statistics() {
       .filter(div => div.name !== 'Unassigned' && div.playerCount > 0)
       .map(div => ({
         ...div,
-        avgPoints: div.matchesPlayed > 0 ? (div.totalPoints / div.matchesPlayed).toFixed(2) : 0,
+        avgAvg: div.avgCount > 0 ? (div.avgAvg / div.avgCount).toFixed(1) : '0',
         avg180s: div.matchesPlayed > 0 ? (div.total180s / div.matchesPlayed).toFixed(2) : 0
       }))
   }, [allUsers, approvedResults])
@@ -490,7 +491,7 @@ function DivisionOverview({ leagueStats, filteredDiv180s, selectedDivFilter, set
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: '20px', marginBottom: '24px' }}>
         <div className="card glass" style={{ padding: '16px' }}>
-          <h3 className="card-title">Avg Points per Match by Division</h3>
+          <h3 className="card-title">3-Dart Average by Division</h3>
           <div style={{ height: '300px', width: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={leagueStats}>
@@ -498,7 +499,7 @@ function DivisionOverview({ leagueStats, filteredDiv180s, selectedDivFilter, set
                 <XAxis dataKey="name" stroke="var(--text-muted)" tick={{ fontSize: 10 }} />
                 <YAxis stroke="var(--text-muted)" tick={{ fontSize: 10 }} />
                 <Tooltip cursor={{ fill: 'var(--bg-hover)' }} contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '12px' }} />
-                <Bar dataKey="avgPoints" radius={[4, 4, 0, 0]} name="Avg Points">
+                <Bar dataKey="avgAvg" radius={[4, 4, 0, 0]} name="3-Dart Avg">
                   {leagueStats.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={DIVISION_COLORS[entry.name] || 'var(--accent-cyan)'} />
                   ))}
@@ -536,17 +537,17 @@ function DivisionOverview({ leagueStats, filteredDiv180s, selectedDivFilter, set
               <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
                 <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontSize: '0.65rem', textTransform: 'uppercase' }}>Division</th>
                 <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontSize: '0.65rem', textTransform: 'uppercase', textAlign: 'center' }}>Players</th>
-                <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontSize: '0.65rem', textTransform: 'uppercase', textAlign: 'center' }}>Avg Pts</th>
+                <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontSize: '0.65rem', textTransform: 'uppercase', textAlign: 'center' }}>3-Dart Avg</th>
                 <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontSize: '0.65rem', textTransform: 'uppercase', textAlign: 'center' }}>Avg 180s</th>
                 <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontSize: '0.65rem', textTransform: 'uppercase', textAlign: 'right' }}>Top CO</th>
               </tr>
             </thead>
             <tbody>
-              {leagueStats.sort((a, b) => Number(b.avgPoints) - Number(a.avgPoints)).map((div, i) => (
+              {leagueStats.sort((a, b) => Number(b.avgAvg) - Number(a.avgAvg)).map((div, i) => (
                 <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
                   <td style={{ padding: '12px 8px', fontWeight: 700, color: DIVISION_COLORS[div.name] || 'var(--accent-cyan)', fontSize: '0.85rem' }}>{div.name}</td>
                   <td style={{ padding: '12px 8px', textAlign: 'center', fontSize: '0.85rem' }}>{div.playerCount}</td>
-                  <td style={{ padding: '12px 8px', fontWeight: 600, textAlign: 'center', fontSize: '0.85rem' }}>{div.avgPoints}</td>
+                  <td style={{ padding: '12px 8px', fontWeight: 600, textAlign: 'center', fontSize: '0.85rem' }}>{div.avgAvg}</td>
                   <td style={{ padding: '12px 8px', textAlign: 'center', fontSize: '0.85rem' }}>{div.avg180s}</td>
                   <td style={{ padding: '12px 8px', color: 'var(--success)', fontWeight: 700, textAlign: 'right', fontSize: '0.85rem' }}>{div.topCheckout || '-'}</td>
                 </tr>
