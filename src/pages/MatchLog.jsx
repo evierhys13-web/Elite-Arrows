@@ -26,7 +26,7 @@ export default function MatchLog() {
     } catch (e) { console.error('Audit log failed', e) }
   }
   const [activeTab, setActiveTab] = useState('toPlay')
-  const [competition, setCompetition] = useState('League') // 'League', 'Super League', 'Friendly Singles', 'Friendly Doubles'
+  const [competition, setCompetition] = useState('League') // 'League', 'Champions League', 'Friendly Singles', 'Friendly Doubles'
   const [targetPlayerId, setTargetPlayerId] = useState(user?.id)
 
   const [openSinglesEntries, setOpenSinglesEntries] = useState([])
@@ -117,7 +117,7 @@ export default function MatchLog() {
 
         if (competition === 'League') {
           return isLeagueResult(r, fixturesById) || isPlayoffResult(r, fixturesById)
-        } else if (competition === 'Super League') {
+        } else if (competition === 'Champions League') {
           return isSuperLeagueResult(r, fixturesById)
         } else if (competition === 'Cup') {
           return String(r.gameType || '').toLowerCase() === 'cup' || !!r.cupId
@@ -250,8 +250,8 @@ export default function MatchLog() {
         seen.add(String(u.id))
         return true
       })
-    } else if (competition === 'Super League') {
-      // Super League: play each opponent 2x
+    } else if (competition === 'Champions League') {
+      // Champions League: play each opponent 2x
       const slDivision = targetUser.superLeagueDivision
       if (!slDivision) return []
 
@@ -387,11 +387,11 @@ export default function MatchLog() {
           Standard League
         </button>
         <button
-          className={`btn btn-sm ${competition === 'Super League' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setCompetition('Super League')}
+          className={`btn btn-sm ${competition === 'Champions League' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setCompetition('Champions League')}
           style={{ borderRadius: '99px', minWidth: '120px' }}
         >
-          Super League
+          Champions League
         </button>
         <button
           className={`btn btn-sm ${competition === 'Cup' ? 'btn-primary' : 'btn-secondary'}`}
@@ -449,7 +449,7 @@ export default function MatchLog() {
                 <div>
                   <div style={{ fontWeight: '700', fontSize: '1rem' }}>vs {match.opponent}</div>
                   <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                    {match.season} • {match.date} {competition === 'Super League' ? `(SL)` : ''}
+                    {match.season} • {match.date} {competition === 'Champions League' ? `(CL)` : ''}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
@@ -505,11 +505,11 @@ export default function MatchLog() {
                           ? `${player._cupName} - Round ${player._round}`
                           : (competition === 'League'
                               ? `${player.division} Division`
-                              : (competition === 'Super League'
-                                  ? `${player.superLeagueDivision} Super League Rank`
+                              : (competition === 'Champions League'
+                                  ? `${player.superLeagueDivision} Champions Rank`
                                   : 'Friendly League'))}
                       </div>
-                      {competition === 'Super League' && (
+                      {competition === 'Champions League' && (
                         <div style={{ fontSize: '0.65rem', color: 'var(--accent-cyan)' }}>
                           Played: {player._playedCount}/2
                         </div>

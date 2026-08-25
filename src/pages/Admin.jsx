@@ -318,7 +318,7 @@ export default function Admin() {
       const isSuperMatch = p1Data?.superLeagueDivision || p2Data?.superLeagueDivision;
 
       if (!res.gameType || ['league', 'friendly', 'unknown', ''].includes(String(res.gameType).toLowerCase())) {
-        if (isSuperFormat || (isSuperMatch && totalLegs > 8)) updates.gameType = 'Super League';
+        if (isSuperFormat || (isSuperMatch && totalLegs > 8)) updates.gameType = 'Champions League';
         else if (isStandardFormat && totalLegs > 0) updates.gameType = 'League';
       }
 
@@ -392,7 +392,7 @@ export default function Admin() {
           const s2 = Number(res.score2) || 0;
           const totalLegs = s1 + s2;
           if (!res.gameType || ['league', 'friendly', ''].includes(String(res.gameType).toLowerCase())) {
-            if ((s1 === 6 || s2 === 6) && totalLegs <= 11) updates.gameType = 'Super League';
+            if ((s1 === 6 || s2 === 6) && totalLegs <= 11) updates.gameType = 'Champions League';
             else if (totalLegs <= 8) updates.gameType = 'League';
           }
           if (!res.season) {
@@ -501,7 +501,7 @@ export default function Admin() {
 
     const resultId = `admin_${Date.now()}`
     try {
-      const isSuper = f.gameType === 'Super League Masters' || f.gameType === 'Super League Pro' || f.gameType === 'Champions League'
+      const isSuper = f.gameType === 'Champions League'
       const isLeague = f.gameType === 'League'
       const isCup = f.gameType === 'Cup'
       let targetSeason = f.season || adminData?.currentSeason || 'Season 1'
@@ -671,7 +671,7 @@ export default function Admin() {
       await setDoc(doc(db, 'users', superRankForm.player), {
         superLeagueDivision: isNone ? null : superRankForm.rank
       }, { merge: true })
-      showToast?.(`Player updated in Super League`, 'success')
+      showToast?.(`Player updated in Champions League`, 'success')
       setSuperRankForm({ player: '', rank: '' })
       triggerDataRefresh('all')
     } catch (e) { showToast?.('Error updating rank: ' + e.message, 'error') }
@@ -994,7 +994,7 @@ export default function Admin() {
         if (isCupGame) { if (match.gameType !== 'Cup') updates.gameType = 'Cup'; }
         else {
           let targetType = match.gameType;
-          if (isSuperFormat) targetType = 'Super League';
+          if (isSuperFormat) targetType = 'Champions League';
           else if (isStandardFormat) targetType = 'League';
           else if (!match.gameType || match.gameType === 'Unknown') targetType = 'Friendly';
           if (match.gameType !== targetType) updates.gameType = targetType;
@@ -1099,7 +1099,7 @@ export default function Admin() {
 
   const handleResetSuperLeagueTable = async () => {
     const currentSeason = adminData?.currentSeason || 'Season 2'
-    if (!window.confirm(`Reset Super League standings?`)) return
+    if (!window.confirm(`Reset Champions League standings?`)) return
     setIsApproving(true);
     try {
       const users = getAllUsers(); const results = getResults(); let batch = writeBatch(db); let ops = 0; let userCount = 0; let resultCount = 0
@@ -1109,14 +1109,14 @@ export default function Admin() {
         if (String(r.status).toLowerCase() !== 'approved') continue
         const s1 = Number(r.score1); const s2 = Number(r.score2); const isSuperFormat = (s1 === 6 || s2 === 6) && (s1 + s2) <= 11; const isLabeledSuper = String(r.gameType || '').toLowerCase().includes('super')
         if (isSuperFormat || isLabeledSuper) {
-          const updates = {}; if (r.season !== currentSeason) updates.season = currentSeason; if (r.gameType !== 'Champions League') updates.gameType = 'Super League'
+          const updates = {}; if (r.season !== currentSeason) updates.season = currentSeason; if (r.gameType !== 'Champions League') updates.gameType = 'Champions League'
           if (Object.keys(updates).length > 0) { const tid = r.firestoreId || String(r.id); batch.update(doc(db, 'results', tid), updates); updatesById[tid] = updates; resultCount++; ops++; if (ops >= 450) { await batch.commit(); batch = writeBatch(db); ops = 0 } }
         }
       }
       if (ops > 0) await batch.commit()
       await logAudit('RESET_CHAMPIONS_LEAGUE', `Reset CL for ${userCount} users and ${resultCount} matches.`)
       const updatedResults = results.map(r => { const key = r.firestoreId || String(r.id); return updatesById[key] ? { ...r, ...updatesById[key] } : r })
-      updateResults(updatedResults); triggerDataRefresh('all'); showToast(`Super League Reset Complete`, 'success')
+      updateResults(updatedResults); triggerDataRefresh('all'); showToast(`CL Reset Complete`, 'success')
     } catch (e) { showToast('Reset failed: ' + e.message, 'error') }
     setIsApproving(false)
   }
@@ -1218,7 +1218,7 @@ export default function Admin() {
               <select className="glass" style={{ flex: 1, padding: '10px' }} value={resultTypeFilter} onChange={e => setResultTypeFilter(e.target.value)}>
                 <option value="all">All Types</option>
                 <option value="league">League</option>
-                <option value="champions league">Super League</option>
+                    <option value="champions league">Champions League</option>
                 <option value="cup">Cup</option>
                 <option value="open league">Friendly League</option>
                 <option value="friendly">Friendly</option>
@@ -1234,8 +1234,7 @@ export default function Admin() {
                   <select className="glass" style={{ width: '100%', padding: '10px' }} value={adminGameForm.gameType} onChange={e => setAdminGameForm({...adminGameForm, gameType: e.target.value})}>
                     <option value="Friendly">Friendly</option>
                     <option value="League">League</option>
-                    <option value="Super League Masters">Super League Masters</option>
-                    <option value="Super League Pro">Super League Pro</option>
+                    <option value="Champions League">Champions League</option>
                     <option value="Cup">Cup</option>
                     <option value="Playoff">Playoff</option>
                     <option value="Friendly League Singles">Friendly League Singles</option>

@@ -7,7 +7,7 @@ import UserSearchSelect from '../components/UserSearchSelect'
 import { useToast } from '../context/ToastContext'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
 
-const CHAMPIONS_LEAGUE_DIVISIONS = ['Masters Division', 'Pro Division']
+const CHAMPIONS_LEAGUE_DIVISIONS = ['Champions']
 
 export default function SeasonManagement() {
   const { user, getAllUsers, getResults, updateResults, getSeasons, adminData, updateAdminData, triggerDataRefresh, searchUsers } = useAuth()
@@ -60,11 +60,11 @@ export default function SeasonManagement() {
   }, [showCreateForm, startDate]);
 
   const updateChampionsLeagueSeason = async (seasonName) => {
-    if (!confirm(`Set "${seasonName}" as the active Super League season?`)) return
+    if (!confirm(`Set "${seasonName}" as the active Champions League season?`)) return
     setIsProcessing(true)
     try {
       await updateAdminData({ championsLeagueSeason: seasonName })
-      showToast(`Super League is now using "${seasonName}"`, 'success')
+      showToast(`Champions League is now using "${seasonName}"`, 'success')
       triggerDataRefresh('admin')
     } catch (e) {
       showToast('Error: ' + e.message, 'error')
@@ -395,7 +395,7 @@ export default function SeasonManagement() {
     try {
       await setDoc(doc(db, 'users', selectedChampionsPlayer), { superLeagueDivision: newChampionsDivision === 'None' ? null : newChampionsDivision }, { merge: true })
       const p = allPlayers.find(u => u.id === selectedChampionsPlayer)
-      showToast(`${p?.username} ${newChampionsDivision === 'None' ? 'removed from' : 'added to'} Super League ${newChampionsDivision}`, 'success')
+      showToast(`${p?.username} ${newChampionsDivision === 'None' ? 'removed from' : 'added to'} Champions League ${newChampionsDivision}`, 'success')
       setSelectedChampionsPlayer('')
       setNewChampionsDivision('')
       triggerDataRefresh('users')
@@ -473,7 +473,7 @@ export default function SeasonManagement() {
               <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'white' }}>{currentSeason}</div>
             </div>
             <div style={{ padding: '16px', textAlign: 'center', background: 'rgba(0,0,0,0.2)', borderRadius: '16px' }}>
-              <div style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#fbbf24', fontWeight: 800, marginBottom: '4px' }}>Super League Season</div>
+              <div style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#fbbf24', fontWeight: 800, marginBottom: '4px' }}>Champions Season</div>
               <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'white' }}>{championsLeagueSeason}</div>
             </div>
           </div>
@@ -607,17 +607,17 @@ export default function SeasonManagement() {
         </div>
 
         <div className="card glass">
-          <h3 className="card-title">Super League Seeding</h3>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '20px', fontSize: '0.85rem' }}>Add/remove players from Super League divisions.</p>
+          <h3 className="card-title">Champions League Seeding</h3>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '20px', fontSize: '0.85rem' }}>Add/remove players from Champions League.</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <UserSearchSelect users={allPlayers} selectedId={selectedChampionsPlayer} onSelect={setSelectedChampionsPlayer} label="Player" onQueryChange={searchUsers} />
             <select value={newChampionsDivision} onChange={e => setNewChampionsDivision(e.target.value)} className="glass">
-              <option value="">Select Super League Division...</option>
+              <option value="">Select Champions Division...</option>
               {CHAMPIONS_LEAGUE_DIVISIONS.map(div => <option key={div} value={div}>{div}</option>)}
-              <option value="None">Remove from Super League</option>
+              <option value="None">Remove from Champions League</option>
             </select>
             <button className="btn btn-primary" onClick={updateChampionsLeagueDivision} disabled={isProcessing || !selectedChampionsPlayer || !newChampionsDivision}>
-              Assign Super League Rank
+              Assign Champions Rank
             </button>
           </div>
         </div>
@@ -638,7 +638,7 @@ export default function SeasonManagement() {
               onClick={() => setShowChampionsInQuickList(!showChampionsInQuickList)}
               style={{ marginRight: '16px' }}
             >
-              {showChampionsInQuickList ? 'Hide Super League' : 'Manage Super League'}
+              {showChampionsInQuickList ? 'Hide Champions League' : 'Manage Champions League'}
             </button>
             <button className={`btn btn-sm ${seedingFilter === 'all' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSeedingFilter('all')}>All</button>
             <button className={`btn btn-sm ${seedingFilter === 'unassigned' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSeedingFilter('unassigned')}>Unassigned</button>
@@ -687,7 +687,7 @@ export default function SeasonManagement() {
 
                   {showChampionsInQuickList && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px', background: 'rgba(251, 191, 36, 0.05)', borderRadius: '8px', border: '1px solid rgba(251, 191, 36, 0.1)' }}>
-                      <span style={{ fontSize: '0.6rem', color: '#fbbf24', fontWeight: 800 }}>Super League Rank</span>
+                      <span style={{ fontSize: '0.6rem', color: '#fbbf24', fontWeight: 800 }}>Champions League Rank</span>
                       <select
                         className="glass"
                         value={p.superLeagueDivision || 'None'}
@@ -697,7 +697,7 @@ export default function SeasonManagement() {
                           setIsProcessing(true)
                           try {
                             await setDoc(doc(db, 'users', p.id), { superLeagueDivision: val === 'None' ? null : val }, { merge: true })
-                            showToast?.(`${p.username} updated in Super League`, 'success')
+                            showToast?.(`${p.username} updated in Champions League`, 'success')
                             triggerDataRefresh('all')
                           } catch (err) { showToast(err.message, 'error') }
                           setIsProcessing(false)
@@ -756,7 +756,7 @@ export default function SeasonManagement() {
                     <button className="btn btn-secondary btn-sm" onClick={() => archiveSeason(s)}>Archive</button>
                   )}
                   {s.name !== championsLeagueSeason && (
-                    <button className="btn btn-warning btn-sm" onClick={() => updateChampionsLeagueSeason(s.name)}>Set Super League Active</button>
+                    <button className="btn btn-warning btn-sm" onClick={() => updateChampionsLeagueSeason(s.name)}>Set Champions Active</button>
                   )}
                   {!s.isArchived ? (
                     <button className="btn btn-danger btn-sm" onClick={() => endSeason(s)}>End Season</button>

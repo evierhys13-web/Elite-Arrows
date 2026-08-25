@@ -42,7 +42,7 @@ export default function Results() {
   const filteredResults = allResults.filter(r => {
     if (typeFilter !== 'all') {
       if (typeFilter === 'league' && r.gameType !== 'League') return false
-      if (typeFilter === 'super' && r.gameType !== 'Champions League' && r.gameType !== 'Super League' && r.gameType !== 'Super League Masters' && r.gameType !== 'Super League Pro') return false
+      if (typeFilter === 'super' && r.gameType !== 'Champions League' && r.gameType !== 'Super League') return false
       if (typeFilter === 'cup' && r.gameType !== 'Cup' && !r.cupId) return false
       if (typeFilter === 'open' && !String(r.gameType).toLowerCase().includes('friendly league')) return false
     }
@@ -257,7 +257,7 @@ export default function Results() {
           {[
             { id: 'all', label: 'All' },
             { id: 'league', label: 'Standard' },
-            { id: 'super', label: 'Super League' },
+            { id: 'super', label: 'Champions' },
             { id: 'cup', label: 'Cups' },
             { id: 'open', label: 'Friendly League' }
           ].map(f => (

@@ -160,11 +160,8 @@ export default function SubmitResult() {
 
       baseOptions = baseOptions.filter(u => !playedOpponentIds.includes(String(u.id)))
     }
-    else if (formData.gameType === 'Super League Masters') {
-      baseOptions = availablePlayers.filter(u => u.superLeagueDivision === 'Masters Division')
-    }
-    else if (formData.gameType === 'Super League Pro') {
-      baseOptions = availablePlayers.filter(u => u.superLeagueDivision === 'Pro Division')
+    else if (formData.gameType === 'Champions League') {
+      baseOptions = availablePlayers.filter(u => u.superLeagueDivision === 'Champions')
     }
 
     return baseOptions
@@ -172,9 +169,9 @@ export default function SubmitResult() {
 
   const effectiveDivision = useMemo(() => {
     if (!user) return 'Unassigned'
-    if (formData.gameType === 'Super League Masters') return 'Masters Division'
-    if (formData.gameType === 'Super League Pro') return 'Pro Division'
-    return userEffectiveDiv
+    return formData.gameType === 'Champions League'
+      ? 'Champions'
+      : userEffectiveDiv
   }, [formData.gameType, userEffectiveDiv, user])
 
   useEffect(() => {
@@ -333,10 +330,10 @@ export default function SubmitResult() {
           bestOf: '8',
           firstTo: '5'
         }))
-      } else if (value === 'Super League Masters' || value === 'Super League Pro') {
+      } else if (value === 'Champions League') {
         setFormData(prev => ({
           ...prev,
-          opponent: '',
+          opponent: availablePlayers.find(p => p.id === prev.opponent)?.superLeagueDivision === user.superLeagueDivision ? prev.opponent : '',
           bestOf: '11',
           firstTo: '6'
         }))
@@ -573,13 +570,13 @@ export default function SubmitResult() {
       return
     }
 
-    if (formData.gameType === 'Super League Masters' || formData.gameType === 'Super League Pro') {
+    if (formData.gameType === 'Champions League') {
       if (formData.bestOf !== '11' || formData.firstTo !== '6') {
-        setError('Super League games must be First to 6 legs (Best of 11)')
+        setError('Champions League games must be First to 6 legs (Best of 11)')
         return
       }
       if (parseInt(formData.yourScore) === parseInt(formData.opponentScore)) {
-        setError('Draws are not permitted in the Super League. A winner must be decided.')
+        setError('Draws are not permitted in the Champions League. A winner must be decided.')
         return
       }
     }
@@ -626,9 +623,9 @@ export default function SubmitResult() {
       return isSameSeason && isSameType && isBetweenPlayers && isNotRejected
     })
 
-    if (formData.gameType === 'Super League Masters' || formData.gameType === 'Super League Pro') {
+    if (formData.gameType === 'Champions League') {
       if (matchingResults.length >= 2) {
-        setError(`You've already played ${opponentName} 2 times in the Super League this season. No more matches allowed.`)
+        setError(`You've already played ${opponentName} 2 times in the Champions League this season. No more matches allowed.`)
         return
       }
     } else if (formData.gameType === 'League' && matchingResults.length >= 1) {
@@ -898,7 +895,7 @@ export default function SubmitResult() {
           <div className="form-group" style={{ marginBottom: '25px' }}>
             <label style={{ fontWeight: '600', marginBottom: '10px', display: 'block' }}>Match Type</label>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              {['Friendly', 'League', 'Super League Masters', 'Super League Pro', 'Cup', 'Playoff', 'Friendly League Singles', 'Friendly League Doubles'].map(type => (
+              {['Friendly', 'League', 'Champions League', 'Cup', 'Playoff', 'Friendly League Singles', 'Friendly League Doubles'].map(type => (
                 <button
                   key={type}
                   type="button"
