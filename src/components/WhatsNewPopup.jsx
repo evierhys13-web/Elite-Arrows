@@ -45,7 +45,7 @@ const CHANGELOG = [
     version: '2.2.0',
     date: 'May 2026',
     changes: [
-      { type: 'feature', title: 'League Analytics', description: 'Deep dive into division performance with real-time scoring charts and distribution data.' },
+      { type: 'feature', title: 'League Statistics', description: 'Deep dive into division performance with real-time scoring charts, distribution data, and individual player stats.' },
       { type: 'feature', title: 'Match Proposals', description: 'Challenge other players directly from their profiles with specific dates and times.' },
       { type: 'feature', title: 'Division Filters', description: 'Easily find and connect with players in your own division or scout others.' },
       { type: 'improvement', title: 'Season Management', description: 'Centralized active season control and better tools for league admins.' }

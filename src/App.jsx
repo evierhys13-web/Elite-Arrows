@@ -46,7 +46,7 @@ const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
 const DeleteAccount = lazy(() => import('./pages/DeleteAccount'))
 const Donations = lazy(() => import('./pages/Donations'))
 const Install = lazy(() => import('./pages/Install'))
-const Analytics = lazy(() => import('./pages/Analytics'))
+const Statistics = lazy(() => import('./pages/Statistics'))
 const SeedData = lazy(() => import('./pages/SeedData'))
 const SeasonManagement = lazy(() => import('./pages/SeasonManagement'))
 const Notifications = lazy(() => import('./pages/Notifications'))
@@ -322,7 +322,9 @@ function AppRoutes() {
       <Route path="/delete-account" element={<ProtectedRoute><AppLayout><DeleteAccount /></AppLayout></ProtectedRoute>} />
       <Route path="/donations" element={<ProtectedRoute><AppLayout><Donations /></AppLayout></ProtectedRoute>} />
       <Route path="/install" element={<ProtectedRoute><AppLayout><Install /></AppLayout></ProtectedRoute>} />
-      <Route path="/analytics" element={<ProtectedRoute><AppLayout><Analytics /></AppLayout></ProtectedRoute>} />
+      <Route path="/analytics" element={<ProtectedRoute><AppLayout><Statistics /></AppLayout></ProtectedRoute>} />
+      <Route path="/statistics" element={<ProtectedRoute><AppLayout><Statistics /></AppLayout></ProtectedRoute>} />
+      <Route path="/statistics/:id" element={<ProtectedRoute><AppLayout><Statistics /></AppLayout></ProtectedRoute>} />
       <Route path="/notifications" element={<ProtectedRoute><AppLayout><Notifications /></AppLayout></ProtectedRoute>} />
       <Route path="/live-match" element={<SubscribedRoute><AppLayout><LiveMatch /></AppLayout></SubscribedRoute>} />
       <Route path="/play-online" element={<SubscribedRoute><AppLayout><PlayOnline /></AppLayout></SubscribedRoute>} />

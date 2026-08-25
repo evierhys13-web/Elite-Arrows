@@ -269,7 +269,7 @@ export default function Home() {
       <div className="card" style={{ marginBottom: '20px', marginTop: '20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
           <h2 className="card-title" style={{ margin: 0 }}>Pro Overview</h2>
-          <Link to="/analytics" style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontWeight: 700, textDecoration: 'none' }}>Full Analytics ➔</Link>
+          <Link to="/statistics" style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontWeight: 700, textDecoration: 'none' }}>Full Statistics ➔</Link>
         </div>
         <div className="home-stats-grid">
           {[{l: 'Played', v: stats.played}, {l: 'Wins', v: stats.wins, c: 'var(--success)'}, {l: 'Avg', v: user.threeDartAverage?.toFixed(1) || '0.0', c: '#fbbf24'}, {l: 'Pts', v: stats.points, c: 'var(--accent-cyan)'}].map(s => (
