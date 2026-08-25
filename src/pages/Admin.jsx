@@ -485,19 +485,10 @@ export default function Admin() {
     const s1 = parseInt(f.score1); const s2 = parseInt(f.score2)
     if (isNaN(s1) || isNaN(s2)) return showToast('Invalid scores.', 'error')
 
-    const isDoubles = f.gameType === 'Friendly League Doubles'
+    const p1 = allPlayers.find(u => String(u.id) === String(f.player1))
+    const p2 = allPlayers.find(u => String(u.id) === String(f.player2))
 
-    const duo1 = isDoubles ? openLeagueDuos.find(d => d.id === f.player1) : null
-    const duo2 = isDoubles ? openLeagueDuos.find(d => d.id === f.player2) : null
-
-    const p1 = isDoubles ? allPlayers.find(u => String(u.id) === String(duo1?.p1Id)) : allPlayers.find(u => String(u.id) === String(f.player1))
-    const p2 = isDoubles ? allPlayers.find(u => String(u.id) === String(duo1?.p2Id)) : allPlayers.find(u => String(u.id) === String(f.player2))
-    const p3 = isDoubles ? allPlayers.find(u => String(u.id) === String(duo2?.p1Id)) : null
-    const p4 = isDoubles ? allPlayers.find(u => String(u.id) === String(duo2?.p2Id)) : null
-
-    if (!isDoubles && (!p1 || !p2)) return showToast('Players not found.', 'error')
-    if (isDoubles && (!duo1 || !duo2)) return showToast('One or both duos not found.', 'error')
-    if (isDoubles && (!p3 || !p4)) return showToast('Away duo players not found.', 'error')
+    if (!p1 || !p2) return showToast('Players not found.', 'error')
 
     const resultId = `admin_${Date.now()}`
     try {
@@ -537,23 +528,12 @@ export default function Admin() {
         if (matchTime >= s2Start) targetSeason = 'Season 2'
       }
 
-      const getTeamName = (duo, u1, u2) => {
-        if (duo) {
-          if (duo.teamName) return duo.teamName
-          if (duo.captainId) {
-            const cap = allPlayers.find(u => String(u.id) === String(duo.captainId))
-            if (cap) return cap.username
-          }
-        }
-        return (u1 && u2) ? `${u1.username} & ${u2.username}` : 'Unknown Team'
-      }
-
       const newMatch = {
         id: resultId,
-        player1: isDoubles ? getTeamName(duo1, p1, p2) : p1.username,
+        player1: p1.username,
         player1Id: p1.id,
-        player2: isDoubles ? getTeamName(duo2, p3, p4) : p2.username,
-        player2Id: isDoubles ? p2.id : p2.id, // Keeping as is for non-doubles, for doubles p2 is Home Partner
+        player2: p2.username,
+        player2Id: p2.id,
         score1: s1, score2: s2,
         gameType: f.gameType,
         status: 'approved',
@@ -576,15 +556,6 @@ export default function Admin() {
           doubleSuccess: parseFloat(f.p2_doubles) || 0,
           avg: parseFloat(f.p2_avg) || 0
         }
-      }
-
-      if (isDoubles) {
-        newMatch.player1Id = p1.id // Home P1
-        newMatch.player2Id = p2.id // Home P2
-        newMatch.player3Id = p3.id // Away P1
-        newMatch.player3 = p3.username
-        newMatch.player4Id = p4.id // Away P2
-        newMatch.player4 = p4.username
       }
 
       await setDoc(doc(db, 'results', resultId), newMatch)
@@ -1238,62 +1209,27 @@ export default function Admin() {
                     <option value="Cup">Cup</option>
                     <option value="Playoff">Playoff</option>
                     <option value="Friendly League Singles">Friendly League Singles</option>
-                    <option value="Friendly League Doubles">Friendly League Doubles</option>
                   </select>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
                   <div className="form-group">
-                    <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>{adminGameForm.gameType === 'Friendly League Doubles' ? 'Home Team (Registered Duo)' : 'Player 1 (Home)'}</label>
-                    {adminGameForm.gameType === 'Friendly League Doubles' ? (
-                      <select
-                        className="glass"
-                        style={{ width: '100%', padding: '10px' }}
-                        value={adminGameForm.player1}
-                        onChange={e => setAdminGameForm({...adminGameForm, player1: e.target.value})}
-                      >
-                        <option value="">Select Home Duo</option>
-                        {openLeagueDuos.map(d => {
-                          const u1 = allPlayers.find(u => String(u.id) === String(d.p1Id))
-                          const u2 = allPlayers.find(u => String(u.id) === String(d.p2Id))
-                          const name = d.teamName || (d.captainId ? allPlayers.find(u => String(u.id) === String(d.captainId))?.username : null) || `${u1?.username || 'P1'} & ${u2?.username || 'P2'}`
-                          return <option key={d.id} value={d.id}>{name} ({u1?.username || '?'}, {u2?.username || '?'})</option>
-                        })}
-                      </select>
-                    ) : (
+                    <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Player 1 (Home)</label>
                       <UserSearchSelect
                         users={allPlayers}
                         selectedId={adminGameForm.player1}
                         onSelect={id => setAdminGameForm({...adminGameForm, player1: id})}
                         onQueryChange={searchUsers}
                       />
-                    )}
                   </div>
                   <div className="form-group">
-                    <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>{adminGameForm.gameType === 'Friendly League Doubles' ? 'Away Team (Registered Duo)' : 'Player 2 (Away)'}</label>
-                    {adminGameForm.gameType === 'Friendly League Doubles' ? (
-                      <select
-                        className="glass"
-                        style={{ width: '100%', padding: '10px' }}
-                        value={adminGameForm.player2}
-                        onChange={e => setAdminGameForm({...adminGameForm, player2: e.target.value})}
-                      >
-                        <option value="">Select Away Duo</option>
-                        {openLeagueDuos.map(d => {
-                          const u1 = allPlayers.find(u => String(u.id) === String(d.p1Id))
-                          const u2 = allPlayers.find(u => String(u.id) === String(d.p2Id))
-                          const name = d.teamName || (d.captainId ? allPlayers.find(u => String(u.id) === String(d.captainId))?.username : null) || `${u1?.username || 'P1'} & ${u2?.username || 'P2'}`
-                          return <option key={d.id} value={d.id}>{name} ({u1?.username || '?'}, {u2?.username || '?'})</option>
-                        })}
-                      </select>
-                    ) : (
+                    <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Player 2 (Away)</label>
                       <UserSearchSelect
                         users={allPlayers}
                         selectedId={adminGameForm.player2}
                         onSelect={id => setAdminGameForm({...adminGameForm, player2: id})}
                         onQueryChange={searchUsers}
                       />
-                    )}
                   </div>
                 </div>
 
@@ -1683,87 +1619,6 @@ export default function Admin() {
                             style={{ padding: '5px 10px' }}
                           >
                             Remove
-                          </button>
-                        </div>
-                      )
-                    })
-                  )}
-                </div>
-              </div>
-
-              {/* DOUBLES MANAGEMENT */}
-              <div className="glass" style={{ padding: '20px', borderRadius: '16px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>👥</span> Doubles Table (Duos)
-                </h4>
-
-                <div className="glass" style={{ padding: '15px', borderRadius: '12px', marginBottom: '20px', background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
-                    <UserSearchSelect users={allPlayers} selectedId={duoForm.p1} onSelect={id => setDuoForm({...duoForm, p1: id})} label="Player 1" onQueryChange={searchUsers} />
-                    <UserSearchSelect users={allPlayers} selectedId={duoForm.p2} onSelect={id => setDuoForm({...duoForm, p2: id})} label="Player 2" onQueryChange={searchUsers} />
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
-                    <div className="form-group">
-                      <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Team Name (Optional)</label>
-                      <input
-                        type="text"
-                        className="glass"
-                        value={duoForm.teamName}
-                        onChange={e => setDuoForm({...duoForm, teamName: e.target.value})}
-                        placeholder="e.g. The Dart Vaders"
-                        style={{ padding: '10px', width: '100%' }}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Captain</label>
-                      <select
-                        className="glass"
-                        value={duoForm.captainId}
-                        onChange={e => setDuoForm({...duoForm, captainId: e.target.value})}
-                        style={{ padding: '10px', width: '100%' }}
-                      >
-                        <option value="">Select Captain</option>
-                        {duoForm.p1 && <option value={duoForm.p1}>{allPlayers.find(u => u.id === duoForm.p1)?.username}</option>}
-                        {duoForm.p2 && <option value={duoForm.p2}>{allPlayers.find(u => u.id === duoForm.p2)?.username}</option>}
-                      </select>
-                    </div>
-                  </div>
-
-                  <button className="btn btn-primary btn-block" onClick={handleAddDuo} disabled={!duoForm.p1 || !duoForm.p2}>
-                    Create Duo Pairing
-                  </button>
-                </div>
-
-                <div style={{ maxHeight: '350px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: '5px' }}>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '5px' }}>
-                    {openLeagueDuos.length} Registered Duos
-                  </div>
-                  {openLeagueDuos.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', background: 'rgba(0,0,0,0.2)', borderRadius: '12px' }}>
-                      No duos defined yet.
-                    </div>
-                  ) : (
-                    openLeagueDuos.map(d => {
-                      const p1 = allPlayers.find(u => String(u.id) === String(d.p1Id))
-                      const p2 = allPlayers.find(u => String(u.id) === String(d.p2Id))
-                      return (
-                        <div key={d.id} className="glass" style={{ padding: '12px 15px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
-                          <div>
-                            <div style={{ fontWeight: 800, color: 'var(--accent-cyan)', fontSize: '0.95rem' }}>{d.teamName || 'Unnamed Duo'}</div>
-                            <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>{p1?.username || 'P1'} & {p2?.username || 'P2'}</div>
-                            {d.captainId && (
-                              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                                Captain: {allPlayers.find(u => u.id === d.captainId)?.username || 'Unknown'}
-                              </div>
-                            )}
-                          </div>
-                          <button
-                            className="btn btn-danger btn-sm"
-                            onClick={() => handleRemoveDuo(d.id)}
-                            style={{ padding: '5px 10px' }}
-                          >
-                            Delete
                           </button>
                         </div>
                       )

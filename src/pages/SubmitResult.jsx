@@ -107,7 +107,7 @@ export default function SubmitResult() {
 
   const isLocked = new Date() < new Date("2026-07-01T00:00:00")
   const isAdmin = user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin
-  const isFriendlyLeague = formData.gameType === 'Friendly League Singles' || formData.gameType === 'Friendly League Doubles'
+  const isFriendlyLeague = formData.gameType === 'Friendly League Singles'
 
   // Robust season detection
   const getDefaultSeason = () => {
@@ -337,7 +337,7 @@ export default function SubmitResult() {
           bestOf: '11',
           firstTo: '6'
         }))
-      } else if (value === 'Friendly League Singles' || value === 'Friendly League Doubles') {
+      } else if (value === 'Friendly League Singles') {
         setFormData(prev => ({
           ...prev,
           bestOf: '9',
@@ -524,28 +524,13 @@ export default function SubmitResult() {
       }
     }
 
-    if (formData.gameType === 'Friendly League Doubles') {
-      if (!formData.yourDuoId) {
-        setError('Please select your duo.')
-        return
-      }
-      if (!formData.opponent) {
-        setError('Please select the opposing duo.')
-        return
-      }
-      if (!formData.proofImage || !formData.proofImage2) {
-        setError('Two pieces of proof are required for Friendly League Doubles.')
-        return
-      }
-    } else if (!formData.proofImage && !formData.proofVideo) {
+    if (!formData.proofImage && !formData.proofVideo) {
       setError('Proof of result (screenshot, photo, or video) is required for all match submissions.')
       return
     }
     
-    const opponentDuo = formData.gameType === 'Friendly League Doubles' ? openLeagueDuos.find(d => d.id === formData.opponent) : null
-
-    // Find Your Duo using the dropdown selection
-    const yourDuo = formData.gameType === 'Friendly League Doubles' ? openLeagueDuos.find(d => d.id === formData.yourDuoId) : null
+    const opponentDuo = null
+    const yourDuo = null
 
     const opponentUser = !opponentDuo ? playersWithDivisions.find(u => String(u.id) === String(formData.opponent)) : null
 
@@ -608,13 +593,6 @@ export default function SubmitResult() {
         return String(result.fixtureId || '') === String(selectedFixture.id) && String(result.status).toLowerCase() !== 'rejected'
       }
 
-      if (formData.gameType === 'Friendly League Doubles') {
-        const yourDuoIds = String(formData.yourDuoId)
-        const opponentDuoIds = String(formData.opponent)
-        return (String(result.player1Id) === String(yourDuoIds.split('_')[0]) && String(result.player3Id) === String(opponentDuoIds.split('_')[0])) ||
-               (String(result.player3Id) === String(yourDuoIds.split('_')[0]) && String(result.player1Id) === String(opponentDuoIds.split('_')[0]))
-      }
-
       const isSameSeason = result.season === currentSeasonLabel
       const isSameType = result.gameType === formData.gameType
       const isBetweenPlayers = (String(result.player1Id) === String(user.id) && String(result.player2Id) === String(formData.opponent)) ||
@@ -638,15 +616,10 @@ export default function SubmitResult() {
 
       const resultId = Date.now().toString()
 
-      const opponentDuo = formData.gameType === 'Friendly League Doubles' ? openLeagueDuos.find(d => d.id === formData.opponent) : null
-
-      // Find Your Duo using the dropdown selection
-      const yourDuo = formData.gameType === 'Friendly League Doubles' ? openLeagueDuos.find(d => d.id === formData.yourDuoId) : null
-
-      const opponentUser = !opponentDuo ? allUsers.find(u => u.id === formData.opponent) : null
+      const opponentUser = allUsers.find(u => u.id === formData.opponent) || null
 
       const submitterName = getDisplayName(user, 'You')
-      const opponentName = opponentDuo ? getDuoDisplayName(opponentDuo) : getDisplayName(opponentUser, formData.opponent || 'Selected opponent')
+      const opponentName = getDisplayName(opponentUser, formData.opponent || 'Selected opponent')
 
       const fixtureForResult = cupFixture || selectedFixture
 
@@ -710,26 +683,6 @@ export default function SubmitResult() {
           ...(cupFixture?.startScore && { startScore: cupFixture.startScore })
         }
 
-        if (formData.gameType === 'Friendly League Doubles') {
-          const duo1 = yourDuo
-          const duo2 = opponentDuo
-
-          const p1 = allUsers.find(u => String(u.id) === String(duo1?.p1Id))
-          const p2 = allUsers.find(u => String(u.id) === String(duo1?.p2Id))
-          const p3 = allUsers.find(u => String(u.id) === String(duo2?.p1Id))
-          const p4 = allUsers.find(u => String(u.id) === String(duo2?.p2Id))
-
-          docData.player1 = getDuoDisplayName(duo1)
-          docData.player2 = getDuoDisplayName(duo2)
-
-          docData.player1Id = p1?.id || duo1?.p1Id
-          docData.player2Id = p2?.id || duo1?.p2Id
-          docData.player3Id = p3?.id || duo2?.p1Id
-          docData.player3 = getDisplayName(p3, 'Opponent 3')
-          docData.player4Id = p4?.id || duo2?.p2Id
-          docData.player4 = getDisplayName(p4, 'Opponent 4')
-        }
-
         return docData
       }
 
@@ -769,15 +722,9 @@ export default function SubmitResult() {
       const currentResults = [...allResults]
 
       let finalResultObj;
-      if (formData.gameType === 'Friendly League Doubles') {
-        finalResultObj = createResultDoc(formData.yourScore, formData.opponentScore)
-        await setDoc(doc(db, 'results', finalResultObj.id), finalResultObj)
-        currentResults.push(finalResultObj)
-      } else {
-        finalResultObj = createResultDoc(formData.yourScore, formData.opponentScore)
-        await setDoc(doc(db, 'results', finalResultObj.id), finalResultObj)
-        currentResults.push(finalResultObj)
-      }
+      finalResultObj = createResultDoc(formData.yourScore, formData.opponentScore)
+      await setDoc(doc(db, 'results', finalResultObj.id), finalResultObj)
+      currentResults.push(finalResultObj)
 
       setSuccessMessage('Done!')
 
@@ -895,7 +842,7 @@ export default function SubmitResult() {
           <div className="form-group" style={{ marginBottom: '25px' }}>
             <label style={{ fontWeight: '600', marginBottom: '10px', display: 'block' }}>Match Type</label>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              {['Friendly', 'League', 'Champions League', 'Cup', 'Playoff', 'Friendly League Singles', 'Friendly League Doubles'].map(type => (
+              {['Friendly', 'League', 'Champions League', 'Cup', 'Playoff', 'Friendly League Singles'].map(type => (
                 <button
                   key={type}
                   type="button"
@@ -903,7 +850,7 @@ export default function SubmitResult() {
                   onClick={() => handleChange({ target: { name: 'gameType', value: type } })}
                   style={{ flex: 1, minWidth: '120px' }}
                 >
-                  {type === 'Cup' ? 'Cup Match' : type}
+                  {type === 'Cup' ? 'Cup Match' : type === 'Friendly League Singles' ? 'Friendly League' : type}
                 </button>
               ))}
             </div>
@@ -966,23 +913,9 @@ export default function SubmitResult() {
           }} className="match-players-grid">
             <div style={{ textAlign: 'center' }}>
               <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
-                {formData.gameType === 'Friendly League Doubles' ? 'Home Team (Your Duo)' : 'You'}
+                You
               </label>
               <div style={{ display: 'grid', gap: '8px' }}>
-                {formData.gameType === 'Friendly League Doubles' ? (
-                  <select
-                    name="yourDuoId"
-                    value={formData.yourDuoId}
-                    onChange={handleChange}
-                    required
-                    style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text)' }}
-                  >
-                    <option value="">Select Your Duo</option>
-                    {userDuos.map(d => (
-                      <option key={d.id} value={d.id}>{getDuoDisplayName(d)}</option>
-                    ))}
-                  </select>
-                ) : (
                   <div style={{
                     padding: '12px',
                     background: 'var(--bg-primary)',
@@ -993,7 +926,6 @@ export default function SubmitResult() {
                   }}>
                     {currentUserName}
                   </div>
-                )}
               </div>
             </div>
 
@@ -1001,7 +933,7 @@ export default function SubmitResult() {
 
             <div style={{ textAlign: 'center' }}>
               <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
-                {formData.gameType === 'Cup' ? 'Select Match' : formData.gameType === 'Friendly League Doubles' ? 'Away Team (Opposing Duo)' : 'Opponent'}
+                {formData.gameType === 'Cup' ? 'Select Match' : 'Opponent'}
               </label>
               <div style={{ display: 'grid', gap: '8px' }}>
                 {formData.gameType === 'Cup' ? (
@@ -1053,19 +985,6 @@ export default function SubmitResult() {
                       </>
                     )}
                   </select>
-                ) : formData.gameType === 'Friendly League Doubles' ? (
-                  <select
-                    name="opponent"
-                    value={formData.opponent}
-                    onChange={handleChange}
-                    required
-                    style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text)' }}
-                  >
-                    <option value="">Select Away Duo</option>
-                    {openLeagueDuos.filter(d => d.id !== formData.yourDuoId).map(d => (
-                      <option key={d.id} value={d.id}>{getDuoDisplayName(d)}</option>
-                    ))}
-                  </select>
                 ) : (
                   <UserSearchSelect
                     users={opponentOptions}
@@ -1088,7 +1007,7 @@ export default function SubmitResult() {
           }}>
             <div className="form-group">
               <label style={{ fontWeight: '600', marginBottom: '8px', display: 'block' }}>
-                {formData.gameType === 'Friendly League Doubles' ? 'Home Team Legs' : 'Your Legs Won'}
+                Your Legs Won
               </label>
               <input
                 type="number"
@@ -1103,7 +1022,7 @@ export default function SubmitResult() {
             </div>
             <div className="form-group">
               <label style={{ fontWeight: '600', marginBottom: '8px', display: 'block' }}>
-                {formData.gameType === 'Friendly League Doubles' ? 'Away Team Legs' : 'Opponent Legs Won'}
+                Opponent Legs Won
               </label>
               <input
                 type="number"
@@ -1197,8 +1116,7 @@ export default function SubmitResult() {
                     placeholder="0"
                   />
                 </div>
-                {formData.gameType !== 'Friendly League Doubles' && (
-                  <div className="form-group" style={{ marginBottom: 0 }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
                     <label style={{ fontSize: '0.8rem' }}>Checkout Success %</label>
                     <input
                       type="number"
@@ -1211,7 +1129,6 @@ export default function SubmitResult() {
                       placeholder="0"
                     />
                   </div>
-                )}
               </div>
             </div>
 
@@ -1258,8 +1175,7 @@ export default function SubmitResult() {
                     placeholder="0"
                   />
                 </div>
-                {formData.gameType !== 'Friendly League Doubles' && (
-                  <div className="form-group" style={{ marginBottom: 0 }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
                     <label style={{ fontSize: '0.8rem' }}>Checkout Success %</label>
                     <input
                       type="number"
@@ -1272,14 +1188,13 @@ export default function SubmitResult() {
                       placeholder="0"
                     />
                   </div>
-                )}
               </div>
             </div>
           </div>
 
           <div className="form-group" style={{ marginBottom: '30px' }}>
             <label style={{ fontSize: '0.9rem', fontWeight: '600', display: 'block', marginBottom: '12px' }}>
-              {formData.gameType === 'Friendly League Doubles' ? 'Proof of Result 1' : 'Proof of Result (Photo/Screenshot/Video)'}
+              Proof of Result (Photo/Screenshot/Video)
               {isUploadingProof && <span style={{ marginLeft: '10px', color: 'var(--accent-cyan)', fontSize: '0.8rem' }}>• Uploading: {uploadProgress}%</span>}
             </label>
             
@@ -1345,8 +1260,7 @@ export default function SubmitResult() {
                       disabled={isUploadingProof}
                     />
                   </div>
-                  {formData.gameType !== 'Friendly League Doubles' && (
-                    <div className="result-proof-native-button result-proof-video" style={{ flex: 1, minWidth: '120px', background: 'var(--accent-primary)' }}>
+                  <div className="result-proof-native-button result-proof-video" style={{ flex: 1, minWidth: '120px', background: 'var(--accent-primary)' }}>
                       <span style={{ fontSize: '0.85rem' }}>🎬 Video</span>
                       <input
                         type="file"
@@ -1358,7 +1272,6 @@ export default function SubmitResult() {
                         disabled={isUploadingProof}
                       />
                     </div>
-                  )}
                 </div>
               </div>
             ) : formData.proofImage ? (
@@ -1463,88 +1376,6 @@ export default function SubmitResult() {
                   >
                     ×
                   </button>
-                )}
-              </div>
-            )}
-
-            {formData.gameType === 'Friendly League Doubles' && (
-              <div style={{ marginTop: '20px' }}>
-                <label style={{ fontSize: '0.9rem', fontWeight: '600', display: 'block', marginBottom: '12px' }}>
-                  Proof of Result 2
-                </label>
-                {!formData.proofImage2 ? (
-                  <div
-                    className="result-proof-picker"
-                    style={{
-                      border: '2px dashed var(--border)',
-                      borderRadius: '12px',
-                      padding: '30px 20px',
-                      textAlign: 'center',
-                      cursor: 'pointer',
-                      background: 'var(--bg-secondary)',
-                      width: '100%',
-                      color: 'var(--text)',
-                      position: 'relative',
-                      overflow: 'hidden'
-                    }}
-                  >
-                    <div className="result-proof-actions" style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                      <div className="result-proof-native-button result-proof-camera" style={{ flex: 1, minWidth: '120px' }}>
-                        <span style={{ fontSize: '0.85rem' }}>📷 Photo</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          aria-label="Take Photo"
-                          onClick={(e) => { e.currentTarget.value = '' }}
-                          onChange={(e) => handleImageUpload(e, 2)}
-                          className="result-proof-input"
-                        />
-                      </div>
-                      <div className="result-proof-native-button result-proof-upload" style={{ flex: 1, minWidth: '120px' }}>
-                        <span style={{ fontSize: '0.85rem' }}>📁 Image</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          aria-label="Upload Screenshot"
-                          onClick={(e) => { e.currentTarget.value = '' }}
-                          onChange={(e) => handleImageUpload(e, 2)}
-                          className="result-proof-input"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ position: 'relative', textAlign: 'center' }}>
-                    <img
-                      src={formData.proofImage2}
-                      alt="Proof 2"
-                      style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '12px', border: '1px solid var(--border)' }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeImage(2)}
-                      style={{
-                        position: 'absolute',
-                        top: '10px',
-                        right: '10px',
-                        background: '#ef4444',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '50%',
-                        width: '32px',
-                        height: '32px',
-                        cursor: 'pointer',
-                        fontSize: '20px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        boxShadow: '0 2px 10px rgba(0,0,0,0.3)'
-                      }}
-                    >
-                      ×
-                    </button>
-                  </div>
                 )}
               </div>
             )}

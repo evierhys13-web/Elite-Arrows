@@ -1,7 +1,7 @@
 import { useState, useMemo, Fragment, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContextInternal'
-import { getResultPlayerId, isLeagueResult, isPlayoffResult, isSuperLeagueResult, isFriendlyLeagueResult, isFriendlyLeagueDoublesResult } from '../utils/leagueResults'
+import { getResultPlayerId, isLeagueResult, isPlayoffResult, isSuperLeagueResult, isFriendlyLeagueResult } from '../utils/leagueResults'
 import UserSearchSelect from '../components/UserSearchSelect'
 import { db, doc, setDoc, getDocs, collection, deleteDoc, addDoc } from '../firebase'
 import { useToast } from '../context/ToastContext'
@@ -26,7 +26,7 @@ export default function MatchLog() {
     } catch (e) { console.error('Audit log failed', e) }
   }
   const [activeTab, setActiveTab] = useState('toPlay')
-  const [competition, setCompetition] = useState('League') // 'League', 'Champions League', 'Friendly Singles', 'Friendly Doubles'
+  const [competition, setCompetition] = useState('League') // 'League', 'Champions League', 'Friendly Singles'
   const [targetPlayerId, setTargetPlayerId] = useState(user?.id)
 
   const [openSinglesEntries, setOpenSinglesEntries] = useState([])
@@ -95,15 +95,10 @@ export default function MatchLog() {
     if (!targetUser.id) return []
     return allResults
       .filter(r => {
-        const isDoubles = isFriendlyLeagueDoublesResult(r)
         const p1Id = String(r.player1Id || '')
         const p2Id = String(r.player2Id || '')
-        const p3Id = String(r.player3Id || '')
-        const p4Id = String(r.player4Id || '')
 
-        const isTargetMatch = isDoubles
-          ? [p1Id, p2Id, p3Id, p4Id].includes(String(targetUser.id))
-          : (p1Id === String(targetUser.id) || p2Id === String(targetUser.id))
+        const isTargetMatch = (p1Id === String(targetUser.id) || p2Id === String(targetUser.id))
 
         const isApproved = String(r.status || '').toLowerCase() === 'approved'
 
@@ -111,7 +106,7 @@ export default function MatchLog() {
         const resSeason = String(r.season || '').trim()
         const isSeasonMatch = resSeason === currentSeasonName || (!resSeason && currentSeasonName === 'Season 1')
 
-        const isOpen = isFriendlyLeagueResult(r) || isFriendlyLeagueDoublesResult(r)
+        const isOpen = isFriendlyLeagueResult(r)
 
         if (!isApproved || (!isSeasonMatch && !isOpen) || !isTargetMatch) return false
 
@@ -123,32 +118,21 @@ export default function MatchLog() {
           return String(r.gameType || '').toLowerCase() === 'cup' || !!r.cupId
         } else if (competition === 'Friendly Singles') {
           return isFriendlyLeagueResult(r)
-        } else if (competition === 'Friendly Doubles') {
-          return isDoubles
         }
         return false
       })
       .map(r => {
-        const isDoubles = isFriendlyLeagueDoublesResult(r)
         const p1Id = String(r.player1Id || '')
         const p2Id = String(r.player2Id || '')
-        const p3Id = String(r.player3Id || '')
-        const p4Id = String(r.player4Id || '')
 
         let isTeam1 = false
         let opponentName = ''
         let opponentId = ''
 
-        if (isDoubles) {
-          isTeam1 = (p1Id === String(targetUser.id) || p2Id === String(targetUser.id))
-          opponentName = isTeam1 ? r.player2 : r.player1 // Using the display strings we now store correctly
-          // In doubles, we use the display strings from player1/player2 which now represent teams
-        } else {
-          isTeam1 = p1Id === String(targetUser.id)
-          opponentId = isTeam1 ? p2Id : p1Id
-          const opponentUser = allUsers.find(u => String(u.id) === String(opponentId))
-          opponentName = opponentUser?.username || (isTeam1 ? r.player2 : r.player1) || 'Unknown'
-        }
+        isTeam1 = p1Id === String(targetUser.id)
+        opponentId = isTeam1 ? p2Id : p1Id
+        const opponentUser = allUsers.find(u => String(u.id) === String(opponentId))
+        opponentName = opponentUser?.username || (isTeam1 ? r.player2 : r.player1) || 'Unknown'
 
         const win = Number(r.score1) > Number(r.score2) ? (isTeam1 ? true : false) : (Number(r.score2) > Number(r.score1) ? (isTeam1 ? false : true) : null)
 
@@ -318,48 +302,9 @@ export default function MatchLog() {
           )
           return { ...u, _fixtureId: fixture?.id }
         })
-    } else if (competition === 'Open Doubles') {
-      const targetDuo = openDuoEntries.find(e => String(e.p1Id) === String(targetUser.id) || String(e.p2Id) === String(targetUser.id))
-      if (!targetDuo) return []
-
-      const targetDuoIds = [String(targetDuo.p1Id), String(targetDuo.p2Id)].sort()
-      const targetDuoKey = targetDuoIds.join('_')
-
-      // For doubles, playedOpponentCounts uses opponentId as a key.
-      // But in OpenLeague results, we might want to track duo vs duo.
-      // Actually, my isFriendlyLeagueDoublesResult filtering already gets the results.
-      // I need to filter out duos already played.
-
-      const playedDuoKeys = new Set()
-      allResults
-        .filter(r => isFriendlyLeagueDoublesResult(r) && r.status === 'approved')
-        .forEach(r => {
-          const duo1 = [String(r.player1Id), String(r.player2Id)].sort().join('_')
-          const duo2 = [String(r.player3Id), String(r.player4Id)].sort().join('_')
-          if (duo1 === targetDuoKey) playedDuoKeys.add(duo2)
-          if (duo2 === targetDuoKey) playedDuoKeys.add(duo1)
-        })
-
-      return openDuoEntries
-        .filter(d => {
-          const ids = [String(d.p1Id), String(d.p2Id)].sort()
-          const key = ids.join('_')
-          return key !== targetDuoKey && !playedDuoKeys.has(key)
-        })
-        .map(d => {
-          const u1 = allUsers.find(u => String(u.id) === String(d.p1Id))
-          const u2 = allUsers.find(u => String(u.id) === String(d.p2Id))
-          return {
-            id: d.id,
-            username: `${u1?.username || '?'} & ${u2?.username || '?'}`,
-            _isDuo: true,
-            p1Id: d.p1Id,
-            p2Id: d.p2Id
-          }
-        })
     }
     return []
-  }, [allUsers, targetUser.id, targetUser.division, targetUser.superLeagueDivision, playedOpponentCounts, playoffOpponent, playoffAlreadyPlayed, activeSeasonDoc, competition, openSinglesEntries, openDuoEntries, allResults])
+  }, [allUsers, targetUser.id, targetUser.division, targetUser.superLeagueDivision, playedOpponentCounts, playoffOpponent, playoffAlreadyPlayed, activeSeasonDoc, competition, openSinglesEntries, allResults])
 
   return (
     <div className="page animate-fade-in">
@@ -406,13 +351,6 @@ export default function MatchLog() {
           style={{ borderRadius: '99px', minWidth: '120px' }}
         >
           Friendly Singles
-        </button>
-        <button
-          className={`btn btn-sm ${competition === 'Friendly Doubles' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setCompetition('Friendly Doubles')}
-          style={{ borderRadius: '99px', minWidth: '120px' }}
-        >
-          Friendly Doubles
         </button>
       </div>
 
@@ -525,8 +463,6 @@ export default function MatchLog() {
                         onClick={() => {
                           if (competition === 'Friendly Singles') {
                             navigate(`/submit-result?opponent=${player.id}&gameType=Friendly League Singles&season=${currentSeasonName}`)
-                          } else if (competition === 'Friendly Doubles') {
-                            navigate(`/submit-result?opponent=${player.p1Id}&gameType=Friendly League Doubles&season=${currentSeasonName}`)
                           } else if (competition === 'Cup') {
                             navigate(`/submit-result?fixtureId=${player._fixtureId}&gameType=Cup&season=${currentSeasonName}`)
                           } else {

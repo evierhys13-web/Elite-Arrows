@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContextInternal";
 import Breadcrumbs from "../components/Breadcrumbs";
 import { useToast } from "../context/ToastContext";
-import { isFriendlyLeagueResult, isFriendlyLeagueDoublesResult } from "../utils/leagueResults";
+import { isFriendlyLeagueResult } from "../utils/leagueResults";
 import { getLeaguePoints } from "../utils/leagueScoring";
 import { db, doc, setDoc, deleteDoc, getDocs, collection } from "../firebase";
 
@@ -156,82 +156,6 @@ export default function OpenLeague() {
     });
   }, [results, allUsers, singlesPlayers]);
 
-  const doublesStats = useMemo(() => {
-    const stats = {};
-
-    // Initialize with pre-defined duos from admin
-    duos.forEach(d => {
-      const u1 = allUsers.find(u => String(u.id) === String(d.p1Id));
-      const u2 = allUsers.find(u => String(u.id) === String(d.p2Id));
-      stats[d.id] = {
-        id: d.id,
-        teamName: d.teamName,
-        captainId: d.captainId,
-        name: `${u1?.username || 'Unknown'} & ${u2?.username || 'Unknown'}`,
-        played: 0,
-        wins: 0,
-        draws: 0,
-        losses: 0,
-        legsWon: 0,
-        legsLost: 0,
-        points: 0,
-        form: [],
-        isAdminDefined: true
-      };
-    });
-
-    const openResults = results.filter(r => isFriendlyLeagueDoublesResult(r) && r.status === 'approved');
-
-    openResults.forEach(r => {
-      const t1Ids = [String(r.player1Id), String(r.player2Id)].sort();
-      const t2Ids = [String(r.player3Id), String(r.player4Id)].sort();
-      const t1Key = t1Ids.join('_');
-      const t2Key = t2Ids.join('_');
-
-      const s1 = Number(r.score1) || 0;
-      const s2 = Number(r.score2) || 0;
-
-      const updateStats = (key, ids, won, lost) => {
-        if (!stats[key]) {
-          const u1 = allUsers.find(u => String(u.id) === ids[0]);
-          const u2 = allUsers.find(u => String(u.id) === ids[1]);
-          stats[key] = {
-            id: key,
-            name: `${u1?.username || 'Unknown'} & ${u2?.username || 'Unknown'}`,
-            played: 0,
-            wins: 0,
-            draws: 0,
-            losses: 0,
-            legsWon: 0,
-            legsLost: 0,
-            points: 0,
-            form: []
-          };
-        }
-        const s = stats[key];
-        s.played += 1;
-        s.legsWon += won;
-        s.legsLost += lost;
-        const pts = getLeaguePoints(won, lost, { isOpenLeague: true, isSingles: false });
-        s.points += pts;
-        if (won > lost) { s.wins += 1; s.form.push('W'); }
-        else if (won < lost) { s.losses += 1; s.form.push('L'); }
-        else { s.draws += 1; s.form.push('D'); }
-      };
-
-      updateStats(t1Key, t1Ids, s1, s2);
-      updateStats(t2Key, t2Ids, s2, s1);
-    });
-
-    return Object.values(stats).sort((a, b) => {
-      if (b.points !== a.points) return b.points - a.points;
-      const aDiff = a.legsWon - a.legsLost;
-      const bDiff = b.legsWon - b.legsLost;
-      if (bDiff !== aDiff) return bDiff - aDiff;
-      return b.legsWon - a.legsWon;
-    });
-  }, [results, allUsers, duos]);
-
   const handleRefresh = async () => {
     setLoading(true);
     try {
@@ -260,7 +184,7 @@ export default function OpenLeague() {
     );
   }
 
-  const tableData = activeTab === "singles" ? singlesStats : doublesStats;
+  const tableData = singlesStats;
 
   return (
     <div className="page animate-fade-in" style={{ maxWidth: "1200px", margin: "0 auto" }}>
@@ -269,7 +193,7 @@ export default function OpenLeague() {
       <div className="page-header" style={{ marginBottom: "24px", display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div>
           <h1 className="page-title text-gradient" style={{ fontSize: "2.5rem" }}>Friendly League</h1>
-          <p style={{ color: 'var(--text-muted)' }}>Free for all players. Leg: 1pt, Win: +3pts. {activeTab === "singles" ? "(No Draws)" : "Draw: +1pt"}</p>
+          <p style={{ color: 'var(--text-muted)' }}>Free for all players. Leg: 1pt, Win: +3pts. (No Draws)</p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
           <button className="btn btn-secondary btn-sm" onClick={handleRefresh} disabled={loading}>
@@ -278,25 +202,15 @@ export default function OpenLeague() {
         </div>
       </div>
 
-      <div className="division-tabs" style={{ marginBottom: '20px' }}>
-        <button className={`division-tab ${activeTab === "singles" ? "active" : ""}`} onClick={() => setActiveTab("singles")}>
-          Singles Table
-        </button>
-        <button className={`division-tab ${activeTab === "doubles" ? "active" : ""}`} onClick={() => setActiveTab("doubles")}>
-          Doubles Table
-        </button>
-      </div>
-
       <div className="card glass" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "rgba(0,0,0,0.3)", color: "var(--text-muted)", fontSize: "0.7rem", textTransform: "uppercase" }}>
                 <th style={{ width: "40px", padding: "12px" }}>#</th>
-                <th style={{ textAlign: "left", padding: "12px" }}>{activeTab === "singles" ? "Player" : "Duo"}</th>
+                <th style={{ textAlign: "left", padding: "12px" }}>Player</th>
                 <th style={{ width: "40px", textAlign: "center" }}>P</th>
                 <th style={{ width: "40px", textAlign: "center" }}>W</th>
-                {activeTab !== "singles" && <th style={{ width: "40px", textAlign: "center" }}>D</th>}
                 <th style={{ width: "40px", textAlign: "center" }}>L</th>
                 <th style={{ width: "60px", textAlign: "center" }}>+/-</th>
                 <th style={{ width: "60px", textAlign: "center", color: "var(--accent-cyan)" }}>Pts</th>
@@ -304,7 +218,7 @@ export default function OpenLeague() {
             </thead>
             <tbody>
               {tableData.length === 0 ? (
-                <tr><td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No results yet.</td></tr>
+                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No results yet.</td></tr>
               ) : (
                 tableData.map((row, index) => {
                   const legDiff = row.legsWon - row.legsLost;
@@ -312,45 +226,21 @@ export default function OpenLeague() {
                     <tr key={row.id} style={{ borderBottom: "1px solid var(--border)", fontSize: '0.9rem' }}>
                       <td style={{ textAlign: 'center', fontWeight: 800, color: index === 0 ? '#fbbf24' : 'inherit' }}>{index + 1}</td>
                       <td style={{ padding: '12px' }}>
-                        {activeTab === "singles" ? (
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <Link to={`/profile/${row.id}`} style={{ textDecoration: 'none', color: 'white', fontWeight: 600 }}>{row.username}</Link>
-                            {isSubscribed && row.id !== user?.id && (
-                              <button
-                                className="btn btn-primary btn-xs"
-                                style={{ padding: '4px 8px', fontSize: '0.65rem' }}
-                                onClick={() => navigate(`/submit-result?gameType=Friendly League Singles&opponent=${row.id}`)}
-                              >
-                                Log Score
-                              </button>
-                            )}
-                          </div>
-                        ) : (
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                              {row.teamName && <span style={{ fontWeight: 800, color: 'var(--accent-cyan)', fontSize: '1rem' }}>{row.teamName}</span>}
-                              <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
-                                <span style={{ fontWeight: 600, fontSize: row.teamName ? '0.75rem' : '0.9rem', opacity: row.teamName ? 0.7 : 1 }}>{row.name}</span>
-                                {row.captainId && (
-                                  <span title="Team Captain" style={{ fontSize: '0.7rem', cursor: 'help' }}>⭐</span>
-                                )}
-                              </div>
-                            </div>
-                            {isSubscribed && (
-                              <button
-                                className="btn btn-primary btn-xs"
-                                style={{ padding: '4px 8px', fontSize: '0.65rem' }}
-                                onClick={() => navigate(`/submit-result?gameType=Friendly League Doubles&opponent=${row.id}`)}
-                              >
-                                Log Score
-                              </button>
-                            )}
-                          </div>
-                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <Link to={`/profile/${row.id}`} style={{ textDecoration: 'none', color: 'white', fontWeight: 600 }}>{row.username}</Link>
+                          {isSubscribed && row.id !== user?.id && (
+                            <button
+                              className="btn btn-primary btn-xs"
+                              style={{ padding: '4px 8px', fontSize: '0.65rem' }}
+                              onClick={() => navigate(`/submit-result?gameType=Friendly League Singles&opponent=${row.id}`)}
+                            >
+                              Log Score
+                            </button>
+                          )}
+                        </div>
                       </td>
                       <td style={{ textAlign: 'center' }}>{row.played}</td>
                       <td style={{ textAlign: 'center' }}>{row.wins}</td>
-                      {activeTab !== "singles" && <td style={{ textAlign: 'center' }}>{row.draws}</td>}
                       <td style={{ textAlign: 'center' }}>{row.losses}</td>
                       <td style={{ textAlign: 'center', color: legDiff > 0 ? 'var(--success)' : legDiff < 0 ? 'var(--error)' : 'inherit' }}>
                         {legDiff > 0 ? `+${legDiff}` : legDiff}
