@@ -21,7 +21,7 @@ export const isLeagueResult = (result, fixturesById = {}) => {
   const gameType = normalizeText(result.gameType)
 
   // 1. Explicitly ignore non-league types in the gameType label
-  const nonLeagueTypes = ['super league', 'champions league', 'cup', 'friendly', 'playoff', 'tournament', 'friendly league']
+  const nonLeagueTypes = ['super league', 'champions league', 'cup', 'friendly', 'playoff', 'tournament', 'friendly league', 'open league']
   if (nonLeagueTypes.some(type => gameType.includes(type))) return false
 
   // 2. If it has a cupId or matchId on the result itself, it's NOT league
@@ -66,7 +66,7 @@ export const isSuperLeagueResult = (result, fixturesById = {}) => {
   const s2 = Number(result.score2) || 0
 
   // 3. Score-based detection (First to 6 / Best of 11 format)
-  const otherTypes = ['cup', 'friendly', 'playoff', 'tournament', 'friendly league']
+  const otherTypes = ['cup', 'friendly', 'playoff', 'tournament', 'friendly league', 'open league']
   if (otherTypes.some(type => gameType.includes(type))) return false
   if (result.cupId || result.matchId || result.tournamentId) return false
 
