@@ -60,6 +60,7 @@ export default function Sidebar() {
         items: [
           { path: '/home', label: 'Home', icon: HomeIcon },
           { path: '/table', label: 'Standings', icon: TableIcon },
+          ...(isSubscribed ? [{ path: '/super-league', label: 'Super League', icon: TrophyIcon }] : []),
           ...(isOpenLeagueVisible ? [{ path: '/open-league', label: 'Friendly League', icon: TrophyIcon }] : []),
           { path: '/match-log', label: 'Schedule', icon: CalendarIcon },
           { path: '/rules', label: 'League Rules', icon: ShieldIcon },
