@@ -8,7 +8,7 @@ export default function Guide() {
     { id: 'getting-started', label: 'Getting Started', icon: '🎯' },
     { id: 'account', label: 'Account Setup', icon: '👤' },
     { id: 'subscription', label: 'Subscription', icon: '⭐' },
-    { id: 'fixtures', label: 'Arrangements', icon: '📅' },
+    { id: 'fixtures', label: 'Schedule', icon: '📅' },
     { id: 'results', label: 'Results', icon: '🏆' },
     { id: 'cups', label: 'Cups & Tournaments', icon: '🎯' },
     { id: 'league', label: 'League Games', icon: '📊' },
@@ -82,7 +82,7 @@ export default function Guide() {
                   <li><strong>Get assigned to a division</strong> - Admins will place you in the appropriate league division</li>
                   <li><strong>Subscribe for full access</strong> - Unlock all features with Elite Arrows Pass</li>
                   <li><strong>Join the community</strong> - Click the WhatsApp link at the top of the Home page to join our group</li>
-                   <li><strong>Start playing!</strong> - Create fixtures, submit results, and compete</li>
+                    <li><strong>Start playing!</strong> - Submit results from the Schedule or Submit Score page</li>
                 </ol>
               </div>
 
@@ -184,63 +184,46 @@ export default function Guide() {
 
           {activeSection === 'fixtures' && (
             <div className="card">
-              <h2 className="card-title">📅 Arrangements (Fixtures)</h2>
+              <h2 className="card-title">📅 Schedule</h2>
               
               <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>What are Arrangements?</h4>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>What is the Schedule?</h4>
                 <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                  Arrangements (also called Fixtures) are scheduled matches between you and other players. You can create
-                  Friendly or League fixture proposals and invite opponents to play.
+                  The Schedule (Match Log) shows all your fixtures and results across different competitions.
+                  Track what you've played and what's still to play.
                 </p>
               </div>
 
               <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Creating an Arrangement</h4>
-                <ol style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-                  <li>Go to <strong>Arrangements</strong> page</li>
-                  <li>Click <strong>+ Create Fixture</strong></li>
-                  <li>Select game type (Friendly or League)</li>
-                  <li>Use the <strong>search bar</strong> to find and select your opponent</li>
-                  <li>Pick a date and time</li>
-                  <li>Click <strong>Send Challenge</strong> to send the proposal</li>
-                </ol>
-              </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Fixture Tabs</h4>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>Competition Tabs</h4>
                 <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
-                  <li><strong>My Fixtures</strong> - All your fixtures in one place</li>
-                  <li><strong>Upcoming</strong> - Accepted fixtures ready to play</li>
-                   <li><strong>All Fixtures</strong> - Confirmed fixtures across all players, including fixtures with a submitted result</li>
-                   <li><strong>Pending</strong> - Incoming challenges awaiting your response</li>
-                  <li><strong>Sent</strong> - Challenges you've sent to others</li>
-                  <li><strong>Cup Fixtures</strong> - Your cup tournament matches</li>
+                  <li><strong>Standard League</strong> - Your division league fixtures and results</li>
+                  <li><strong>Champions League</strong> - Champions League matches</li>
+                  <li><strong>Cups</strong> - Cup tournament matches</li>
+                  <li><strong>Friendly Singles</strong> - Friendly League matches</li>
                 </ul>
               </div>
 
               <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Responding to Fixtures</h4>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>View Modes</h4>
                 <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
-                  <li><strong>Accept</strong> - Confirm you can play at the proposed time</li>
-                  <li><strong>Counter</strong> - Suggest an alternative date/time</li>
-                  <li><strong>Decline</strong> - Reject the challenge</li>
-                  <li><strong>Cancel Proposal</strong> - Withdraw a proposal you sent before it is accepted</li>
+                  <li><strong>Played</strong> - Matches you've already played with results</li>
+                  <li><strong>To Play</strong> - Opponents you still need to play this season</li>
                 </ul>
               </div>
 
               <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>What Other Players Can See</h4>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>Submitting from the Schedule</h4>
                 <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                  Subscribers can view confirmed fixtures in <strong>All Fixtures</strong>. Other players can see the match,
-                  date, time, division or cup, and whether a result has been sent, but they cannot edit or submit results
-                  for fixtures they are not part of.
+                  On the <strong>To Play</strong> tab, click <strong>Submit Score</strong> next to an opponent to record your result.
+                  You can also submit results from the <strong>Submit Score</strong> page in the sidebar.
                 </p>
               </div>
 
               <div style={{ marginTop: '20px', padding: '15px', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '8px', borderLeft: '4px solid var(--success)' }}>
                 <h4 style={{ color: 'var(--success)' }}>💡 Pro Tip</h4>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                   After accepting a fixture, click "Submit Result" to record your game!
+                   Check the <strong>To Play</strong> tab regularly to see who you still need to play this season.
                 </p>
               </div>
             </div>
@@ -261,12 +244,12 @@ export default function Guide() {
               <div style={{ marginTop: '20px' }}>
                 <h4 style={{ color: 'var(--accent-cyan)' }}>How to Submit</h4>
                 <ol style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-                  <li>Go to <strong>Submit Score</strong> in the sidebar or from <strong>Arrangements</strong></li>
-                  <li>Find your accepted fixture in <strong>Upcoming</strong></li>
-                  <li>Click <strong>Submit Result</strong></li>
+                  <li>Go to <strong>Submit Score</strong> in the sidebar or from the <strong>Schedule</strong></li>
+                  <li>Select your match type (League, Friendly, Cup, etc.)</li>
+                  <li>Choose your opponent</li>
                   <li>Enter legs won for both players</li>
                   <li>Add optional stats (180s, checkout %, high score)</li>
-                  <li>For League games: upload proof screenshot</li>
+                  <li>Upload proof screenshot or video</li>
                   <li>Click <strong>Submit for Approval</strong></li>
                 </ol>
               </div>
@@ -325,10 +308,8 @@ export default function Guide() {
               <div style={{ marginTop: '20px' }}>
                 <h4 style={{ color: 'var(--accent-cyan)' }}>Cup Fixtures</h4>
                 <ol style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-                  <li>Fixtures appear in your <strong>Cup Fixtures</strong> tab</li>
-                  <li><strong>Propose a date/time</strong> for your match</li>
-                  <li>Opponent accepts or counters your proposal</li>
-                  <li>Once accepted, <strong>Submit Result</strong> after playing</li>
+                  <li>Cup fixtures appear in your <strong>Cup Fixtures</strong> tab and in the <strong>Schedule</strong></li>
+                  <li>Once the match is played, <strong>Submit Result</strong> after playing</li>
                   <li>Winner advances to the next round</li>
                 </ol>
               </div>
@@ -467,7 +448,7 @@ export default function Guide() {
                   <li><strong>Pending Results</strong> - Review proof, then approve or reject submitted results</li>
                   <li><strong>Approved Results</strong> - Filter by all, pending, approved, or rejected</li>
                   <li><strong>Delete/Reset</strong> - Reset a result status if it should stop counting or be corrected</li>
-                  <li><strong>Fixture cleanup</strong> - Use <strong>Fixtures &gt; All Fixtures &gt; Remove Fixture/Result</strong> to remove a stuck League/Friendly fixture and its linked submitted result</li>
+                  <li><strong>Fixture cleanup</strong> - Remove stuck or incorrect fixtures and their linked results from the admin panel</li>
                 </ul>
               </div>
 
