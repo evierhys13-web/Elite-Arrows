@@ -39,7 +39,7 @@ const INITIAL_RESULT_FORM = {
 }
 
 export default function SubmitResult() {
-  const { user, getAllUsers, getFixtures, getResults, getCups, updateResults, updateFixtures, addTokens, triggerDataRefresh, notifyAdmins, adminData, getSeasons, searchUsers } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, getCups, updateResults, updateFixtures, triggerDataRefresh, notifyAdmins, adminData, getSeasons, searchUsers } = useAuth()
   const { showToast } = useToast()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -839,10 +839,6 @@ export default function SubmitResult() {
         `${submitterName} submitted a result: ${finalResultObj.player1} ${finalResultObj.score1}-${finalResultObj.score2} ${finalResultObj.player2}`,
         { type: 'result_submitted', resultId: finalResultObj.id, url: '/admin?tab=results' }
       ).catch(() => {})
-
-      if (parseInt(formData.yourScore) > parseInt(formData.opponentScore)) {
-        addTokens(50).catch(() => {})
-      }
     } catch (e) {
       console.error('FATAL: Error submitting result:', e)
       setError('Error submitting result: ' + (e.message || 'Please try again.'))
@@ -1565,7 +1561,7 @@ export default function SubmitResult() {
                 onChange={(e) => setFormData(prev => ({ ...prev, isHighlight: e.target.checked }))}
                 style={{ width: '20px', height: '20px' }}
               />
-              <label htmlFor="isHighlight" style={{ fontWeight: 'bold', color: 'var(--accent-cyan)' }}>Add to my Highlight Reel 🎬</label>
+              <label htmlFor="isHighlight" style={{ fontWeight: 'bold', color: 'var(--accent-cyan)' }}>Add to my High Finish Videos 🎬</label>
             </div>
             {formData.isHighlight && (
               <div style={{ display: 'grid', gap: '12px' }}>

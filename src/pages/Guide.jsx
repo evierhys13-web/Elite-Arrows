@@ -14,7 +14,6 @@ export default function Guide() {
     { id: 'league', label: 'League Games', icon: '📊' },
     { id: 'leaderboards', label: 'Leaderboards', icon: '📈' },
     { id: 'chat', label: 'Chat', icon: '💬' },
-    { id: 'tokens', label: 'Elite Tokens', icon: '💰' },
     { id: 'admin', label: 'Admin Tools', icon: 'Admin' },
     { id: 'profile', label: 'Profile & Stats', icon: '📋' },
     { id: 'search', label: 'Finding Players', icon: '🔍' },
@@ -83,7 +82,7 @@ export default function Guide() {
                   <li><strong>Get assigned to a division</strong> - Admins will place you in the appropriate league division</li>
                   <li><strong>Subscribe for full access</strong> - Unlock all features with Elite Arrows Pass</li>
                   <li><strong>Join the community</strong> - Click the WhatsApp link at the top of the Home page to join our group</li>
-                  <li><strong>Start playing!</strong> - Create fixtures, submit results, and earn tokens</li>
+                   <li><strong>Start playing!</strong> - Create fixtures, submit results, and compete</li>
                 </ol>
               </div>
 
@@ -165,7 +164,6 @@ export default function Guide() {
                   <li>✗ Cannot create fixtures</li>
                   <li>✗ Cannot submit results</li>
                   <li>✗ Cannot join cups/tournaments</li>
-                  <li>✗ Cannot access token betting</li>
                 </ul>
               </div>
 
@@ -176,7 +174,6 @@ export default function Guide() {
                   <li>✓ Submit game results</li>
                   <li>✓ Participate in league games</li>
                   <li>✓ Enter cup tournaments</li>
-                  <li>✓ Earn and use Elite Tokens</li>
                   <li>✓ Access to games and challenges</li>
                   <li>✓ Chat with friends</li>
                   <li>✓ Priority support</li>
@@ -214,9 +211,8 @@ export default function Guide() {
                 <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
                   <li><strong>My Fixtures</strong> - All your fixtures in one place</li>
                   <li><strong>Upcoming</strong> - Accepted fixtures ready to play</li>
-                  <li><strong>All Fixtures</strong> - Confirmed fixtures across all players, including fixtures with a submitted result</li>
-                  <li><strong>Bet on Game</strong> - From All Fixtures, bet tokens on confirmed League games in your division that you are not playing</li>
-                  <li><strong>Pending</strong> - Incoming challenges awaiting your response</li>
+                   <li><strong>All Fixtures</strong> - Confirmed fixtures across all players, including fixtures with a submitted result</li>
+                   <li><strong>Pending</strong> - Incoming challenges awaiting your response</li>
                   <li><strong>Sent</strong> - Challenges you've sent to others</li>
                   <li><strong>Cup Fixtures</strong> - Your cup tournament matches</li>
                 </ul>
@@ -244,7 +240,7 @@ export default function Guide() {
               <div style={{ marginTop: '20px', padding: '15px', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '8px', borderLeft: '4px solid var(--success)' }}>
                 <h4 style={{ color: 'var(--success)' }}>💡 Pro Tip</h4>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                  After accepting a fixture, click "Submit Result" to record your game and earn tokens!
+                   After accepting a fixture, click "Submit Result" to record your game!
                 </p>
               </div>
             </div>
@@ -288,7 +284,7 @@ export default function Guide() {
                 <h4 style={{ color: 'var(--accent-cyan)' }}>If a Result is Wrong</h4>
                 <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
                   Contact an admin. Admins can reject an incorrect pending result, reset an approved or rejected result,
-                  or remove a linked League/Friendly fixture and result from <strong>Fixtures &gt; All Fixtures</strong>.
+                   or remove a linked League/Friendly fixture and result from <strong>Schedule</strong>.
                 </p>
               </div>
             </div>
@@ -461,42 +457,6 @@ export default function Guide() {
             </div>
           )}
 
-          {activeSection === 'tokens' && (
-            <div className="card">
-              <h2 className="card-title">💰 Elite Tokens</h2>
-              
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>What are Elite Tokens?</h4>
-                <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                  Elite Tokens are our in-app currency earned by winning games and participating in the community.
-                  They can be used for betting on League games from the Fixtures page.
-                </p>
-              </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Earning Tokens</h4>
-                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
-                  <li><strong>Win matches</strong> - Winning league and tournament games awards tokens</li>
-                  <li><strong>Milestones</strong> - Reach certain stat goals to earn bonus tokens</li>
-                  <li><strong>Admin awards</strong> - Admins may grant tokens for special events or participation</li>
-                </ul>
-              </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Token Betting</h4>
-                <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                  Visit <Link to="/fixtures" style={{ color: 'var(--accent-cyan)' }}>Fixtures</Link> &gt; <strong>All Fixtures</strong>
-                  to bet tokens on eligible confirmed League games in your division.
-                </p>
-                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
-                  <li><strong>Eligible games</strong> - You can bet on any League game in your division that you are not playing in</li>
-                  <li><strong>Predictions</strong> - Predict the winner to multiply your tokens</li>
-                  <li><strong>Balances</strong> - Your token balance is displayed on your profile</li>
-                </ul>
-              </div>
-            </div>
-          )}
-
           {activeSection === 'admin' && (
             <div className="card">
               <h2 className="card-title">Admin Tools</h2>
@@ -517,15 +477,6 @@ export default function Guide() {
                   When a result is approved, the fixture leaves the public confirmed list. When a result is rejected or reset,
                   the fixture goes back to confirmed so players can submit the corrected result.
                 </p>
-              </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Tokens</h4>
-                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
-                  <li><strong>Single player</strong> - Add or remove tokens from one player in Admin &gt; Elite Tokens</li>
-                  <li><strong>All players</strong> - Add the same amount to everyone with Add Tokens to All Players</li>
-                  <li><strong>Balances sync</strong> - Token changes save to Firestore so users see them after refresh</li>
-                </ul>
               </div>
 
               <div style={{ marginTop: '20px' }}>

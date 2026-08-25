@@ -82,10 +82,9 @@ export default function Rules() {
            <p style={{ marginBottom: '15px' }}>
              Elite Pass subscribers are eligible for season prizes and entry into official tournaments.
            </p>
-           <ul style={{ paddingLeft: '20px' }}>
-              <li><strong>Elite Tokens:</strong> Earn 100 tokens for every league win.</li>
+            <ul style={{ paddingLeft: '20px' }}>
               <li><strong>Refunds:</strong> Subscriptions are eligible for a full refund within 14 days of purchase, provided no tournament prizes have been won.</li>
-           </ul>
+            </ul>
         </div>
       </div>
     </div>

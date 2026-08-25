@@ -39,7 +39,6 @@ const Cups = lazy(() => import('./pages/Cups'))
 const CupBracket = lazy(() => import('./pages/CupBrackets'))
 const Leaderboards = lazy(() => import('./pages/Leaderboards'))
 const Rewards = lazy(() => import('./pages/Rewards'))
-const Fixtures = lazy(() => import('./pages/Fixtures'))
 const CupFixtures = lazy(() => import('./pages/CupFixtures'))
 const Guide = lazy(() => import('./pages/Guide'))
 const Rules = lazy(() => import('./pages/Rules'))
@@ -317,7 +316,6 @@ function AppRoutes() {
       <Route path="/leaderboards" element={<ProtectedRoute><AppLayout><Leaderboards /></AppLayout></ProtectedRoute>} />
       <Route path="/hall-of-fame" element={<ProtectedRoute><AppLayout><HallOfFame /></AppLayout></ProtectedRoute>} />
       <Route path="/rewards" element={<ProtectedRoute><AppLayout><Rewards /></AppLayout></ProtectedRoute>} />
-      <Route path="/fixtures" element={<ProtectedRoute><AppLayout><Fixtures /></AppLayout></ProtectedRoute>} />
       <Route path="/cup-fixtures" element={<ProtectedRoute><AppLayout><CupFixtures /></AppLayout></ProtectedRoute>} />
       <Route path="/guide" element={<ProtectedRoute><AppLayout><Guide /></AppLayout></ProtectedRoute>} />
       <Route path="/rules" element={<ProtectedRoute><AppLayout><Rules /></AppLayout></ProtectedRoute>} />

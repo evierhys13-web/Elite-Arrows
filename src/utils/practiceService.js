@@ -66,21 +66,3 @@ export async function savePracticeSession(userId, username, modeId, stats) {
     return false
   }
 }
-
-export function calculatePracticeTokens(modeId, stats) {
-  // Logic to award tokens based on performance
-  let tokens = 10 // Base tokens for completing
-
-  if (modeId === 'atc') {
-    if (stats.dartsThrown < 60) tokens += 20
-    else if (stats.dartsThrown < 100) tokens += 10
-  } else if (modeId === '170') {
-    if (stats.dartsThrown <= 3) tokens += 50
-    else if (stats.dartsThrown <= 9) tokens += 20
-  } else if (modeId === 'scoring') {
-    if (stats.score > 1000) tokens += 30
-    else if (stats.score > 700) tokens += 15
-  }
-
-  return tokens
-}

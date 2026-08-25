@@ -77,7 +77,6 @@ export default function Sidebar() {
           { path: '/cups', label: 'Cups', icon: TrophyIcon },
           { path: '/practice', label: 'Practice Hub', icon: TargetIcon },
           { path: '/progress-tracker', label: 'Progress Tracker', icon: BarChartIcon },
-          { path: '/fixtures', label: 'Arrangements', icon: HistoryIcon },
           { path: '/tournaments', label: 'Tournaments', icon: TournamentIcon },
           { path: '/leaderboards', label: 'Leaderboards', icon: TrophyIcon },
           { path: '/hall-of-fame', label: 'Hall of Fame', icon: TrophyIcon },

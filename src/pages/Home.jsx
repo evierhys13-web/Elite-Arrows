@@ -259,7 +259,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* 4. Community Highlights */}
+      {/* 4. High Finish Videos */}
       <GlobalHighlightReel />
 
       {/* 5. News Feed */}

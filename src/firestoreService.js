@@ -1,8 +1,7 @@
-import { db, resultsCollection, tournamentsCollection, betsCollection, notificationsCollection, doc, setDoc, getDoc, getDocs, query, where, orderBy, onSnapshot } from '../firebase'
+import { db, resultsCollection, tournamentsCollection, notificationsCollection, doc, setDoc, getDoc, getDocs, query, where, orderBy, onSnapshot } from '../firebase'
 
 export const resultsCollectionName = 'results'
 export const tournamentsCollectionName = 'tournaments'
-export const betsCollectionName = 'bets'
 export const notificationsCollectionName = 'notifications'
 
 export async function getResults() {
@@ -40,21 +39,6 @@ export async function deleteTournament(id) {
   await setDoc(doc(db, 'tournaments', id), { deleted: true }, { merge: true })
 }
 
-export async function getBets() {
-  const snapshot = await getDocs(betsCollection)
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-}
-
-export async function addBet(bet) {
-  const id = Date.now().toString()
-  await setDoc(doc(db, 'bets', id), bet)
-  return id
-}
-
-export async function updateBet(id, updates) {
-  await setDoc(doc(db, 'bets', id), updates, { merge: true })
-}
-
 export async function getNotifications() {
   const q = query(notificationsCollection, orderBy('createdAt', 'desc'))
   const snapshot = await getDocs(q)
@@ -85,9 +69,3 @@ export function subscribeToTournaments(callback) {
   })
 }
 
-export function subscribeToBets(callback) {
-  return onSnapshot(betsCollection, (snapshot) => {
-    const bets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-    callback(bets)
-  })
-}

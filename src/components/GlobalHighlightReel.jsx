@@ -86,7 +86,7 @@ export default function GlobalHighlightReel() {
   return (
     <div className="card glass animate-fade-in-up stagger-item" style={{ marginBottom: '20px', padding: '24px' }}>
       <h3 className="card-title" style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <span>🎬</span> Community Highlights
+        <span>🎬</span> High Finish Videos
       </h3>
 
       <div style={{ display: 'flex', overflowX: 'auto', gap: '16px', paddingBottom: '8px', scrollbarWidth: 'none', msOverflowStyle: 'none' }} className="no-scrollbar">

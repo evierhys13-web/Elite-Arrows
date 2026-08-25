@@ -123,14 +123,6 @@ export function AuthProvider({ children }) {
       return [];
     }
   });
-  const [bets, setBets] = useState(() => {
-    try {
-      const saved = localStorage.getItem("eliteArrowsBets");
-      return saved && saved !== "undefined" ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
   const [supportRequests, setSupportRequests] = useState([]);
   const [seasons, setSeasons] = useState(() => {
     try {
@@ -795,7 +787,7 @@ export function AuthProvider({ children }) {
       ? query(
           collection(db, "fixtures"),
           orderBy("createdAt", "desc"),
-          limit(100),
+          limit(200),
         )
       : query(
           collection(db, "fixtures"),
@@ -803,10 +795,18 @@ export function AuthProvider({ children }) {
           limit(50),
         );
 
-    const fixturesQuery2 = !user?.isAdmin
-      ? query(
+    const fixturesQuery2 = query(
           collection(db, "fixtures"),
           where("player2Id", "==", user.id),
+          limit(50),
+        );
+
+    // If admin, we also want to explicitly query for their own fixtures
+    // in case they are older than the last 200 globally.
+    const fixturesQuery3 = user?.isAdmin
+      ? query(
+          collection(db, "fixtures"),
+          where("player1Id", "==", user.id),
           limit(50),
         )
       : null;
@@ -835,9 +835,7 @@ export function AuthProvider({ children }) {
       }
     );
 
-    let unsubscribeFixtures2 = null;
-    if (fixturesQuery2) {
-      unsubscribeFixtures2 = onSnapshot(fixturesQuery2, (snapshot) => {
+    let unsubscribeFixtures2 = onSnapshot(fixturesQuery2, (snapshot) => {
         const data = snapshot.docs
           .map((doc) => ({ id: doc.id, ...doc.data() }))
           .filter((item) => !item._deleted);
@@ -854,6 +852,27 @@ export function AuthProvider({ children }) {
         });
       }, (error) => {
         console.error("Fixtures2 listener error:", error);
+      });
+
+    let unsubscribeFixtures3 = null;
+    if (fixturesQuery3) {
+      unsubscribeFixtures3 = onSnapshot(fixturesQuery3, (snapshot) => {
+        const data = snapshot.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() }))
+          .filter((item) => !item._deleted);
+
+        setFixtures((prev) => {
+          const existing = Array.isArray(prev) ? prev : [];
+          const merged = [...existing];
+          data.forEach((item) => {
+            const idx = merged.findIndex((f) => f.id === item.id);
+            if (idx !== -1) merged[idx] = item;
+            else merged.push(item);
+          });
+          return merged;
+        });
+      }, (error) => {
+        console.error("Fixtures3 listener error:", error);
       });
     }
 
@@ -883,24 +902,6 @@ export function AuthProvider({ children }) {
       },
       (error) => {
         console.error("Seasons listener error:", error);
-      }
-    );
-
-    const unsubscribeBets = onSnapshot(
-      query(collection(db, "bets"), where("userId", "==", user.id)),
-      (snapshot) => {
-        const betsData = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setBets(betsData);
-        try {
-          localStorage.setItem("eliteArrowsBets", JSON.stringify(betsData));
-        } catch (e) {}
-        announceAfterHydration("bets");
-      },
-      (error) => {
-        console.error("Bets listener error:", error);
       }
     );
 
@@ -975,8 +976,8 @@ export function AuthProvider({ children }) {
       if (unsubscribeUserResults2) unsubscribeUserResults2();
       unsubscribeFixtures();
       if (unsubscribeFixtures2) unsubscribeFixtures2();
+      if (unsubscribeFixtures3) unsubscribeFixtures3();
       unsubscribeSeasons();
-      unsubscribeBets();
       unsubscribeNotifications();
     };
   }, [user?.id, triggerDataRefresh, publishResults, showLocalNotification, updateBadgeCount, showToast]);
@@ -1204,7 +1205,6 @@ export function AuthProvider({ children }) {
               showOnlineStatus: true,
               doNotDisturb: false,
               dndEndTime: null,
-              eliteTokens: 0,
               lastSeen: new Date().toISOString(),
               createdAt: new Date().toISOString(),
             };
@@ -1262,7 +1262,6 @@ export function AuthProvider({ children }) {
         showOnlineStatus: true,
         doNotDisturb: false,
         dndEndTime: null,
-        eliteTokens: isAdmin ? 500 : 0,
         lastSeen: new Date().toISOString(),
         createdAt: new Date().toISOString(),
       };
@@ -1422,7 +1421,6 @@ export function AuthProvider({ children }) {
       showOnlineStatus: true,
       doNotDisturb: false,
       dndEndTime: null,
-      eliteTokens: userData.eliteTokens || 0,
       lastSeen: new Date().toISOString(),
       createdAt: new Date().toISOString(),
     };
@@ -2408,20 +2406,6 @@ export function AuthProvider({ children }) {
     setNews(updated);
   }, []);
 
-  const addTokens = useCallback(async (amount) => {
-    if (!user) return;
-    const newTokens = (user.eliteTokens || 0) + amount;
-    await updateUser({ eliteTokens: newTokens }, false);
-  }, [user, updateUser]);
-
-  const useTokens = useCallback(async (amount) => {
-    if (!user) return false;
-    if ((user.eliteTokens || 0) < amount) return false;
-    const newTokens = (user.eliteTokens || 0) - amount;
-    await updateUser({ eliteTokens: newTokens });
-    return true;
-  }, [user, updateUser]);
-
   const updateAdminData = useCallback(async (newData) => {
     try {
       await setDoc(doc(db, "adminData", "main"), newData, { merge: true });
@@ -2607,7 +2591,6 @@ export function AuthProvider({ children }) {
     getFixtures,
     updateFixtures,
     getCups,
-    bets,
     getSupportRequests,
     advanceCupBracket,
     getSeasons,
@@ -2618,8 +2601,6 @@ export function AuthProvider({ children }) {
     postNews,
     deleteNews,
     togglePinNews,
-    addTokens,
-    useTokens,
     updateAdminData,
     addToMoneyHistory,
     isAuthenticated: !!user,
@@ -2676,7 +2657,6 @@ export function AuthProvider({ children }) {
     getFixtures,
     updateFixtures,
     getCups,
-    bets,
     getSupportRequests,
     advanceCupBracket,
     getSeasons,
@@ -2687,8 +2667,6 @@ export function AuthProvider({ children }) {
     postNews,
     deleteNews,
     togglePinNews,
-    addTokens,
-    useTokens,
     updateAdminData,
     addToMoneyHistory
   ]);

@@ -3,13 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContextInternal'
 import { useToast } from '../context/ToastContext'
 import Breadcrumbs from '../components/Breadcrumbs'
-import { PRACTICE_MODES, savePracticeSession, calculatePracticeTokens } from '../utils/practiceService'
+import { PRACTICE_MODES, savePracticeSession } from '../utils/practiceService'
 import { Capacitor } from '@capacitor/core'
 
 export default function PracticeGame() {
   const { modeId } = useParams()
   const navigate = useNavigate()
-  const { user, addTokens } = useAuth()
+  const { user } = useAuth()
   const { showToast } = useToast()
 
   const isAndroid = Capacitor.getPlatform() === 'android'

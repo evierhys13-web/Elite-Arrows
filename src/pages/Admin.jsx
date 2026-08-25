@@ -20,7 +20,6 @@ export default function Admin() {
     getFixtures,
     getCups,
     advanceCupBracket,
-    bets,
     getSeasons,
     adminData,
     updateAdminData,
@@ -63,7 +62,6 @@ export default function Admin() {
     p1_doubles: '', p2_doubles: '',
     p1_avg: '', p2_avg: ''
   })
-  const [tokenForm, setTokenForm] = useState({ player: '', amount: 0, action: 'add' })
   const [seasonForm, setSeasonForm] = useState({ name: '', startDate: new Date().toISOString().split('T')[0], endDate: '' })
   const [grantSubForm, setGrantSubForm] = useState({ player: '', tier: 'elite', season: '' })
   const [superRankForm, setSuperRankForm] = useState({ player: '', rank: '' })
@@ -192,8 +190,6 @@ export default function Admin() {
     }
     return list.sort((a, b) => new Date(b.date || b.submittedAt) - new Date(a.date || a.submittedAt))
   }, [allResults, resultFilter, resultSearch, resultTypeFilter])
-
-  const betsList = useMemo(() => bets || [], [bets])
 
   const stats = useMemo(() => {
     const lastWeek = new Date(); lastWeek.setDate(lastWeek.getDate() - 7)
@@ -962,56 +958,6 @@ export default function Admin() {
     } catch (e) { showToast(e.message, 'error') }
   }
 
-  const [betResults, setBetResults] = useState(null)
-
-  const handleCheckBetWinners = async () => {
-    if (isApproving) return
-    setIsApproving(true)
-    try {
-      const allResults = getResults().filter(r => String(r.status).toLowerCase() === 'approved')
-      const batch = writeBatch(db)
-      const resolved = []
-      for (const bet of betsList) {
-        if (bet.won !== null) continue
-        const game = allResults.find(r =>
-          (bet.fixtureId && String(r.fixtureId) === String(bet.fixtureId)) ||
-          (bet.cupId && bet.matchId && String(r.cupId) === String(bet.cupId) && String(r.matchId) === String(bet.matchId)) ||
-          (String(r.id) === String(bet.gameId))
-        )
-        if (!game) continue
-        const score1 = Number(game.score1); const score2 = Number(game.score2)
-        const actualWinnerId = score1 > score2 ? game.player1Id : game.player2Id
-        const predictedScore1 = Number(bet.predictedScore1); const predictedScore2 = Number(bet.predictedScore2)
-        const isExactScore = (String(game.player1Id) === String(bet.fixturePlayer1Id))
-          ? (score1 === predictedScore1 && score2 === predictedScore2)
-          : (score2 === predictedScore1 && score1 === predictedScore2)
-        const won = String(actualWinnerId) === String(bet.predictedWinnerId) && isExactScore
-        batch.update(doc(db, 'bets', bet.id), { won })
-        resolved.push({ username: bet.username, match: `${bet.player1Name} vs ${bet.player2Name}`, prediction: `${bet.predictedWinner} (${bet.predictedScore1}-${bet.predictedScore2})`, actual: `${game.player1Name || 'P1'} ${score1} - ${score2} ${game.player2Name || 'P2'}`, won, amount: bet.amount || 0 })
-        if (won) {
-          const userDoc = doc(db, 'users', bet.userId)
-          const userData = allPlayers.find(u => u.id === bet.userId)
-          if (!(userData?.promotionDraw || []).includes(true)) { batch.update(userDoc, { promotionDraw: true }) }
-        }
-      }
-      await batch.commit()
-      await logAudit('CHECK_BETS', `Processed ${betsList.length} bets, found ${resolved.filter(r => r.won).length} new winners`)
-      if (resolved.length > 0) setBetResults(resolved)
-      else showToast('No pending bets found with matching approved results.', 'info')
-    } catch (e) { showToast(e.message, 'error') }
-    setIsApproving(false)
-  }
-
-  const handleManualDrawEntry = async (targetId) => {
-    try {
-      const target = allPlayers.find(u => u.id === targetId)
-      await setDoc(doc(db, 'users', targetId), { promotionDraw: true }, { merge: true })
-      await logAudit('MANUAL_DRAW_ENTRY', `Manually added ${target?.username} to promotion draw`)
-      triggerDataRefresh('users')
-      showToast(`${target?.username} added to draw!`, 'success')
-    } catch (e) { showToast(e.message, 'error') }
-  }
-
   const handleBulkSyncAnalytics = async () => {
     const approvedMatches = allResults.filter(r => String(r.status).toLowerCase() === 'approved');
     const users = getAllUsers();
@@ -1188,8 +1134,6 @@ export default function Admin() {
     { id: 'surveys', label: 'Surveys' },
     { id: 'trophies', label: 'Trophies' },
     { id: 'halloffame', label: 'Hall of Fame' },
-    { id: 'bets', label: 'Bets' },
-    { id: 'tokens', label: 'Tokens' },
     { id: 'practice', label: 'Practice Hub' },
     { id: 'audit', label: 'Audit Logs' },
     { id: 'maintenance', label: 'System' }
@@ -2040,37 +1984,6 @@ export default function Admin() {
                   </div>
                 )
               })}
-            </div>
-          </div>
-        )}
-
-        {/* TAB: BETS */}
-        {activeTab === 'bets' && (
-          <div className="card glass">
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}><h3>Bets</h3><button className="btn btn-primary" onClick={handleCheckBetWinners}>Check Winners</button></div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {betsList.map(bet => (
-                <div key={bet.id} className="glass" style={{ padding: '16px', borderRadius: '12px' }}>
-                  <div style={{ fontWeight: 700 }}>{bet.username}</div>
-                  <div>{bet.player1Name} vs {bet.player2Name}</div>
-                  <div style={{ color: 'var(--accent-cyan)' }}>{bet.predictedWinner} ({bet.predictedScore1}-{bet.predictedScore2})</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* TAB: TOKENS */}
-        {activeTab === 'tokens' && (
-          <div className="card glass">
-            <h3>Elite Tokens</h3>
-            <div style={{ marginTop: '20px' }}>
-               <UserSearchSelect users={allPlayers} selectedId={tokenForm.player} onSelect={id => setTokenForm({...tokenForm, player: id})} label="Recipient" onQueryChange={searchUsers} />
-               <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
-                  <input type="number" className="glass" placeholder="Amount" onChange={e => setTokenForm({...tokenForm, amount: parseInt(e.target.value) || 0})} />
-                  <select className="glass" value={tokenForm.action} onChange={e => setTokenForm({...tokenForm, action: e.target.value})}><option value="add">Add</option><option value="remove">Remove</option></select>
-               </div>
-               <button className="btn btn-primary btn-block" style={{ marginTop: '15px' }} onClick={async () => { const target = allPlayers.find(u => u.id === tokenForm.player); const current = target?.eliteTokens || 0; const next = tokenForm.action === 'add' ? current + tokenForm.amount : Math.max(0, current - tokenForm.amount); await setDoc(doc(db, 'users', tokenForm.player), { eliteTokens: next }, { merge: true }); triggerDataRefresh('users'); showToast('Tokens updated', 'success') }}>Update</button>
             </div>
           </div>
         )}

@@ -86,7 +86,7 @@ export default function HighlightReel({ userId, isAdmin = false }) {
     return (
       <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)', border: '2px dashed var(--border)', borderRadius: '20px' }}>
         <div style={{ fontSize: '3rem', marginBottom: '20px' }}>🎬</div>
-        <p>No highlights yet. Upload your best moments from the "Submit Result" page!</p>
+        <p>No high finish videos yet. Submit your best finishes from the "Submit Result" page!</p>
       </div>
     )
   }

@@ -170,7 +170,7 @@ export default function NotificationBell() {
         case 'fixture_countered':
         case 'fixture_cancelled':
         case 'fixture_activity':
-          url = notification.data?.fixtureKind === 'cup' ? '/cup-fixtures' : '/fixtures'
+          url = notification.data?.fixtureKind === 'cup' ? '/cup-fixtures' : '/match-log'
           break
         case 'friend_request':
         case 'friend_accepted':

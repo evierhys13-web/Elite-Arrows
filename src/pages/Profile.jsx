@@ -328,7 +328,7 @@ export default function Profile() {
           📊 Stats & Bio
         </button>
         <button className={`division-tab ${activeTab === 'reel' ? 'active' : ''}`} onClick={() => setActiveTab('reel')}>
-          🎬 Highlight Reel
+          🎬 High Finish Videos
         </button>
       </div>
 

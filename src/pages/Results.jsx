@@ -25,6 +25,7 @@ export default function Results() {
     }))
   }
   const [typeFilter, setTypeFilter] = useState('all')
+  const [divisionFilter, setDivisionFilter] = useState('all')
 
   useEffect(() => {
     const loadInitial = async () => {
@@ -39,11 +40,13 @@ export default function Results() {
   const isSubscribed = user?.isSubscribed === true || isAdmin
 
   const filteredResults = allResults.filter(r => {
-    if (typeFilter === 'all') return true
-    if (typeFilter === 'league') return r.gameType === 'League'
-    if (typeFilter === 'super') return r.gameType === 'Champions League' || r.gameType === 'Super League'
-    if (typeFilter === 'cup') return r.gameType === 'Cup' || !!r.cupId
-    if (typeFilter === 'open') return String(r.gameType).toLowerCase().includes('open league')
+    if (typeFilter !== 'all') {
+      if (typeFilter === 'league' && r.gameType !== 'League') return false
+      if (typeFilter === 'super' && r.gameType !== 'Champions League' && r.gameType !== 'Super League') return false
+      if (typeFilter === 'cup' && r.gameType !== 'Cup' && !r.cupId) return false
+      if (typeFilter === 'open' && !String(r.gameType).toLowerCase().includes('open league')) return false
+    }
+    if (divisionFilter !== 'all' && r.division !== divisionFilter) return false
     return true
   })
 
@@ -250,7 +253,7 @@ export default function Results() {
           <p style={{ color: 'var(--text-muted)' }}>Official scores and player statistics</p>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', overflowX: 'auto', paddingBottom: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', overflowX: 'auto', paddingBottom: '8px' }}>
           {[
             { id: 'all', label: 'All' },
             { id: 'league', label: 'Standard' },
@@ -262,6 +265,25 @@ export default function Results() {
               key={f.id}
               className={`btn btn-sm ${typeFilter === f.id ? 'btn-primary' : 'btn-secondary glass'}`}
               onClick={() => setTypeFilter(f.id)}
+              style={{ borderRadius: '20px', padding: '8px 16px', whiteSpace: 'nowrap' }}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', overflowX: 'auto', paddingBottom: '8px' }}>
+          {[
+            { id: 'all', label: 'All Divisions' },
+            { id: 'Elite', label: 'Elite' },
+            { id: 'Emerald', label: 'Emerald' },
+            { id: 'Diamond', label: 'Diamond' },
+            { id: 'Platinum', label: 'Platinum' }
+          ].map(f => (
+            <button
+              key={f.id}
+              className={`btn btn-sm ${divisionFilter === f.id ? 'btn-primary' : 'btn-secondary glass'}`}
+              onClick={() => setDivisionFilter(f.id)}
               style={{ borderRadius: '20px', padding: '8px 16px', whiteSpace: 'nowrap' }}
             >
               {f.label}

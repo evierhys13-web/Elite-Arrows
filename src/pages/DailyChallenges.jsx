@@ -264,6 +264,38 @@ export default function DailyChallenges() {
         </div>
       )}
 
+      {currentChallenge && submissions.length > 0 && (
+        <div style={{ marginTop: '30px' }}>
+          <div className="card glass">
+            <h3 className="card-title" style={{ marginBottom: '16px' }}>
+              Players Who Completed This Challenge ({submissions.filter(s => s.status === 'approved').length})
+            </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
+              {submissions.filter(s => s.status === 'approved').map(s => (
+                <div key={s.id} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '12px',
+                  background: 'rgba(16, 185, 129, 0.1)',
+                  border: '1px solid rgba(16, 185, 129, 0.2)',
+                  borderRadius: '10px'
+                }}>
+                  <div style={{ fontSize: '1.2rem' }}>✅</div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{s.username}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(s.submittedAt).toLocaleDateString()}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {submissions.filter(s => s.status === 'approved').length === 0 && (
+              <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>No completions yet. Be the first!</p>
+            )}
+          </div>
+        </div>
+      )}
+
       {isAdmin && submissions.length > 0 && (
         <div style={{ marginTop: '40px' }}>
           <h2 className="card-title">Submissions for Today</h2>
