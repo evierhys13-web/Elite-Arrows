@@ -171,11 +171,13 @@ export default function Statistics() {
       if (!divisionData[div]) {
         divisionData[div] = { name: div, playerCount: 0, total180s: 0, matchesPlayed: 0, avgAvg: 0, avgPlayerCount: 0, topCheckout: 0 }
       }
-      divisionData[div].playerCount++
       const ps = playerStatsMap[String(u.id)]
-      if (ps && ps.played > 0 && ps.average > 0) {
-        divisionData[div].avgAvg += ps.average
-        divisionData[div].avgPlayerCount++
+      if (ps && ps.played > 0) {
+        divisionData[div].playerCount++
+        if (ps.average > 0) {
+          divisionData[div].avgAvg += ps.average
+          divisionData[div].avgPlayerCount++
+        }
       }
     })
     approvedResults.forEach(r => {
@@ -464,7 +466,7 @@ function PlayerView({ user, personalStats, allTime, onBack }) {
 }
 
 function DivisionOverview({ leagueStats, filteredDiv180s, selectedDivFilter, setSelectedDivFilter, approvedResults, allUsers, navigate }) {
-  const totalPlayers = allUsers.length
+  const totalPlayers = useMemo(() => Object.values(playerStatsMap).filter(p => p.played > 0).length, [playerStatsMap])
   const totalMatches = approvedResults.length
   const total180s = approvedResults.reduce((acc, r) => acc + Number(r.player1Stats?.['180s'] || 0) + Number(r.player2Stats?.['180s'] || 0), 0)
   const seasonHighCO = Math.max(...approvedResults.map(r => Math.max(Number(r.player1Stats?.highestCheckout || 0), Number(r.player2Stats?.highestCheckout || 0))), 0)
