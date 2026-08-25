@@ -35,7 +35,7 @@ const CHANGELOG = [
     version: '2.2.1',
     date: 'May 2026',
     changes: [
-      { type: 'feature', title: 'Season 2 Ready', description: 'Complete support for Season 2 fixtures, standings, and advance registrations.' },
+      { type: 'feature', title: 'Season 4 Ready', description: 'Complete support for Season 4 fixtures, standings, and advance registrations.' },
       { type: 'feature', title: 'Champions League Beta', description: 'The Elite Champions League is now open for all members to view and track.' },
       { type: 'improvement', title: 'Simplified Cups', description: 'One-click result submission for cup fixtures without scheduling friction.' },
       { type: 'improvement', title: 'Data Integrity', description: 'Improved division tracking and mandatory result proofing.' }

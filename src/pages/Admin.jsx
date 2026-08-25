@@ -325,7 +325,7 @@ export default function Admin() {
       if (!res.season || ['2026', 'legacy', ''].includes(String(res.season).toLowerCase())) {
         const matchTime = new Date(res.date || res.submittedAt || Date.now()).getTime();
         const s2Start = new Date('2026-08-01T00:00:00').getTime();
-        updates.season = matchTime >= s2Start ? 'Season 2' : 'Season 1';
+        updates.season = matchTime >= s2Start ? 'Season 4' : 'Season 1';
       }
 
       if (!res.division || res.division === 'Unassigned') {
@@ -398,7 +398,7 @@ export default function Admin() {
           if (!res.season) {
             const matchTime = new Date(res.date || res.submittedAt || Date.now()).getTime();
             const s2Start = new Date('2026-08-01T00:00:00').getTime();
-            updates.season = matchTime >= s2Start ? 'Season 2' : 'Season 1';
+            updates.season = matchTime >= s2Start ? 'Season 4' : 'Season 1';
           }
           const targetId = res.firestoreId || String(id)
           batch.update(doc(db, 'results', targetId), updates)
@@ -525,7 +525,7 @@ export default function Admin() {
       const matchTime = new Date().getTime()
       const s2Start = new Date('2026-08-01T00:00:00').getTime()
       if (isSuper && (!f.season || f.season === 'Season 1' || f.season === '2026')) {
-        if (matchTime >= s2Start) targetSeason = 'Season 2'
+        if (matchTime >= s2Start) targetSeason = 'Season 4'
       }
 
       const newMatch = {
@@ -998,21 +998,21 @@ export default function Admin() {
     const target = approvedMatches.filter(r => {
       const d = new Date(r.date || r.submittedAt || 0).getTime(); const cutoff = new Date('2026-08-01T00:00:00').getTime()
       const isLeague = ['league', 'super league'].includes(String(r.gameType).toLowerCase())
-      return d >= cutoff && isLeague && String(r.season || '') !== 'Season 2'
+      return d >= cutoff && isLeague && String(r.season || '') !== 'Season 4'
     })
     if (target.length === 0) return showToast('No results to update', 'info')
-    if (!window.confirm(`Update ${target.length} results to Season 2?`)) return
+    if (!window.confirm(`Update ${target.length} results to Season 4?`)) return
     setIsApproving(true)
     try {
       let count = 0; let batch = writeBatch(db); let ops = 0
       for (const r of target) {
-        const targetId = r.firestoreId || String(r.id); batch.update(doc(db, 'results', targetId), { season: 'Season 2' }); count++; ops++;
+        const targetId = r.firestoreId || String(r.id); batch.update(doc(db, 'results', targetId), { season: 'Season 4' }); count++; ops++;
         if (ops >= 450) { await batch.commit(); batch = writeBatch(db); ops = 0; }
       }
       if (ops > 0) await batch.commit()
-      await logAudit('FIX_SEASONS', `Updated ${count} results to Season 2`)
-      const updatedResults = allResults.map(r => { const match = target.find(t => (t.firestoreId || String(t.id)) === (r.firestoreId || String(r.id))); return match ? { ...r, season: 'Season 2' } : r })
-      updateResults(updatedResults); triggerDataRefresh('all'); showToast(`Updated ${count} results to Season 2`, 'success')
+      await logAudit('FIX_SEASONS', `Updated ${count} results to Season 4`)
+      const updatedResults = allResults.map(r => { const match = target.find(t => (t.firestoreId || String(t.id)) === (r.firestoreId || String(r.id))); return match ? { ...r, season: 'Season 4' } : r })
+      updateResults(updatedResults); triggerDataRefresh('all'); showToast(`Updated ${count} results to Season 4`, 'success')
     } catch (e) { showToast('Failed: ' + e.message, 'error') }
     setIsApproving(false)
   }
@@ -1069,7 +1069,7 @@ export default function Admin() {
   };
 
   const handleResetSuperLeagueTable = async () => {
-    const currentSeason = adminData?.currentSeason || 'Season 2'
+    const currentSeason = adminData?.currentSeason || 'Season 4'
     if (!window.confirm(`Reset Champions League standings?`)) return
     setIsApproving(true);
     try {

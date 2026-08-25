@@ -73,20 +73,20 @@ export default function SeasonManagement() {
     }
   }
 
-  const archiveSeason2Special = async () => {
-    const s2 = seasons.find(s => s.name === 'Season 2')
-    if (!s2) return showToast('Season 2 record not found', 'error')
+  const archiveSeason4Special = async () => {
+    const s4 = seasons.find(s => s.name === 'Season 4')
+    if (!s4) return showToast('Season 4 record not found', 'error')
 
     setIsProcessing(true)
     try {
-      await setDoc(doc(db, 'seasons', s2.id), { ...s2, isArchived: true, status: 'archived', endedAt: new Date().toISOString() }, { merge: true })
-      if (currentSeason === 'Season 2') {
+      await setDoc(doc(db, 'seasons', s4.id), { ...s4, isArchived: true, status: 'archived', endedAt: new Date().toISOString() }, { merge: true })
+      if (currentSeason === 'Season 4') {
         await updateAdminData({ currentSeason: 'Off-Season' })
       }
-      showToast('Season 2 has been archived!', 'success')
+      showToast('Season 4 has been archived!', 'success')
       triggerDataRefresh('seasons')
     } catch (e) {
-      showToast('Error archiving Season 2', 'error')
+      showToast('Error archiving Season 4', 'error')
     } finally {
       setIsProcessing(false)
     }
@@ -499,9 +499,9 @@ export default function SeasonManagement() {
             </button>
           </div>
 
-          {seasons.find(s => s.name === 'Season 2' && !s.isArchived) && (
-            <button className="btn btn-danger btn-sm btn-block" onClick={archiveSeason2Special} disabled={isProcessing} style={{ marginTop: '8px' }}>
-              Archive Season 2 Now
+          {seasons.find(s => s.name === 'Season 4' && !s.isArchived) && (
+            <button className="btn btn-danger btn-sm btn-block" onClick={archiveSeason4Special} disabled={isProcessing} style={{ marginTop: '8px' }}>
+              Archive Season 4 Now
             </button>
           )}
         </div>
@@ -537,7 +537,7 @@ export default function SeasonManagement() {
               type="text"
               value={newSeasonName}
               onChange={(e) => setNewSeasonName(e.target.value)}
-              placeholder="e.g. Season 2, Winter 2025..."
+              placeholder="e.g. Season 4, Autumn 2026..."
               className="glass"
             />
           </div>

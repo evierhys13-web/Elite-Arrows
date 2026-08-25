@@ -19,7 +19,7 @@ export default function SuperLeague() {
   const [loadingData, setLoadingData] = useState(false)
   const [editingManual, setEditingManual] = useState(null)
   const [manualForm, setManualForm] = useState({ played: 0, wins: 0, draws: 0, losses: 0, points: 0, legsWon: 0, legsLost: 0 })
-  const selectedSeason = adminData?.championsLeagueSeason || adminData?.currentSeason || 'Season 2'
+  const selectedSeason = adminData?.championsLeagueSeason || adminData?.currentSeason || 'Season 4'
   const isAdmin = user?.isAdmin === true
   const currentDiv = SUPER_LEAGUE_DIVISIONS.find(d => d.id === activeTab)
 

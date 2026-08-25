@@ -148,7 +148,7 @@ export function AuthProvider({ children }) {
           isMaintenanceMode: parsed.isMaintenanceMode || false,
           maintenanceMessage: parsed.maintenanceMessage || "",
           registrationsEnabled: parsed.registrationsEnabled !== undefined ? parsed.registrationsEnabled : true,
-          currentSeason: parsed.currentSeason || "Season 1",
+          currentSeason: parsed.currentSeason || "Season 4",
         };
       }
     } catch (e) {}
@@ -160,7 +160,7 @@ export function AuthProvider({ children }) {
       isMaintenanceMode: false,
       maintenanceMessage: "",
       registrationsEnabled: true,
-      currentSeason: "Season 1",
+      currentSeason: "Season 4",
     };
   });
   const [notificationPermission, setNotificationPermission] =
@@ -1032,54 +1032,53 @@ export function AuthProvider({ children }) {
       const now = new Date();
       const nowTime = now.getTime();
 
-      // Hardcoded Season 2 Auto-Launch Trigger
+      // Hardcoded Season 4 Auto-Launch Trigger
       const s1End = new Date("2026-08-01T00:00:00").getTime();
       if (nowTime >= s1End && adminData.currentSeason === "Season 1") {
-        console.log("Season 1 finished. Triggering Season 2 launch...");
+        console.log("Season 1 finished. Triggering Season 4 launch...");
 
-        // Find if Season 2 doc exists, otherwise create basic shell
-        const s2Doc = seasons.find((s) => s.name === "Season 2");
-        const s2Id = s2Doc?.id || "season2_legacy";
+        // Find if Season 4 doc exists, otherwise create basic shell
+        const s4Doc = seasons.find((s) => s.name === "Season 4");
+        const s4Id = s4Doc?.id || "season4_auto";
 
         try {
           // 1. Set Active Season globally
-          await updateAdminData({ currentSeason: "Season 2" });
+          await updateAdminData({ currentSeason: "Season 4" });
 
           // 2. Mark as launched in seasons collection
-          if (s2Doc) {
-            await updateDoc(doc(db, "seasons", s2Id), {
+          if (s4Doc) {
+            await updateDoc(doc(db, "seasons", s4Id), {
               isLaunched: true,
               status: "active",
               startDate: new Date("2026-08-01T00:00:00").toISOString(),
-              endDate: new Date("2026-07-01T00:00:00").toISOString(),
+              endDate: new Date("2026-09-01T00:00:00").toISOString(),
             });
           } else {
-            await setDoc(doc(db, "seasons", s2Id), {
-              id: s2Id,
-              name: "Season 2",
+            await setDoc(doc(db, "seasons", s4Id), {
+              id: s4Id,
+              name: "Season 4",
               isLaunched: true,
               status: "active",
               startDate: new Date("2026-08-01T00:00:00").toISOString(),
-              endDate: new Date("2026-07-01T00:00:00").toISOString(),
+              endDate: new Date("2026-09-01T00:00:00").toISOString(),
               createdAt: new Date().toISOString(),
             });
           }
 
-          // 3. Process all users: Reset stats and Sync Season 2 subs
+          // 3. Process all users: Reset stats and Sync Season 4 subs
           const batch = writeBatch(db);
-          const stagedDivisions = s2Doc?.stagedDivisions || {};
+          const stagedDivisions = s4Doc?.stagedDivisions || {};
           const hasStagedData = Object.keys(stagedDivisions).length > 0;
 
           allUsers.forEach((u) => {
             const updates = {};
-            const isSubscribedForS2 = (u.subscribedSeasons || []).includes(
-              "Season 2",
+            const isSubscribedForS4 = (u.subscribedSeasons || []).includes(
+              "Season 4",
             );
-            if (u.isSubscribed !== isSubscribedForS2)
-              updates.isSubscribed = isSubscribedForS2;
+            if (u.isSubscribed !== isSubscribedForS4)
+              updates.isSubscribed = isSubscribedForS4;
 
             // Apply staged divisions - ONLY if we actually have some staged data
-            // This prevents accidental wipes if the auto-launch triggers unexpectedly
             if (hasStagedData) {
               const nextDiv = stagedDivisions[u.id] || "Unassigned";
               if (u.division !== nextDiv) updates.division = nextDiv;
@@ -1093,10 +1092,10 @@ export function AuthProvider({ children }) {
             }
           });
           await batch.commit();
-          console.log("Season 2 auto-transition complete.");
+          console.log("Season 4 auto-transition complete.");
           return;
         } catch (e) {
-          console.error("Season 2 auto-launch failed:", e);
+          console.error("Season 4 auto-launch failed:", e);
         }
       }
 

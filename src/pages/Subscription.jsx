@@ -79,9 +79,9 @@ export default function Subscription() {
 
   useEffect(() => {
     if (availableSeasons.length > 0 && !targetSeason) {
-      // Prioritize Season 2 as default if it exists in available list
-      const season2 = availableSeasons.find(s => s.name === 'Season 2');
-      setTargetSeason(season2 ? season2.name : availableSeasons[0].name);
+      // Prioritize Season 4 as default if it exists in available list
+      const season4 = availableSeasons.find(s => s.name === 'Season 4');
+      setTargetSeason(season4 ? season4.name : availableSeasons[0].name);
     }
   }, [availableSeasons, targetSeason]);
 
