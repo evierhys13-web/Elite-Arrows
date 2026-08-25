@@ -13,7 +13,7 @@ buildscript {
 ext {
     kotlin_version = '2.2.10'
     compileSdkVersion = 36
-    targetSdkVersion = 35
+    targetSdkVersion = 36
     minSdkVersion = 24
     androidxAppCompatVersion = '1.7.1'
     androidxCoreVersion = '1.15.0'
