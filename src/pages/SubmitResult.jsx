@@ -5,6 +5,7 @@ import { db, doc, setDoc, storage, ref, uploadString, uploadBytes, uploadBytesRe
 import { useToast } from '../context/ToastContext'
 import { logResultSubmitted } from '../utils/analytics'
 import UserSearchSelect from '../components/UserSearchSelect'
+import Confetti from '../components/Confetti'
 
 const INITIAL_RESULT_FORM = {
   gameType: 'Friendly',
@@ -47,6 +48,7 @@ export default function SubmitResult() {
   const uploadInputRef = useRef(null)
   const [formData, setFormData] = useState(INITIAL_RESULT_FORM)
   const [submitted, setSubmitted] = useState(false)
+  const [triggerConfetti, setTriggerConfetti] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [error, setError] = useState('')
@@ -772,6 +774,10 @@ export default function SubmitResult() {
 
       logResultSubmitted(formData.gameType, user.division)
       setSubmitted(true)
+
+      const isHighScore = parseInt(formData.your180s) > 0 || parseInt(formData.yourHighestCheckout) >= 100
+      if (isHighScore) setTriggerConfetti(true)
+
       setError('')
       resetFormAfterSuccessfulSubmit(fixtureToUpdate?.id)
       showToast?.('Result submitted!', 'success')
@@ -814,6 +820,7 @@ export default function SubmitResult() {
   if (submitted) {
     return (
       <div className="page" style={{ maxWidth: '600px', margin: '100px auto', textAlign: 'center' }}>
+        <Confetti trigger={triggerConfetti} />
         <div className="card glass animate-bounce-in" style={{ padding: '40px' }}>
           <div style={{ fontSize: '4rem', marginBottom: '20px' }}>✅</div>
           <h2 className="text-gradient" style={{ fontSize: '2rem', marginBottom: '16px' }}>Result Submitted!</h2>

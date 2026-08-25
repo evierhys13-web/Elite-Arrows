@@ -303,6 +303,17 @@ export default function Table() {
     setRefreshKey((prev) => prev + 1);
   };
 
+  const handleNavigate = (e, path) => {
+    if (!document.startViewTransition) {
+      navigate(path);
+      return;
+    }
+    e.preventDefault();
+    document.startViewTransition(() => {
+      navigate(path);
+    });
+  };
+
   return (
     <div
       className="page animate-fade-in"
@@ -550,7 +561,18 @@ export default function Table() {
                   const isPrizeWinner = index < 2 && activeDivision !== "Overall";
                   const isMe = player.id === user?.id;
 
-                  return (
+                  const handleNavigate = (e, path) => {
+    if (!document.startViewTransition) {
+      navigate(path);
+      return;
+    }
+    e.preventDefault();
+    document.startViewTransition(() => {
+      navigate(path);
+    });
+  };
+
+  return (
                     <tr
                       key={player.id}
                       style={{
@@ -581,6 +603,7 @@ export default function Table() {
                       >
                         <Link
                           to={`/profile/${player.id}`}
+                          onClick={(e) => handleNavigate(e, `/profile/${player.id}`)}
                           style={{
                             textDecoration: "none",
                             display: "flex",
@@ -588,6 +611,7 @@ export default function Table() {
                           }}
                         >
                           <span
+                            className="vt-player-name"
                             style={{
                               fontWeight: isMe ? "800" : "600",
                               color: isMe ? "white" : "rgba(255,255,255,0.9)",

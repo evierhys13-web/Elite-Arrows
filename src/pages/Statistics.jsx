@@ -9,6 +9,7 @@ import {
 } from 'recharts'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
 import Breadcrumbs from '../components/Breadcrumbs'
+import CountUp from '../components/CountUp'
 
 const DIVISION_COLORS = {
   'Elite': '#fbbf24',
@@ -339,36 +340,52 @@ function PlayerView({ user, personalStats, allTime, onBack }) {
       </div>
 
       <div className="home-stats-grid" style={{ marginBottom: '24px' }}>
-        <div className="stat-card glass">
-          <div className="stat-value" style={{ color: '#10b981' }}>{personalStats.played}</div>
+        <div className="stat-card glass glass-hover">
+          <div className="stat-value" style={{ color: '#10b981' }}>
+            <CountUp end={personalStats.played} />
+          </div>
           <div className="stat-label">Matches</div>
         </div>
-        <div className="stat-card glass">
-          <div className="stat-value" style={{ color: 'var(--accent-cyan)' }}>{personalStats.winRate}%</div>
+        <div className="stat-card glass glass-hover">
+          <div className="stat-value" style={{ color: 'var(--accent-cyan)' }}>
+            <CountUp end={personalStats.winRate} decimals={1} />%
+          </div>
           <div className="stat-label">Win Rate</div>
         </div>
-        <div className="stat-card glass">
-          <div className="stat-value" style={{ color: '#fbbf24' }}>{allTime?.['180s'] || personalStats.total180s}</div>
+        <div className="stat-card glass glass-hover">
+          <div className="stat-value" style={{ color: '#fbbf24' }}>
+            <CountUp end={allTime?.['180s'] || personalStats.total180s} />
+          </div>
           <div className="stat-label">All-Time 180s</div>
         </div>
-        <div className="stat-card glass">
-          <div className="stat-value" style={{ color: 'var(--accent-cyan)' }}>{allTime?.highestCheckout || personalStats.highestCheckout}</div>
+        <div className="stat-card glass glass-hover">
+          <div className="stat-value" style={{ color: 'var(--accent-cyan)' }}>
+            <CountUp end={allTime?.highestCheckout || personalStats.highestCheckout} />
+          </div>
           <div className="stat-label">Highest Checkout</div>
         </div>
-        <div className="stat-card glass">
-          <div className="stat-value" style={{ color: 'var(--success)' }}>{allTime?.legsWon || personalStats.legsWon}</div>
+        <div className="stat-card glass glass-hover">
+          <div className="stat-value" style={{ color: 'var(--success)' }}>
+            <CountUp end={allTime?.legsWon || personalStats.legsWon} />
+          </div>
           <div className="stat-label">All-Time Legs Won</div>
         </div>
-        <div className="stat-card glass">
-          <div className="stat-value" style={{ color: 'var(--error)' }}>{allTime?.legsLost || personalStats.legsLost}</div>
+        <div className="stat-card glass glass-hover">
+          <div className="stat-value" style={{ color: 'var(--error)' }}>
+            <CountUp end={allTime?.legsLost || personalStats.legsLost} />
+          </div>
           <div className="stat-label">All-Time Legs Lost</div>
         </div>
-        <div className="stat-card glass">
-          <div className="stat-value" style={{ color: 'var(--success)' }}>{allTime?.wins || personalStats.wins}</div>
+        <div className="stat-card glass glass-hover">
+          <div className="stat-value" style={{ color: 'var(--success)' }}>
+            <CountUp end={allTime?.wins || personalStats.wins} />
+          </div>
           <div className="stat-label">All-Time Wins</div>
         </div>
-        <div className="stat-card glass">
-          <div className="stat-value" style={{ color: 'var(--error)' }}>{allTime?.losses || personalStats.losses}</div>
+        <div className="stat-card glass glass-hover">
+          <div className="stat-value" style={{ color: 'var(--error)' }}>
+            <CountUp end={allTime?.losses || personalStats.losses} />
+          </div>
           <div className="stat-label">All-Time Losses</div>
         </div>
       </div>
@@ -481,20 +498,20 @@ function DivisionOverview({ leagueStats, filteredDiv180s, selectedDivFilter, set
   return (
     <div className="animate-fade-in">
       <div className="home-stats-grid" style={{ marginBottom: '32px' }}>
-        <div className="stat-card glass">
-          <div className="stat-value">{totalPlayers}</div>
+        <div className="stat-card glass glass-hover">
+          <div className="stat-value"><CountUp end={totalPlayers} /></div>
           <div className="stat-label">Total Players</div>
         </div>
-        <div className="stat-card glass">
-          <div className="stat-value">{totalMatches}</div>
+        <div className="stat-card glass glass-hover">
+          <div className="stat-value"><CountUp end={totalMatches} /></div>
           <div className="stat-label">Matches Played</div>
         </div>
-        <div className="stat-card glass">
-          <div className="stat-value">{total180s}</div>
+        <div className="stat-card glass glass-hover">
+          <div className="stat-value"><CountUp end={total180s} /></div>
           <div className="stat-label">Total 180s</div>
         </div>
-        <div className="stat-card glass">
-          <div className="stat-value">{seasonHighCO}</div>
+        <div className="stat-card glass glass-hover">
+          <div className="stat-value"><CountUp end={seasonHighCO} /></div>
           <div className="stat-label">Season High CO</div>
         </div>
       </div>

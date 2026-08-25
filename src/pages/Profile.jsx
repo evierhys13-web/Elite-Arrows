@@ -238,7 +238,7 @@ export default function Profile() {
 
         <div style={{ padding: '0 24px 40px', marginTop: '-70px', textAlign: 'center' }}>
           <div style={{ position: 'relative', display: 'inline-block', marginBottom: '20px' }}>
-            <div className="avatar-ring" style={{ width: '140px', height: '140px', padding: '4px', background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-cyan))', boxShadow: '0 12px 40px rgba(0,0,0,0.6)' }}>
+            <div className="avatar-ring vt-player-avatar" style={{ width: '140px', height: '140px', padding: '4px', background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-cyan))', boxShadow: '0 12px 40px rgba(0,0,0,0.6)' }}>
               <div className="avatar-inner" style={{ background: '#050816' }}>
                 {profilePicture ? (
                   <img src={profilePicture} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -255,7 +255,7 @@ export default function Profile() {
             )}
           </div>
 
-          <h1 className="text-gradient" style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '6px' }}>{displayUser.username}</h1>
+          <h1 className="text-gradient vt-player-name" style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '6px' }}>{displayUser.username}</h1>
           {displayUser.nickname && <p style={{ color: 'var(--accent-cyan)', fontWeight: 800, fontSize: '1.2rem', marginBottom: '20px', letterSpacing: '0.02em' }}>"{displayUser.nickname}"</p>}
 
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>

@@ -1,5 +1,52 @@
-export default function BackgroundDecor() {
+export default function BackgroundDecor({ division }) {
   const segments = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5]
+
+  const getDivisionColors = (div) => {
+    switch (div) {
+      case 'Elite':
+        return {
+          primary: '#451a03', // Deep Brown/Amber
+          secondary: '#78350f', // Amber
+          accent1: '#fbbf24', // Gold
+          accent2: '#f59e0b', // Amber-Gold
+          glow: 'rgba(251, 191, 36, 0.4)'
+        }
+      case 'Emerald':
+        return {
+          primary: '#064e3b', // Deep Green
+          secondary: '#065f46', // Emerald
+          accent1: '#10b981', // Emerald Green
+          accent2: '#34d399', // Light Emerald
+          glow: 'rgba(16, 185, 129, 0.4)'
+        }
+      case 'Diamond':
+        return {
+          primary: '#0c4a6e', // Deep Blue
+          secondary: '#075985', // Sky Blue
+          accent1: '#0ea5e9', // Light Blue
+          accent2: '#38bdf8', // Cyan
+          glow: 'rgba(56, 189, 248, 0.4)'
+        }
+      case 'Platinum':
+        return {
+          primary: '#1e1b4b', // Deep Indigo
+          secondary: '#312e81', // Indigo
+          accent1: '#818cf8', // Platinum/Purple
+          accent2: '#a5b4fc', // Light Platinum
+          glow: 'rgba(129, 140, 248, 0.4)'
+        }
+      default:
+        return {
+          primary: '#1e1b4b',
+          secondary: '#312e81',
+          accent1: '#818cf8',
+          accent2: '#38bdf8',
+          glow: 'rgba(129, 140, 248, 0.25)'
+        }
+    }
+  }
+
+  const colors = getDivisionColors(division)
 
   const wedgePath = (startAngle, endAngle, innerR, outerR) => {
     const cx = 250, cy = 250
@@ -28,24 +75,26 @@ export default function BackgroundDecor() {
       pointerEvents: 'none',
       zIndex: -1,
       overflow: 'hidden',
-      background: '#1e1b4b'
+      background: colors.primary,
+      transition: 'background 1s ease'
     }}>
-      {/* Light Purple/Blue Mixed Gradient - Brighter Version */}
+      {/* Dynamic Gradient based on Division */}
       <div style={{
         position: 'absolute',
         inset: 0,
         background: `
           linear-gradient(135deg,
-            #312e81 0%,
-            #4338ca 30%,
-            #818cf8 70%,
-            #38bdf8 100%
+            ${colors.primary} 0%,
+            ${colors.secondary} 30%,
+            ${colors.accent1} 70%,
+            ${colors.accent2} 100%
           )
         `,
-        opacity: 0.85
+        opacity: 0.85,
+        transition: 'all 1s ease'
       }} />
 
-      {/* Atmospheric Glows - Light Indigo & Sky Blue */}
+      {/* Atmospheric Glows */}
       <div style={{
         position: 'absolute',
         top: '5%',
@@ -53,11 +102,12 @@ export default function BackgroundDecor() {
         width: '90%',
         height: '90%',
         background: `
-          radial-gradient(circle at 20% 30%, rgba(165, 180, 252, 0.45) 0%, transparent 50%),
-          radial-gradient(circle at 80% 70%, rgba(56, 189, 248, 0.4) 0%, transparent 50%),
-          radial-gradient(circle at 50% 50%, rgba(129, 140, 248, 0.25) 0%, transparent 60%)
+          radial-gradient(circle at 20% 30%, ${colors.accent2}44 0%, transparent 50%),
+          radial-gradient(circle at 80% 70%, ${colors.accent1}44 0%, transparent 50%),
+          radial-gradient(circle at 50% 50%, ${colors.glow} 0%, transparent 60%)
         `,
-        filter: 'blur(80px)'
+        filter: 'blur(80px)',
+        transition: 'all 1s ease'
       }} />
 
       {/* Grid Overlay - Brighter/Subtle */}

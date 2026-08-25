@@ -814,6 +814,7 @@ export default function CupBracket() {
                         }}>
                           {/* Player 1 Slot */}
                           <div
+                            className="glass glass-hover"
                             style={{
                               display: 'flex',
                               alignItems: 'center',
@@ -825,10 +826,12 @@ export default function CupBracket() {
                               minHeight: '40px',
                               transition: 'all 0.3s ease',
                               boxShadow: p1Won ? '0 0 15px rgba(34, 197, 94, 0.1)' : 'none',
-                              cursor: isAdmin ? 'pointer' : 'default'
+                              cursor: 'pointer'
                             }}
                             onClick={() => {
-                              if (isAdmin) {
+                              if (match.player1) {
+                                navigate(`/match-log?playerId=${match.player1}&competition=Cup`);
+                              } else if (isAdmin) {
                                 setTargetMatch(match)
                                 setTargetPosition(1)
                                 setPlayerToSet(match.player1 || '')
@@ -866,6 +869,7 @@ export default function CupBracket() {
                           
                           {/* Player 2 Slot */}
                           <div
+                            className="glass glass-hover"
                             style={{
                               display: 'flex',
                               alignItems: 'center',
@@ -876,10 +880,12 @@ export default function CupBracket() {
                               minHeight: '40px',
                               transition: 'all 0.3s ease',
                               boxShadow: p2Won ? '0 0 15px rgba(34, 197, 94, 0.1)' : 'none',
-                              cursor: isAdmin ? 'pointer' : 'default'
+                              cursor: 'pointer'
                             }}
                             onClick={() => {
-                              if (isAdmin) {
+                              if (match.player2) {
+                                navigate(`/match-log?playerId=${match.player2}&competition=Cup`);
+                              } else if (isAdmin) {
                                 setTargetMatch(match)
                                 setTargetPosition(2)
                                 setPlayerToSet(match.player2 || '')

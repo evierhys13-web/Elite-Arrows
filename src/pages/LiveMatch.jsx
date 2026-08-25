@@ -5,6 +5,7 @@ import { DartBot } from '../utils/DartBot';
 import Breadcrumbs from '../components/Breadcrumbs';
 import { useToast } from '../context/ToastContext';
 import { db, doc, onSnapshot, updateDoc, arrayUnion } from '../firebase';
+import Confetti from '../components/Confetti';
 
 const START_SCORES = [101, 301, 501, 701];
 const FORMATS = [
@@ -53,6 +54,7 @@ export default function LiveMatch() {
   const [isBotThinking, setIsBotThinking] = useState(false);
   const [lastBotDarts, setLastBotDarts] = useState([]);
   const [currentTurnDarts, setCurrentTurnDarts] = useState([]);
+  const [triggerConfetti, setTriggerConfetti] = useState(false);
 
   // Camera State
   const [useCamera, setUseCamera] = useState(false);
@@ -225,9 +227,11 @@ export default function LiveMatch() {
             if ((gameFormat === 'firstTo' && nextLegs >= legsToWin) ||
                 (gameFormat === 'bestOf' && nextLegs > legsToWin / 2)) {
                 showToast(`MATCH SHOT! ${isPlayer ? 'You Win' : 'Opponent Wins'}!`, 'success');
+                if (isPlayer) setTriggerConfetti(true);
                 setGameStarted(false);
             } else {
                 showToast('LEG SHOT!', 'success');
+                if (isPlayer) setTriggerConfetti(true);
                 setPlayerScore(startScore);
                 setOpponentScore(startScore);
             }
@@ -553,6 +557,7 @@ export default function LiveMatch() {
 
   return (
     <div className="page animate-fade-in" style={{ maxWidth: '100%', margin: '0', padding: '0', height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)', overflow: 'hidden' }}>
+        <Confetti trigger={triggerConfetti} />
         <div className="match-header">
             <div className={`player-card ${turn === 'player' ? 'active' : ''}`}>
                 <div className="player-card-top">

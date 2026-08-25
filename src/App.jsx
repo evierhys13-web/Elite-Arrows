@@ -344,6 +344,7 @@ function AppRoutes() {
 }
 
 function AppShell() {
+  const { user } = useAuth()
   const { navMode } = useTheme()
 
   useEffect(() => {
@@ -353,7 +354,7 @@ function AppShell() {
 
   return (
     <>
-      <BackgroundDecor />
+      <BackgroundDecor division={user?.division} />
       <AppRoutes />
     </>
   )

@@ -1,5 +1,5 @@
-import { useState, useMemo, Fragment, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useMemo, Fragment, useCallback, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContextInternal'
 import { getResultPlayerId, isLeagueResult, isPlayoffResult, isSuperLeagueResult, isFriendlyLeagueResult } from '../utils/leagueResults'
 import UserSearchSelect from '../components/UserSearchSelect'
@@ -10,7 +10,12 @@ import { ADMIN_EMAILS } from '../config'
 export default function MatchLog() {
   const { user, getAllUsers, getFixtures, getResults, getCups, adminData, getSeasons, triggerDataRefresh, updateFixtures } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const { showToast } = useToast()
+
+  const queryParams = new URLSearchParams(location.search)
+  const queryPlayerId = queryParams.get('playerId')
+  const queryCompetition = queryParams.get('competition')
 
   const isAdmin = user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin || (user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase()))
 
@@ -26,8 +31,13 @@ export default function MatchLog() {
     } catch (e) { console.error('Audit log failed', e) }
   }
   const [activeTab, setActiveTab] = useState('toPlay')
-  const [competition, setCompetition] = useState('League') // 'League', 'Champions League', 'Friendly Singles'
-  const [targetPlayerId, setTargetPlayerId] = useState(user?.id)
+  const [competition, setCompetition] = useState(queryCompetition || 'League') // 'League', 'Champions League', 'Friendly Singles'
+  const [targetPlayerId, setTargetPlayerId] = useState(queryPlayerId || user?.id)
+
+  useEffect(() => {
+    if (queryPlayerId) setTargetPlayerId(queryPlayerId)
+    if (queryCompetition) setCompetition(queryCompetition)
+  }, [queryPlayerId, queryCompetition])
 
   const [openSinglesEntries, setOpenSinglesEntries] = useState([])
   const [openDuoEntries, setOpenDuoEntries] = useState([])
