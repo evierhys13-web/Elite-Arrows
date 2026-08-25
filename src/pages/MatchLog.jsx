@@ -1,7 +1,7 @@
 import { useState, useMemo, Fragment, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContextInternal'
-import { getResultPlayerId, isLeagueResult, isPlayoffResult, isSuperLeagueResult, isOpenLeagueResult, isOpenLeagueDoublesResult } from '../utils/leagueResults'
+import { getResultPlayerId, isLeagueResult, isPlayoffResult, isSuperLeagueResult, isFriendlyLeagueResult, isFriendlyLeagueDoublesResult } from '../utils/leagueResults'
 import UserSearchSelect from '../components/UserSearchSelect'
 import { db, doc, setDoc, getDocs, collection, deleteDoc, addDoc } from '../firebase'
 import { useToast } from '../context/ToastContext'
@@ -26,7 +26,7 @@ export default function MatchLog() {
     } catch (e) { console.error('Audit log failed', e) }
   }
   const [activeTab, setActiveTab] = useState('toPlay')
-  const [competition, setCompetition] = useState('League') // 'League', 'Champions League', 'Open Singles', 'Open Doubles'
+  const [competition, setCompetition] = useState('League') // 'League', 'Super League', 'Friendly Singles', 'Friendly Doubles'
   const [targetPlayerId, setTargetPlayerId] = useState(user?.id)
 
   const [openSinglesEntries, setOpenSinglesEntries] = useState([])
@@ -95,7 +95,7 @@ export default function MatchLog() {
     if (!targetUser.id) return []
     return allResults
       .filter(r => {
-        const isDoubles = isOpenLeagueDoublesResult(r)
+        const isDoubles = isFriendlyLeagueDoublesResult(r)
         const p1Id = String(r.player1Id || '')
         const p2Id = String(r.player2Id || '')
         const p3Id = String(r.player3Id || '')
@@ -111,25 +111,25 @@ export default function MatchLog() {
         const resSeason = String(r.season || '').trim()
         const isSeasonMatch = resSeason === currentSeasonName || (!resSeason && currentSeasonName === 'Season 1')
 
-        const isOpen = isOpenLeagueResult(r) || isOpenLeagueDoublesResult(r)
+        const isOpen = isFriendlyLeagueResult(r) || isFriendlyLeagueDoublesResult(r)
 
         if (!isApproved || (!isSeasonMatch && !isOpen) || !isTargetMatch) return false
 
         if (competition === 'League') {
           return isLeagueResult(r, fixturesById) || isPlayoffResult(r, fixturesById)
-        } else if (competition === 'Champions League') {
+        } else if (competition === 'Super League') {
           return isSuperLeagueResult(r, fixturesById)
         } else if (competition === 'Cup') {
           return String(r.gameType || '').toLowerCase() === 'cup' || !!r.cupId
-        } else if (competition === 'Open Singles') {
-          return isOpenLeagueResult(r)
-        } else if (competition === 'Open Doubles') {
+        } else if (competition === 'Friendly Singles') {
+          return isFriendlyLeagueResult(r)
+        } else if (competition === 'Friendly Doubles') {
           return isDoubles
         }
         return false
       })
       .map(r => {
-        const isDoubles = isOpenLeagueDoublesResult(r)
+        const isDoubles = isFriendlyLeagueDoublesResult(r)
         const p1Id = String(r.player1Id || '')
         const p2Id = String(r.player2Id || '')
         const p3Id = String(r.player3Id || '')
@@ -250,8 +250,8 @@ export default function MatchLog() {
         seen.add(String(u.id))
         return true
       })
-    } else if (competition === 'Champions League') {
-      // Champions League: play each opponent 2x
+    } else if (competition === 'Super League') {
+      // Super League: play each opponent 2x
       const slDivision = targetUser.superLeagueDivision
       if (!slDivision) return []
 
@@ -312,7 +312,7 @@ export default function MatchLog() {
         .map(u => {
           const fixture = fixtures.find(f =>
             !f._deleted &&
-            String(f.gameType || '').toLowerCase().includes('open league singles') &&
+            String(f.gameType || '').toLowerCase().includes('friendly league singles') &&
             ((String(f.player1Id) === String(targetUser.id) && String(f.player2Id) === String(u.id)) ||
              (String(f.player1Id) === String(u.id) && String(f.player2Id) === String(targetUser.id)))
           )
@@ -327,12 +327,12 @@ export default function MatchLog() {
 
       // For doubles, playedOpponentCounts uses opponentId as a key.
       // But in OpenLeague results, we might want to track duo vs duo.
-      // Actually, my isOpenLeagueDoublesResult filtering already gets the results.
+      // Actually, my isFriendlyLeagueDoublesResult filtering already gets the results.
       // I need to filter out duos already played.
 
       const playedDuoKeys = new Set()
       allResults
-        .filter(r => isOpenLeagueDoublesResult(r) && r.status === 'approved')
+        .filter(r => isFriendlyLeagueDoublesResult(r) && r.status === 'approved')
         .forEach(r => {
           const duo1 = [String(r.player1Id), String(r.player2Id)].sort().join('_')
           const duo2 = [String(r.player3Id), String(r.player4Id)].sort().join('_')
@@ -387,11 +387,11 @@ export default function MatchLog() {
           Standard League
         </button>
         <button
-          className={`btn btn-sm ${competition === 'Champions League' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setCompetition('Champions League')}
+          className={`btn btn-sm ${competition === 'Super League' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setCompetition('Super League')}
           style={{ borderRadius: '99px', minWidth: '120px' }}
         >
-          Champions League
+          Super League
         </button>
         <button
           className={`btn btn-sm ${competition === 'Cup' ? 'btn-primary' : 'btn-secondary'}`}
@@ -401,18 +401,18 @@ export default function MatchLog() {
           Cups
         </button>
         <button
-          className={`btn btn-sm ${competition === 'Open Singles' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setCompetition('Open Singles')}
+          className={`btn btn-sm ${competition === 'Friendly Singles' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setCompetition('Friendly Singles')}
           style={{ borderRadius: '99px', minWidth: '120px' }}
         >
-          Open Singles
+          Friendly Singles
         </button>
         <button
-          className={`btn btn-sm ${competition === 'Open Doubles' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setCompetition('Open Doubles')}
+          className={`btn btn-sm ${competition === 'Friendly Doubles' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setCompetition('Friendly Doubles')}
           style={{ borderRadius: '99px', minWidth: '120px' }}
         >
-          Open Doubles
+          Friendly Doubles
         </button>
       </div>
 
@@ -449,7 +449,7 @@ export default function MatchLog() {
                 <div>
                   <div style={{ fontWeight: '700', fontSize: '1rem' }}>vs {match.opponent}</div>
                   <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                    {match.season} • {match.date} {competition === 'Champions League' ? `(CL)` : ''}
+                    {match.season} • {match.date} {competition === 'Super League' ? `(SL)` : ''}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
@@ -505,11 +505,11 @@ export default function MatchLog() {
                           ? `${player._cupName} - Round ${player._round}`
                           : (competition === 'League'
                               ? `${player.division} Division`
-                              : (competition === 'Champions League'
-                                  ? `${player.superLeagueDivision} Champions Rank`
-                                  : 'Open League'))}
+                              : (competition === 'Super League'
+                                  ? `${player.superLeagueDivision} Super League Rank`
+                                  : 'Friendly League'))}
                       </div>
-                      {competition === 'Champions League' && (
+                      {competition === 'Super League' && (
                         <div style={{ fontSize: '0.65rem', color: 'var(--accent-cyan)' }}>
                           Played: {player._playedCount}/2
                         </div>
@@ -523,10 +523,10 @@ export default function MatchLog() {
                         className="btn btn-primary btn-sm"
                         style={{ padding: '6px 12px', fontSize: '0.75rem' }}
                         onClick={() => {
-                          if (competition === 'Open Singles') {
-                            navigate(`/submit-result?opponent=${player.id}&gameType=Open League Singles&season=${currentSeasonName}`)
-                          } else if (competition === 'Open Doubles') {
-                            navigate(`/submit-result?opponent=${player.p1Id}&gameType=Open League Doubles&season=${currentSeasonName}`)
+                          if (competition === 'Friendly Singles') {
+                            navigate(`/submit-result?opponent=${player.id}&gameType=Friendly League Singles&season=${currentSeasonName}`)
+                          } else if (competition === 'Friendly Doubles') {
+                            navigate(`/submit-result?opponent=${player.p1Id}&gameType=Friendly League Doubles&season=${currentSeasonName}`)
                           } else if (competition === 'Cup') {
                             navigate(`/submit-result?fixtureId=${player._fixtureId}&gameType=Cup&season=${currentSeasonName}`)
                           } else {

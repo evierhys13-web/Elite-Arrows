@@ -3,11 +3,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContextInternal";
 import Breadcrumbs from "../components/Breadcrumbs";
 import { useToast } from "../context/ToastContext";
-import { isOpenLeagueResult, isOpenLeagueDoublesResult } from "../utils/leagueResults";
+import { isFriendlyLeagueResult, isFriendlyLeagueDoublesResult } from "../utils/leagueResults";
 import { getLeaguePoints } from "../utils/leagueScoring";
 import { db, doc, setDoc, deleteDoc, getDocs, collection } from "../firebase";
 
-const OPEN_LEAGUE_LAUNCH_DATE = new Date("2026-07-01T00:00:00");
+const FRIENDLY_LEAGUE_LAUNCH_DATE = new Date("2026-07-01T00:00:00");
 
 export default function OpenLeague() {
   const [activeTab, setActiveTab] = useState("singles");
@@ -20,12 +20,12 @@ export default function OpenLeague() {
   const [singlesPlayers, setSinglesPlayers] = useState([]);
 
   useEffect(() => {
-    fetchOpenLeagueData();
+    fetchFriendlyLeagueData();
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, [dataRefreshTrigger]);
 
-  const fetchOpenLeagueData = async () => {
+  const fetchFriendlyLeagueData = async () => {
     try {
       const [duoSnap, singlesSnap] = await Promise.all([
         getDocs(collection(db, 'openLeagueDuos')),
@@ -34,14 +34,14 @@ export default function OpenLeague() {
       setDuos(duoSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       setSinglesPlayers(singlesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     } catch (e) {
-      console.error("Error fetching Open League data:", e);
+      console.error("Error fetching Friendly League data:", e);
     }
   };
 
-  const isLocked = now < OPEN_LEAGUE_LAUNCH_DATE;
+  const isLocked = now < FRIENDLY_LEAGUE_LAUNCH_DATE;
   const isAdmin = user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin;
   const isSubscribed = user?.isSubscribed === true || isAdmin;
-  const timeRemaining = OPEN_LEAGUE_LAUNCH_DATE - now;
+  const timeRemaining = FRIENDLY_LEAGUE_LAUNCH_DATE - now;
 
   const formatTime = (ms) => {
     const totalSeconds = Math.floor(ms / 1000);
@@ -58,11 +58,11 @@ export default function OpenLeague() {
   if (isLocked && !isAdmin) {
     return (
       <div className="page animate-fade-in" style={{ textAlign: 'center', padding: '100px 20px' }}>
-        <h1 className="text-gradient" style={{ fontSize: '3rem', marginBottom: '20px' }}>Open League</h1>
+        <h1 className="text-gradient" style={{ fontSize: '3rem', marginBottom: '20px' }}>Friendly League</h1>
         <div className="card glass" style={{ maxWidth: '600px', margin: '0 auto', padding: '40px' }}>
           <div style={{ fontSize: '4rem', marginBottom: '20px' }}>🔒</div>
           <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>Coming Soon</h2>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '30px' }}>The Open League will launch on 1st July 2026.</p>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '30px' }}>The Friendly League will launch on 1st July 2026.</p>
           <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white', background: 'rgba(0,0,0,0.3)', padding: '15px', borderRadius: '12px' }}>
             {formatTime(timeRemaining)}
           </div>
@@ -74,11 +74,11 @@ export default function OpenLeague() {
   if (!isSubscribed && !isAdmin) {
     return (
       <div className="page animate-fade-in" style={{ textAlign: 'center', padding: '100px 20px' }}>
-        <h1 className="text-gradient" style={{ fontSize: '3rem', marginBottom: '20px' }}>Open League</h1>
+        <h1 className="text-gradient" style={{ fontSize: '3rem', marginBottom: '20px' }}>Friendly League</h1>
         <div className="card glass" style={{ maxWidth: '600px', margin: '0 auto', padding: '40px' }}>
           <div style={{ fontSize: '4rem', marginBottom: '20px' }}>🏆</div>
           <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>Elite Pass Required</h2>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '30px' }}>The Open League is exclusive to subscribed Elite Pass holders.</p>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '30px' }}>The Friendly League is exclusive to subscribed Elite Pass holders.</p>
           <Link to="/subscription" className="btn btn-primary">Get Elite Pass</Link>
         </div>
       </div>
@@ -108,7 +108,7 @@ export default function OpenLeague() {
       };
     });
 
-    const openResults = results.filter(r => isOpenLeagueResult(r) && r.status === 'approved');
+    const openResults = results.filter(r => isFriendlyLeagueResult(r) && r.status === 'approved');
 
     openResults.forEach(r => {
       const p1Id = String(r.player1Id);
@@ -180,7 +180,7 @@ export default function OpenLeague() {
       };
     });
 
-    const openResults = results.filter(r => isOpenLeagueDoublesResult(r) && r.status === 'approved');
+    const openResults = results.filter(r => isFriendlyLeagueDoublesResult(r) && r.status === 'approved');
 
     openResults.forEach(r => {
       const t1Ids = [String(r.player1Id), String(r.player2Id)].sort();
@@ -247,11 +247,11 @@ export default function OpenLeague() {
   if (isLocked && !isAdmin) {
     return (
       <div className="page animate-fade-in" style={{ textAlign: 'center', padding: '100px 20px' }}>
-        <h1 className="text-gradient" style={{ fontSize: '3rem', marginBottom: '20px' }}>Open League</h1>
+        <h1 className="text-gradient" style={{ fontSize: '3rem', marginBottom: '20px' }}>Friendly League</h1>
         <div className="card glass" style={{ maxWidth: '600px', margin: '0 auto', padding: '40px' }}>
           <div style={{ fontSize: '4rem', marginBottom: '20px' }}>🔒</div>
           <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>Coming Soon</h2>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '30px' }}>The Open League will launch on 1st July 2026.</p>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '30px' }}>The Friendly League will launch on 1st July 2026.</p>
           <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white', background: 'rgba(0,0,0,0.3)', padding: '15px', borderRadius: '12px' }}>
             {formatTime(timeRemaining)}
           </div>
@@ -264,11 +264,11 @@ export default function OpenLeague() {
 
   return (
     <div className="page animate-fade-in" style={{ maxWidth: "1200px", margin: "0 auto" }}>
-      <Breadcrumbs items={[{ label: "Home", path: "/home" }, { label: "Open League", path: "/open-league" }]} />
+      <Breadcrumbs items={[{ label: "Home", path: "/home" }, { label: "Friendly League", path: "/open-league" }]} />
 
       <div className="page-header" style={{ marginBottom: "24px", display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div>
-          <h1 className="page-title text-gradient" style={{ fontSize: "2.5rem" }}>Open League</h1>
+          <h1 className="page-title text-gradient" style={{ fontSize: "2.5rem" }}>Friendly League</h1>
           <p style={{ color: 'var(--text-muted)' }}>Free for all players. Leg: 1pt, Win: +3pts. {activeTab === "singles" ? "(No Draws)" : "Draw: +1pt"}</p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
@@ -319,7 +319,7 @@ export default function OpenLeague() {
                               <button
                                 className="btn btn-primary btn-xs"
                                 style={{ padding: '4px 8px', fontSize: '0.65rem' }}
-                                onClick={() => navigate(`/submit-result?gameType=Open League Singles&opponent=${row.id}`)}
+                                onClick={() => navigate(`/submit-result?gameType=Friendly League Singles&opponent=${row.id}`)}
                               >
                                 Log Score
                               </button>
@@ -340,7 +340,7 @@ export default function OpenLeague() {
                               <button
                                 className="btn btn-primary btn-xs"
                                 style={{ padding: '4px 8px', fontSize: '0.65rem' }}
-                                onClick={() => navigate(`/submit-result?gameType=Open League Doubles&opponent=${row.id}`)}
+                                onClick={() => navigate(`/submit-result?gameType=Friendly League Doubles&opponent=${row.id}`)}
                               >
                                 Log Score
                               </button>

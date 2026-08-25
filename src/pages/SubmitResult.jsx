@@ -107,7 +107,7 @@ export default function SubmitResult() {
 
   const isLocked = new Date() < new Date("2026-07-01T00:00:00")
   const isAdmin = user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin
-  const isOpenLeague = formData.gameType === 'Open League Singles' || formData.gameType === 'Open League Doubles'
+  const isFriendlyLeague = formData.gameType === 'Friendly League Singles' || formData.gameType === 'Friendly League Doubles'
 
   // Robust season detection
   const getDefaultSeason = () => {
@@ -160,8 +160,11 @@ export default function SubmitResult() {
 
       baseOptions = baseOptions.filter(u => !playedOpponentIds.includes(String(u.id)))
     }
-    else if (formData.gameType === 'Champions League') {
-      baseOptions = availablePlayers.filter(u => u.superLeagueDivision === 'Champions')
+    else if (formData.gameType === 'Super League Masters') {
+      baseOptions = availablePlayers.filter(u => u.superLeagueDivision === 'Masters Division')
+    }
+    else if (formData.gameType === 'Super League Pro') {
+      baseOptions = availablePlayers.filter(u => u.superLeagueDivision === 'Pro Division')
     }
 
     return baseOptions
@@ -169,9 +172,9 @@ export default function SubmitResult() {
 
   const effectiveDivision = useMemo(() => {
     if (!user) return 'Unassigned'
-    return formData.gameType === 'Champions League'
-      ? 'Champions'
-      : userEffectiveDiv
+    if (formData.gameType === 'Super League Masters') return 'Masters Division'
+    if (formData.gameType === 'Super League Pro') return 'Pro Division'
+    return userEffectiveDiv
   }, [formData.gameType, userEffectiveDiv, user])
 
   useEffect(() => {
@@ -330,14 +333,14 @@ export default function SubmitResult() {
           bestOf: '8',
           firstTo: '5'
         }))
-      } else if (value === 'Champions League') {
+      } else if (value === 'Super League Masters' || value === 'Super League Pro') {
         setFormData(prev => ({
           ...prev,
-          opponent: availablePlayers.find(p => p.id === prev.opponent)?.superLeagueDivision === user.superLeagueDivision ? prev.opponent : '',
+          opponent: '',
           bestOf: '11',
           firstTo: '6'
         }))
-      } else if (value === 'Open League Singles' || value === 'Open League Doubles') {
+      } else if (value === 'Friendly League Singles' || value === 'Friendly League Doubles') {
         setFormData(prev => ({
           ...prev,
           bestOf: '9',
@@ -502,8 +505,8 @@ export default function SubmitResult() {
     setError('')
     setSuccessMessage('')
     
-    if (isOpenLeague && isLocked && !isAdmin) {
-      setError('Open League matches cannot be submitted until 1st July 2026.')
+    if (isFriendlyLeague && isLocked && !isAdmin) {
+      setError('Friendly League matches cannot be submitted until 1st July 2026.')
       return
     }
 
@@ -524,7 +527,7 @@ export default function SubmitResult() {
       }
     }
 
-    if (formData.gameType === 'Open League Doubles') {
+    if (formData.gameType === 'Friendly League Doubles') {
       if (!formData.yourDuoId) {
         setError('Please select your duo.')
         return
@@ -534,7 +537,7 @@ export default function SubmitResult() {
         return
       }
       if (!formData.proofImage || !formData.proofImage2) {
-        setError('Two pieces of proof are required for Open League Doubles.')
+        setError('Two pieces of proof are required for Friendly League Doubles.')
         return
       }
     } else if (!formData.proofImage && !formData.proofVideo) {
@@ -542,10 +545,10 @@ export default function SubmitResult() {
       return
     }
     
-    const opponentDuo = formData.gameType === 'Open League Doubles' ? openLeagueDuos.find(d => d.id === formData.opponent) : null
+    const opponentDuo = formData.gameType === 'Friendly League Doubles' ? openLeagueDuos.find(d => d.id === formData.opponent) : null
 
     // Find Your Duo using the dropdown selection
-    const yourDuo = formData.gameType === 'Open League Doubles' ? openLeagueDuos.find(d => d.id === formData.yourDuoId) : null
+    const yourDuo = formData.gameType === 'Friendly League Doubles' ? openLeagueDuos.find(d => d.id === formData.yourDuoId) : null
 
     const opponentUser = !opponentDuo ? playersWithDivisions.find(u => String(u.id) === String(formData.opponent)) : null
 
@@ -570,13 +573,13 @@ export default function SubmitResult() {
       return
     }
 
-    if (formData.gameType === 'Champions League') {
+    if (formData.gameType === 'Super League Masters' || formData.gameType === 'Super League Pro') {
       if (formData.bestOf !== '11' || formData.firstTo !== '6') {
-        setError('Champions League games must be First to 6 legs (Best of 11)')
+        setError('Super League games must be First to 6 legs (Best of 11)')
         return
       }
       if (parseInt(formData.yourScore) === parseInt(formData.opponentScore)) {
-        setError('Draws are not permitted in the Champions League. A winner must be decided.')
+        setError('Draws are not permitted in the Super League. A winner must be decided.')
         return
       }
     }
@@ -608,7 +611,7 @@ export default function SubmitResult() {
         return String(result.fixtureId || '') === String(selectedFixture.id) && String(result.status).toLowerCase() !== 'rejected'
       }
 
-      if (formData.gameType === 'Open League Doubles') {
+      if (formData.gameType === 'Friendly League Doubles') {
         const yourDuoIds = String(formData.yourDuoId)
         const opponentDuoIds = String(formData.opponent)
         return (String(result.player1Id) === String(yourDuoIds.split('_')[0]) && String(result.player3Id) === String(opponentDuoIds.split('_')[0])) ||
@@ -623,9 +626,9 @@ export default function SubmitResult() {
       return isSameSeason && isSameType && isBetweenPlayers && isNotRejected
     })
 
-    if (formData.gameType === 'Champions League') {
+    if (formData.gameType === 'Super League Masters' || formData.gameType === 'Super League Pro') {
       if (matchingResults.length >= 2) {
-        setError(`You've already played ${opponentName} 2 times in the Champions League this season. No more matches allowed.`)
+        setError(`You've already played ${opponentName} 2 times in the Super League this season. No more matches allowed.`)
         return
       }
     } else if (formData.gameType === 'League' && matchingResults.length >= 1) {
@@ -638,10 +641,10 @@ export default function SubmitResult() {
 
       const resultId = Date.now().toString()
 
-      const opponentDuo = formData.gameType === 'Open League Doubles' ? openLeagueDuos.find(d => d.id === formData.opponent) : null
+      const opponentDuo = formData.gameType === 'Friendly League Doubles' ? openLeagueDuos.find(d => d.id === formData.opponent) : null
 
       // Find Your Duo using the dropdown selection
-      const yourDuo = formData.gameType === 'Open League Doubles' ? openLeagueDuos.find(d => d.id === formData.yourDuoId) : null
+      const yourDuo = formData.gameType === 'Friendly League Doubles' ? openLeagueDuos.find(d => d.id === formData.yourDuoId) : null
 
       const opponentUser = !opponentDuo ? allUsers.find(u => u.id === formData.opponent) : null
 
@@ -710,7 +713,7 @@ export default function SubmitResult() {
           ...(cupFixture?.startScore && { startScore: cupFixture.startScore })
         }
 
-        if (formData.gameType === 'Open League Doubles') {
+        if (formData.gameType === 'Friendly League Doubles') {
           const duo1 = yourDuo
           const duo2 = opponentDuo
 
@@ -769,7 +772,7 @@ export default function SubmitResult() {
       const currentResults = [...allResults]
 
       let finalResultObj;
-      if (formData.gameType === 'Open League Doubles') {
+      if (formData.gameType === 'Friendly League Doubles') {
         finalResultObj = createResultDoc(formData.yourScore, formData.opponentScore)
         await setDoc(doc(db, 'results', finalResultObj.id), finalResultObj)
         currentResults.push(finalResultObj)
@@ -895,7 +898,7 @@ export default function SubmitResult() {
           <div className="form-group" style={{ marginBottom: '25px' }}>
             <label style={{ fontWeight: '600', marginBottom: '10px', display: 'block' }}>Match Type</label>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              {['Friendly', 'League', 'Champions League', 'Cup', 'Playoff', 'Open League Singles', 'Open League Doubles'].map(type => (
+              {['Friendly', 'League', 'Super League Masters', 'Super League Pro', 'Cup', 'Playoff', 'Friendly League Singles', 'Friendly League Doubles'].map(type => (
                 <button
                   key={type}
                   type="button"
@@ -966,10 +969,10 @@ export default function SubmitResult() {
           }} className="match-players-grid">
             <div style={{ textAlign: 'center' }}>
               <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
-                {formData.gameType === 'Open League Doubles' ? 'Home Team (Your Duo)' : 'You'}
+                {formData.gameType === 'Friendly League Doubles' ? 'Home Team (Your Duo)' : 'You'}
               </label>
               <div style={{ display: 'grid', gap: '8px' }}>
-                {formData.gameType === 'Open League Doubles' ? (
+                {formData.gameType === 'Friendly League Doubles' ? (
                   <select
                     name="yourDuoId"
                     value={formData.yourDuoId}
@@ -1001,7 +1004,7 @@ export default function SubmitResult() {
 
             <div style={{ textAlign: 'center' }}>
               <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
-                {formData.gameType === 'Cup' ? 'Select Match' : formData.gameType === 'Open League Doubles' ? 'Away Team (Opposing Duo)' : 'Opponent'}
+                {formData.gameType === 'Cup' ? 'Select Match' : formData.gameType === 'Friendly League Doubles' ? 'Away Team (Opposing Duo)' : 'Opponent'}
               </label>
               <div style={{ display: 'grid', gap: '8px' }}>
                 {formData.gameType === 'Cup' ? (
@@ -1053,7 +1056,7 @@ export default function SubmitResult() {
                       </>
                     )}
                   </select>
-                ) : formData.gameType === 'Open League Doubles' ? (
+                ) : formData.gameType === 'Friendly League Doubles' ? (
                   <select
                     name="opponent"
                     value={formData.opponent}
@@ -1088,7 +1091,7 @@ export default function SubmitResult() {
           }}>
             <div className="form-group">
               <label style={{ fontWeight: '600', marginBottom: '8px', display: 'block' }}>
-                {formData.gameType === 'Open League Doubles' ? 'Home Team Legs' : 'Your Legs Won'}
+                {formData.gameType === 'Friendly League Doubles' ? 'Home Team Legs' : 'Your Legs Won'}
               </label>
               <input
                 type="number"
@@ -1103,7 +1106,7 @@ export default function SubmitResult() {
             </div>
             <div className="form-group">
               <label style={{ fontWeight: '600', marginBottom: '8px', display: 'block' }}>
-                {formData.gameType === 'Open League Doubles' ? 'Away Team Legs' : 'Opponent Legs Won'}
+                {formData.gameType === 'Friendly League Doubles' ? 'Away Team Legs' : 'Opponent Legs Won'}
               </label>
               <input
                 type="number"
@@ -1197,7 +1200,7 @@ export default function SubmitResult() {
                     placeholder="0"
                   />
                 </div>
-                {formData.gameType !== 'Open League Doubles' && (
+                {formData.gameType !== 'Friendly League Doubles' && (
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label style={{ fontSize: '0.8rem' }}>Checkout Success %</label>
                     <input
@@ -1258,7 +1261,7 @@ export default function SubmitResult() {
                     placeholder="0"
                   />
                 </div>
-                {formData.gameType !== 'Open League Doubles' && (
+                {formData.gameType !== 'Friendly League Doubles' && (
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label style={{ fontSize: '0.8rem' }}>Checkout Success %</label>
                     <input
@@ -1279,7 +1282,7 @@ export default function SubmitResult() {
 
           <div className="form-group" style={{ marginBottom: '30px' }}>
             <label style={{ fontSize: '0.9rem', fontWeight: '600', display: 'block', marginBottom: '12px' }}>
-              {formData.gameType === 'Open League Doubles' ? 'Proof of Result 1' : 'Proof of Result (Photo/Screenshot/Video)'}
+              {formData.gameType === 'Friendly League Doubles' ? 'Proof of Result 1' : 'Proof of Result (Photo/Screenshot/Video)'}
               {isUploadingProof && <span style={{ marginLeft: '10px', color: 'var(--accent-cyan)', fontSize: '0.8rem' }}>• Uploading: {uploadProgress}%</span>}
             </label>
             
@@ -1345,7 +1348,7 @@ export default function SubmitResult() {
                       disabled={isUploadingProof}
                     />
                   </div>
-                  {formData.gameType !== 'Open League Doubles' && (
+                  {formData.gameType !== 'Friendly League Doubles' && (
                     <div className="result-proof-native-button result-proof-video" style={{ flex: 1, minWidth: '120px', background: 'var(--accent-primary)' }}>
                       <span style={{ fontSize: '0.85rem' }}>🎬 Video</span>
                       <input
@@ -1467,7 +1470,7 @@ export default function SubmitResult() {
               </div>
             )}
 
-            {formData.gameType === 'Open League Doubles' && (
+            {formData.gameType === 'Friendly League Doubles' && (
               <div style={{ marginTop: '20px' }}>
                 <label style={{ fontSize: '0.9rem', fontWeight: '600', display: 'block', marginBottom: '12px' }}>
                   Proof of Result 2

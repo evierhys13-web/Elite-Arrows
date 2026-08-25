@@ -105,10 +105,10 @@ export default function Admin() {
           const singlesData = singlesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
           setOpenLeagueDuos(duosData)
           setOpenLeagueSingles(singlesData)
-          console.log("Open League Data Loaded:", { duos: duosData.length, singles: singlesData.length });
+          console.log("Friendly League Data Loaded:", { duos: duosData.length, singles: singlesData.length });
         } catch (e) {
-          console.error("Failed to fetch Open League admin data", e)
-          showToast("Failed to load Open League data", "error")
+          console.error("Failed to fetch Friendly League admin data", e)
+          showToast("Failed to load Friendly League data", "error")
         }
       }
       fetchData()
@@ -183,7 +183,7 @@ export default function Admin() {
       if (resultTypeFilter === 'cup') {
         list = list.filter(r => String(r.gameType).toLowerCase() === 'cup' || !!r.cupId)
       } else if (resultTypeFilter === 'open league') {
-        list = list.filter(r => String(r.gameType).toLowerCase().includes('open league'))
+        list = list.filter(r => String(r.gameType).toLowerCase().includes('friendly league'))
       } else {
         list = list.filter(r => String(r.gameType).toLowerCase() === resultTypeFilter.toLowerCase())
       }
@@ -256,7 +256,7 @@ export default function Admin() {
       await setDoc(doc(db, 'openLeagueSingles', id), newPlayer)
       setOpenLeagueSingles(prev => [...prev, newPlayer])
       setSinglesPlayerForm('')
-      await logAudit('ADD_OPEN_LEAGUE_SINGLES', `Added player to Open League table: ${singlesPlayerForm}`)
+      await logAudit('ADD_OPEN_LEAGUE_SINGLES', `Added player to Friendly League table: ${singlesPlayerForm}`)
       showToast("Player added to table!", "success")
       triggerDataRefresh('all')
     } catch (e) { showToast(e.message, "error") }
@@ -267,7 +267,7 @@ export default function Admin() {
     try {
       await deleteDoc(doc(db, 'openLeagueSingles', id))
       setOpenLeagueSingles(prev => prev.filter(p => p.id !== id))
-      await logAudit('REMOVE_OPEN_LEAGUE_SINGLES', `Removed player from Open League table: ${id}`)
+      await logAudit('REMOVE_OPEN_LEAGUE_SINGLES', `Removed player from Friendly League table: ${id}`)
       showToast("Player removed", "info")
       triggerDataRefresh('all')
     } catch (e) { showToast(e.message, "error") }
@@ -318,7 +318,7 @@ export default function Admin() {
       const isSuperMatch = p1Data?.superLeagueDivision || p2Data?.superLeagueDivision;
 
       if (!res.gameType || ['league', 'friendly', 'unknown', ''].includes(String(res.gameType).toLowerCase())) {
-        if (isSuperFormat || (isSuperMatch && totalLegs > 8)) updates.gameType = 'Champions League';
+        if (isSuperFormat || (isSuperMatch && totalLegs > 8)) updates.gameType = 'Super League';
         else if (isStandardFormat && totalLegs > 0) updates.gameType = 'League';
       }
 
@@ -392,7 +392,7 @@ export default function Admin() {
           const s2 = Number(res.score2) || 0;
           const totalLegs = s1 + s2;
           if (!res.gameType || ['league', 'friendly', ''].includes(String(res.gameType).toLowerCase())) {
-            if ((s1 === 6 || s2 === 6) && totalLegs <= 11) updates.gameType = 'Champions League';
+            if ((s1 === 6 || s2 === 6) && totalLegs <= 11) updates.gameType = 'Super League';
             else if (totalLegs <= 8) updates.gameType = 'League';
           }
           if (!res.season) {
@@ -485,7 +485,7 @@ export default function Admin() {
     const s1 = parseInt(f.score1); const s2 = parseInt(f.score2)
     if (isNaN(s1) || isNaN(s2)) return showToast('Invalid scores.', 'error')
 
-    const isDoubles = f.gameType === 'Open League Doubles'
+    const isDoubles = f.gameType === 'Friendly League Doubles'
 
     const duo1 = isDoubles ? openLeagueDuos.find(d => d.id === f.player1) : null
     const duo2 = isDoubles ? openLeagueDuos.find(d => d.id === f.player2) : null
@@ -501,7 +501,7 @@ export default function Admin() {
 
     const resultId = `admin_${Date.now()}`
     try {
-      const isSuper = f.gameType === 'Champions League'
+      const isSuper = f.gameType === 'Super League Masters' || f.gameType === 'Super League Pro' || f.gameType === 'Champions League'
       const isLeague = f.gameType === 'League'
       const isCup = f.gameType === 'Cup'
       let targetSeason = f.season || adminData?.currentSeason || 'Season 1'
@@ -671,7 +671,7 @@ export default function Admin() {
       await setDoc(doc(db, 'users', superRankForm.player), {
         superLeagueDivision: isNone ? null : superRankForm.rank
       }, { merge: true })
-      showToast?.(`Player updated in Champions League`, 'success')
+      showToast?.(`Player updated in Super League`, 'success')
       setSuperRankForm({ player: '', rank: '' })
       triggerDataRefresh('all')
     } catch (e) { showToast?.('Error updating rank: ' + e.message, 'error') }
@@ -1099,7 +1099,7 @@ export default function Admin() {
 
   const handleResetSuperLeagueTable = async () => {
     const currentSeason = adminData?.currentSeason || 'Season 2'
-    if (!window.confirm(`Reset Champions League standings?`)) return
+    if (!window.confirm(`Reset Super League standings?`)) return
     setIsApproving(true);
     try {
       const users = getAllUsers(); const results = getResults(); let batch = writeBatch(db); let ops = 0; let userCount = 0; let resultCount = 0
@@ -1109,14 +1109,14 @@ export default function Admin() {
         if (String(r.status).toLowerCase() !== 'approved') continue
         const s1 = Number(r.score1); const s2 = Number(r.score2); const isSuperFormat = (s1 === 6 || s2 === 6) && (s1 + s2) <= 11; const isLabeledSuper = String(r.gameType || '').toLowerCase().includes('super')
         if (isSuperFormat || isLabeledSuper) {
-          const updates = {}; if (r.season !== currentSeason) updates.season = currentSeason; if (r.gameType !== 'Champions League') updates.gameType = 'Champions League'
+          const updates = {}; if (r.season !== currentSeason) updates.season = currentSeason; if (r.gameType !== 'Champions League') updates.gameType = 'Super League'
           if (Object.keys(updates).length > 0) { const tid = r.firestoreId || String(r.id); batch.update(doc(db, 'results', tid), updates); updatesById[tid] = updates; resultCount++; ops++; if (ops >= 450) { await batch.commit(); batch = writeBatch(db); ops = 0 } }
         }
       }
       if (ops > 0) await batch.commit()
       await logAudit('RESET_CHAMPIONS_LEAGUE', `Reset CL for ${userCount} users and ${resultCount} matches.`)
       const updatedResults = results.map(r => { const key = r.firestoreId || String(r.id); return updatesById[key] ? { ...r, ...updatesById[key] } : r })
-      updateResults(updatedResults); triggerDataRefresh('all'); showToast(`CL Reset Complete`, 'success')
+      updateResults(updatedResults); triggerDataRefresh('all'); showToast(`Super League Reset Complete`, 'success')
     } catch (e) { showToast('Reset failed: ' + e.message, 'error') }
     setIsApproving(false)
   }
@@ -1125,7 +1125,7 @@ export default function Admin() {
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'results', label: 'Scores', count: pendingResults.length },
     { id: 'payments', label: 'Payments', count: pendingPayments.length + entryRequests.length },
-    { id: 'openleague', label: 'Open League' },
+    { id: 'openleague', label: 'Friendly League' },
     { id: 'new', label: 'New Users', count: stats.newUsers },
     { id: 'moneypot', label: 'Finances' },
     { id: 'players', label: 'Member Management' },
@@ -1218,9 +1218,9 @@ export default function Admin() {
               <select className="glass" style={{ flex: 1, padding: '10px' }} value={resultTypeFilter} onChange={e => setResultTypeFilter(e.target.value)}>
                 <option value="all">All Types</option>
                 <option value="league">League</option>
-                <option value="champions league">Champions League</option>
+                <option value="champions league">Super League</option>
                 <option value="cup">Cup</option>
-                <option value="open league">Open League</option>
+                <option value="open league">Friendly League</option>
                 <option value="friendly">Friendly</option>
               </select>
             </div>
@@ -1234,18 +1234,19 @@ export default function Admin() {
                   <select className="glass" style={{ width: '100%', padding: '10px' }} value={adminGameForm.gameType} onChange={e => setAdminGameForm({...adminGameForm, gameType: e.target.value})}>
                     <option value="Friendly">Friendly</option>
                     <option value="League">League</option>
-                    <option value="Champions League">Champions League</option>
+                    <option value="Super League Masters">Super League Masters</option>
+                    <option value="Super League Pro">Super League Pro</option>
                     <option value="Cup">Cup</option>
                     <option value="Playoff">Playoff</option>
-                    <option value="Open League Singles">Open League Singles</option>
-                    <option value="Open League Doubles">Open League Doubles</option>
+                    <option value="Friendly League Singles">Friendly League Singles</option>
+                    <option value="Friendly League Doubles">Friendly League Doubles</option>
                   </select>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
                   <div className="form-group">
-                    <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>{adminGameForm.gameType === 'Open League Doubles' ? 'Home Team (Registered Duo)' : 'Player 1 (Home)'}</label>
-                    {adminGameForm.gameType === 'Open League Doubles' ? (
+                    <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>{adminGameForm.gameType === 'Friendly League Doubles' ? 'Home Team (Registered Duo)' : 'Player 1 (Home)'}</label>
+                    {adminGameForm.gameType === 'Friendly League Doubles' ? (
                       <select
                         className="glass"
                         style={{ width: '100%', padding: '10px' }}
@@ -1270,8 +1271,8 @@ export default function Admin() {
                     )}
                   </div>
                   <div className="form-group">
-                    <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>{adminGameForm.gameType === 'Open League Doubles' ? 'Away Team (Registered Duo)' : 'Player 2 (Away)'}</label>
-                    {adminGameForm.gameType === 'Open League Doubles' ? (
+                    <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>{adminGameForm.gameType === 'Friendly League Doubles' ? 'Away Team (Registered Duo)' : 'Player 2 (Away)'}</label>
+                    {adminGameForm.gameType === 'Friendly League Doubles' ? (
                       <select
                         className="glass"
                         style={{ width: '100%', padding: '10px' }}
@@ -1637,7 +1638,7 @@ export default function Admin() {
         {/* TAB: OPEN LEAGUE */}
         {activeTab === 'openleague' && (
           <div className="card glass" style={{ padding: '20px' }}>
-            <h3 style={{ marginBottom: '20px' }}>Open League Management</h3>
+            <h3 style={{ marginBottom: '20px' }}>Friendly League Management</h3>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '24px' }}>
 
