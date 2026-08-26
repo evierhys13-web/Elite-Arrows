@@ -55,7 +55,7 @@ export default function Admin() {
   const [adminGameForm, setAdminGameForm] = useState({
     player1: '', player2: '', player3: '', player4: '',
     score1: '', score2: '',
-    gameType: 'Friendly',
+    gameType: 'League',
     season: '',
     p1_180s: '', p2_180s: '',
     p1_checkout: '', p2_checkout: '',
@@ -582,7 +582,7 @@ export default function Admin() {
       setAdminGameForm({
         player1: '', player2: '', player3: '', player4: '',
         score1: '', score2: '',
-        gameType: 'Friendly',
+        gameType: 'League',
         p1_180s: '', p2_180s: '',
         p1_checkout: '', p2_checkout: '',
         p1_doubles: '', p2_doubles: '',
@@ -967,7 +967,7 @@ export default function Admin() {
           let targetType = match.gameType;
           if (isSuperFormat) targetType = 'Champions League';
           else if (isStandardFormat) targetType = 'League';
-          else if (!match.gameType || match.gameType === 'Unknown') targetType = 'Friendly';
+          else if (!match.gameType || match.gameType === 'Unknown') targetType = 'League';
           if (match.gameType !== targetType) updates.gameType = targetType;
         }
         if (!match.division || match.division === 'Unassigned') {
@@ -1192,7 +1192,6 @@ export default function Admin() {
                     <option value="champions league">Champions League</option>
                 <option value="cup">Cup</option>
                 <option value="open league">Friendly League</option>
-                <option value="friendly">Friendly</option>
               </select>
             </div>
 
@@ -1203,7 +1202,6 @@ export default function Admin() {
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Game Type</label>
                   <select className="glass" style={{ width: '100%', padding: '10px' }} value={adminGameForm.gameType} onChange={e => setAdminGameForm({...adminGameForm, gameType: e.target.value})}>
-                    <option value="Friendly">Friendly</option>
                     <option value="League">League</option>
                     <option value="Champions League">Champions League</option>
                     <option value="Cup">Cup</option>

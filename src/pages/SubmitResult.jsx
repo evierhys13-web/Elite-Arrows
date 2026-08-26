@@ -8,7 +8,7 @@ import UserSearchSelect from '../components/UserSearchSelect'
 import Confetti from '../components/Confetti'
 
 const INITIAL_RESULT_FORM = {
-  gameType: 'Friendly',
+  gameType: 'League',
   opponent: '',
   yourScore: '',
   opponentScore: '',
@@ -269,7 +269,7 @@ export default function SubmitResult() {
         const opponentId = getFixtureOpponentId(selectedFixture)
         setFormData((prev) => ({
           ...prev,
-          gameType: selectedFixture.gameType || 'Friendly',
+          gameType: selectedFixture.gameType || 'League',
           opponent: opponentId || '',
           bestOf: selectedFixture.bestOf ? selectedFixture.bestOf.toString() : prev.bestOf,
           firstTo: selectedFixture.firstTo ? selectedFixture.firstTo.toString() : prev.firstTo
@@ -802,7 +802,6 @@ export default function SubmitResult() {
   }
 
   const getOpponentStatus = (opponentId) => {
-    if (formData.gameType === 'Friendly') return null
     const existingMatch = checkExistingLeagueMatch(opponentId)
     if (existingMatch) {
       return { played: true, result: existingMatch }
@@ -849,7 +848,7 @@ export default function SubmitResult() {
           <div className="form-group" style={{ marginBottom: '25px' }}>
             <label style={{ fontWeight: '600', marginBottom: '10px', display: 'block' }}>Match Type</label>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              {['Friendly', 'League', 'Champions League', 'Cup', 'Playoff', 'Friendly League Singles'].map(type => (
+              {['League', 'Champions League', 'Cup', 'Playoff', 'Friendly League Singles'].map(type => (
                 <button
                   key={type}
                   type="button"

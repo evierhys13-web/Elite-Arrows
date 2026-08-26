@@ -16,7 +16,7 @@ export default function Players() {
   const [selectedDivision, setSelectedDivision] = useState('All')
   const [visible, setVisible] = useState(false)
   const [proposeModal, setProposeModal] = useState(null)
-  const [proposeForm, setProposeForm] = useState({ date: '', time: '', type: 'Friendly' })
+  const [proposeForm, setProposeForm] = useState({ date: '', time: '', type: 'Friendly League Singles' })
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -272,9 +272,9 @@ export default function Players() {
             <div className="form-group">
               <label>Match Type</label>
               <select value={proposeForm.type} onChange={e => setProposeForm({...proposeForm, type: e.target.value})}>
-                <option value="Friendly">Friendly</option>
+                <option value="Friendly League Singles">Friendly League</option>
                 {proposeModal.division === user.division && <option value="League">League</option>}
-                <option value="Cup">Cup</option>
+                <option value="Cup">Cup Match</option>
               </select>
             </div>
 
