@@ -36,7 +36,9 @@ const INITIAL_RESULT_FORM = {
   opponentScore2: '',
   yourDuoId: '',
   yourAvg: '',
-  opponentAvg: ''
+  opponentAvg: '',
+  highlightVideoFile: null,
+  highlightVideoUrl: ''
 }
 
 export default function SubmitResult() {
@@ -62,6 +64,11 @@ export default function SubmitResult() {
   const [proofVideoUrl, setUploadedVideoUrl] = useState('')
   const [uploadError, setUploadError] = useState('')
   const currentUploadTaskId = useRef(null)
+
+  // Highlight upload states
+  const [isUploadingHighlight, setIsUploadingHighlight] = useState(false)
+  const [hlVideoUrl, setHlVideoUrl] = useState('')
+  const [hlUploadProgress, setHlUploadProgress] = useState(0)
 
   const fixtureIdParam = searchParams.get('fixtureId')
   const opponentParam = searchParams.get('opponent')
@@ -448,6 +455,47 @@ export default function SubmitResult() {
     }
   }
 
+  const handleHighlightVideoUpload = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      if (file.size > 20 * 1024 * 1024) {
+        showToast('Highlight video must be less than 20MB.', 'error')
+        return
+      }
+
+      setIsUploadingHighlight(true)
+      setHlUploadProgress(1)
+
+      const videoUrl = URL.createObjectURL(file)
+      setFormData(prev => ({
+        ...prev,
+        highlightVideoFile: file,
+        highlightVideoUrl: videoUrl
+      }))
+
+      const hlId = `hl_raw_${Date.now()}`
+      const storageRef = ref(storage, `highlights/${hlId}.mp4`)
+
+      const uploadTask = uploadBytesResumable(storageRef, file)
+      uploadTask.on('state_changed',
+        (snapshot) => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+          setHlUploadProgress(Math.max(1, Math.round(progress)))
+        },
+        (err) => {
+          showToast("Highlight upload failed.", 'error')
+          setIsUploadingHighlight(false)
+        },
+        async () => {
+          const url = await getDownloadURL(uploadTask.snapshot.ref)
+          setHlVideoUrl(url)
+          setIsUploadingHighlight(false)
+          showToast('Highlight video ready!', 'success')
+        }
+      )
+    }
+  }
+
   const clearProofInputs = () => {
     if (cameraInputRef.current) cameraInputRef.current.value = ''
     if (uploadInputRef.current) uploadInputRef.current.value = ''
@@ -481,8 +529,15 @@ export default function SubmitResult() {
     }
     setFormData({
       ...INITIAL_RESULT_FORM,
-      season: adminData?.currentSeason || 'Season 1'
+      season: adminData?.currentSeason || 'Season 4'
     })
+    setHlVideoUrl('')
+    setHlUploadProgress(0)
+    setUploadedProofUrl('')
+    setUploadedVideoUrl('')
+    setUploadProgress(0)
+    setIsUploadingProof(false)
+    setIsUploadingHighlight(false)
     clearProofInputs()
     if (typeof window !== 'undefined' && window.location.pathname.includes('submit-result')) {
       window.history.replaceState(null, '', '/submit-result')
@@ -689,6 +744,26 @@ export default function SubmitResult() {
         }
       }
 
+      // Also wait for highlight video if specifically uploaded
+      let finalHlVideoUrl = hlVideoUrl
+      if (formData.highlightVideoFile && !finalHlVideoUrl) {
+        setSuccessMessage('Finishing highlight video upload...')
+        let hlWait = 0
+        const hlCheck = async () => {
+          return new Promise((resolve) => {
+            const interval = setInterval(() => {
+              hlWait++
+              if (hlVideoUrl || hlWait > 60) { // 30s
+                clearInterval(interval)
+                resolve()
+              }
+            }, 500)
+          })
+        }
+        await hlCheck()
+        finalHlVideoUrl = hlVideoUrl
+      }
+
       if (!finalProofUrl && !finalVideoUrl) {
         throw new Error("Match proof is required. Please select a photo or video.")
       }
@@ -705,14 +780,14 @@ export default function SubmitResult() {
       setSuccessMessage('Done!')
 
       // Background updates
-      if (formData.isHighlight || finalVideoUrl || formData.highlightUrl) {
+      if (formData.isHighlight || finalVideoUrl || formData.highlightUrl || finalHlVideoUrl) {
         const highlightId = `hl_${resultId}`
         setDoc(doc(db, 'highlights', highlightId), {
           id: highlightId,
           userId: user.id,
           username: submitterName,
           title: formData.highlightTitle || `${formData.gameType} Highlight vs ${opponentName}`,
-          videoUrl: finalVideoUrl || formData.highlightUrl || '',
+          videoUrl: finalHlVideoUrl || finalVideoUrl || formData.highlightUrl || '',
           imageUrl: finalProofUrl || '',
           resultId: resultId,
           likes: 0,
@@ -1382,8 +1457,39 @@ export default function SubmitResult() {
                   onChange={(e) => setFormData(prev => ({ ...prev, highlightTitle: e.target.value }))}
                   style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border)' }}
                 />
+
+                <div style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '8px', display: 'block' }}>
+                    Upload MP4 Highlight 🎬
+                    {isUploadingHighlight && <span style={{ color: 'var(--accent-cyan)', marginLeft: '8px' }}>• {hlUploadProgress}%</span>}
+                  </label>
+                  {formData.highlightVideoUrl ? (
+                    <div style={{ position: 'relative' }}>
+                      <video src={formData.highlightVideoUrl} style={{ width: '100%', maxHeight: '150px', borderRadius: '8px' }} controls />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData(prev => ({ ...prev, highlightVideoFile: null, highlightVideoUrl: '' }))
+                          setHlVideoUrl('')
+                          setHlUploadProgress(0)
+                        }}
+                        style={{ position: 'absolute', top: -10, right: -10, background: '#ef4444', color: '#fff', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer' }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ) : (
+                    <input
+                      type="file"
+                      accept="video/mp4,video/x-m4v,video/*"
+                      onChange={handleHighlightVideoUpload}
+                      style={{ fontSize: '0.8rem' }}
+                    />
+                  )}
+                </div>
+
                 <input
-                  placeholder="Video URL (YouTube/TikTok/Spotify) - Optional"
+                  placeholder="Or paste Video URL (YouTube/TikTok/Spotify)"
                   value={formData.highlightUrl}
                   onChange={(e) => setFormData(prev => ({ ...prev, highlightUrl: e.target.value }))}
                   style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border)' }}
