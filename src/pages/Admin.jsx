@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo, lazy, Suspense } from 'react'
+import { useState, useEffect, useMemo, lazy, Suspense, useRef } from 'react'
 import { useAuth } from '../context/AuthContextInternal'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { db, doc, setDoc, getDoc, getDocs, collection, deleteDoc, updateDoc, writeBatch, addDoc, query, orderBy, limit } from '../firebase'
+import { db, doc, setDoc, getDoc, getDocs, collection, deleteDoc, updateDoc, writeBatch, addDoc, query, orderBy, limit, storage, ref, uploadBytesResumable, getDownloadURL } from '../firebase'
 import { ADMIN_EMAILS } from '../config'
 import UserSearchSelect from '../components/UserSearchSelect'
 import { useToast } from '../context/ToastContext'
@@ -74,6 +74,10 @@ export default function Admin() {
   const [trophyForm, setTrophyForm] = useState({ player: '', name: '', icon: '🏆', season: '' })
   const [hallOfFameForm, setHallOfFameForm] = useState({ player: '', name: '', icon: '🏆', season: '', visible: true })
   const [hallOfFame, setHallOfFame] = useState([])
+  const [highlightForm, setHighlightForm] = useState({ player: '', title: '', type: 'High Checkout', videoUrl: '', videoFile: null })
+  const [highlights, setHighlights] = useState([])
+  const [hlUploadProgress, setHlUploadProgress] = useState(0)
+  const [isUploadingHl, setIsUploadingHl] = useState(false)
   const [playoffForm, setPlayoffForm] = useState({ player1: '', player2: '', division: '', date: '', time: '', bestOf: '3' })
   const [surveyForm, setSurveyForm] = useState({ title: '', description: '', targetType: 'all', targetUserIds: [] })
   const [surveyQuestions, setSurveyQuestions] = useState([{ id: 'q1', text: '', type: 'text', options: '' }])
@@ -124,6 +128,16 @@ export default function Admin() {
         } catch (e) { console.error('Failed to fetch Hall of Fame', e) }
       }
       fetchHallOfFame()
+    }
+    if (activeTab === 'highlights') {
+      const fetchHighlights = async () => {
+        try {
+          const q = query(collection(db, 'highlights'), orderBy('createdAt', 'desc'), limit(50))
+          const snap = await getDocs(q)
+          setHighlights(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+        } catch (e) { console.error('Failed to fetch highlights', e) }
+      }
+      fetchHighlights()
     }
   }, [activeTab, refreshKey])
 
@@ -877,6 +891,72 @@ export default function Admin() {
     } catch (e) { showToast(e.message, 'error') }
   }
 
+  const handleHighlightVideoUpload = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    if (file.size > 50 * 1024 * 1024) return showToast('Video too large (max 50MB)', 'error')
+
+    setIsUploadingHl(true)
+    setHlUploadProgress(1)
+
+    const hlId = `admin_hl_${Date.now()}`
+    const storageRef = ref(storage, `highlights/${hlId}.mp4`)
+    const uploadTask = uploadBytesResumable(storageRef, file)
+
+    uploadTask.on('state_changed',
+      (snapshot) => {
+        const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)
+        setHlUploadProgress(progress)
+      },
+      (error) => {
+        showToast('Upload failed: ' + error.message, 'error')
+        setIsUploadingHl(false)
+      },
+      async () => {
+        const url = await getDownloadURL(uploadTask.snapshot.ref)
+        setHighlightForm(prev => ({ ...prev, videoUrl: url }))
+        setIsUploadingHl(false)
+        showToast('Video uploaded and ready!', 'success')
+      }
+    )
+  }
+
+  const handleAddHighlight = async () => {
+    if (!highlightForm.videoUrl || !highlightForm.player) return showToast('Player and Video required', 'error')
+    setIsProcessing(true)
+    try {
+      const target = allPlayers.find(p => p.id === highlightForm.player)
+      const highlightId = `hl_${Date.now()}`
+      const newHighlight = {
+        id: highlightId,
+        userId: target.id,
+        username: target.username,
+        title: highlightForm.title || `High Finish by ${target.username}`,
+        videoUrl: highlightForm.videoUrl,
+        type: highlightForm.type,
+        likes: 0,
+        createdAt: new Date().toISOString()
+      }
+      await setDoc(doc(db, 'highlights', highlightId), newHighlight)
+      setHighlights(prev => [newHighlight, ...prev])
+      await logAudit('ADD_HIGHLIGHT', `Added highlight for ${target.username}: ${newHighlight.title}`)
+      showToast('Highlight added to home screen!', 'success')
+      setHighlightForm({ player: '', title: '', type: 'High Checkout', videoUrl: '', videoFile: null })
+      setHlUploadProgress(0)
+    } catch (e) { showToast(e.message, 'error') }
+    setIsProcessing(false)
+  }
+
+  const handleDeleteHighlight = async (id) => {
+    if (!window.confirm('Remove this highlight?')) return
+    try {
+      await deleteDoc(doc(db, 'highlights', id))
+      setHighlights(prev => prev.filter(h => h.id !== id))
+      await logAudit('DELETE_HIGHLIGHT', `Deleted highlight: ${id}`)
+      showToast('Highlight removed', 'info')
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
   const handleCreateSurvey = async () => {
     if (!surveyForm.title) return showToast('Survey title required', 'error')
     if (!surveyQuestions[0]?.text) return showToast('At least one question required', 'error')
@@ -1103,6 +1183,7 @@ export default function Admin() {
     { id: 'admins', label: 'Staff' },
     { id: 'cups', label: 'Cups' },
     { id: 'surveys', label: 'Surveys' },
+    { id: 'highlights', label: 'Home Highlights' },
     { id: 'trophies', label: 'Trophies' },
     { id: 'halloffame', label: 'Hall of Fame' },
     { id: 'practice', label: 'Practice Hub' },
@@ -1168,6 +1249,88 @@ export default function Admin() {
                   ) : <div style={{ textAlign: 'center', padding: '20px' }}><p style={{ color: 'var(--text-muted)' }}>System is healthy.</p></div>}
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: HIGHLIGHTS */}
+        {activeTab === 'highlights' && (
+          <div className="card glass">
+            <h3>Home Screen Highlights</h3>
+            <div className="glass" style={{ padding: '24px', borderRadius: '16px', marginTop: '20px', marginBottom: '24px' }}>
+              <h4 style={{ marginBottom: '16px', color: 'var(--accent-cyan)' }}>Add New Highlight</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
+                <UserSearchSelect
+                  users={allPlayers}
+                  selectedId={highlightForm.player}
+                  onSelect={id => setHighlightForm({...highlightForm, player: id})}
+                  label="Select Player"
+                  onQueryChange={searchUsers}
+                />
+                <div className="form-group">
+                  <label>Highlight Title</label>
+                  <input
+                    className="glass"
+                    placeholder="e.g. Insane 170 Checkout!"
+                    value={highlightForm.title}
+                    onChange={e => setHighlightForm({...highlightForm, title: e.target.value})}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Type</label>
+                  <select
+                    className="glass"
+                    value={highlightForm.type}
+                    onChange={e => setHighlightForm({...highlightForm, type: e.target.value})}
+                  >
+                    <option value="180">180</option>
+                    <option value="High Checkout">High Checkout</option>
+                    <option value="Match Winning Double">Match Winning Double</option>
+                    <option value="Epic Comeback">Epic Round</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Video File (MP4)</label>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <input
+                      type="file"
+                      accept="video/mp4,video/*"
+                      onChange={handleHighlightVideoUpload}
+                      style={{ fontSize: '0.8rem' }}
+                    />
+                    {isUploadingHl && <span style={{ color: 'var(--accent-cyan)', fontWeight: 800 }}>{hlUploadProgress}%</span>}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                className="btn btn-primary btn-block"
+                style={{ marginTop: '20px' }}
+                onClick={handleAddHighlight}
+                disabled={isProcessing || isUploadingHl || !highlightForm.videoUrl || !highlightForm.player}
+              >
+                {isProcessing ? 'Saving...' : 'Add Highlight to Home'}
+              </button>
+            </div>
+
+            <h4 style={{ marginBottom: '16px' }}>Existing Highlights</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+              {highlights.map(h => (
+                <div key={h.id} className="glass" style={{ padding: '0', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
+                    <video src={h.videoUrl} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} muted onMouseOver={e => e.target.play()} onMouseOut={e => e.target.pause()} />
+                  </div>
+                  <div style={{ padding: '12px' }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'white' }}>{h.title}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', marginBottom: '8px' }}>by {h.username} • {h.type}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(h.createdAt).toLocaleDateString()}</span>
+                      <button className="btn btn-danger btn-sm" onClick={() => handleDeleteHighlight(h.id)}>Delete</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {highlights.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', gridColumn: '1 / -1', padding: '40px' }}>No highlights found.</p>}
             </div>
           </div>
         )}
@@ -1465,6 +1628,88 @@ export default function Admin() {
           </div>
         )}
 
+        {/* TAB: HIGHLIGHTS */}
+        {activeTab === 'highlights' && (
+          <div className="card glass">
+            <h3>Home Screen Highlights</h3>
+            <div className="glass" style={{ padding: '24px', borderRadius: '16px', marginTop: '20px', marginBottom: '24px' }}>
+              <h4 style={{ marginBottom: '16px', color: 'var(--accent-cyan)' }}>Add New Highlight</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
+                <UserSearchSelect
+                  users={allPlayers}
+                  selectedId={highlightForm.player}
+                  onSelect={id => setHighlightForm({...highlightForm, player: id})}
+                  label="Select Player"
+                  onQueryChange={searchUsers}
+                />
+                <div className="form-group">
+                  <label>Highlight Title</label>
+                  <input
+                    className="glass"
+                    placeholder="e.g. Insane 170 Checkout!"
+                    value={highlightForm.title}
+                    onChange={e => setHighlightForm({...highlightForm, title: e.target.value})}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Type</label>
+                  <select
+                    className="glass"
+                    value={highlightForm.type}
+                    onChange={e => setHighlightForm({...highlightForm, type: e.target.value})}
+                  >
+                    <option value="180">180</option>
+                    <option value="High Checkout">High Checkout</option>
+                    <option value="Match Winning Double">Match Winning Double</option>
+                    <option value="Epic Comeback">Epic Round</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Video File (MP4)</label>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <input
+                      type="file"
+                      accept="video/mp4,video/*"
+                      onChange={handleHighlightVideoUpload}
+                      style={{ fontSize: '0.8rem' }}
+                    />
+                    {isUploadingHl && <span style={{ color: 'var(--accent-cyan)', fontWeight: 800 }}>{hlUploadProgress}%</span>}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                className="btn btn-primary btn-block"
+                style={{ marginTop: '20px' }}
+                onClick={handleAddHighlight}
+                disabled={isProcessing || isUploadingHl || !highlightForm.videoUrl || !highlightForm.player}
+              >
+                {isProcessing ? 'Saving...' : 'Add Highlight to Home'}
+              </button>
+            </div>
+
+            <h4 style={{ marginBottom: '16px' }}>Existing Highlights</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+              {highlights.map(h => (
+                <div key={h.id} className="glass" style={{ padding: '0', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
+                    <video src={h.videoUrl} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} muted onMouseOver={e => e.target.play()} onMouseOut={e => e.target.pause()} />
+                  </div>
+                  <div style={{ padding: '12px' }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'white' }}>{h.title}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', marginBottom: '8px' }}>by {h.username} • {h.type}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(h.createdAt).toLocaleDateString()}</span>
+                      <button className="btn btn-danger btn-sm" onClick={() => handleDeleteHighlight(h.id)}>Delete</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {highlights.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', gridColumn: '1 / -1', padding: '40px' }}>No highlights found.</p>}
+            </div>
+          </div>
+        )}
+
         {/* TAB: PAYMENTS */}
         {activeTab === 'payments' && (
           <div className="card glass">
@@ -1566,6 +1811,88 @@ export default function Admin() {
           </div>
         )}
 
+        {/* TAB: HIGHLIGHTS */}
+        {activeTab === 'highlights' && (
+          <div className="card glass">
+            <h3>Home Screen Highlights</h3>
+            <div className="glass" style={{ padding: '24px', borderRadius: '16px', marginTop: '20px', marginBottom: '24px' }}>
+              <h4 style={{ marginBottom: '16px', color: 'var(--accent-cyan)' }}>Add New Highlight</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
+                <UserSearchSelect
+                  users={allPlayers}
+                  selectedId={highlightForm.player}
+                  onSelect={id => setHighlightForm({...highlightForm, player: id})}
+                  label="Select Player"
+                  onQueryChange={searchUsers}
+                />
+                <div className="form-group">
+                  <label>Highlight Title</label>
+                  <input
+                    className="glass"
+                    placeholder="e.g. Insane 170 Checkout!"
+                    value={highlightForm.title}
+                    onChange={e => setHighlightForm({...highlightForm, title: e.target.value})}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Type</label>
+                  <select
+                    className="glass"
+                    value={highlightForm.type}
+                    onChange={e => setHighlightForm({...highlightForm, type: e.target.value})}
+                  >
+                    <option value="180">180</option>
+                    <option value="High Checkout">High Checkout</option>
+                    <option value="Match Winning Double">Match Winning Double</option>
+                    <option value="Epic Comeback">Epic Round</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Video File (MP4)</label>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <input
+                      type="file"
+                      accept="video/mp4,video/*"
+                      onChange={handleHighlightVideoUpload}
+                      style={{ fontSize: '0.8rem' }}
+                    />
+                    {isUploadingHl && <span style={{ color: 'var(--accent-cyan)', fontWeight: 800 }}>{hlUploadProgress}%</span>}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                className="btn btn-primary btn-block"
+                style={{ marginTop: '20px' }}
+                onClick={handleAddHighlight}
+                disabled={isProcessing || isUploadingHl || !highlightForm.videoUrl || !highlightForm.player}
+              >
+                {isProcessing ? 'Saving...' : 'Add Highlight to Home'}
+              </button>
+            </div>
+
+            <h4 style={{ marginBottom: '16px' }}>Existing Highlights</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+              {highlights.map(h => (
+                <div key={h.id} className="glass" style={{ padding: '0', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
+                    <video src={h.videoUrl} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} muted onMouseOver={e => e.target.play()} onMouseOut={e => e.target.pause()} />
+                  </div>
+                  <div style={{ padding: '12px' }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'white' }}>{h.title}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', marginBottom: '8px' }}>by {h.username} • {h.type}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(h.createdAt).toLocaleDateString()}</span>
+                      <button className="btn btn-danger btn-sm" onClick={() => handleDeleteHighlight(h.id)}>Delete</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {highlights.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', gridColumn: '1 / -1', padding: '40px' }}>No highlights found.</p>}
+            </div>
+          </div>
+        )}
+
         {/* TAB: OPEN LEAGUE */}
         {activeTab === 'openleague' && (
           <div className="card glass" style={{ padding: '20px' }}>
@@ -1627,6 +1954,88 @@ export default function Admin() {
           </div>
         )}
 
+        {/* TAB: HIGHLIGHTS */}
+        {activeTab === 'highlights' && (
+          <div className="card glass">
+            <h3>Home Screen Highlights</h3>
+            <div className="glass" style={{ padding: '24px', borderRadius: '16px', marginTop: '20px', marginBottom: '24px' }}>
+              <h4 style={{ marginBottom: '16px', color: 'var(--accent-cyan)' }}>Add New Highlight</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
+                <UserSearchSelect
+                  users={allPlayers}
+                  selectedId={highlightForm.player}
+                  onSelect={id => setHighlightForm({...highlightForm, player: id})}
+                  label="Select Player"
+                  onQueryChange={searchUsers}
+                />
+                <div className="form-group">
+                  <label>Highlight Title</label>
+                  <input
+                    className="glass"
+                    placeholder="e.g. Insane 170 Checkout!"
+                    value={highlightForm.title}
+                    onChange={e => setHighlightForm({...highlightForm, title: e.target.value})}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Type</label>
+                  <select
+                    className="glass"
+                    value={highlightForm.type}
+                    onChange={e => setHighlightForm({...highlightForm, type: e.target.value})}
+                  >
+                    <option value="180">180</option>
+                    <option value="High Checkout">High Checkout</option>
+                    <option value="Match Winning Double">Match Winning Double</option>
+                    <option value="Epic Comeback">Epic Round</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Video File (MP4)</label>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <input
+                      type="file"
+                      accept="video/mp4,video/*"
+                      onChange={handleHighlightVideoUpload}
+                      style={{ fontSize: '0.8rem' }}
+                    />
+                    {isUploadingHl && <span style={{ color: 'var(--accent-cyan)', fontWeight: 800 }}>{hlUploadProgress}%</span>}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                className="btn btn-primary btn-block"
+                style={{ marginTop: '20px' }}
+                onClick={handleAddHighlight}
+                disabled={isProcessing || isUploadingHl || !highlightForm.videoUrl || !highlightForm.player}
+              >
+                {isProcessing ? 'Saving...' : 'Add Highlight to Home'}
+              </button>
+            </div>
+
+            <h4 style={{ marginBottom: '16px' }}>Existing Highlights</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+              {highlights.map(h => (
+                <div key={h.id} className="glass" style={{ padding: '0', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
+                    <video src={h.videoUrl} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} muted onMouseOver={e => e.target.play()} onMouseOut={e => e.target.pause()} />
+                  </div>
+                  <div style={{ padding: '12px' }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'white' }}>{h.title}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', marginBottom: '8px' }}>by {h.username} • {h.type}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(h.createdAt).toLocaleDateString()}</span>
+                      <button className="btn btn-danger btn-sm" onClick={() => handleDeleteHighlight(h.id)}>Delete</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {highlights.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', gridColumn: '1 / -1', padding: '40px' }}>No highlights found.</p>}
+            </div>
+          </div>
+        )}
+
         {/* TAB: NEW USERS */}
         {activeTab === 'new' && (
           <div className="card glass">
@@ -1642,6 +2051,88 @@ export default function Admin() {
           </div>
         )}
 
+        {/* TAB: HIGHLIGHTS */}
+        {activeTab === 'highlights' && (
+          <div className="card glass">
+            <h3>Home Screen Highlights</h3>
+            <div className="glass" style={{ padding: '24px', borderRadius: '16px', marginTop: '20px', marginBottom: '24px' }}>
+              <h4 style={{ marginBottom: '16px', color: 'var(--accent-cyan)' }}>Add New Highlight</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
+                <UserSearchSelect
+                  users={allPlayers}
+                  selectedId={highlightForm.player}
+                  onSelect={id => setHighlightForm({...highlightForm, player: id})}
+                  label="Select Player"
+                  onQueryChange={searchUsers}
+                />
+                <div className="form-group">
+                  <label>Highlight Title</label>
+                  <input
+                    className="glass"
+                    placeholder="e.g. Insane 170 Checkout!"
+                    value={highlightForm.title}
+                    onChange={e => setHighlightForm({...highlightForm, title: e.target.value})}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Type</label>
+                  <select
+                    className="glass"
+                    value={highlightForm.type}
+                    onChange={e => setHighlightForm({...highlightForm, type: e.target.value})}
+                  >
+                    <option value="180">180</option>
+                    <option value="High Checkout">High Checkout</option>
+                    <option value="Match Winning Double">Match Winning Double</option>
+                    <option value="Epic Comeback">Epic Round</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Video File (MP4)</label>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <input
+                      type="file"
+                      accept="video/mp4,video/*"
+                      onChange={handleHighlightVideoUpload}
+                      style={{ fontSize: '0.8rem' }}
+                    />
+                    {isUploadingHl && <span style={{ color: 'var(--accent-cyan)', fontWeight: 800 }}>{hlUploadProgress}%</span>}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                className="btn btn-primary btn-block"
+                style={{ marginTop: '20px' }}
+                onClick={handleAddHighlight}
+                disabled={isProcessing || isUploadingHl || !highlightForm.videoUrl || !highlightForm.player}
+              >
+                {isProcessing ? 'Saving...' : 'Add Highlight to Home'}
+              </button>
+            </div>
+
+            <h4 style={{ marginBottom: '16px' }}>Existing Highlights</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+              {highlights.map(h => (
+                <div key={h.id} className="glass" style={{ padding: '0', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
+                    <video src={h.videoUrl} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} muted onMouseOver={e => e.target.play()} onMouseOut={e => e.target.pause()} />
+                  </div>
+                  <div style={{ padding: '12px' }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'white' }}>{h.title}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', marginBottom: '8px' }}>by {h.username} • {h.type}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(h.createdAt).toLocaleDateString()}</span>
+                      <button className="btn btn-danger btn-sm" onClick={() => handleDeleteHighlight(h.id)}>Delete</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {highlights.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', gridColumn: '1 / -1', padding: '40px' }}>No highlights found.</p>}
+            </div>
+          </div>
+        )}
+
         {/* TAB: MONEY POT */}
         {activeTab === 'moneypot' && (
           <div className="card glass">
@@ -1653,6 +2144,88 @@ export default function Admin() {
                 <input type="number" className="glass" style={{ flex: 1 }} placeholder="+/-" onChange={e => setPotAdjust({...potAdjust, amount: parseFloat(e.target.value) || 0})} />
                 <button className="btn btn-secondary btn-sm" onClick={handleAdjustPot}>Adjust</button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: HIGHLIGHTS */}
+        {activeTab === 'highlights' && (
+          <div className="card glass">
+            <h3>Home Screen Highlights</h3>
+            <div className="glass" style={{ padding: '24px', borderRadius: '16px', marginTop: '20px', marginBottom: '24px' }}>
+              <h4 style={{ marginBottom: '16px', color: 'var(--accent-cyan)' }}>Add New Highlight</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
+                <UserSearchSelect
+                  users={allPlayers}
+                  selectedId={highlightForm.player}
+                  onSelect={id => setHighlightForm({...highlightForm, player: id})}
+                  label="Select Player"
+                  onQueryChange={searchUsers}
+                />
+                <div className="form-group">
+                  <label>Highlight Title</label>
+                  <input
+                    className="glass"
+                    placeholder="e.g. Insane 170 Checkout!"
+                    value={highlightForm.title}
+                    onChange={e => setHighlightForm({...highlightForm, title: e.target.value})}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Type</label>
+                  <select
+                    className="glass"
+                    value={highlightForm.type}
+                    onChange={e => setHighlightForm({...highlightForm, type: e.target.value})}
+                  >
+                    <option value="180">180</option>
+                    <option value="High Checkout">High Checkout</option>
+                    <option value="Match Winning Double">Match Winning Double</option>
+                    <option value="Epic Comeback">Epic Round</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Video File (MP4)</label>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <input
+                      type="file"
+                      accept="video/mp4,video/*"
+                      onChange={handleHighlightVideoUpload}
+                      style={{ fontSize: '0.8rem' }}
+                    />
+                    {isUploadingHl && <span style={{ color: 'var(--accent-cyan)', fontWeight: 800 }}>{hlUploadProgress}%</span>}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                className="btn btn-primary btn-block"
+                style={{ marginTop: '20px' }}
+                onClick={handleAddHighlight}
+                disabled={isProcessing || isUploadingHl || !highlightForm.videoUrl || !highlightForm.player}
+              >
+                {isProcessing ? 'Saving...' : 'Add Highlight to Home'}
+              </button>
+            </div>
+
+            <h4 style={{ marginBottom: '16px' }}>Existing Highlights</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+              {highlights.map(h => (
+                <div key={h.id} className="glass" style={{ padding: '0', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
+                    <video src={h.videoUrl} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} muted onMouseOver={e => e.target.play()} onMouseOut={e => e.target.pause()} />
+                  </div>
+                  <div style={{ padding: '12px' }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'white' }}>{h.title}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', marginBottom: '8px' }}>by {h.username} • {h.type}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(h.createdAt).toLocaleDateString()}</span>
+                      <button className="btn btn-danger btn-sm" onClick={() => handleDeleteHighlight(h.id)}>Delete</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {highlights.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', gridColumn: '1 / -1', padding: '40px' }}>No highlights found.</p>}
             </div>
           </div>
         )}
@@ -1682,6 +2255,88 @@ export default function Admin() {
           </div>
         )}
 
+        {/* TAB: HIGHLIGHTS */}
+        {activeTab === 'highlights' && (
+          <div className="card glass">
+            <h3>Home Screen Highlights</h3>
+            <div className="glass" style={{ padding: '24px', borderRadius: '16px', marginTop: '20px', marginBottom: '24px' }}>
+              <h4 style={{ marginBottom: '16px', color: 'var(--accent-cyan)' }}>Add New Highlight</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
+                <UserSearchSelect
+                  users={allPlayers}
+                  selectedId={highlightForm.player}
+                  onSelect={id => setHighlightForm({...highlightForm, player: id})}
+                  label="Select Player"
+                  onQueryChange={searchUsers}
+                />
+                <div className="form-group">
+                  <label>Highlight Title</label>
+                  <input
+                    className="glass"
+                    placeholder="e.g. Insane 170 Checkout!"
+                    value={highlightForm.title}
+                    onChange={e => setHighlightForm({...highlightForm, title: e.target.value})}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Type</label>
+                  <select
+                    className="glass"
+                    value={highlightForm.type}
+                    onChange={e => setHighlightForm({...highlightForm, type: e.target.value})}
+                  >
+                    <option value="180">180</option>
+                    <option value="High Checkout">High Checkout</option>
+                    <option value="Match Winning Double">Match Winning Double</option>
+                    <option value="Epic Comeback">Epic Round</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Video File (MP4)</label>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <input
+                      type="file"
+                      accept="video/mp4,video/*"
+                      onChange={handleHighlightVideoUpload}
+                      style={{ fontSize: '0.8rem' }}
+                    />
+                    {isUploadingHl && <span style={{ color: 'var(--accent-cyan)', fontWeight: 800 }}>{hlUploadProgress}%</span>}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                className="btn btn-primary btn-block"
+                style={{ marginTop: '20px' }}
+                onClick={handleAddHighlight}
+                disabled={isProcessing || isUploadingHl || !highlightForm.videoUrl || !highlightForm.player}
+              >
+                {isProcessing ? 'Saving...' : 'Add Highlight to Home'}
+              </button>
+            </div>
+
+            <h4 style={{ marginBottom: '16px' }}>Existing Highlights</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+              {highlights.map(h => (
+                <div key={h.id} className="glass" style={{ padding: '0', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
+                    <video src={h.videoUrl} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} muted onMouseOver={e => e.target.play()} onMouseOut={e => e.target.pause()} />
+                  </div>
+                  <div style={{ padding: '12px' }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'white' }}>{h.title}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', marginBottom: '8px' }}>by {h.username} • {h.type}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(h.createdAt).toLocaleDateString()}</span>
+                      <button className="btn btn-danger btn-sm" onClick={() => handleDeleteHighlight(h.id)}>Delete</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {highlights.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', gridColumn: '1 / -1', padding: '40px' }}>No highlights found.</p>}
+            </div>
+          </div>
+        )}
+
         {/* TAB: PLAYOFFS */}
         {activeTab === 'playoffs' && (
           <div className="card glass">
@@ -1692,6 +2347,88 @@ export default function Admin() {
                 <UserSearchSelect users={allPlayers} selectedId={playoffForm.player2} onSelect={id => setPlayoffForm({...playoffForm, player2: id})} label="Player 2" onQueryChange={searchUsers} />
               </div>
               <button className="btn btn-primary btn-block" style={{ marginTop: '20px' }} onClick={handleCreatePlayoff}>Create Playoff</button>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: HIGHLIGHTS */}
+        {activeTab === 'highlights' && (
+          <div className="card glass">
+            <h3>Home Screen Highlights</h3>
+            <div className="glass" style={{ padding: '24px', borderRadius: '16px', marginTop: '20px', marginBottom: '24px' }}>
+              <h4 style={{ marginBottom: '16px', color: 'var(--accent-cyan)' }}>Add New Highlight</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
+                <UserSearchSelect
+                  users={allPlayers}
+                  selectedId={highlightForm.player}
+                  onSelect={id => setHighlightForm({...highlightForm, player: id})}
+                  label="Select Player"
+                  onQueryChange={searchUsers}
+                />
+                <div className="form-group">
+                  <label>Highlight Title</label>
+                  <input
+                    className="glass"
+                    placeholder="e.g. Insane 170 Checkout!"
+                    value={highlightForm.title}
+                    onChange={e => setHighlightForm({...highlightForm, title: e.target.value})}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Type</label>
+                  <select
+                    className="glass"
+                    value={highlightForm.type}
+                    onChange={e => setHighlightForm({...highlightForm, type: e.target.value})}
+                  >
+                    <option value="180">180</option>
+                    <option value="High Checkout">High Checkout</option>
+                    <option value="Match Winning Double">Match Winning Double</option>
+                    <option value="Epic Comeback">Epic Round</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Video File (MP4)</label>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <input
+                      type="file"
+                      accept="video/mp4,video/*"
+                      onChange={handleHighlightVideoUpload}
+                      style={{ fontSize: '0.8rem' }}
+                    />
+                    {isUploadingHl && <span style={{ color: 'var(--accent-cyan)', fontWeight: 800 }}>{hlUploadProgress}%</span>}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                className="btn btn-primary btn-block"
+                style={{ marginTop: '20px' }}
+                onClick={handleAddHighlight}
+                disabled={isProcessing || isUploadingHl || !highlightForm.videoUrl || !highlightForm.player}
+              >
+                {isProcessing ? 'Saving...' : 'Add Highlight to Home'}
+              </button>
+            </div>
+
+            <h4 style={{ marginBottom: '16px' }}>Existing Highlights</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+              {highlights.map(h => (
+                <div key={h.id} className="glass" style={{ padding: '0', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
+                    <video src={h.videoUrl} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} muted onMouseOver={e => e.target.play()} onMouseOut={e => e.target.pause()} />
+                  </div>
+                  <div style={{ padding: '12px' }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'white' }}>{h.title}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', marginBottom: '8px' }}>by {h.username} • {h.type}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(h.createdAt).toLocaleDateString()}</span>
+                      <button className="btn btn-danger btn-sm" onClick={() => handleDeleteHighlight(h.id)}>Delete</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {highlights.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', gridColumn: '1 / -1', padding: '40px' }}>No highlights found.</p>}
             </div>
           </div>
         )}
@@ -1708,6 +2445,88 @@ export default function Admin() {
                     <button className="btn btn-secondary btn-sm" onClick={async () => { await updateAdminData({ currentSeason: s.name }); triggerDataRefresh('all'); }}>Set Active</button>
                  </div>
                ))}
+            </div>
+          </div>
+        )}
+
+        {/* TAB: HIGHLIGHTS */}
+        {activeTab === 'highlights' && (
+          <div className="card glass">
+            <h3>Home Screen Highlights</h3>
+            <div className="glass" style={{ padding: '24px', borderRadius: '16px', marginTop: '20px', marginBottom: '24px' }}>
+              <h4 style={{ marginBottom: '16px', color: 'var(--accent-cyan)' }}>Add New Highlight</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
+                <UserSearchSelect
+                  users={allPlayers}
+                  selectedId={highlightForm.player}
+                  onSelect={id => setHighlightForm({...highlightForm, player: id})}
+                  label="Select Player"
+                  onQueryChange={searchUsers}
+                />
+                <div className="form-group">
+                  <label>Highlight Title</label>
+                  <input
+                    className="glass"
+                    placeholder="e.g. Insane 170 Checkout!"
+                    value={highlightForm.title}
+                    onChange={e => setHighlightForm({...highlightForm, title: e.target.value})}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Type</label>
+                  <select
+                    className="glass"
+                    value={highlightForm.type}
+                    onChange={e => setHighlightForm({...highlightForm, type: e.target.value})}
+                  >
+                    <option value="180">180</option>
+                    <option value="High Checkout">High Checkout</option>
+                    <option value="Match Winning Double">Match Winning Double</option>
+                    <option value="Epic Comeback">Epic Round</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Video File (MP4)</label>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <input
+                      type="file"
+                      accept="video/mp4,video/*"
+                      onChange={handleHighlightVideoUpload}
+                      style={{ fontSize: '0.8rem' }}
+                    />
+                    {isUploadingHl && <span style={{ color: 'var(--accent-cyan)', fontWeight: 800 }}>{hlUploadProgress}%</span>}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                className="btn btn-primary btn-block"
+                style={{ marginTop: '20px' }}
+                onClick={handleAddHighlight}
+                disabled={isProcessing || isUploadingHl || !highlightForm.videoUrl || !highlightForm.player}
+              >
+                {isProcessing ? 'Saving...' : 'Add Highlight to Home'}
+              </button>
+            </div>
+
+            <h4 style={{ marginBottom: '16px' }}>Existing Highlights</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+              {highlights.map(h => (
+                <div key={h.id} className="glass" style={{ padding: '0', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
+                    <video src={h.videoUrl} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} muted onMouseOver={e => e.target.play()} onMouseOut={e => e.target.pause()} />
+                  </div>
+                  <div style={{ padding: '12px' }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'white' }}>{h.title}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', marginBottom: '8px' }}>by {h.username} • {h.type}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(h.createdAt).toLocaleDateString()}</span>
+                      <button className="btn btn-danger btn-sm" onClick={() => handleDeleteHighlight(h.id)}>Delete</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {highlights.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', gridColumn: '1 / -1', padding: '40px' }}>No highlights found.</p>}
             </div>
           </div>
         )}
@@ -1839,11 +2658,175 @@ export default function Admin() {
           </div>
         )}
 
+        {/* TAB: HIGHLIGHTS */}
+        {activeTab === 'highlights' && (
+          <div className="card glass">
+            <h3>Home Screen Highlights</h3>
+            <div className="glass" style={{ padding: '24px', borderRadius: '16px', marginTop: '20px', marginBottom: '24px' }}>
+              <h4 style={{ marginBottom: '16px', color: 'var(--accent-cyan)' }}>Add New Highlight</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
+                <UserSearchSelect
+                  users={allPlayers}
+                  selectedId={highlightForm.player}
+                  onSelect={id => setHighlightForm({...highlightForm, player: id})}
+                  label="Select Player"
+                  onQueryChange={searchUsers}
+                />
+                <div className="form-group">
+                  <label>Highlight Title</label>
+                  <input
+                    className="glass"
+                    placeholder="e.g. Insane 170 Checkout!"
+                    value={highlightForm.title}
+                    onChange={e => setHighlightForm({...highlightForm, title: e.target.value})}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Type</label>
+                  <select
+                    className="glass"
+                    value={highlightForm.type}
+                    onChange={e => setHighlightForm({...highlightForm, type: e.target.value})}
+                  >
+                    <option value="180">180</option>
+                    <option value="High Checkout">High Checkout</option>
+                    <option value="Match Winning Double">Match Winning Double</option>
+                    <option value="Epic Comeback">Epic Round</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Video File (MP4)</label>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <input
+                      type="file"
+                      accept="video/mp4,video/*"
+                      onChange={handleHighlightVideoUpload}
+                      style={{ fontSize: '0.8rem' }}
+                    />
+                    {isUploadingHl && <span style={{ color: 'var(--accent-cyan)', fontWeight: 800 }}>{hlUploadProgress}%</span>}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                className="btn btn-primary btn-block"
+                style={{ marginTop: '20px' }}
+                onClick={handleAddHighlight}
+                disabled={isProcessing || isUploadingHl || !highlightForm.videoUrl || !highlightForm.player}
+              >
+                {isProcessing ? 'Saving...' : 'Add Highlight to Home'}
+              </button>
+            </div>
+
+            <h4 style={{ marginBottom: '16px' }}>Existing Highlights</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+              {highlights.map(h => (
+                <div key={h.id} className="glass" style={{ padding: '0', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
+                    <video src={h.videoUrl} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} muted onMouseOver={e => e.target.play()} onMouseOut={e => e.target.pause()} />
+                  </div>
+                  <div style={{ padding: '12px' }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'white' }}>{h.title}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', marginBottom: '8px' }}>by {h.username} • {h.type}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(h.createdAt).toLocaleDateString()}</span>
+                      <button className="btn btn-danger btn-sm" onClick={() => handleDeleteHighlight(h.id)}>Delete</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {highlights.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', gridColumn: '1 / -1', padding: '40px' }}>No highlights found.</p>}
+            </div>
+          </div>
+        )}
+
         {/* TAB: PRACTICE MONITOR */}
         {activeTab === 'practice' && (
           <div className="card glass">
             <h3>Practice Hub</h3>
             <button className="btn btn-primary" style={{ marginTop: '20px' }} onClick={() => triggerDataRefresh('all')}>Refresh Data</button>
+          </div>
+        )}
+
+        {/* TAB: HIGHLIGHTS */}
+        {activeTab === 'highlights' && (
+          <div className="card glass">
+            <h3>Home Screen Highlights</h3>
+            <div className="glass" style={{ padding: '24px', borderRadius: '16px', marginTop: '20px', marginBottom: '24px' }}>
+              <h4 style={{ marginBottom: '16px', color: 'var(--accent-cyan)' }}>Add New Highlight</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
+                <UserSearchSelect
+                  users={allPlayers}
+                  selectedId={highlightForm.player}
+                  onSelect={id => setHighlightForm({...highlightForm, player: id})}
+                  label="Select Player"
+                  onQueryChange={searchUsers}
+                />
+                <div className="form-group">
+                  <label>Highlight Title</label>
+                  <input
+                    className="glass"
+                    placeholder="e.g. Insane 170 Checkout!"
+                    value={highlightForm.title}
+                    onChange={e => setHighlightForm({...highlightForm, title: e.target.value})}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Type</label>
+                  <select
+                    className="glass"
+                    value={highlightForm.type}
+                    onChange={e => setHighlightForm({...highlightForm, type: e.target.value})}
+                  >
+                    <option value="180">180</option>
+                    <option value="High Checkout">High Checkout</option>
+                    <option value="Match Winning Double">Match Winning Double</option>
+                    <option value="Epic Comeback">Epic Round</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Video File (MP4)</label>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <input
+                      type="file"
+                      accept="video/mp4,video/*"
+                      onChange={handleHighlightVideoUpload}
+                      style={{ fontSize: '0.8rem' }}
+                    />
+                    {isUploadingHl && <span style={{ color: 'var(--accent-cyan)', fontWeight: 800 }}>{hlUploadProgress}%</span>}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                className="btn btn-primary btn-block"
+                style={{ marginTop: '20px' }}
+                onClick={handleAddHighlight}
+                disabled={isProcessing || isUploadingHl || !highlightForm.videoUrl || !highlightForm.player}
+              >
+                {isProcessing ? 'Saving...' : 'Add Highlight to Home'}
+              </button>
+            </div>
+
+            <h4 style={{ marginBottom: '16px' }}>Existing Highlights</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+              {highlights.map(h => (
+                <div key={h.id} className="glass" style={{ padding: '0', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
+                    <video src={h.videoUrl} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} muted onMouseOver={e => e.target.play()} onMouseOut={e => e.target.pause()} />
+                  </div>
+                  <div style={{ padding: '12px' }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'white' }}>{h.title}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', marginBottom: '8px' }}>by {h.username} • {h.type}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(h.createdAt).toLocaleDateString()}</span>
+                      <button className="btn btn-danger btn-sm" onClick={() => handleDeleteHighlight(h.id)}>Delete</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {highlights.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', gridColumn: '1 / -1', padding: '40px' }}>No highlights found.</p>}
+            </div>
           </div>
         )}
 
@@ -1862,6 +2845,88 @@ export default function Admin() {
                 </select>
               </div>
               <button className="btn btn-primary btn-block" style={{ marginTop: '15px' }} onClick={handleAwardTrophy}>Award Trophy</button>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: HIGHLIGHTS */}
+        {activeTab === 'highlights' && (
+          <div className="card glass">
+            <h3>Home Screen Highlights</h3>
+            <div className="glass" style={{ padding: '24px', borderRadius: '16px', marginTop: '20px', marginBottom: '24px' }}>
+              <h4 style={{ marginBottom: '16px', color: 'var(--accent-cyan)' }}>Add New Highlight</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
+                <UserSearchSelect
+                  users={allPlayers}
+                  selectedId={highlightForm.player}
+                  onSelect={id => setHighlightForm({...highlightForm, player: id})}
+                  label="Select Player"
+                  onQueryChange={searchUsers}
+                />
+                <div className="form-group">
+                  <label>Highlight Title</label>
+                  <input
+                    className="glass"
+                    placeholder="e.g. Insane 170 Checkout!"
+                    value={highlightForm.title}
+                    onChange={e => setHighlightForm({...highlightForm, title: e.target.value})}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Type</label>
+                  <select
+                    className="glass"
+                    value={highlightForm.type}
+                    onChange={e => setHighlightForm({...highlightForm, type: e.target.value})}
+                  >
+                    <option value="180">180</option>
+                    <option value="High Checkout">High Checkout</option>
+                    <option value="Match Winning Double">Match Winning Double</option>
+                    <option value="Epic Comeback">Epic Round</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Video File (MP4)</label>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <input
+                      type="file"
+                      accept="video/mp4,video/*"
+                      onChange={handleHighlightVideoUpload}
+                      style={{ fontSize: '0.8rem' }}
+                    />
+                    {isUploadingHl && <span style={{ color: 'var(--accent-cyan)', fontWeight: 800 }}>{hlUploadProgress}%</span>}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                className="btn btn-primary btn-block"
+                style={{ marginTop: '20px' }}
+                onClick={handleAddHighlight}
+                disabled={isProcessing || isUploadingHl || !highlightForm.videoUrl || !highlightForm.player}
+              >
+                {isProcessing ? 'Saving...' : 'Add Highlight to Home'}
+              </button>
+            </div>
+
+            <h4 style={{ marginBottom: '16px' }}>Existing Highlights</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+              {highlights.map(h => (
+                <div key={h.id} className="glass" style={{ padding: '0', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
+                    <video src={h.videoUrl} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} muted onMouseOver={e => e.target.play()} onMouseOut={e => e.target.pause()} />
+                  </div>
+                  <div style={{ padding: '12px' }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'white' }}>{h.title}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', marginBottom: '8px' }}>by {h.username} • {h.type}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(h.createdAt).toLocaleDateString()}</span>
+                      <button className="btn btn-danger btn-sm" onClick={() => handleDeleteHighlight(h.id)}>Delete</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {highlights.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', gridColumn: '1 / -1', padding: '40px' }}>No highlights found.</p>}
             </div>
           </div>
         )}
@@ -1913,6 +2978,88 @@ export default function Admin() {
           </div>
         )}
 
+        {/* TAB: HIGHLIGHTS */}
+        {activeTab === 'highlights' && (
+          <div className="card glass">
+            <h3>Home Screen Highlights</h3>
+            <div className="glass" style={{ padding: '24px', borderRadius: '16px', marginTop: '20px', marginBottom: '24px' }}>
+              <h4 style={{ marginBottom: '16px', color: 'var(--accent-cyan)' }}>Add New Highlight</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
+                <UserSearchSelect
+                  users={allPlayers}
+                  selectedId={highlightForm.player}
+                  onSelect={id => setHighlightForm({...highlightForm, player: id})}
+                  label="Select Player"
+                  onQueryChange={searchUsers}
+                />
+                <div className="form-group">
+                  <label>Highlight Title</label>
+                  <input
+                    className="glass"
+                    placeholder="e.g. Insane 170 Checkout!"
+                    value={highlightForm.title}
+                    onChange={e => setHighlightForm({...highlightForm, title: e.target.value})}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Type</label>
+                  <select
+                    className="glass"
+                    value={highlightForm.type}
+                    onChange={e => setHighlightForm({...highlightForm, type: e.target.value})}
+                  >
+                    <option value="180">180</option>
+                    <option value="High Checkout">High Checkout</option>
+                    <option value="Match Winning Double">Match Winning Double</option>
+                    <option value="Epic Comeback">Epic Round</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Video File (MP4)</label>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <input
+                      type="file"
+                      accept="video/mp4,video/*"
+                      onChange={handleHighlightVideoUpload}
+                      style={{ fontSize: '0.8rem' }}
+                    />
+                    {isUploadingHl && <span style={{ color: 'var(--accent-cyan)', fontWeight: 800 }}>{hlUploadProgress}%</span>}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                className="btn btn-primary btn-block"
+                style={{ marginTop: '20px' }}
+                onClick={handleAddHighlight}
+                disabled={isProcessing || isUploadingHl || !highlightForm.videoUrl || !highlightForm.player}
+              >
+                {isProcessing ? 'Saving...' : 'Add Highlight to Home'}
+              </button>
+            </div>
+
+            <h4 style={{ marginBottom: '16px' }}>Existing Highlights</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+              {highlights.map(h => (
+                <div key={h.id} className="glass" style={{ padding: '0', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
+                    <video src={h.videoUrl} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} muted onMouseOver={e => e.target.play()} onMouseOut={e => e.target.pause()} />
+                  </div>
+                  <div style={{ padding: '12px' }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'white' }}>{h.title}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', marginBottom: '8px' }}>by {h.username} • {h.type}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(h.createdAt).toLocaleDateString()}</span>
+                      <button className="btn btn-danger btn-sm" onClick={() => handleDeleteHighlight(h.id)}>Delete</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {highlights.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', gridColumn: '1 / -1', padding: '40px' }}>No highlights found.</p>}
+            </div>
+          </div>
+        )}
+
         {/* TAB: SURVEYS */}
         {activeTab === 'surveys' && (
           <div className="card glass">
@@ -1920,6 +3067,88 @@ export default function Admin() {
             <div className="card glass" style={{ marginTop: '20px' }}>
               <input value={surveyForm.title} onChange={e => setSurveyForm({...surveyForm, title: e.target.value})} placeholder="Survey Title" />
               <button className="btn btn-primary btn-block" style={{ marginTop: '15px' }} onClick={handleCreateSurvey}>Publish Survey</button>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: HIGHLIGHTS */}
+        {activeTab === 'highlights' && (
+          <div className="card glass">
+            <h3>Home Screen Highlights</h3>
+            <div className="glass" style={{ padding: '24px', borderRadius: '16px', marginTop: '20px', marginBottom: '24px' }}>
+              <h4 style={{ marginBottom: '16px', color: 'var(--accent-cyan)' }}>Add New Highlight</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
+                <UserSearchSelect
+                  users={allPlayers}
+                  selectedId={highlightForm.player}
+                  onSelect={id => setHighlightForm({...highlightForm, player: id})}
+                  label="Select Player"
+                  onQueryChange={searchUsers}
+                />
+                <div className="form-group">
+                  <label>Highlight Title</label>
+                  <input
+                    className="glass"
+                    placeholder="e.g. Insane 170 Checkout!"
+                    value={highlightForm.title}
+                    onChange={e => setHighlightForm({...highlightForm, title: e.target.value})}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Type</label>
+                  <select
+                    className="glass"
+                    value={highlightForm.type}
+                    onChange={e => setHighlightForm({...highlightForm, type: e.target.value})}
+                  >
+                    <option value="180">180</option>
+                    <option value="High Checkout">High Checkout</option>
+                    <option value="Match Winning Double">Match Winning Double</option>
+                    <option value="Epic Comeback">Epic Round</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Video File (MP4)</label>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <input
+                      type="file"
+                      accept="video/mp4,video/*"
+                      onChange={handleHighlightVideoUpload}
+                      style={{ fontSize: '0.8rem' }}
+                    />
+                    {isUploadingHl && <span style={{ color: 'var(--accent-cyan)', fontWeight: 800 }}>{hlUploadProgress}%</span>}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                className="btn btn-primary btn-block"
+                style={{ marginTop: '20px' }}
+                onClick={handleAddHighlight}
+                disabled={isProcessing || isUploadingHl || !highlightForm.videoUrl || !highlightForm.player}
+              >
+                {isProcessing ? 'Saving...' : 'Add Highlight to Home'}
+              </button>
+            </div>
+
+            <h4 style={{ marginBottom: '16px' }}>Existing Highlights</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+              {highlights.map(h => (
+                <div key={h.id} className="glass" style={{ padding: '0', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
+                    <video src={h.videoUrl} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} muted onMouseOver={e => e.target.play()} onMouseOut={e => e.target.pause()} />
+                  </div>
+                  <div style={{ padding: '12px' }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'white' }}>{h.title}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', marginBottom: '8px' }}>by {h.username} • {h.type}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(h.createdAt).toLocaleDateString()}</span>
+                      <button className="btn btn-danger btn-sm" onClick={() => handleDeleteHighlight(h.id)}>Delete</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {highlights.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', gridColumn: '1 / -1', padding: '40px' }}>No highlights found.</p>}
             </div>
           </div>
         )}
@@ -1942,6 +3171,88 @@ export default function Admin() {
           </div>
         )}
 
+        {/* TAB: HIGHLIGHTS */}
+        {activeTab === 'highlights' && (
+          <div className="card glass">
+            <h3>Home Screen Highlights</h3>
+            <div className="glass" style={{ padding: '24px', borderRadius: '16px', marginTop: '20px', marginBottom: '24px' }}>
+              <h4 style={{ marginBottom: '16px', color: 'var(--accent-cyan)' }}>Add New Highlight</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
+                <UserSearchSelect
+                  users={allPlayers}
+                  selectedId={highlightForm.player}
+                  onSelect={id => setHighlightForm({...highlightForm, player: id})}
+                  label="Select Player"
+                  onQueryChange={searchUsers}
+                />
+                <div className="form-group">
+                  <label>Highlight Title</label>
+                  <input
+                    className="glass"
+                    placeholder="e.g. Insane 170 Checkout!"
+                    value={highlightForm.title}
+                    onChange={e => setHighlightForm({...highlightForm, title: e.target.value})}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Type</label>
+                  <select
+                    className="glass"
+                    value={highlightForm.type}
+                    onChange={e => setHighlightForm({...highlightForm, type: e.target.value})}
+                  >
+                    <option value="180">180</option>
+                    <option value="High Checkout">High Checkout</option>
+                    <option value="Match Winning Double">Match Winning Double</option>
+                    <option value="Epic Comeback">Epic Round</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Video File (MP4)</label>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <input
+                      type="file"
+                      accept="video/mp4,video/*"
+                      onChange={handleHighlightVideoUpload}
+                      style={{ fontSize: '0.8rem' }}
+                    />
+                    {isUploadingHl && <span style={{ color: 'var(--accent-cyan)', fontWeight: 800 }}>{hlUploadProgress}%</span>}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                className="btn btn-primary btn-block"
+                style={{ marginTop: '20px' }}
+                onClick={handleAddHighlight}
+                disabled={isProcessing || isUploadingHl || !highlightForm.videoUrl || !highlightForm.player}
+              >
+                {isProcessing ? 'Saving...' : 'Add Highlight to Home'}
+              </button>
+            </div>
+
+            <h4 style={{ marginBottom: '16px' }}>Existing Highlights</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+              {highlights.map(h => (
+                <div key={h.id} className="glass" style={{ padding: '0', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
+                    <video src={h.videoUrl} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} muted onMouseOver={e => e.target.play()} onMouseOut={e => e.target.pause()} />
+                  </div>
+                  <div style={{ padding: '12px' }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'white' }}>{h.title}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', marginBottom: '8px' }}>by {h.username} • {h.type}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(h.createdAt).toLocaleDateString()}</span>
+                      <button className="btn btn-danger btn-sm" onClick={() => handleDeleteHighlight(h.id)}>Delete</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {highlights.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', gridColumn: '1 / -1', padding: '40px' }}>No highlights found.</p>}
+            </div>
+          </div>
+        )}
+
         {/* TAB: AUDIT LOGS */}
         {activeTab === 'audit' && (
           <div className="card glass animate-fade-in">
@@ -1953,6 +3264,88 @@ export default function Admin() {
                     <div>{log.details}</div>
                  </div>
                ))}
+            </div>
+          </div>
+        )}
+
+        {/* TAB: HIGHLIGHTS */}
+        {activeTab === 'highlights' && (
+          <div className="card glass">
+            <h3>Home Screen Highlights</h3>
+            <div className="glass" style={{ padding: '24px', borderRadius: '16px', marginTop: '20px', marginBottom: '24px' }}>
+              <h4 style={{ marginBottom: '16px', color: 'var(--accent-cyan)' }}>Add New Highlight</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
+                <UserSearchSelect
+                  users={allPlayers}
+                  selectedId={highlightForm.player}
+                  onSelect={id => setHighlightForm({...highlightForm, player: id})}
+                  label="Select Player"
+                  onQueryChange={searchUsers}
+                />
+                <div className="form-group">
+                  <label>Highlight Title</label>
+                  <input
+                    className="glass"
+                    placeholder="e.g. Insane 170 Checkout!"
+                    value={highlightForm.title}
+                    onChange={e => setHighlightForm({...highlightForm, title: e.target.value})}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Type</label>
+                  <select
+                    className="glass"
+                    value={highlightForm.type}
+                    onChange={e => setHighlightForm({...highlightForm, type: e.target.value})}
+                  >
+                    <option value="180">180</option>
+                    <option value="High Checkout">High Checkout</option>
+                    <option value="Match Winning Double">Match Winning Double</option>
+                    <option value="Epic Comeback">Epic Round</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Video File (MP4)</label>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <input
+                      type="file"
+                      accept="video/mp4,video/*"
+                      onChange={handleHighlightVideoUpload}
+                      style={{ fontSize: '0.8rem' }}
+                    />
+                    {isUploadingHl && <span style={{ color: 'var(--accent-cyan)', fontWeight: 800 }}>{hlUploadProgress}%</span>}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                className="btn btn-primary btn-block"
+                style={{ marginTop: '20px' }}
+                onClick={handleAddHighlight}
+                disabled={isProcessing || isUploadingHl || !highlightForm.videoUrl || !highlightForm.player}
+              >
+                {isProcessing ? 'Saving...' : 'Add Highlight to Home'}
+              </button>
+            </div>
+
+            <h4 style={{ marginBottom: '16px' }}>Existing Highlights</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+              {highlights.map(h => (
+                <div key={h.id} className="glass" style={{ padding: '0', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
+                    <video src={h.videoUrl} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} muted onMouseOver={e => e.target.play()} onMouseOut={e => e.target.pause()} />
+                  </div>
+                  <div style={{ padding: '12px' }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'white' }}>{h.title}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', marginBottom: '8px' }}>by {h.username} • {h.type}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(h.createdAt).toLocaleDateString()}</span>
+                      <button className="btn btn-danger btn-sm" onClick={() => handleDeleteHighlight(h.id)}>Delete</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {highlights.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', gridColumn: '1 / -1', padding: '40px' }}>No highlights found.</p>}
             </div>
           </div>
         )}
