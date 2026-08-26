@@ -1189,7 +1189,6 @@ export default function Admin() {
               <select className="glass" style={{ flex: 1, padding: '10px' }} value={resultTypeFilter} onChange={e => setResultTypeFilter(e.target.value)}>
                 <option value="all">All Types</option>
                 <option value="league">League</option>
-                    <option value="champions league">Champions League</option>
                 <option value="cup">Cup</option>
                 <option value="open league">Friendly League</option>
               </select>
@@ -1203,7 +1202,6 @@ export default function Admin() {
                   <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Game Type</label>
                   <select className="glass" style={{ width: '100%', padding: '10px' }} value={adminGameForm.gameType} onChange={e => setAdminGameForm({...adminGameForm, gameType: e.target.value})}>
                     <option value="League">League</option>
-                    <option value="Champions League">Champions League</option>
                     <option value="Cup">Cup</option>
                     <option value="Playoff">Playoff</option>
                     <option value="Friendly League Singles">Friendly League Singles</option>

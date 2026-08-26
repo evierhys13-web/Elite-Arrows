@@ -31,7 +31,7 @@ export default function MatchLog() {
     } catch (e) { console.error('Audit log failed', e) }
   }
   const [activeTab, setActiveTab] = useState('toPlay')
-  const [competition, setCompetition] = useState(queryCompetition || 'League') // 'League', 'Champions League', 'Friendly Singles'
+  const [competition, setCompetition] = useState(queryCompetition || 'League') // 'League', 'Friendly Singles'
   const [targetPlayerId, setTargetPlayerId] = useState(queryPlayerId || user?.id)
 
   useEffect(() => {
@@ -122,8 +122,6 @@ export default function MatchLog() {
 
         if (competition === 'League') {
           return isLeagueResult(r, fixturesById) || isPlayoffResult(r, fixturesById)
-        } else if (competition === 'Champions League') {
-          return isSuperLeagueResult(r, fixturesById)
         } else if (competition === 'Cup') {
           return String(r.gameType || '').toLowerCase() === 'cup' || !!r.cupId
         } else if (competition === 'Friendly Singles') {
@@ -244,30 +242,6 @@ export default function MatchLog() {
         seen.add(String(u.id))
         return true
       })
-    } else if (competition === 'Champions League') {
-      // Champions League: play each opponent 2x
-      const slDivision = targetUser.superLeagueDivision
-      if (!slDivision) return []
-
-      return allUsers
-        .filter(u => {
-          if (String(u.id) === String(targetUser.id)) return false;
-          // Specifically remove Tom Beaumont from Season 4 as requested
-          if (currentSeasonName === "Season 4" && (u.username === "Tom Beaumont" || u.name === "Tom Beaumont")) return false;
-
-          return u.superLeagueDivision === slDivision;
-        })
-        .map(u => {
-          const playedCount = playedOpponentCounts[String(u.id)] || 0
-          const fixture = fixtures.find(f =>
-            !f._deleted &&
-            String(f.gameType || '').toLowerCase() === 'champions league' &&
-            ((String(f.player1Id) === String(targetUser.id) && String(f.player2Id) === String(u.id)) ||
-             (String(f.player1Id) === String(u.id) && String(f.player2Id) === String(targetUser.id)))
-          )
-          return { ...u, _playedCount: playedCount, _remaining: 2 - playedCount, _fixtureId: fixture?.id }
-        })
-        .filter(u => u._remaining > 0)
     } else if (competition === 'Cup') {
       // Cup logic: show active fixtures
       return fixtures
@@ -342,13 +316,6 @@ export default function MatchLog() {
           Standard League
         </button>
         <button
-          className={`btn btn-sm ${competition === 'Champions League' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setCompetition('Champions League')}
-          style={{ borderRadius: '99px', minWidth: '120px' }}
-        >
-          Champions League
-        </button>
-        <button
           className={`btn btn-sm ${competition === 'Cup' ? 'btn-primary' : 'btn-secondary'}`}
           onClick={() => setCompetition('Cup')}
           style={{ borderRadius: '99px', minWidth: '120px' }}
@@ -397,7 +364,7 @@ export default function MatchLog() {
                 <div>
                   <div style={{ fontWeight: '700', fontSize: '1rem' }}>vs {match.opponent}</div>
                   <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                    {match.season} • {match.date} {competition === 'Champions League' ? `(CL)` : ''}
+                    {match.season} • {match.date}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
@@ -453,15 +420,8 @@ export default function MatchLog() {
                           ? `${player._cupName} - Round ${player._round}`
                           : (competition === 'League'
                               ? `${player.division} Division`
-                              : (competition === 'Champions League'
-                                  ? `${player.superLeagueDivision} Champions Rank`
-                                  : 'Friendly League'))}
+                              : 'Friendly League')}
                       </div>
-                      {competition === 'Champions League' && (
-                        <div style={{ fontSize: '0.65rem', color: 'var(--accent-cyan)' }}>
-                          Played: {player._playedCount}/2
-                        </div>
-                      )}
                     </div>
                   </div>
 

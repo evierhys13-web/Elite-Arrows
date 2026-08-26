@@ -171,10 +171,8 @@ export default function SubmitResult() {
 
   const effectiveDivision = useMemo(() => {
     if (!user) return 'Unassigned'
-    return formData.gameType === 'Champions League'
-      ? 'Champions'
-      : userEffectiveDiv
-  }, [formData.gameType, userEffectiveDiv, user])
+    return userEffectiveDiv
+  }, [userEffectiveDiv, user])
 
   useEffect(() => {
     const fetchDuos = async () => {
@@ -330,13 +328,6 @@ export default function SubmitResult() {
           opponent: availablePlayers.find(p => p.id === prev.opponent)?.division === user.division ? prev.opponent : '',
           bestOf: '8',
           firstTo: '5'
-        }))
-      } else if (value === 'Champions League') {
-        setFormData(prev => ({
-          ...prev,
-          opponent: availablePlayers.find(p => p.id === prev.opponent)?.superLeagueDivision === user.superLeagueDivision ? prev.opponent : '',
-          bestOf: '11',
-          firstTo: '6'
         }))
       } else if (value === 'Friendly League Singles') {
         setFormData(prev => ({
@@ -556,17 +547,6 @@ export default function SubmitResult() {
       return
     }
 
-    if (formData.gameType === 'Champions League') {
-      if (formData.bestOf !== '11' || formData.firstTo !== '6') {
-        setError('Champions League games must be First to 6 legs (Best of 11)')
-        return
-      }
-      if (parseInt(formData.yourScore) === parseInt(formData.opponentScore)) {
-        setError('Draws are not permitted in the Champions League. A winner must be decided.')
-        return
-      }
-    }
-
     let cupFixture = null
     let cupId = null
     let matchId = null
@@ -602,12 +582,7 @@ export default function SubmitResult() {
       return isSameSeason && isSameType && isBetweenPlayers && isNotRejected
     })
 
-    if (formData.gameType === 'Champions League') {
-      if (matchingResults.length >= 2) {
-        setError(`You've already played ${opponentName} 2 times in the Champions League this season. No more matches allowed.`)
-        return
-      }
-    } else if (formData.gameType === 'League' && matchingResults.length >= 1) {
+    if (formData.gameType === 'League' && matchingResults.length >= 1) {
        setError(`A ${formData.gameType} result for this matchup has already been submitted and is currently ${matchingResults[0].status}.`)
        return
     }
@@ -847,7 +822,7 @@ export default function SubmitResult() {
           <div className="form-group" style={{ marginBottom: '25px' }}>
             <label style={{ fontWeight: '600', marginBottom: '10px', display: 'block' }}>Match Type</label>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              {['League', 'Champions League', 'Cup', 'Playoff', 'Friendly League Singles'].map(type => (
+              {['League', 'Cup', 'Playoff', 'Friendly League Singles'].map(type => (
                 <button
                   key={type}
                   type="button"
