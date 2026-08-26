@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { db, storage, collection, query, orderBy, getDocs, doc, setDoc, deleteDoc, updateDoc, increment, limit, ref, uploadBytesResumable, getDownloadURL } from '../firebase'
+import { db, collection, query, orderBy, getDocs, doc, setDoc, deleteDoc, updateDoc, increment, limit } from '../firebase'
 import { useAuth } from '../context/AuthContextInternal'
 import { useToast } from '../context/ToastContext'
 import { ADMIN_EMAILS } from '../config'
@@ -14,8 +14,6 @@ export default function GlobalHighlightReel() {
   const [previewImage, setPreviewImage] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [uploading, setUploading] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState(0)
   const [form, setForm] = useState({ player: '', title: '', type: 'High Checkout', videoUrl: '' })
 
   const isAdmin = Boolean(
@@ -63,34 +61,6 @@ export default function GlobalHighlightReel() {
       setHighlights(prev => prev.filter(h => h.id !== id))
       showToast('Highlight removed', 'info')
     } catch (e) { showToast(e.message, 'error') }
-  }
-
-  const handleVideoUpload = (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-    if (file.size > 50 * 1024 * 1024) return showToast('Video too large (max 50MB)', 'error')
-
-    setUploading(true)
-    setUploadProgress(1)
-    const hlId = `admin_hl_${Date.now()}`
-    const storageRef = ref(storage, `highlights/${hlId}.mp4`)
-    const uploadTask = uploadBytesResumable(storageRef, file)
-
-    uploadTask.on('state_changed',
-      (snapshot) => {
-        setUploadProgress(Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100))
-      },
-      (error) => {
-        showToast('Upload failed: ' + error.message, 'error')
-        setUploading(false)
-      },
-      async () => {
-        const url = await getDownloadURL(uploadTask.snapshot.ref)
-        setForm(prev => ({ ...prev, videoUrl: url }))
-        setUploading(false)
-        showToast('Video uploaded!', 'success')
-      }
-    )
   }
 
   const handleAdd = async () => {
@@ -202,15 +172,18 @@ export default function GlobalHighlightReel() {
             onChange={e => setForm({ ...form, title: e.target.value })}
             style={{ marginTop: '12px' }}
           />
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '12px' }}>
-            <input type="file" accept="video/mp4,video/*" onChange={handleVideoUpload} style={{ fontSize: '0.8rem' }} />
-            {uploading && <span style={{ color: 'var(--accent-cyan)', fontWeight: 800, fontSize: '0.8rem' }}>{uploadProgress}%</span>}
-          </div>
+          <input
+            className="glass"
+            placeholder="Video URL (YouTube, TikTok, or direct link)"
+            value={form.videoUrl}
+            onChange={e => setForm({ ...form, videoUrl: e.target.value })}
+            style={{ marginTop: '12px' }}
+          />
           <button
             className="btn btn-primary btn-block"
             style={{ marginTop: '12px' }}
             onClick={handleAdd}
-            disabled={saving || uploading || !form.videoUrl || !form.player}
+            disabled={saving || !form.videoUrl || !form.player}
           >
             {saving ? 'Saving...' : 'Add to Home'}
           </button>
