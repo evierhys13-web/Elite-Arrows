@@ -231,10 +231,9 @@ export default function SubmitResult() {
       // Match must have both players assigned to be "playable"
       if (!player1Id || !player2Id) return false
 
-      if (isAdmin) return true
       return String(player1Id) === String(user.id) || String(player2Id) === String(user.id)
     })
-  }, [allFixtures, getCups, user.id, isAdmin])
+  }, [allFixtures, getCups, user.id])
 
   const currentUserName = getDisplayName(user, 'You')
 
