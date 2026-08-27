@@ -55,6 +55,20 @@ export default function Rules() {
             </ul>
           </div>
 
+          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '10px', color: 'white' }}>💬 Arranging Games</h3>
+            <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
+              <li>Fixtures should be arranged through the <strong>WhatsApp Division group chats</strong> so there is a <strong>record</strong> if a no-show or dispute arises.</li>
+            </ul>
+          </div>
+
+          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '10px', color: 'white' }}>🤝 One Match Per Opponent</h3>
+            <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
+              <li>Each opponent is faced <strong>once per season</strong> in league fixtures.</li>
+            </ul>
+          </div>
+
           <div style={{ background: 'rgba(251, 191, 36, 0.08)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(251, 191, 36, 0.25)' }}>
             <h3 style={{ fontSize: '1.1rem', marginBottom: '10px', color: 'white' }}>🏳️ Forfeit Rule (Fixed Result for Unplayed Fixtures)</h3>
             <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
