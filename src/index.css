@@ -1,21 +1,21 @@
 :root {
-  /* Brand Palette - Vibrant Cosmic Purple (Brighter & Saturated) */
-  --bg-primary: #2e1065; /* Brighter Cosmic Purple */
-  --bg-secondary: #4c1d95; /* Vibrant Indigo-Purple */
-  --bg-card: rgba(30, 10, 60, 0.45); /* Saturated Purple Glass */
-  --bg-hover: rgba(192, 38, 211, 0.15);
-  --bg-active: rgba(192, 38, 211, 0.25);
+  /* Brand Palette - Cosmic Purple (Matched to your image) */
+  --bg-primary: #0b051d; /* Deep Dark Space */
+  --bg-secondary: #1e1b4b; /* Deep Indigo */
+  --bg-card: rgba(15, 7, 36, 0.75); /* Darker Purple Glass for Contrast */
+  --bg-hover: rgba(192, 38, 211, 0.2);
+  --bg-active: rgba(192, 38, 211, 0.3);
 
   --text-primary: #f8fafc;
   --text: #f8fafc;
   --text-secondary: #cbd5e1;
   --text-muted: #94a3b8;
 
-  --accent-primary: #d946ef; /* Bright Magenta */
+  --accent-primary: #d946ef; /* Vibrant Magenta from image */
   --accent-hover: #f0abfc;
-  --accent-cyan: #38bdf8; /* Cosmic Cyan */
-  --accent-cyan-glow: rgba(56, 189, 248, 0.4);
-  --accent-purple-glow: rgba(217, 70, 239, 0.5);
+  --accent-cyan: #38bdf8; /* Star Cyan */
+  --accent-cyan-glow: rgba(56, 189, 248, 0.5);
+  --accent-purple-glow: rgba(217, 70, 239, 0.6);
 
   --success: #10b981;
   --success-bg: rgba(16, 185, 129, 0.12);
