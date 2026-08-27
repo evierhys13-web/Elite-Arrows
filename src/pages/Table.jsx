@@ -395,19 +395,31 @@ export default function Table() {
             onClick={() => setActiveDivision(div)}
             style={{
               whiteSpace: "nowrap",
-              padding: "10px 20px",
-              fontSize: "0.9rem",
-              fontWeight: "800",
-              borderRadius: "10px",
-              border: "1px solid",
-              borderColor: activeDivision === div ? DIVISION_COLORS[div] : "rgba(255,255,255,0.1)",
-              color: activeDivision === div ? "white" : "rgba(255,255,255,0.5)",
+              padding: "12px 26px",
+              fontFamily: "'Orbitron', 'Inter', sans-serif",
+              fontSize: "0.85rem",
+              fontWeight: "700",
+              letterSpacing: "0.15em",
+              borderRadius: "999px",
+              border: "2px solid",
+              borderColor: activeDivision === div ? DIVISION_COLORS[div] : "rgba(255,255,255,0.12)",
+              color: activeDivision === div ? "#ffffff" : "rgba(255,255,255,0.55)",
               background:
                 activeDivision === div
-                  ? DIVISION_COLORS[div] + "33"
-                  : "rgba(0, 0, 0, 0.2)",
-              transition: "all 0.2s ease",
-              boxShadow: activeDivision === div ? `0 0 15px ${DIVISION_COLORS[div]}22` : "none"
+                  ? `linear-gradient(135deg, ${DIVISION_COLORS[div]}55 0%, ${DIVISION_COLORS[div]}22 50%, rgba(168, 85, 247, 0.2) 100%)`
+                  : "rgba(0, 0, 0, 0.25)",
+              textTransform: "uppercase",
+              textShadow: activeDivision === div ? `0 0 14px ${DIVISION_COLORS[div]}` : "none",
+              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+              boxShadow: activeDivision === div ? `0 0 22px ${DIVISION_COLORS[div]}88, inset 0 0 14px ${DIVISION_COLORS[div]}44` : "inset 0 0 8px rgba(0,0,0,0.3)",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+              cursor: "pointer",
+              ['--div-color']: DIVISION_COLORS[div]
+            }}
+            onMouseEnter={e => { e.currentTarget.style.boxShadow = `0 0 22px ${DIVISION_COLORS[div]}66, inset 0 0 14px ${DIVISION_COLORS[div]}33`; e.currentTarget.style.color = '#ffffff' }}
+            onMouseLeave={e => {
+              if (activeDivision !== div) { e.currentTarget.style.boxShadow = 'inset 0 0 8px rgba(0,0,0,0.3)'; e.currentTarget.style.color = 'rgba(255,255,255,0.55)' }
             }}
           >
             {div}
@@ -435,7 +447,7 @@ export default function Table() {
                 style={{
                   background: "linear-gradient(90deg, rgba(139, 92, 246, 0.9) 0%, rgba(217, 70, 239, 0.85) 50%, rgba(56, 189, 248, 0.85) 100%)",
                   color: "white",
-                  fontSize: "0.7rem",
+                  fontSize: "0.62rem",
                   fontWeight: "900",
                   textTransform: "uppercase",
                   letterSpacing: "0.06em",
@@ -446,19 +458,19 @@ export default function Table() {
                 <th
                   style={{
                     width: "28px",
-                    padding: "12px 2px",
+                    padding: "8px 2px",
                     textAlign: "center",
                   }}
                 >
                   #
                 </th>
-                <th style={{ textAlign: "left", padding: "12px 4px" }}>
+                <th style={{ textAlign: "left", padding: "8px 4px" }}>
                   Player
                 </th>
                 <th
                   style={{
                     width: "22px",
-                    padding: "12px 2px",
+                    padding: "8px 2px",
                     textAlign: "center",
                   }}
                 >
@@ -467,7 +479,7 @@ export default function Table() {
                 <th
                   style={{
                     width: "22px",
-                    padding: "12px 2px",
+                    padding: "8px 2px",
                     textAlign: "center",
                   }}
                 >
@@ -476,7 +488,7 @@ export default function Table() {
                 <th
                   style={{
                     width: "22px",
-                    padding: "12px 2px",
+                    padding: "8px 2px",
                     textAlign: "center",
                   }}
                 >
@@ -485,7 +497,7 @@ export default function Table() {
                 <th
                   style={{
                     width: "22px",
-                    padding: "12px 2px",
+                    padding: "8px 2px",
                     textAlign: "center",
                   }}
                 >
@@ -494,19 +506,19 @@ export default function Table() {
                 <th
                   style={{
                     width: "30px",
-                    padding: "12px 2px",
+                    padding: "8px 2px",
                     textAlign: "center",
                   }}
                 >
                   +/-
                 </th>
-                <th style={{ padding: "12px 4px", textAlign: "center", width: "80px" }}>
+                <th style={{ padding: "8px 4px", textAlign: "center", width: "80px" }}>
                   Form
                 </th>
                 <th
                   style={{
                     width: "35px",
-                    padding: "12px 2px",
+                    padding: "8px 2px",
                     textAlign: "center",
                     color: "#e879f9",
                     textShadow: "0 0 10px rgba(232, 121, 249, 0.9)",
@@ -517,7 +529,7 @@ export default function Table() {
                 <th
                   style={{
                     width: "35px",
-                    padding: "12px 2px",
+                    padding: "8px 2px",
                     textAlign: "center",
                     color: "#7dd3fc",
                     textShadow: "0 0 10px rgba(56, 189, 248, 0.9)",
@@ -598,7 +610,7 @@ export default function Table() {
                           : index % 2 === 0 ? "rgba(255, 255, 255, 0.07)" : "rgba(168, 85, 247, 0.12)",
                         boxShadow: isMe ? "inset 4px 0 0 0 var(--accent-primary), inset 0 0 25px rgba(217, 70, 239, 0.2)" : "none",
                         borderBottom: "1px solid rgba(255,255,255,0.12)",
-                        fontSize: "0.85rem",
+                        fontSize: "0.78rem",
                         transition: "background 0.2s ease"
                       }}
                     >
@@ -615,7 +627,7 @@ export default function Table() {
                       </td>
                       <td
                         style={{
-                          padding: "10px 8px",
+                          padding: "7px 8px",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",
@@ -634,6 +646,7 @@ export default function Table() {
                             className="vt-player-name"
                             style={{
                               fontWeight: isMe ? "800" : "600",
+                              fontSize: "0.8rem",
                               color: isMe ? "white" : "rgba(255,255,255,0.95)",
                               textShadow: isMe ? "0 0 12px rgba(217, 70, 239, 0.6)" : "0 0 8px rgba(255,255,255,0.15)",
                             }}
@@ -644,7 +657,7 @@ export default function Table() {
                                 style={{
                                   fontWeight: 400,
                                   color: "rgba(255,255,255,0.4)",
-                                  fontSize: "0.7rem",
+                                  fontSize: "0.62rem",
                                   marginLeft: "6px",
                                 }}
                               >
@@ -684,13 +697,13 @@ export default function Table() {
                           </span>
                         )}
                       </td>
-                      <td style={{ textAlign: "center", padding: "10px 2px" }}>
+                      <td style={{ textAlign: "center", padding: "7px 2px" }}>
                         {player.stats.played}
                       </td>
                       <td
                         style={{
                           textAlign: "center",
-                          padding: "10px 2px",
+                          padding: "7px 2px",
                           color: "rgba(255,255,255,0.6)",
                         }}
                       >
@@ -699,7 +712,7 @@ export default function Table() {
                       <td
                         style={{
                           textAlign: "center",
-                          padding: "10px 2px",
+                          padding: "7px 2px",
                           color: "rgba(255,255,255,0.6)",
                         }}
                       >
@@ -708,7 +721,7 @@ export default function Table() {
                       <td
                         style={{
                           textAlign: "center",
-                          padding: "10px 2px",
+                          padding: "7px 2px",
                           color: "rgba(255,255,255,0.6)",
                         }}
                       >
@@ -717,7 +730,7 @@ export default function Table() {
                       <td
                         style={{
                           textAlign: "center",
-                          padding: "10px 2px",
+                          padding: "7px 2px",
                           fontWeight: "700",
                           color:
                             legDiff > 0
@@ -729,14 +742,14 @@ export default function Table() {
                       >
                         {legDiff > 0 ? `+${legDiff}` : legDiff}
                       </td>
-                      <td style={{ padding: "10px 2px", textAlign: "center" }}>
+                      <td style={{ padding: "7px 2px", textAlign: "center" }}>
                         <div style={{ display: "flex", gap: "3px", justifyContent: "center" }}>
                           {(player.stats.form || []).slice(-5).map((f, i) => (
                             <div
                               key={i}
                               style={{
-                                width: "8px",
-                                height: "8px",
+                                width: "7px",
+                                height: "7px",
                                 borderRadius: "50%",
                                 background: f === 'W' ? 'var(--success)' : f === 'L' ? 'var(--error)' : 'var(--text-muted)',
                                 boxShadow: f === 'W' ? '0 0 5px var(--success)' : 'none'
@@ -752,10 +765,10 @@ export default function Table() {
                       <td
                         style={{
                           textAlign: "center",
-                          padding: "10px 2px",
+                          padding: "7px 2px",
                           fontWeight: "800",
                           color: "#e879f9",
-                          fontSize: "0.85rem",
+                          fontSize: "0.75rem",
                           textShadow: "0 0 10px rgba(232, 121, 249, 0.8)",
                         }}
                       >
@@ -764,10 +777,10 @@ export default function Table() {
                       <td
                         style={{
                           textAlign: "center",
-                          padding: "10px 2px",
+                          padding: "7px 2px",
                           fontWeight: "900",
                           color: "#7dd3fc",
-                          fontSize: "0.95rem",
+                          fontSize: "0.85rem",
                           textShadow: "0 0 12px rgba(56, 189, 248, 0.8)",
                         }}
                       >
