@@ -7,35 +7,36 @@ export default function BackgroundDecor() {
       right: 0,
       bottom: 0,
       pointerEvents: 'none',
-      zIndex: -1,
+      zIndex: -100, // Move way to the back
       overflow: 'hidden',
-      background: '#0b051d' // Deep Dark Purple Base fallback
+      background: '#0b051d' // Deep Dark Purple Base Fallback
     }}>
       <style>{`
         @keyframes drift {
-          0% { transform: scale(1.05) translate(0, 0); }
-          50% { transform: scale(1.1) translate(-1%, 1%); }
-          100% { transform: scale(1.05) translate(0, 0); }
+          0% { transform: scale(1.1) translate(0, 0); }
+          50% { transform: scale(1.15) translate(-1%, 1%); }
+          100% { transform: scale(1.1) translate(0, 0); }
         }
-        .cosmic-background {
+        .cosmic-image-main {
           position: absolute;
-          inset: -5%;
-          background-image: url('/cosmic primary image.png');
+          inset: -10%;
+          background-image: url('/cosmic%20primary%20image.png');
           background-size: cover;
           background-position: center;
           background-repeat: no-repeat;
           animation: drift 60s ease-in-out infinite;
+          opacity: 1;
         }
       `}</style>
 
-      {/* THIS IS THE ACTUAL IMAGE FILE */}
-      <div className="cosmic-background" />
+      {/* THE ACTUAL IMAGE - PRIMARY LAYER */}
+      <div className="cosmic-image-main" />
 
-      {/* Dark vignette to ensure edge contrast for text/tables */}
+      {/* Dark vignette for contrast */}
       <div style={{
         position: 'absolute',
         inset: 0,
-        background: 'radial-gradient(circle at 50% 50%, transparent 20%, rgba(0, 0, 0, 0.4) 100%)'
+        background: 'radial-gradient(circle at 50% 50%, transparent 10%, rgba(0, 0, 0, 0.5) 100%)'
       }} />
     </div>
   )
