@@ -1,0 +1,7 @@
+import{i as e}from"./chunk-sbRso20c.js";import{t}from"./react-Bida5NN-.js";import{t as n}from"./jsx-runtime-BNdqF01M.js";var r=e(t(),1),i=n();function a({trigger:e,duration:t=3e3,colors:n=[`#818cf8`,`#38bdf8`,`#fbbf24`,`#10b981`,`#ef4444`]}){let[a,o]=(0,r.useState)([]);return(0,r.useEffect)(()=>{if(e){o(Array.from({length:100}).map((e,t)=>({id:t,x:Math.random()*100,y:-10,size:Math.random()*10+5,color:n[Math.floor(Math.random()*n.length)],rotation:Math.random()*360,delay:Math.random()*.5,duration:Math.random()*2+1.5,drift:(Math.random()-.5)*40})));let e=setTimeout(()=>{o([])},t+1e3);return()=>clearTimeout(e)}},[e,t,n]),a.length===0?null:(0,i.jsxs)(`div`,{style:{position:`fixed`,top:0,left:0,width:`100%`,height:`100%`,pointerEvents:`none`,zIndex:9999,overflow:`hidden`},children:[a.map(e=>(0,i.jsx)(`div`,{style:{position:`absolute`,left:`${e.x}%`,top:`${e.y}%`,width:`${e.size}px`,height:`${e.size*.6}px`,background:e.color,opacity:.8,transform:`rotate(${e.rotation}deg)`,animation:`confetti-fall-${e.id} ${e.duration}s linear ${e.delay}s forwards`}},e.id)),(0,i.jsx)(`style`,{children:a.map(e=>`
+        @keyframes confetti-fall-${e.id} {
+          0% { transform: translateY(0) rotate(${e.rotation}deg); opacity: 0.8; }
+          100% { transform: translateY(110vh) translateX(${e.drift}px) rotate(${e.rotation+720}deg); opacity: 0; }
+        }
+      `).join(`
+`)})]})}export{a as t};

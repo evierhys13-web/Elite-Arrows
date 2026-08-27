@@ -1,0 +1,1 @@
+import"./chunk-sbRso20c.js";import{t as e}from"./react-Bida5NN-.js";import{t}from"./jsx-runtime-BNdqF01M.js";e();var n=t();function r({children:e,content:t,position:r=`top`}){return(0,n.jsxs)(`div`,{className:`tooltip-wrapper`,children:[e,(0,n.jsx)(`div`,{className:`tooltip tooltip-${r}`,children:t})]})}export{r as t};

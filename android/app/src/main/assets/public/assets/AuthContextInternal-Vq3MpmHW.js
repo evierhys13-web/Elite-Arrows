@@ -1,0 +1,1 @@
+import{i as e}from"./chunk-sbRso20c.js";import{t}from"./react-Bida5NN-.js";var n=e(t(),1),r=(0,n.createContext)(null);function i(){let e=(0,n.useContext)(r);if(!e)throw Error(`useAuth must be used within AuthProvider`);return e}export{i as n,r as t};

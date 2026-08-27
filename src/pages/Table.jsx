@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+﻿import { useState, useMemo, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContextInternal";
 import { derivePlayerStatsFromResults } from "../utils/playerStats";
@@ -69,6 +69,13 @@ export default function Table() {
   });
 
   const isAdmin = user?.isAdmin === true;
+
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const getDivisionsForSeason = useCallback(() => {
     // For Season 4 and beyond, use the new division structure
@@ -205,7 +212,7 @@ export default function Table() {
       triggerDataRefresh("all");
       setRefreshKey((prev) => prev + 1);
       showToast(
-        ok ? "Table data synced!" : "Sync failed — check connection",
+        ok ? "Table data synced!" : "Sync failed â€” check connection",
         ok ? "success" : "warning",
       );
     } catch (e) {
@@ -371,7 +378,7 @@ export default function Table() {
             onClick={handleRefresh}
             style={{ padding: "8px 12px" }}
           >
-            🔄 Sync Data
+            ðŸ”„ Sync Data
           </button>
         </div>
       </div>
@@ -457,20 +464,20 @@ export default function Table() {
               >
                 <th
                   style={{
-                    width: "28px",
-                    padding: "8px 2px",
+                    width: isMobile ? "22px" : "28px",
+                    padding: isMobile ? "6px 1px" : "8px 2px",
                     textAlign: "center",
                   }}
                 >
                   #
                 </th>
-                <th style={{ textAlign: "left", padding: "8px 4px" }}>
+                <th style={{ textAlign: "left", padding: isMobile ? "6px 2px" : "8px 4px" }}>
                   Player
                 </th>
                 <th
                   style={{
-                    width: "22px",
-                    padding: "8px 2px",
+                    width: isMobile ? "16px" : "22px",
+                    padding: isMobile ? "6px 1px" : "8px 2px",
                     textAlign: "center",
                   }}
                 >
@@ -478,8 +485,8 @@ export default function Table() {
                 </th>
                 <th
                   style={{
-                    width: "22px",
-                    padding: "8px 2px",
+                    width: isMobile ? "16px" : "22px",
+                    padding: isMobile ? "6px 1px" : "8px 2px",
                     textAlign: "center",
                   }}
                 >
@@ -487,8 +494,8 @@ export default function Table() {
                 </th>
                 <th
                   style={{
-                    width: "22px",
-                    padding: "8px 2px",
+                    width: isMobile ? "16px" : "22px",
+                    padding: isMobile ? "6px 1px" : "8px 2px",
                     textAlign: "center",
                   }}
                 >
@@ -496,8 +503,8 @@ export default function Table() {
                 </th>
                 <th
                   style={{
-                    width: "22px",
-                    padding: "8px 2px",
+                    width: isMobile ? "16px" : "22px",
+                    padding: isMobile ? "6px 1px" : "8px 2px",
                     textAlign: "center",
                   }}
                 >
@@ -505,20 +512,22 @@ export default function Table() {
                 </th>
                 <th
                   style={{
-                    width: "30px",
-                    padding: "8px 2px",
+                    width: isMobile ? "24px" : "30px",
+                    padding: isMobile ? "6px 1px" : "8px 2px",
                     textAlign: "center",
                   }}
                 >
                   +/-
                 </th>
-                <th style={{ padding: "8px 4px", textAlign: "center", width: "80px" }}>
-                  Form
-                </th>
+                {!isMobile && (
+                  <th style={{ padding: "8px 4px", textAlign: "center", width: "80px" }}>
+                    Form
+                  </th>
+                )}
                 <th
                   style={{
-                    width: "35px",
-                    padding: "8px 2px",
+                    width: isMobile ? "30px" : "35px",
+                    padding: isMobile ? "6px 1px" : "8px 2px",
                     textAlign: "center",
                     color: "#e879f9",
                     textShadow: "0 0 10px rgba(232, 121, 249, 0.9)",
@@ -528,8 +537,8 @@ export default function Table() {
                 </th>
                 <th
                   style={{
-                    width: "35px",
-                    padding: "8px 2px",
+                    width: isMobile ? "30px" : "35px",
+                    padding: isMobile ? "6px 1px" : "8px 2px",
                     textAlign: "center",
                     color: "#7dd3fc",
                     textShadow: "0 0 10px rgba(56, 189, 248, 0.9)",
@@ -543,7 +552,7 @@ export default function Table() {
               {loadingSeason ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={isMobile ? 9 : 10}
                     style={{ textAlign: "center", padding: "40px" }}
                   >
                     <div
@@ -562,7 +571,7 @@ export default function Table() {
               ) : playersInDivision.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={isMobile ? 9 : 10}
                     style={{
                       textAlign: "center",
                       padding: "40px",
@@ -627,7 +636,7 @@ export default function Table() {
                       </td>
                       <td
                         style={{
-                          padding: "7px 8px",
+                          padding: isMobile ? "5px 6px" : "7px 8px",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",
@@ -646,7 +655,7 @@ export default function Table() {
                             className="vt-player-name"
                             style={{
                               fontWeight: isMe ? "800" : "600",
-                              fontSize: "0.8rem",
+                              fontSize: isMobile ? "0.72rem" : "0.8rem",
                               color: isMe ? "white" : "rgba(255,255,255,0.95)",
                               textShadow: isMe ? "0 0 12px rgba(217, 70, 239, 0.6)" : "0 0 8px rgba(255,255,255,0.15)",
                             }}
@@ -693,17 +702,17 @@ export default function Table() {
                             }}
                             onClick={() => openManualEditor(player)}
                           >
-                            {player.manualStats ? "✏️*" : "✏️"}
+                            {player.manualStats ? "âœï¸*" : "âœï¸"}
                           </span>
                         )}
                       </td>
-                      <td style={{ textAlign: "center", padding: "7px 2px" }}>
+                      <td style={{ textAlign: "center", padding: isMobile ? "4px 1px" : "7px 2px" }}>
                         {player.stats.played}
                       </td>
                       <td
                         style={{
                           textAlign: "center",
-                          padding: "7px 2px",
+                          padding: isMobile ? "4px 1px" : "7px 2px",
                           color: "rgba(255,255,255,0.6)",
                         }}
                       >
@@ -712,7 +721,7 @@ export default function Table() {
                       <td
                         style={{
                           textAlign: "center",
-                          padding: "7px 2px",
+                          padding: isMobile ? "4px 1px" : "7px 2px",
                           color: "rgba(255,255,255,0.6)",
                         }}
                       >
@@ -721,7 +730,7 @@ export default function Table() {
                       <td
                         style={{
                           textAlign: "center",
-                          padding: "7px 2px",
+                          padding: isMobile ? "4px 1px" : "7px 2px",
                           color: "rgba(255,255,255,0.6)",
                         }}
                       >
@@ -730,7 +739,7 @@ export default function Table() {
                       <td
                         style={{
                           textAlign: "center",
-                          padding: "7px 2px",
+                          padding: isMobile ? "4px 1px" : "7px 2px",
                           fontWeight: "700",
                           color:
                             legDiff > 0
@@ -742,30 +751,32 @@ export default function Table() {
                       >
                         {legDiff > 0 ? `+${legDiff}` : legDiff}
                       </td>
-                      <td style={{ padding: "7px 2px", textAlign: "center" }}>
-                        <div style={{ display: "flex", gap: "3px", justifyContent: "center" }}>
-                          {(player.stats.form || []).slice(-5).map((f, i) => (
-                            <div
-                              key={i}
-                              style={{
-                                width: "7px",
-                                height: "7px",
-                                borderRadius: "50%",
-                                background: f === 'W' ? 'var(--success)' : f === 'L' ? 'var(--error)' : 'var(--text-muted)',
-                                boxShadow: f === 'W' ? '0 0 5px var(--success)' : 'none'
-                              }}
-                              title={f === 'W' ? 'Win' : f === 'L' ? 'Loss' : 'Draw'}
-                            />
-                          ))}
-                          {(!player.stats.form || player.stats.form.length === 0) && (
-                            <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>-</span>
-                          )}
-                        </div>
-                      </td>
+                      {!isMobile && (
+                        <td style={{ padding: "7px 2px", textAlign: "center" }}>
+                          <div style={{ display: "flex", gap: "3px", justifyContent: "center" }}>
+                            {(player.stats.form || []).slice(-5).map((f, i) => (
+                              <div
+                                key={i}
+                                style={{
+                                  width: "7px",
+                                  height: "7px",
+                                  borderRadius: "50%",
+                                  background: f === 'W' ? 'var(--success)' : f === 'L' ? 'var(--error)' : 'var(--text-muted)',
+                                  boxShadow: f === 'W' ? '0 0 5px var(--success)' : 'none'
+                                }}
+                                title={f === 'W' ? 'Win' : f === 'L' ? 'Loss' : 'Draw'}
+                              />
+                            ))}
+                            {(!player.stats.form || player.stats.form.length === 0) && (
+                              <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>-</span>
+                            )}
+                          </div>
+                        </td>
+                      )}
                       <td
                         style={{
                           textAlign: "center",
-                          padding: "7px 2px",
+                          padding: isMobile ? "4px 1px" : "7px 2px",
                           fontWeight: "800",
                           color: "#e879f9",
                           fontSize: "0.75rem",
@@ -777,7 +788,7 @@ export default function Table() {
                       <td
                         style={{
                           textAlign: "center",
-                          padding: "7px 2px",
+                          padding: isMobile ? "4px 1px" : "7px 2px",
                           fontWeight: "900",
                           color: "#7dd3fc",
                           fontSize: "0.85rem",
