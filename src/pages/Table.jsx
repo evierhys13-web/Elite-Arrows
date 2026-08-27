@@ -691,20 +691,6 @@ export default function Table() {
                             </span>
                           )}
                         </Link>
-                        {isAdmin && (
-                          <span
-                            style={{
-                              cursor: "pointer",
-                              marginLeft: "6px",
-                              fontSize: "0.7rem",
-                              opacity: 0.6,
-                              whiteSpace: "nowrap",
-                            }}
-                            onClick={() => openManualEditor(player)}
-                          >
-                            {player.manualStats ? "âœï¸*" : "âœï¸"}
-                          </span>
-                        )}
                       </td>
                       <td style={{ textAlign: "center", padding: isMobile ? "4px 1px" : "7px 2px" }}>
                         {player.stats.played}
