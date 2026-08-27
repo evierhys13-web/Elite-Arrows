@@ -421,9 +421,11 @@ export default function Table() {
           padding: "0",
           borderRadius: "16px",
           overflow: "hidden",
-          background: "rgba(13, 10, 45, 0.92)",
-          border: "1px solid rgba(255, 255, 255, 0.25)",
-          boxShadow: "0 20px 80px rgba(0, 0, 0, 0.7), 0 0 30px rgba(139, 92, 246, 0.1)"
+          background: "linear-gradient(160deg, rgba(20, 15, 55, 0.95) 0%, rgba(13, 10, 45, 0.9) 100%)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          border: "2px solid rgba(139, 92, 246, 0.5)",
+          boxShadow: "0 20px 80px rgba(0, 0, 0, 0.7), 0 0 40px rgba(139, 92, 246, 0.25), inset 0 0 0 1px rgba(255,255,255,0.06)"
         }}
       >
         <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
@@ -431,12 +433,13 @@ export default function Table() {
             <thead>
               <tr
                 style={{
-                  background: "rgba(15, 23, 42, 0.9)",
+                  background: "rgba(30, 20, 70, 0.95)",
                   color: "white",
                   fontSize: "0.7rem",
                   fontWeight: "800",
                   textTransform: "uppercase",
-                  borderBottom: "2px solid rgba(129, 140, 248, 0.4)"
+                  borderBottom: "2px solid rgba(217, 70, 239, 0.5)",
+                  textShadow: "0 0 8px rgba(217, 70, 239, 0.3)"
                 }}
               >
                 <th
@@ -588,9 +591,9 @@ export default function Table() {
                       key={player.id}
                       style={{
                         background: isMe
-                          ? "rgba(217, 70, 239, 0.2)"
-                          : index % 2 === 0 ? "rgba(255, 255, 255, 0.02)" : "transparent",
-                        borderBottom: "1px solid rgba(255,255,255,0.08)",
+                          ? "rgba(217, 70, 239, 0.25)"
+                          : index % 2 === 0 ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.15)",
+                        borderBottom: "1px solid rgba(255,255,255,0.1)",
                         fontSize: "0.85rem",
                         transition: "background 0.2s ease"
                       }}
