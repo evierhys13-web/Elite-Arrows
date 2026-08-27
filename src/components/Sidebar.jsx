@@ -56,32 +56,36 @@ export default function Sidebar() {
 
     return [
       {
-        title: 'League',
+        title: 'Main',
         items: [
           { path: '/home', label: 'Home', icon: HomeIcon },
-          { path: '/news', label: 'League News', icon: MessageIcon },
-          { path: '/table', label: 'Standings', icon: TableIcon },
-          ...(isOpenLeagueVisible ? [{ path: '/open-league', label: 'Friendly League', icon: TrophyIcon }] : []),
-          { path: '/match-log', label: 'Schedule', icon: CalendarIcon },
-          { path: '/rules', label: 'League Rules', icon: ShieldIcon },
           { path: '/submit-result', label: 'Submit Score', icon: PlusCircleIcon },
+          { path: '/table', label: 'Standings', icon: TableIcon },
+          { path: '/match-log', label: 'Schedule', icon: CalendarIcon },
           { path: '/results', label: 'Results', icon: TrophyIcon },
-          { path: '/daily-challenges', label: 'Daily Challenges', icon: StarIcon },
-          { path: '/players', label: 'Players', icon: UsersIcon },
-          { path: '/notifications', label: 'Notifications', icon: BellIcon },
-          { path: '/giveaways', label: 'Giveaways', icon: GiftIcon },
         ]
       },
       {
         title: 'Compete',
         items: [
+          { path: '/leaderboards', label: 'Leaderboards', icon: TrophyIcon },
           { path: '/cups', label: 'Cups', icon: TrophyIcon },
+          { path: '/hall-of-fame', label: 'Hall of Fame', icon: StarIcon },
+          { path: '/statistics', label: 'Statistics', icon: BarChartIcon },
           { path: '/practice', label: 'Practice Hub', icon: TargetIcon },
           { path: '/progress-tracker', label: 'Progress Tracker', icon: BarChartIcon },
           { path: '/tournaments', label: 'Tournaments', icon: TournamentIcon },
-          { path: '/leaderboards', label: 'Leaderboards', icon: TrophyIcon },
-          { path: '/hall-of-fame', label: 'Hall of Fame', icon: TrophyIcon },
-          { path: '/statistics', label: 'Statistics', icon: BarChartIcon },
+        ]
+      },
+      {
+        title: 'League',
+        items: [
+          { path: '/news', label: 'League News', icon: MessageIcon },
+          { path: '/rules', label: 'League Rules', icon: ShieldIcon },
+          ...(isOpenLeagueVisible ? [{ path: '/open-league', label: 'Friendly League', icon: TrophyIcon }] : []),
+          { path: '/daily-challenges', label: 'Daily Challenges', icon: StarIcon },
+          { path: '/players', label: 'Players', icon: UsersIcon },
+          { path: '/giveaways', label: 'Giveaways', icon: GiftIcon },
         ]
       },
       ...(isAdmin ? [{
@@ -92,23 +96,24 @@ export default function Sidebar() {
         ]
       }] : []),
       {
-        title: 'Support',
+        title: 'Account',
+        items: [
+          { path: '/profile', label: 'My Profile', icon: UsersIcon },
+          { path: '/notifications', label: 'Notifications', icon: BellIcon },
+          { path: '/settings', label: 'Settings', icon: SettingsIcon },
+          { path: '/subscription', label: 'Elite Pass', icon: CreditCardIcon2 },
+          { path: '/install', label: 'Install App', icon: DownloadIcon },
+          { path: '/donations', label: 'Donations', icon: HeartIcon },
+        ]
+      },
+      {
+        title: 'Help',
         items: [
           { path: '/guide', label: 'User Guide', icon: HelpIcon },
           { path: '/contact', label: 'Contact Us', icon: MailIcon },
           { path: '/support', label: 'Support', icon: HelpIcon },
-          { path: '/donations', label: 'Donations', icon: HeartIcon },
+          { path: '/privacy-policy', label: 'Privacy Policy', icon: ShieldIcon },
           { label: 'Player / Role Applications', icon: ExternalLinkIcon, external: 'https://elite-arrows-applications.vercel.app/' },
-        ]
-      },
-      {
-        title: 'Account',
-        items: [
-          { path: '/profile', label: 'My Profile', icon: UsersIcon },
-          { path: '/settings', label: 'Settings', icon: SettingsIcon },
-          { path: '/subscription', label: 'Elite Pass', icon: CreditCardIcon2 },
-          { path: '/privacy-policy', label: 'Privacy Policy', icon: HelpIcon },
-          { path: '/install', label: 'Install App', icon: DownloadIcon },
         ]
       },
     ]
