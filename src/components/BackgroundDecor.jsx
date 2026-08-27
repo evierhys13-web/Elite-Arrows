@@ -20,7 +20,7 @@ export default function BackgroundDecor() {
         .cosmic-background {
           position: absolute;
           inset: -5%;
-          background-image: url('/cosmic-primary-image.jpg');
+          background-image: url('/cosmic primary image.png');
           background-size: cover;
           background-position: center;
           background-repeat: no-repeat;
