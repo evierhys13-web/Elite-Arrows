@@ -1,21 +1,21 @@
 :root {
-  /* Brand Palette - Light Purple & Blue Mix (Vibrant Launch) */
-  --bg-primary: #1e1b4b; /* Deep Indigo */
-  --bg-secondary: #312e81; /* Mixed Purple-Blue */
-  --bg-card: rgba(46, 56, 133, 0.65); /* Vibrant Mixed Glass */
-  --bg-hover: rgba(139, 92, 246, 0.2);
-  --bg-active: rgba(139, 92, 246, 0.3);
+  /* Brand Palette - Cosmic Theme (Matches logo style) */
+  --bg-primary: #020617; /* Near Black Space Base */
+  --bg-secondary: #0f172a; /* Deep Space Blue */
+  --bg-card: rgba(15, 23, 42, 0.4); /* Transparent Nebula Glass */
+  --bg-hover: rgba(139, 92, 246, 0.1);
+  --bg-active: rgba(139, 92, 246, 0.2);
 
   --text-primary: #f8fafc;
   --text: #f8fafc;
   --text-secondary: #cbd5e1;
   --text-muted: #94a3b8;
 
-  --accent-primary: #818cf8; /* Light Indigo-Purple */
+  --accent-primary: #818cf8; /* Platinum/Light Purple */
   --accent-hover: #a5b4fc;
-  --accent-cyan: #38bdf8; /* Light Sky Blue */
-  --accent-cyan-glow: rgba(56, 189, 248, 0.4);
-  --accent-purple-glow: rgba(129, 140, 248, 0.4);
+  --accent-cyan: #38bdf8; /* Cosmic Cyan */
+  --accent-cyan-glow: rgba(56, 189, 248, 0.3);
+  --accent-purple-glow: rgba(129, 140, 248, 0.3);
 
   --success: #10b981;
   --success-bg: rgba(16, 185, 129, 0.12);
