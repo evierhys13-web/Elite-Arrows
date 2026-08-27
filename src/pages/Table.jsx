@@ -433,11 +433,11 @@ export default function Table() {
           padding: "0",
           borderRadius: "16px",
           overflow: "hidden",
-          background: "linear-gradient(160deg, rgba(30, 20, 80, 0.97) 0%, rgba(18, 12, 60, 0.93) 50%, rgba(60, 25, 95, 0.95) 100%)",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-          border: "2px solid rgba(168, 85, 247, 0.8)",
-          boxShadow: "0 20px 80px rgba(0, 0, 0, 0.7), 0 0 45px rgba(168, 85, 247, 0.4), 0 0 90px rgba(56, 189, 248, 0.15), inset 0 0 30px rgba(168, 85, 247, 0.12), inset 0 0 0 1px rgba(255,255,255,0.08)"
+          background: "rgba(10, 6, 40, 0.4)",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+          border: "2px solid rgba(168, 85, 247, 0.55)",
+          boxShadow: "0 20px 80px rgba(0, 0, 0, 0.6), 0 0 45px rgba(168, 85, 247, 0.3), 0 0 90px rgba(56, 189, 248, 0.1), inset 0 0 30px rgba(168, 85, 247, 0.08), inset 0 0 0 1px rgba(255,255,255,0.06)"
         }}
       >
         <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
@@ -445,14 +445,14 @@ export default function Table() {
             <thead>
               <tr
                 style={{
-                  background: "linear-gradient(90deg, rgba(139, 92, 246, 0.9) 0%, rgba(217, 70, 239, 0.85) 50%, rgba(56, 189, 248, 0.85) 100%)",
+                  background: "rgba(0, 0, 0, 0.35)",
                   color: "white",
                   fontSize: "0.62rem",
                   fontWeight: "900",
                   textTransform: "uppercase",
                   letterSpacing: "0.06em",
-                  borderBottom: "2px solid rgba(255, 255, 255, 0.3)",
-                  textShadow: "0 0 10px rgba(255, 255, 255, 0.5), 0 1px 2px rgba(0, 0, 0, 0.6)"
+                  borderBottom: "2px solid rgba(168, 85, 247, 0.35)",
+                  textShadow: "0 0 8px rgba(255, 255, 255, 0.3), 0 1px 2px rgba(0, 0, 0, 0.6)"
                 }}
               >
                 <th
@@ -606,10 +606,10 @@ export default function Table() {
                       key={player.id}
                       style={{
                         background: isMe
-                          ? "linear-gradient(90deg, rgba(217, 70, 239, 0.35) 0%, rgba(217, 70, 239, 0.18) 100%)"
-                          : index % 2 === 0 ? "rgba(255, 255, 255, 0.07)" : "rgba(168, 85, 247, 0.12)",
-                        boxShadow: isMe ? "inset 4px 0 0 0 var(--accent-primary), inset 0 0 25px rgba(217, 70, 239, 0.2)" : "none",
-                        borderBottom: "1px solid rgba(255,255,255,0.12)",
+                          ? "linear-gradient(90deg, rgba(217, 70, 239, 0.22) 0%, rgba(217, 70, 239, 0.08) 100%)"
+                          : "transparent",
+                        boxShadow: isMe ? "inset 4px 0 0 0 var(--accent-primary), inset 0 0 25px rgba(217, 70, 239, 0.15)" : "none",
+                        borderBottom: "1px solid rgba(255,255,255,0.08)",
                         fontSize: "0.78rem",
                         transition: "background 0.2s ease"
                       }}
