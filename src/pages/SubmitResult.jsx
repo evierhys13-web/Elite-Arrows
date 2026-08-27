@@ -194,7 +194,7 @@ export default function SubmitResult() {
   }, [])
 
   useEffect(() => {
-    if (!formData.season && adminData?.currentSeason) {
+    if (adminData?.currentSeason && formData.season !== adminData.currentSeason) {
       setFormData(prev => ({ ...prev, season: adminData.currentSeason }))
     }
   }, [adminData?.currentSeason])
@@ -920,8 +920,10 @@ export default function SubmitResult() {
               className="glass"
               style={{ width: '100%', padding: '12px', borderRadius: '8px' }}
             >
-              {seasons.map(s => <option key={s.id} value={s.name}>{s.name} {s.isArchived ? '(Archived)' : s.name === adminData?.currentSeason ? '(Active)' : ''}</option>)}
-              {!seasons.find(s => s.name === 'Season 1') && <option value="Season 1">Season 1</option>}
+              {adminData?.currentSeason
+                ? <option value={adminData.currentSeason}>{adminData.currentSeason} (Active)</option>
+                : seasons.map(s => <option key={s.id} value={s.name}>{s.name} {s.isArchived ? '(Archived)' : '(Active)'}</option>)}
+              {!adminData?.currentSeason && !seasons.find(s => s.name === 'Season 1') && <option value="Season 1">Season 1</option>}
             </select>
           </div>
 

@@ -378,7 +378,7 @@ export default function Table() {
             onClick={handleRefresh}
             style={{ padding: "8px 12px" }}
           >
-            ðŸ”„ Sync Data
+            Sync Data
           </button>
         </div>
       </div>
@@ -441,8 +441,6 @@ export default function Table() {
           borderRadius: "16px",
           overflow: "hidden",
           background: "rgba(10, 6, 40, 0.4)",
-          backdropFilter: "blur(16px)",
-          WebkitBackdropFilter: "blur(16px)",
           border: "2px solid rgba(168, 85, 247, 0.55)",
           boxShadow: "0 20px 80px rgba(0, 0, 0, 0.6), 0 0 45px rgba(168, 85, 247, 0.3), 0 0 90px rgba(56, 189, 248, 0.1), inset 0 0 30px rgba(168, 85, 247, 0.08), inset 0 0 0 1px rgba(255,255,255,0.06)"
         }}
