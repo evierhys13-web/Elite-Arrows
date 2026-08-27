@@ -395,17 +395,19 @@ export default function Table() {
             onClick={() => setActiveDivision(div)}
             style={{
               whiteSpace: "nowrap",
-              padding: "10px 16px",
-              fontSize: "0.85rem",
-              borderBottom:
-                activeDivision === div
-                  ? `3px solid ${DIVISION_COLORS[div]}`
-                  : "3px solid transparent",
-              color: activeDivision === div ? "white" : "rgba(255,255,255,0.6)",
+              padding: "10px 20px",
+              fontSize: "0.9rem",
+              fontWeight: "800",
+              borderRadius: "10px",
+              border: "1px solid",
+              borderColor: activeDivision === div ? DIVISION_COLORS[div] : "rgba(255,255,255,0.1)",
+              color: activeDivision === div ? "white" : "rgba(255,255,255,0.5)",
               background:
                 activeDivision === div
-                  ? "rgba(255,255,255,0.1)"
-                  : "transparent",
+                  ? DIVISION_COLORS[div] + "33"
+                  : "rgba(0, 0, 0, 0.2)",
+              transition: "all 0.2s ease",
+              boxShadow: activeDivision === div ? `0 0 15px ${DIVISION_COLORS[div]}22` : "none"
             }}
           >
             {div}
@@ -414,18 +416,26 @@ export default function Table() {
       </div>
 
       <div
-        className="card glass"
-        style={{ padding: "0", borderRadius: "12px", overflow: "hidden" }}
+        className="card glass-deep"
+        style={{
+          padding: "0",
+          borderRadius: "16px",
+          overflow: "hidden",
+          border: "1px solid rgba(129, 140, 248, 0.3)",
+          boxShadow: "0 20px 60px rgba(0, 0, 0, 0.6), 0 0 20px rgba(129, 140, 248, 0.1)"
+        }}
       >
         <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr
                 style={{
-                  background: "rgba(0,0,0,0.3)",
-                  color: "rgba(255,255,255,0.7)",
-                  fontSize: "0.6rem",
+                  background: "rgba(15, 23, 42, 0.9)",
+                  color: "white",
+                  fontSize: "0.7rem",
+                  fontWeight: "800",
                   textTransform: "uppercase",
+                  borderBottom: "2px solid rgba(129, 140, 248, 0.4)"
                 }}
               >
                 <th
@@ -577,10 +587,11 @@ export default function Table() {
                       key={player.id}
                       style={{
                         background: isMe
-                          ? "rgba(217, 70, 239, 0.15)"
-                          : "transparent",
-                        borderBottom: "1px solid rgba(255,255,255,0.05)",
-                        fontSize: "0.8rem",
+                          ? "rgba(217, 70, 239, 0.2)"
+                          : index % 2 === 0 ? "rgba(255, 255, 255, 0.02)" : "transparent",
+                        borderBottom: "1px solid rgba(255,255,255,0.08)",
+                        fontSize: "0.85rem",
+                        transition: "background 0.2s ease"
                       }}
                     >
                       <td
