@@ -72,9 +72,19 @@ export default function BackgroundDecor({ division }) {
           position: absolute;
           border-radius: 50%;
           filter: blur(100px);
-          animation: nebulaPulse 20s infinite ease-in-out;
+          animation: nebulaPulse 25s infinite ease-in-out;
           mix-blend-mode: screen;
-          opacity: 0.8;
+          opacity: 0.6;
+        }
+        .space-dust {
+          position: absolute;
+          inset: 0;
+          background-image:
+            radial-gradient(circle at 30% 20%, ${colors.nebula1} 0%, transparent 40%),
+            radial-gradient(circle at 70% 80%, ${colors.nebula2} 0%, transparent 40%),
+            radial-gradient(circle at 10% 60%, ${colors.nebula3} 0%, transparent 30%);
+          opacity: 0.3;
+          mix-blend-mode: color-dodge;
         }
         .stars-overlay {
           position: absolute;
@@ -85,7 +95,9 @@ export default function BackgroundDecor({ division }) {
             radial-gradient(2px 2px at 80px 260px, ${colors.stars}, rgba(0,0,0,0)),
             radial-gradient(1.8px 1.8px at 300px 100px, white, rgba(0,0,0,0)),
             radial-gradient(1.5px 1.5px at 450px 200px, ${colors.stars}, rgba(0,0,0,0)),
-            radial-gradient(2px 2px at 200px 400px, white, rgba(0,0,0,0));
+            radial-gradient(2px 2px at 200px 400px, white, rgba(0,0,0,0)),
+            radial-gradient(1px 1px at 100px 100px, white, rgba(0,0,0,0)),
+            radial-gradient(1px 1px at 350px 350px, white, rgba(0,0,0,0));
           background-repeat: repeat;
           background-size: 400px 400px;
           opacity: 0.7;
@@ -107,9 +119,10 @@ export default function BackgroundDecor({ division }) {
         opacity: 0.8
       }} />
 
-      {/* Layered Starfield */}
+      {/* Stars Layers */}
       <div className="stars-overlay" />
       <div className="stars-overlay stars-tiny" />
+      <div className="space-dust" />
 
       {/* Hand-placed Twinkling Stars for Contrast */}
       {[
@@ -119,7 +132,10 @@ export default function BackgroundDecor({ division }) {
         { t: '80%', l: '75%', s: '2px', d: '0.5s' },
         { t: '40%', l: '45%', s: '3px', d: '1.5s' },
         { t: '10%', l: '60%', s: '2px', d: '3s' },
-        { t: '90%', l: '15%', s: '3px', d: '2.5s' }
+        { t: '90%', l: '15%', s: '3px', d: '2.5s' },
+        { t: '55%', l: '90%', s: '2px', d: '0.8s' },
+        { t: '5%', l: '30%', s: '2px', d: '1.2s' },
+        { t: '75%', l: '40%', s: '3px', d: '2.1s' }
       ].map((star, i) => (
         <div
           key={i}
@@ -134,21 +150,31 @@ export default function BackgroundDecor({ division }) {
         />
       ))}
 
-      {/* Large Vibrant Nebula Clouds (Photo Style) */}
+      {/* Vibrant Nebula Clouds (Photo Style) - More clusters */}
       <div className="nebula-cloud" style={{
-        top: '-10%', left: '0%', width: '90%', height: '90%',
+        top: '-15%', left: '-10%', width: '90%', height: '90%',
         background: `radial-gradient(circle, ${colors.nebula1} 0%, transparent 70%)`,
         animationDelay: '0s'
       }} />
       <div className="nebula-cloud" style={{
-        bottom: '5%', right: '-10%', width: '85%', height: '85%',
+        bottom: '10%', right: '-15%', width: '90%', height: '90%',
         background: `radial-gradient(circle, ${colors.nebula2} 0%, transparent 70%)`,
         animationDelay: '-10s'
       }} />
       <div className="nebula-cloud" style={{
-        top: '30%', right: '10%', width: '60%', height: '60%',
+        top: '40%', right: '15%', width: '70%', height: '70%',
         background: `radial-gradient(circle, ${colors.nebula3} 0%, transparent 70%)`,
         animationDelay: '-20s'
+      }} />
+      <div className="nebula-cloud" style={{
+        top: '10%', left: '40%', width: '50%', height: '50%',
+        background: `radial-gradient(circle, ${colors.nebula1} 0%, transparent 60%)`,
+        opacity: 0.4, animationDelay: '-5s'
+      }} />
+      <div className="nebula-cloud" style={{
+        bottom: '30%', left: '5%', width: '60%', height: '60%',
+        background: `radial-gradient(circle, ${colors.nebula2} 0%, transparent 60%)`,
+        opacity: 0.3, animationDelay: '-15s'
       }} />
 
       {/* Center Atmospheric Glow */}

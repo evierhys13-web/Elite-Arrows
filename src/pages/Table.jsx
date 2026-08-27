@@ -416,13 +416,13 @@ export default function Table() {
       </div>
 
       <div
-        className="card glass-deep"
+        className="card glass"
         style={{
           padding: "0",
           borderRadius: "16px",
           overflow: "hidden",
-          border: "1px solid rgba(129, 140, 248, 0.3)",
-          boxShadow: "0 20px 60px rgba(0, 0, 0, 0.6), 0 0 20px rgba(129, 140, 248, 0.1)"
+          border: "1px solid rgba(255, 255, 255, 0.15)",
+          boxShadow: "0 10px 40px rgba(0, 0, 0, 0.4)"
         }}
       >
         <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
