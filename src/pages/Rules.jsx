@@ -63,6 +63,39 @@ export default function Rules() {
               <li>This avoids free heavy wins while preserving earned results and keeping the league table as stable as possible.</li>
             </ul>
           </div>
+
+          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '10px', color: 'white' }}>📅 Match Deadlines</h3>
+            <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
+              <li>All league fixtures must be played by the <strong>end of the season</strong>.</li>
+              <li>Games not played by the deadline fall under the <strong>forfeit rule</strong>.</li>
+            </ul>
+          </div>
+
+          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '10px', color: 'white' }}>🚫 No-Show Rule</h3>
+            <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
+              <li>If a player fails to show up, the opponent receives an <strong>instant 5–0 forfeit win</strong>.</li>
+              <li>However, if the player <strong>notified their opponent about rescheduling beforehand</strong>, or <strong>around the match time (±15 minutes before or after)</strong>, the fixture should be <strong>re-scheduled</strong> instead.</li>
+            </ul>
+          </div>
+
+          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '10px', color: 'white' }}>📝 Result Submission</h3>
+            <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
+              <li>The <strong>winner must submit the result</strong> within <strong>4 hours</strong> of the match.</li>
+              <li>Keep your <strong>match log/scorecard</strong> until the result has been approved.</li>
+              <li>In a dispute, the player who <strong>cannot provide proof</strong> loses the result.</li>
+            </ul>
+          </div>
+
+          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '10px', color: 'white' }}>⚖️ Disputed Results</h3>
+            <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
+              <li>Any disputed result must be raised with an <strong>admin within 48 hours</strong> of submission.</li>
+              <li>After that time, the <strong>result stands</strong>.</li>
+            </ul>
+          </div>
         </div>
       </div>
 
@@ -110,10 +143,11 @@ export default function Rules() {
       <div className="card glass" style={{ marginBottom: '40px', padding: '30px' }}>
         <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>Prizes & Subscriptions</h2>
         <div style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-           <p style={{ marginBottom: '15px' }}>
-             Elite Pass subscribers are eligible for season prizes and entry into official tournaments.
-           </p>
+<p style={{ marginBottom: '15px' }}>
+              Elite Pass subscribers are eligible for season prizes and entry into official tournaments.
+            </p>
             <ul style={{ paddingLeft: '20px' }}>
+              <li><strong>Prize Eligibility:</strong> To be eligible for season prizes you must have played all, or at least <strong>75%</strong> of, your fixtures.</li>
               <li><strong>Refunds:</strong> Subscriptions are eligible for a full refund within 14 days of purchase, provided no tournament prizes have been won.</li>
             </ul>
         </div>
