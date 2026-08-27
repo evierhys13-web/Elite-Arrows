@@ -58,30 +58,38 @@ export default function BackgroundDecor({ division }) {
           to { background-position: 1200px 1200px; }
         }
         @keyframes starTwinkle {
-          0%, 100% { opacity: 0.4; }
-          50% { opacity: 1; }
+          0%, 100% { opacity: 0.3; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.2); }
+        }
+        .twinkle-star {
+          position: absolute;
+          background: white;
+          border-radius: 50%;
+          box-shadow: 0 0 10px white, 0 0 20px ${colors.stars};
+          animation: starTwinkle 4s infinite ease-in-out;
         }
         .nebula-cloud {
           position: absolute;
           border-radius: 50%;
-          filter: blur(120px);
-          animation: nebulaPulse 30s infinite ease-in-out;
+          filter: blur(100px);
+          animation: nebulaPulse 20s infinite ease-in-out;
           mix-blend-mode: screen;
+          opacity: 0.8;
         }
         .stars-overlay {
           position: absolute;
           inset: 0;
           background-image:
             radial-gradient(1.5px 1.5px at 20px 30px, white, rgba(0,0,0,0)),
-            radial-gradient(1px 1px at 150px 50px, rgba(255,255,255,0.8), rgba(0,0,0,0)),
+            radial-gradient(1.2px 1.2px at 150px 50px, white, rgba(0,0,0,0)),
             radial-gradient(2px 2px at 80px 260px, ${colors.stars}, rgba(0,0,0,0)),
-            radial-gradient(3px 3px at 300px 100px, white, rgba(0,0,0,0)),
-            radial-gradient(1.5px 1.5px at 450px 200px, rgba(255,255,255,0.6), rgba(0,0,0,0)),
-            radial-gradient(2.5px 2.5px at 200px 400px, ${colors.stars}, rgba(0,0,0,0));
+            radial-gradient(1.8px 1.8px at 300px 100px, white, rgba(0,0,0,0)),
+            radial-gradient(1.5px 1.5px at 450px 200px, ${colors.stars}, rgba(0,0,0,0)),
+            radial-gradient(2px 2px at 200px 400px, white, rgba(0,0,0,0));
           background-repeat: repeat;
-          background-size: 500px 500px;
-          opacity: 0.6;
-          animation: cosmicDrift 180s linear infinite;
+          background-size: 400px 400px;
+          opacity: 0.7;
+          animation: cosmicDrift 150s linear infinite;
         }
         .stars-tiny {
           background-image: radial-gradient(0.8px 0.8px at 10px 10px, white, rgba(0,0,0,0));
@@ -99,9 +107,32 @@ export default function BackgroundDecor({ division }) {
         opacity: 0.8
       }} />
 
-      {/* Stars Layers */}
+      {/* Layered Starfield */}
       <div className="stars-overlay" />
       <div className="stars-overlay stars-tiny" />
+
+      {/* Hand-placed Twinkling Stars for Contrast */}
+      {[
+        { t: '15%', l: '10%', s: '3px', d: '0s' },
+        { t: '25%', l: '85%', s: '2px', d: '1s' },
+        { t: '65%', l: '20%', s: '4px', d: '2s' },
+        { t: '80%', l: '75%', s: '2px', d: '0.5s' },
+        { t: '40%', l: '45%', s: '3px', d: '1.5s' },
+        { t: '10%', l: '60%', s: '2px', d: '3s' },
+        { t: '90%', l: '15%', s: '3px', d: '2.5s' }
+      ].map((star, i) => (
+        <div
+          key={i}
+          className="twinkle-star"
+          style={{
+            top: star.t,
+            left: star.l,
+            width: star.s,
+            height: star.s,
+            animationDelay: star.d
+          }}
+        />
+      ))}
 
       {/* Large Vibrant Nebula Clouds (Photo Style) */}
       <div className="nebula-cloud" style={{
