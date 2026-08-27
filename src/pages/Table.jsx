@@ -421,8 +421,9 @@ export default function Table() {
           padding: "0",
           borderRadius: "16px",
           overflow: "hidden",
-          border: "1px solid rgba(255, 255, 255, 0.15)",
-          boxShadow: "0 10px 40px rgba(0, 0, 0, 0.4)"
+          background: "rgba(13, 10, 45, 0.92)",
+          border: "1px solid rgba(255, 255, 255, 0.25)",
+          boxShadow: "0 20px 80px rgba(0, 0, 0, 0.7), 0 0 30px rgba(139, 92, 246, 0.1)"
         }}
       >
         <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>

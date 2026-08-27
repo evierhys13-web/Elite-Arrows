@@ -5,30 +5,26 @@ export default function BackgroundDecor({ division }) {
         return {
           nebula1: 'rgba(251, 191, 36, 0.25)', // Gold
           nebula2: 'rgba(245, 158, 11, 0.3)', // Amber
-          nebula3: 'rgba(217, 119, 6, 0.35)', // Deep Amber
           stars: 'rgba(251, 191, 36, 0.7)'
         }
       case 'Emerald':
         return {
           nebula1: 'rgba(16, 185, 129, 0.25)', // Emerald
           nebula2: 'rgba(5, 150, 105, 0.3)', // Deep Green
-          nebula3: 'rgba(4, 120, 87, 0.35)', // Vibrant Green
           stars: 'rgba(52, 211, 153, 0.7)'
         }
       case 'Diamond':
         return {
           nebula1: 'rgba(56, 189, 248, 0.25)', // Cyan
           nebula2: 'rgba(2, 132, 199, 0.3)', // Deep Blue
-          nebula3: 'rgba(3, 105, 161, 0.35)', // Vibrant Blue
           stars: 'rgba(14, 165, 233, 0.7)'
         }
       case 'Platinum':
       default:
         return {
-          nebula1: 'rgba(217, 70, 239, 0.4)', // Bright Magenta (mimics photo)
+          nebula1: 'rgba(217, 70, 239, 0.4)', // Bright Magenta
           nebula2: 'rgba(168, 85, 247, 0.35)', // Vibrant Purple
-          nebula3: 'rgba(107, 33, 168, 0.45)', // Deep Purple-Violet
-          stars: 'rgba(240, 171, 252, 0.7)' // Light Purple Stars
+          stars: 'rgba(240, 171, 252, 0.7)'
         }
     }
   }
@@ -45,20 +41,20 @@ export default function BackgroundDecor({ division }) {
       pointerEvents: 'none',
       zIndex: -1,
       overflow: 'hidden',
-      background: '#2e1065', // Brighter Purple Base
+      background: '#0f0724',
       transition: 'background 1s ease'
     }}>
       <style>{`
         @keyframes nebulaPulse {
           0%, 100% { transform: scale(1) translate(0, 0); opacity: 0.7; }
-          50% { transform: scale(1.2) translate(-2%, 2%); opacity: 1; }
+          50% { transform: scale(1.1) translate(-2%, 2%); opacity: 0.9; }
         }
         @keyframes cosmicDrift {
           from { background-position: 0 0; }
-          to { background-position: 1200px 1200px; }
+          to { background-position: 1000px 1000px; }
         }
         @keyframes starTwinkle {
-          0%, 100% { opacity: 0.3; transform: scale(1); }
+          0%, 100% { opacity: 0.4; transform: scale(1); }
           50% { opacity: 1; transform: scale(1.2); }
         }
         .twinkle-star {
@@ -68,139 +64,69 @@ export default function BackgroundDecor({ division }) {
           box-shadow: 0 0 10px white, 0 0 20px ${colors.stars};
           animation: starTwinkle 4s infinite ease-in-out;
         }
-        .nebula-cloud {
+        .nebula-overlay {
           position: absolute;
           border-radius: 50%;
           filter: blur(100px);
           animation: nebulaPulse 25s infinite ease-in-out;
           mix-blend-mode: screen;
-          opacity: 0.6;
+          opacity: 0.5;
         }
-        .space-dust {
-          position: absolute;
-          inset: 0;
-          background-image:
-            radial-gradient(circle at 30% 20%, ${colors.nebula1} 0%, transparent 40%),
-            radial-gradient(circle at 70% 80%, ${colors.nebula2} 0%, transparent 40%),
-            radial-gradient(circle at 10% 60%, ${colors.nebula3} 0%, transparent 30%);
-          opacity: 0.3;
-          mix-blend-mode: color-dodge;
-        }
-        .stars-overlay {
+        .stars-container {
           position: absolute;
           inset: 0;
           background-image:
             radial-gradient(1.5px 1.5px at 20px 30px, white, rgba(0,0,0,0)),
-            radial-gradient(1.2px 1.2px at 150px 50px, white, rgba(0,0,0,0)),
+            radial-gradient(1px 1px at 150px 50px, rgba(255,255,255,0.8), rgba(0,0,0,0)),
             radial-gradient(2px 2px at 80px 260px, ${colors.stars}, rgba(0,0,0,0)),
-            radial-gradient(1.8px 1.8px at 300px 100px, white, rgba(0,0,0,0)),
-            radial-gradient(1.5px 1.5px at 450px 200px, ${colors.stars}, rgba(0,0,0,0)),
-            radial-gradient(2px 2px at 200px 400px, white, rgba(0,0,0,0)),
-            radial-gradient(1px 1px at 100px 100px, white, rgba(0,0,0,0)),
-            radial-gradient(1px 1px at 350px 350px, white, rgba(0,0,0,0));
+            radial-gradient(3px 3px at 300px 100px, white, rgba(0,0,0,0)),
+            radial-gradient(1.5px 1.5px at 450px 200px, rgba(255,255,255,0.6), rgba(0,0,0,0)),
+            radial-gradient(2.5px 2.5px at 200px 400px, ${colors.stars}, rgba(0,0,0,0));
           background-repeat: repeat;
-          background-size: 400px 400px;
-          opacity: 0.7;
-          animation: cosmicDrift 150s linear infinite;
-        }
-        .stars-tiny {
-          background-image: radial-gradient(0.8px 0.8px at 10px 10px, white, rgba(0,0,0,0));
-          background-size: 100px 100px;
-          opacity: 0.3;
-          animation: cosmicDrift 300s linear infinite;
+          background-size: 500px 500px;
+          opacity: 0.6;
+          animation: cosmicDrift 180s linear infinite;
         }
       `}</style>
 
-      {/* Main Gradient Base (Brighter Purple) */}
+      {/* Primary Cosmic Image Background */}
       <div style={{
         position: 'absolute',
         inset: 0,
-        background: `radial-gradient(circle at 50% 50%, #4c1d95 0%, #2e1065 100%)`,
-        opacity: 0.8
+        backgroundImage: "url('/cosmic-bg.jpg')",
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        opacity: 1
       }} />
 
-      {/* Stars Layers */}
-      <div className="stars-overlay" />
-      <div className="stars-overlay stars-tiny" />
-      <div className="space-dust" />
+      {/* Layered Starfield */}
+      <div className="stars-container" />
 
-      {/* Hand-placed Twinkling Stars for Contrast */}
+      {/* Hand-placed Twinkling Stars for Depth */}
       {[
         { t: '15%', l: '10%', s: '3px', d: '0s' },
         { t: '25%', l: '85%', s: '2px', d: '1s' },
         { t: '65%', l: '20%', s: '4px', d: '2s' },
-        { t: '80%', l: '75%', s: '2px', d: '0.5s' },
-        { t: '40%', l: '45%', s: '3px', d: '1.5s' },
-        { t: '10%', l: '60%', s: '2px', d: '3s' },
-        { t: '90%', l: '15%', s: '3px', d: '2.5s' },
-        { t: '55%', l: '90%', s: '2px', d: '0.8s' },
-        { t: '5%', l: '30%', s: '2px', d: '1.2s' },
-        { t: '75%', l: '40%', s: '3px', d: '2.1s' }
+        { t: '80%', l: '75%', s: '2px', d: '0.5s' }
       ].map((star, i) => (
-        <div
-          key={i}
-          className="twinkle-star"
-          style={{
-            top: star.t,
-            left: star.l,
-            width: star.s,
-            height: star.s,
-            animationDelay: star.d
-          }}
-        />
+        <div key={i} className="twinkle-star" style={{ top: star.t, left: star.l, width: star.s, height: star.s, animationDelay: star.d }} />
       ))}
 
-      {/* Vibrant Nebula Clouds (Photo Style) - More clusters */}
-      <div className="nebula-cloud" style={{
-        top: '-15%', left: '-10%', width: '90%', height: '90%',
-        background: `radial-gradient(circle, ${colors.nebula1} 0%, transparent 70%)`,
-        animationDelay: '0s'
-      }} />
-      <div className="nebula-cloud" style={{
-        bottom: '10%', right: '-15%', width: '90%', height: '90%',
-        background: `radial-gradient(circle, ${colors.nebula2} 0%, transparent 70%)`,
-        animationDelay: '-10s'
-      }} />
-      <div className="nebula-cloud" style={{
-        top: '40%', right: '15%', width: '70%', height: '70%',
-        background: `radial-gradient(circle, ${colors.nebula3} 0%, transparent 70%)`,
-        animationDelay: '-20s'
-      }} />
-      <div className="nebula-cloud" style={{
-        top: '10%', left: '40%', width: '50%', height: '50%',
-        background: `radial-gradient(circle, ${colors.nebula1} 0%, transparent 60%)`,
-        opacity: 0.4, animationDelay: '-5s'
-      }} />
-      <div className="nebula-cloud" style={{
-        bottom: '30%', left: '5%', width: '60%', height: '60%',
-        background: `radial-gradient(circle, ${colors.nebula2} 0%, transparent 60%)`,
-        opacity: 0.3, animationDelay: '-15s'
-      }} />
+      {/* Dynamic Division Nebula Clusters on top of image */}
+      <div className="nebula-overlay" style={{ top: '-10%', left: '0%', width: '80%', height: '80%', background: `radial-gradient(circle, ${colors.nebula1} 0%, transparent 70%)` }} />
+      <div className="nebula-overlay" style={{ bottom: '0%', right: '0%', width: '70%', height: '70%', background: `radial-gradient(circle, ${colors.nebula2} 0%, transparent 70%)`, animationDelay: '-10s' }} />
 
-      {/* Center Atmospheric Glow */}
-      <div style={{
-        position: 'absolute',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        width: '120%',
-        height: '120%',
-        background: `radial-gradient(circle at 50% 50%, ${colors.nebula2} 0%, transparent 60%)`,
-        opacity: 0.4,
-        mixBlendMode: 'screen'
-      }} />
-
-      {/* Subtle Digital Grid Overlay */}
+      {/* Subtle Structural Overlay */}
       <div style={{
         position: 'absolute',
         inset: 0,
         backgroundImage: `
-          linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px)
+          linear-gradient(rgba(255, 255, 255, 0.01) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.01) 1px, transparent 1px)
         `,
-        backgroundSize: '100px 100px',
+        backgroundSize: '150px 120px',
         maskImage: 'radial-gradient(ellipse at 50% 50%, black 5%, transparent 95%)',
-        opacity: 0.5
+        opacity: 0.3
       }} />
     </div>
   )
