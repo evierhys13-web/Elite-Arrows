@@ -19,7 +19,7 @@ export default function Rules() {
              <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
                 <li><strong>Format:</strong> Best of 8 legs (First to 5 or 4-4 Draw).</li>
                 <li><strong>Start Score:</strong> 501.</li>
-                <li><strong>Finish:</strong> Double Out.</li>
+                <li><strong>Finish:</strong> Straight In, Double Out.</li>
                 <li><strong>Platform:</strong> Primarily played on <strong>DartCounter</strong>.</li>
              </ul>
           </div>
@@ -31,6 +31,37 @@ export default function Rules() {
                 <li><strong>Visibility:</strong> The board and darts must be clearly visible to your opponent.</li>
                 <li><strong>Omni:</strong> The use of Omni is optional, but traditional camera use is mandatory.</li>
              </ul>
+          </div>
+        </div>
+      </div>
+
+      <div className="card glass" style={{ marginBottom: '24px', padding: '30px' }}>
+        <h2 style={{ color: 'var(--accent-primary)', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>League Fixtures & Forfeits</h2>
+        <div style={{ display: 'grid', gap: '20px' }}>
+          <div style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.25)' }}>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '10px', color: 'white' }}>⚠️ Unplayed Games</h3>
+            <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
+              <li>If you do not play <strong>all of your games</strong> in the season, you will be <strong>instantly relegated</strong> and given a <strong>final warning ban</strong>.</li>
+              <li>If you <strong>forfeit the season</strong>, the same applies.</li>
+              <li>The only exception is if an <strong>admin has been notified</strong> and given a <strong>good reason</strong> beforehand.</li>
+            </ul>
+          </div>
+
+          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '10px', color: 'white' }}>🗓️ Re-scheduling Games</h3>
+            <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
+              <li>Re-scheduling games is allowed if <strong>both players agree</strong> and an <strong>admin is notified</strong>.</li>
+              <li>Admin approval is <strong>not required</strong> — as long as both players agree, the re-schedule is valid.</li>
+            </ul>
+          </div>
+
+          <div style={{ background: 'rgba(251, 191, 36, 0.08)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(251, 191, 36, 0.25)' }}>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '10px', color: 'white' }}>🏳️ Forfeit Rule (Fixed Result for Unplayed Fixtures)</h3>
+            <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
+              <li>If a player <strong>forfeits the remainder of their fixtures</strong>, all completed matches remain <strong>valid and unchanged</strong>.</li>
+              <li>Any <strong>unplayed fixtures</strong> are recorded as a <strong>fixed, mild result in favour of the opponent</strong> (e.g., <strong>5–3</strong>).</li>
+              <li>This avoids free heavy wins while preserving earned results and keeping the league table as stable as possible.</li>
+            </ul>
           </div>
         </div>
       </div>
