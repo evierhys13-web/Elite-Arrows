@@ -9,7 +9,7 @@ export default function BackgroundDecor() {
       pointerEvents: 'none',
       zIndex: -1,
       overflow: 'hidden',
-      background: '#0b051d' // Deep Dark Purple Base
+      background: '#0b051d' // Deep Dark Purple Base fallback
     }}>
       <style>{`
         @keyframes drift {
@@ -20,34 +20,22 @@ export default function BackgroundDecor() {
         .cosmic-background {
           position: absolute;
           inset: -5%;
-          background-image: url('/cosmic-bg.jpg');
+          background-image: url('/cosmic-primary-image.jpg');
           background-size: cover;
           background-position: center;
           background-repeat: no-repeat;
-          animation: drift 40s ease-in-out infinite;
-        }
-        .overlay-stars {
-          position: absolute;
-          inset: 0;
-          background-image: radial-gradient(1px 1px at 20% 30%, white, transparent),
-                            radial-gradient(1.5px 1.5px at 50% 70%, white, transparent),
-                            radial-gradient(1px 1px at 80% 40%, white, transparent);
-          background-size: 300px 300px;
-          opacity: 0.3;
+          animation: drift 60s ease-in-out infinite;
         }
       `}</style>
 
-      {/* THE ACTUAL IMAGE */}
+      {/* THIS IS THE ACTUAL IMAGE FILE */}
       <div className="cosmic-background" />
 
-      {/* Very subtle star overlay to add slight depth/twinkle to the static image */}
-      <div className="overlay-stars" />
-
-      {/* Dark vignette to ensure edge contrast */}
+      {/* Dark vignette to ensure edge contrast for text/tables */}
       <div style={{
         position: 'absolute',
         inset: 0,
-        background: 'radial-gradient(circle at 50% 50%, transparent 40%, rgba(11, 5, 29, 0.4) 100%)'
+        background: 'radial-gradient(circle at 50% 50%, transparent 20%, rgba(0, 0, 0, 0.4) 100%)'
       }} />
     </div>
   )
