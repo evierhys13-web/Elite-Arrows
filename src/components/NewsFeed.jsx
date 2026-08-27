@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContextInternal'
 
 const PinIcon = () => (
@@ -29,7 +30,7 @@ const formatTime = (dateString) => {
   return date.toLocaleDateString()
 }
 
-export default function NewsFeed() {
+export default function NewsFeed({ showViewAll = false, limit: displayLimit = 0 }) {
   const { user, getNews, deleteNews, togglePinNews } = useAuth()
   const news = getNews()
   const isAdmin = user?.isAdmin || user?.isTournamentAdmin
@@ -38,21 +39,29 @@ export default function NewsFeed() {
     if (news.length === 0) return []
     const pinned = news.filter(n => n.pinned)
     const unpinned = news.filter(n => !n.pinned)
-    return [...pinned, ...unpinned]
-  }, [news])
+    const combined = [...pinned, ...unpinned]
+    return displayLimit > 0 ? combined.slice(0, displayLimit) : combined
+  }, [news, displayLimit])
 
   if (displayNews.length === 0) return null
 
   return (
     <div style={{ marginBottom: '24px' }}>
-      <h2 style={{ fontSize: '1.25rem', fontWeight: '700', marginBottom: '16px', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 22, height: 22 }}>
-          <path d="M18 2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h12z" />
-          <line x1="12" y1="6" x2="12" y2="16" />
-          <line x1="8" y1="11" x2="16" y2="11" />
-        </svg>
-        Announcements
-      </h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <h2 style={{ fontSize: '1.25rem', fontWeight: '700', margin: 0, color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 22, height: 22 }}>
+            <path d="M18 2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h12z" />
+            <line x1="12" y1="6" x2="12" y2="16" />
+            <line x1="8" y1="11" x2="16" y2="11" />
+          </svg>
+          Announcements
+        </h2>
+        {showViewAll && news.length > displayLimit && (
+          <Link to="/news" style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)', fontWeight: 700, textDecoration: 'none' }}>
+            View All ➔
+          </Link>
+        )}
+      </div>
 
       {displayNews.map((item) => (
         <div

@@ -59,6 +59,7 @@ export default function Sidebar() {
         title: 'League',
         items: [
           { path: '/home', label: 'Home', icon: HomeIcon },
+          { path: '/news', label: 'League News', icon: MessageIcon },
           { path: '/table', label: 'Standings', icon: TableIcon },
           ...(isOpenLeagueVisible ? [{ path: '/open-league', label: 'Friendly League', icon: TrophyIcon }] : []),
           { path: '/match-log', label: 'Schedule', icon: CalendarIcon },

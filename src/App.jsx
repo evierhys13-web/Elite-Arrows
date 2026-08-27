@@ -60,6 +60,7 @@ const ProgressTracker = lazy(() => import('./pages/ProgressTracker'))
 const DailyChallenges = lazy(() => import('./pages/DailyChallenges'))
 const PlayOnline = lazy(() => import('./pages/PlayOnline'))
 const HallOfFame = lazy(() => import('./pages/HallOfFame'))
+const News = lazy(() => import('./pages/News'))
 
 function PageLoader() {
   const [showRefresh, setShowRefresh] = useState(false)
@@ -314,6 +315,7 @@ function AppRoutes() {
       <Route path="/cups/:cupId" element={<ProtectedRoute><AppLayout><CupBracket /></AppLayout></ProtectedRoute>} />
       <Route path="/leaderboards" element={<ProtectedRoute><AppLayout><Leaderboards /></AppLayout></ProtectedRoute>} />
       <Route path="/hall-of-fame" element={<ProtectedRoute><AppLayout><HallOfFame /></AppLayout></ProtectedRoute>} />
+      <Route path="/news" element={<ProtectedRoute><AppLayout><News /></AppLayout></ProtectedRoute>} />
       <Route path="/rewards" element={<ProtectedRoute><AppLayout><Rewards /></AppLayout></ProtectedRoute>} />
       <Route path="/cup-fixtures" element={<ProtectedRoute><AppLayout><CupFixtures /></AppLayout></ProtectedRoute>} />
       <Route path="/guide" element={<ProtectedRoute><AppLayout><Guide /></AppLayout></ProtectedRoute>} />

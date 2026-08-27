@@ -302,7 +302,7 @@ export default function Home() {
       )}
 
       {/* 5. News Feed */}
-      <NewsFeed />
+      <NewsFeed showViewAll={true} limit={3} />
 
       {/* 7. Pro Overview */}
       <div className="card" style={{ marginBottom: '20px', marginTop: '20px' }}>

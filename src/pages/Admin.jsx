@@ -30,7 +30,11 @@ export default function Admin() {
     removeResult,
     updateFixtures,
     forceFetchResults,
-    searchUsers
+    searchUsers,
+    getNews,
+    postNews,
+    deleteNews,
+    togglePinNews
   } = useAuth()
 
   const navigate = useNavigate()
@@ -74,6 +78,7 @@ export default function Admin() {
   const [trophyForm, setTrophyForm] = useState({ player: '', name: '', icon: '🏆', season: '' })
   const [hallOfFameForm, setHallOfFameForm] = useState({ player: '', name: '', icon: '🏆', season: '', visible: true })
   const [hallOfFame, setHallOfFame] = useState([])
+  const [newsForm, setNewsForm] = useState({ title: '', message: '', pinned: false })
   const [highlightForm, setHighlightForm] = useState({ player: '', title: '', type: 'High Checkout', videoUrl: '', videoFile: null })
   const [highlights, setHighlights] = useState([])
   const [hlUploadProgress, setHlUploadProgress] = useState(0)
@@ -873,6 +878,19 @@ export default function Admin() {
     } catch (e) { showToast(e.message, 'error') }
   }
 
+  const handleCreateNews = async () => {
+    if (!newsForm.title || !newsForm.message) return showToast('Title and Message required', 'error')
+    setIsProcessing(true)
+    try {
+      await postNews(newsForm.title, newsForm.message, newsForm.pinned)
+      await logAudit('CREATE_NEWS', `Created news announcement: ${newsForm.title}`)
+      showToast('News announcement posted!', 'success')
+      setNewsForm({ title: '', message: '', pinned: false })
+      triggerDataRefresh('all')
+    } catch (e) { showToast(e.message, 'error') }
+    setIsProcessing(false)
+  }
+
   const handleRemoveHallOfFame = async (id) => {
     if (!window.confirm('Remove this entry from Hall of Fame?')) return
     try {
@@ -1182,6 +1200,7 @@ export default function Admin() {
     { id: 'players', label: 'Member Management' },
     { id: 'admins', label: 'Staff' },
     { id: 'cups', label: 'Cups' },
+    { id: 'news', label: 'League News' },
     { id: 'surveys', label: 'Surveys' },
     { id: 'highlights', label: 'Home Highlights' },
     { id: 'trophies', label: 'Trophies' },
@@ -3056,6 +3075,87 @@ export default function Admin() {
                 </div>
               ))}
               {highlights.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', gridColumn: '1 / -1', padding: '40px' }}>No highlights found.</p>}
+            </div>
+          </div>
+        )}
+
+        {/* TAB: LEAGUE NEWS */}
+        {activeTab === 'news' && (
+          <div className="card glass">
+            <h3>League News & Announcements</h3>
+
+            <div className="glass" style={{ padding: '24px', borderRadius: '16px', marginTop: '20px', marginBottom: '24px' }}>
+              <h4 style={{ marginBottom: '16px', color: 'var(--accent-cyan)' }}>Post New Announcement</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div className="form-group">
+                  <label>Title</label>
+                  <input
+                    className="glass"
+                    placeholder="Announcement Title"
+                    value={newsForm.title}
+                    onChange={e => setNewsForm({...newsForm, title: e.target.value})}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Message (supports line breaks)</label>
+                  <textarea
+                    className="glass"
+                    placeholder="Enter announcement details..."
+                    style={{ minHeight: '120px', padding: '12px' }}
+                    value={newsForm.message}
+                    onChange={e => setNewsForm({...newsForm, message: e.target.value})}
+                  />
+                </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={newsForm.pinned}
+                    onChange={e => setNewsForm({...newsForm, pinned: e.target.checked})}
+                  />
+                  Pin to top of feed
+                </label>
+
+                <button
+                  className="btn btn-primary btn-block"
+                  onClick={handleCreateNews}
+                  disabled={isProcessing || !newsForm.title || !newsForm.message}
+                >
+                  {isProcessing ? 'Posting...' : 'Post Announcement'}
+                </button>
+              </div>
+            </div>
+
+            <h4 style={{ marginBottom: '16px' }}>Manage Recent News</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {getNews().map(n => (
+                <div key={n.id} className="glass" style={{ padding: '16px', borderRadius: '12px', border: n.pinned ? '1px solid var(--accent-cyan)' : '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: '1rem' }}>
+                        {n.pinned && <span style={{ color: 'var(--accent-cyan)', marginRight: '8px' }}>📌</span>}
+                        {n.title}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                        by {n.authorName} • {new Date(n.createdAt).toLocaleString()}
+                      </div>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '8px', whiteSpace: 'pre-wrap' }}>
+                        {n.message.length > 200 ? n.message.substring(0, 200) + '...' : n.message}
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button className="btn btn-secondary btn-sm" onClick={() => togglePinNews(n.id, n.pinned)}>
+                        {n.pinned ? 'Unpin' : 'Pin'}
+                      </button>
+                      <button className="btn btn-danger btn-sm" onClick={() => { if(confirm('Delete news item?')) deleteNews(n.id) }}>
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {getNews().length === 0 && (
+                <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>No news items found.</p>
+              )}
             </div>
           </div>
         )}
