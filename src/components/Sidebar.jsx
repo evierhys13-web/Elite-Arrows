@@ -56,7 +56,7 @@ export default function Sidebar() {
 
     return [
       {
-        title: 'Main',
+        title: 'Main League',
         items: [
           { path: '/home', label: 'Home', icon: HomeIcon },
           { path: '/submit-result', label: 'Submit Score', icon: PlusCircleIcon },
