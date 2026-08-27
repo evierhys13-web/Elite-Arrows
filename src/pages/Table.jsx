@@ -421,11 +421,11 @@ export default function Table() {
           padding: "0",
           borderRadius: "16px",
           overflow: "hidden",
-          background: "linear-gradient(160deg, rgba(20, 15, 55, 0.95) 0%, rgba(13, 10, 45, 0.9) 100%)",
+          background: "linear-gradient(160deg, rgba(30, 20, 80, 0.97) 0%, rgba(18, 12, 60, 0.93) 50%, rgba(60, 25, 95, 0.95) 100%)",
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
-          border: "2px solid rgba(139, 92, 246, 0.5)",
-          boxShadow: "0 20px 80px rgba(0, 0, 0, 0.7), 0 0 40px rgba(139, 92, 246, 0.25), inset 0 0 0 1px rgba(255,255,255,0.06)"
+          border: "2px solid rgba(168, 85, 247, 0.8)",
+          boxShadow: "0 20px 80px rgba(0, 0, 0, 0.7), 0 0 45px rgba(168, 85, 247, 0.4), 0 0 90px rgba(56, 189, 248, 0.15), inset 0 0 30px rgba(168, 85, 247, 0.12), inset 0 0 0 1px rgba(255,255,255,0.08)"
         }}
       >
         <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
@@ -433,13 +433,14 @@ export default function Table() {
             <thead>
               <tr
                 style={{
-                  background: "rgba(30, 20, 70, 0.95)",
+                  background: "linear-gradient(90deg, rgba(139, 92, 246, 0.9) 0%, rgba(217, 70, 239, 0.85) 50%, rgba(56, 189, 248, 0.85) 100%)",
                   color: "white",
                   fontSize: "0.7rem",
-                  fontWeight: "800",
+                  fontWeight: "900",
                   textTransform: "uppercase",
-                  borderBottom: "2px solid rgba(217, 70, 239, 0.5)",
-                  textShadow: "0 0 8px rgba(217, 70, 239, 0.3)"
+                  letterSpacing: "0.06em",
+                  borderBottom: "2px solid rgba(255, 255, 255, 0.3)",
+                  textShadow: "0 0 10px rgba(255, 255, 255, 0.5), 0 1px 2px rgba(0, 0, 0, 0.6)"
                 }}
               >
                 <th
@@ -507,7 +508,8 @@ export default function Table() {
                     width: "35px",
                     padding: "12px 2px",
                     textAlign: "center",
-                    color: "var(--accent-primary)",
+                    color: "#e879f9",
+                    textShadow: "0 0 10px rgba(232, 121, 249, 0.9)",
                   }}
                 >
                   Avg
@@ -517,7 +519,8 @@ export default function Table() {
                     width: "35px",
                     padding: "12px 2px",
                     textAlign: "center",
-                    color: "var(--accent-cyan)",
+                    color: "#7dd3fc",
+                    textShadow: "0 0 10px rgba(56, 189, 248, 0.9)",
                   }}
                 >
                   Pts
@@ -591,9 +594,10 @@ export default function Table() {
                       key={player.id}
                       style={{
                         background: isMe
-                          ? "rgba(217, 70, 239, 0.25)"
-                          : index % 2 === 0 ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.15)",
-                        borderBottom: "1px solid rgba(255,255,255,0.1)",
+                          ? "linear-gradient(90deg, rgba(217, 70, 239, 0.35) 0%, rgba(217, 70, 239, 0.18) 100%)"
+                          : index % 2 === 0 ? "rgba(255, 255, 255, 0.07)" : "rgba(168, 85, 247, 0.12)",
+                        boxShadow: isMe ? "inset 4px 0 0 0 var(--accent-primary), inset 0 0 25px rgba(217, 70, 239, 0.2)" : "none",
+                        borderBottom: "1px solid rgba(255,255,255,0.12)",
                         fontSize: "0.85rem",
                         transition: "background 0.2s ease"
                       }}
@@ -601,9 +605,10 @@ export default function Table() {
                       <td
                         style={{
                           textAlign: "center",
-                          fontWeight: "800",
+                          fontWeight: "900",
                           color:
-                            index === 0 ? "#fbbf24" : "rgba(255,255,255,0.5)",
+                            index === 0 ? "#fbbf24" : index === 1 ? "#c0c0c0" : index === 2 ? "#cd7f32" : "rgba(255,255,255,0.7)",
+                          textShadow: index < 3 ? `0 0 12px ${["#fbbf24", "#c0c0c0", "#cd7f32"][index]}` : "none",
                         }}
                       >
                         {index + 1}
@@ -629,7 +634,8 @@ export default function Table() {
                             className="vt-player-name"
                             style={{
                               fontWeight: isMe ? "800" : "600",
-                              color: isMe ? "white" : "rgba(255,255,255,0.9)",
+                              color: isMe ? "white" : "rgba(255,255,255,0.95)",
+                              textShadow: isMe ? "0 0 12px rgba(217, 70, 239, 0.6)" : "0 0 8px rgba(255,255,255,0.15)",
                             }}
                           >
                             {player.username}
@@ -747,9 +753,10 @@ export default function Table() {
                         style={{
                           textAlign: "center",
                           padding: "10px 2px",
-                          fontWeight: "600",
-                          color: "var(--accent-primary)",
-                          fontSize: "0.8rem",
+                          fontWeight: "800",
+                          color: "#e879f9",
+                          fontSize: "0.85rem",
+                          textShadow: "0 0 10px rgba(232, 121, 249, 0.8)",
                         }}
                       >
                         {player.stats.average > 0 ? player.stats.average.toFixed(2) : '-'}
@@ -759,8 +766,9 @@ export default function Table() {
                           textAlign: "center",
                           padding: "10px 2px",
                           fontWeight: "900",
-                          color: "var(--accent-cyan)",
-                          fontSize: "0.9rem",
+                          color: "#7dd3fc",
+                          fontSize: "0.95rem",
+                          textShadow: "0 0 12px rgba(56, 189, 248, 0.8)",
                         }}
                       >
                         {player.stats.points}
