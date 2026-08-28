@@ -158,8 +158,8 @@ export default function Players() {
                 flexDirection: 'column',
                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 cursor: 'pointer',
-                border: isOnline ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid var(--border)',
-                background: isOnline ? 'rgba(16, 185, 129, 0.03)' : 'rgba(255,255,255,0.02)',
+                border: isOnline ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid rgba(255,255,255,0.1)',
+                background: isOnline ? 'linear-gradient(160deg, rgba(16, 185, 129, 0.14) 0%, rgba(10, 6, 40, 0.85) 100%)' : 'linear-gradient(160deg, rgba(12, 8, 48, 0.92) 0%, rgba(6, 4, 28, 0.92) 100%)',
                 position: 'relative',
                 overflow: 'hidden'
               }} onClick={() => navigate(`/profile/${player.id}`)}>
