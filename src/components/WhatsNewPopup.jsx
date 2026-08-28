@@ -85,6 +85,12 @@ export function WhatsNewPopup({ isOpen, onClose }) {
     if (onClose) onClose();
   };
 
+  const handleDontShowAgain = () => {
+    localStorage.setItem('eliteArrowsLastVersionSeen', CHANGELOG[0].version);
+    localStorage.setItem('eliteArrowsWhatsNewDismissed', 'true');
+    if (onClose) onClose();
+  };
+
   return (
     <div className="modal-overlay" style={{ zIndex: 11000 }}>
       <div className="modal-content glass animate-slide-up" style={{ maxWidth: '480px', padding: '32px' }}>
@@ -135,6 +141,14 @@ export function WhatsNewPopup({ isOpen, onClose }) {
         <button className="btn btn-primary btn-block" style={{ height: '54px', fontSize: '1rem' }} onClick={handleClose}>
           Awesome, Let's Go!
         </button>
+        <div style={{ textAlign: 'center', marginTop: '14px' }}>
+          <button
+            onClick={handleDontShowAgain}
+            style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline', padding: '4px 8px' }}
+          >
+            Don't show this again
+          </button>
+        </div>
       </div>
 
       <style>{`
@@ -150,6 +164,8 @@ export function useWhatsNew() {
   const checkShouldShow = () => {
     const lastSeen = localStorage.getItem('eliteArrowsLastVersionSeen');
     const hasUser = localStorage.getItem('eliteArrowsCurrentUser');
+    const permanentlyDismissed = localStorage.getItem('eliteArrowsWhatsNewDismissed') === 'true';
+    if (permanentlyDismissed) return false;
     return hasUser && lastSeen !== CHANGELOG[0].version;
   };
   

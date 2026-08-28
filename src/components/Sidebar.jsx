@@ -109,7 +109,7 @@ export default function Sidebar() {
       {
         title: 'Help',
         items: [
-          { path: '/guide', label: 'User Guide', icon: HelpIcon },
+          { path: '/guide', label: 'How The League Works', icon: HelpIcon },
           { path: '/contact', label: 'Contact Us', icon: MailIcon },
           { path: '/support', label: 'Support', icon: HelpIcon },
           { path: '/privacy-policy', label: 'Privacy Policy', icon: ShieldIcon },

@@ -1,43 +1,117 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
+const chapterStyles = {
+  marginTop: '20px',
+  padding: '16px',
+  background: 'var(--bg-secondary)',
+  borderRadius: '12px',
+}
+
 export default function Guide() {
   const [activeSection, setActiveSection] = useState('getting-started')
+  const [openFaq, setOpenFaq] = useState(null)
 
   const sections = [
-    { id: 'getting-started', label: 'Getting Started', icon: '🎯' },
-    { id: 'account', label: 'Account Setup', icon: '👤' },
-    { id: 'subscription', label: 'Subscription', icon: '⭐' },
-    { id: 'fixtures', label: 'Schedule', icon: '📅' },
-    { id: 'results', label: 'Results', icon: '🏆' },
-    { id: 'cups', label: 'Cups & Tournaments', icon: '🎯' },
-    { id: 'league', label: 'League Games', icon: '📊' },
-    { id: 'leaderboards', label: 'Leaderboards', icon: '📈' },
-    { id: 'chat', label: 'Chat', icon: '💬' },
-    { id: 'admin', label: 'Admin Tools', icon: 'Admin' },
-    { id: 'profile', label: 'Profile & Stats', icon: '📋' },
-    { id: 'search', label: 'Finding Players', icon: '🔍' },
-    { id: 'divisions', label: 'Divisions', icon: '🏅' }
+    { id: 'getting-started', label: 'The Basics', icon: '🎯' },
+    { id: 'season', label: 'A Season in 5 Steps', icon: '🗓️' },
+    { id: 'divisions', label: 'Divisions', icon: '🏅' },
+    { id: 'scoring', label: 'How Scoring Works', icon: '📊' },
+    { id: 'results', label: 'Submitting Results', icon: '📲' },
+    { id: 'fairplay', label: 'Fair Play & Rules', icon: '⚖️' },
+    { id: 'cups', label: 'Cups & Tournaments', icon: '🏆' },
+    { id: 'extras', label: 'More Ways to Play', icon: '🎮' },
+    { id: 'pass', label: 'Elite Pass', icon: '⭐' },
+    { id: 'faq', label: 'Quick FAQ', icon: '❓' }
+  ]
+
+  const steps = [
+    {
+      icon: '🎯',
+      title: 'Join & get placed',
+      body: 'Create your account and enter your 3-dart average. That places you in a division that matches your level, so every game is a fair game.',
+    },
+    {
+      icon: '🏅',
+      title: 'Meet your division',
+      body: 'You play one league match against every other player in your division each season. No dodging, no favourites — everyone gets a shot.',
+    },
+    {
+      icon: '📅',
+      title: 'Arrange & play',
+      body: 'Use the Home screen schedule or chat to agree a time with your opponent. Pick a format, step up to the oche, and play out the legs.',
+    },
+    {
+      icon: '📲',
+      title: 'Submit the result',
+      body: 'Add the legs won for both players, attach your proof screenshot, and hit submit. An admin checks it and it becomes official.',
+    },
+    {
+      icon: '📈',
+      title: 'Watch the table move',
+      body: 'Your legs and match bonuses go straight into the league table. Win your division and you\'re promoted — plus Cups, prizes and Hall of Fame glory.',
+    },
+  ]
+
+  const faqs = [
+    {
+      q: 'How do I get placed in a division?',
+      a: 'When you register you tell us your 3-dart average. Admins use that (and results over time) to place you in the division that fits your level best. It\'s shown on your profile and in the league table.',
+    },
+    {
+      q: 'How many games do I play per season?',
+      a: 'One league match against every other player in your division, every season. Cup and friendly matches are separate and are added on top.',
+    },
+    {
+      q: 'What if my opponent never arranges the game?',
+      a: 'If a match isn\'t played, nobody wins points — unless you can show you tried to arrange it. Then you get the win and they take the loss. Evidence wins arguments.',
+    },
+    {
+      q: 'What if I can\'t play enough games?',
+      a: 'If you don\'t complete the minimum number of league fixtures for your division size, all of your results are voided. So get those games played.',
+    },
+    {
+      q: 'Why do I need to upload proof?',
+      a: 'Every league result needs a screenshot as proof. It keeps the competition fair, stops disputes, and helps admins approve results quickly.',
+    },
+    {
+      q: 'What does "result sent" mean?',
+      a: 'Your result is waiting for admin approval. Once approved it lands in the records and your stats; if it\'s rejected you can submit the corrected result.',
+    },
+    {
+      q: 'How are cups different from the league?',
+      a: 'Cups are knockout tournaments. You pay an entry fee which goes into the prize pot, win your tie to advance through the rounds, and the last player standing takes the pot.',
+    },
+    {
+      q: 'What is the Elite Arrows Pass?',
+      a: 'It\'s the full-access subscription. Free members can browse and chat; Pass members can submit results, play league games, enter cups and use almost every feature in the app.',
+    },
   ]
 
   return (
     <div className="page">
-      <div className="page-header">
-        <h1 className="page-title">Elite Arrows Guide</h1>
-        <p style={{ color: 'var(--text-muted)', marginTop: '5px' }}>
-          Everything you need to know about using Elite Arrows
-        </p>
+      <div
+        className="card animate-fade-in-up"
+        style={{
+          marginBottom: '20px',
+          border: '2px solid var(--accent-cyan)',
+          background: 'linear-gradient(135deg, rgba(0,212,255,0.15), rgba(251,191,36,0.12))',
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        <div style={{ textAlign: 'center', padding: '24px 16px' }}>
+          <div style={{ fontSize: '2.4rem', marginBottom: '8px' }}>🎯</div>
+          <h1 className="page-title text-gradient" style={{ fontSize: '2rem', margin: 0 }}>How The League Works</h1>
+          <p style={{ color: 'var(--text-muted)', maxWidth: '620px', margin: '10px auto 0', lineHeight: '1.6' }}>
+            No jargon, no homework. Here's everything you need to know about competing in Elite Arrows — from your first sign-in to your first title.
+          </p>
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-        <div style={{ 
-          width: '100%',
-          marginBottom: '20px',
-          background: 'var(--bg-secondary)',
-          borderRadius: '12px',
-          padding: '15px'
-        }}>
-          <h4 style={{ marginBottom: '10px', color: 'var(--accent-cyan)' }}>Quick Links</h4>
+        <div style={{ width: '100%', marginBottom: '20px', background: 'var(--bg-secondary)', borderRadius: '12px', padding: '15px' }}>
+          <h4 style={{ marginBottom: '10px', color: 'var(--accent-cyan)' }}>Jump To</h4>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
             {sections.map(section => (
               <button
@@ -60,502 +134,75 @@ export default function Guide() {
         </div>
 
         <div style={{ flex: 1, minWidth: '300px' }}>
-          
+
           {activeSection === 'getting-started' && (
             <div className="card">
-              <h2 className="card-title">🎯 Getting Started</h2>
-              
+              <h2 className="card-title">🎯 The Basics</h2>
+
               <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Welcome to Elite Arrows!</h4>
-                <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                  Elite Arrows is your personal darts league management app. Track your stats, 
-                  compete in leagues, enter tournaments, and climb the leaderboards!
+                <p style={{ color: 'var(--text-muted)', lineHeight: '1.7' }}>
+                  Elite Arrows is a full darts league in your pocket. You play real matches against real people,
+                  results are checked by admins, and everything feeds into your stats, division and league table —
+                  season after season.
                 </p>
               </div>
 
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Your First Steps</h4>
-                <ol style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-                  <li><strong>Create an account</strong> - Sign up with your email and set a username</li>
-                  <li><strong>Enter your 3-dart average</strong> - This helps place you in the right division</li>
-                  <li><strong>Set up your profile</strong> - Add your details, profile picture, and bio</li>
-                  <li><strong>Get assigned to a division</strong> - Admins will place you in the appropriate league division</li>
-                  <li><strong>Subscribe for full access</strong> - Unlock all features with Elite Arrows Pass</li>
-                  <li><strong>Join the community</strong> - Click the WhatsApp link at the top of the Home page to join our group</li>
-                    <li><strong>Start playing!</strong> - Submit results from the Schedule or Submit Score page</li>
+              <div style={chapterStyles}>
+                <h4 style={{ color: 'var(--accent-cyan)', margin: '0 0 10px' }}>Your First 5 Minutes</h4>
+                <ol style={{ color: 'var(--text-muted)', lineHeight: '1.9', paddingLeft: '20px', margin: 0 }}>
+                  <li><strong>Create an account</strong> — your email plus a username is all it takes.</li>
+                  <li><strong>Enter your 3-dart average</strong> — this is how we find your level.</li>
+                  <li><strong>Build your profile</strong> — photo, nickname, bio, and link your DartCounter stats if you have them.</li>
+                  <li><strong>Grab the Elite Pass</strong> — free browsing, full access for members (see the Pass chapter).</li>
+                  <li><strong>Join the chat</strong> — the official WhatsApp group lives on the Home screen. Say hi 👋</li>
                 </ol>
               </div>
 
-              <div style={{ marginTop: '20px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Navigation</h4>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                  Use the sidebar on the left to navigate between different sections of the app.
-                  On mobile, tap the hamburger menu (☰) to open navigation.
+              <div style={chapterStyles}>
+                <h4 style={{ color: 'var(--accent-cyan)', margin: '0 0 10px' }}>Finding Your Way Around</h4>
+                <p style={{ color: 'var(--text-muted)', lineHeight: '1.7', margin: 0 }}>
+                  The sidebar keeps things grouped: <strong>Main League</strong> is where you live (Home, Standings, Schedule, Results),
+                  <strong> Compete</strong> covers leaderboards, cups and tournaments, <strong>League</strong> is news, rules and the community.
+                  On mobile, tap the ☰ menu to open it.
                 </p>
               </div>
 
               <div style={{ marginTop: '20px', padding: '15px', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '8px', borderLeft: '4px solid var(--success)' }}>
-                <h4 style={{ color: 'var(--success)' }}>💡 Pro Tip</h4>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                  Use the search bar in the sidebar (subscribers only) to quickly find and add players as friends!
+                <h4 style={{ color: 'var(--success)' }}>💡 The Golden Rule</h4>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>
+                  Play your league games, upload proof, and submit results quickly. Every win, draw and leg pushes you up the table — so never leave a result sitting.
                 </p>
               </div>
             </div>
           )}
 
-          {activeSection === 'account' && (
+          {activeSection === 'season' && (
             <div className="card">
-              <h2 className="card-title">👤 Account Setup</h2>
-              
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Setting Up Your Profile</h4>
-                <ol style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-                  <li>Go to <strong>Profile</strong> page</li>
-                  <li>Click <strong>Edit Profile</strong></li>
-                  <li>Add your <strong>username</strong>, <strong>bio</strong>, and <strong>profile picture</strong></li>
-                  <li>Add your <strong>DartCounter username</strong> to link your stats</li>
-                  <li>Changes save automatically</li>
-                </ol>
+              <h2 className="card-title">🗓️ A Season in 5 Steps</h2>
+              <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
+                Every season follows the same rhythm. Here's the whole journey, start to finish.
+              </p>
+              <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {steps.map((step, i) => (
+                  <div key={step.title} className="glass" style={{ padding: '16px 18px', borderRadius: '14px', display: 'flex', gap: '16px', border: '1px solid rgba(0,212,255,0.12)' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '44px' }}>
+                      <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(0,212,255,0.15)', border: '2px solid var(--accent-cyan)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: 'var(--accent-cyan)' }}>{i + 1}</div>
+                      {i < steps.length - 1 && <div style={{ width: '2px', flex: 1, background: 'rgba(0,212,255,0.2)', margin: '4px 0' }} />}
+                    </div>
+                    <div style={{ paddingBottom: i < steps.length - 1 ? '6px' : '0' }}>
+                      <div style={{ fontSize: '1.5rem' }}>{step.icon}</div>
+                      <h4 style={{ margin: '4px 0 6px', color: 'white' }}>{step.title}</h4>
+                      <p style={{ color: 'var(--text-muted)', lineHeight: '1.7', fontSize: '0.9rem', margin: 0 }}>{step.body}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
 
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Settings You Can Customize</h4>
-                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
-                  <li><strong>Username</strong> - Your display name in the app</li>
-                  <li><strong>Nickname</strong> - A fun nickname others will see</li>
-                  <li><strong>Bio</strong> - A short description about yourself</li>
-                  <li><strong>Profile Picture</strong> - Upload a photo</li>
-                  <li><strong>DartCounter Link</strong> - Link your DartCounter stats</li>
-                  <li><strong>Online Status</strong> - Show/hide when you're online</li>
-                  <li><strong>Do Not Disturb</strong> - Block notifications temporarily</li>
-                </ul>
-              </div>
-
-              <div style={{ marginTop: '20px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Privacy Options</h4>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                  You can hide your online status and enable Do Not Disturb mode from your profile settings.
-                  This is useful if you want to play without being disturbed.
+              <div style={{ marginTop: '20px', padding: '15px', background: 'rgba(251, 191, 36, 0.1)', borderRadius: '8px', borderLeft: '4px solid #fbbf24' }}>
+                <h4 style={{ color: '#fbbf24' }}>🏁 Why not check your fixtures?</h4>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>
+                  Head to <Link to="/schedule" style={{ color: 'var(--accent-cyan)' }}>Schedule</Link> to see who you still need to play this season and strike up a game time in chat.
                 </p>
-              </div>
-            </div>
-          )}
-
-          {activeSection === 'subscription' && (
-            <div className="card">
-              <h2 className="card-title">⭐ Elite Arrows Pass</h2>
-              
-              <div style={{ marginTop: '20px', padding: '20px', background: 'linear-gradient(135deg, #f5af19, #f12711)', borderRadius: '12px', textAlign: 'center' }}>
-                <h3 style={{ color: '#fff', margin: '0 0 10px 0' }}>Upgrade to Elite Arrows Pass</h3>
-                <p style={{ color: 'rgba(255,255,255,0.9)', marginBottom: '15px' }}>
-                  Unlock all features and compete in the full league experience!
-                </p>
-                <Link to="/subscription" className="btn btn-primary" style={{ background: '#fff', color: '#f12711' }}>
-                  View Plans
-                </Link>
-              </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Free Tier (Basic)</h4>
-                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
-                  <li>✓ View leaderboards and stats</li>
-                  <li>✓ View other players' profiles</li>
-                  <li>✓ Basic chat access</li>
-                  <li>✗ Cannot create fixtures</li>
-                  <li>✗ Cannot submit results</li>
-                  <li>✗ Cannot join cups/tournaments</li>
-                </ul>
-              </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Elite Arrows Pass (Full Access)</h4>
-                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
-                  <li>✓ Create and manage fixtures</li>
-                  <li>✓ Submit game results</li>
-                  <li>✓ Participate in league games</li>
-                  <li>✓ Enter cup tournaments</li>
-                  <li>✓ Access to games and challenges</li>
-                  <li>✓ Chat with friends</li>
-                  <li>✓ Priority support</li>
-                </ul>
-              </div>
-            </div>
-          )}
-
-          {activeSection === 'fixtures' && (
-            <div className="card">
-              <h2 className="card-title">📅 Schedule</h2>
-              
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>What is the Schedule?</h4>
-                <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                  The Schedule (Match Log) shows all your fixtures and results across different competitions.
-                  Track what you've played and what's still to play.
-                </p>
-              </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Competition Tabs</h4>
-                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
-                  <li><strong>Standard League</strong> - Your division league fixtures and results</li>
-                  <li><strong>Champions League</strong> - Champions League matches</li>
-                  <li><strong>Cups</strong> - Cup tournament matches</li>
-                  <li><strong>Friendly Singles</strong> - Friendly League matches</li>
-                </ul>
-              </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>View Modes</h4>
-                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
-                  <li><strong>Played</strong> - Matches you've already played with results</li>
-                  <li><strong>To Play</strong> - Opponents you still need to play this season</li>
-                </ul>
-              </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Submitting from the Schedule</h4>
-                <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                  On the <strong>To Play</strong> tab, click <strong>Submit Score</strong> next to an opponent to record your result.
-                  You can also submit results from the <strong>Submit Score</strong> page in the sidebar.
-                </p>
-              </div>
-
-              <div style={{ marginTop: '20px', padding: '15px', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '8px', borderLeft: '4px solid var(--success)' }}>
-                <h4 style={{ color: 'var(--success)' }}>💡 Pro Tip</h4>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                   Check the <strong>To Play</strong> tab regularly to see who you still need to play this season.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {activeSection === 'results' && (
-            <div className="card">
-              <h2 className="card-title">🏆 Results</h2>
-              
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Submitting Results</h4>
-                <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                  After playing a match, submit your result through the app. Results are sent to 
-                  admins for approval before being added to the leaderboard.
-                </p>
-              </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>How to Submit</h4>
-                <ol style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-                  <li>Go to <strong>Submit Score</strong> in the sidebar or from the <strong>Schedule</strong></li>
-                  <li>Select your match type (League, Friendly, Cup, etc.)</li>
-                  <li>Choose your opponent</li>
-                  <li>Enter legs won for both players</li>
-                  <li>Add optional stats (180s, checkout %, high score)</li>
-                  <li>Upload proof screenshot or video</li>
-                  <li>Click <strong>Submit for Approval</strong></li>
-                </ol>
-              </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Result Status</h4>
-                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
-                  <li><strong>Pending</strong> - Awaiting admin approval; the linked fixture shows as Result Sent</li>
-                  <li><strong>Approved</strong> - Added to records and stats</li>
-                  <li><strong>Rejected</strong> - Admin denied the result; the fixture returns to confirmed so a corrected result can be submitted</li>
-                </ul>
-              </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>If a Result is Wrong</h4>
-                <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                  Contact an admin. Admins can reject an incorrect pending result, reset an approved or rejected result,
-                   or remove a linked League/Friendly fixture and result from <strong>Schedule</strong>.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {activeSection === 'cups' && (
-            <div className="card">
-              <h2 className="card-title">🎯 Cups & Tournaments</h2>
-              
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>What are Cups?</h4>
-                <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                  Cup tournaments are knockout competitions where players compete to win the prize pot.
-                  Admins create cups with entry fees, and players are placed in a bracket.
-                </p>
-              </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>How to Enter a Cup</h4>
-                <ol style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-                  <li>Go to <strong>Cups</strong> page</li>
-                  <li>Find an open cup tournament</li>
-                  <li>Pay the entry fee</li>
-                  <li>Wait for the admin to add you to the bracket</li>
-                </ol>
-              </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Cup Format</h4>
-                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
-                  <li><strong>Entry Fee</strong> - Paid to enter the tournament</li>
-                  <li><strong>Prize Pot</strong> - Total of all entry fees (goes to winner)</li>
-                  <li><strong>Rounds</strong> - Knockout rounds (Round 1 → Final)</li>
-                  <li><strong>Format</strong> - Starting score and best of legs per round</li>
-                </ul>
-              </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Cup Fixtures</h4>
-                <ol style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-                  <li>Cup fixtures appear in your <strong>Cup Fixtures</strong> tab and in the <strong>Schedule</strong></li>
-                  <li>Once the match is played, <strong>Submit Result</strong> after playing</li>
-                  <li>Winner advances to the next round</li>
-                </ol>
-              </div>
-
-              <div style={{ marginTop: '20px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Cup Visibility</h4>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                  Confirmed cup fixtures also appear in <strong>All Fixtures</strong>, so other players can follow the schedule.
-                  Cup bracket management stays with admins and cup admins.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {activeSection === 'league' && (
-            <div className="card">
-              <h2 className="card-title">📊 League Games</h2>
-              
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>About League Games</h4>
-                <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                  League games are competitive matches played within your division. Each player 
-                  plays one match against every other player in their division per season.
-                </p>
-              </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>League Rules</h4>
-                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
-                  <li>Best of 8 legs (First to 5 to win)</li>
-                  <li>You can only play each opponent once per season</li>
-                  <li>Proof screenshot required when submitting</li>
-                  <li>Results affect your league table position</li>
-                  <li><strong>Points system:</strong> Legs won plus match bonus: win +3, draw +1, loss +0. A 5-3 win is 8 points.</li>
-                </ul>
-              </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Scheduling & Forfeits</h4>
-                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
-                  <li>League matches must be arranged and played within the fixture window.</li>
-                  <li>If a match is not played, no points are awarded unless one player provides evidence of attempting to arrange the match. In that case, the active player is awarded the win and the inactive player receives a loss.</li>
-                  <li>If a player does not complete a minimum number of league fixtures (depends on division size), all of their results are voided.</li>
-                </ul>
-              </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Interrupted Matches</h4>
-                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
-                  <li>If a match is interrupted due to technical issues or circumstances beyond the players’ control, the match will resume from the last confirmed score.</li>
-                  <li>If the interruption is caused by one player refusing to continue or leaving intentionally, the opponent will be awarded a default win.</li>
-                  <li>If the score cannot be verified by either player, the match must be replayed in full from 0–0.</li>
-                </ul>
-              </div>
-
-              <div style={{ marginTop: '20px', padding: '15px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', borderLeft: '4px solid #ef4444' }}>
-                <h4 style={{ color: '#ef4444' }}>⚠️ Important</h4>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                  You must upload a screenshot as proof for all League game results. 
-                  This helps prevent disputes and ensures fair competition.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {activeSection === 'leaderboards' && (
-            <div className="card">
-              <h2 className="card-title">📈 Leaderboards</h2>
-              
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>View Rankings</h4>
-                <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                  Check the leaderboards to see how you and other players rank. Filter by division
-                  to see where you stand in your league.
-                </p>
-              </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Leaderboard Types</h4>
-                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
-                  <li><strong>Weekly Leaderboard</strong> - Points earned this week</li>
-                  <li><strong>Season Leaderboard</strong> - Points earned this season</li>
-                  <li><strong>All-Time Leaderboard</strong> - Total points earned</li>
-                </ul>
-              </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Filters</h4>
-                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
-                  <li><strong>Division</strong> - View standings within your division</li>
-                  <li><strong>Time Period</strong> - This week, month, or all time</li>
-                </ul>
-              </div>
-            </div>
-          )}
-
-          {activeSection === 'chat' && (
-            <div className="card">
-              <h2 className="card-title">💬 Chat</h2>
-              
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Chatting with Friends</h4>
-                <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                  You can chat with other players who are on your friends list. Send messages,
-                  coordinate fixtures, and stay in touch!
-                </p>
-              </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>How to Chat</h4>
-                <ol style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-                  <li>Go to the <strong>Players</strong> page</li>
-                  <li>Find a player and click <strong>Add Friend</strong></li>
-                  <li>Once accepted, click <strong>Chat</strong> on their profile</li>
-                  <li>Or use the chat icon on the <strong>Players</strong> page</li>
-                </ol>
-              </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Privacy</h4>
-                <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                  Chat is only available between friends. You can hide your online status
-                  and enable Do Not Disturb mode from your profile settings.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {activeSection === 'admin' && (
-            <div className="card">
-              <h2 className="card-title">Admin Tools</h2>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Result Management</h4>
-                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
-                  <li><strong>Pending Results</strong> - Review proof, then approve or reject submitted results</li>
-                  <li><strong>Approved Results</strong> - Filter by all, pending, approved, or rejected</li>
-                  <li><strong>Delete/Reset</strong> - Reset a result status if it should stop counting or be corrected</li>
-                  <li><strong>Fixture cleanup</strong> - Remove stuck or incorrect fixtures and their linked results from the admin panel</li>
-                </ul>
-              </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Fixture Admin Notes</h4>
-                <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                  When a result is approved, the fixture leaves the public confirmed list. When a result is rejected or reset,
-                  the fixture goes back to confirmed so players can submit the corrected result.
-                </p>
-              </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Other Admin Areas</h4>
-                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
-                  <li><strong>Subscriptions</strong> - Approve payments and remove subscriptions</li>
-                  <li><strong>Players</strong> - Manage divisions and member status</li>
-                  <li><strong>Cups</strong> - Create cups, manage brackets, and clean up cup fixtures</li>
-                  <li><strong>News</strong> - Post and pin announcements</li>
-                  <li><strong>Seasons</strong> - Create seasons, archive seasons, and reset league points</li>
-                </ul>
-              </div>
-            </div>
-          )}
-
-          {activeSection === 'profile' && (
-            <div className="card">
-              <h2 className="card-title">📋 Profile & Stats</h2>
-              
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Your Profile</h4>
-                <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                  Your profile shows your stats, division, achievements, and game history. 
-                  Other players can view your profile to see how you stack up!
-                </p>
-              </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Profile Stats</h4>
-                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
-                  <li><strong>Win Rate</strong> - Percentage of games won</li>
-                  <li><strong>180s</strong> - Maximum scores hit</li>
-                  <li><strong>High Checkout</strong> - Highest score finished on</li>
-                  <li><strong>Double %</strong> - Success rate on double finishes</li>
-                  <li><strong>Form</strong> - Recent match results</li>
-                </ul>
-              </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Viewing Other Players</h4>
-                <ol style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-                  <li>Go to the <strong>Players</strong> page</li>
-                  <li>Search for a player or browse the list</li>
-                  <li>Click on their name to view their profile</li>
-                  <li>See their stats, division, and recent form</li>
-                </ol>
-              </div>
-
-              <div style={{ marginTop: '20px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Game History</h4>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                  Visit <Link to="/match-log" style={{ color: 'var(--accent-cyan)' }}>Match Log</Link> 
-                  to see your complete game history and detailed stats!
-                </p>
-              </div>
-            </div>
-          )}
-
-          {activeSection === 'search' && (
-            <div className="card">
-              <h2 className="card-title">🔍 Finding Players</h2>
-              
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Global Search (Subscribers Only)</h4>
-                <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                  Use the search bar in the sidebar to quickly find any player. You can search by
-                  username or DartCounter username.
-                </p>
-              </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Search Features</h4>
-                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
-                  <li><strong>Search by username</strong> - Find players by their display name</li>
-                  <li><strong>Search by DartCounter</strong> - Find players by their DartCounter name</li>
-                  <li><strong>Quick actions</strong> - Add friend, chat, or view profile from search results</li>
-                </ul>
-              </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>How to Use Search</h4>
-                <ol style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-                  <li>Look for the <strong>search bar</strong> in the sidebar (left side)</li>
-                  <li>Type a player's username or DartCounter name</li>
-                  <li>Click on a result to see quick actions</li>
-                  <li><strong>View Profile</strong> - See their full stats</li>
-                  <li><strong>Add Friend</strong> - Add the player to your friends list instantly</li>
-                  <li><strong>Chat</strong> - Open a chat (friends only)</li>
-                </ol>
-              </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Other Ways to Find Players</h4>
-                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
-                  <li><strong>Players Page</strong> - Browse all players or filter by friends</li>
-                  <li><strong>Leaderboards</strong> - Find top-ranked players</li>
-                  <li><strong>Division Pages</strong> - See players in your division</li>
-                </ul>
               </div>
             </div>
           )}
@@ -563,41 +210,323 @@ export default function Guide() {
           {activeSection === 'divisions' && (
             <div className="card">
               <h2 className="card-title">🏅 Divisions</h2>
-              
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Division System</h4>
-                <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                  Players are grouped into divisions based on their skill level (3-dart average).
-                  Higher divisions mean better players!
-                </p>
-              </div>
+              <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
+                Divisions keep matches competitive. You're grouped with players of a similar standard, so every game means something.
+              </p>
 
               <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Division Tiers</h4>
-                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
-                  <li><strong>Elite</strong> - Top tier players</li>
-                  <li><strong>Emerald</strong> - High intermediate plus</li>
-                  <li><strong>Diamond</strong> - High intermediate</li>
-                  <li><strong>Platinum</strong> - Intermediate</li>
-                </ul>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>The Tiers (top to bottom)</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
+                  {[
+                    { name: 'Elite', color: '#fbbf24', blurb: 'The very best — title favourites and serious machines.' },
+                    { name: 'Emerald', color: '#34d399', blurb: 'High-flyers just below the top tier, pushing for promotion.' },
+                    { name: 'Diamond', color: '#38bdf8', blurb: 'The deep middle of the league — where most rivalries live.' },
+                    { name: 'Platinum', color: '#a78bfa', blurb: 'Where legends are forged while finding your groove.' },
+                  ].map(tier => (
+                    <div key={tier.name} className="glass" style={{ padding: '16px', borderRadius: '14px', display: 'flex', gap: '14px', alignItems: 'center', border: '1px solid rgba(255,255,255,0.08)' }}>
+                      <div style={{ width: '10px', height: '48px', borderRadius: '6px', background: tier.color }} />
+                      <div>
+                        <div style={{ fontWeight: 800, color: tier.color }}>{tier.name}</div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', lineHeight: '1.5' }}>{tier.blurb}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>How Divisions Work</h4>
-                <ul style={{ color: 'var(--text-muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
-                  <li>Your division is based on your <strong>3-dart average</strong></li>
-                  <li>League games are played <strong>within your division</strong></li>
-                  <li>Top performers get <strong>promoted</strong> to higher divisions</li>
-                  <li>Lower performers get <strong>relegated</strong></li>
-                  <li>Admins can manually assign divisions</li>
+              <div style={chapterStyles}>
+                <h4 style={{ color: 'var(--accent-cyan)', margin: '0 0 10px' }}>How It Works</h4>
+                <ul style={{ color: 'var(--text-muted)', lineHeight: '1.9', paddingLeft: '20px', margin: 0 }}>
+                  <li>Your <strong>3-dart average</strong> decides your starting division.</li>
+                  <li>League games are played <strong>within your division</strong> — one match per opponent per season.</li>
+                  <li>Finish top and you'll be <strong>promoted</strong>; drop to the bottom and you risk <strong>relegation</strong>.</li>
+                  <li>Admins can fine-tune placements, and results over time keep everyone honest.</li>
                 </ul>
               </div>
 
               <div style={{ marginTop: '20px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
-                <h4 style={{ color: 'var(--accent-cyan)' }}>Your Division</h4>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                  Your division is shown on your profile and in the league table.
-                  If you think you're in the wrong division, contact an admin.
+                <h4 style={{ color: 'var(--accent-cyan)', margin: '0 0 6px' }}>Where's mine?</h4>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>
+                  Check your division on your <Link to="/profile" style={{ color: 'var(--accent-cyan)' }}>profile</Link>, in the
+                  <Link to="/leaderboards" style={{ color: 'var(--accent-cyan)' }}> leaderboards</Link>, or on the
+                  <Link to="/standings" style={{ color: 'var(--accent-cyan)' }}> league table</Link>. Think you've been misplaced? Contact an admin.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'scoring' && (
+            <div className="card">
+              <h2 className="card-title">📊 How Scoring Works</h2>
+              <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
+                League games are <strong>best of 8 legs</strong> — first to 5 wins the match. Your points come from two things: the legs you win, plus a match bonus.
+              </p>
+
+              <div style={{ marginTop: '20px', overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '420px' }}>
+                  <thead>
+                    <tr>
+                      {['Result', 'Legs Points', 'Match Bonus', 'Total Points'].map(h => (
+                        <th key={h} style={{ textAlign: 'left', padding: '12px', background: 'var(--bg-secondary)', color: 'var(--accent-cyan)', fontSize: '0.85rem' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { r: '5–3 win', legs: '5 points', bonus: '+3', total: '8' },
+                      { r: '5–4 win', legs: '5 points', bonus: '+3', total: '8' },
+                      { r: '4–4 draw', legs: '4 points', bonus: '+1', total: '5' },
+                      { r: '3–5 loss', legs: '3 points', bonus: '+0', total: '3' },
+                      { r: '0–5 loss', legs: '0 points', bonus: '+0', total: '0' },
+                    ].map((row, i) => (
+                      <tr key={row.r} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td style={{ padding: '11px', fontWeight: 700 }}>{row.r}</td>
+                        <td style={{ padding: '11px', color: 'var(--text-muted)' }}>{row.legs}</td>
+                        <td style={{ padding: '11px', color: 'var(--text-muted)' }}>{row.bonus}</td>
+                        <td style={{ padding: '11px', fontWeight: 800, color: 'var(--accent-cyan)' }}>{row.total}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={{ marginTop: '20px', padding: '15px', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '8px', borderLeft: '4px solid var(--success)' }}>
+                <h4 style={{ color: 'var(--success)' }}>💡 The Formula</h4>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>
+                  Legs won + win bonus (win <strong>+3</strong>, draw <strong>+1</strong>, loss <strong>+0</strong>).
+                  So even a 3–5 defeat earns you 3 points for your legs — every leg you take counts. Groups and stats are tracked in
+                  <Link to="/statistics" style={{ color: 'var(--accent-cyan)' }}> Statistics</Link>.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'results' && (
+            <div className="card">
+              <h2 className="card-title">📲 Submitting Results</h2>
+              <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
+                Finished your match? Don't let it sit there. Results go through a quick admin check so the table always stays fair.
+              </p>
+
+              <div style={chapterStyles}>
+                <h4 style={{ color: 'var(--accent-cyan)', margin: '0 0 10px' }}>The 3-Step Checkout</h4>
+                <ol style={{ color: 'var(--text-muted)', lineHeight: '1.9', paddingLeft: '20px', margin: 0 }}>
+                  <li>Open <strong>Submit Score</strong> (or the Submit button on your Schedule).</li>
+                  <li>Pick the match type (League, Cup, Friendly...), your opponent, and both players' <strong>legs won</strong>.</li>
+                  <li>Add your <strong>proof screenshot</strong>, any extras (180s, checkout, high score), and hit <strong>Submit for Approval</strong>.</li>
+                </ol>
+              </div>
+
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)' }}>What Happens Next?</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
+                  <div className="glass" style={{ padding: '14px 16px', borderRadius: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#fbbf24' }} />
+                      <strong>Pending</strong> <span style={{ color: 'var(--text-muted)', marginLeft: 'auto', fontSize: '0.85rem' }}>Waiting for admin approval — your Schedule shows "Result Sent".</span>
+                    </div>
+                  </div>
+                  <div className="glass" style={{ padding: '14px 16px', borderRadius: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--success)' }} />
+                      <strong>Approved</strong> <span style={{ color: 'var(--text-muted)', marginLeft: 'auto', fontSize: '0.85rem' }}>It's official — into the records, stats and league table.</span>
+                    </div>
+                  </div>
+                  <div className="glass" style={{ padding: '14px 16px', borderRadius: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ef4444' }} />
+                      <strong>Rejected</strong> <span style={{ color: 'var(--text-muted)', marginLeft: 'auto', fontSize: '0.85rem' }}>Something's off — the fixture reopens so you can submit the correct result.</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginTop: '20px', padding: '15px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', borderLeft: '4px solid #ef4444' }}>
+                <h4 style={{ color: '#ef4444' }}>⚠️ Proof Required</h4>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>
+                  League results <strong>must</strong> include a screenshot. No proof, no points — it keeps everyone honest and disputes out of the game.
+                </p>
+              </div>
+
+              <div style={{ marginTop: '20px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)', margin: '0 0 6px' }}>Wrong result submitted?</h4>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>
+                  Don't panic — contact an admin. They can reject a pending result or reset an approved one so you can correct it.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'fairplay' && (
+            <div className="card">
+              <h2 className="card-title">⚖️ Fair Play & Rules</h2>
+              <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
+                A few simple rules keep the league friendly, fair and moving forward.
+              </p>
+
+              <div style={chapterStyles}>
+                <h4 style={{ color: 'var(--accent-cyan)', margin: '0 0 10px' }}>When a Match Doesn't Happen</h4>
+                <ul style={{ color: 'var(--text-muted)', lineHeight: '1.9', paddingLeft: '20px', margin: 0 }}>
+                  <li>Fixture windows exist for a reason — matches should be arranged and played within them.</li>
+                  <li>No match, no points <strong>unless</strong> one player can show they tried to arrange it. Then they take the win and the inactive player takes the loss.</li>
+                  <li>Fall below the minimum games for your division size and <strong>all your results are voided</strong>.</li>
+                </ul>
+              </div>
+
+              <div style={chapterStyles}>
+                <h4 style={{ color: 'var(--accent-cyan)', margin: '0 0 10px' }}>Interrupted Matches</h4>
+                <ul style={{ color: 'var(--text-muted)', lineHeight: '1.9', paddingLeft: '20px', margin: 0 }}>
+                  <li>Technical glitch or something out of your control? Resume from the <strong>last confirmed score</strong>.</li>
+                  <li>Opponent refuses to continue or bails on purpose? They lose by <strong>default</strong>.</li>
+                  <li>Score can't be verified by either side? Replay the match <strong>in full, from 0–0</strong>.</li>
+                </ul>
+              </div>
+
+              <div style={chapterStyles}>
+                <h4 style={{ color: 'var(--accent-cyan)', margin: '0 0 10px' }}>The Spirit of the League</h4>
+                <ul style={{ color: 'var(--text-muted)', lineHeight: '1.9', paddingLeft: '20px', margin: 0 }}>
+                  <li>One match against each opponent per season — it's a league, not a rivalry rematch.</li>
+                  <li>Proof screenshots for every league result. Always.</li>
+                  <li>If in doubt, ask an admin. That's what they're here for.</li>
+                </ul>
+              </div>
+
+              <div style={{ marginTop: '20px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)', margin: '0 0 6px' }}>Full rules</h4>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>
+                  The complete, official rulebook lives in <Link to="/rules" style={{ color: 'var(--accent-cyan)' }}>League Rules</Link>.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'cups' && (
+            <div className="card">
+              <h2 className="card-title">🏆 Cups & Tournaments</h2>
+              <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
+                The league is the marathon; Cups are the sprints. Knockout tournaments where the prize pot grows with every entry — and only one name goes on the trophy.
+              </p>
+
+              <div style={chapterStyles}>
+                <h4 style={{ color: 'var(--accent-cyan)', margin: '0 0 10px' }}>How a Cup Runs</h4>
+                <ol style={{ color: 'var(--text-muted)', lineHeight: '1.9', paddingLeft: '20px', margin: 0 }}>
+                  <li>Admins open a cup with an <strong>entry fee</strong> and format (starting score + legs per round).</li>
+                  <li>Pay your fee to enter — it goes straight into the <strong>prize pot</strong>.</li>
+                  <li>Admins slot everyone into a <strong>bracket</strong> and you're assigned your rounds in <strong>Cup Fixtures</strong> / Schedule.</li>
+                  <li>Win your tie, advance; win the final, take the pot 🏆.</li>
+                </ol>
+              </div>
+
+              <div style={{ marginTop: '20px', padding: '15px', background: 'rgba(251, 191, 36, 0.1)', borderRadius: '8px', borderLeft: '4px solid #fbbf24' }}>
+                <h4 style={{ color: '#fbbf24' }}>👑 Beyond the Cup</h4>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>
+                  Champions and winners get immortalised in the <Link to="/hall-of-fame" style={{ color: 'var(--accent-cyan)' }}>Hall of Fame</Link> —
+                  the legends wall on the Home screen. Be the name everyone's chasing next season.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'extras' && (
+            <div className="card">
+              <h2 className="card-title">🎮 More Ways to Play</h2>
+              <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
+                The league is the main event, but there's always something to do in Elite Arrows.
+              </p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: '12px', marginTop: '20px' }}>
+                {[
+                  { icon: '🤝', title: 'Friendly League', body: 'Open singles and duos against anyone, any time — no pressure, just practice with purpose.' },
+                  { icon: '🏆', title: 'Champions League', body: 'A step up from the standard league for the elite of the elite.' },
+                  { icon: '🎯', title: 'Practice Hub', body: 'DartBot can use online play and solo practice modes to sharpen your game between fixtures.' },
+                  { icon: '⚡', title: 'Daily Challenges', body: 'A little something new every day — complete them, earn recognition, stay sharp.' },
+                  { icon: '💬', title: 'Community', body: 'Chat with friends, coordinate matches, and hang out in the WhatsApp group from the Home screen.' },
+                  { icon: '🎁', title: 'Giveaways', body: 'Occasional league giveaways and rewards — keep an eye on news and notifications.' },
+                ].map(item => (
+                  <div key={item.title} className="glass" style={{ padding: '16px', borderRadius: '14px', border: '1px solid rgba(0,212,255,0.12)' }}>
+                    <div style={{ fontSize: '1.6rem' }}>{item.icon}</div>
+                    <h4 style={{ margin: '8px 0 6px', color: 'white' }}>{item.title}</h4>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', lineHeight: '1.6', margin: 0 }}>{item.body}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ marginTop: '20px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)', margin: '0 0 6px' }}>Keep an eye on your stats</h4>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>
+                  Win rate, 180s, high checkouts, doubles — watch it all stack up in
+                  <Link to="/statistics" style={{ color: 'var(--accent-cyan)' }}> Statistics</Link> and on your profile.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'pass' && (
+            <div className="card">
+              <h2 className="card-title">⭐ Elite Arrows Pass</h2>
+
+              <div style={{ marginTop: '20px', padding: '20px', background: 'linear-gradient(135deg, #f5af19, #f12711)', borderRadius: '12px', textAlign: 'center' }}>
+                <h3 style={{ color: '#fff', margin: '0 0 10px 0' }}>Unlock the full league experience</h3>
+                <p style={{ color: 'rgba(255,255,255,0.9)', marginBottom: '15px' }}>
+                  The Pass is your ticket to play. Everything competitive lives behind it.
+                </p>
+                <Link to="/subscription" className="btn btn-primary" style={{ background: '#fff', color: '#f12711' }}>
+                  View Plans
+                </Link>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px', marginTop: '20px' }}>
+                <div className="glass" style={{ padding: '18px', borderRadius: '14px' }}>
+                  <h4 style={{ color: 'var(--text-muted)', margin: '0 0 10px' }}>👀 Free Member</h4>
+                  <ul style={{ color: 'var(--text-muted)', lineHeight: '1.9', paddingLeft: '18px', margin: 0 }}>
+                    <li>✓ View leaderboards, stats & profiles</li>
+                    <li>✓ Browse the league & community</li>
+                    <li>✗ Submit results or play league games</li>
+                    <li>✗ Enter cups or tournaments</li>
+                  </ul>
+                </div>
+                <div className="glass" style={{ padding: '18px', borderRadius: '14px', border: '2px solid var(--accent-cyan)' }}>
+                  <h4 style={{ color: 'var(--accent-cyan)', margin: '0 0 10px' }}>⚡ Elite Pass</h4>
+                  <ul style={{ color: 'var(--text-muted)', lineHeight: '1.9', paddingLeft: '18px', margin: 0 }}>
+                    <li>✓ Submit results & play league games</li>
+                    <li>✓ Arrange and manage fixtures</li>
+                    <li>✓ Enter cups, challenges & giveaways</li>
+                    <li>✓ Full stats, chat & priority support</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'faq' && (
+            <div className="card">
+              <h2 className="card-title">❓ Quick FAQ</h2>
+              <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
+                The stuff everyone asks. Tap a question to unfold the answer.
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '20px' }}>
+                {faqs.map(faq => (
+                  <div key={faq.q} className="glass" style={{ borderRadius: '12px', overflow: 'hidden', border: openFaq === faq.q ? '1px solid rgba(0,212,255,0.4)' : '1px solid rgba(255,255,255,0.08)' }}>
+                    <button
+                      onClick={() => setOpenFaq(openFaq === faq.q ? null : faq.q)}
+                      style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '15px 18px', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', color: 'white', fontWeight: 700, fontSize: '0.9rem' }}
+                    >
+                      {faq.q}
+                      <span style={{ color: 'var(--accent-cyan)', fontSize: '1.1rem', flexShrink: 0 }}>{openFaq === faq.q ? '−' : '+'}</span>
+                    </button>
+                    {openFaq === faq.q && (
+                      <div style={{ padding: '0 18px 15px', color: 'var(--text-muted)', fontSize: '0.88rem', lineHeight: '1.7' }}>{faq.a}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ marginTop: '20px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)', margin: '0 0 6px' }}>Still stuck?</h4>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>
+                  Reach out through <Link to="/contact" style={{ color: 'var(--accent-cyan)' }}>Contact Us</Link> or visit
+                  <Link to="/support" style={{ color: 'var(--accent-cyan)' }}> Support</Link> — a real human will get back to you.
                 </p>
               </div>
             </div>
