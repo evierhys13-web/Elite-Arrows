@@ -12,7 +12,7 @@ import { collection, getDocs } from '../firebase'
 const DEFAULT_LEAGUE_TABLE_RESET_AT = '2026-04-29T16:14:21.338+01:00'
 
 export default function Home() {
-  const { user, getAllUsers, getFixtures, getResults, loading, adminData, getSeasons } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, loading, adminData, getSeasons, fetchResultsBySeason, fetchUsersByDivision } = useAuth()
   const navigate = useNavigate()
   
   const allUsers = getAllUsers()
@@ -26,6 +26,7 @@ export default function Home() {
   const [submittingSurvey, setSubmittingSurvey] = useState(null)
   const [openSinglesEntries, setOpenSinglesEntries] = useState([])
   const [hallOfFame, setHallOfFame] = useState([])
+  const [tournaments, setTournaments] = useState([])
 
   useEffect(() => {
     const fetchOpenLeagueData = async () => {
@@ -44,6 +45,13 @@ export default function Home() {
       } catch (e) { console.error(e) }
     }
     fetchHallOfFame()
+    const fetchTournaments = async () => {
+      try {
+        const snap = await getDocs(collection(db, 'homeTournaments'))
+        setTournaments(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(t => t.visible !== false))
+      } catch (e) { console.error(e) }
+    }
+    fetchTournaments()
   }, [])
 
   const activeSeason = useMemo(() => {
@@ -57,6 +65,17 @@ export default function Home() {
   useEffect(() => {
     setVisible(true)
   }, [])
+
+  useEffect(() => {
+    if (loading || !user?.id) return
+    const division = user.division && user.division !== 'Unassigned' && user.division !== 'Admin' ? user.division : 'Overall'
+    Promise.all([
+      fetchResultsBySeason(activeSeason.name),
+      fetchUsersByDivision(division),
+    ]).catch((e) => {
+      console.error('Home live data sync failed:', e)
+    })
+  }, [loading, user?.id, user?.division, activeSeason.name, fetchResultsBySeason, fetchUsersByDivision])
 
   useEffect(() => {
     const calculateTimeLeft = () => {
@@ -126,10 +145,10 @@ export default function Home() {
     const playedOpponentCounts = {}
     allResults
       .filter(r => {
-        const isApproved = String(r.status || '').toLowerCase() === 'approved'
+        const isNotRejected = String(r.status || '').toLowerCase() !== 'rejected'
         const resSeason = String(r.season || '').trim()
         const isSeasonMatch = resSeason === currentSeasonName || (!resSeason && currentSeasonName === 'Season 1')
-        return isApproved && isSeasonMatch
+        return isNotRejected && isSeasonMatch
       })
       .forEach(r => {
         const p1Id = String(r.player1Id || '')
@@ -227,6 +246,26 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* 2b. Upcoming Tournaments */}
+      {tournaments.length > 0 && (
+        <div className="card animate-fade-in-up" style={{ marginBottom: '20px' }}>
+          <h2 style={{ margin: 0, marginBottom: '15px', color: 'var(--accent-cyan)' }}>🎯 Upcoming Tournaments</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '12px' }}>
+            {tournaments.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0)).map(t => (
+              <div key={t.id} className="glass" style={{ padding: '16px', borderRadius: '14px', border: '1px solid rgba(0,212,255,0.15)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '10px' }}>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '0.95rem' }}>{t.title}</div>
+                  {t.date && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>📅 {new Date(t.date).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}</div>}
+                </div>
+                {t.linkUrl && (
+                  <a href={t.linkUrl} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-sm" style={{ alignSelf: 'flex-start' }}>View ➔</a>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 3. Season Schedule (Standard League ONLY) */}
       {opponentsToPlay.length > 0 && (

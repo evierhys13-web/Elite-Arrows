@@ -80,6 +80,8 @@ export default function Admin() {
   const [trophyForm, setTrophyForm] = useState({ player: '', name: '', icon: '🏆', season: '' })
   const [hallOfFameForm, setHallOfFameForm] = useState({ player: '', name: '', icon: '🏆', season: '', visible: true, image: '' })
   const [hallOfFame, setHallOfFame] = useState([])
+  const [homeTournaments, setHomeTournaments] = useState([])
+  const [homeTournamentForm, setHomeTournamentForm] = useState({ title: '', date: '', linkUrl: '', visible: true })
   const [newsForm, setNewsForm] = useState({ title: '', message: '', pinned: false })
   const [highlightForm, setHighlightForm] = useState({ player: '', title: '', type: 'High Checkout', videoUrl: '', videoFile: null })
   const [highlights, setHighlights] = useState([])
@@ -146,6 +148,15 @@ export default function Admin() {
       }
       fetchHighlights()
     }
+    if (activeTab === 'hometournaments') {
+      const fetchHomeTournaments = async () => {
+        try {
+          const snap = await getDocs(collection(db, 'homeTournaments'))
+          setHomeTournaments(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+        } catch (e) { console.error('Failed to fetch home tournaments', e) }
+      }
+      fetchHomeTournaments()
+    }
   }, [activeTab, refreshKey])
 
   useEffect(() => {
@@ -198,7 +209,7 @@ export default function Admin() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    const allowed = ['dashboard', 'results', 'payments', 'moneypot', 'cups', 'playoffs', 'players', 'admins', 'seasons', 'trophies', 'halloffame', 'tokens', 'surveys', 'maintenance', 'audit', 'openleague', 'new', 'bets', 'practice']
+    const allowed = ['dashboard', 'results', 'payments', 'moneypot', 'cups', 'playoffs', 'players', 'admins', 'seasons', 'trophies', 'halloffame', 'tokens', 'surveys', 'maintenance', 'audit', 'openleague', 'new', 'bets', 'practice', 'hometournaments']
     if (tab && allowed.includes(tab)) setActiveTab(tab)
   }, [searchParams])
 
@@ -946,6 +957,37 @@ export default function Admin() {
     }
   }
 
+  const handleAddHomeTournament = async () => {
+    if (!homeTournamentForm.title.trim()) return showToast('Tournament title required', 'error')
+    if (!homeTournamentForm.linkUrl.trim()) return showToast('Website link required', 'error')
+    try {
+      const entry = {
+        title: homeTournamentForm.title.trim(),
+        date: homeTournamentForm.date || '',
+        linkUrl: homeTournamentForm.linkUrl.trim(),
+        visible: homeTournamentForm.visible,
+        createdAt: new Date().toISOString()
+      }
+      const docRef = await addDoc(collection(db, 'homeTournaments'), entry)
+      setHomeTournaments(prev => [...prev, { id: docRef.id, ...entry }])
+      await logAudit('ADD_HOME_TOURNAMENT', `Added home tournament: ${entry.title}`)
+      showToast('Tournament added to Home Screen!', 'success')
+      setHomeTournamentForm({ title: '', date: '', linkUrl: '', visible: true })
+      triggerDataRefresh('all')
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
+  const handleRemoveHomeTournament = async (entry) => {
+    if (!window.confirm(`Remove "${entry.title}" from the Home Screen?`)) return
+    try {
+      await deleteDoc(doc(db, 'homeTournaments', entry.id))
+      setHomeTournaments(prev => prev.filter(t => t.id !== entry.id))
+      await logAudit('REMOVE_HOME_TOURNAMENT', `Removed home tournament: ${entry.title}`)
+      showToast('Tournament removed', 'info')
+      triggerDataRefresh('all')
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
   const handleCreateNews = async () => {
     if (!newsForm.title || !newsForm.message) return showToast('Title and Message required', 'error')
     setIsProcessing(true)
@@ -1273,6 +1315,7 @@ export default function Admin() {
     { id: 'highlights', label: 'Home Highlights' },
     { id: 'trophies', label: 'Trophies' },
     { id: 'halloffame', label: 'Hall of Fame' },
+    { id: 'hometournaments', label: 'Home Tournaments' },
     { id: 'practice', label: 'Practice Hub' },
     { id: 'audit', label: 'Audit Logs' },
     { id: 'maintenance', label: 'System' }
@@ -3093,6 +3136,44 @@ export default function Admin() {
                       {entry.visible ? 'Visible' : 'Hidden'}
                     </button>
                     <button className="btn btn-danger btn-sm" onClick={() => handleRemoveHallOfFame(entry.id)}>🗑️</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* TAB: HOME TOURNAMENTS */}
+        {activeTab === 'hometournaments' && (
+          <div className="card glass">
+            <h3>Home Screen Tournaments</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '8px' }}>These appear on the Home page beneath the Season Timer with a link to the tournament website.</p>
+            <div className="glass" style={{ padding: '24px', borderRadius: '16px', marginTop: '20px', marginBottom: '24px' }}>
+              <h4 style={{ marginBottom: '16px', color: 'var(--accent-cyan)' }}>Add New Tournament</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
+                <input className="glass" placeholder="Tournament title (e.g. World Darts Championship)" value={homeTournamentForm.title} onChange={e => setHomeTournamentForm({...homeTournamentForm, title: e.target.value})} />
+                <input type="date" className="glass" value={homeTournamentForm.date} onChange={e => setHomeTournamentForm({...homeTournamentForm, date: e.target.value})} />
+                <input className="glass" placeholder="Website link (https://...)" value={homeTournamentForm.linkUrl} onChange={e => setHomeTournamentForm({...homeTournamentForm, linkUrl: e.target.value})} />
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '15px', fontSize: '0.9rem' }}>
+                <input type="checkbox" checked={homeTournamentForm.visible} onChange={e => setHomeTournamentForm({...homeTournamentForm, visible: e.target.checked})} />
+                Visible on Home Screen
+              </label>
+              <button className="btn btn-primary btn-block" style={{ marginTop: '15px' }} onClick={handleAddHomeTournament}>Add Tournament</button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {homeTournaments.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '30px' }}>No tournaments added yet.</p>}
+              {homeTournaments.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).map(entry => (
+                <div key={entry.id} className="glass" style={{ padding: '16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 800 }}>{entry.title}</div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{entry.date ? `📅 ${new Date(entry.date).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}` : 'No date set'}</div>
+                    {entry.linkUrl && <a href={entry.linkUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)' }}>{entry.linkUrl}</a>}
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <span className="btn btn-sm btn-secondary" style={{ cursor: 'default' }}>{entry.visible ? 'Visible' : 'Hidden'}</span>
+                    <button className="btn btn-danger btn-sm" onClick={() => handleRemoveHomeTournament(entry)}>🗑️</button>
                   </div>
                 </div>
               ))}
