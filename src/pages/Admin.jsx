@@ -281,6 +281,28 @@ export default function Admin() {
     } catch (e) { showToast(e.message, "error") }
   }
 
+  const handleAddAllSinglesPlayers = async () => {
+    const enrolledIds = new Set(openLeagueSingles.map(p => String(p.userId)))
+    const toAdd = allPlayers.filter(u => !enrolledIds.has(String(u.id)))
+    if (toAdd.length === 0) return showToast("All players are already in the table", "info")
+
+    if (!window.confirm(`Add all ${toAdd.length} players to the Friendly League table?`)) return
+
+    try {
+      const added = []
+      for (const u of toAdd) {
+        const id = Date.now().toString() + Math.random().toString(36).slice(2, 8)
+        const newPlayer = { id, userId: u.id, createdAt: new Date().toISOString() }
+        await setDoc(doc(db, 'openLeagueSingles', id), newPlayer)
+        added.push(newPlayer)
+      }
+      setOpenLeagueSingles(prev => [...prev, ...added])
+      await logAudit('ADD_ALL_OPEN_LEAGUE_SINGLES', `Added ${toAdd.length} players to Friendly League table`)
+      showToast(`${toAdd.length} players added to table!`, "success")
+      triggerDataRefresh('all')
+    } catch (e) { showToast("Error adding players: " + e.message, "error") }
+  }
+
   const handleRemoveSinglesPlayer = async (id) => {
     if (!window.confirm("Remove this player from the table?")) return
     try {
@@ -1937,6 +1959,10 @@ export default function Admin() {
                   </div>
                   <button className="btn btn-primary" onClick={handleAddSinglesPlayer} style={{ height: '44px' }}>Add</button>
                 </div>
+
+                <button className="btn btn-secondary btn-block" onClick={handleAddAllSinglesPlayers} style={{ marginBottom: '20px', height: '44px' }}>
+                  + Add All Players to Table
+                </button>
 
                 <div style={{ maxHeight: '400px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: '5px' }}>
                   <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '5px' }}>
