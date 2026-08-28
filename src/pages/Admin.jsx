@@ -81,7 +81,8 @@ export default function Admin() {
   const [hallOfFameForm, setHallOfFameForm] = useState({ player: '', name: '', icon: '🏆', season: '', visible: true, image: '' })
   const [hallOfFame, setHallOfFame] = useState([])
   const [homeTournaments, setHomeTournaments] = useState([])
-  const [homeTournamentForm, setHomeTournamentForm] = useState({ title: '', date: '', linkUrl: '', visible: true })
+  const [homeTournamentForm, setHomeTournamentForm] = useState({ title: '', date: '', linkUrl: '', password: '', visible: true })
+  const [editingTournamentId, setEditingTournamentId] = useState(null)
   const [newsForm, setNewsForm] = useState({ title: '', message: '', pinned: false })
   const [highlightForm, setHighlightForm] = useState({ player: '', title: '', type: 'High Checkout', videoUrl: '', videoFile: null })
   const [highlights, setHighlights] = useState([])
@@ -957,24 +958,46 @@ export default function Admin() {
     }
   }
 
-  const handleAddHomeTournament = async () => {
+  const handleSaveHomeTournament = async () => {
     if (!homeTournamentForm.title.trim()) return showToast('Tournament title required', 'error')
     if (!homeTournamentForm.linkUrl.trim()) return showToast('Website link required', 'error')
     try {
-      const entry = {
+      const data = {
         title: homeTournamentForm.title.trim(),
         date: homeTournamentForm.date || '',
         linkUrl: homeTournamentForm.linkUrl.trim(),
+        password: homeTournamentForm.password.trim(),
         visible: homeTournamentForm.visible,
-        createdAt: new Date().toISOString()
+        updatedAt: new Date().toISOString()
       }
-      const docRef = await addDoc(collection(db, 'homeTournaments'), entry)
-      setHomeTournaments(prev => [...prev, { id: docRef.id, ...entry }])
-      await logAudit('ADD_HOME_TOURNAMENT', `Added home tournament: ${entry.title}`)
-      showToast('Tournament added to Home Screen!', 'success')
-      setHomeTournamentForm({ title: '', date: '', linkUrl: '', visible: true })
+      if (editingTournamentId) {
+        await updateDoc(doc(db, 'homeTournaments', editingTournamentId), data)
+        setHomeTournaments(prev => prev.map(t => t.id === editingTournamentId ? { ...t, ...data } : t))
+        await logAudit('UPDATE_HOME_TOURNAMENT', `Updated home tournament: ${data.title}`)
+        showToast('Tournament updated!', 'success')
+      } else {
+        const entry = { ...data, createdAt: new Date().toISOString() }
+        const docRef = await addDoc(collection(db, 'homeTournaments'), entry)
+        setHomeTournaments(prev => [...prev, { id: docRef.id, ...entry }])
+        await logAudit('ADD_HOME_TOURNAMENT', `Added home tournament: ${data.title}`)
+        showToast('Tournament added to Home Screen!', 'success')
+      }
+      setHomeTournamentForm({ title: '', date: '', linkUrl: '', password: '', visible: true })
+      setEditingTournamentId(null)
       triggerDataRefresh('all')
     } catch (e) { showToast(e.message, 'error') }
+  }
+
+  const handleEditHomeTournament = (entry) => {
+    setEditingTournamentId(entry.id)
+    setHomeTournamentForm({
+      title: entry.title || '',
+      date: entry.date || '',
+      linkUrl: entry.linkUrl || '',
+      password: entry.password || '',
+      visible: entry.visible !== false
+    })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handleRemoveHomeTournament = async (entry) => {
@@ -3149,17 +3172,23 @@ export default function Admin() {
             <h3>Home Screen Tournaments</h3>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '8px' }}>These appear on the Home page beneath the Season Timer with a link to the tournament website.</p>
             <div className="glass" style={{ padding: '24px', borderRadius: '16px', marginTop: '20px', marginBottom: '24px' }}>
-              <h4 style={{ marginBottom: '16px', color: 'var(--accent-cyan)' }}>Add New Tournament</h4>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h4 style={{ margin: 0, color: 'var(--accent-cyan)' }}>{editingTournamentId ? 'Edit Tournament' : 'Add New Tournament'}</h4>
+                {editingTournamentId && (
+                  <button className="btn btn-sm btn-secondary" onClick={() => { setEditingTournamentId(null); setHomeTournamentForm({ title: '', date: '', linkUrl: '', password: '', visible: true }) }}>Cancel Edit</button>
+                )}
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
                 <input className="glass" placeholder="Tournament title (e.g. World Darts Championship)" value={homeTournamentForm.title} onChange={e => setHomeTournamentForm({...homeTournamentForm, title: e.target.value})} />
                 <input type="date" className="glass" value={homeTournamentForm.date} onChange={e => setHomeTournamentForm({...homeTournamentForm, date: e.target.value})} />
                 <input className="glass" placeholder="Website link (https://...)" value={homeTournamentForm.linkUrl} onChange={e => setHomeTournamentForm({...homeTournamentForm, linkUrl: e.target.value})} />
+                <input className="glass" placeholder="Entry password (optional - shown on Home)" value={homeTournamentForm.password} onChange={e => setHomeTournamentForm({...homeTournamentForm, password: e.target.value})} />
               </div>
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '15px', fontSize: '0.9rem' }}>
                 <input type="checkbox" checked={homeTournamentForm.visible} onChange={e => setHomeTournamentForm({...homeTournamentForm, visible: e.target.checked})} />
                 Visible on Home Screen
               </label>
-              <button className="btn btn-primary btn-block" style={{ marginTop: '15px' }} onClick={handleAddHomeTournament}>Add Tournament</button>
+              <button className="btn btn-primary btn-block" style={{ marginTop: '15px' }} onClick={handleSaveHomeTournament}>{editingTournamentId ? 'Save Changes' : 'Add Tournament'}</button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -3170,9 +3199,11 @@ export default function Admin() {
                     <div style={{ fontWeight: 800 }}>{entry.title}</div>
                     <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{entry.date ? `📅 ${new Date(entry.date).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}` : 'No date set'}</div>
                     {entry.linkUrl && <a href={entry.linkUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)' }}>{entry.linkUrl}</a>}
+                    {entry.password && <div style={{ fontSize: '0.75rem', color: '#fbbf24', fontWeight: 700, marginTop: '4px' }}>🔑 {entry.password}</div>}
                   </div>
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                     <span className="btn btn-sm btn-secondary" style={{ cursor: 'default' }}>{entry.visible ? 'Visible' : 'Hidden'}</span>
+                    <button className="btn btn-sm btn-secondary" onClick={() => handleEditHomeTournament(entry)}>✏️</button>
                     <button className="btn btn-danger btn-sm" onClick={() => handleRemoveHomeTournament(entry)}>🗑️</button>
                   </div>
                 </div>

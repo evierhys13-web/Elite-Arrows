@@ -257,6 +257,11 @@ export default function Home() {
                 <div>
                   <div style={{ fontWeight: 800, fontSize: '0.95rem' }}>{t.title}</div>
                   {t.date && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>📅 {new Date(t.date).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}</div>}
+                  {t.password && (
+                    <div style={{ marginTop: '8px', display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.35)', fontSize: '0.7rem', color: '#fbbf24', fontWeight: 700 }}>
+                      🔑 Password: {t.password}
+                    </div>
+                  )}
                 </div>
                 {t.linkUrl && (
                   <a href={t.linkUrl} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-sm" style={{ alignSelf: 'flex-start' }}>View ➔</a>
