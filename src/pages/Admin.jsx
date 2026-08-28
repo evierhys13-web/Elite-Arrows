@@ -8,6 +8,7 @@ import { useToast } from '../context/ToastContext'
 import { logMatchApproved } from '../utils/analytics'
 import { checkMatchAchievements } from '../utils/achievements'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
+import { compressImageToDataUrl } from '../utils/imageUtils'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 import CupManagement from './CupManagement'
@@ -77,7 +78,7 @@ export default function Admin() {
   const [bulkDivision, setBulkDivision] = useState('')
   const [bulkSeason, setBulkSeason] = useState('')
   const [trophyForm, setTrophyForm] = useState({ player: '', name: '', icon: '🏆', season: '' })
-  const [hallOfFameForm, setHallOfFameForm] = useState({ player: '', name: '', icon: '🏆', season: '', visible: true })
+  const [hallOfFameForm, setHallOfFameForm] = useState({ player: '', name: '', icon: '🏆', season: '', visible: true, image: '' })
   const [hallOfFame, setHallOfFame] = useState([])
   const [newsForm, setNewsForm] = useState({ title: '', message: '', pinned: false })
   const [highlightForm, setHighlightForm] = useState({ player: '', title: '', type: 'High Checkout', videoUrl: '', videoFile: null })
@@ -920,14 +921,29 @@ export default function Admin() {
         icon: hallOfFameForm.icon,
         season: hallOfFameForm.season || adminData?.currentSeason || 'Season 1',
         visible: hallOfFameForm.visible,
+        imageUrl: hallOfFameForm.image || undefined,
         awardedAt: new Date().toISOString()
       }
       const docRef = await addDoc(collection(db, 'hallOfFame'), entry)
       setHallOfFame(prev => [...prev, { id: docRef.id, ...entry }])
       await logAudit('ADD_HALL_OF_FAME', `Added ${target.username} to Hall of Fame: ${hallOfFameForm.name}`)
       showToast('Added to Hall of Fame!', 'success')
-      setHallOfFameForm({ player: '', name: '', icon: '🏆', season: '', visible: true })
+      setHallOfFameForm({ player: '', name: '', icon: '🏆', season: '', visible: true, image: '' })
     } catch (e) { showToast(e.message, 'error') }
+  }
+
+  const handleHallOfFameImage = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    try {
+      const dataUrl = await compressImageToDataUrl(file)
+      setHallOfFameForm(prev => ({ ...prev, image: dataUrl }))
+      showToast('Image ready!', 'success')
+    } catch (err) {
+      showToast(err.message, 'error')
+    } finally {
+      e.target.value = ''
+    }
   }
 
   const handleCreateNews = async () => {
@@ -3042,6 +3058,15 @@ export default function Admin() {
                 <input type="checkbox" checked={hallOfFameForm.visible} onChange={e => setHallOfFameForm({...hallOfFameForm, visible: e.target.checked})} />
                 Visible on Home Screen
               </label>
+              <div style={{ marginTop: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Player Image (optional)</label>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <input type="file" accept="image/*" onChange={handleHallOfFameImage} className="glass" style={{ padding: '10px', flex: 1 }} />
+                  {hallOfFameForm.image && (
+                    <img src={hallOfFameForm.image} alt="Preview" style={{ width: '48px', height: '48px', borderRadius: '10px', objectFit: 'cover', border: '1px solid rgba(251,191,36,0.4)' }} />
+                  )}
+                </div>
+              </div>
               <button className="btn btn-primary btn-block" style={{ marginTop: '15px' }} onClick={handleAddHallOfFame}>Add to Hall of Fame</button>
             </div>
 
@@ -3049,7 +3074,11 @@ export default function Admin() {
               {hallOfFame.sort((a, b) => new Date(b.awardedAt) - new Date(a.awardedAt)).map(entry => (
                 <div key={entry.id} className="glass" style={{ padding: '16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    <div style={{ fontSize: '2rem' }}>{entry.icon || '🏆'}</div>
+                    {entry.imageUrl ? (
+                      <img src={entry.imageUrl} alt="" style={{ width: '48px', height: '48px', borderRadius: '10px', objectFit: 'cover' }} />
+                    ) : (
+                      <div style={{ fontSize: '2rem' }}>{entry.icon || '🏆'}</div>
+                    )}
                     <div>
                       <div style={{ fontWeight: 800 }}>{entry.username}</div>
                       <div style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>{entry.name}</div>

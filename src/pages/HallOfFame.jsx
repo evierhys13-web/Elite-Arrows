@@ -7,6 +7,7 @@ import UserSearchSelect from '../components/UserSearchSelect'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { SkeletonList } from '../components/Skeleton'
 import { useToast } from '../context/ToastContext'
+import { compressImageToDataUrl } from '../utils/imageUtils'
 
 export default function HallOfFame() {
   const { user, getAllUsers, getSeasons, adminData, searchUsers } = useAuth()
@@ -16,8 +17,9 @@ export default function HallOfFame() {
 
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
-  const [form, setForm] = useState({ player: '', name: '', icon: '🏆', season: '', visible: true })
+  const [form, setForm] = useState({ player: '', name: '', icon: '🏆', season: '', visible: true, image: '' })
   const [saving, setSaving] = useState(false)
+  const [imageError, setImageError] = useState('')
 
   const isAdmin = Boolean(
     user && (
@@ -112,17 +114,34 @@ export default function HallOfFame() {
         icon: form.icon || '🏆',
         season: form.season || adminData?.currentSeason || 'Season 1',
         visible: form.visible,
+        imageUrl: form.image || undefined,
         awardedAt: new Date().toISOString()
       }
       const docRef = await addDoc(collection(db, 'hallOfFame'), entry)
       setEntries(prev => [...prev, { id: docRef.id, ...entry }])
       await logAudit('ADD_HALL_OF_FAME', `Added ${target.username} to Hall of Fame: ${entry.name}`)
       showToast('Added to Hall of Fame!', 'success')
-      setForm({ player: '', name: '', icon: '🏆', season: '', visible: true })
+      setForm({ player: '', name: '', icon: '🏆', season: '', visible: true, image: '' })
     } catch (e) {
       showToast(e.message, 'error')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleImagePick = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    setImageError('')
+    try {
+      const dataUrl = await compressImageToDataUrl(file)
+      setForm({ ...form, image: dataUrl })
+      showToast('Image ready!', 'success')
+    } catch (err) {
+      setImageError(err.message)
+      showToast(err.message, 'error')
+    } finally {
+      e.target.value = ''
     }
   }
 
@@ -203,6 +222,24 @@ export default function HallOfFame() {
               ))}
             </select>
           </div>
+          <div style={{ marginTop: '15px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              Player Image (optional)
+            </label>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImagePick}
+                className="glass"
+                style={{ padding: '10px' }}
+              />
+              {form.image && (
+                <img src={form.image} alt="Preview" style={{ width: '48px', height: '48px', borderRadius: '10px', objectFit: 'cover', border: '1px solid rgba(251,191,36,0.4)' }} />
+              )}
+            </div>
+            {imageError && <div style={{ color: 'var(--error)', fontSize: '0.75rem', marginTop: '6px' }}>{imageError}</div>}
+          </div>
           <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '15px', fontSize: '0.9rem', cursor: 'pointer' }}>
             <input
               type="checkbox"
@@ -238,38 +275,52 @@ export default function HallOfFame() {
             <h3 className="card-title" style={{ color: '#fbbf24' }}>{season}</h3>
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-              gap: '12px',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))',
+              gap: '16px',
               marginTop: '14px'
             }}>
               {seasonEntries.map(entry => (
                 <div key={entry.id} style={{ position: 'relative' }}>
                   <Link to={`/profile/${entry.userId}`} style={{ textDecoration: 'none' }}>
                     <div className="glass" style={{
-                      padding: '18px 10px',
-                      textAlign: 'center',
-                      borderRadius: '14px',
-                      border: '1px solid rgba(251, 191, 36, 0.25)',
+                      borderRadius: '16px',
+                      overflow: 'hidden',
+                      border: '1px solid rgba(251, 191, 36, 0.35)',
+                      background: 'linear-gradient(165deg, rgba(35, 24, 6, 0.92) 0%, rgba(10, 6, 40, 0.95) 100%)',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
                       height: '100%',
                       display: 'flex',
                       flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '6px',
-                      opacity: entry.visible === false ? 0.5 : 1
+                      opacity: entry.visible === false ? 0.5 : 1,
+                      transition: 'transform 0.2s ease'
                     }}>
-                      {entry.profilePicture ? (
-                        <img src={entry.profilePicture} alt="" style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover' }} />
-                      ) : (
-                        <div style={{ fontSize: '1.8rem' }}>{entry.icon || '🏆'}</div>
-                      )}
-                      <div style={{ fontWeight: 800, fontSize: '0.85rem', color: 'white', maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {entry.username}
+                      {(() => {
+                        const img = entry.imageUrl || entry.profilePicture
+                        return img ? (
+                          <img src={img} alt="" style={{ width: '100%', height: '150px', objectFit: 'cover', display: 'block' }} />
+                        ) : (
+                          <div style={{
+                            height: '150px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '3rem',
+                            background: 'radial-gradient(circle at 50% 35%, rgba(251,191,36,0.18), rgba(10,6,40,0.4))'
+                          }}>
+                            {entry.icon || '🏆'}
+                          </div>
+                        )
+                      })()}
+                      <div style={{ padding: '16px 12px 14px', textAlign: 'center', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                        <div style={{ color: '#fbbf24', fontSize: '0.9rem', lineHeight: 1 }}>🏆</div>
+                        <div style={{ fontWeight: 900, fontSize: '1rem', color: 'white', maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {entry.username}
+                        </div>
+                        <div style={{ fontSize: '0.78rem', color: 'rgba(251,191,36,0.92)', fontWeight: 700, lineHeight: 1.4 }}>{entry.name}</div>
+                        {entry.visible === false && (
+                          <span style={{ fontSize: '0.6rem', color: 'var(--warning)', fontWeight: 800, textTransform: 'uppercase' }}>Hidden</span>
+                        )}
                       </div>
-                      <div style={{ fontSize: '0.7rem', color: '#fbbf24', fontWeight: 700, lineHeight: 1.3 }}>{entry.name}</div>
-                      {entry.visible === false && (
-                        <span style={{ fontSize: '0.6rem', color: 'var(--warning)', fontWeight: 800, textTransform: 'uppercase' }}>Hidden</span>
-                      )}
                     </div>
                   </Link>
                   {isAdmin && curated.some(c => c.id === entry.id) && (
