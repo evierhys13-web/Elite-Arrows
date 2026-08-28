@@ -2,6 +2,18 @@ import React, { useState, useEffect } from 'react';
 
 const CHANGELOG = [
   {
+    version: '2.6.0',
+    date: 'August 2026',
+    changes: [
+      { type: 'feature', title: 'How The League Works Guide', description: 'The User Guide has been rewritten into a friendly, easy-to-follow walkthrough of the whole league experience.' },
+      { type: 'feature', title: 'Upcoming Tournaments on Home', description: 'Admins can now pin upcoming tournaments with entry passwords and website links right beneath the Season Timer.' },
+      { type: 'feature', title: 'Hall of Fame With Player Images', description: 'The legends wall is bigger, bolder, and admins can add real player images to every entry.' },
+      { type: 'feature', title: 'Live Home Screen Data', description: 'Standings, stats and your season schedule now deep-sync automatically the moment you land on the Home page.' },
+      { type: 'improvement', title: 'Admin Approval Tracker', description: 'Admins get an approval chart in the control room — every approved result counts, starting from Season 5.' },
+      { type: 'improvement', title: 'What\'s New Controls', description: 'You can now permanently dismiss the What\'s New popup with one tap.' }
+    ]
+  },
+  {
     version: '2.5.5',
     date: 'June 2026',
     changes: [
@@ -111,7 +123,7 @@ export function WhatsNewPopup({ isOpen, onClose }) {
             </svg>
           </div>
           <h2 className="text-gradient" style={{ fontSize: '1.8rem', fontWeight: 900, marginBottom: '8px' }}>What's New</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>May 2026 Update • v{CHANGELOG[0].version}</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>{CHANGELOG[0].date} Update • v{CHANGELOG[0].version}</p>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '40px', maxHeight: '350px', overflowY: 'auto', paddingRight: '8px' }} className="custom-scrollbar">
