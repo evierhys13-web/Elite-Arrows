@@ -164,12 +164,38 @@ export default function MatchLog() {
 
   const playedOpponentCounts = useMemo(() => {
     const counts = {}
-    competitionResults.forEach(m => {
-      const oid = String(m.opponentId)
-      counts[oid] = (counts[oid] || 0) + 1
+    if (!targetUser.id) return counts
+    allResults.forEach(r => {
+      const p1Id = String(r.player1Id || '')
+      const p2Id = String(r.player2Id || '')
+
+      const isTargetMatch = (p1Id === String(targetUser.id) || p2Id === String(targetUser.id))
+      if (!isTargetMatch) return
+
+      const isRejected = String(r.status || '').toLowerCase() === 'rejected'
+      if (isRejected) return
+
+      const resSeason = String(r.season || '').trim()
+      const isSeasonMatch = resSeason === currentSeasonName || (!resSeason && currentSeasonName === 'Season 1')
+
+      const isOpen = isFriendlyLeagueResult(r)
+      if (!isSeasonMatch && !isOpen) return
+
+      let isCompetitionMatch = false
+      if (competition === 'League') {
+        isCompetitionMatch = isLeagueResult(r, fixturesById) || isPlayoffResult(r, fixturesById)
+      } else if (competition === 'Cup') {
+        isCompetitionMatch = String(r.gameType || '').toLowerCase() === 'cup' || !!r.cupId
+      } else if (competition === 'Friendly Singles') {
+        isCompetitionMatch = isFriendlyLeagueResult(r)
+      }
+      if (!isCompetitionMatch) return
+
+      const opponentId = p1Id === String(targetUser.id) ? p2Id : p1Id
+      if (opponentId) counts[String(opponentId)] = (counts[String(opponentId)] || 0) + 1
     })
     return counts
-  }, [competitionResults])
+  }, [allResults, fixturesById, targetUser.id, competition, currentSeasonName])
   
   const getPlayoffOpponent = useCallback(() => {
     if (!targetUser.id || competition !== 'League') return null
