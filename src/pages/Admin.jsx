@@ -1,13 +1,14 @@
 import { useState, useEffect, useMemo, lazy, Suspense, useRef } from 'react'
 import { useAuth } from '../context/AuthContextInternal'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { db, doc, setDoc, getDoc, getDocs, collection, deleteDoc, updateDoc, writeBatch, addDoc, query, orderBy, limit, storage, ref, uploadBytesResumable, getDownloadURL } from '../firebase'
+import { db, doc, setDoc, getDoc, getDocs, collection, deleteDoc, updateDoc, writeBatch, addDoc, query, orderBy, limit, increment, storage, ref, uploadBytesResumable, getDownloadURL } from '../firebase'
 import { ADMIN_EMAILS } from '../config'
 import UserSearchSelect from '../components/UserSearchSelect'
 import { useToast } from '../context/ToastContext'
 import { logMatchApproved } from '../utils/analytics'
 import { checkMatchAchievements } from '../utils/achievements'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 import CupManagement from './CupManagement'
 
@@ -182,6 +183,15 @@ export default function Admin() {
   const entryRequests = allPlayers.filter(u => u?.adminRequestPending)
   const subscribers = allPlayers.filter(u => u?.isSubscribed || (u?.subscribedSeasons && u.subscribedSeasons.length > 0))
 
+  const adminApprovalData = useMemo(() => {
+    const admins = allPlayers.filter(u =>
+      u?.isAdmin || u?.isTournamentAdmin || u?.isCupAdmin || ADMIN_EMAILS.includes(String(u?.email || '').toLowerCase())
+    )
+    return admins
+      .map(u => ({ name: u.username || 'Unknown', Approvals: u.approvalStats?.totalApprovals || 0 }))
+      .sort((a, b) => b.Approvals - a.Approvals)
+  }, [allPlayers])
+
   const subscriptionPot = adminData?.subscriptionPot || 0
   const subscriptionPot10 = adminData?.subscriptionPot10 || 0
 
@@ -316,6 +326,24 @@ export default function Admin() {
 
   // --- Handlers ---
 
+  const incrementAdminApproval = async (count = 1) => {
+    const seasonName = String(adminData?.currentSeason || '').trim()
+    const num = seasonName.match(/(\d+)/)
+    const seasonNumber = num ? parseInt(num[1], 10) : 0
+    // Approval counts only start from Season 5 onwards
+    if (seasonNumber < 5 || !user?.id || !seasonName) return
+    try {
+      const seasonKey = seasonName.replace(/\./g, '_')
+      await updateDoc(doc(db, 'users', user.id), {
+        'approvalStats.totalApprovals': increment(count),
+        [`approvalStats.bySeason.${seasonKey}`]: increment(count)
+      })
+      triggerDataRefresh('users')
+    } catch (e) {
+      console.error('Failed to increment admin approval count', e)
+    }
+  }
+
   const handleApproveResult = async (resultId) => {
     if (isApproving) return
     setIsApproving(true)
@@ -408,6 +436,7 @@ export default function Admin() {
       }
 
       await logAudit('APPROVE_RESULT', `Approved/Healed match: ${res.player1} vs ${res.player2}`)
+      await incrementAdminApproval(1)
       showToast('Result Approved & Standings Updated!', 'success')
       triggerDataRefresh('all')
     } catch (e) {
@@ -452,6 +481,7 @@ export default function Admin() {
         }
       })
       await batch.commit()
+      await incrementAdminApproval(selectedResults.length)
       for (const res of cupResults) { await advanceCupBracket(res) }
       await logAudit('BULK_APPROVE', `Approved ${selectedResults.length} matches`)
       setSelectedResults([])
@@ -1290,6 +1320,24 @@ export default function Admin() {
                   ) : <div style={{ textAlign: 'center', padding: '20px' }}><p style={{ color: 'var(--text-muted)' }}>System is healthy.</p></div>}
                 </div>
               </div>
+            </div>
+
+            <div className="card glass" style={{ padding: '24px', marginTop: '24px' }}>
+              <h3 className="card-title">🏆 Admin Approval Chart</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>Results approved per admin — tracked from Season 5 onwards.</p>
+              {adminApprovalData.length === 0 || adminApprovalData.every(d => d.Approvals === 0) ? (
+                <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '40px' }}>No approvals counted yet. Tracking begins in Season 5.</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={320}>
+                  <BarChart data={adminApprovalData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                    <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
+                    <YAxis allowDecimals={false} tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
+                    <Tooltip contentStyle={{ background: '#0a0628', border: '1px solid rgba(168,85,247,0.4)', borderRadius: 12, color: 'white' }} labelStyle={{ color: 'white' }} cursor={{ fill: 'rgba(168,85,247,0.08)' }} />
+                    <Bar dataKey="Approvals" radius={[6, 6, 0, 0]} fill="#a855f7" />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
         )}
