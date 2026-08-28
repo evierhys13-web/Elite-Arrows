@@ -402,7 +402,7 @@ export default function Home() {
       {/* WhatsApp Community Link */}
       <div style={{ marginTop: '40px', textAlign: 'center', paddingBottom: '20px' }}>
         <a
-          href="https://chat.whatsapp.com/Jp85o45G53W9uU1oY5A8Q6"
+          href="https://chat.whatsapp.com/GNaYyJDxzMADbA1ARI1kne"
           target="_blank"
           rel="noopener noreferrer"
           className="glass"
