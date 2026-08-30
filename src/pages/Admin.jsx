@@ -83,6 +83,7 @@ export default function Admin() {
   const [hallOfFameForm, setHallOfFameForm] = useState({ player: '', name: '', icon: '🏆', season: '', visible: true, image: '' })
   const [hallOfFame, setHallOfFame] = useState([])
   const [homeTournaments, setHomeTournaments] = useState([])
+  const [suggestions, setSuggestions] = useState([])
   const [homeTournamentForm, setHomeTournamentForm] = useState({ title: '', date: '', linkUrl: '', password: '', visible: true })
   const [editingTournamentId, setEditingTournamentId] = useState(null)
   const [newsForm, setNewsForm] = useState({ title: '', message: '', pinned: false })
@@ -160,6 +161,15 @@ export default function Admin() {
       }
       fetchHomeTournaments()
     }
+    if (activeTab === 'suggestions') {
+      const fetchSuggestions = async () => {
+        try {
+          const snap = await getDocs(collection(db, 'suggestions'))
+          setSuggestions(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+        } catch (e) { console.error('Failed to fetch suggestions', e) }
+      }
+      fetchSuggestions()
+    }
   }, [activeTab, refreshKey])
 
   useEffect(() => {
@@ -212,7 +222,7 @@ export default function Admin() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    const allowed = ['dashboard', 'results', 'payments', 'moneypot', 'cups', 'playoffs', 'players', 'admins', 'seasons', 'trophies', 'halloffame', 'tokens', 'surveys', 'maintenance', 'audit', 'openleague', 'new', 'bets', 'practice', 'hometournaments']
+    const allowed = ['dashboard', 'results', 'payments', 'moneypot', 'cups', 'playoffs', 'players', 'admins', 'seasons', 'trophies', 'halloffame', 'tokens', 'surveys', 'maintenance', 'audit', 'openleague', 'new', 'bets', 'practice', 'hometournaments', 'suggestions']
     if (tab && allowed.includes(tab)) setActiveTab(tab)
   }, [searchParams])
 
@@ -1065,6 +1075,25 @@ export default function Admin() {
     } catch (e) { showToast(e.message, 'error') }
   }
 
+  const handleSetSuggestionStatus = async (id, status) => {
+    try {
+      await updateDoc(doc(db, 'suggestions', id), { status })
+      setSuggestions(prev => prev.map(s => s.id === id ? { ...s, status } : s))
+      await logAudit('UPDATE_SUGGESTION_STATUS', `Marked suggestion ${id} as ${status}`)
+      showToast(`Suggestion marked as ${status}`, 'success')
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
+  const handleDeleteSuggestion = async (s) => {
+    if (!window.confirm('Delete this suggestion permanently?')) return
+    try {
+      await deleteDoc(doc(db, 'suggestions', s.id))
+      setSuggestions(prev => prev.filter(x => x.id !== s.id))
+      await logAudit('DELETE_SUGGESTION', `Deleted suggestion: ${s.title}`)
+      showToast('Suggestion deleted', 'info')
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
   const handleHighlightVideoUpload = (e) => {
     const file = e.target.files[0]
     if (!file) return
@@ -1362,6 +1391,7 @@ export default function Admin() {
     { id: 'trophies', label: 'Trophies' },
     { id: 'halloffame', label: 'Hall of Fame' },
     { id: 'hometournaments', label: 'Home Tournaments' },
+    { id: 'suggestions', label: 'Suggestion Box', count: suggestions.filter(s => String(s.status || 'open') === 'open').length },
     { id: 'practice', label: 'Practice Hub' },
     { id: 'audit', label: 'Audit Logs' },
     { id: 'maintenance', label: 'System' }
@@ -3254,6 +3284,57 @@ export default function Admin() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* TAB: SUGGESTIONS */}
+        {activeTab === 'suggestions' && (
+          <div className="card glass">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+              <div>
+                <h3>💡 Suggestion Box</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '6px' }}>Player ideas submitted from the Suggestion Box page. Update their status so players can see the outcome.</p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '20px' }}>
+              {suggestions.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '30px' }}>No suggestions yet.</p>}
+              {suggestions
+                .sort((a, b) => (Number(b.votes) || 0) - (Number(a.votes) || 0))
+                .map(s => {
+                  const openCount = (s.voters || []).length || Number(s.votes) || 0
+                  return (
+                    <div key={s.id} className="glass" style={{ padding: '16px', borderRadius: '12px', border: String(s.status || 'open') === 'open' ? '1px solid var(--accent-cyan)' : '1px solid var(--border)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                            <span style={{ fontWeight: 800 }}>{s.title}</span>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.06)', padding: '3px 8px', borderRadius: '8px' }}>{s.category}</span>
+                            <span style={{ fontSize: '0.7rem', fontWeight: 800 }}>👍 {openCount}</span>
+                          </div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '6px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{s.message}</div>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '8px' }}>from {s.username} • {s.createdAt ? new Date(s.createdAt).toLocaleString() : ''}</div>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
+                          <select
+                            className="glass"
+                            style={{ padding: '8px 10px' }}
+                            value={String(s.status || 'open')}
+                            onChange={e => handleSetSuggestionStatus(s.id, e.target.value)}
+                          >
+                            <option value="open">Open</option>
+                            <option value="in progress">In Progress</option>
+                            <option value="planned">Planned</option>
+                            <option value="added">Added</option>
+                            <option value="declined">Declined</option>
+                          </select>
+                          <button className="btn btn-danger btn-sm" onClick={() => handleDeleteSuggestion(s)}>🗑️ Delete</button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
             </div>
           </div>
         )}

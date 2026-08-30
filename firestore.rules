@@ -177,6 +177,18 @@ service cloud.firestore {
       allow read, create: if isAdmin();
     }
 
+    match /suggestions/{suggestionId} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update: if isAdmin() || (
+        signedIn() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['votes', 'voters']) &&
+        request.resource.data.votes == resource.data.votes + 1 &&
+        request.resource.data.voters.hasAll(resource.data.voters)
+      );
+      allow delete: if isAdmin();
+    }
+
     match /highlights/{highlightId} {
       allow read: if signedIn();
       allow create: if signedIn();
