@@ -209,7 +209,9 @@ export default function Home() {
     else acc.draws++
 
     if (!leagueTableResetTime || getResultEffectiveTime(r) > leagueTableResetTime) {
-      acc.points += getLeaguePoints(myScore, opponentScore)
+      acc.points += r.forfeit
+        ? (myScore > opponentScore ? 3 : 0)
+        : getLeaguePoints(myScore, opponentScore)
     }
     return acc
   }, { played: 0, wins: 0, losses: 0, draws: 0, points: 0 }), [userResults, fixturesById, allUsers, user?.id, leagueTableResetTime])
@@ -382,7 +384,7 @@ export default function Home() {
                   <div style={{ padding: '12px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between' }}>
                     <div>
                       <div>vs {opponent}</div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{isPlayer1 ? `${score1}-${score2}` : `${score2}-${score1}`} • {r.date}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{r.forfeit ? '🏳️ Forfeit' : isPlayer1 ? `${score1}-${score2}` : `${score2}-${score1}`} • {r.date}</div>
                     </div>
                     <span style={{ color: result === 'Win' ? 'var(--success)' : result === 'Loss' ? 'var(--error)' : 'var(--warning)', fontWeight: 800 }}>{result}</span>
                   </div>

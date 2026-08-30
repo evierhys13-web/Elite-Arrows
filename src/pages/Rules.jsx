@@ -89,7 +89,8 @@ export default function Rules() {
           <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
             <h3 style={{ fontSize: '1.1rem', marginBottom: '10px', color: 'white' }}>🚫 No-Show Rule</h3>
             <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-              <li>If a player fails to show up, the opponent receives an <strong>instant 5–0 forfeit win</strong>.</li>
+              <li>If a player fails to show up, the opponent receives a <strong>forfeit win</strong>.</li>
+              <li>A forfeit win is worth <strong>3 points only</strong> — no legs are awarded, since no legs were played (a normal win gives legs + 3 bonus).</li>
               <li>However, if the player <strong>notified their opponent about rescheduling beforehand</strong>, or <strong>around the match time (±15 minutes before or after)</strong>, the fixture should be <strong>re-scheduled</strong> instead.</li>
             </ul>
           </div>

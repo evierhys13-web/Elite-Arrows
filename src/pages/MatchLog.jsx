@@ -153,7 +153,7 @@ export default function MatchLog() {
           opponentId: String(opponentId),
           opponent: opponentName,
           result: resultLabel,
-          score: isTeam1 ? `${r.score1}-${r.score2}` : `${r.score2}-${r.score1}`,
+          score: r.forfeit ? '🏳️ Forfeit' : (isTeam1 ? `${r.score1}-${r.score2}` : `${r.score2}-${r.score1}`),
           date: r.date,
           season: r.season,
           gameType: r.gameType

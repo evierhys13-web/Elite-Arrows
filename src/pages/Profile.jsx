@@ -139,7 +139,7 @@ export default function Profile() {
           opponentId,
           opponent: opponentUser?.username || 'Unknown',
           result: win ? 'Win' : (r.score1 === r.score2 ? 'Draw' : 'Loss'),
-          score: isPlayer1 ? `${r.score1}-${r.score2}` : `${r.score2}-${r.score1}`,
+          score: r.forfeit ? '🏳️ Forfeit' : (isPlayer1 ? `${r.score1}-${r.score2}` : `${r.score2}-${r.score1}`),
           date: r.date,
           season: r.season
         }

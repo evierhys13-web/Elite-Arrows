@@ -63,6 +63,8 @@ export default function Admin() {
     score1: '', score2: '',
     gameType: 'League',
     season: '',
+    forfeit: false,
+    winner: 'p1',
     p1_180s: '', p2_180s: '',
     p1_checkout: '', p2_checkout: '',
     p1_doubles: '', p2_doubles: '',
@@ -565,9 +567,18 @@ export default function Admin() {
   const handleAdminSubmitGame = async () => {
     const f = adminGameForm
     if (!f.player1 || !f.player2) return showToast('Select both players/teams.', 'error')
-    if (!f.score1 || !f.score2) return showToast('Enter both scores.', 'error')
-    const s1 = parseInt(f.score1); const s2 = parseInt(f.score2)
-    if (isNaN(s1) || isNaN(s2)) return showToast('Invalid scores.', 'error')
+    if (f.forfeit) {
+      if (!f.winner) return showToast('Select the forfeit winner.', 'error')
+      if (String(f.player1) === String(f.player2)) return showToast('Cant award a forfeit to the same player.', 'error')
+    } else if (!f.score1 || !f.score2) {
+      return showToast('Enter both scores.', 'error')
+    }
+    let s1 = parseInt(f.score1); let s2 = parseInt(f.score2)
+    if (!f.forfeit && (isNaN(s1) || isNaN(s2))) return showToast('Invalid scores.', 'error')
+    if (f.forfeit) {
+      s1 = f.winner === 'p1' ? 1 : 0
+      s2 = f.winner === 'p1' ? 0 : 1
+    }
 
     const p1 = allPlayers.find(u => String(u.id) === String(f.player1))
     const p2 = allPlayers.find(u => String(u.id) === String(f.player2))
@@ -579,6 +590,7 @@ export default function Admin() {
       const isSuper = f.gameType === 'Champions League'
       const isLeague = f.gameType === 'League'
       const isCup = f.gameType === 'Cup'
+      const isForfeit = Boolean(f.forfeit)
       let targetSeason = f.season || adminData?.currentSeason || 'Season 1'
 
       let cupId = null
@@ -619,27 +631,36 @@ export default function Admin() {
         player2: p2.username,
         player2Id: p2.id,
         score1: s1, score2: s2,
-        gameType: f.gameType,
+        gameType: isForfeit ? 'League' : f.gameType,
         status: 'approved',
         season: targetSeason,
         division: isSuper ? (p1.superLeagueDivision || '') : (isLeague ? (p1.division || '') : ''),
         date: new Date().toISOString().split('T')[0],
         submittedAt: new Date().toISOString(),
         submittedBy: 'admin',
+        ...(isForfeit && {
+          forfeit: true,
+          forfeitWinner: f.winner === 'p1' ? p1.id : p2.id,
+          forfeitNote: `${f.winner === 'p1' ? p1.username : p2.username} wins by forfeit`
+        }),
         ...(cupId && { cupId, matchId, cupName }),
         ...(fixtureId && { fixtureId }),
-        player1Stats: {
-          '180s': parseInt(f.p1_180s) || 0,
-          highestCheckout: parseInt(f.p1_checkout) || 0,
-          doubleSuccess: parseFloat(f.p1_doubles) || 0,
-          avg: parseFloat(f.p1_avg) || 0
-        },
-        player2Stats: {
-          '180s': parseInt(f.p2_180s) || 0,
-          highestCheckout: parseInt(f.p2_checkout) || 0,
-          doubleSuccess: parseFloat(f.p2_doubles) || 0,
-          avg: parseFloat(f.p2_avg) || 0
-        }
+        ...(isForfeit
+          ? { player1Stats: {}, player2Stats: {} }
+          : {
+            player1Stats: {
+              '180s': parseInt(f.p1_180s) || 0,
+              highestCheckout: parseInt(f.p1_checkout) || 0,
+              doubleSuccess: parseFloat(f.p1_doubles) || 0,
+              avg: parseFloat(f.p1_avg) || 0
+            },
+            player2Stats: {
+              '180s': parseInt(f.p2_180s) || 0,
+              highestCheckout: parseInt(f.p2_checkout) || 0,
+              doubleSuccess: parseFloat(f.p2_doubles) || 0,
+              avg: parseFloat(f.p2_avg) || 0
+            }
+          })
       }
 
       await setDoc(doc(db, 'results', resultId), newMatch)
@@ -667,6 +688,8 @@ export default function Admin() {
         player1: '', player2: '', player3: '', player4: '',
         score1: '', score2: '',
         gameType: 'League',
+        forfeit: false,
+        winner: 'p1',
         p1_180s: '', p2_180s: '',
         p1_checkout: '', p2_checkout: '',
         p1_doubles: '', p2_doubles: '',
@@ -1542,6 +1565,22 @@ export default function Admin() {
                   </select>
                 </div>
 
+                <div style={{ marginBottom: '16px', padding: '14px', borderRadius: '12px', border: adminGameForm.forfeit ? '1px solid #fbbf24' : '1px solid var(--border)', background: adminGameForm.forfeit ? 'rgba(251,191,36,0.08)' : 'transparent' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontWeight: 700 }}>
+                    <input type="checkbox" checked={adminGameForm.forfeit} onChange={e => setAdminGameForm({...adminGameForm, forfeit: e.target.checked, score1: '', score2: ''})} />
+                    🏳️ Forfeit Match <span style={{ fontSize: '0.75rem', opacity: 0.7, fontWeight: 400 }}>(win is worth 3 points only, no legs)</span>
+                  </label>
+                  {adminGameForm.forfeit && (
+                    <div style={{ marginTop: '12px' }}>
+                      <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Winner (no legs played)</label>
+                      <select className="glass" style={{ width: '100%', padding: '10px' }} value={adminGameForm.winner} onChange={e => setAdminGameForm({...adminGameForm, winner: e.target.value})}>
+                        <option value="p1">Player 1 ({allPlayers.find(u => String(u.id) === String(adminGameForm.player1))?.username || 'Home'})</option>
+                        <option value="p2">Player 2 ({allPlayers.find(u => String(u.id) === String(adminGameForm.player2))?.username || 'Away'})</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
                   <div className="form-group">
                     <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Player 1 (Home)</label>
@@ -1563,6 +1602,7 @@ export default function Admin() {
                   </div>
                 </div>
 
+                {!adminGameForm.forfeit && (<>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '16px', marginBottom: '20px' }}>
                   <div className="form-group"><label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Score 1</label><input type="number" className="glass" style={{ width: '100%' }} value={adminGameForm.score1} onChange={e => setAdminGameForm({...adminGameForm, score1: e.target.value})} placeholder="0" /></div>
                   <div className="form-group"><label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Score 2</label><input type="number" className="glass" style={{ width: '100%' }} value={adminGameForm.score2} onChange={e => setAdminGameForm({...adminGameForm, score2: e.target.value})} placeholder="0" /></div>
@@ -1578,6 +1618,12 @@ export default function Admin() {
                     </select>
                   </div>
                 </div>
+                </>)}
+                {adminGameForm.forfeit && (
+                  <div style={{ fontSize: '0.85rem', color: '#fbbf24', marginBottom: '16px', padding: '12px', borderRadius: '10px', background: 'rgba(251,191,36,0.06)' }}>
+                    ⚡ This will be recorded as an instant win worth <strong>3 points</strong> (winner) and <strong>0 points</strong> (loser). No legs or averages are added for either player.
+                  </div>
+                )}
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button className="btn btn-primary" style={{ flex: 2 }} onClick={handleAdminSubmitGame}>Submit Result</button>
                   <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowSubmitGame(false)}>Cancel</button>

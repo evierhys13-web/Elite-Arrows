@@ -59,7 +59,7 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
   const approvedResults = results.filter(result => {
     if (String(result.status || '').toLowerCase() !== 'approved') return false
     if (result.excludeFromLeague) return false
-    if (requireProof && !resultHasProof(result)) return false
+    if (requireProof && !resultHasProof(result) && !result.forfeit) return false
 
     // Apply Soft Reset filter (if resetTime is set)
     if (resetTime > 0) {
@@ -166,11 +166,14 @@ export const createEmptyPlayerStats = (player = {}) => ({
 
 const addResultToPlayer = (stats, result, playerNumber, opponentScore, score, countsForPoints, scoringOptions = {}) => {
   const submittedStats = result[`player${playerNumber}Stats`] || {}
+  const isForfeit = Boolean(result.forfeit)
+  const effectiveScore = isForfeit ? 0 : score
+  const effectiveOpponentScore = isForfeit ? 0 : opponentScore
   stats.played += 1
-  stats.legsWon += score
-  stats.legsLost += opponentScore
+  stats.legsWon += effectiveScore
+  stats.legsLost += effectiveOpponentScore
   stats.legDiff = stats.legsWon - stats.legsLost
-  stats.points += countsForPoints ? getLeaguePoints(score, opponentScore, scoringOptions) : 0
+  stats.points += countsForPoints ? getLeaguePoints(effectiveScore, effectiveOpponentScore, { ...scoringOptions, isForfeit }) : 0
 
   if (score > opponentScore) {
     stats.wins += 1

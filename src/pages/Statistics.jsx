@@ -119,21 +119,24 @@ export default function Statistics() {
       const myStats = isP1 ? r.player1Stats : r.player2Stats
       const oppName = isP1 ? r.player2 : r.player1
       const matchDate = r.date || r.submittedAt || r.approvedAt
+      const isForfeit = Boolean(r.forfeit)
+      const effMy = isForfeit ? 0 : myScore
+      const effTheir = isForfeit ? 0 : theirScore
 
       stats.played++
-      stats.legsWon += myScore
-      stats.legsLost += theirScore
+      stats.legsWon += effMy
+      stats.legsLost += effTheir
       if (myScore > theirScore) stats.wins++
       else if (myScore < theirScore) stats.losses++
       else stats.draws++
-      stats.points += getLeaguePoints(myScore, theirScore)
+      stats.points += isForfeit ? (myScore > theirScore ? 3 : 0) : getLeaguePoints(myScore, theirScore)
       stats.total180s += Number(myStats?.['180s'] || 0)
       if (Number(myStats?.highestCheckout || 0) > stats.highestCheckout) stats.highestCheckout = Number(myStats.highestCheckout)
 
-      legsPerMatchValues.push(myScore)
+      legsPerMatchValues.push(effMy)
       if (myStats?.doubleSuccess !== undefined) checkoutTrend.push({ date: matchDate, doubleSuccess: parseFloat(myStats.doubleSuccess) })
       const result = myScore > theirScore ? 'W' : myScore < theirScore ? 'L' : 'D'
-      formGuide.push({ date: matchDate, result, opponent: oppName, score: `${myScore}-${theirScore}` })
+      formGuide.push({ date: matchDate, result, opponent: oppName, score: isForfeit ? '🏳️' : `${myScore}-${theirScore}` })
 
       const month = String(matchDate || '').substring(0, 7)
       if (month && month.length === 7) {

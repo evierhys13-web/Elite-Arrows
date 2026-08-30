@@ -148,6 +148,12 @@ export default function Results() {
           </div>
         </div>
 
+        {result.forfeit && (
+          <div style={{ textAlign: 'center', marginTop: '10px', fontSize: '0.8rem', color: '#fbbf24', fontWeight: 900 }}>
+            🏳️ FORFEIT WIN — 3 Points, No Legs Played
+          </div>
+        )}
+
         {(result.player1Stats || result.player2Stats) && (
           <div style={{
             display: 'grid',
