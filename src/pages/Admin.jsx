@@ -966,9 +966,9 @@ export default function Admin() {
         icon: hallOfFameForm.icon,
         season: hallOfFameForm.season || adminData?.currentSeason || 'Season 1',
         visible: hallOfFameForm.visible,
-        imageUrl: hallOfFameForm.image || undefined,
         awardedAt: new Date().toISOString()
       }
+      if (hallOfFameForm.image) entry.imageUrl = hallOfFameForm.image
       const docRef = await addDoc(collection(db, 'hallOfFame'), entry)
       setHallOfFame(prev => [...prev, { id: docRef.id, ...entry }])
       await logAudit('ADD_HALL_OF_FAME', `Added ${target.username} to Hall of Fame: ${hallOfFameForm.name}`)
