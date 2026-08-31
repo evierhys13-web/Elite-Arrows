@@ -237,11 +237,30 @@ function AdminRoute({ children }) {
 }
 
 function AppLayout({ children }) {
-  const { dataRefreshTrigger, adminData, forceFetchResults } = useAuth()
+  const { user, dataRefreshTrigger, adminData, forceFetchResults } = useAuth()
   const { showOnboarding, completeOnboarding } = useOnboarding()
   const { showWhatsNew } = useWhatsNew()
   const [whatsNewOpen, setWhatsNewOpen] = useState(showWhatsNew)
-  const hasMaintenance = adminData?.isMaintenanceMode && adminData?.maintenanceMessage
+  const hasMaintenance = adminData?.isMaintenanceMode
+
+  const isEmailAdmin = user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase())
+  const isDbAdmin = user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin
+  const isAdmin = isEmailAdmin || isDbAdmin
+
+  if (hasMaintenance && !isAdmin) {
+    return (
+      <div className="page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '40px' }}>
+        <div className="card glass" style={{ maxWidth: '480px', width: '100%', textAlign: 'center', padding: '40px 32px' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🔧</div>
+          <h1 style={{ color: 'var(--accent-cyan)', fontSize: '1.5rem', marginBottom: '12px' }}>Under Maintenance</h1>
+          <p style={{ color: 'var(--text-muted)', lineHeight: '1.6', marginBottom: '24px' }}>
+            {adminData?.maintenanceMessage || 'The site is currently undergoing maintenance. Please check back soon.'}
+          </p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Follow our WhatsApp community for updates.</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="app-layout">
@@ -277,7 +296,7 @@ function AppLayout({ children }) {
           gap: '8px'
         }}>
           <span>⚠️</span>
-          {adminData.maintenanceMessage}
+          {adminData.maintenanceMessage || 'Maintenance mode is active — players are locked out.'}
         </div>
       )}
 

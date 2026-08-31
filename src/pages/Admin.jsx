@@ -3607,7 +3607,22 @@ export default function Admin() {
               </div>
               <div className="glass" style={{ padding: '24px', background: adminData?.isMaintenanceMode ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.05)' }}>
                 <h4>Maintenance Mode</h4>
-                <button className="btn btn-block" onClick={() => updateAdminData({ isMaintenanceMode: !adminData?.isMaintenanceMode })}>{adminData?.isMaintenanceMode ? 'Disable' : 'Enable'}</button>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '12px' }}>
+                  {adminData?.isMaintenanceMode ? '⚠️ The site is currently locked for non-admin players.' : 'All players can access the site.'}
+                </p>
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Message shown to players</label>
+                  <input
+                    className="glass"
+                    placeholder="e.g. We are updating the site. Back soon!"
+                    value={adminData?.maintenanceMessage || ''}
+                    onChange={e => updateAdminData({ maintenanceMessage: e.target.value })}
+                    style={{ width: '100%', marginTop: '6px' }}
+                  />
+                </div>
+                <button className="btn btn-block" style={{ background: adminData?.isMaintenanceMode ? 'var(--success)' : 'var(--error)', color: 'white' }} onClick={() => updateAdminData({ isMaintenanceMode: !adminData?.isMaintenanceMode })}>
+                  {adminData?.isMaintenanceMode ? '✅ Disable Maintenance Mode' : '🔴 Enable Maintenance Mode'}
+                </button>
               </div>
             </div>
           </div>
