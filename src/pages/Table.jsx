@@ -36,7 +36,7 @@ export default function Table() {
   const [activeDivision, setActiveDivision] = useState("Overall");
   const { showToast } = useToast();
   const [refreshKey, setRefreshKey] = useState(0);
-  const [selectedSeason, setSelectedSeason] = useState("Season 4");
+  const [selectedSeason, setSelectedSeason] = useState(adminData?.currentSeason || "Elite Arrows Season 5");
   const [loadingSeason, setLoadingSeason] = useState(true);
   const [hasInitializedSeason, setHasInitializedSeason] = useState(false);
 
@@ -78,20 +78,21 @@ export default function Table() {
   }, []);
 
   const getDivisionsForSeason = useCallback(() => {
-    // For Season 4 and beyond, use the new division structure
-    if (selectedSeason === "Season 4" || selectedSeason === "Season 5") {
+    // For the current/live season format, use the new division structure
+    const isNewStructure = selectedSeason === (adminData?.currentSeason || "Elite Arrows Season 5");
+    if (isNewStructure || selectedSeason === "Season 4" || selectedSeason === "Season 5") {
       return ["Overall", "Elite", "Emerald", "Diamond", "Platinum"];
     }
     // Fallback for older seasons
     return ["Overall", "Elite", "Emerald", "Diamond", "Platinum", "Gold", "Silver", "Bronze"];
-  }, [selectedSeason]);
+  }, [selectedSeason, adminData?.currentSeason]);
 
   const divisions = getDivisionsForSeason();
-  const seasons = useMemo(() => getSeasons().filter(s => s.name === "Season 4"), [getSeasons]);
+  const seasons = useMemo(() => getSeasons().filter(s => !s.isArchived), [getSeasons]);
 
   useEffect(() => {
     if (!hasInitializedSeason) {
-      setSelectedSeason("Season 4");
+      setSelectedSeason(adminData?.currentSeason || "Elite Arrows Season 5");
       setHasInitializedSeason(true);
     }
   }, [hasInitializedSeason]);
@@ -352,25 +353,8 @@ export default function Table() {
             </h1>
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
               <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-                Season:
+                {selectedSeason}
               </span>
-              <select
-                className="glass"
-                value={selectedSeason}
-                onChange={(e) => setSelectedSeason(e.target.value)}
-                style={{
-                  padding: "4px 12px",
-                  borderRadius: "8px",
-                  fontSize: "0.85rem",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                }}
-              >
-                {seasons.map((s) => (
-                  <option key={s.id} value={s.name}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
             </div>
           </div>
           <button
@@ -583,8 +567,8 @@ export default function Table() {
                 playersInDivision.map((player, index) => {
                   const legDiff = player.stats.legsWon - player.stats.legsLost;
 
-                  // Updated rules for Season 4
-                  const useNewRules = selectedSeason === "Season 4" || selectedSeason === "Season 5";
+                  // Updated rules for Season 4+
+                  const useNewRules = selectedSeason === "Season 4" || selectedSeason === "Season 5" || selectedSeason === (adminData?.currentSeason || "Elite Arrows Season 5");
 
                   const isPromotion = useNewRules
                     ? (index < 3 && activeDivision !== "Overall" && activeDivision !== "Elite")
