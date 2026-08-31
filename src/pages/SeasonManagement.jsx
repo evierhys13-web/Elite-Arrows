@@ -170,6 +170,7 @@ export default function SeasonManagement() {
     setIsProcessing(true)
     try {
       await updateAdminData({ currentSeason: seasonName })
+      await setDoc(doc(db, 'seasons', seasonDoc?.id), { ...(seasonDoc || {}), isLaunched: true, status: 'active', setLiveAt: new Date().toISOString() }, { merge: true })
 
       const batch = writeBatch(db)
       allPlayers.forEach(u => {
@@ -732,6 +733,7 @@ export default function SeasonManagement() {
                   </div>
                   <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                     Created {new Date(s.createdAt).toLocaleDateString()}
+                    {s.setLiveAt && ` • Went live ${new Date(s.setLiveAt).toLocaleDateString()}`}
                     {s.endedAt && ` • Ended ${new Date(s.endedAt).toLocaleDateString()}`}
                   </div>
                 </div>
