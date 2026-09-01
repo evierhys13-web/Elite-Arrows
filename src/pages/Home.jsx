@@ -56,9 +56,9 @@ export default function Home() {
 
   const activeSeason = useMemo(() => {
     return {
-      name: 'Season 4',
-      startDate: '2026-08-01T00:00:00',
-      endDate: '2026-09-01T00:00:00'
+      name: 'Elite Arrows Season 5',
+      startDate: '2026-09-01T00:00:00',
+      endDate: '2026-10-01T00:00:00'
     }
   }, [])
 
@@ -220,7 +220,7 @@ export default function Home() {
   if (!user) return <div className="page glass"><div style={{ padding: '60px', textAlign: 'center' }}>Please sign in.</div></div>
 
   const isSeasonActive = seasonPhase === 'active'
-  const seasonTimerTitle = seasonPhase === 'active' ? 'Season 4 Ends In:' : seasonPhase === 'ended' ? 'Season 4 Ended' : 'Season 4 Starts In'
+  const seasonTimerTitle = seasonPhase === 'active' ? 'Season 5 Ends In:' : seasonPhase === 'ended' ? 'Season 5 Ended' : 'Season 5 Starts In'
 
   return (
     <div className="page">
