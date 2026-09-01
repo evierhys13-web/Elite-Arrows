@@ -626,7 +626,6 @@ export default function Table() {
                       >
                         <Link
                           to={`/match-log?playerId=${player.id}`}
-                          onClick={(e) => handleNavigate(e, `/match-log?playerId=${player.id}`)}
                           style={{
                             textDecoration: "none",
                             display: "flex",
