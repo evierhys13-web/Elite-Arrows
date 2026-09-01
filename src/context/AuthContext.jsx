@@ -1133,19 +1133,20 @@ export function AuthProvider({ children }) {
           allUsers.forEach((u) => {
             const updates = {};
 
-            // Sync Subscriptions
+            // Sync Subscriptions - preserve elite passes, never remove existing ones
             const isSubscribedForNext = (u.subscribedSeasons || []).includes(
               nextSeason.name,
             );
             const shouldBeSubscribed =
+              u.isSubscribed ||
               isSubscribedForNext ||
               (nextSeason.name === "Season 1" &&
                 (u.isSubscribed || u.subscribedSeasons?.length > 0));
             if (u.isSubscribed !== shouldBeSubscribed)
               updates.isSubscribed = shouldBeSubscribed;
 
-            // Apply Staged Divisions - If not in staged list, they start as Unassigned for the new season
-            const nextDiv = stagedDivisions[u.id] || "Unassigned";
+            // Apply Staged Divisions - only override with a staged division value; never wipe an existing one
+            const nextDiv = stagedDivisions[u.id] || u.division;
             if (u.division !== nextDiv) updates.division = nextDiv;
 
             // Clear manual stats for the fresh season start

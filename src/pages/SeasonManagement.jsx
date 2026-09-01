@@ -177,12 +177,13 @@ export default function SeasonManagement() {
         const updates = {}
         // For Season 1, we assume everyone who has any record of subscription should be active (Legacy support)
         const isSubscribedForSeason = (u.subscribedSeasons || []).includes(seasonName)
-        const shouldBeSubscribed = isSubscribedForSeason || (seasonName === 'Season 1' && (u.isSubscribed || (u.subscribedSeasons && u.subscribedSeasons.length > 0)))
+        // Preserve elite passes: never remove an existing subscription, only ever add to it
+        const shouldBeSubscribed = u.isSubscribed || isSubscribedForSeason || (seasonName === 'Season 1' && (u.isSubscribed || (u.subscribedSeasons && u.subscribedSeasons.length > 0)))
 
         if (u.isSubscribed !== shouldBeSubscribed) updates.isSubscribed = shouldBeSubscribed
 
-        // Apply Staged Divisions - If not in staged list, they start as Unassigned for the new season
-        const nextDiv = stagedDivisions[u.id] || 'Unassigned'
+        // Apply Staged Divisions - only override with a staged division value; never wipe an existing one
+        const nextDiv = stagedDivisions[u.id] || u.division
         if (u.division !== nextDiv) updates.division = nextDiv
 
         // Clear manual stats for a fresh season start
