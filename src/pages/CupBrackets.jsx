@@ -202,13 +202,41 @@ export default function CupBracket() {
   const safeCupMatches = Array.isArray(cup?.matches) ? cup.matches : []
 
   const upcomingFixtures = useMemo(() => {
-    return fixtures.filter(fixture => {
-      const match = safeCupMatches.find(m => m && String(m.id) === String(fixture.matchId))
-      const status = String(fixture.status || 'pending').toLowerCase()
-      const isPending = !['approved', 'result_submitted', 'completed', 'rejected'].includes(status)
-      return isPending && !match?.winner && fixture.player1 && fixture.player2
-    }).sort((a, b) => (a.round || 0) - (b.round || 0))
-  }, [fixtures, safeCupMatches])
+    const fromFixtures = fixtures
+      .filter(fixture => {
+        const match = safeCupMatches.find(m => m && String(m.id) === String(fixture.matchId))
+        const status = String(fixture.status || 'pending').toLowerCase()
+        const isPending = !['approved', 'result_submitted', 'completed', 'rejected'].includes(status)
+        return isPending && !match?.winner && fixture.player1 && fixture.player2
+      })
+      .map(f => ({ ...f, isSynthetic: false }))
+
+    // Also surface group-stage cup matches that have no fixture yet (e.g. the
+    // second round of a Jedi/Padawan pairing), so they remain visible to play.
+    const matchIdsWithFixtures = new Set(fixtures.map(f => String(f.matchId)))
+    const roundFormat0 = cup?.roundFormats?.[0] || { startScore: 501, bestOf: 5, firstTo: 3 }
+    const fromMatches = safeCupMatches
+      .filter(m => m && m.stage === 'groups' && !matchIdsWithFixtures.has(String(m.id)) && !m.winner && m.player1 && m.player2)
+      .map(m => ({
+        id: `cupmatch_${m.id}`,
+        matchId: m.id,
+        round: m.round || 0,
+        stage: m.stage,
+        group: m.group,
+        startScore: roundFormat0.startScore,
+        bestOf: roundFormat0.bestOf,
+        firstTo: roundFormat0.firstTo,
+        player1: m.player1,
+        player1Id: m.player1,
+        player2: m.player2,
+        player2Id: m.player2,
+        date: '',
+        time: '',
+        isSynthetic: true
+      }))
+
+    return [...fromFixtures, ...fromMatches].sort((a, b) => (a.round || 0) - (b.round || 0))
+  }, [fixtures, safeCupMatches, cup])
 
   if (!cup) {
     return (
@@ -979,7 +1007,7 @@ export default function CupBracket() {
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                      {getRoundName(fixture.round)}
+                      {fixture.stage === 'groups' ? (fixture.group ? `Group ${fixture.group} Stage` : 'Group Stage') : getRoundName(fixture.round)}
                     </span>
                     <span style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', fontWeight: 800 }}>
                       {fixture.startScore || 501} / {fixture.firstTo ? `FT${fixture.firstTo}` : `Bo${fixture.bestOf || 3}`}
@@ -1017,7 +1045,7 @@ export default function CupBracket() {
                     </div>
                   )}
 
-                  {isUserInMatch && (
+                  {isUserInMatch && !fixture.isSynthetic && (
                     <button
                       className="btn btn-primary btn-sm"
                       onClick={() => navigate(`/submit-result?fixtureId=${fixture.id}`)}

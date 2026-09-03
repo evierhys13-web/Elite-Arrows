@@ -18,6 +18,10 @@ import {
   collection,
   getDocs,
   updateDoc,
+  query,
+  where,
+  writeBatch,
+  doc,
 } from "firebase/firestore";
 import readline from "node:readline";
 
@@ -80,6 +84,22 @@ async function main() {
     const groups = Array.isArray(cup.groups) ? cup.groups : [];
     const newMatches = [...matches];
 
+    // Load existing fixtures for this cup so we don't duplicate them.
+    let existingFixtureMatchIds = new Set();
+    try {
+      const fixturesSnap = await getDocs(
+        query(
+          collection(db, "fixtures"),
+          where("cupId", "in", [String(cup.id), parseInt(cup.id)]),
+        ),
+      );
+      existingFixtureMatchIds = new Set(
+        fixturesSnap.docs.map((f) => String(f.data().matchId)),
+      );
+    } catch (e) {
+      console.warn("Could not load fixtures for cup:", e.message);
+    }
+
     const groupById = {};
     groups.forEach((g) => {
       groupById[String(g.id)] = g;
@@ -96,6 +116,7 @@ async function main() {
     });
 
     const addedForCup = [];
+    const newFixturesForCup = [];
     matches.forEach((m) => {
       if (m.stage !== "groups" || Number(m.iteration) >= 2) return;
       if (!m.player1 || !m.player2) return;
@@ -122,15 +143,60 @@ async function main() {
       };
       newMatches.push(clone);
       addedForCup.push(`${gId}: ${m.player1} vs ${m.player2} -> ${newId}`);
+
+      // Create a matching fixture so this second-round match is visible in
+      // "Upcoming Matches" and can be submitted/scheduled.
+      if (!existingFixtureMatchIds.has(newId)) {
+        const format =
+          (Array.isArray(cup.roundFormats) ? cup.roundFormats[0] : null) ||
+          (cup.roundFormats && typeof cup.roundFormats === "object"
+            ? cup.roundFormats[0]
+            : null) ||
+          { startScore: 501, bestOf: 5, firstTo: 3 };
+        const fixtureId = `cup_${cup.id}_match_${newId}`;
+        newFixturesForCup.push({
+          id: fixtureId,
+          cupId: isNaN(parseInt(cup.id)) ? cup.id : parseInt(cup.id),
+          cupName: cup.name,
+          startScore: format.startScore || 501,
+          bestOf: format.bestOf || 5,
+          firstTo: format.firstTo || Math.ceil((format.bestOf || 5) / 2),
+          player1: m.player1,
+          player1Id: m.player1,
+          player2: m.player2,
+          player2Id: m.player2,
+          matchId: newId,
+          round: m.round || 0,
+          stage: m.stage,
+          group: gId,
+          date: "",
+          time: "",
+          scheduledBy: m.player1,
+          status: "accepted",
+          proposalStatus: "accepted",
+          proposedDate: "",
+          proposedTime: "",
+          counterDate: "",
+          counterTime: "",
+          createdAt: new Date().toISOString(),
+        });
+      }
     });
 
     if (addedForCup.length > 0) {
-      await updateDoc(cup.ref, { matches: newMatches });
+      const batch = writeBatch(db);
+      batch.update(cup.ref, { matches: newMatches });
+      newFixturesForCup.forEach((f) => batch.set(doc(db, "fixtures", f.id), f));
+      await batch.commit();
       totalAdded += addedForCup.length;
-      console.log(`\nUpdated "${cup.name}" - added ${addedForCup.length} second-round group match(es):`);
+      console.log(
+        `\nUpdated "${cup.name}" - added ${addedForCup.length} second-round group match(es) and ${newFixturesForCup.length} fixture(s):`,
+      );
       addedForCup.forEach((a) => console.log(`   + ${a}`));
     } else {
-      console.log(`\n"${cup.name}" already has 2 matches per group pairing. No changes.`);
+      console.log(
+        `\n"${cup.name}" already has 2 matches per group pairing. No changes.`,
+      );
     }
   }
 
