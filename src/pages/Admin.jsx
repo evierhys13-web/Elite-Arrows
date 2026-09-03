@@ -662,6 +662,40 @@ export default function Admin() {
           matchId = match.matchId
           cupName = match.cupName
           fixtureId = match.id
+        } else {
+          // No fixture found - resolve the cup match directly from the cup brackets,
+          // picking the first un-played match (group or knockout) between these two players.
+          // Fetch fresh cup data so the "un-played" check is accurate (handles the two
+          // group matches per pairing for Jedi/Padawan cups).
+          const candidateCup = (getCups() || []).find(c =>
+            (c.matches || []).some(m =>
+              m &&
+              ((String(m.player1) === String(p1.id) && String(m.player2) === String(p2.id)) ||
+                (String(m.player1) === String(p2.id) && String(m.player2) === String(p1.id)))
+            )
+          )
+          if (candidateCup) {
+            let freshMatches = candidateCup.matches
+            try {
+              const cupSnap = await getDoc(doc(db, 'cups', String(candidateCup.id)))
+              if (cupSnap.exists() && Array.isArray(cupSnap.data().matches)) {
+                freshMatches = cupSnap.data().matches
+              }
+            } catch (e) {
+              console.warn('Could not fetch fresh cup data for resolution', e)
+            }
+            const match = (freshMatches || []).find(m =>
+              m &&
+              !m.winner &&
+              ((String(m.player1) === String(p1.id) && String(m.player2) === String(p2.id)) ||
+                (String(m.player1) === String(p2.id) && String(m.player2) === String(p1.id)))
+            )
+            if (match) {
+              cupId = candidateCup.id
+              matchId = match.id
+              cupName = candidateCup.name
+            }
+          }
         }
       }
 
