@@ -148,7 +148,7 @@ export function AuthProvider({ children }) {
           isMaintenanceMode: parsed.isMaintenanceMode || false,
           maintenanceMessage: parsed.maintenanceMessage || "",
           registrationsEnabled: parsed.registrationsEnabled !== undefined ? parsed.registrationsEnabled : true,
-          currentSeason: parsed.currentSeason || "Season 4",
+          currentSeason: parsed.currentSeason || "Elite Arrows Season 5",
         };
       }
     } catch (e) {}
@@ -160,7 +160,7 @@ export function AuthProvider({ children }) {
       isMaintenanceMode: false,
       maintenanceMessage: "",
       registrationsEnabled: true,
-      currentSeason: "Season 4",
+      currentSeason: "Elite Arrows Season 5",
     };
   });
   const [notificationPermission, setNotificationPermission] =
@@ -534,7 +534,7 @@ export function AuthProvider({ children }) {
               data.registrationsEnabled !== undefined
                 ? data.registrationsEnabled
                 : true,
-            currentSeason: data.currentSeason || "Season 1",
+            currentSeason: data.currentSeason || "Elite Arrows Season 5",
           });
           resultStatusOverridesRef.current = data.resultStatusOverrides || {};
 

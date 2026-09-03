@@ -692,6 +692,11 @@ export default function Admin() {
         }
       }
 
+      // Update the cup bracket (winner, score and advancing to the next round) for cup games
+      if (isCup && cupId) {
+        await advanceCupBracket(newMatch)
+      }
+
       logMatchApproved(newMatch)
       await logAudit('ADMIN_SUBMIT_GAME', `Admin submitted ${f.gameType}: ${newMatch.player1} ${s1}-${s2} ${newMatch.player2}`)
       setAdminGameForm({

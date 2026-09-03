@@ -194,10 +194,18 @@ export default function SubmitResult() {
   }, [])
 
   useEffect(() => {
-    if (adminData?.currentSeason && formData.season !== adminData.currentSeason) {
+    // Only default to the live season when the user did NOT explicitly navigate
+    // here with a season (e.g. from the Home schedule). This prevents an explicit
+    // season such as a brand-new live season being overwritten before submit.
+    if (
+      adminData?.currentSeason &&
+      !seasonParam &&
+      !searchParams.get('season') &&
+      formData.season !== adminData.currentSeason
+    ) {
       setFormData(prev => ({ ...prev, season: adminData.currentSeason }))
     }
-  }, [adminData?.currentSeason])
+  }, [adminData?.currentSeason, seasonParam, searchParams])
 
   const userSubmittedResults = allResults
     .filter(result => (
@@ -275,6 +283,7 @@ export default function SubmitResult() {
           ...prev,
           gameType: selectedFixture.gameType || 'League',
           opponent: opponentId || '',
+          season: searchParams.get('season') || prev.season,
           bestOf: selectedFixture.bestOf ? selectedFixture.bestOf.toString() : prev.bestOf,
           firstTo: selectedFixture.firstTo ? selectedFixture.firstTo.toString() : prev.firstTo
         }))
@@ -284,11 +293,12 @@ export default function SubmitResult() {
         ...prev,
         opponent: opponentParam || prev.opponent,
         gameType: gameTypeParam || prev.gameType,
+        season: searchParams.get('season') || prev.season,
         bestOf: gameTypeParam === 'League' ? '8' : prev.bestOf,
         firstTo: gameTypeParam === 'League' ? '5' : prev.firstTo
       }))
     }
-  }, [selectedFixture, opponentParam, gameTypeParam, user.id])
+  }, [selectedFixture, opponentParam, gameTypeParam, searchParams, user.id])
 
   const checkExistingLeagueMatch = (opponentId) => {
     const existingMatches = allResults.filter(r => {
@@ -529,7 +539,7 @@ export default function SubmitResult() {
     }
     setFormData({
       ...INITIAL_RESULT_FORM,
-      season: adminData?.currentSeason || 'Season 4'
+      season: adminData?.currentSeason || 'Elite Arrows Season 5'
     })
     setHlVideoUrl('')
     setHlUploadProgress(0)

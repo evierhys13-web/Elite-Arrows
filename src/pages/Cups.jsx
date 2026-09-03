@@ -164,7 +164,10 @@ export default function CupTournaments() {
     else if (formData.type === 'groups' || formData.type === 'world_cup' || formData.type === 'group_knockout' || formData.type === 'season') {
       const pPerG = formData.playersPerGroup
       const numGroups = Math.ceil(shuffled.length / pPerG)
-      const iterations = formData.type === 'season' ? (formData.seasonIterations || 1) : 1
+      const cupNameLower = String(formData.name || '').toLowerCase()
+      const isJediOrPadawan = cupNameLower.includes('jedi') || cupNameLower.includes('padawan')
+      // Jedi/Padawan cups: group-stage players play each other twice
+      const iterations = isJediOrPadawan ? 2 : (formData.type === 'season' ? (formData.seasonIterations || 1) : 1)
 
       // Assign players to groups
       for (let i = 0; i < numGroups; i++) {
