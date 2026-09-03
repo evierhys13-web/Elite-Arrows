@@ -68,7 +68,8 @@ export default function Admin() {
     p1_180s: '', p2_180s: '',
     p1_checkout: '', p2_checkout: '',
     p1_doubles: '', p2_doubles: '',
-    p1_avg: '', p2_avg: ''
+    p1_avg: '', p2_avg: '',
+    proofImage: ''
   })
   const [seasonForm, setSeasonForm] = useState({ name: '', startDate: new Date().toISOString().split('T')[0], endDate: '' })
   const [grantSubForm, setGrantSubForm] = useState({ player: '', tier: 'elite', season: '' })
@@ -574,6 +575,42 @@ export default function Admin() {
     } catch (e) { showToast(e.message, 'error') }
   }
 
+  const handleAdminProofUpload = (e, maxSizeMB = 10) => {
+    const file = e.target.files && e.target.files[0]
+    if (!file) return
+    if (file.size > maxSizeMB * 1024 * 1024) {
+      showToast('Image is too large. Please pick a smaller one.', 'error')
+      return
+    }
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      const image = new Image()
+      image.onload = async () => {
+        try {
+          const canvas = document.createElement('canvas')
+          const maxDimension = 800
+          const scale = Math.min(1, maxDimension / Math.max(image.width, image.height))
+          canvas.width = Math.max(1, Math.round(image.width * scale))
+          canvas.height = Math.max(1, Math.round(image.height * scale))
+          const ctx = canvas.getContext('2d')
+          ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
+          let quality = 0.5
+          let compressed = canvas.toDataURL('image/jpeg', quality)
+          while (compressed.length > 400000 && quality > 0.15) {
+            quality -= 0.1
+            compressed = canvas.toDataURL('image/jpeg', quality)
+          }
+          setAdminGameForm(prev => ({ ...prev, proofImage: compressed }))
+        } catch (err) {
+          showToast('Could not process image.', 'error')
+        }
+      }
+      image.onerror = () => showToast('Could not read that image file.', 'error')
+      image.src = reader.result
+    }
+    reader.readAsDataURL(file)
+  }
+
   const handleAdminSubmitGame = async () => {
     const f = adminGameForm
     if (!f.player1 || !f.player2) return showToast('Select both players/teams.', 'error')
@@ -655,6 +692,7 @@ export default function Admin() {
         }),
         ...(cupId && { cupId, matchId, cupName }),
         ...(fixtureId && { fixtureId }),
+        ...(f.proofImage ? { proofImage: f.proofImage } : {}),
         ...(isForfeit
           ? { player1Stats: {}, player2Stats: {} }
           : {
@@ -708,7 +746,8 @@ export default function Admin() {
         p1_180s: '', p2_180s: '',
         p1_checkout: '', p2_checkout: '',
         p1_doubles: '', p2_doubles: '',
-        p1_avg: '', p2_avg: ''
+        p1_avg: '', p2_avg: '',
+        proofImage: ''
       })
       triggerDataRefresh('results')
       showToast('Game submitted!', 'success')
@@ -1651,9 +1690,39 @@ export default function Admin() {
                       <option value="">Auto (Current)</option>
                       {getSeasons().map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                     </select>
+</div>
                   </div>
-                </div>
                 </>)}
+                <div style={{ marginBottom: '16px', padding: '14px', borderRadius: '12px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', opacity: 0.7, marginBottom: '8px' }}>📎 Proof (optional)</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAdminProofUpload}
+                    className="glass"
+                    style={{ width: '100%', padding: '8px 12px' }}
+                  />
+                  <p style={{ fontSize: '0.72rem', opacity: 0.6, marginTop: '6px' }}>
+                    Attach a screenshot as evidence. This is optional — not required to submit.
+                  </p>
+                  {adminGameForm.proofImage && (
+                    <img
+                      src={adminGameForm.proofImage}
+                      alt="Proof preview"
+                      style={{ width: '100%', maxHeight: '160px', objectFit: 'cover', borderRadius: '8px', marginTop: '10px', border: '1px solid var(--border)' }}
+                    />
+                  )}
+                  {adminGameForm.proofImage && (
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      style={{ marginTop: '8px', padding: '4px 10px' }}
+                      onClick={() => setAdminGameForm(prev => ({ ...prev, proofImage: '' }))}
+                    >
+                      Remove proof
+                    </button>
+                  )}
+                </div>
                 {adminGameForm.forfeit && (
                   <div style={{ fontSize: '0.85rem', color: '#fbbf24', marginBottom: '16px', padding: '12px', borderRadius: '10px', background: 'rgba(251,191,36,0.06)' }}>
                     ⚡ This will be recorded as an instant win worth <strong>3 points</strong> (winner) and <strong>0 points</strong> (loser). No legs or averages are added for either player.
