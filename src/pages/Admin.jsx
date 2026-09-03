@@ -63,6 +63,7 @@ export default function Admin() {
     score1: '', score2: '',
     gameType: 'League',
     season: '',
+    cupId: '',
     forfeit: false,
     winner: 'p1',
     p1_180s: '', p2_180s: '',
@@ -663,11 +664,12 @@ export default function Admin() {
           cupName = match.cupName
           fixtureId = match.id
         } else {
-          // No fixture found - resolve the cup match directly from the cup brackets,
-          // picking the first un-played match (group or knockout) between these two players.
-          // Fetch fresh cup data so the "un-played" check is accurate (handles the two
-          // group matches per pairing for Jedi/Padawan cups).
-          const candidateCup = (getCups() || []).find(c =>
+          // Determine which cup to resolve the bracket match from. Prefer the cup the
+          // admin explicitly selected in the form; otherwise scan all cups by players.
+          const selectedCup = f.cupId
+            ? (getCups() || []).find(c => String(c.id) === String(f.cupId))
+            : null
+          const candidateCup = selectedCup || (getCups() || []).find(c =>
             (c.matches || []).some(m =>
               m &&
               ((String(m.player1) === String(p1.id) && String(m.player2) === String(p2.id)) ||
@@ -775,6 +777,7 @@ export default function Admin() {
         player1: '', player2: '', player3: '', player4: '',
         score1: '', score2: '',
         gameType: 'League',
+        cupId: '',
         forfeit: false,
         winner: 'p1',
         p1_180s: '', p2_180s: '',
@@ -1665,13 +1668,27 @@ export default function Admin() {
 
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Game Type</label>
-                  <select className="glass" style={{ width: '100%', padding: '10px' }} value={adminGameForm.gameType} onChange={e => setAdminGameForm({...adminGameForm, gameType: e.target.value})}>
+                  <select className="glass" style={{ width: '100%', padding: '10px' }} value={adminGameForm.gameType} onChange={e => setAdminGameForm(prev => ({ ...prev, gameType: e.target.value, ...(e.target.value !== 'Cup' ? { cupId: '' } : {}) }))}>
                     <option value="League">League</option>
                     <option value="Cup">Cup</option>
                     <option value="Playoff">Playoff</option>
                     <option value="Friendly League Singles">Friendly League Singles</option>
                   </select>
                 </div>
+
+                {adminGameForm.gameType === 'Cup' && (
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Cup</label>
+                    <select className="glass" style={{ width: '100%', padding: '10px' }} value={adminGameForm.cupId} onChange={e => setAdminGameForm({...adminGameForm, cupId: e.target.value})}>
+                      <option value="">Select active cup...</option>
+                      {(getCups() || [])
+                        .filter(c => c && String(c.status || '').toLowerCase() === 'active' || (c && !c.status))
+                        .map(c => (
+                          <option key={c.id} value={c.id}>{c.name || `Cup ${c.id}`}</option>
+                        ))}
+                    </select>
+                  </div>
+                )}
 
                 <div style={{ marginBottom: '16px', padding: '14px', borderRadius: '12px', border: adminGameForm.forfeit ? '1px solid #fbbf24' : '1px solid var(--border)', background: adminGameForm.forfeit ? 'rgba(251,191,36,0.08)' : 'transparent' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontWeight: 700 }}>
