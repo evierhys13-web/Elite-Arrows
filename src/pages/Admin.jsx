@@ -1518,6 +1518,10 @@ export default function Admin() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}><div className="stat-label">League Prize Pot</div><div>💰</div></div>
                 <div className="stat-value" style={{ fontSize: '2.5rem' }}>£{adminData?.subscriptionPot?.toFixed(2) || '0.00'}</div>
               </div>
+              <div className="stat-card glass" onClick={() => navigate('/table')} style={{ cursor: 'pointer', padding: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}><div className="stat-label">Season Standings</div><div>📈</div></div>
+                <div className="stat-value" style={{ fontSize: '1.4rem', color: 'var(--accent-cyan)' }}>View Any Season</div>
+              </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
               <div className="card glass" style={{ padding: '24px' }}>
