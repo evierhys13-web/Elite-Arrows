@@ -108,17 +108,55 @@ export default function Table() {
     const staged = activeSeasonDoc?.stagedDivisions || {};
     const isLive = selectedSeason === (adminData?.currentSeason || "Season 1");
 
-    return allUsers.map((u) => {
+    // For past seasons, the season doc usually has no stagedDivisions. Derive
+    // each player's division from the approved results of that season (the
+    // result carries a `division` field) so history still shows standings.
+    const resultDivisionMap = {};
+    results.forEach((r) => {
+      if (String(r.status || "").toLowerCase() !== "approved") return;
+      const div = typeof r.division === "string" && r.division.trim() ? r.division.trim() : null;
+      if (!div || div.toLowerCase() === "unassigned") return;
+      [1, 2].forEach((n) => {
+        const pid = getResultPlayerId(r, n, allUsers);
+        if (pid) resultDivisionMap[String(pid)] = div;
+      });
+    });
+
+    // Include players referenced by this season's results but who no longer
+    // have an account, so historical standings stay complete.
+    const roster = [...allUsers];
+    const existingIds = new Set(allUsers.map((u) => String(u.id)));
+    if (!isLive) {
+      results.forEach((r) => {
+        [1, 2].forEach((n) => {
+          const pid = getResultPlayerId(r, n, allUsers);
+          if (!pid || existingIds.has(pid)) return;
+          existingIds.add(pid);
+          roster.push({
+            id: pid,
+            username: r[`player${n}`] || "Unknown",
+            name: r[`player${n}`] || "",
+            division: resultDivisionMap[pid] || "Unassigned",
+            isGhost: true,
+          });
+        });
+      });
+    }
+
+    return roster.map((u) => {
       const uid = String(u.id);
       const effectiveDiv =
-        staged[uid] || staged[u.id] || (isLive ? u.division : "Unassigned");
+        staged[uid] ||
+        staged[u.id] ||
+        (isLive ? u.division : resultDivisionMap[uid]) ||
+        (u.isGhost ? u.division : "Unassigned");
 
       return {
         ...u,
         division: effectiveDiv || "Unassigned",
       };
     });
-  }, [allUsers, activeSeasonDoc, selectedSeason, adminData?.currentSeason]);
+  }, [allUsers, activeSeasonDoc, results, selectedSeason, adminData?.currentSeason]);
 
   const divisionFilteredResults = useMemo(() => {
     const divMap = {}
