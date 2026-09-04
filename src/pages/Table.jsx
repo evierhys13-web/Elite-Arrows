@@ -13,6 +13,11 @@ const DIVISION_COLORS = {
   Diamond: "#38bdf8",
   Platinum: "#818cf8",
   Overall: "#818cf8",
+  Gold: "#eab308",
+  Silver: "#cbd5e1",
+  Bronze: "#d97706",
+  Development: "#22d3ee",
+  Premier: "#f472b6",
 };
 
 export default function Table() {
@@ -88,7 +93,24 @@ export default function Table() {
     return ["Overall", "Elite", "Emerald", "Diamond", "Platinum", "Gold", "Silver", "Bronze"];
   }, [selectedSeason, adminData?.currentSeason]);
 
-  const divisions = getDivisionsForSeason();
+  const seasonResultDivisions = useMemo(() => {
+    const present = new Set();
+    results.forEach((r) => {
+      if (String(r.status || "").toLowerCase() !== "approved") return;
+      const div = typeof r.division === "string" && r.division.trim() ? r.division.trim() : null;
+      if (!div || ["unassigned", "admin"].includes(String(div).toLowerCase())) return;
+      present.add(div);
+    });
+    return [...present];
+  }, [results]);
+
+  const allDivisions = useMemo(() => {
+    // For live/staged seasons the base list is authoritative; for past seasons
+    // surface any extra divisions present in that season's results (e.g. Development).
+    return isLiveSeason ? getDivisionsForSeason() : [...new Set([...getDivisionsForSeason(), ...seasonResultDivisions])];
+  }, [getDivisionsForSeason, seasonResultDivisions, isLiveSeason]);
+
+  const divisions = allDivisions;
   const seasons = useMemo(() => getSeasons(), [getSeasons]);
   const nonArchivedSeasons = useMemo(() => seasons.filter(s => !s.isArchived), [seasons]);
 
@@ -104,22 +126,33 @@ export default function Table() {
     [seasons, selectedSeason],
   );
 
+  const isLiveSeason =
+    selectedSeason === (adminData?.currentSeason || "Elite Arrows Season 5");
+
   const usersWithCorrectDivisions = useMemo(() => {
     const staged = activeSeasonDoc?.stagedDivisions || {};
-    const isLive = selectedSeason === (adminData?.currentSeason || "Season 1");
+    const isLive = isLiveSeason;
 
     // For past seasons, the season doc usually has no stagedDivisions. Derive
-    // each player's division from the approved results of that season (the
-    // result carries a `division` field) so history still shows standings.
-    const resultDivisionMap = {};
+    // each player's division from their approved results of that season (the
+    // result carries a `division` field). Use the most frequent division a
+    // player recorded so mid-season labels / stray entries don't misplace them.
+    const divCounts = {};
     results.forEach((r) => {
       if (String(r.status || "").toLowerCase() !== "approved") return;
       const div = typeof r.division === "string" && r.division.trim() ? r.division.trim() : null;
       if (!div || div.toLowerCase() === "unassigned") return;
       [1, 2].forEach((n) => {
         const pid = getResultPlayerId(r, n, allUsers);
-        if (pid) resultDivisionMap[String(pid)] = div;
+        if (!pid) return;
+        const key = String(pid);
+        if (!divCounts[key]) divCounts[key] = {};
+        divCounts[key][div] = (divCounts[key][div] || 0) + 1;
       });
+    });
+    const resultDivisionMap = {};
+    Object.entries(divCounts).forEach(([pid, counts]) => {
+      resultDivisionMap[pid] = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
     });
 
     // Include players referenced by this season's results but who no longer
@@ -156,7 +189,7 @@ export default function Table() {
         division: effectiveDiv || "Unassigned",
       };
     });
-  }, [allUsers, activeSeasonDoc, results, selectedSeason, adminData?.currentSeason]);
+  }, [allUsers, activeSeasonDoc, results, selectedSeason, isLiveSeason]);
 
   const divisionFilteredResults = useMemo(() => {
     const divMap = {}
@@ -171,7 +204,7 @@ export default function Table() {
       const d1 = divMap[p1Id]
       const d2 = divMap[p2Id]
       if (!d1 || !d2 || d1 === 'Unassigned' || d2 === 'Unassigned' || d1 === 'Admin' || d2 === 'Admin') return false
-      return d1 === d2
+      return true
     })
   }, [results, usersWithCorrectDivisions])
 
