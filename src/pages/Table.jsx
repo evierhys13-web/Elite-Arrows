@@ -1,5 +1,5 @@
 ﻿import { useState, useMemo, useEffect, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContextInternal";
 import { derivePlayerStatsFromResults } from "../utils/playerStats";
 import { getResultPlayerId } from "../utils/leagueResults";
@@ -16,7 +16,6 @@ const DIVISION_COLORS = {
 };
 
 export default function Table() {
-  const navigate = useNavigate();
   const {
     user,
     getAllUsers,
@@ -89,8 +88,7 @@ export default function Table() {
   }, [selectedSeason, adminData?.currentSeason]);
 
   const divisions = getDivisionsForSeason();
-  const seasons = useMemo(() => getSeasons(), [getSeasons]);
-  const nonArchivedSeasons = useMemo(() => seasons.filter(s => !s.isArchived), [seasons]);
+  const seasons = useMemo(() => getSeasons().filter(s => !s.isArchived), [getSeasons]);
 
   useEffect(() => {
     if (!hasInitializedSeason) {
@@ -353,25 +351,10 @@ export default function Table() {
             >
               League Standings
             </h1>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-              <select
-                className="glass"
-                value={selectedSeason}
-                onChange={(e) => setSelectedSeason(e.target.value)}
-                style={{ padding: "8px 12px", fontSize: "0.85rem", fontWeight: 800, borderRadius: "8px", maxWidth: "260px" }}
-              >
-                {seasons.length > 0 ? seasons.map((s) => (
-                  <option key={s.id} value={s.name}>
-                    {s.name}
-                    {String(s.name) === String(adminData?.currentSeason) ? " (Live)" : s.isArchived ? " (Archived)" : ""}
-                  </option>
-                )) : (
-                  <option value={selectedSeason}>{selectedSeason}</option>
-                )}
-              </select>
-              {loadingSeason && (
-                <span style={{ fontSize: "0.75rem", color: "var(--accent-cyan)" }}>Loading...</span>
-              )}
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                {selectedSeason}
+              </span>
             </div>
           </div>
           <button
