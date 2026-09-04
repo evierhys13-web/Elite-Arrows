@@ -682,6 +682,30 @@ export default function SubmitResult() {
           finalPlayer2Name = getDisplayName(p2, 'Player 2')
       }
 
+      // The fixture's player1/player2 is the bracket order. The form scores/stats
+      // are submitted as (yourScore = submitter, opponentScore = opponent). Align
+      // scores + stats with the forced player order so player1Id always holds
+      // player1's score/stats.
+      const needScoreSwap = String(finalPlayer1Id) === String(formData.opponent)
+      let player1Score = formData.yourScore
+      let player2Score = formData.opponentScore
+      if (needScoreSwap) {
+        player1Score = formData.opponentScore
+        player2Score = formData.yourScore
+      }
+      const player1Stats = {
+        '180s': parseInt(needScoreSwap ? formData.opponent180s : formData.your180s) || 0,
+        highestCheckout: parseInt(needScoreSwap ? formData.opponentHighestCheckout : formData.yourHighestCheckout) || 0,
+        doubleSuccess: parseFloat(needScoreSwap ? formData.opponentDoubleSuccess : formData.yourDoubleSuccess) || 0,
+        avg: parseFloat(needScoreSwap ? formData.opponentAvg : formData.yourAvg) || 0
+      }
+      const player2Stats = {
+        '180s': parseInt(needScoreSwap ? formData.your180s : formData.opponent180s) || 0,
+        highestCheckout: parseInt(needScoreSwap ? formData.yourHighestCheckout : formData.opponentHighestCheckout) || 0,
+        doubleSuccess: parseFloat(needScoreSwap ? formData.yourDoubleSuccess : formData.opponentDoubleSuccess) || 0,
+        avg: parseFloat(needScoreSwap ? formData.yourAvg : formData.opponentAvg) || 0
+      }
+
       // Helper for creating the document structure
       const createResultDoc = (s1, s2, idSuffix = '', proofOverride = null) => {
         const resId = resultId + idSuffix
@@ -701,18 +725,8 @@ export default function SubmitResult() {
           submittedAt: new Date().toISOString(),
           bestOf: formData.bestOf,
           firstTo: formData.firstTo,
-          player1Stats: {
-            '180s': parseInt(formData.your180s) || 0,
-            highestCheckout: parseInt(formData.yourHighestCheckout) || 0,
-            doubleSuccess: parseFloat(formData.yourDoubleSuccess) || 0,
-            avg: parseFloat(formData.yourAvg) || 0
-          },
-          player2Stats: {
-            '180s': parseInt(formData.opponent180s) || 0,
-            highestCheckout: parseInt(formData.opponentHighestCheckout) || 0,
-            doubleSuccess: parseFloat(formData.opponentDoubleSuccess) || 0,
-            avg: parseFloat(formData.opponentAvg) || 0
-          },
+          player1Stats,
+          player2Stats,
           status: 'pending',
           submittedBy: user.id,
           proofImage: proofOverride || finalProofUrl || '',
@@ -783,7 +797,7 @@ export default function SubmitResult() {
       const currentResults = [...allResults]
 
       let finalResultObj;
-      finalResultObj = createResultDoc(formData.yourScore, formData.opponentScore)
+      finalResultObj = createResultDoc(player1Score, player2Score)
       await setDoc(doc(db, 'results', finalResultObj.id), finalResultObj)
       currentResults.push(finalResultObj)
 
