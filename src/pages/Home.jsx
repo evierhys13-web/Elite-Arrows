@@ -4,12 +4,10 @@ import { useAuth } from '../context/AuthContextInternal'
 import { db, doc, setDoc } from '../firebase'
 import NewsFeed from '../components/NewsFeed'
 import Breadcrumbs from '../components/Breadcrumbs'
-import { getLeaguePoints } from '../utils/leagueScoring'
-import { getResultEffectiveTime, getResultPlayerId, isLeagueResult } from '../utils/leagueResults'
+import { getResultPlayerId, isLeagueResult } from '../utils/leagueResults'
+import { derivePlayerStatsFromResults } from '../utils/playerStats'
 import GlobalHighlightReel from '../components/GlobalHighlightReel'
 import { collection, getDocs } from '../firebase'
-
-const DEFAULT_LEAGUE_TABLE_RESET_AT = '2026-04-29T16:14:21.338+01:00'
 
 export default function Home() {
   const { user, getAllUsers, getFixtures, getResults, loading, adminData, getSeasons, fetchResultsBySeason, fetchUsersByDivision } = useAuth()
@@ -121,16 +119,6 @@ export default function Home() {
     )),
   [approvedResults, allUsers, user?.id])
 
-  const resetTimes = useMemo(() =>
-    [DEFAULT_LEAGUE_TABLE_RESET_AT, adminData?.leagueTableResetAt]
-      .map(value => value ? new Date(value).getTime() : 0)
-      .filter(value => Number.isFinite(value) && value > 0),
-  [adminData?.leagueTableResetAt])
-
-  const leagueTableResetTime = useMemo(() =>
-    resetTimes.length ? Math.max(...resetTimes) : 0,
-  [resetTimes])
-
   const currentSeasonName = activeSeason.name
 
   const opponentsToPlay = useMemo(() => {
@@ -195,26 +183,27 @@ export default function Home() {
     })
   }, [user, allUsers, allResults, fixtures, getSeasons, currentSeasonName])
 
-  const stats = useMemo(() => userResults.reduce((acc, r) => {
-    if (!isLeagueResult(r, fixturesById)) return acc
-    acc.played++
-    const isPlayer1 = String(getResultPlayerId(r, 1, allUsers)) === String(user?.id)
-    const score1 = Number(r.score1) || 0
-    const score2 = Number(r.score2) || 0
-    const myScore = isPlayer1 ? score1 : score2
-    const opponentScore = isPlayer1 ? score2 : score1
-
-    if (myScore > opponentScore) acc.wins++
-    else if (myScore < opponentScore) acc.losses++
-    else acc.draws++
-
-    if (!leagueTableResetTime || getResultEffectiveTime(r) > leagueTableResetTime) {
-      acc.points += r.forfeit
-        ? (myScore > opponentScore ? 3 : 0)
-        : getLeaguePoints(myScore, opponentScore)
-    }
-    return acc
-  }, { played: 0, wins: 0, losses: 0, draws: 0, points: 0 }), [userResults, fixturesById, allUsers, user?.id, leagueTableResetTime])
+  const stats = useMemo(() => {
+    const playerStatsMap = derivePlayerStatsFromResults(
+      user ? [user] : [],
+      userResults,
+      {
+        fixtures,
+        adminData,
+        leagueOnly: true,
+        currentSeason: activeSeason.name,
+        includePlayoffs: false,
+      },
+    );
+    return playerStatsMap[String(user?.id)] || {
+      played: 0,
+      wins: 0,
+      draws: 0,
+      losses: 0,
+      points: 0,
+      average: 0,
+    };
+  }, [user, userResults, fixtures, adminData, activeSeason.name])
 
   if (loading) return <div className="page glass"><div style={{ padding: '60px', textAlign: 'center' }}><div className="spinner"></div></div></div>
   if (!user) return <div className="page glass"><div style={{ padding: '60px', textAlign: 'center' }}>Please sign in.</div></div>
@@ -357,7 +346,7 @@ export default function Home() {
           <Link to="/statistics" style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontWeight: 700, textDecoration: 'none' }}>Full Statistics ➔</Link>
         </div>
         <div className="home-stats-grid">
-          {[{l: 'Played', v: stats.played}, {l: 'Wins', v: stats.wins, c: 'var(--success)'}, {l: 'Avg', v: user.threeDartAverage?.toFixed(1) || '0.0', c: '#fbbf24'}, {l: 'Pts', v: stats.points, c: 'var(--accent-cyan)'}].map(s => (
+          {[{l: 'Played', v: stats.played}, {l: 'Wins', v: stats.wins, c: 'var(--success)'}, {l: 'Avg', v: stats.average ? stats.average.toFixed(1) : '0.0', c: '#fbbf24'}, {l: 'Pts', v: stats.points, c: 'var(--accent-cyan)'}].map(s => (
             <div key={s.l} className="stat-card" style={s.c ? { borderBottom: `2px solid ${s.c}` } : {}}>
               <div className="stat-value" style={s.c ? { color: s.c } : {}}>{s.v}</div>
               <div className="stat-label">{s.l}</div>
