@@ -230,8 +230,10 @@ export default function Statistics() {
     allUsers.forEach(u => {
       const div = u.division || 'Unassigned'
       if (!divisionData[div]) {
-        divisionData[div] = { name: div, playerCount: 0, total180s: 0, matchesPlayed: 0, avgAvg: 0, avgPlayerCount: 0, topCheckout: 0 }
+        divisionData[div] = { name: div, roster: 0, playerCount: 0, total180s: 0, matchesPlayed: 0, playerGames: 0, avgAvg: 0, avgPlayerCount: 0, topCheckout: 0 }
       }
+      if (div === 'Unassigned') return
+      divisionData[div].roster++
       const ps = playerStatsMap[String(u.id)]
       if (ps && ps.played > 0) {
         divisionData[div].playerCount++
@@ -242,27 +244,31 @@ export default function Statistics() {
       }
     })
     approvedResults.forEach(r => {
-      const p1 = allUsers.find(u => u.id === r.player1Id)
-      const p2 = allUsers.find(u => u.id === r.player2Id)
-      if (p1 && p1.division && divisionData[p1.division]) {
-        const div = divisionData[p1.division]
-        div.matchesPlayed++
+      const p1 = allUsers.find(u => String(u.id) === String(r.player1Id))
+      const p2 = allUsers.find(u => String(u.id) === String(r.player2Id))
+      const d1 = p1?.division
+      const d2 = p2?.division
+      if (d1 && divisionData[d1]) {
+        const div = divisionData[d1]
+        div.playerGames++
         div.total180s += Number(r.player1Stats?.['180s'] || 0)
         if (Number(r.player1Stats?.highestCheckout || 0) > div.topCheckout) div.topCheckout = Number(r.player1Stats.highestCheckout)
       }
-      if (p2 && p2.division && divisionData[p2.division]) {
-        const div = divisionData[p2.division]
+      if (d2 && divisionData[d2]) {
+        const div = divisionData[d2]
+        div.playerGames++
         div.total180s += Number(r.player2Stats?.['180s'] || 0)
         if (Number(r.player2Stats?.highestCheckout || 0) > div.topCheckout) div.topCheckout = Number(r.player2Stats.highestCheckout)
-        if (p1?.division !== p2.division) div.matchesPlayed++
       }
+      const involved = new Set([d1, d2].filter(Boolean))
+      involved.forEach(d => { if (divisionData[d]) divisionData[d].matchesPlayed++ })
     })
     return Object.values(divisionData)
-      .filter(div => div.name !== 'Unassigned' && div.playerCount > 0)
+      .filter(div => div.name !== 'Unassigned' && div.roster > 0)
       .map(div => ({
         ...div,
         avgAvg: div.avgPlayerCount > 0 ? (div.avgAvg / div.avgPlayerCount).toFixed(1) : '0',
-        avg180s: div.matchesPlayed > 0 ? (div.total180s / div.matchesPlayed).toFixed(2) : 0
+        avg180s: div.playerGames > 0 ? (div.total180s / div.playerGames).toFixed(2) : 0
       }))
   }, [allUsers, approvedResults, playerStatsMap])
 
@@ -632,7 +638,7 @@ function DivisionOverview({ leagueStats, filteredDiv180s, selectedDivFilter, set
               <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '2px' }}>Division</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '18px' }}>
                 <div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'white' }}>{div.playerCount}</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'white' }}>{div.roster}</div>
                   <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Players</div>
                 </div>
                 <div>
@@ -641,7 +647,7 @@ function DivisionOverview({ leagueStats, filteredDiv180s, selectedDivFilter, set
                 </div>
                 <div>
                   <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#fbbf24' }}>{Number(div.avg180s) > 0 ? div.avg180s : '—'}</div>
-                  <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>180s / Game</div>
+                  <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>180s / Player Game</div>
                 </div>
                 <div>
                   <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>{div.topCheckout || '—'}</div>
@@ -715,7 +721,7 @@ function DivisionOverview({ leagueStats, filteredDiv180s, selectedDivFilter, set
                       <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', background: color, marginRight: '10px', boxShadow: `0 0 8px ${color}` }} />
                       {div.name}
                     </td>
-                    <td style={{ padding: '12px 8px', textAlign: 'center', fontSize: '0.85rem', color: 'white' }}>{div.playerCount}</td>
+                    <td style={{ padding: '12px 8px', textAlign: 'center', fontSize: '0.85rem', color: 'white' }}>{div.roster}</td>
                     <td style={{ padding: '12px 8px', fontWeight: 800, textAlign: 'center', fontSize: '0.88rem', color: avgColor(Number(div.avgAvg)) }}>{div.avgAvg}</td>
                     <td style={{ padding: '12px 8px', textAlign: 'center', fontSize: '0.85rem', fontWeight: 700, color: '#fbbf24' }}>{div.avg180s}</td>
                     <td style={{ padding: '12px 8px', color: 'var(--success)', fontWeight: 800, textAlign: 'right', fontSize: '0.88rem' }}>{div.topCheckout || '—'}</td>
