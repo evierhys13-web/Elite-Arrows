@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContextInternal'
 import { useTheme } from '../context/ThemeContext'
@@ -35,11 +35,17 @@ const DownloadIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentC
 const ExternalLinkIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
 const BulbIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18h6" /><path d="M10 22h4" /><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.4 1 2.3h6c0-.9.4-1.8 1-2.3A7 7 0 0 0 12 2z" /></svg>
 const AcademyIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10L12 5 2 10l10 5 10-5z" /><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5" /><path d="M22 10v6" /></svg>
+const PanelLeftIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="9" y1="3" x2="9" y2="21" /></svg>
 
 const OPEN_LEAGUE_LAUNCH_DATE = new Date('2026-07-01T00:00:00')
 
+const SIDEBAR_COLLAPSED_KEY = 'eliteArrowsSidebarCollapsed'
+
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1' } catch { return false }
+  })
   const { signOut, user } = useAuth()
   const navigate = useNavigate()
   const { navMode } = useTheme()
@@ -48,6 +54,12 @@ export default function Sidebar() {
     signOut()
     navigate('/auth')
   }
+
+  useEffect(() => {
+    try { localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? '1' : '0') } catch {}
+    document.body.classList.toggle('nav-collapsed', collapsed)
+    return () => document.body.classList.remove('nav-collapsed')
+  }, [collapsed])
 
   const isAdmin = user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin || ADMIN_EMAILS.includes(user?.email?.toLowerCase())
   const isSubscribed = user?.isSubscribed === true || isAdmin
@@ -138,14 +150,19 @@ export default function Sidebar() {
       <div className={`mobile-sidebar-overlay ${isOpen ? 'open' : ''}`} onClick={() => setIsOpen(false)} />
 
       <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
-        <div className="sidebar-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="sidebar-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
           <div className="sidebar-logo">
             <img src="/elite arrows.jpg" alt="EA" style={{ width: '32px', height: '32px', borderRadius: '8px', marginRight: '10px' }} />
             <span className="text-gradient" style={{ fontWeight: 900 }}>Elite Arrows</span>
           </div>
-          <button className="btn btn-secondary btn-sm" style={{ padding: '8px', minWidth: '40px', border: 'none', background: 'transparent' }} onClick={() => setIsOpen(false)}>
-            <CloseIcon />
-          </button>
+          <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+            <button className="btn btn-secondary btn-sm desktop-sidebar-toggle" title="Hide sidebar" aria-label="Hide sidebar" style={{ padding: '8px', minWidth: '40px', border: 'none', background: 'transparent' }} onClick={() => setCollapsed(true)}>
+              <PanelLeftIcon />
+            </button>
+            <button className="btn btn-secondary btn-sm sidebar-close-mobile" title="Close menu" aria-label="Close menu" style={{ padding: '8px', minWidth: '40px', border: 'none', background: 'transparent' }} onClick={() => setIsOpen(false)}>
+              <CloseIcon />
+            </button>
+          </div>
         </div>
 
         <div className="sidebar-profile">
@@ -191,6 +208,10 @@ export default function Sidebar() {
           </button>
         </nav>
       </aside>
+
+      <button className="sidebar-reopen-btn" onClick={() => setCollapsed(false)} title="Show sidebar" aria-label="Open sidebar">
+        <MenuIcon />
+      </button>
     </>
   )
 }
