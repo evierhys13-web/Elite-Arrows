@@ -9,6 +9,7 @@ import {
 } from 'recharts'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
 import { isLeagueResult } from '../utils/leagueResults'
+import { getLeaguePoints } from '../utils/leagueScoring'
 import Breadcrumbs from '../components/Breadcrumbs'
 import CountUp from '../components/CountUp'
 
