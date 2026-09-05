@@ -92,7 +92,7 @@ export default function Auth() {
         const avg = parseFloat(formData.threeDartAverage) || 0;
 
         const username = formData.dartCounterUsername || formData.email.split('@')[0]
-        
+
         await signUp({
           username: username,
           email: formData.email,
@@ -109,7 +109,11 @@ export default function Auth() {
         await signIn(formData.email, formData.password, formData.rememberMe)
       }
 
-      navigate('/home')
+      if (isSignUp) {
+        navigate('/guide?onboarding=1')
+      } else {
+        navigate('/home')
+      }
     } catch (err) {
       setError(err.message)
     } finally {
