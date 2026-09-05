@@ -39,6 +39,24 @@ const avgColor = (a) => {
   return '#ef4444'
 }
 
+function getSeasonLevel(seasonal) {
+  const avg = Number(seasonal?.average) || 0
+  const played = Number(seasonal?.played) || 0
+  const dbl = Number(seasonal?.doubleSuccess)
+  const doublesPct = Number.isFinite(dbl) ? dbl : 0
+  const perMatch180s = played > 0 ? (Number(seasonal?.['180s']) || 0) / played : 0
+
+  let score = avg
+  if (played > 0 && doublesPct >= 40) score += 1.5
+  if (perMatch180s >= 0.5) score += 1
+
+  if (score >= 60) return { name: 'Elite', color: '#fbbf24', rating: 'Elite Level' }
+  if (score >= 52) return { name: 'Diamond', color: '#38bdf8', rating: 'Diamond Level' }
+  if (score >= 42) return { name: 'Emerald', color: '#10b981', rating: 'Emerald Level' }
+  if (score > 0) return { name: 'Platinum', color: '#818cf8', rating: 'Platinum Level' }
+  return { name: 'Unrated', color: 'var(--text-muted)', rating: 'Unrated — needs season games' }
+}
+
 function Ring({ value, max, size = 110, stroke = 10, color, label, display }) {
   const pct = Math.min(Math.max((Number(value) / (max || 1)) * 100, 0), 100)
   const r = (size - stroke) / 2
@@ -153,8 +171,10 @@ export default function Statistics() {
 
   const playerSeasonal = useMemo(() => {
     if (!id) return null
-    return playerStatsMap[String(id)] || null
-  }, [playerStatsMap, id])
+    return derivePlayerStatsFromResults(allUsers, approvedResults, {
+      fixtures, adminData, leagueOnly: true
+    })[String(id)] || null
+  }, [allUsers, approvedResults, fixtures, adminData, id])
 
   const personalStats = useMemo(() => {
     if (!id) return null
@@ -368,6 +388,7 @@ export default function Statistics() {
           personalStats={personalStats}
           allTime={playerAllTime}
           seasonal={playerSeasonal}
+          seasonName={selectedSeason}
           onBack={() => navigate('/statistics')}
         />
       ) : (
@@ -401,7 +422,7 @@ function Avatar({ user, size = 72 }) {
   )
 }
 
-function PlayerView({ user, personalStats, allTime, seasonal, onBack }) {
+function PlayerView({ user, personalStats, allTime, seasonal, seasonName, onBack }) {
   if (!personalStats) return (
     <div className="card glass" style={{ padding: '60px 24px', textAlign: 'center' }}>
       <p style={{ color: 'var(--text-muted)' }}>No stats available for this player.</p>
@@ -409,8 +430,13 @@ function PlayerView({ user, personalStats, allTime, seasonal, onBack }) {
   )
 
   const formColor = (r) => r === 'W' ? 'var(--success)' : r === 'L' ? 'var(--error)' : 'var(--text-muted)'
-  const seasonAvg = seasonal?.average || 0
+  const seasonAvg = Number(seasonal?.average) || 0
   const winRate = Number(personalStats.winRate) || 0
+  const seasonLevel = getSeasonLevel(seasonal)
+  const seasonDoubles = (() => {
+    const d = Number(seasonal?.doubleSuccess)
+    return Number.isFinite(d) ? d : null
+  })()
 
   const checkoutTrendForChart = useMemo(() => {
     const raw = personalStats.checkoutTrend || []
@@ -441,6 +467,10 @@ function PlayerView({ user, personalStats, allTime, seasonal, onBack }) {
                 <span style={{ fontSize: '0.72rem', fontWeight: 800, padding: '4px 12px', borderRadius: '99px', color: DIVISION_COLORS[user?.division] || 'var(--text-muted)', background: `${DIVISION_COLORS[user?.division] || '#888'}1f`, border: `1px solid ${DIVISION_COLORS[user?.division] || '#888'}55` }}>
                   {(user?.division || 'Unassigned').toUpperCase()}
                 </span>
+                <span style={{ fontSize: '0.72rem', fontWeight: 900, padding: '4px 12px', borderRadius: '99px', color: seasonLevel.color, background: `${seasonLevel.color}1f`, border: `1px solid ${seasonLevel.color}66`, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: seasonLevel.color, boxShadow: `0 0 8px ${seasonLevel.color}` }} />
+                  {seasonLevel.name.toUpperCase()} LEVEL
+                </span>
                 <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)' }}>
                   {personalStats.played} matches · {personalStats.points} pts · {personalStats.wins}W {personalStats.losses}L
                 </span>
@@ -465,6 +495,48 @@ function PlayerView({ user, personalStats, allTime, seasonal, onBack }) {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* PERSONAL SEASON STATS */}
+      <div className="card glass" style={{ padding: '24px', marginBottom: '24px', borderRadius: '22px', border: `1px solid ${seasonLevel.color}33` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '18px' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              <h2 className="page-title" style={{ fontSize: '1.3rem', margin: 0 }}>Personal Season Stats</h2>
+              <span style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.06)', padding: '4px 12px', borderRadius: '99px', border: '1px solid var(--border)' }}>{seasonName}</span>
+            </div>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: '6px 0 0' }}>
+              Performance level based on your {seasonName} form — <strong style={{ color: seasonLevel.color }}>{seasonLevel.rating}</strong>
+            </p>
+          </div>
+          <div style={{ textAlign: 'center', padding: '12px 18px', borderRadius: '16px', background: `linear-gradient(150deg, ${seasonLevel.color}1a, rgba(15,23,42,0.4))`, border: `1px solid ${seasonLevel.color}55` }}>
+            <div style={{ fontSize: '1.5rem', fontWeight: 900, color: seasonLevel.color, lineHeight: 1.1 }}>{seasonLevel.name}</div>
+            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '2px' }}>Level</div>
+          </div>
+        </div>
+
+        {Number(seasonal?.played) > 0 || personalStats.played > 0 ? (
+          <>
+            <div className="home-stats-grid" style={{ marginBottom: '16px' }}>
+              <StatTile icon="🎯" value={<CountUp end={Number(seasonal?.played) || personalStats.played} />} label="Games Played" color="#10b981" />
+              <StatTile icon="📊" value={<CountUp end={Number(seasonal?.points) || personalStats.points} />} label="Points" color="#38bdf8" />
+              <StatTile icon="⚔️" value={`${Number(seasonal?.wins) || personalStats.wins}-${Number(seasonal?.losses) || personalStats.losses}`} label="Record (W-L)" color="#a78bfa" />
+              <StatTile icon="🎯" value={seasonAvg > 0 ? seasonAvg.toFixed(1) : '—'} label="3-Dart Avg" color={avgColor(seasonAvg)} />
+              <StatTile icon="🐟" value={seasonDoubles !== null ? `${seasonDoubles.toFixed(0)}%` : '—'} label="Doubles %" color={seasonDoubles !== null && seasonDoubles >= 40 ? '#10b981' : '#f97316'} />
+              <StatTile icon="💥" value={Number(seasonal?.highestCheckout) > 0 ? seasonal.highestCheckout : '—'} label="Best Checkout" color="#ef4444" />
+              <StatTile icon="💯" value={<CountUp end={Number(seasonal?.['180s']) || 0} />} label="180s" color="#fbbf24" />
+              <StatTile icon="📏" value={`${(Number(seasonal?.legsWon) || 0)}-${(Number(seasonal?.legsLost) || 0)}`} label="Legs Won-Lost" color="#10b981" />
+            </div>
+            <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.6 }}>
+              Level rating uses your 3-dart average with small boosts for strong doubles (≥40%) and regular 180s.
+              Elite ≥60 · Diamond 52–59.9 · Emerald 42–51.9 · Platinum &lt;42.
+            </p>
+          </>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '24px', border: '1px dashed var(--border)', borderRadius: '14px' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>No season matches recorded for this player yet — stats and level will appear once they've played.</p>
+          </div>
+        )}
       </div>
 
       {/* FORM GUIDE */}
@@ -495,7 +567,11 @@ function PlayerView({ user, personalStats, allTime, seasonal, onBack }) {
         </div>
       )}
 
-      {/* STATS GRID */}
+      {/* CAREER STATS */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+        <h3 className="card-title" style={{ margin: 0, fontSize: '1.15rem' }}>Career Highlights</h3>
+        <span style={{ fontSize: '0.66rem', fontWeight: 800, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.06)', padding: '3px 10px', borderRadius: '99px', border: '1px solid var(--border)' }}>All-time</span>
+      </div>
       <div className="home-stats-grid" style={{ marginBottom: '24px' }}>
         <StatTile icon="🎯" value={<CountUp end={personalStats.played} />} label="Matches" color="#10b981" />
         <StatTile icon="🏅" value={<span><CountUp end={personalStats.winRate} decimals={1} />%</span>} label="Win Rate" color="#38bdf8" />
