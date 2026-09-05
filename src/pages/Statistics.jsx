@@ -406,6 +406,21 @@ function PlayerView({ user, personalStats, allTime, seasonal, onBack }) {
   const seasonAvg = seasonal?.average || 0
   const winRate = Number(personalStats.winRate) || 0
 
+  const checkoutTrendForChart = useMemo(() => {
+    const raw = personalStats.checkoutTrend || []
+    if (raw.length < 2) return raw
+    const n = raw.length
+    const xs = raw.map((_, i) => i)
+    const ys = raw.map(p => Number(p.doubleSuccess) || 0)
+    const meanX = xs.reduce((a, b) => a + b, 0) / n
+    const meanY = ys.reduce((a, b) => a + b, 0) / n
+    const num = xs.reduce((s, x, i) => s + (x - meanX) * (ys[i] - meanY), 0)
+    const den = xs.reduce((s, x) => s + (x - meanX) * (x - meanX), 0)
+    const slope = den === 0 ? 0 : num / den
+    const intercept = meanY - slope * meanX
+    return raw.map((p, i) => ({ ...p, trend: Number((intercept + slope * i).toFixed(2)) }))
+  }, [personalStats.checkoutTrend])
+
   return (
     <div>
       {/* PLAYER HERO */}
@@ -546,15 +561,26 @@ function PlayerView({ user, personalStats, allTime, seasonal, onBack }) {
 
         {personalStats.checkoutTrend.length > 0 && (
           <div className="card glass" style={{ padding: '18px', borderRadius: '20px' }}>
-            <h3 className="card-title">Checkout Success Trend</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 className="card-title" style={{ margin: 0 }}>Checkout Success — Linear Trend</h3>
+            </div>
+            <div style={{ display: 'flex', gap: '14px', alignItems: 'center', margin: '10px 0 4px', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ width: '18px', height: '4px', borderRadius: '99px', background: 'var(--accent-cyan)' }} /> Trend (linear fit)
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--warning)' }} /> Actual matches
+              </span>
+            </div>
             <div style={{ height: '300px', width: '100%' }}>
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={personalStats.checkoutTrend}>
+                <LineChart data={checkoutTrendForChart}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                   <XAxis dataKey="date" stroke="var(--text-muted)" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                   <YAxis stroke="var(--text-muted)" domain={[0, 100]} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                   <Tooltip contentStyle={TOOLTIP_STYLE} />
-                  <Line type="monotone" dataKey="doubleSuccess" stroke="var(--warning)" strokeWidth={3} dot={{ r: 5, fill: 'var(--warning)', strokeWidth: 2, stroke: 'var(--bg-primary)' }} name="Checkout %" />
+                  <Line type="linear" dataKey="doubleSuccess" stroke="rgba(251,191,36,0.4)" strokeWidth={1.5} dot={{ r: 4, fill: 'var(--warning)', stroke: 'var(--bg-primary)', strokeWidth: 1.5 }} name="Checkout %" />
+                  <Line type="linear" dataKey="trend" stroke="var(--accent-cyan)" strokeWidth={3} strokeLinecap="round" dot={false} activeDot={{ r: 5 }} name="Trend" />
                 </LineChart>
               </ResponsiveContainer>
             </div>
