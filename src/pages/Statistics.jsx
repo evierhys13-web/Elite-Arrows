@@ -166,8 +166,10 @@ export default function Statistics() {
 
   const personalStats = useMemo(() => {
     if (!id) return null
+    const fixturesById = Object.fromEntries((fixtures || []).map(f => [String(f.id), f]))
     const userResults = approvedResults.filter(r =>
-      String(r.player1Id) === String(id) || String(r.player2Id) === String(id)
+      (String(r.player1Id) === String(id) || String(r.player2Id) === String(id)) &&
+      isLeagueResult(r, fixturesById)
     )
     const stats = { played: 0, wins: 0, losses: 0, draws: 0, points: 0, legsWon: 0, legsLost: 0, total180s: 0, highestCheckout: 0 }
     const monthlyData = {}
@@ -231,7 +233,7 @@ export default function Statistics() {
       radarData,
       last5Matches: formGuide.slice(-5)
     }
-  }, [approvedResults, id])
+  }, [approvedResults, id, fixtures])
 
   const leagueStats = useMemo(() => {
     const divisionData = {}
@@ -464,8 +466,8 @@ function PlayerView({ user, personalStats, allTime, seasonal, seasonName, onBack
               <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '8px', lineHeight: 1.5 }}>
                 {seasonAvg > 0 && <span style={{ color: 'var(--accent-cyan)', fontWeight: 800 }}>{seasonAvg.toFixed(1)} 3-dart avg</span>}
                 {seasonAvg > 0 && <span> · </span>}
-                <span>Best checkout <strong style={{ color: 'var(--accent-cyan)' }}>{allTime?.highestCheckout || personalStats.highestCheckout || '—'}</strong></span>
-                <span> · All-time <strong style={{ color: '#fbbf24' }}>{allTime?.['180s'] || 0}</strong> maxes</span>
+                <span>Best checkout <strong style={{ color: 'var(--accent-cyan)' }}>{personalStats.highestCheckout || '—'}</strong></span>
+                <span> · {seasonName} <strong style={{ color: '#fbbf24' }}>{personalStats.total180s || 0}</strong> maxes</span>
               </div>
             </div>
           </div>
@@ -512,7 +514,7 @@ function PlayerView({ user, personalStats, allTime, seasonal, seasonName, onBack
           </>
         ) : (
           <div style={{ textAlign: 'center', padding: '24px', border: '1px dashed var(--border)', borderRadius: '14px' }}>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>No season matches recorded for this player yet — stats and level will appear once they've played.</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>No season league matches recorded for this player yet — stats will appear once they've played.</p>
           </div>
         )}
       </div>
@@ -521,7 +523,10 @@ function PlayerView({ user, personalStats, allTime, seasonal, seasonName, onBack
       {personalStats.last5Matches.length > 0 && (
         <div className="card glass" style={{ padding: '20px', marginBottom: '24px', borderRadius: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-            <h3 className="card-title" style={{ margin: 0, fontSize: '1.1rem' }}>📅 Form Guide</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <h3 className="card-title" style={{ margin: 0, fontSize: '1.1rem' }}>📅 Form Guide</h3>
+              <span style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.06)', padding: '3px 10px', borderRadius: '99px', border: '1px solid var(--border)' }}>{seasonName} · League</span>
+            </div>
             <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700 }}>Last {personalStats.last5Matches.length}</span>
           </div>
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
@@ -545,20 +550,20 @@ function PlayerView({ user, personalStats, allTime, seasonal, seasonName, onBack
         </div>
       )}
 
-      {/* CAREER STATS */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-        <h3 className="card-title" style={{ margin: 0, fontSize: '1.15rem' }}>Career Highlights</h3>
-        <span style={{ fontSize: '0.66rem', fontWeight: 800, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.06)', padding: '3px 10px', borderRadius: '99px', border: '1px solid var(--border)' }}>All-time</span>
+      {/* SEASON HIGHLIGHTS */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
+        <h3 className="card-title" style={{ margin: 0, fontSize: '1.15rem' }}>Season Highlights</h3>
+        <span style={{ fontSize: '0.66rem', fontWeight: 800, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.06)', padding: '3px 10px', borderRadius: '99px', border: '1px solid var(--border)' }}>{seasonName} · League only</span>
       </div>
       <div className="home-stats-grid" style={{ marginBottom: '24px' }}>
         <StatTile icon="🎯" value={<CountUp end={personalStats.played} />} label="Matches" color="#10b981" />
         <StatTile icon="🏅" value={<span><CountUp end={personalStats.winRate} decimals={1} />%</span>} label="Win Rate" color="#38bdf8" />
-        <StatTile icon="💯" value={<CountUp end={allTime?.['180s'] || personalStats.total180s} />} label="All-Time 180s" color="#fbbf24" />
-        <StatTile icon="🐟" value={<CountUp end={allTime?.highestCheckout || personalStats.highestCheckout} />} label="Highest Checkout" color="#a78bfa" />
-        <StatTile icon="⚔️" value={<CountUp end={allTime?.legsWon || personalStats.legsWon} />} label="Legs Won" color="#10b981" />
-        <StatTile icon="🔥" value={<CountUp end={allTime?.legsLost || personalStats.legsLost} />} label="Legs Lost" color="#ef4444" />
-        <StatTile icon="👑" value={<CountUp end={allTime?.wins || personalStats.wins} />} label="Wins" color="#10b981" />
-        <StatTile icon="📉" value={<CountUp end={allTime?.losses || personalStats.losses} />} label="Losses" color="#ef4444" />
+        <StatTile icon="💯" value={<CountUp end={personalStats.total180s || 0} />} label="180s" color="#fbbf24" />
+        <StatTile icon="🐟" value={<CountUp end={personalStats.highestCheckout || 0} />} label="Highest Checkout" color="#a78bfa" />
+        <StatTile icon="⚔️" value={<CountUp end={personalStats.legsWon} />} label="Legs Won" color="#10b981" />
+        <StatTile icon="🔥" value={<CountUp end={personalStats.legsLost} />} label="Legs Lost" color="#ef4444" />
+        <StatTile icon="👑" value={<CountUp end={personalStats.wins} />} label="Wins" color="#10b981" />
+        <StatTile icon="📉" value={<CountUp end={personalStats.losses} />} label="Losses" color="#ef4444" />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: '20px' }}>
