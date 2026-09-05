@@ -189,6 +189,13 @@ export function AuthProvider({ children }) {
   );
 
   const requestNotificationPermission = useCallback(async () => {
+    // Native app: route through the device push pipeline
+    if (isNativeApp()) {
+      const native = await registerNativePush();
+      setNotificationPermission(native ? "granted" : "denied");
+      return !!native;
+    }
+
     if (!("Notification" in window)) {
       console.log("This browser does not support notifications");
       return false;
@@ -212,7 +219,7 @@ export function AuthProvider({ children }) {
 
     setNotificationPermission("denied");
     return false;
-  }, [user?.id]);
+  }, [user?.id, isNativeApp, registerNativePush]);
 
   const registerFCMToken = useCallback(async () => {
     if (!user?.id) return null;
@@ -272,8 +279,73 @@ export function AuthProvider({ children }) {
     return null;
   }, [user?.id, user?.username]);
 
+  const isNativeApp = useCallback(() => {
+    return (
+      typeof window !== "undefined" &&
+      !!window.Capacitor &&
+      typeof window.Capacitor.isNativePlatform === "function" &&
+      window.Capacitor.isNativePlatform()
+    );
+  }, []);
+
+  const registerNativePush = useCallback(async () => {
+    if (!user?.id) return null;
+    if (!isNativeApp()) return null;
+
+    try {
+      const { PushNotifications } = await import("@capacitor/push-notifications");
+      if (!PushNotifications) return null;
+
+      const permStatus = await PushNotifications.checkPermissions();
+      if (permStatus.receive === "prompt") {
+        await PushNotifications.requestPermissions();
+      }
+
+      const after = await PushNotifications.checkPermissions();
+      if (after.receive !== "granted") {
+        console.log("Native push permission not granted:", after.receive);
+        return null;
+      }
+
+      await PushNotifications.register();
+
+      PushNotifications.addListener("registration", ({ value }) => {
+        console.log("Native push token:", value?.substring?.(0, 20) + "...");
+        if (value) {
+          setFcmToken(value);
+          localStorage.setItem("eliteArrowsFcmToken", value);
+          setDoc(
+            doc(db, "fcmTokens", user.id),
+            {
+              userId: user.id,
+              username: user.username,
+              token: value,
+              tokens: arrayUnion(value),
+              updatedAt: new Date().toISOString(),
+            },
+            { merge: true },
+          ).catch((e) => console.error("Error saving native push token:", e));
+        }
+      });
+
+      PushNotifications.addListener("registrationError", (err) => {
+        console.error("Native push registration error:", err);
+      });
+
+      PushNotifications.addListener("pushNotificationReceived", (ntf) => {
+        console.log("Native push received (foreground):", ntf);
+        showToast?.(ntf?.title || "Elite Arrows", "info");
+      });
+
+      return "native-registered";
+    } catch (error) {
+      console.error("Error setting up native push:", error);
+      return null;
+    }
+  }, [user?.id, user?.username, isNativeApp, showToast]);
+
   const showLocalNotification = useCallback((title, options = {}) => {
-    if (Notification.permission === "granted") {
+    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
       const notification = new Notification(title, {
         icon: "/elite arrows.jpg",
         badge: "/elite arrows.jpg",
@@ -2479,6 +2551,12 @@ export function AuthProvider({ children }) {
       if (!user?.id) return;
 
       try {
+        // Native app (Capacitor): use the device push pipeline instead of web FCM
+        if (isNativeApp()) {
+          await registerNativePush();
+          return;
+        }
+
         const messaging = await getMessagingInstance();
         if (!messaging) return;
 
@@ -2519,7 +2597,7 @@ export function AuthProvider({ children }) {
     };
 
     setupNotifications();
-  }, [user?.id, registerFCMToken]);
+  }, [user?.id, registerFCMToken, registerNativePush, isNativeApp]);
 
   useEffect(() => {
     if (typeof window !== "undefined" && "Notification" in window) {
@@ -2568,6 +2646,7 @@ export function AuthProvider({ children }) {
     triggerCupsRefresh,
     requestNotificationPermission,
     registerFCMToken,
+    registerNativePush,
     showLocalNotification,
     updateBadgeCount,
     sendNotification,
@@ -2634,6 +2713,7 @@ export function AuthProvider({ children }) {
     triggerCupsRefresh,
     requestNotificationPermission,
     registerFCMToken,
+    registerNativePush,
     showLocalNotification,
     updateBadgeCount,
     sendNotification,
