@@ -39,24 +39,6 @@ const avgColor = (a) => {
   return '#ef4444'
 }
 
-function getSeasonLevel(seasonal) {
-  const avg = Number(seasonal?.average) || 0
-  const played = Number(seasonal?.played) || 0
-  const dbl = Number(seasonal?.doubleSuccess)
-  const doublesPct = Number.isFinite(dbl) ? dbl : 0
-  const perMatch180s = played > 0 ? (Number(seasonal?.['180s']) || 0) / played : 0
-
-  let score = avg
-  if (played > 0 && doublesPct >= 40) score += 1.5
-  if (perMatch180s >= 0.5) score += 1
-
-  if (score >= 60) return { name: 'Elite', color: '#fbbf24', rating: 'Elite Level' }
-  if (score >= 52) return { name: 'Diamond', color: '#38bdf8', rating: 'Diamond Level' }
-  if (score >= 42) return { name: 'Emerald', color: '#10b981', rating: 'Emerald Level' }
-  if (score > 0) return { name: 'Platinum', color: '#818cf8', rating: 'Platinum Level' }
-  return { name: 'Unrated', color: 'var(--text-muted)', rating: 'Unrated — needs season games' }
-}
-
 function Ring({ value, max, size = 110, stroke = 10, color, label, display }) {
   const pct = Math.min(Math.max((Number(value) / (max || 1)) * 100, 0), 100)
   const r = (size - stroke) / 2
@@ -175,6 +157,10 @@ export default function Statistics() {
       fixtures, adminData, leagueOnly: true
     })[String(id)] || null
   }, [allUsers, approvedResults, fixtures, adminData, id])
+
+  const seasonAllPlayers = useMemo(() => derivePlayerStatsFromResults(allUsers, approvedResults, {
+    fixtures, adminData, leagueOnly: true
+  }), [allUsers, approvedResults, fixtures, adminData])
 
   const personalStats = useMemo(() => {
     if (!id) return null
@@ -398,6 +384,8 @@ export default function Statistics() {
           selectedDivFilter={selectedDivFilter}
           setSelectedDivFilter={setSelectedDivFilter}
           approvedResults={approvedResults}
+          seasonAllPlayers={seasonAllPlayers}
+          seasonName={selectedSeason}
           allUsers={allUsers}
           navigate={navigate}
         />
@@ -432,7 +420,6 @@ function PlayerView({ user, personalStats, allTime, seasonal, seasonName, onBack
   const formColor = (r) => r === 'W' ? 'var(--success)' : r === 'L' ? 'var(--error)' : 'var(--text-muted)'
   const seasonAvg = Number(seasonal?.average) || 0
   const winRate = Number(personalStats.winRate) || 0
-  const seasonLevel = getSeasonLevel(seasonal)
   const seasonDoubles = (() => {
     const d = Number(seasonal?.doubleSuccess)
     return Number.isFinite(d) ? d : null
@@ -467,10 +454,6 @@ function PlayerView({ user, personalStats, allTime, seasonal, seasonName, onBack
                 <span style={{ fontSize: '0.72rem', fontWeight: 800, padding: '4px 12px', borderRadius: '99px', color: DIVISION_COLORS[user?.division] || 'var(--text-muted)', background: `${DIVISION_COLORS[user?.division] || '#888'}1f`, border: `1px solid ${DIVISION_COLORS[user?.division] || '#888'}55` }}>
                   {(user?.division || 'Unassigned').toUpperCase()}
                 </span>
-                <span style={{ fontSize: '0.72rem', fontWeight: 900, padding: '4px 12px', borderRadius: '99px', color: seasonLevel.color, background: `${seasonLevel.color}1f`, border: `1px solid ${seasonLevel.color}66`, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: seasonLevel.color, boxShadow: `0 0 8px ${seasonLevel.color}` }} />
-                  {seasonLevel.name.toUpperCase()} LEVEL
-                </span>
                 <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)' }}>
                   {personalStats.played} matches · {personalStats.points} pts · {personalStats.wins}W {personalStats.losses}L
                 </span>
@@ -498,7 +481,7 @@ function PlayerView({ user, personalStats, allTime, seasonal, seasonName, onBack
       </div>
 
       {/* PERSONAL SEASON STATS */}
-      <div className="card glass" style={{ padding: '24px', marginBottom: '24px', borderRadius: '22px', border: `1px solid ${seasonLevel.color}33` }}>
+      <div className="card glass" style={{ padding: '24px', marginBottom: '24px', borderRadius: '22px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '18px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
@@ -506,12 +489,8 @@ function PlayerView({ user, personalStats, allTime, seasonal, seasonName, onBack
               <span style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.06)', padding: '4px 12px', borderRadius: '99px', border: '1px solid var(--border)' }}>{seasonName}</span>
             </div>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: '6px 0 0' }}>
-              Performance level based on your {seasonName} form — <strong style={{ color: seasonLevel.color }}>{seasonLevel.rating}</strong>
+              {seasonName} form — games, points, average, finishing and big scores.
             </p>
-          </div>
-          <div style={{ textAlign: 'center', padding: '12px 18px', borderRadius: '16px', background: `linear-gradient(150deg, ${seasonLevel.color}1a, rgba(15,23,42,0.4))`, border: `1px solid ${seasonLevel.color}55` }}>
-            <div style={{ fontSize: '1.5rem', fontWeight: 900, color: seasonLevel.color, lineHeight: 1.1 }}>{seasonLevel.name}</div>
-            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '2px' }}>Level</div>
           </div>
         </div>
 
@@ -527,10 +506,6 @@ function PlayerView({ user, personalStats, allTime, seasonal, seasonName, onBack
               <StatTile icon="💯" value={<CountUp end={Number(seasonal?.['180s']) || 0} />} label="180s" color="#fbbf24" />
               <StatTile icon="📏" value={`${(Number(seasonal?.legsWon) || 0)}-${(Number(seasonal?.legsLost) || 0)}`} label="Legs Won-Lost" color="#10b981" />
             </div>
-            <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.6 }}>
-              Level rating uses your 3-dart average with small boosts for strong doubles (≥40%) and regular 180s.
-              Elite ≥60 · Diamond 52–59.9 · Emerald 42–51.9 · Platinum &lt;42.
-            </p>
           </>
         ) : (
           <div style={{ textAlign: 'center', padding: '24px', border: '1px dashed var(--border)', borderRadius: '14px' }}>
@@ -673,7 +648,7 @@ function PlayerView({ user, personalStats, allTime, seasonal, seasonName, onBack
   )
 }
 
-function DivisionOverview({ leagueStats, filteredDiv180s, selectedDivFilter, setSelectedDivFilter, approvedResults, allUsers, navigate }) {
+function DivisionOverview({ leagueStats, filteredDiv180s, selectedDivFilter, setSelectedDivFilter, approvedResults, seasonAllPlayers, seasonName, allUsers, navigate }) {
   const totalPlayers = useMemo(() => allUsers.filter(u => DIVISIONS.includes(u?.division)).length, [allUsers])
   const totalMatches = approvedResults.length
   const total180s = approvedResults.reduce((acc, r) => acc + Number(r.player1Stats?.['180s'] || 0) + Number(r.player2Stats?.['180s'] || 0), 0)
@@ -829,6 +804,234 @@ function DivisionOverview({ leagueStats, filteredDiv180s, selectedDivFilter, set
           </ResponsiveContainer>
         </div>
       </div>
+
+      <SeasonPlayerBrowser
+        seasonStatsMap={seasonAllPlayers}
+        results={approvedResults}
+        seasonName={seasonName}
+        divFilter={selectedDivFilter}
+        allUsers={allUsers}
+        navigate={navigate}
+      />
+    </div>
+  )
+}
+
+function SeasonPlayerBrowser({ seasonStatsMap, results, seasonName, divFilter, allUsers, navigate }) {
+  const [search, setSearch] = useState('')
+  const [expandedId, setExpandedId] = useState(null)
+  const [expandedProofs, setExpandedProofs] = useState({})
+
+  const toggleProof = (rid, field) => setExpandedProofs(prev => ({ ...prev, [`${rid}_${field}`]: !prev[`${rid}_${field}`] }))
+
+  const niceDate = (r) => {
+    const raw = r.date || r.submittedAt || r.createdAt
+    if (!raw) return '—'
+    const d = new Date(raw)
+    if (isNaN(d.getTime())) return '—'
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+  }
+
+  const players = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return allUsers
+      .filter(u => DIVISIONS.includes(u?.division))
+      .filter(u => !divFilter || divFilter === 'all' || u.division === divFilter)
+      .filter(u => !q || String(u?.username || u?.name || '').toLowerCase().includes(q))
+      .map(u => {
+        const s = seasonStatsMap?.[String(u.id)] || null
+        return {
+          ...u,
+          stats: s,
+          hasGames: Number(s?.played) > 0
+        }
+      })
+      .sort((a, b) => (Number(b.stats?.points) || 0) - (Number(a.stats?.points) || 0) || String(a.username || '').localeCompare(String(b.username || '')))
+  }, [allUsers, seasonStatsMap, divFilter, search])
+
+  const userResults = (id) => results
+    .filter(r => String(r.player1Id) === String(id) || String(r.player2Id) === String(id))
+    .slice()
+    .sort((a, b) => new Date(b.submittedAt || b.date || 0) - new Date(a.submittedAt || a.date || 0))
+
+  const viewFor = (r, id) => {
+    const isP1 = String(r.player1Id) === String(id)
+    const oppId = isP1 ? r.player2Id : r.player1Id
+    const opp = allUsers.find(u => String(u.id) === String(oppId))
+    const myScore = Number(isP1 ? r.player1Score : r.player2Score) || 0
+    const oppScore = Number(isP1 ? r.player2Score : r.player1Score) || 0
+    const result = myScore > oppScore ? 'W' : myScore < oppScore ? 'L' : 'D'
+    return { isP1, opp, myScore, oppScore, result }
+  }
+
+  const chip = (label, value, color) => (
+    <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', padding: '6px 10px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', minWidth: '52px' }}>
+      <span style={{ fontSize: '0.85rem', fontWeight: 900, color, lineHeight: 1 }}>{value}</span>
+      <span style={{ fontSize: '0.56rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</span>
+    </span>
+  )
+
+  const proofButtons = (r) => {
+    const hasImage = Boolean(r.proofImage || r.proofVideo || r.hasProofImage)
+    return (
+      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+        {r.proofImage && (
+          <button onClick={() => toggleProof(r.id, '1')} style={{ fontSize: '0.66rem', padding: '5px 10px', borderRadius: '8px', border: '1px solid rgba(0,212,255,0.3)', background: expandedProofs[`${r.id}_1`] ? 'var(--accent-cyan)' : 'rgba(0,212,255,0.1)', color: expandedProofs[`${r.id}_1`] ? '#000' : '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            {expandedProofs[`${r.id}_1`] ? 'Hide Proof' : '🖼️ Proof'}
+          </button>
+        )}
+        {r.proofImage2 && (
+          <button onClick={() => toggleProof(r.id, '2')} style={{ fontSize: '0.66rem', padding: '5px 10px', borderRadius: '8px', border: '1px solid rgba(0,212,255,0.3)', background: expandedProofs[`${r.id}_2`] ? 'var(--accent-cyan)' : 'rgba(0,212,255,0.1)', color: expandedProofs[`${r.id}_2`] ? '#000' : '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            {expandedProofs[`${r.id}_2`] ? 'Hide Proof 2' : '🖼️ Proof 2'}
+          </button>
+        )}
+        {r.proofVideo && (
+          <button onClick={() => window.open(r.proofVideo, '_blank')} style={{ fontSize: '0.66rem', padding: '5px 10px', borderRadius: '8px', border: '1px solid rgba(16,185,129,0.4)', background: 'rgba(16,185,129,0.12)', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            ▶️ Video
+          </button>
+        )}
+        {!hasImage && <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>No proof</span>}
+      </div>
+    )
+  }
+
+  const proofImageCells = (r) => {
+    if (!expandedProofs[`${r.id}_1`] && !expandedProofs[`${r.id}_2`]) return null
+    return (
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
+        {expandedProofs[`${r.id}_1`] && r.proofImage && (
+          <img src={r.proofImage} alt="Proof" style={{ maxWidth: '220px', width: '100%', borderRadius: '8px', border: '1px solid var(--border)' }} />
+        )}
+        {expandedProofs[`${r.id}_2`] && r.proofImage2 && (
+          <img src={r.proofImage2} alt="Proof 2" style={{ maxWidth: '220px', width: '100%', borderRadius: '8px', border: '1px solid var(--border)' }} />
+        )}
+      </div>
+    )
+  }
+
+  const playersWithGames = players.filter(p => p.hasGames)
+  const playersNoGames = players.filter(p => !p.hasGames)
+
+  return (
+    <div className="card glass" style={{ padding: '22px', borderRadius: '20px', marginTop: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px', marginBottom: '6px' }}>
+        <div>
+          <h3 className="card-title" style={{ margin: 0, fontSize: '1.15rem' }}>🙌 Personal Season Stats & Results</h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', margin: '6px 0 0' }}>
+            Every player's {seasonName} (or current season) stats, their league results and the proof attached to each game.
+          </p>
+        </div>
+        <span style={{ fontSize: '0.66rem', fontWeight: 800, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.06)', padding: '4px 12px', borderRadius: '99px', border: '1px solid var(--border)' }}>{seasonName}</span>
+      </div>
+
+      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', margin: '14px 0 18px', alignItems: 'center' }}>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search players…"
+          style={{ flex: '1', minWidth: '180px', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border)', borderRadius: '12px', padding: '9px 14px', fontSize: '0.82rem', color: '#fff', outline: 'none' }}
+        />
+        <div className="division-tabs" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          {[{ key: 'all', label: 'All' }, ...DIVISIONS.map(d => ({ key: d, label: d }))].map(tab => (
+            <button key={tab.key} className={`division-tab ${divFilter === tab.key ? 'active' : ''}`} onClick={() => setSelectedDivFilter(tab.key)} style={{ fontSize: '0.72rem', padding: '6px 14px' }}>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {players.length === 0 && (
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', padding: '16px', textAlign: 'center' }}>No players match this filter.</p>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {playersWithGames.map(p => (
+          <div key={p.id}>
+            <div className="card glass glass-hover" style={{ padding: 0, overflow: 'hidden', borderRadius: '16px' }}>
+              <div onClick={() => setExpandedId(expandedId === p.id ? null : p.id)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '14px', padding: '12px 16px', flexWrap: 'wrap' }}>
+                <Avatar user={p} size={44} />
+                <div style={{ flex: 1, minWidth: '130px' }}>
+                  <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#fff' }}>{p.username || p.name || 'Player'}</div>
+                  <div style={{ fontSize: '0.66rem', fontWeight: 700, color: DIVISION_COLORS[p.division] || 'var(--text-muted)', marginTop: '3px', letterSpacing: '0.04em' }}>{p.division?.toUpperCase()}</div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {chip('GP', p.stats?.played || 0, 'white')}
+                  {chip('Avg', p.stats?.average > 0 ? Number(p.stats.average).toFixed(1) : '—', avgColor(Number(p.stats?.average)))}
+                  {chip('W-L', `${p.stats?.wins || 0}-${p.stats?.losses || 0}`, p.stats?.wins > 0 ? 'var(--success)' : 'var(--error)')}
+                  {chip('Pts', p.stats?.points || 0, 'var(--accent-cyan)')}
+                  {chip('180s', p.stats?.['180s'] || 0, '#fbbf24')}
+                  {chip('CO', p.stats?.highestCheckout > 0 ? p.stats.highestCheckout : '—', '#ef4444')}
+                </div>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', transform: expandedId === p.id ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
+              </div>
+
+              {expandedId === p.id && (
+                <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '14px 16px', background: 'rgba(0,0,0,0.15)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#fff' }}>{seasonName} League Results</span>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/statistics/${p.id}`)} style={{ fontSize: '0.68rem', padding: '5px 12px' }}>Full Stats →</button>
+                    </div>
+                  </div>
+                  <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                    <table style={{ width: '100%', minWidth: '560px', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)', fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                          <th style={{ padding: '8px' }}>Date</th>
+                          <th style={{ padding: '8px', textAlign: 'center' }}>Score</th>
+                          <th style={{ padding: '8px' }}>Opponent</th>
+                          <th style={{ padding: '8px', textAlign: 'center' }}>Result</th>
+                          <th style={{ padding: '8px' }}>Proof</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {userResults(p.id).map(r => {
+                          const v = viewFor(r, p.id)
+                          const resColor = v.result === 'W' ? 'var(--success)' : v.result === 'L' ? 'var(--error)' : 'var(--text-muted)'
+                          return (
+                            <tr key={r.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', fontSize: '0.8rem' }}>
+                              <td style={{ padding: '10px 8px', color: 'var(--text-muted)', whiteSpace: 'nowrap', fontSize: '0.75rem' }}>{niceDate(r)}</td>
+                              <td style={{ padding: '10px 8px', textAlign: 'center', fontWeight: 800, color: '#fff' }}>{v.myScore} – {v.oppScore}</td>
+                              <td style={{ padding: '10px 8px' }}>
+                                <span style={{ fontWeight: 700, color: '#fff' }}>{v.opp?.username || v.opp?.name || 'Unknown'}</span>
+                                {v.opp?.division && <span style={{ fontSize: '0.6rem', marginLeft: '6px', color: DIVISION_COLORS[v.opp.division] || 'var(--text-muted)' }}>{v.opp.division}</span>}
+                              </td>
+                              <td style={{ padding: '10px 8px', textAlign: 'center' }}>
+                                <span style={{ fontWeight: 900, color: resColor, fontSize: '0.85rem' }}>{v.result}</span>
+                              </td>
+                              <td style={{ padding: '10px 8px' }}>
+                                {proofButtons(r)}
+                                {proofImageCells(r)}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                        {userResults(p.id).length === 0 && (
+                          <tr><td colSpan="5" style={{ padding: '14px', color: 'var(--text-muted)', textAlign: 'center', fontSize: '0.78rem' }}>No league results this season.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {playersNoGames.length > 0 && (
+        <div style={{ marginTop: '20px' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.72rem', margin: '0 0 10px' }}>No season matches yet</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {playersNoGames.map(p => (
+              <button key={p.id} onClick={() => navigate(`/statistics/${p.id}`)} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '99px', padding: '5px 8px', cursor: 'pointer', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                <Avatar user={p} size={26} />
+                {p.username || p.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
