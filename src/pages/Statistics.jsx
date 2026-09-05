@@ -598,14 +598,7 @@ function PlayerView({ user, personalStats, allTime, seasonal, onBack }) {
 }
 
 function DivisionOverview({ leagueStats, filteredDiv180s, selectedDivFilter, setSelectedDivFilter, approvedResults, allUsers, navigate }) {
-  const totalPlayers = useMemo(() => {
-    const playerIds = new Set()
-    approvedResults.forEach(r => {
-      if (r.player1Id) playerIds.add(String(r.player1Id))
-      if (r.player2Id) playerIds.add(String(r.player2Id))
-    })
-    return playerIds.size
-  }, [approvedResults])
+  const totalPlayers = useMemo(() => allUsers.filter(u => DIVISIONS.includes(u?.division)).length, [allUsers])
   const totalMatches = approvedResults.length
   const total180s = approvedResults.reduce((acc, r) => acc + Number(r.player1Stats?.['180s'] || 0) + Number(r.player2Stats?.['180s'] || 0), 0)
   const seasonHighCO = Math.max(...approvedResults.map(r => Math.max(Number(r.player1Stats?.highestCheckout || 0), Number(r.player2Stats?.highestCheckout || 0))), 0)
