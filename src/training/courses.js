@@ -5,6 +5,8 @@ export const COURSES = [
     tagline: 'Master your grip, stance and action so every dart leaves your hand the same way.',
     icon: '🎯',
     level: 'Beginner + Intermediate',
+    levelRange: { min: 30, max: 55 },
+    focus: 'mechanics',
     color: '#4da8da',
     description: 'A consistent throw is the bedrock of a higher average. This course walks through the four checkpoints — stance, grip, release and follow-through — using the professional principles that underpin every top player.',
     lessons: [
@@ -205,6 +207,8 @@ export const COURSES = [
     tagline: 'Stop leaking points to bad darts and build a scoring game that holds under pressure.',
     icon: '📈',
     level: 'All Levels',
+    levelRange: { min: 40, max: 85 },
+    focus: 'scoring',
     color: '#22c55e',
     description: 'Your average is built in the scoring visits. This course teaches the counter-intuitive truth about averages — reducing bad darts lifts your number more than hitting extra trebles — and gives you a proven scoring session.',
     lessons: [
@@ -373,6 +377,8 @@ export const COURSES = [
     tagline: 'Checkouts decide matches. Learn the routes, the alternatives and how to see the board.',
     icon: '🔥',
     level: 'All Levels',
+    levelRange: { min: 40, max: 85 },
+    focus: 'finishing',
     color: '#f97316',
     description: 'A player who averages 55 but hits 40% of doubles beats someone averaging 65 who hits 25%. This course uses Wayne Mardle\'s proven board-on-the-lap method and structured doubles games to turn your finishing into a weapon.',
     lessons: [
@@ -498,6 +504,8 @@ export const COURSES = [
     tagline: 'Routine, breathing and process — the mental game that protects your average when it matters.',
     icon: '🧠',
     level: 'All Levels',
+    levelRange: { min: 40, max: 85 },
+    focus: 'mental',
     color: '#a78bfa',
     description: 'Distractions and pressure are everywhere. This course builds the routine that keeps your body calm and your mind on the process — not on the numbers.',
     lessons: [
@@ -648,6 +656,329 @@ export const COURSES = [
           'The pause after a 26 is discipline, not weakness'
         ],
         sources: ['Published coaching guidance on scoring recovery', 'Academy curriculum review']
+      }
+    ]
+  },
+  {
+    id: 'practice-plan',
+    title: 'Build a Training Routine That Works',
+    tagline: 'Structure beats volume. A planned week lifts your average faster than long, aimless practice.',
+    icon: '🗓️',
+    level: 'All Levels',
+    levelRange: { min: 30, max: 60 },
+    focus: 'schedule',
+    color: '#f59e0b',
+    description: 'Most players practise a lot and improve a little, because the sessions are unstructured. This course shows you how to plan a week of deliberate practice — scoring blocks, doubles work and recovery — so every 30 minutes has a purpose.',
+    lessons: [
+      {
+        id: 'deliberate-practice',
+        title: 'Deliberate Practice, Not Just Practice',
+        minutes: 7,
+        coachId: 'pipe',
+        summary: "Purpose over volume. A focused session beats an aimless hour — every dart should have a target and every session a point.",
+        sections: [
+          {
+            heading: 'Every session needs a job',
+            paragraphs: [
+              "The difference between players who improve and players who spin their wheels is rarely hours thrown — it is intent. A session with one clear job ('keep every dart in the 20 bed tonight') produces more improvement than a vague hour of throwing 'at the board'.",
+              "Justin Pipe has been consistent on this: practice should be enjoyable, not a chore, and the moment you're just going through the motions you have stopped improving. Enjoyable and deliberate are the same thing — you enjoy it because it has a purpose."
+            ]
+          },
+          {
+            heading: 'One target, one session',
+            paragraphs: [
+              "Resist the temptation to fix everything at once. Pick a single focus per session — today it's treble 20 volume, tomorrow it's your doubles prep — and judge the session only on that one thing.",
+              "A checklist of half-a-dozen drills looks organised but dilutes attention. The players with the most repeatable throws built them one small adjustment at a time."
+            ]
+          },
+          {
+            heading: 'End on a good note',
+            paragraphs: [
+              "Always finish a session with something you do well. A slump at minute 45 teaches you to dread practice; a strong finish — even just a run of comfortable grouping — builds the association that brings you back tomorrow.",
+              "Ten good throws at the end of a session outweigh the last ten ragged ones. Structure that exit on purpose."
+            ]
+          }
+        ],
+        keyPoints: [
+          'One clear job per session — never aimless volume',
+          'Enjoyment and intent are the same thing',
+          'Fix one thing at a time, judge on that one thing',
+          'Always finish on something you do well'
+        ],
+        sources: ['Justin Pipe guidance via Darts Aim', 'Published practice-planning guides (Shot Darts / Practise & Play)']
+      },
+      {
+        id: 'the-balanced-week',
+        title: 'The Balanced Week',
+        minutes: 8,
+        coachId: 'academy',
+        summary: 'Score, then finish, then recover. A simple weekly split that mirrors how matches are actually won.',
+        sections: [
+          {
+            heading: 'Two scoring blocks, one doubles block',
+            paragraphs: [
+              "A proven weekly shape for a league player who can manage three to four sessions: two sessions built around scoring volume (the 30-minute routine from the Scoring course), one dedicated to doubles and checkouts, and one shorter 'touch' session before match night.",
+              "Why this order? Most league legs are decided in the finishing visit. But you never get to a finishing visit unless your scoring keeps you in the game — so scoring volume carries the week, and doubles sharpness closes it out."
+            ]
+          },
+          {
+            heading: 'Match night changes the math',
+            paragraphs: [
+              "On the day before you play, cut the volume in half. Two sharp 15-minute blocks — treble 20 warm-up and doubles — beat a two-hour grind that leaves your arm heavy for tomorrow.",
+              "The day after a match, take it light or skip the board entirely. A fatigued arm cannot build repeatability; it only builds bad habits you'll have to unlearn.",
+              "If you want a daily anchor on match weeks, keep sessions to 30 minutes and make the first five minutes a gentle round-the-clock warm-up."
+            ]
+          },
+          {
+            heading: 'Build the week in the app',
+            paragraphs: [
+              "Log your numbers in the Progress Tracker after each session — treble percentage on scoring days, doubles hit-rate on finishing days. Two weeks of logs show you what a real training week earns you, and where the balance is drifting.",
+              "The week, not the session, is the unit of improvement. Plan it like one."
+            ]
+          }
+        ],
+        keyPoints: [
+          'Weekly shape: 2x scoring, 1x doubles, 1x light touch session',
+          'Halve the volume the day before a match',
+          'Light or off the day after — fatigue breeds bad habits',
+          'Judge improvement by the week, not the session'
+        ],
+        sources: ['Published practice-planning guides (Shot Darts / Practise & Play)', 'Published 30-minute scoring routine (DartsVA)']
+      },
+      {
+        id: 'track-the-numbers',
+        title: 'Track the Numbers That Matter',
+        minutes: 6,
+        coachId: 'academy',
+        summary: 'Log percentages, not feelings. The metrics that predict your average are treble volume, grouping and doubles rate.',
+        sections: [
+          {
+            heading: 'What to log',
+            paragraphs: [
+              "Three numbers move your average: your treble percentage in scoring sessions, your grouping (mouths landing inside the 20 bed), and your doubles hit-rate. Log those — not the one night where everything went in.",
+              "Use the app's Progress Tracker to record avg3, avg9, checkout rate and 180s per session. The graph is the point: you are looking for a trend over three or more weeks, and a trend is impossible to see in a single diary entry."
+            ]
+          },
+          {
+            heading: 'Judge trends, not nights',
+            paragraphs: [
+              "A brilliant Tuesday or a dreadful Thursday is variance. What matters is the line across the fortnight. If your treble percentage is climbing a point at a time and your doubles are steady, your league average is about to follow.",
+              "Mark every session, including the bad ones. Silent gaps in the log teach you nothing; a logged bad session tells you exactly when fatigue or a mid-season slump started."
+            ]
+          },
+          {
+            heading: 'The numbers tell you what to fix',
+            paragraphs: [
+              "Consistently low treble but good doubles? Your scoring process needs work — revisit the Scoring course. Doubles hovering around 20-25%? The Finishing course earns you a win every other leg. Strong everything but losing close legs? Game Management and Mindset are your courses.",
+              "Your own numbers are the best coach. They tell you which lesson to open tomorrow."
+            ]
+          }
+        ],
+        keyPoints: [
+          'Log treble %, grouping and doubles rate after each session',
+          'Look at the 3-week trend, never a single night',
+          'Log the bad sessions too — they are data',
+          'Let the pattern pick your next course'
+        ],
+        sources: ['Published practice-planning guides (Shot Darts / Practise & Play)', 'Published 30-minute scoring routine (DartsVA)']
+      },
+      {
+        id: 'rest-and-taper',
+        title: 'Rest Is Part of the Plan',
+        minutes: 6,
+        coachId: 'academy',
+        summary: 'Freshness is a skill. Taper volume before matches and make recovery deliberate.',
+        sections: [
+          {
+            heading: 'Tapering, the low-tech version',
+            paragraphs: [
+              "Tournament players taper: heavy practice weeks before the event, then a sharp two-day light period so arrival is fresh and confident. League players can do the same in miniature — train hard mid-week, ease off going into match night.",
+              "A tapering week still includes the board every day, but shorter and sharper. Familiarity without fatigue is the goal."
+            ]
+          },
+          {
+            heading: 'The warning signs',
+            paragraphs: [
+              "Dartitis, slumping averages and a throwing arm that 'feels heavy' are usually over-training showing up at the board. If your treble percentage drops two weeks in a row while practice volume went up, you are not working hard enough — you are working too hard.",
+              "Cut the volume, keep the quality, sleep properly. Repeatability is built by a rested arm repeating."
+            ]
+          },
+          {
+            heading: 'Recovery is deliberate, too',
+            paragraphs: [
+              "Match nights, especially in league formats, are themselves stress. Treat the day after as a scheduled light day or rest day, not a should-I-or-shouldn't-I decision made late at night.",
+              "The best training plan fails if it ignores recovery. Build it in advance and it stops being a struggle."
+            ]
+          }
+        ],
+        keyPoints: [
+          'Taper sharp and light before match night',
+          'Two straight weeks of dropping numbers while volume rises = over-training',
+          'Rest day after match night, planned in advance',
+          'Freshness is part of the skill'
+        ],
+        sources: ['Published practice-planning guides (Shot Darts / Practise & Play)']
+      }
+    ]
+  },
+  {
+    id: 'game-management',
+    title: 'Win the Leg Between the Scoring',
+    tagline: 'Read the board, adapt your targets and make every decision count — the difference between good scorers and good winners.',
+    icon: '♟️',
+    level: 'Club Standard +',
+    levelRange: { min: 55, max: 100 },
+    focus: 'strategy',
+    color: '#ec4899',
+    description: 'When your scoring is already solid, matches are decided by decisions: which route to leave, when to switch from 20s, and how to behave in the legs that matter. This course turns board knowledge into match wins.',
+    lessons: [
+      {
+        id: 'read-the-board',
+        title: 'Read the Board Before You Throw',
+        minutes: 8,
+        coachId: 'mardle',
+        summary: "Board recognition beats board luck. The best players know their route and every escape hatch before the dart leaves the hand.",
+        sections: [
+          {
+            heading: 'Pre-decide the route',
+            paragraphs: [
+              "Before every visit decide: where am I going and what do each of the three darts leave me? Players who decide mid-throw hesitate, and hesitation is where double-misses are born.",
+              "Mardle's board-on-the-lap method trains exactly this — seeing the route and every miss visually, away from the oche, until recognition is automatic. When the same numbers appear in a match, the answer is already there."
+            ]
+          },
+          {
+            heading: 'Know what a miss leaves',
+            paragraphs: [
+              "The flexible-route principle applies to every visit, not just checkouts. If your first dart misses at 20s, where does the next dart go? If you are on 93 and hit treble 7, what does 72 leave you?",
+              "Players who only know the perfect route panic at the first miss. Players who know the escape route simply continue the visit. That difference shows up in the score."
+            ]
+          },
+          {
+            heading: 'Use the pause to commit',
+            paragraphs: [
+              "Your routine — step, set, breathe, throw — is also a decision point. Use it to commit to the route for this visit. The dart should leave your hand with the plan already locked in.",
+              "Commitment is a learned skill. Every visit, decide before the first dart: target, route, escape."
+            ]
+          }
+        ],
+        keyPoints: [
+          'Decide the route before the first dart',
+          'Know exactly what every miss leaves',
+          'Rehearse routes and escapes away from the oche',
+          'Commit with the pause in your routine'
+        ],
+        sources: ['Wayne Mardle / Winmau Darts coaching video', 'Published coaching guides on checkout routes']
+      },
+      {
+        id: 'score-to-your-out',
+        title: 'Score to Your Double',
+        minutes: 8,
+        coachId: 'academy',
+        summary: 'Your scoring target should leave the darts you actually hit. The math of setting up a checkout is a skill of its own.',
+        sections: [
+          {
+            heading: 'Leave yourself a real finish',
+            paragraphs: [
+              "The closing math of 501 rewards visits that leave a finishing number you can actually hit in two or three darts. On a low score coming into the leg's end, that usually means steering toward finishing numbers like 32, 40 or 50 rather than scrambling into awkward 41s and 45s.",
+              "Practising checkouts — both the standard route and the flexible route — changes how you score in the final visits of a leg. You stop simply scoring and start setting up."
+            ]
+          },
+          {
+            heading: 'Use your own numbers',
+            paragraphs: [
+              "The tables in the Finishing course give the standard routes, but 'standard' is a starting point. Your training logs tell you which doubles you hit at 30%, 40%, 50% — leave yourself the doubles you actually hit.",
+              "This is where tactics meet technique. One player feels invincible on tops; another swears by double 16. The planning changes, the principle doesn't: leave the number you finish best."
+            ]
+          },
+          {
+            heading: 'Bank victories, not hero shots',
+            paragraphs: [
+              "Late in a leg, a deliberate trip to a strong double beats a hopeful shot at a treble that leaves you in scrambling territory. This is why doubles practice twice a week out-earns a seventh scoring session.",
+              "The players who win close legs are the ones who treat the last 100 points as a planning exercise, not a lottery."
+            ]
+          }
+        ],
+        keyPoints: [
+          'Steer the final visits toward a finish you can hit',
+          'Know your best doubles from your training logs',
+          'Use standard routes as a baseline, adapt to your strengths',
+          'A planned double beats a speculative treble'
+        ],
+        sources: ['Published coaching guides on checkout route planning', 'Wayne Mardle / Winmau Darts coaching video']
+      },
+      {
+        id: 'switch-targets',
+        title: 'When to Abandon the 20s',
+        minutes: 7,
+        coachId: 'academy',
+        summary: "If the 20s aren't landing, staying on them out of pride is a decision. Switching targets keeps your scoring alive.",
+        sections: [
+          {
+            heading: 'The 20-bed and its enemies',
+            paragraphs: [
+              "For most players treble 20 is the primary target by math — maximum points stay on 20s. But the 20 bed sits between the 5 and the 1, and a hand that is slightly off today will leak sideways more than it should.",
+              "When two scoring darts in a row fall into the 5 or the 1 even though your throw feels fine, the board itself has changed your odds. That is the signal to switch."
+            ]
+          },
+          {
+            heading: 'Where to go instead',
+            paragraphs: [
+              "Treble 19 loses a handful of points to 20s when it lands, but the bed is surrounded by neighbours that hurt less — a miss on 19s often lands 7 or 3, a 26 by any other name. Treble 18 and the 14s are further options when even 19s wander.",
+              "The habit of pros and sharp league players: start visits on your hot treble, and switch when the misses tell you to. Pre-decide the switch before the visit so it's a tactic, not an emotion."
+            ]
+          },
+          {
+            heading: 'Broaden the range in practice',
+            paragraphs: [
+              "Practise T19, T18 and T14 volume the same way you practise T20 — count trebles, log percentages. A switch under pressure is only real if the number you switch to is practised.",
+              "A player who can switch to 19s and still score is harder to beat than a player who only ever looks at the 20."
+            ]
+          }
+        ],
+        keyPoints: [
+          'Watch the misses, not the scoreboard',
+          'Switch when 20s leak into 5s and 1s twice in a row',
+          'Pre-decide the switch before the visit',
+          'Practise T19/T18/T14 so the switch is real under pressure'
+        ],
+        sources: ['Published coaching guides on target switching', 'Academy curriculum review']
+      },
+      {
+        id: 'pressure-deciders',
+        title: 'Play the Legs That Matter',
+        minutes: 8,
+        coachId: 'nicholson',
+        summary: "Deciders are won by process, not panic. Control the routine and the scoreboard takes care of itself.",
+        sections: [
+          {
+            heading: 'The decider is just another leg',
+            paragraphs: [
+              "The most important skill in deciding legs is refusing to treat them differently. Paul Nicholson's point belongs here more than anywhere: the average — and the occasion — is a reflection of what you've done, not a forecast. Clinging to the scoreline or the stakes is how you lose the routine.",
+              "In a decider, run the identical routine to the first leg of the night: same stance check, same breath, same targets. Novelty under stress is the enemy of repeatability."
+            ]
+          },
+          {
+            heading: 'Protect the first dart of each visit',
+            paragraphs: [
+              "Pressure visits fall apart on the first dart. If the first dart of a deciding visit is rushed, the remaining two darts get worse, not better. Park the breath, set the feet, and let the first dart leave exactly like the last one did.",
+              "Build this habit in practice with the recovery sequence from the Mindset course — step off, breathe, reset. In a decider it is the same skill, just with a board full of people watching."
+            ]
+          },
+          {
+            heading: 'Make them beat your double',
+            paragraphs: [
+              "You cannot control your opponent's darts. You can control whether they have to beat you, not watch you beat yourself. That is what deliberate scoring and committed checkouts buy you in the legs that matter.",
+              "Live in the process of your next three darts. The leg, the match and the average all follow."
+            ]
+          }
+        ],
+        keyPoints: [
+          'Treat deciders like leg one — same routine',
+          'Protect the first dart of the big visit',
+          'Use the step-off, breathe, reset sequence under pressure',
+          'Make the opponent beat you — never beat yourself'
+        ],
+        sources: ['Paul Nicholson via Darts Aim', 'Published coaching guidance on scoring recovery']
       }
     ]
   }
