@@ -1,33 +1,52 @@
 import { useState, useRef } from 'react'
 
+const SWIPE_DEAD_ZONE = 10
+const SWIPE_COMMIT_DISTANCE = 100
+
 export function SwipeItem({ children, onSwipeLeft, onSwipeRight, leftAction, rightAction }) {
   const [translateX, setTranslateX] = useState(0)
   const startX = useRef(0)
-  const currentX = useRef(0)
+  const startY = useRef(0)
   const isSwiping = useRef(false)
 
   const handleTouchStart = (e) => {
+    if (!e.touches || !e.touches[0]) return
     startX.current = e.touches[0].clientX
-    isSwiping.current = true
+    startY.current = e.touches[0].clientY
+    isSwiping.current = false
+    setTranslateX(0)
   }
 
   const handleTouchMove = (e) => {
-    if (!isSwiping.current) return
-    currentX.current = e.touches[0].clientX
-    const diff = currentX.current - startX.current
-    setTranslateX(diff)
+    if (!e.touches || !e.touches[0]) return
+    const dx = e.touches[0].clientX - startX.current
+    const dy = e.touches[0].clientY - startY.current
+    if (!isSwiping.current) {
+      if (Math.abs(dx) < SWIPE_DEAD_ZONE || Math.abs(dx) < Math.abs(dy)) return
+      isSwiping.current = true
+    }
+    setTranslateX(dx)
   }
 
   const handleTouchEnd = () => {
+    const committed = isSwiping.current
+    const distance = translateX
     isSwiping.current = false
-    if (translateX < -80 && onSwipeLeft) {
+    startX.current = 0
+    startY.current = 0
+    setTranslateX(0)
+    if (committed && distance <= -SWIPE_COMMIT_DISTANCE && onSwipeLeft) {
       onSwipeLeft()
-    } else if (translateX > 80 && onSwipeRight) {
+    } else if (committed && distance >= SWIPE_COMMIT_DISTANCE && onSwipeRight) {
       onSwipeRight()
     }
-    setTranslateX(0)
+  }
+
+  const handleTouchCancel = () => {
+    isSwiping.current = false
     startX.current = 0
-    currentX.current = 0
+    startY.current = 0
+    setTranslateX(0)
   }
 
   return (
@@ -35,6 +54,7 @@ export function SwipeItem({ children, onSwipeLeft, onSwipeRight, leftAction, rig
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchCancel}
       style={{
         position: 'relative',
         overflow: 'hidden',

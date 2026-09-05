@@ -1,47 +1,61 @@
 import { useState, useRef, useCallback } from 'react'
 
+const DEAD_ZONE = 12
+const COMMIT_DISTANCE = 72
+const MAX_DISTANCE = 96
+
 export default function PullToRefresh({ onRefresh, children }) {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [pullDistance, setPullDistance] = useState(0)
   const startY = useRef(0)
-  const currentY = useRef(0)
-  const isPulling = useRef(false)
+  const armed = useRef(false)
+  const refreshingRef = useRef(false)
 
   const handleTouchStart = useCallback((e) => {
-    if (window.scrollY === 0) {
-      startY.current = e.touches[0].clientY
-      isPulling.current = true
-    }
+    const touch = e.touches && e.touches[0]
+    if (!touch || refreshingRef.current || window.scrollY > 0) return
+    startY.current = touch.clientY
+    armed.current = false
   }, [])
 
   const handleTouchMove = useCallback((e) => {
-    if (!isPulling.current) return
-    
-    currentY.current = e.touches[0].clientY
-    const diff = currentY.current - startY.current
-    
-    if (diff > 0 && window.scrollY === 0) {
-      setPullDistance(Math.min(diff, 80))
-    }
+    const touch = e.touches && e.touches[0]
+    if (!touch || refreshingRef.current || window.scrollY > 0) return
+    const diff = touch.clientY - startY.current
+    if (diff < DEAD_ZONE) return
+    if (!armed.current) armed.current = true
+    setPullDistance(Math.min(diff, MAX_DISTANCE))
   }, [])
 
   const handleTouchEnd = useCallback(async () => {
-    if (pullDistance > 50) {
-      setIsRefreshing(true)
+    if (refreshingRef.current) return
+    const willRefresh = armed.current && pullDistance >= COMMIT_DISTANCE
+    armed.current = false
+    startY.current = 0
+    setPullDistance(0)
+    if (!willRefresh) return
+    refreshingRef.current = true
+    setIsRefreshing(true)
+    try {
       await onRefresh()
+    } finally {
+      refreshingRef.current = false
       setIsRefreshing(false)
     }
-    setPullDistance(0)
-    isPulling.current = false
-    startY.current = 0
-    currentY.current = 0
   }, [pullDistance, onRefresh])
+
+  const handleTouchCancel = useCallback(() => {
+    armed.current = false
+    startY.current = 0
+    setPullDistance(0)
+  }, [])
 
   return (
     <div
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchCancel}
       style={{ touchAction: 'pan-x pan-y' }}
     >
       <div
@@ -70,7 +84,7 @@ export default function PullToRefresh({ onRefresh, children }) {
         </div>
         {children}
       </div>
-      
+
       <style>{`
         @keyframes spin {
           from { transform: rotate(0deg); }
