@@ -183,11 +183,16 @@ body.fullscreen-match .main-content {
   background: rgba(2, 6, 23, 0.85);
   backdrop-filter: blur(8px);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   padding: 20px;
+  overflow-y: auto;
   z-index: 10000;
   animation: fadeIn 0.2s ease-out;
+}
+
+.modal-overlay > * {
+  margin: auto;
 }
 
 .modal-content {
