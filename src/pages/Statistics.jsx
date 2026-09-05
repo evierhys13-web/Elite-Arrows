@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContextInternal'
 import { useToast } from '../context/ToastContext'
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
-  CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area,
+  CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area,
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, LineChart, Line
 } from 'recharts'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
@@ -20,6 +20,58 @@ const DIVISION_COLORS = {
 }
 
 const DIVISIONS = ['Elite', 'Emerald', 'Diamond', 'Platinum']
+
+const TOOLTIP_STYLE = {
+  background: 'rgba(15, 23, 42, 0.92)',
+  border: '1px solid var(--border)',
+  borderRadius: '12px',
+  fontSize: '12px',
+  color: 'var(--text-primary)',
+  boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+  backdropFilter: 'blur(8px)'
+}
+
+const avgColor = (a) => {
+  if (!(a > 0)) return 'var(--text-muted)'
+  if (a >= 65) return '#10b981'
+  if (a >= 55) return '#fbbf24'
+  if (a >= 45) return '#f97316'
+  return '#ef4444'
+}
+
+function Ring({ value, max, size = 110, stroke = 10, color, label, display }) {
+  const pct = Math.min(Math.max((Number(value) / (max || 1)) * 100, 0), 100)
+  const r = (size - stroke) / 2
+  const c = 2 * Math.PI * r
+  const off = c - (pct / 100) * c
+  return (
+    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={stroke} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round"
+          strokeDasharray={c} strokeDashoffset={off} />
+      </svg>
+      <div style={{
+        position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', textAlign: 'center'
+      }}>
+        <div style={{ fontWeight: 900, fontSize: size * 0.22, color, lineHeight: 1.1 }}>{display ?? value}</div>
+        <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 2 }}>{label}</div>
+      </div>
+    </div>
+  )
+}
+
+const StatTile = ({ icon, value, label, color, sub }) => (
+  <div className="stat-card glass glass-hover" style={{ padding: '22px 16px', borderRadius: '20px', position: 'relative', overflow: 'hidden', border: `1px solid ${color}33` }}>
+    <div style={{ position: 'absolute', top: '14px', right: '14px', fontSize: '1.4rem', opacity: 0.35 }}>{icon}</div>
+    <div className="stat-value" style={{ color, fontSize: '2rem', marginBottom: '4px' }}>
+      {value}
+    </div>
+    <div className="stat-label" style={{ fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 800 }}>{label}</div>
+    {sub && <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', marginTop: '4px' }}>{sub}</div>}
+  </div>
+)
 
 function calcStdDev(values) {
   if (values.length === 0) return 0
@@ -98,6 +150,11 @@ export default function Statistics() {
     if (!id || !allTimeStatsMap) return null
     return allTimeStatsMap[String(id)] || null
   }, [allTimeStatsMap, id])
+
+  const playerSeasonal = useMemo(() => {
+    if (!id) return null
+    return playerStatsMap[String(id)] || null
+  }, [playerStatsMap, id])
 
   const personalStats = useMemo(() => {
     if (!id) return null
@@ -260,12 +317,12 @@ export default function Statistics() {
         ...(isPlayerView ? [{ label: viewedUser?.username || 'Player' }] : [])
       ]} />
 
-      <div className="page-header" style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+      <div className="page-header" style={{ marginBottom: '28px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h1 className="page-title text-gradient" style={{ fontSize: '2.5rem' }}>
-            {isPlayerView ? viewedUser?.username : 'Statistics'}
+          <h1 className="page-title text-gradient" style={{ fontSize: '2.2rem', margin: 0 }}>
+            {isPlayerView ? viewedUser?.username : '📊 Statistics'}
           </h1>
-          <p style={{ color: 'var(--text-muted)' }}>
+          <p style={{ color: 'var(--text-muted)', margin: '6px 0 0' }}>
             {isPlayerView ? `${viewedUser?.division || 'Unassigned'} Division` : 'League-wide performance insights'}
           </p>
         </div>
@@ -274,7 +331,7 @@ export default function Statistics() {
             className="glass"
             value={selectedSeason}
             onChange={e => setSelectedSeason(e.target.value)}
-            style={{ padding: '4px 12px', borderRadius: '8px', fontSize: '0.85rem', border: '1px solid rgba(255,255,255,0.1)' }}
+            style={{ padding: '8px 12px', borderRadius: '99px', fontSize: '0.8rem', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-primary)', fontWeight: 600 }}
           >
             {seasons.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
             {!seasons.find(s => s.name === 'Season 4') && <option value="Season 4">Season 4</option>}
@@ -294,7 +351,7 @@ export default function Statistics() {
             }}
             style={{ padding: '8px 16px', borderRadius: '99px', fontSize: '0.8rem', minWidth: '80px' }}
           >
-            {isSyncing ? '...' : 'Sync'}
+            {isSyncing ? '…' : '↻ Sync'}
           </button>
         </div>
       </div>
@@ -304,6 +361,7 @@ export default function Statistics() {
           user={viewedUser}
           personalStats={personalStats}
           allTime={playerAllTime}
+          seasonal={playerSeasonal}
           onBack={() => navigate('/statistics')}
         />
       ) : (
@@ -321,7 +379,23 @@ export default function Statistics() {
   )
 }
 
-function PlayerView({ user, personalStats, allTime, onBack }) {
+function Avatar({ user, size = 72 }) {
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
+      background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-cyan))',
+      border: '3px solid rgba(255,255,255,0.15)', boxShadow: '0 0 0 4px rgba(0,0,0,0.25), 0 8px 24px rgba(0,0,0,0.4)'
+    }}>
+      {user?.profilePicture
+        ? <img src={user.profilePicture} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontWeight: 900, fontSize: size * 0.42, color: '#0b051d' }}>
+            {(user?.username || '?').charAt(0).toUpperCase()}
+          </div>}
+    </div>
+  )
+}
+
+function PlayerView({ user, personalStats, allTime, seasonal, onBack }) {
   if (!personalStats) return (
     <div className="card glass" style={{ padding: '60px 24px', textAlign: 'center' }}>
       <p style={{ color: 'var(--text-muted)' }}>No stats available for this player.</p>
@@ -329,80 +403,70 @@ function PlayerView({ user, personalStats, allTime, onBack }) {
   )
 
   const formColor = (r) => r === 'W' ? 'var(--success)' : r === 'L' ? 'var(--error)' : 'var(--text-muted)'
+  const seasonAvg = seasonal?.average || 0
+  const winRate = Number(personalStats.winRate) || 0
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
-        <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'var(--accent-primary)', overflow: 'hidden', flexShrink: 0 }}>
-          {user?.profilePicture ? <img src={user.profilePicture} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontWeight: 800, fontSize: '1.5rem' }}>{(user?.username || '?').charAt(0)}</span>}
-        </div>
-        <div>
-          <div style={{ fontWeight: 800, fontSize: '1.3rem', color: 'white' }}>{user?.username}</div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)', fontWeight: 600 }}>{user?.division || 'Unassigned'}</div>
+      {/* PLAYER HERO */}
+      <div className="card glass" style={{ padding: '28px', marginBottom: '24px', borderRadius: '24px', position: 'relative', overflow: 'hidden', border: '1px solid rgba(129,140,248,0.35)' }}>
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(90deg, var(--accent-primary), var(--accent-cyan))' }} />
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', gap: '18px', alignItems: 'center', minWidth: 0 }}>
+            <Avatar user={user} size={84} />
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 900, fontSize: '1.6rem', color: 'white', lineHeight: 1.2 }}>{user?.username}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 800, padding: '4px 12px', borderRadius: '99px', color: DIVISION_COLORS[user?.division] || 'var(--text-muted)', background: `${DIVISION_COLORS[user?.division] || '#888'}1f`, border: `1px solid ${DIVISION_COLORS[user?.division] || '#888'}55` }}>
+                  {(user?.division || 'Unassigned').toUpperCase()}
+                </span>
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                  {personalStats.played} matches · {personalStats.points} pts · {personalStats.wins}W {personalStats.losses}L
+                </span>
+              </div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '8px', lineHeight: 1.5 }}>
+                {seasonAvg > 0 && <span style={{ color: 'var(--accent-cyan)', fontWeight: 800 }}>{seasonAvg.toFixed(1)} 3-dart avg</span>}
+                {seasonAvg > 0 && <span> · </span>}
+                <span>Best checkout <strong style={{ color: 'var(--accent-cyan)' }}>{allTime?.highestCheckout || personalStats.highestCheckout || '—'}</strong></span>
+                <span> · All-time <strong style={{ color: '#fbbf24' }}>{allTime?.['180s'] || 0}</strong> maxes</span>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+              <div style={{ fontSize: '1.6rem' }}>🎯</div>
+              <Ring value={seasonAvg} max={75} size={104} stroke={10} color={avgColor(seasonAvg)} label="Season Avg" display={seasonAvg > 0 ? seasonAvg.toFixed(1) : '—'} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+              <div style={{ fontSize: '1.6rem' }}>🏅</div>
+              <Ring value={winRate} max={100} size={104} stroke={10} color="#10b981" label="Win Rate" display={`${winRate.toFixed(1)}%`} />
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="home-stats-grid" style={{ marginBottom: '24px' }}>
-        <div className="stat-card glass glass-hover">
-          <div className="stat-value" style={{ color: '#10b981' }}>
-            <CountUp end={personalStats.played} />
-          </div>
-          <div className="stat-label">Matches</div>
-        </div>
-        <div className="stat-card glass glass-hover">
-          <div className="stat-value" style={{ color: 'var(--accent-cyan)' }}>
-            <CountUp end={personalStats.winRate} decimals={1} />%
-          </div>
-          <div className="stat-label">Win Rate</div>
-        </div>
-        <div className="stat-card glass glass-hover">
-          <div className="stat-value" style={{ color: '#fbbf24' }}>
-            <CountUp end={allTime?.['180s'] || personalStats.total180s} />
-          </div>
-          <div className="stat-label">All-Time 180s</div>
-        </div>
-        <div className="stat-card glass glass-hover">
-          <div className="stat-value" style={{ color: 'var(--accent-cyan)' }}>
-            <CountUp end={allTime?.highestCheckout || personalStats.highestCheckout} />
-          </div>
-          <div className="stat-label">Highest Checkout</div>
-        </div>
-        <div className="stat-card glass glass-hover">
-          <div className="stat-value" style={{ color: 'var(--success)' }}>
-            <CountUp end={allTime?.legsWon || personalStats.legsWon} />
-          </div>
-          <div className="stat-label">All-Time Legs Won</div>
-        </div>
-        <div className="stat-card glass glass-hover">
-          <div className="stat-value" style={{ color: 'var(--error)' }}>
-            <CountUp end={allTime?.legsLost || personalStats.legsLost} />
-          </div>
-          <div className="stat-label">All-Time Legs Lost</div>
-        </div>
-        <div className="stat-card glass glass-hover">
-          <div className="stat-value" style={{ color: 'var(--success)' }}>
-            <CountUp end={allTime?.wins || personalStats.wins} />
-          </div>
-          <div className="stat-label">All-Time Wins</div>
-        </div>
-        <div className="stat-card glass glass-hover">
-          <div className="stat-value" style={{ color: 'var(--error)' }}>
-            <CountUp end={allTime?.losses || personalStats.losses} />
-          </div>
-          <div className="stat-label">All-Time Losses</div>
-        </div>
-      </div>
-
+      {/* FORM GUIDE */}
       {personalStats.last5Matches.length > 0 && (
-        <div className="card glass" style={{ padding: '20px', marginBottom: '24px' }}>
-          <h3 className="card-title" style={{ margin: '0 0 16px 0' }}>Form Guide</h3>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <div className="card glass" style={{ padding: '20px', marginBottom: '24px', borderRadius: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+            <h3 className="card-title" style={{ margin: 0, fontSize: '1.1rem' }}>📅 Form Guide</h3>
+            <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700 }}>Last {personalStats.last5Matches.length}</span>
+          </div>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             {personalStats.last5Matches.map((m, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                <span style={{ display: 'inline-block', width: '28px', height: '28px', borderRadius: '6px', background: formColor(m.result), color: 'white', textAlign: 'center', lineHeight: '28px', fontWeight: 900, fontSize: '0.8rem' }}>{m.result}</span>
-                <div>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'white' }}>{m.opponent}</div>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{m.score}</div>
+              <div key={i} style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', padding: '12px 14px',
+                background: 'rgba(255,255,255,0.04)', borderRadius: '14px', border: '1px solid var(--border)', minWidth: '86px'
+              }}>
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px',
+                  borderRadius: '12px', background: formColor(m.result), color: '#0b051d', fontWeight: 900, fontSize: '1rem',
+                  boxShadow: `0 0 0 2px ${formColor(m.result)}33, 0 4px 12px ${formColor(m.result)}44`
+                }}>{m.result}</span>
+                <div style={{ textAlign: 'center', minWidth: 0 }}>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'white', whiteSpace: 'nowrap', maxWidth: '96px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.opponent}</div>
+                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{m.score}</div>
                 </div>
               </div>
             ))}
@@ -410,8 +474,20 @@ function PlayerView({ user, personalStats, allTime, onBack }) {
         </div>
       )}
 
+      {/* STATS GRID */}
+      <div className="home-stats-grid" style={{ marginBottom: '24px' }}>
+        <StatTile icon="🎯" value={<CountUp end={personalStats.played} />} label="Matches" color="#10b981" />
+        <StatTile icon="🏅" value={<span><CountUp end={personalStats.winRate} decimals={1} />%</span>} label="Win Rate" color="#38bdf8" />
+        <StatTile icon="💯" value={<CountUp end={allTime?.['180s'] || personalStats.total180s} />} label="All-Time 180s" color="#fbbf24" />
+        <StatTile icon="🐟" value={<CountUp end={allTime?.highestCheckout || personalStats.highestCheckout} />} label="Highest Checkout" color="#a78bfa" />
+        <StatTile icon="⚔️" value={<CountUp end={allTime?.legsWon || personalStats.legsWon} />} label="Legs Won" color="#10b981" />
+        <StatTile icon="🔥" value={<CountUp end={allTime?.legsLost || personalStats.legsLost} />} label="Legs Lost" color="#ef4444" />
+        <StatTile icon="👑" value={<CountUp end={allTime?.wins || personalStats.wins} />} label="Wins" color="#10b981" />
+        <StatTile icon="📉" value={<CountUp end={allTime?.losses || personalStats.losses} />} label="Losses" color="#ef4444" />
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: '20px' }}>
-        <div className="card glass" style={{ padding: '16px' }}>
+        <div className="card glass" style={{ padding: '18px', borderRadius: '20px' }}>
           <h3 className="card-title">Performance Radar</h3>
           <div style={{ height: '300px', width: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
@@ -419,62 +495,66 @@ function PlayerView({ user, personalStats, allTime, onBack }) {
                 <PolarGrid stroke="var(--border)" />
                 <PolarAngleAxis dataKey="metric" tick={{ fill: 'var(--text-muted)', fontSize: 10, fontWeight: 600 }} />
                 <PolarRadiusAxis tick={false} axisLine={false} />
-                <Radar name="Player" dataKey="value" stroke="var(--accent-cyan)" fill="var(--accent-cyan)" fillOpacity={0.4} />
-                <Tooltip />
+                <Radar name="Player" dataKey="value" stroke="var(--accent-cyan)" fill="var(--accent-cyan)" fillOpacity={0.35} strokeWidth={2} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} />
               </RadarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="card glass" style={{ padding: '16px' }}>
-          <h3 className="card-title">Monthly Progress</h3>
+        <div className="card glass" style={{ padding: '18px', borderRadius: '20px' }}>
+          <h3 className="card-title">Monthly Wins vs Losses</h3>
           <div style={{ height: '300px', width: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={personalStats.monthlyData}>
+              <BarChart data={personalStats.monthlyData} barGap={4}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                <XAxis dataKey="month" stroke="var(--text-muted)" tick={{ fontSize: 10 }} />
-                <YAxis stroke="var(--text-muted)" tick={{ fontSize: 10 }} />
-                <Tooltip cursor={{ fill: 'var(--bg-hover)' }} contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '12px' }} />
-                <Bar dataKey="wins" fill="var(--success)" radius={[4, 4, 0, 0]} name="Wins" />
-                <Bar dataKey="losses" fill="var(--error)" radius={[4, 4, 0, 0]} name="Losses" />
+                <XAxis dataKey="month" stroke="var(--text-muted)" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis stroke="var(--text-muted)" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                <Tooltip cursor={{ fill: 'rgba(255,255,255,0.04)' }} contentStyle={TOOLTIP_STYLE} />
+                <Bar dataKey="wins" fill="var(--success)" radius={[6, 6, 0, 0]} name="Wins" maxBarSize={26} />
+                <Bar dataKey="losses" fill="var(--error)" radius={[6, 6, 0, 0]} name="Losses" maxBarSize={26} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="card glass" style={{ padding: '16px' }}>
+        <div className="card glass" style={{ padding: '18px', borderRadius: '20px' }}>
           <h3 className="card-title">Legs Comparison</h3>
           <div style={{ height: '300px', width: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={personalStats.monthlyData}>
                 <defs>
                   <linearGradient id="colorWon" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--success)" stopOpacity={0.3}/>
+                    <stop offset="5%" stopColor="var(--success)" stopOpacity={0.35}/>
                     <stop offset="95%" stopColor="var(--success)" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorLost" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--error)" stopOpacity={0.35}/>
+                    <stop offset="95%" stopColor="var(--error)" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                <XAxis dataKey="month" stroke="var(--text-muted)" tick={{ fontSize: 10 }} />
-                <YAxis stroke="var(--text-muted)" tick={{ fontSize: 10 }} />
-                <Tooltip contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '12px' }} />
-                <Area type="monotone" dataKey="legsWon" stroke="var(--success)" fillOpacity={1} fill="url(#colorWon)" name="Legs Won" />
-                <Area type="monotone" dataKey="legsLost" stroke="var(--error)" fill="transparent" name="Legs Lost" />
+                <XAxis dataKey="month" stroke="var(--text-muted)" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis stroke="var(--text-muted)" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} />
+                <Area type="monotone" dataKey="legsWon" stroke="var(--success)" strokeWidth={2.5} fillOpacity={1} fill="url(#colorWon)" name="Legs Won" />
+                <Area type="monotone" dataKey="legsLost" stroke="var(--error)" strokeWidth={2.5} fillOpacity={1} fill="url(#colorLost)" name="Legs Lost" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {personalStats.checkoutTrend.length > 0 && (
-          <div className="card glass" style={{ padding: '16px' }}>
+          <div className="card glass" style={{ padding: '18px', borderRadius: '20px' }}>
             <h3 className="card-title">Checkout Success Trend</h3>
             <div style={{ height: '300px', width: '100%' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={personalStats.checkoutTrend}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                  <XAxis dataKey="date" stroke="var(--text-muted)" tick={{ fontSize: 10 }} />
-                  <YAxis stroke="var(--text-muted)" domain={[0, 100]} tick={{ fontSize: 10 }} />
-                  <Tooltip contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '12px' }} />
-                  <Line type="monotone" dataKey="doubleSuccess" stroke="var(--warning)" strokeWidth={3} dot={{ r: 4, fill: 'var(--warning)', strokeWidth: 2, stroke: 'var(--bg-primary)' }} name="Checkout %" />
+                  <XAxis dataKey="date" stroke="var(--text-muted)" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis stroke="var(--text-muted)" domain={[0, 100]} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} />
+                  <Line type="monotone" dataKey="doubleSuccess" stroke="var(--warning)" strokeWidth={3} dot={{ r: 5, fill: 'var(--warning)', strokeWidth: 2, stroke: 'var(--bg-primary)' }} name="Checkout %" />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -500,36 +580,64 @@ function DivisionOverview({ leagueStats, filteredDiv180s, selectedDivFilter, set
 
   return (
     <div className="animate-fade-in">
-      <div className="home-stats-grid" style={{ marginBottom: '32px' }}>
-        <div className="stat-card glass glass-hover">
-          <div className="stat-value"><CountUp end={totalPlayers} /></div>
-          <div className="stat-label">Total Players</div>
-        </div>
-        <div className="stat-card glass glass-hover">
-          <div className="stat-value"><CountUp end={totalMatches} /></div>
-          <div className="stat-label">Matches Played</div>
-        </div>
-        <div className="stat-card glass glass-hover">
-          <div className="stat-value"><CountUp end={total180s} /></div>
-          <div className="stat-label">Total 180s</div>
-        </div>
-        <div className="stat-card glass glass-hover">
-          <div className="stat-value"><CountUp end={seasonHighCO} /></div>
-          <div className="stat-label">Season High CO</div>
-        </div>
+      {/* HERO TILES */}
+      <div className="home-stats-grid" style={{ marginBottom: '30px' }}>
+        <StatTile icon="👥" value={<CountUp end={totalPlayers} />} label="Total Players" color="#38bdf8" />
+        <StatTile icon="🏏" value={<CountUp end={totalMatches} />} label="Matches Played" color="#a78bfa" />
+        <StatTile icon="💯" value={<CountUp end={total180s} />} label="Total 180s" color="#fbbf24" />
+        <StatTile icon="🐟" value={<CountUp end={seasonHighCO} />} label="Season High CO" color="#10b981" />
+      </div>
+
+      {/* DIVISION CARDS */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '16px', marginBottom: '30px' }}>
+        {leagueStats.length === 0 ? (
+          <div className="card glass" style={{ padding: '30px', textAlign: 'center', gridColumn: '1 / -1' }}>
+            <p style={{ color: 'var(--text-muted)' }}>No match data in this season yet.</p>
+          </div>
+        ) : leagueStats.map(div => {
+          const color = DIVISION_COLORS[div.name] || 'var(--accent-cyan)'
+          return (
+            <div key={div.name} className="card glass glass-hover" style={{
+              padding: '22px', borderRadius: '20px', textAlign: 'center', position: 'relative', overflow: 'hidden',
+              border: `1px solid ${color}44`, background: `linear-gradient(170deg, ${color}1a, rgba(15,23,42,0.45))`
+            }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: color }} />
+              <div style={{ fontWeight: 900, fontSize: '1.15rem', color, letterSpacing: '0.02em' }}>{div.name}</div>
+              <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '2px' }}>Division</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '18px' }}>
+                <div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'white' }}>{div.playerCount}</div>
+                  <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Players</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 900, color: avgColor(Number(div.avgAvg)) }}>{div.avgAvg}</div>
+                  <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Avg</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#fbbf24' }}>{Number(div.avg180s) > 0 ? div.avg180s : '—'}</div>
+                  <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>180s / Game</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>{div.topCheckout || '—'}</div>
+                  <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Top CO</div>
+                </div>
+              </div>
+            </div>
+          )
+        })}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: '20px', marginBottom: '24px' }}>
-        <div className="card glass" style={{ padding: '16px' }}>
+        <div className="card glass" style={{ padding: '18px', borderRadius: '20px' }}>
           <h3 className="card-title">3-Dart Average by Division</h3>
           <div style={{ height: '300px', width: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={leagueStats}>
+              <BarChart data={leagueStats} barCategoryGap="24%">
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                <XAxis dataKey="name" stroke="var(--text-muted)" tick={{ fontSize: 10 }} />
-                <YAxis stroke="var(--text-muted)" tick={{ fontSize: 10 }} />
-                <Tooltip cursor={{ fill: 'var(--bg-hover)' }} contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '12px' }} />
-                <Bar dataKey="avgAvg" radius={[4, 4, 0, 0]} name="3-Dart Avg">
+                <XAxis dataKey="name" stroke="var(--text-muted)" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis stroke="var(--text-muted)" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                <Tooltip cursor={{ fill: 'rgba(255,255,255,0.04)' }} contentStyle={TOOLTIP_STYLE} />
+                <Bar dataKey="avgAvg" radius={[8, 8, 0, 0]} name="3-Dart Avg" maxBarSize={46}>
                   {leagueStats.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={DIVISION_COLORS[entry.name] || 'var(--accent-cyan)'} />
                   ))}
@@ -539,73 +647,79 @@ function DivisionOverview({ leagueStats, filteredDiv180s, selectedDivFilter, set
           </div>
         </div>
 
-        <div className="card glass" style={{ padding: '16px' }}>
+        <div className="card glass" style={{ padding: '18px', borderRadius: '20px' }}>
           <h3 className="card-title">180s Distribution</h3>
           <div style={{ height: '300px', width: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={leagueStats} dataKey="total180s" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({ name, percent }) => `${name.substring(0, 3)} ${(percent * 100).toFixed(0)}%`}>
+                <Pie data={leagueStats} dataKey="total180s" nameKey="name" cx="50%" cy="50%" outerRadius={78} paddingAngle={4}
+                  label={({ name, percent }) => `${name.substring(0, 3)} ${(percent * 100).toFixed(0)}%`}
+                  labelStyle={{ fontSize: '11px', fontWeight: 700, fill: 'var(--text-muted)' }}>
                   {leagueStats.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={DIVISION_COLORS[entry.name] || '#7C5CFC'} />
+                    <Cell key={`cell-${index}`} fill={DIVISION_COLORS[entry.name] || '#7C5CFC'} stroke="rgba(15,23,42,0.6)" strokeWidth={2} />
                   ))}
                 </Pie>
-                <Tooltip />
-                <Legend iconSize={10} wrapperStyle={{ fontSize: '11px' }} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} />
+                <Legend iconSize={10} wrapperStyle={{ fontSize: '11px', color: 'var(--text-muted)' }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
         </div>
       </div>
 
-      <div className="card glass" style={{ padding: '20px', marginBottom: '24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h3 className="card-title" style={{ margin: 0 }}>Division Performance Summary</h3>
-        </div>
+      <div className="card glass" style={{ padding: '22px', marginBottom: '24px', borderRadius: '20px' }}>
+        <h3 className="card-title" style={{ margin: 0, marginBottom: '16px', fontSize: '1.1rem' }}>📋 Division Performance Summary</h3>
         <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <table style={{ width: '100%', minWidth: '450px', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
-                <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontSize: '0.65rem', textTransform: 'uppercase' }}>Division</th>
-                <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontSize: '0.65rem', textTransform: 'uppercase', textAlign: 'center' }}>Players</th>
-                <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontSize: '0.65rem', textTransform: 'uppercase', textAlign: 'center' }}>3-Dart Avg</th>
-                <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontSize: '0.65rem', textTransform: 'uppercase', textAlign: 'center' }}>Avg 180s</th>
-                <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontSize: '0.65rem', textTransform: 'uppercase', textAlign: 'right' }}>Top CO</th>
+              <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)', fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                <th style={{ padding: '12px 8px' }}>Division</th>
+                <th style={{ padding: '12px 8px', textAlign: 'center' }}>Players</th>
+                <th style={{ padding: '12px 8px', textAlign: 'center' }}>3-Dart Avg</th>
+                <th style={{ padding: '12px 8px', textAlign: 'center' }}>Avg 180s</th>
+                <th style={{ padding: '12px 8px', textAlign: 'right' }}>Top CO</th>
               </tr>
             </thead>
             <tbody>
-              {leagueStats.sort((a, b) => Number(b.avgAvg) - Number(a.avgAvg)).map((div, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                  <td style={{ padding: '12px 8px', fontWeight: 700, color: DIVISION_COLORS[div.name] || 'var(--accent-cyan)', fontSize: '0.85rem' }}>{div.name}</td>
-                  <td style={{ padding: '12px 8px', textAlign: 'center', fontSize: '0.85rem' }}>{div.playerCount}</td>
-                  <td style={{ padding: '12px 8px', fontWeight: 600, textAlign: 'center', fontSize: '0.85rem' }}>{div.avgAvg}</td>
-                  <td style={{ padding: '12px 8px', textAlign: 'center', fontSize: '0.85rem' }}>{div.avg180s}</td>
-                  <td style={{ padding: '12px 8px', color: 'var(--success)', fontWeight: 700, textAlign: 'right', fontSize: '0.85rem' }}>{div.topCheckout || '-'}</td>
-                </tr>
-              ))}
+              {leagueStats.sort((a, b) => Number(b.avgAvg) - Number(a.avgAvg)).map((div, i) => {
+                const color = DIVISION_COLORS[div.name] || 'var(--accent-cyan)'
+                return (
+                  <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td style={{ padding: '12px 8px', fontSize: '0.85rem', fontWeight: 800 }}>
+                      <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', background: color, marginRight: '10px', boxShadow: `0 0 8px ${color}` }} />
+                      {div.name}
+                    </td>
+                    <td style={{ padding: '12px 8px', textAlign: 'center', fontSize: '0.85rem', color: 'white' }}>{div.playerCount}</td>
+                    <td style={{ padding: '12px 8px', fontWeight: 800, textAlign: 'center', fontSize: '0.88rem', color: avgColor(Number(div.avgAvg)) }}>{div.avgAvg}</td>
+                    <td style={{ padding: '12px 8px', textAlign: 'center', fontSize: '0.85rem', fontWeight: 700, color: '#fbbf24' }}>{div.avg180s}</td>
+                    <td style={{ padding: '12px 8px', color: 'var(--success)', fontWeight: 800, textAlign: 'right', fontSize: '0.88rem' }}>{div.topCheckout || '—'}</td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
       </div>
 
-      <div className="card glass" style={{ padding: '20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h3 className="card-title" style={{ margin: 0 }}>180s by Division</h3>
-        </div>
-        <div className="division-tabs" style={{ marginBottom: '16px', overflowX: 'auto', paddingBottom: '4px' }}>
-          {[{ key: 'all', label: 'All' }, ...DIVISIONS.map(d => ({ key: d, label: d }))].map(tab => (
-            <button key={tab.key} className={`division-tab ${selectedDivFilter === tab.key ? 'active' : ''}`} onClick={() => setSelectedDivFilter(tab.key)} style={{ fontSize: '0.75rem', padding: '8px 14px' }}>
-              {tab.label}
-            </button>
-          ))}
+      <div className="card glass" style={{ padding: '22px', borderRadius: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+          <h3 className="card-title" style={{ margin: 0, fontSize: '1.1rem' }}>💯 180s by Division</h3>
+          <div className="division-tabs" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            {[{ key: 'all', label: 'All' }, ...DIVISIONS.map(d => ({ key: d, label: d }))].map(tab => (
+              <button key={tab.key} className={`division-tab ${selectedDivFilter === tab.key ? 'active' : ''}`} onClick={() => setSelectedDivFilter(tab.key)} style={{ fontSize: '0.72rem', padding: '6px 14px' }}>
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
         <div style={{ height: '300px', width: '100%' }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={filteredDiv180s}>
+            <BarChart data={filteredDiv180s} barCategoryGap="24%">
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-              <XAxis dataKey="division" stroke="var(--text-muted)" tick={{ fontSize: 10 }} />
-              <YAxis stroke="var(--text-muted)" tick={{ fontSize: 10 }} />
-              <Tooltip cursor={{ fill: 'var(--bg-hover)' }} contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '12px' }} />
-              <Bar dataKey="total180s" radius={[4, 4, 0, 0]} name="Total 180s">
+              <XAxis dataKey="division" stroke="var(--text-muted)" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+              <YAxis stroke="var(--text-muted)" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+              <Tooltip cursor={{ fill: 'rgba(255,255,255,0.04)' }} contentStyle={TOOLTIP_STYLE} />
+              <Bar dataKey="total180s" radius={[8, 8, 0, 0]} name="Total 180s" maxBarSize={46}>
                 {filteredDiv180s.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={DIVISION_COLORS[entry.division] || 'var(--accent-cyan)'} />
                 ))}
