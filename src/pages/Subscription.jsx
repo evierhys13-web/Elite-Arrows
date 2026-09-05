@@ -1,14 +1,18 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContextInternal";
 import { initStore, requestPurchase } from "../utils/store";
 import { Capacitor } from "@capacitor/core";
 import { storage, ref, uploadBytesResumable, getDownloadURL } from '../firebase'
+import { ADMIN_EMAILS } from '../config'
 
 const SUBSCRIPTION_PRODUCT_IDS = {
   standard: 'standard_pass',
   elite: 'elite_pass'
 }
 const SUBSCRIPTION_ENTITLEMENTS = ['standard_pass', 'elite_pass']
+const TRAINING_PASS_PRICE = 2.99
+const TRAINING_PASS_PRODUCT_ID = 'training_pass'
 
 // Maximum size for the proof image
 const MAX_IMAGE_BYTES = 800 * 1024;
@@ -54,11 +58,26 @@ function compressImage(file) {
 
 export default function Subscription() {
   const { user, updateUser, getSeasons, adminData } = useAuth();
+  const [searchParams] = useSearchParams();
   const [paymentMethod, setPaymentMethod] = useState("");
   const [targetSeason, setTargetSeason] = useState("");
   const [proofImage, setProofImage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [trainingPaymentOpen, setTrainingPaymentOpen] = useState(false);
+  const [submittingTraining, setSubmittingTraining] = useState(false);
+  const [trainingProofImage, setTrainingProofImage] = useState("");
+  const [trainingProofFile, setTrainingProofFile] = useState(null);
+
+  const isEmailAdmin = user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase());
+  const isDbAdmin = user?.isAdmin === true;
+  const isAdmin = isEmailAdmin || isDbAdmin;
+
+  useEffect(() => {
+    if (searchParams.get('tab') === 'training') {
+      setTrainingPaymentOpen(true);
+    }
+  }, [searchParams]);
 
   const seasons = getSeasons();
   const currentSeasonName = adminData?.currentSeason || 'Season 1';
@@ -199,6 +218,55 @@ export default function Subscription() {
     }
   };
 
+  const handleTrainingProofUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const dataUrl = await compressImage(file);
+      setTrainingProofImage(dataUrl);
+      setTrainingProofFile(file);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSubmitTrainingPayment = async (e) => {
+    e?.preventDefault?.();
+    if (!trainingProofFile) return alert("Please upload proof of payment.");
+    setSubmittingTraining(true);
+    try {
+      let finalProofUrl = trainingProofImage;
+      if (trainingProofFile) {
+        const storageRef = ref(storage, `training-payments/${user.id}_${Date.now()}_proof.jpg`);
+        const uploadTask = uploadBytesResumable(storageRef, trainingProofFile);
+        await new Promise((resolve, reject) => {
+          uploadTask.on('state_changed', null, reject, async () => {
+            finalProofUrl = await getDownloadURL(uploadTask.snapshot.ref);
+            resolve();
+          });
+        });
+      }
+
+      await updateUser({
+        trainingPassPaymentPending: true,
+        trainingPassPaymentMethod: 'paypal_or_bank',
+        trainingPassProof: finalProofUrl,
+        trainingPassPaymentDate: new Date().toISOString()
+      }, false);
+      alert(`Training Pass payment submitted! Awaiting admin approval — full Academy access unlocks once verified.`);
+      setTrainingPaymentOpen(false);
+      setTrainingProofImage("");
+      setTrainingProofFile(null);
+    } catch (err) {
+      alert("Submission failed: " + err.message);
+    } finally {
+      setSubmittingTraining(false);
+    }
+  };
+
   return (
     <div className="page animate-fade-in" style={{ maxWidth: '1000px', margin: '0 auto' }}>
       <div className="page-header" style={{ textAlign: 'center', marginBottom: '40px' }}>
@@ -269,6 +337,85 @@ export default function Subscription() {
           </div>
         ))}
       </div>
+
+      {/* TRAINING PASS */}
+      <div className="card glass" style={{
+        padding: '32px',
+        marginBottom: '40px',
+        border: '1px solid rgba(0,212,255,0.3)',
+        background: 'linear-gradient(135deg, rgba(0,212,255,0.08), rgba(77,168,218,0.03))'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '16px' }}>
+          <div>
+            <h2 style={{ fontSize: '1.4rem', color: 'var(--accent-cyan)', marginBottom: '4px' }}>🎯 Training Pass — Darts Academy</h2>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '560px', lineHeight: '1.6' }}>
+              A separate pass for the Elite Arrows Academy: courses, a drill library and verified coach tips — built to lift your 3-dart average.
+            </p>
+          </div>
+          <div style={{ fontSize: '2rem', fontWeight: 900 }}>£{TRAINING_PASS_PRICE}<span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>/month</span></div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '20px' }}>
+          {['4 structured courses', 'Full drill library', 'Verified coach tips', 'Progress tracking', 'Beginners to advanced'].map(f => (
+            <div key={f} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.88rem' }}>
+              <span style={{ color: 'var(--accent-cyan)' }}>✓</span> {f}
+            </div>
+          ))}
+        </div>
+
+        {isAdmin ? (
+          <div style={{ fontSize: '0.9rem', color: 'var(--success)', fontWeight: 800 }}>✓ Free admin access — no Training Pass needed.</div>
+        ) : user?.trainingPassActive ? (
+          <div style={{ fontSize: '0.9rem', color: 'var(--success)', fontWeight: 800 }}>✓ Training Pass active — full Academy unlocked.</div>
+        ) : user?.trainingPassPaymentPending ? (
+          <div style={{ fontSize: '0.9rem', color: 'var(--warning)', fontWeight: 800 }}>⏳ Training Pass payment pending admin approval.</div>
+        ) : (
+          <button className="btn btn-primary" style={{ background: 'linear-gradient(135deg, #00d4ff, #4da8da)' }} onClick={() => setTrainingPaymentOpen(v => !v)}>
+            {trainingPaymentOpen ? 'Close payment options' : 'Get Training Pass'}
+          </button>
+        )}
+      </div>
+
+      {trainingPaymentOpen && !isNativeApp && !user?.trainingPassActive && (
+        <div className="card glass animate-fade-in" style={{ border: '1px solid var(--accent-cyan)', padding: '40px', marginBottom: '40px' }}>
+          <h3 style={{ marginBottom: '20px', textAlign: 'center' }}>Activate Your Training Pass — £{TRAINING_PASS_PRICE}/month</h3>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '30px' }}>
+            <div style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
+              <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '12px' }}>Option 1: PayPal</h4>
+              <p style={{ fontSize: '0.9rem', marginBottom: '10px' }}>Send £{TRAINING_PASS_PRICE} to:</p>
+              <a href="https://paypal.me/DanielHineBerry" target="_blank" rel="noreferrer" style={{ display: 'block', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', color: 'white', textAlign: 'center', textDecoration: 'none', fontWeight: 700 }}>paypal.me/DanielHineBerry</a>
+            </div>
+
+            <div style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
+              <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '12px' }}>Option 2: Bank Transfer</h4>
+              <div style={{ fontSize: '0.85rem' }}>
+                <div><strong>Acc:</strong> Rhys Howe</div>
+                <div><strong>Sort:</strong> 60-09-09</div>
+                <div><strong>No:</strong> 80249442</div>
+                <div style={{ marginTop: '8px', color: 'var(--warning)' }}>Ref: {user.username} TRAINING</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="form-group" style={{ maxWidth: '500px', margin: '0 auto 20px' }}>
+            <label>Upload Proof of Payment (Screenshot)</label>
+            <input type="file" accept="image/*" onChange={handleTrainingProofUpload} className="glass" style={{ padding: '12px' }} />
+            {uploading && <p style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>Processing receipt...</p>}
+            {trainingProofImage && <p style={{ fontSize: '0.8rem', color: 'var(--success)' }}>✓ Receipt Attached</p>}
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+            <button className="btn btn-secondary" onClick={() => setTrainingPaymentOpen(false)}>Cancel</button>
+            <button className="btn btn-primary" onClick={handleSubmitTrainingPayment} disabled={submittingTraining || !trainingProofImage}>
+              {submittingTraining ? 'Submitting...' : 'Confirm Payment Submission'}
+            </button>
+          </div>
+          <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '16px' }}>
+            Recurring £{TRAINING_PASS_PRICE}/month — an admin will verify your proof and activate access.
+          </p>
+        </div>
+      )}
 
       {!isNativeApp && paymentMethod && (
         <div className="card glass animate-fade-in" style={{ border: '1px solid var(--accent-cyan)', padding: '40px' }}>

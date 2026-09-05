@@ -207,6 +207,8 @@ export default function Admin() {
   const rejectedResults = allResults.filter(r => String(r.status).toLowerCase() === 'rejected')
 
   const pendingPayments = allPlayers.filter(u => u?.paymentPending)
+  const pendingTrainingPayments = allPlayers.filter(u => u?.trainingPassPaymentPending)
+  const trainingSubscribers = allPlayers.filter(u => u?.trainingPassActive)
   const entryRequests = allPlayers.filter(u => u?.adminRequestPending)
   const subscribers = allPlayers.filter(u => u?.isSubscribed || (u?.subscribedSeasons && u.subscribedSeasons.length > 0))
 
@@ -814,6 +816,20 @@ export default function Admin() {
       setApprovingPaymentId(null)
       triggerDataRefresh('users')
       showToast(`Subscription Approved for ${finalSeason}!`, 'success')
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
+  const handleApproveTrainingPayment = async (u) => {
+    try {
+      await setDoc(doc(db, 'users', u.id), {
+        trainingPassPaymentPending: false,
+        trainingPassActive: true,
+        trainingPassActivatedAt: new Date().toISOString(),
+        trainingPassRenewsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+      }, { merge: true })
+      await logAudit('APPROVE_TRAINING_PASS', `Approved Training Pass for ${u.username}`)
+      triggerDataRefresh('users')
+      showToast(`Training Pass approved for ${u.username}!`, 'success')
     } catch (e) { showToast(e.message, 'error') }
   }
 
@@ -2089,6 +2105,7 @@ export default function Admin() {
               <div><h3>League & Role Management</h3></div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <button className={`btn btn-sm ${paymentSubTab === 'pending' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setPaymentSubTab('pending')}>Payments ({pendingPayments.length})</button>
+                <button className={`btn btn-sm ${paymentSubTab === 'training' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setPaymentSubTab('training')}>Training Pass ({pendingTrainingPayments.length})</button>
                 <button className={`btn btn-sm ${paymentSubTab === 'roles' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setPaymentSubTab('roles')}>Role Apps ({entryRequests.length})</button>
                 <button className={`btn btn-sm ${paymentSubTab === 'approved' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setPaymentSubTab('approved')}>Subscribers ({subscribers.length})</button>
               </div>
@@ -2125,6 +2142,59 @@ export default function Admin() {
                       </div>
                     </div>
                   ))
+                )}
+              </div>
+            )}
+
+            {paymentSubTab === 'training' && (
+              <div className="animate-fade-in">
+                {pendingTrainingPayments.length === 0 ? (
+                  <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>No pending Training Pass payments.</div>
+                ) : (
+                  pendingTrainingPayments.map(u => (
+                    <div key={u.id} className="glass" style={{ padding: '20px', borderRadius: '12px', marginBottom: '15px', borderLeft: '4px solid var(--accent-cyan)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                        <div>
+                          <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>{u.username}</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '8px' }}>{u.email}</div>
+                          <div style={{ display: 'flex', gap: '12px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                            <span style={{ color: 'var(--accent-cyan)' }}>Training Pass • £2.99/mo</span>
+                            <span>{u.trainingPassPaymentDate ? new Date(u.trainingPassPaymentDate).toLocaleDateString() : 'Unknown date'}</span>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                          {u.trainingPassProof && (
+                            <button className="btn btn-secondary btn-sm" onClick={() => setPreviewImage(u.trainingPassProof)}>View Proof</button>
+                          )}
+                          <button className="btn btn-primary btn-sm" onClick={() => handleApproveTrainingPayment(u)}>Approve & Activate</button>
+                          <button className="btn btn-danger btn-sm" onClick={async () => {
+                            if (confirm(`Reject Training Pass payment for ${u.username}?`)) {
+                              await updateDoc(doc(db, 'users', u.id), { trainingPassPaymentPending: false });
+                              triggerDataRefresh('users');
+                            }
+                          }}>Reject</button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+                {trainingSubscribers.length > 0 && (
+                  <>
+                    <h4 style={{ margin: '28px 0 12px', color: 'var(--accent-cyan)' }}>Active Training Pass Holders ({trainingSubscribers.length})</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {trainingSubscribers.map(u => (
+                        <div key={u.id} className="glass" style={{ padding: '14px 18px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <div style={{ fontWeight: 700 }}>{u.username}</div>
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                              Active {u.trainingPassActivatedAt ? `since ${new Date(u.trainingPassActivatedAt).toLocaleDateString()}` : ''}{u.trainingPassRenewsAt ? ` • renews ${new Date(u.trainingPassRenewsAt).toLocaleDateString()}` : ''}
+                            </div>
+                          </div>
+                          <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/profile/${u.id}`)}>Profile</button>
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
             )}

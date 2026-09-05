@@ -62,6 +62,11 @@ const PlayOnline = lazy(() => import('./pages/PlayOnline'))
 const HallOfFame = lazy(() => import('./pages/HallOfFame'))
 const News = lazy(() => import('./pages/News'))
 const Suggestions = lazy(() => import('./pages/Suggestions'))
+const TrainingHub = lazy(() => import('./pages/TrainingHub'))
+const TrainingCourse = lazy(() => import('./pages/TrainingCourse'))
+const TrainingLesson = lazy(() => import('./pages/TrainingLesson'))
+const TrainingDrills = lazy(() => import('./pages/TrainingDrills'))
+const TrainingTips = lazy(() => import('./pages/TrainingTips'))
 
 function PageLoader() {
   const [showRefresh, setShowRefresh] = useState(false)
@@ -236,6 +241,85 @@ function AdminRoute({ children }) {
   return children
 }
 
+function TrainingRoute({ children }) {
+  const { user, isAuthenticated, loading } = useAuth()
+  const navigate = useNavigate()
+
+  if (loading) {
+    return <PageLoader />
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />
+  }
+
+  const isEmailAdmin = user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase())
+  const isAdmin = isEmailAdmin || user?.isAdmin === true
+  const hasPass = user?.trainingPassActive === true
+  const pending = user?.trainingPassPaymentPending === true
+
+  if (!isAdmin && !hasPass) {
+    return (
+      <div
+        style={{
+          padding: '40px',
+          textAlign: 'center',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '50vh'
+        }}
+      >
+        <div
+          style={{
+            background: 'var(--bg-secondary)',
+            padding: '30px',
+            borderRadius: '12px',
+            maxWidth: '420px'
+          }}
+        >
+          <div style={{ fontSize: '3rem', marginBottom: '12px' }}>🎯</div>
+          <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '12px' }}>Training Pass Required</h2>
+          {pending ? (
+            <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>
+              Your Training Pass payment is awaiting admin approval. Once verified, the full Academy unlocks automatically.
+            </p>
+          ) : (
+            <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>
+              Unlock the full Elite Arrows Academy — courses, drill library and coach tips — for £2.99/month with your own Training Pass.
+            </p>
+          )}
+          {!pending && (
+            <button
+              className="btn btn-primary btn-block"
+              onClick={() => navigate('/subscription?tab=training')}
+              style={{ marginBottom: '10px' }}
+            >
+              Get Training Pass
+            </button>
+          )}
+          <button
+            className="btn btn-secondary btn-block"
+            onClick={() => navigate('/training')}
+            style={{ marginBottom: '10px' }}
+          >
+            Back to Academy
+          </button>
+          <button
+            className="btn btn-secondary btn-block"
+            onClick={() => navigate('/home')}
+          >
+            Go Home
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return children
+}
+
 function AppLayout({ children }) {
   const { user, dataRefreshTrigger, adminData, forceFetchResults } = useAuth()
   const { showOnboarding, completeOnboarding } = useOnboarding()
@@ -357,6 +441,11 @@ function AppRoutes() {
       <Route path="/challenges" element={<ProtectedRoute><AppLayout><Challenges /></AppLayout></ProtectedRoute>} />
       <Route path="/daily-challenges" element={<ProtectedRoute><AppLayout><DailyChallenges /></AppLayout></ProtectedRoute>} />
       <Route path="/giveaways" element={<ProtectedRoute><AppLayout><Giveaways /></AppLayout></ProtectedRoute>} />
+      <Route path="/training" element={<ProtectedRoute><AppLayout><TrainingHub /></AppLayout></ProtectedRoute>} />
+      <Route path="/training/course/:courseId" element={<TrainingRoute><AppLayout><TrainingCourse /></AppLayout></TrainingRoute>} />
+      <Route path="/training/lesson/:lessonId" element={<TrainingRoute><AppLayout><TrainingLesson /></AppLayout></TrainingRoute>} />
+      <Route path="/training/drills" element={<TrainingRoute><AppLayout><TrainingDrills /></AppLayout></TrainingRoute>} />
+      <Route path="/training/tips" element={<TrainingRoute><AppLayout><TrainingTips /></AppLayout></TrainingRoute>} />
       <Route path="/season-management" element={<AdminRoute><AppLayout><SeasonManagement /></AppLayout></AdminRoute>} />
       <Route path="/seed-data" element={<AdminRoute><AppLayout><SeedData /></AppLayout></AdminRoute>} />
       <Route path="/admin" element={<AdminRoute><AppLayout><Admin /></AppLayout></AdminRoute>} />
