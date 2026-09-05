@@ -31,26 +31,19 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 2. Fetch user's FCM tokens from Firestore
+    // 2. Fetch user's FCM token from Firestore
     const tokenDoc = await db.collection("fcmTokens").doc(toUserId).get();
 
     if (!tokenDoc.exists) {
       return res.status(200).json({ success: false, message: "No tokens found for user" });
     }
 
-    const docData = tokenDoc.data();
-    let tokens = Array.isArray(docData.tokens) ? docData.tokens : [];
-    const legacyToken = docData.token;
-    if (legacyToken && !tokens.includes(legacyToken)) {
-      tokens.push(legacyToken);
-    }
-    tokens = tokens.filter(t => typeof t === "string" && t.length > 0);
-
-    if (tokens.length === 0) {
+    const { token } = tokenDoc.data();
+    if (!token) {
       return res.status(200).json({ success: false, message: "Token field is empty" });
     }
 
-    // 3. Construct the message (shared across all devices)
+    // 3. Construct the message
     const message = {
       notification: {
         title: title || "Elite Arrows",
@@ -60,45 +53,23 @@ export default async function handler(req, res) {
         ...data,
         notificationId: Date.now().toString(),
       },
-      tokens: tokens,
+      token: token,
     };
 
-    // 4. Send the message to every device via FCM
-    const response = await messaging.sendEachForMulticast(message);
-
-    // 5. Prune invalid tokens automatically
-    const notRegisteredIndices = [];
-    response.responses.forEach((resp, index) => {
-      if (
-        resp.error &&
-        (resp.error.code === "messaging/registration-token-not-registered" ||
-          resp.error.code === "messaging/invalid-registration-token")
-      ) {
-        notRegisteredIndices.push(index);
-      }
-    });
-
-    if (notRegisteredIndices.length > 0) {
-      const remaining = tokens.filter((_, i) => !notRegisteredIndices.includes(i));
-      if (remaining.length > 0) {
-        await db.collection("fcmTokens").doc(toUserId).update({ tokens: remaining }).catch(() => {});
-      } else {
-        await db.collection("fcmTokens").doc(toUserId).delete().catch(() => {});
-      }
-    }
+    // 4. Send the message via FCM
+    const response = await messaging.send(message);
 
     return res.status(200).json({
       success: true,
-      successCount: response.successCount,
-      failureCount: response.failureCount,
+      messageId: response,
     });
 
   } catch (error) {
     console.error("Error sending notification:", error);
 
-    // Cleanup invalid tokens automatically (legacy single-token path)
-    if (error.code === "messaging/registration-token-not-registered") {
-      await db.collection("fcmTokens").doc(toUserId).delete().catch(() => {});
+    // Cleanup invalid tokens automatically
+    if (error.code === 'messaging/registration-token-not-registered') {
+        await db.collection("fcmTokens").doc(toUserId).delete().catch(() => {});
     }
 
     return res.status(500).json({

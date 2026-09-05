@@ -21,7 +21,6 @@
     "@capacitor/device": "^8.0.2",
     "@capacitor/ios": "^8.3.1",
     "@capacitor/network": "^8.0.1",
-    "@capacitor/push-notifications": "^8.1.2",
     "cordova-plugin-purchase": "^13.15.4",
     "firebase": "^12.12.0",
     "firebase-admin": "^13.10.0",

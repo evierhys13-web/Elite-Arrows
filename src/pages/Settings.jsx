@@ -6,7 +6,7 @@ import { useToast } from '../context/ToastContext'
 import { auth, sendPasswordResetEmail, db, doc, setDoc, deleteDoc, usersCollection } from '../firebase'
 
 export default function Settings() {
-  const { signOut, user, updateUser, getAllUsers, notifications: contextNotifications, forceFetchResults: contextForceFetch, triggerDataRefresh, requestNotificationPermission, fcmToken } = useAuth()
+  const { signOut, user, updateUser, getAllUsers, notifications: contextNotifications, forceFetchResults: contextForceFetch, triggerDataRefresh } = useAuth()
   const { theme, toggleTheme, language, setLanguage, chatSettings, setChatSettings, navMode, updateNavMode } = useTheme()
   const { showToast } = useToast()
   const navigate = useNavigate()
@@ -536,26 +536,6 @@ export default function Settings() {
 
       {activeTab === 'notifications' && (
         <div>
-          <div className="card" style={{ marginBottom: '10px' }}>
-            <h3 className="card-title" style={{ marginBottom: '4px' }}>Push Notifications</h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 12px' }}>
-              Get an alert on this device even when you're not in the app (league results, chats, invites).
-            </p>
-            {fcmToken ? (
-              <p style={{ fontSize: '0.85rem', color: '#4CAF50', margin: '0 0 8px' }}>✓ Push alerts are on for this device.</p>
-            ) : (
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 8px' }}>
-                Push alerts are currently off for this device.
-              </p>
-            )}
-            <button className="btn btn-primary btn-sm" onClick={async () => {
-              const granted = await requestNotificationPermission();
-              showToast(granted ? 'Push notifications enabled' : 'Permission was not granted', granted ? 'success' : 'error');
-            }}>
-              {fcmToken ? 'Re-register this device' : 'Enable push on this device'}
-            </button>
-          </div>
-
           <div className="card" style={{ marginBottom: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 className="card-title" style={{ margin: 0 }}>Your Notifications</h3>
