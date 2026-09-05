@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContextInternal'
 import { useToast } from '../context/ToastContext'
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
-  CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area,
+  CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area,
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, LineChart, Line
 } from 'recharts'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
