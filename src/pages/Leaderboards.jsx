@@ -33,12 +33,9 @@ export default function Leaderboards() {
   const [searchParams] = useSearchParams()
   const [selectedDivision, setSelectedDivision] = useState('all')
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') === 'practice' ? 'practice' : 'league')
-  const [timeFilter, setTimeFilter] = useState('all')
-  const [refreshKey, setRefreshKey] = useState(0)
   const [isSyncing, setIsSyncing] = useState(false)
   const [practiceLeaderboard, setPracticeLeaderboard] = useState([])
   const [hallOfFame, setHallOfFame] = useState([])
-  const [allLeagueResults, setAllLeagueResults] = useState(null)
 
   useEffect(() => {
     const fetchPracticeData = async () => {
@@ -64,28 +61,6 @@ export default function Leaderboards() {
   }, [refreshKey])
 
   useEffect(() => {
-    let cancelled = false
-    const fetchAllResults = async (attempt = 0) => {
-      try {
-        const snap = await getDocs(collection(db, 'results'))
-        if (cancelled) return
-        const usable = snap.docs.map(d => ({ ...d.data(), id: d.data().id || d.id, firestoreId: d.id }))
-          .filter(r => {
-            const status = String(r.status || '').toLowerCase()
-            if (status === 'approved') return true
-            return !status && r.score1 !== undefined && r.score2 !== undefined
-          })
-        setAllLeagueResults(usable)
-      } catch (e) {
-        console.error('Error fetching all-time results:', e)
-        if (attempt < 2 && !cancelled) setTimeout(() => fetchAllResults(attempt + 1), 3000 * (attempt + 1))
-      }
-    }
-    fetchAllResults()
-    return () => { cancelled = true }
-  }, [refreshKey])
-
-  useEffect(() => {
     setRefreshKey(prev => prev + 1)
   }, [dataRefreshTrigger])
 
@@ -93,13 +68,11 @@ export default function Leaderboards() {
   const fixtures = getFixtures()
   const results = getResults()
 
-  const playerStats = useMemo(() => derivePlayerStatsFromResults(allUsers, results, {
-    fixtures, adminData, leagueOnly: true, timePeriod: timeFilter
-  }), [allUsers, results, fixtures, adminData, timeFilter, refreshKey])
+  const currentSeasonName = adminData?.currentSeason || 'Elite Arrows Season 5'
 
-  const allTimeStats = useMemo(() => derivePlayerStatsFromResults(allUsers, allLeagueResults || results, {
-    fixtures, adminData, leagueOnly: true, timePeriod: 'all', includeReset: false, dedupe: false
-  }), [allUsers, results, allLeagueResults, fixtures, adminData, refreshKey])
+  const playerStats = useMemo(() => derivePlayerStatsFromResults(allUsers, results, {
+    fixtures, adminData, leagueOnly: true, currentSeason: currentSeasonName, includePlayoffs: false
+  }), [allUsers, results, fixtures, adminData, currentSeasonName, refreshKey])
 
   const divisions = ['all', 'Elite', 'Emerald', 'Diamond', 'Platinum']
 
@@ -111,11 +84,11 @@ export default function Leaderboards() {
   }, [playerStats, selectedDivision])
 
   const board180s = useMemo(() => {
-    let list = Object.values(allTimeStats).filter(p => p.played > 0 && p['180s'] > 0)
+    let list = Object.values(playerStats).filter(p => p.played > 0 && p['180s'] > 0)
       .sort((a, b) => b['180s'] - a['180s'] || b.played - a.played)
     if (selectedDivision !== 'all') list = list.filter(p => p.division === selectedDivision)
     return list
-  }, [allTimeStats, selectedDivision])
+  }, [playerStats, selectedDivision])
 
   const boardCheckouts = useMemo(() => {
     let list = Object.values(playerStats).filter(p => p.played > 0 && p.highestCheckout > 0)
@@ -124,9 +97,9 @@ export default function Leaderboards() {
     return list
   }, [playerStats, selectedDivision])
 
-  const allTime180s = useMemo(() =>
-    Object.values(allTimeStats).reduce((max, p) => (!max || p['180s'] > max['180s']) ? p : max, null)
-  , [allTimeStats])
+  const top180s = useMemo(() =>
+    Object.values(playerStats).reduce((max, p) => (!max || p['180s'] > max['180s']) ? p : max, null)
+  , [playerStats])
 
   const topCheckout = useMemo(() =>
     Object.values(playerStats).reduce((max, p) => (!max || p.highestCheckout > max.highestCheckout) ? p : max, null)
@@ -283,17 +256,12 @@ export default function Leaderboards() {
     return (
       <>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-          <h3 className="card-title" style={{ margin: 0, fontSize: '1.15rem' }}>🏆 Performance Tables</h3>
-          <div style={{ display: 'flex', gap: '6px', background: 'rgba(255,255,255,0.05)', padding: '4px', borderRadius: '99px' }}>
-            {['week', 'month', 'quarter', 'all'].map(f => (
-              <button key={f} className={timeFilter === f ? 'btn-primary' : ''} onClick={() => setTimeFilter(f)}
-                style={{ fontSize: '0.7rem', padding: '6px 14px', borderRadius: '99px', border: 'none', fontWeight: 700, cursor: 'pointer', background: timeFilter === f ? 'linear-gradient(135deg, var(--accent-primary), #6344ef)' : 'transparent', color: timeFilter === f ? '#fff' : 'var(--text-muted)' }}>
-                {f === 'quarter' ? '3M' : f.toUpperCase()}
-              </button>
-            ))}
+          <div>
+            <h3 className="card-title" style={{ margin: 0, fontSize: '1.15rem' }}>🏆 Performance Table</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', margin: '4px 0 0' }}>Current live season — {currentSeasonName}</p>
           </div>
         </div>
-        {myRank && timeFilter === 'all' && (
+        {myRank && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 16px', marginBottom: '14px', borderRadius: '14px', background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.35)', fontSize: '0.82rem' }}>
             <span style={{ fontSize: '1.1rem' }}>📍</span>
             <span>You're currently <strong style={{ color: 'var(--accent-cyan)' }}>#{myRank}</strong> in the {selectedDivision === 'all' ? 'Overall' : selectedDivision} standings.</span>
@@ -302,8 +270,7 @@ export default function Leaderboards() {
         <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           {leagueBoard.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-              <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>No matches played in this period.</p>
-              {timeFilter !== 'all' && <button className="btn btn-secondary btn-sm" onClick={() => setTimeFilter('all')}>Show All Time</button>}
+              <p style={{ color: 'var(--text-muted)', marginBottom: '15px' }}>No matches recorded in the current season yet.</p>
             </div>
           ) : (
             <table style={{ width: '100%', minWidth: '640px', borderCollapse: 'collapse' }}>
@@ -356,7 +323,7 @@ export default function Leaderboards() {
     <>
       <div style={{ marginBottom: '16px' }}>
         <h3 className="card-title" style={{ margin: 0, fontSize: '1.15rem' }}>💯 Most 180s</h3>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '4px', marginBottom: 0 }}>All-time maxes across every league game</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '4px', marginBottom: 0 }}>Maxes so far in the current live season</p>
       </div>
       <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
         {board180s.length === 0 ? (
@@ -395,7 +362,7 @@ export default function Leaderboards() {
     <>
       <div style={{ marginBottom: '16px' }}>
         <h3 className="card-title" style={{ margin: 0, fontSize: '1.15rem' }}>🐟 Highest Checkouts</h3>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '4px', marginBottom: 0 }}>Best single finishes across all seasons</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '4px', marginBottom: 0 }}>Best single finishes in the current live season</p>
       </div>
       <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
         {boardCheckouts.length === 0 ? (
@@ -522,8 +489,8 @@ export default function Leaderboards() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '18px', marginBottom: '32px' }}>
-        {spotCard({ icon: '👑', title: 'Points Leader', name: pointsLeader?.username, value: pointsLeader?.points, unit: 'pts', color: '#fbbf24', sub: pointsLeader ? `${pointsLeader.wins}W · ${pointsLeader.losses}L · ${pointsLeader.played} games` : 'No matches yet this period' })}
-        {spotCard({ icon: '💯', title: 'All-Time 180s King', name: allTime180s?.username, value: allTime180s?.['180s'], unit: 'maxes', color: '#38bdf8', sub: 'All seasons combined' })}
+        {spotCard({ icon: '👑', title: 'Points Leader', name: pointsLeader?.username, value: pointsLeader?.points, unit: 'pts', color: '#fbbf24', sub: pointsLeader ? `${pointsLeader.wins}W · ${pointsLeader.losses}L · ${pointsLeader.played} games` : 'No matches yet this season' })}
+        {spotCard({ icon: '💯', title: 'Season 180s Leader', name: top180s?.username, value: top180s?.['180s'], unit: 'maxes', color: '#38bdf8', sub: 'Current live season' })}
         {spotCard({ icon: '🐟', title: 'Highest Checkout', name: topCheckout?.username, value: topCheckout?.highestCheckout, unit: 'finish', color: '#10b981', sub: topCheckout?.division ? `${topCheckout.division} Division` : '—' })}
       </div>
 
