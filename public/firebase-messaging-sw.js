@@ -13,6 +13,16 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig)
 const messaging = getMessaging()
 
+self.addEventListener('install', (event) => {
+  console.log('[FCM SW] Installed — activating');
+  self.skipWaiting()
+})
+
+self.addEventListener('activate', (event) => {
+  console.log('[FCM SW] Activated — claiming clients');
+  event.waitUntil(self.clients.claim())
+})
+
 self.addEventListener('push', (event) => {
   console.log('[FCM SW] Push received:', event)
 

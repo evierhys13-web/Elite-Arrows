@@ -43,6 +43,7 @@ import {
   onMessage,
   isSupported,
   limit,
+  arrayUnion,
 } from "../firebase";
 import { ADMIN_EMAILS } from "../config";
 import SeasonOneWelcomeModal from "../components/SeasonOneWelcomeModal";
@@ -225,17 +226,25 @@ export function AuthProvider({ children }) {
       const messaging = await getMessagingInstance();
       if (!messaging) return null;
 
+      let registration = null;
       if ("serviceWorker" in navigator) {
-        const registration = await navigator.serviceWorker.register(
-          "/firebase-messaging-sw.js",
-        );
+        const existing = await navigator.serviceWorker.getRegistration();
+        // Prefer the messaging service worker; register it as a module since it uses static imports.
+        if (existing && existing.active && existing.active.scriptURL.includes("firebase-messaging-sw")) {
+          registration = existing;
+        } else {
+          registration = await navigator.serviceWorker.register(
+            "/firebase-messaging-sw.js",
+            { type: "module", scope: "/" },
+          );
+          await navigator.serviceWorker.ready;
+        }
       }
 
       const token = await getToken(messaging, {
         vapidKey:
           "BCeZoSxuL3tWAkXFIGr1x8-Ns4YwOm2iffUVL2yUDK02QhEfMPpJ61CH349hX7cXjBAjSF92_EsZKzmyJXynnxg",
-        serviceWorkerRegistration:
-          await navigator.serviceWorker.getRegistration(),
+        serviceWorkerRegistration: registration || (await navigator.serviceWorker.getRegistration()),
       });
 
       if (token) {
@@ -248,6 +257,7 @@ export function AuthProvider({ children }) {
             userId: user.id,
             username: user.username,
             token: token,
+            tokens: arrayUnion(token),
             updatedAt: new Date().toISOString(),
           },
           { merge: true },
