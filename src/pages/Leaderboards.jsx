@@ -34,6 +34,7 @@ export default function Leaderboards() {
   const [selectedDivision, setSelectedDivision] = useState('all')
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') === 'practice' ? 'practice' : 'league')
   const [isSyncing, setIsSyncing] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
   const [practiceLeaderboard, setPracticeLeaderboard] = useState([])
   const [hallOfFame, setHallOfFame] = useState([])
 
