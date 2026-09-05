@@ -8,6 +8,7 @@ import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, LineChart, Line
 } from 'recharts'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
+import { isLeagueResult } from '../utils/leagueResults'
 import Breadcrumbs from '../components/Breadcrumbs'
 import CountUp from '../components/CountUp'
 
@@ -386,6 +387,7 @@ export default function Statistics() {
           approvedResults={approvedResults}
           seasonAllPlayers={seasonAllPlayers}
           seasonName={selectedSeason}
+          fixtures={fixtures}
           allUsers={allUsers}
           navigate={navigate}
         />
@@ -648,7 +650,7 @@ function PlayerView({ user, personalStats, allTime, seasonal, seasonName, onBack
   )
 }
 
-function DivisionOverview({ leagueStats, filteredDiv180s, selectedDivFilter, setSelectedDivFilter, approvedResults, seasonAllPlayers, seasonName, allUsers, navigate }) {
+function DivisionOverview({ leagueStats, filteredDiv180s, selectedDivFilter, setSelectedDivFilter, approvedResults, seasonAllPlayers, seasonName, fixtures, allUsers, navigate }) {
   const totalPlayers = useMemo(() => allUsers.filter(u => DIVISIONS.includes(u?.division)).length, [allUsers])
   const totalMatches = approvedResults.length
   const total180s = approvedResults.reduce((acc, r) => acc + Number(r.player1Stats?.['180s'] || 0) + Number(r.player2Stats?.['180s'] || 0), 0)
@@ -810,6 +812,7 @@ function DivisionOverview({ leagueStats, filteredDiv180s, selectedDivFilter, set
         results={approvedResults}
         seasonName={seasonName}
         divFilter={selectedDivFilter}
+        fixtures={fixtures}
         allUsers={allUsers}
         navigate={navigate}
       />
@@ -817,10 +820,18 @@ function DivisionOverview({ leagueStats, filteredDiv180s, selectedDivFilter, set
   )
 }
 
-function SeasonPlayerBrowser({ seasonStatsMap, results, seasonName, divFilter, allUsers, navigate }) {
+function SeasonPlayerBrowser({ seasonStatsMap, results, seasonName, divFilter, fixtures, allUsers, navigate }) {
   const [search, setSearch] = useState('')
   const [expandedId, setExpandedId] = useState(null)
   const [expandedProofs, setExpandedProofs] = useState({})
+
+  const fixturesById = useMemo(() =>
+    Object.fromEntries((fixtures || []).map(f => [String(f.id), f])),
+  [fixtures])
+
+  const leagueResults = useMemo(() =>
+    results.filter(r => isLeagueResult(r, fixturesById)),
+  [results, fixturesById])
 
   const toggleProof = (rid, field) => setExpandedProofs(prev => ({ ...prev, [`${rid}_${field}`]: !prev[`${rid}_${field}`] }))
 
@@ -849,7 +860,7 @@ function SeasonPlayerBrowser({ seasonStatsMap, results, seasonName, divFilter, a
       .sort((a, b) => (Number(b.stats?.points) || 0) - (Number(a.stats?.points) || 0) || String(a.username || '').localeCompare(String(b.username || '')))
   }, [allUsers, seasonStatsMap, divFilter, search])
 
-  const userResults = (id) => results
+  const userResults = (id) => leagueResults
     .filter(r => String(r.player1Id) === String(id) || String(r.player2Id) === String(id))
     .slice()
     .sort((a, b) => new Date(b.submittedAt || b.date || 0) - new Date(a.submittedAt || a.date || 0))
@@ -858,10 +869,11 @@ function SeasonPlayerBrowser({ seasonStatsMap, results, seasonName, divFilter, a
     const isP1 = String(r.player1Id) === String(id)
     const oppId = isP1 ? r.player2Id : r.player1Id
     const opp = allUsers.find(u => String(u.id) === String(oppId))
-    const myScore = Number(isP1 ? r.player1Score : r.player2Score) || 0
-    const oppScore = Number(isP1 ? r.player2Score : r.player1Score) || 0
-    const result = myScore > oppScore ? 'W' : myScore < oppScore ? 'L' : 'D'
-    return { isP1, opp, myScore, oppScore, result }
+    const myScore = Number(isP1 ? r.score1 : r.score2) || 0
+    const oppScore = Number(isP1 ? r.score2 : r.score1) || 0
+    const forfeit = Boolean(r.forfeit)
+    const result = forfeit ? 'W' : myScore > oppScore ? 'W' : myScore < oppScore ? 'L' : 'D'
+    return { isP1, opp, myScore, oppScore, result, forfeit }
   }
 
   const chip = (label, value, color) => (
@@ -991,7 +1003,7 @@ function SeasonPlayerBrowser({ seasonStatsMap, results, seasonName, divFilter, a
                           return (
                             <tr key={r.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', fontSize: '0.8rem' }}>
                               <td style={{ padding: '10px 8px', color: 'var(--text-muted)', whiteSpace: 'nowrap', fontSize: '0.75rem' }}>{niceDate(r)}</td>
-                              <td style={{ padding: '10px 8px', textAlign: 'center', fontWeight: 800, color: '#fff' }}>{v.myScore} – {v.oppScore}</td>
+                              <td style={{ padding: '10px 8px', textAlign: 'center', fontWeight: 800, color: '#fff' }}>{v.forfeit ? '🏳️' : `${v.myScore} – ${v.oppScore}`}</td>
                               <td style={{ padding: '10px 8px' }}>
                                 <span style={{ fontWeight: 700, color: '#fff' }}>{v.opp?.username || v.opp?.name || 'Unknown'}</span>
                                 {v.opp?.division && <span style={{ fontSize: '0.6rem', marginLeft: '6px', color: DIVISION_COLORS[v.opp.division] || 'var(--text-muted)' }}>{v.opp.division}</span>}
