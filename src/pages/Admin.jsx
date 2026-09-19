@@ -12,6 +12,7 @@ import { compressImageToDataUrl } from '../utils/imageUtils'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 import CupManagement from './CupManagement'
+import FixtureTracker from '../components/FixtureTracker'
 
 export default function Admin() {
   const {
@@ -36,7 +37,8 @@ export default function Admin() {
     getNews,
     postNews,
     deleteNews,
-    togglePinNews
+    togglePinNews,
+    notifyUser
   } = useAuth()
 
   const navigate = useNavigate()
@@ -226,7 +228,7 @@ export default function Admin() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    const allowed = ['dashboard', 'results', 'payments', 'moneypot', 'cups', 'playoffs', 'players', 'admins', 'seasons', 'trophies', 'halloffame', 'tokens', 'surveys', 'maintenance', 'audit', 'openleague', 'new', 'bets', 'practice', 'hometournaments', 'suggestions']
+    const allowed = ['dashboard', 'results', 'payments', 'moneypot', 'cups', 'playoffs', 'players', 'admins', 'seasons', 'trophies', 'halloffame', 'tokens', 'surveys', 'maintenance', 'audit', 'openleague', 'new', 'bets', 'practice', 'hometournaments', 'suggestions', 'fixtures']
     if (tab && allowed.includes(tab)) setActiveTab(tab)
   }, [searchParams])
 
@@ -1472,6 +1474,12 @@ export default function Admin() {
     setIsApproving(false)
   }
 
+  const fixtureAttentionCount = allFixtures.filter(f => {
+    if (f._deleted) return false
+    const status = String(f.status || 'pending').toLowerCase()
+    return !['approved', 'completed', 'rejected', 'cancelled'].includes(status)
+  }).length
+
   const tabs = [
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'results', label: 'Scores', count: pendingResults.length },
@@ -1483,6 +1491,7 @@ export default function Admin() {
     { id: 'admins', label: 'Staff' },
     { id: 'cups', label: 'Cups' },
     { id: 'news', label: 'League News' },
+    { id: 'fixtures', label: 'Fixture Tracker', count: fixtureAttentionCount },
     { id: 'surveys', label: 'Surveys' },
     { id: 'highlights', label: 'Home Highlights' },
     { id: 'trophies', label: 'Trophies' },
@@ -3192,6 +3201,23 @@ export default function Admin() {
             <h3>Practice Hub</h3>
             <button className="btn btn-primary" style={{ marginTop: '20px' }} onClick={() => triggerDataRefresh('all')}>Refresh Data</button>
           </div>
+        )}
+
+        {/* TAB: FIXTURE TRACKER */}
+        {activeTab === 'fixtures' && (
+          <FixtureTracker
+            user={user}
+            allPlayers={allPlayers}
+            allFixtures={allFixtures}
+            allResults={allResults}
+            adminData={adminData}
+            updateFixtures={updateFixtures}
+            notifyUser={notifyUser}
+            triggerDataRefresh={triggerDataRefresh}
+            showToast={showToast}
+            onReviewResults={() => setActiveTab('results')}
+            onOpenSubmitResult={(fixture) => navigate(`/submit-result?fixtureId=${encodeURIComponent(fixture.id)}&season=${encodeURIComponent(fixture.season || '')}&gameType=${encodeURIComponent(fixture.competition)}`)}
+          />
         )}
 
         {/* TAB: HIGHLIGHTS */}
