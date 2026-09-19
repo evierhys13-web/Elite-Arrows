@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import { db, doc, setDoc, deleteDoc } from '../firebase'
-import { isLeagueResult, getResultPlayerId } from '../utils/leagueResults'
-import { getApprovedResultsForStats } from '../utils/playerStats'
+import { isLeagueResult, getResultPlayerId, getResultEffectiveTime } from '../utils/leagueResults'
 
 const norm = (s) => String(s || '').toLowerCase().trim()
 
@@ -100,28 +99,55 @@ export default function FixtureTracker({
     })
   }, [allResults, usersWithDivisions])
 
-  const approvedResults = useMemo(() => getApprovedResultsForStats(allDivFiltered, {
-    fixtures: allFixtures,
-    adminData,
-    leagueOnly: true,
-    currentSeason,
-    includePlayoffs: false
-  }), [allDivFiltered, allFixtures, adminData, currentSeason])
+  const resetTime = useMemo(() => {
+    const times = [new Date('2020-01-01T00:00:00.000Z').getTime()]
+    if (adminData?.leagueTableResetAt) times.push(new Date(adminData.leagueTableResetAt).getTime())
+    return Math.max(...times.filter(t => Number.isFinite(t) && t > 0))
+  }, [adminData])
+
+  const liveSeasonMatch = (r) => {
+    const rs = seasonNorm(r.season)
+    const as = seasonNorm(currentSeason)
+    if (rs && rs === as) return true
+    if (rs && as && (rs.includes(as) || as.includes(rs))) return true
+    const rm = rs.match(/(\d+)/)
+    const am = as.match(/(\d+)/)
+    if (rm && am && rm[1] !== am[1]) return false
+    const t = dateStamp(r.date || r.submittedAt || r.createdAt)
+    if (t > 0) return t >= SEASON_START
+    return !rs
+  }
+
+  const isLeagueDoc = (r) => {
+    if (r.cupId || r.matchId || r.tournamentId) return false
+    const gt = norm(r.gameType)
+    if (['cup', 'friendly', 'playoff', 'tournament', 'super league', 'champions league', 'open league'].some(t => gt.includes(t))) return false
+    return true
+  }
+
+  const afterReset = (r) => {
+    if (resetTime <= 0) return true
+    return getResultEffectiveTime(r) > resetTime
+  }
+
+  const approvedResults = useMemo(() => {
+    return allDivFiltered.filter(r =>
+      norm(r.status) === 'approved' &&
+      !r.excludeFromLeague &&
+      isLeagueResult(r, fixturesById) &&
+      isLeagueDoc(r) &&
+      afterReset(r) &&
+      liveSeasonMatch(r)
+    )
+  }, [allDivFiltered, fixturesById, resetTime, currentSeason])
 
   const isLivePending = (r) => {
     if (norm(r.status) === 'rejected') return false
+    if (r.excludeFromLeague) return false
     if (!isLeagueResult(r, fixturesById)) return false
-    const rs = seasonNorm(r.season)
-    const as = seasonNorm(currentSeason)
-    if (rs === as) return true
-    if (['season1', '2026', 'legacy'].includes(as)) {
-      return ['season1', '2026', 'legacy', '', 'undefined', 'null'].includes(rs)
-    }
-    if (!r.season) {
-      const t = dateStamp(r.date || r.submittedAt || r.createdAt)
-      return t === 0 ? true : t >= SEASON_START
-    }
-    return false
+    if (!isLeagueDoc(r)) return false
+    if (!afterReset(r)) return false
+    return liveSeasonMatch(r)
   }
 
   const pendingResults = useMemo(() => {
@@ -283,7 +309,17 @@ export default function FixtureTracker({
         }
       })
     })
-    return rows.sort((x, y) => String(y.result?.date || y.result?.submittedAt || '').localeCompare(String(x.result?.date || x.result?.submittedAt || '')))
+    const deduped = []
+    const seen = new Set()
+    rows.slice()
+      .sort((x, y) => String(y.result?.date || y.result?.submittedAt || '').localeCompare(String(x.result?.date || x.result?.submittedAt || '')))
+      .forEach(row => {
+        const k = row.key ? `r_${row.key}` : `p_${pairOf(row.result)}`
+        if (seen.has(k)) return
+        seen.add(k)
+        deduped.push(row)
+      })
+    return deduped
   }, [approvedResults, pendingResults, approvedPairKeys, syncedPairs, usersWithDivisions, divisionFilter])
 
   const groupByDivision = (list) => {
