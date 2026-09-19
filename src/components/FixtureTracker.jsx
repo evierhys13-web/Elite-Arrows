@@ -33,6 +33,7 @@ export default function FixtureTracker({
   const [divisionFilter, setDivisionFilter] = useState('all')
   const [view, setView] = useState('toplay')
   const [showBreakdown, setShowBreakdown] = useState(false)
+  const [search, setSearch] = useState('')
   const [busyId, setBusyId] = useState('')
 
   const currentSeason = adminData?.currentSeason || ''
@@ -148,6 +149,33 @@ export default function FixtureTracker({
     return s
   }, [pendingResults, usersWithDivisions])
 
+  const syncedPairs = useMemo(() => {
+    const map = {}
+    allFixtures.forEach(f => {
+      if (f._deleted) return
+      if (f.cupId) return
+      const gt = norm(f.gameType)
+      if (gt && gt !== 'league') return
+      if (f.season && seasonNorm(f.season) !== seasonNorm(currentSeason)) return
+      if (!['approved', 'completed'].includes(norm(f.status))) return
+      const p1 = findUser(f.player1Id || f.player1)
+      const p2 = findUser(f.player2Id || f.player2)
+      if (!p1 || !p2) return
+      const u1 = usersWithDivisions.find(u => String(u.id) === String(p1.id))
+      const u2 = usersWithDivisions.find(u => String(u.id) === String(p2.id))
+      const d1 = u1?.division
+      const d2 = u2?.division
+      if (!d1 || !d2 || d1 !== d2 || d1 === 'Unassigned' || d1 === 'Admin') return
+      const key = [String(p1.id), String(p2.id)].sort().join('_')
+      if (approvedPairKeys.has(key) || pendingPairKeys.has(key)) return
+      if (map[key]) return
+      map[key] = { key, p1, p2, division: d1, fixture: f }
+    })
+    return map
+  }, [allFixtures, currentSeason, allPlayers, usersWithDivisions, approvedPairKeys, pendingPairKeys])
+
+  const syncedPairKeys = useMemo(() => new Set(Object.keys(syncedPairs)), [syncedPairs])
+
   const playedByPlayer = useMemo(() => {
     const map = {}
     approvedResults.forEach(r => {
@@ -159,8 +187,14 @@ export default function FixtureTracker({
       map[p1].add(p2)
       map[p2].add(p1)
     })
+    Object.values(syncedPairs).forEach(({ p1, p2 }) => {
+      if (!map[String(p1.id)]) map[String(p1.id)] = new Set()
+      if (!map[String(p2.id)]) map[String(p2.id)] = new Set()
+      map[String(p1.id)].add(String(p2.id))
+      map[String(p2.id)].add(String(p1.id))
+    })
     return map
-  }, [approvedResults, usersWithDivisions])
+  }, [approvedResults, syncedPairs, usersWithDivisions])
 
   const rosterByDivision = useMemo(() => {
     const map = {}
@@ -200,13 +234,13 @@ export default function FixtureTracker({
           const a = roster[i]
           const b = roster[j]
           const key = [String(a.id), String(b.id)].sort().join('_')
-          if (approvedPairKeys.has(key) || pendingPairKeys.has(key)) continue
+          if (approvedPairKeys.has(key) || pendingPairKeys.has(key) || syncedPairKeys.has(key)) continue
           rows.push({ key, p1: a, p2: b, division: div, fixture: fixtureByPairKey[key] || null })
         }
       }
     })
     return rows.sort((x, y) => String(x.p1.username).localeCompare(String(y.p1.username)) || String(x.p2.username).localeCompare(String(y.p2.username)))
-  }, [rosterByDivision, approvedPairKeys, pendingPairKeys, fixtureByPairKey, divisionFilter])
+  }, [rosterByDivision, approvedPairKeys, pendingPairKeys, syncedPairKeys, fixtureByPairKey, divisionFilter])
 
   const toRows = (list, awaiting) => {
     const rows = []
@@ -232,8 +266,25 @@ export default function FixtureTracker({
       if (k && approvedPairKeys.has(k)) return
       rows.push(...toRows([r], true))
     })
+    Object.values(syncedPairs).forEach(({ key, p1, p2, division, fixture }) => {
+      rows.push({
+        key,
+        p1,
+        p2,
+        division,
+        awaiting: false,
+        synced: true,
+        result: {
+          score1: fixture.score1 ?? null,
+          score2: fixture.score2 ?? null,
+          date: fixture.updatedAt || fixture.createdAt,
+          forfeit: Boolean(fixture.forfeit),
+          fixtureId: fixture.id
+        }
+      })
+    })
     return rows.sort((x, y) => String(y.result?.date || y.result?.submittedAt || '').localeCompare(String(x.result?.date || x.result?.submittedAt || '')))
-  }, [approvedResults, pendingResults, approvedPairKeys, usersWithDivisions, divisionFilter])
+  }, [approvedResults, pendingResults, approvedPairKeys, syncedPairs, usersWithDivisions, divisionFilter])
 
   const groupByDivision = (list) => {
     const groups = []
@@ -245,6 +296,15 @@ export default function FixtureTracker({
     return groups
   }
 
+  const q = norm(search)
+  const matchesSearch = (e) =>
+    !q ||
+    norm(e.p1?.username).includes(q) ||
+    norm(e.p2?.username).includes(q) ||
+    (e.result && (norm(e.result.player1).includes(q) || norm(e.result.player2).includes(q)))
+  const filteredToPlay = toPlayRows.filter(matchesSearch)
+  const filteredPlayed = playedRows.filter(matchesSearch)
+
   const breakdown = useMemo(() => {
     return divisions
       .filter(d => divisionFilter === 'all' || d === divisionFilter)
@@ -252,14 +312,16 @@ export default function FixtureTracker({
         const roster = rosterByDivision[div] || []
         return {
           div,
-          rows: roster.map(u => {
-            const played = playedByPlayer[String(u.id)] ? playedByPlayer[String(u.id)].size : 0
-            const remaining = Math.max(0, roster.length - 1 - played)
-            return { user: u, played, remaining }
-          })
+          rows: roster
+            .map(u => {
+              const played = playedByPlayer[String(u.id)] ? playedByPlayer[String(u.id)].size : 0
+              const remaining = Math.max(0, roster.length - 1 - played)
+              return { user: u, played, remaining }
+            })
+            .filter(({ user: u }) => !q || norm(u.username).includes(q))
         }
       })
-  }, [divisions, rosterByDivision, playedByPlayer, divisionFilter])
+  }, [divisions, rosterByDivision, playedByPlayer, divisionFilter, q])
 
   const handleRemind = async (entry) => {
     if (busyId) return
@@ -330,6 +392,14 @@ export default function FixtureTracker({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      <input
+        className="glass"
+        type="text"
+        placeholder="🔍 Search player..."
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        style={{ width: '100%', padding: '12px', borderRadius: '10px' }}
+      />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
         <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--accent-cyan)' }}>
           {currentSeason ? `Live Season: ${currentSeason}` : 'Live Season'} · League
@@ -343,17 +413,17 @@ export default function FixtureTracker({
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', maxWidth: '480px' }}>
-        {toggleCard(view === 'toplay', toPlayRows.length, 'To Play', () => setView('toplay'))}
-        {toggleCard(view === 'played', playedRows.length, 'Played', () => setView('played'))}
+        {toggleCard(view === 'toplay', filteredToPlay.length, 'To Play', () => setView('toplay'))}
+        {toggleCard(view === 'played', filteredPlayed.length, 'Played', () => setView('played'))}
       </div>
 
       {view === 'toplay' ? (
-        toPlayRows.length === 0 ? (
+        filteredToPlay.length === 0 ? (
           <div className="glass" style={{ padding: '20px', borderRadius: '12px', textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
-            No games left to play. All league games are complete!
+            {q ? `No to-play games match "${search}".` : 'No games left to play. All league games are complete!'}
           </div>
         ) : (
-          groupByDivision(toPlayRows).map(g => (
+          groupByDivision(filteredToPlay).map(g => (
             <div key={g.division}>
               <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--accent-cyan)', marginBottom: '8px' }}>{g.division} · {g.rows.length} to play</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '8px' }}>
@@ -378,20 +448,24 @@ export default function FixtureTracker({
           ))
         )
       ) : (
-        playedRows.length === 0 ? (
+        filteredPlayed.length === 0 ? (
           <div className="glass" style={{ padding: '20px', borderRadius: '12px', textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
-            No league games played yet this season.
+            {q ? `No played games match "${search}".` : 'No league games played yet this season.'}
           </div>
         ) : (
-          groupByDivision(playedRows).map(g => (
+          groupByDivision(filteredPlayed).map(g => (
             <div key={g.division}>
               <div style={{ fontSize: 12, fontWeight: 800, color: '#81c784', marginBottom: '8px' }}>{g.division} · {g.rows.length} played</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '8px' }}>
                 {g.rows.map(entry => {
                   const r = entry.result
-                  const scoreTxt = `${r.score1} - ${r.score2}`
+                  const hasScore = r.score1 !== null && r.score1 !== undefined && r.score2 !== null && r.score2 !== undefined
+                  const scoreTxt = hasScore ? `${r.score1} - ${r.score2}` : '🏁'
                   const winnerIsP1 = Number(r.score1) > Number(r.score2)
                   const winnerName = winnerIsP1 ? entry.p1.username : entry.p2.username
+                  const outcomeTxt = !hasScore
+                    ? '✅ Synced from approved fixture'
+                    : (r.forfeit ? <>⚖ {winnerName} wins by forfeit</> : <>🏆 {winnerName} wins</>)
                   return (
                     <div key={entry.key} className="glass" style={{ padding: '12px', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
@@ -404,7 +478,7 @@ export default function FixtureTracker({
                         {statusBadge(entry.awaiting ? 'awaiting' : 'played')}
                       </div>
                       <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-muted)' }}>
-                        {entry.awaiting ? '⏳ Result awaiting approval' : (r.forfeit ? <>⚖ {winnerName} wins by forfeit</> : <>🏆 {winnerName} wins</>)}
+                        {entry.awaiting ? '⏳ Result awaiting approval' : outcomeTxt}
                       </div>
                       {entry.awaiting && onReviewResults && (
                         <div style={{ display: 'flex', justifyContent: 'center' }}>
