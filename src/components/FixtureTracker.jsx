@@ -3,17 +3,8 @@ import { db, doc, setDoc, deleteDoc } from '../firebase'
 
 const norm = (s) => String(s || '').toLowerCase().trim()
 
-const STATUS_STYLES = {
-  pending: { background: 'rgba(0, 212, 255, 0.12)', color: 'var(--accent-cyan)', borderColor: 'rgba(0, 212, 255, 0.35)' },
-  accepted: { background: 'rgba(0, 212, 255, 0.12)', color: 'var(--accent-cyan)', borderColor: 'rgba(0, 212, 255, 0.35)' },
-  proposed: { background: 'rgba(255, 170, 0, 0.14)', color: '#ffb14e', borderColor: 'rgba(255, 170, 0, 0.4)' },
-  countered: { background: 'rgba(255, 170, 0, 0.14)', color: '#ffb14e', borderColor: 'rgba(255, 170, 0, 0.4)' },
-  result_submitted: { background: 'rgba(255, 193, 7, 0.15)', color: '#ffd54f', borderColor: 'rgba(255, 193, 7, 0.45)' },
-  approved: { background: 'rgba(76, 175, 80, 0.15)', color: '#81c784', borderColor: 'rgba(76, 175, 80, 0.4)' },
-  completed: { background: 'rgba(76, 175, 80, 0.15)', color: '#81c784', borderColor: 'rgba(76, 175, 80, 0.4)' },
-  rejected: { background: 'rgba(244, 67, 54, 0.15)', color: '#e57373', borderColor: 'rgba(244, 67, 54, 0.4)' },
-  cancelled: { background: 'rgba(128, 128, 128, 0.12)', color: '#aaa', borderColor: 'rgba(128, 128, 128, 0.3)' }
-}
+const STYLE_PLAYED = { background: 'rgba(76, 175, 80, 0.15)', color: '#81c784', borderColor: 'rgba(76, 175, 80, 0.4)' }
+const STYLE_WARN = { background: 'rgba(255, 193, 7, 0.15)', color: '#ffd54f', borderColor: 'rgba(255, 193, 7, 0.45)' }
 
 export default function FixtureTracker({
   user,
@@ -29,14 +20,15 @@ export default function FixtureTracker({
   onOpenSubmitResult
 }) {
   const [divisionFilter, setDivisionFilter] = useState('all')
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [search, setSearch] = useState('')
+  const [view, setView] = useState('toplay')
   const [setDateFor, setSetDateFor] = useState(null)
   const [dateVal, setDateVal] = useState('')
   const [timeVal, setTimeVal] = useState('')
   const [forfeitFor, setForfeitFor] = useState(null)
   const [winner, setWinner] = useState('')
   const [busyId, setBusyId] = useState('')
+
+  const currentSeason = adminData?.currentSeason || ''
 
   const logAudit = async (action, details) => {
     try {
@@ -60,7 +52,22 @@ export default function FixtureTracker({
     ) || null
   }
 
-  const currentSeason = adminData?.currentSeason || ''
+  const resultForFixture = (fixture) => {
+    const hit = allResults.find(r => r.fixtureId && String(r.fixtureId) === String(fixture.id))
+    if (hit) return hit
+    const p1 = fixture.p1.id
+    const p2 = fixture.p2.id
+    return allResults.find(r =>
+      norm(r.status) === 'approved' &&
+      !r.cupId &&
+      String(r.gameType || '').toLowerCase().includes('league') &&
+      (
+        (String(r.player1Id) === String(p1) && String(r.player2Id) === String(p2)) ||
+        (String(r.player1Id) === String(p2) && String(r.player2Id) === String(p1))
+      ) &&
+      (!fixture.season || !r.season || String(r.season) === String(fixture.season))
+    ) || null
+  }
 
   const fixtures = useMemo(() => {
     const isLeagueFixture = (f) => {
@@ -76,7 +83,6 @@ export default function FixtureTracker({
         const p1 = findUser(f.player1Id || f.player1)
         const p2 = findUser(f.player2Id || f.player2)
         if (!p1 || !p2) return null
-        const status = norm(f.status) || 'pending'
         return {
           id: f.id,
           raw: f,
@@ -85,45 +91,16 @@ export default function FixtureTracker({
           competition: 'League',
           season: currentSeason,
           division: f.division && f.division !== 'Unassigned' ? f.division : (p1.division && p1.division !== 'Unassigned' ? p1.division : (p2.division || 'Unassigned')),
-          status,
+          status: norm(f.status) || 'pending',
           createdAt: f.createdAt,
           scheduledDate: f.fixtureDate || '',
           scheduledTime: f.fixtureTime || '',
           proposedDate: f.proposedDate || '',
-          proposedTime: f.proposedTime || '',
-          proposedBy: f.proposedBy || '',
           counterDate: f.counterDate || ''
         }
       })
       .filter(Boolean)
-  }, [allFixtures, allPlayers, currentSeason])
-
-  const resultForFixture = (fixture) => {
-    const hit = allResults.find(r => r.fixtureId && String(r.fixtureId) === String(fixture.id))
-    if (hit) return hit
-    if (fixture.competition === 'League' || fixture.competition === 'Friendly') {
-      const p1 = fixture.p1.id
-      const p2 = fixture.p2.id
-      return allResults.find(r =>
-        norm(r.status) === 'approved' &&
-        !r.cupId &&
-        String(r.gameType || '').toLowerCase().includes('league') &&
-        (
-          (String(r.player1Id) === String(p1) && String(r.player2Id) === String(p2)) ||
-          (String(r.player1Id) === String(p2) && String(r.player2Id) === String(p1))
-        ) &&
-        (!fixture.season || !r.season || String(r.season) === String(fixture.season))
-      ) || null
-    }
-    return null
-  }
-
-  const divisions = useMemo(() => {
-    const set = new Set()
-    allPlayers.forEach(u => { if (u.division && u.division !== 'Unassigned') set.add(u.division) })
-    fixtures.forEach(f => { if (f.division && f.division !== 'Unassigned') set.add(f.division) })
-    return Array.from(set).sort()
-  }, [allPlayers, fixtures])
+  }, [allFixtures, allPlayers, currentSeason, allResults])
 
   const isOverdue = (f) => {
     if (!f.scheduledDate) return false
@@ -132,46 +109,49 @@ export default function FixtureTracker({
     return d.getTime() < Date.now()
   }
 
-  const analyze = (f) => {
-    const result = resultForFixture(f)
-    const isDone = ['approved', 'completed', 'rejected'].includes(f.status)
-    const submitted = f.status === 'result_submitted' || (result && !['approved', 'rejected'].includes(norm(result.status)))
-    const conflict = ['proposed', 'countered'].includes(f.status)
-    const due = f.status === 'accepted' && isOverdue(f) && !result
-    const futureClean = f.status === 'accepted' && !isOverdue(f) && !result
-    const open = ['pending', 'accepted'].includes(f.status) && !result
-    const priority = submitted ? 0 : conflict ? 1 : due ? 2 : futureClean ? 3 : open ? 4 : 5
-    return { result, isDone, submitted, conflict, due, futureClean, open, priority }
-  }
-
-  const queue = useMemo(() => {
-    return fixtures
-      .map(f => ({ f, a: analyze(f) }))
-      .filter(x => !x.a.isDone)
-      .sort((x, y) => x.a.priority - y.a.priority || String(x.f.createdAt || '').localeCompare(String(y.f.createdAt || '')))
+  const enriched = useMemo(() => {
+    return fixtures.map(f => {
+      const result = resultForFixture(f)
+      const resultStatus = result ? norm(result.status) : ''
+      const played = ['approved', 'completed'].includes(f.status) || resultStatus === 'approved'
+      const awaiting = f.status === 'result_submitted' || (result && !['approved', 'rejected'].includes(resultStatus))
+      return { f, result, played: played || awaiting, awaiting, overdue: !played && !awaiting && isOverdue(f) }
+    })
   }, [fixtures, allResults])
 
-  const playedCount = fixtures.reduce((n, f) => n + (f.status === 'approved' || f.status === 'completed' || (resultForFixture(f) && norm(resultForFixture(f).status) === 'approved') ? 1 : 0), 0)
+  const divisions = useMemo(() => {
+    const set = new Set()
+    allPlayers.forEach(u => { if (u.division && u.division !== 'Unassigned') set.add(u.division) })
+    fixtures.forEach(f => { if (f.division && f.division !== 'Unassigned') set.add(f.division) })
+    return Array.from(set).sort()
+  }, [allPlayers, fixtures])
 
-  const counts = useMemo(() => {
-    const toPlay = queue.filter(x => x.a.priority <= 4).length
-    const conflicts = queue.filter(x => x.a.conflict).length
-    const awaiting = queue.filter(x => x.a.submitted).length
-    const overdue = queue.filter(x => x.a.due).length
-    return { toPlay, conflicts, awaiting, overdue }
-  }, [queue])
+  const toPlay = useMemo(() => {
+    return enriched
+      .filter(e => !e.played)
+      .filter(e => divisionFilter === 'all' || e.f.division === divisionFilter)
+      .sort((a, b) => {
+        const so = (e) => e.overdue ? 0 : (e.f.scheduledDate ? 1 : 2)
+        return so(a) - so(b) || String(a.f.scheduledDate || '').localeCompare(String(b.f.scheduledDate || ''))
+      })
+  }, [enriched, divisionFilter])
 
-  const filtered = useMemo(() => {
-    let list = fixtures
-    if (divisionFilter !== 'all') list = list.filter(f => f.division === divisionFilter)
-    if (statusFilter === 'toplay') list = list.filter(f => !analyze(f).isDone)
-    if (statusFilter === 'played') list = list.filter(f => analyze(f).isDone)
-    if (search) {
-      const s = search.toLowerCase()
-      list = list.filter(f => f.p1.username.toLowerCase().includes(s) || f.p2.username.toLowerCase().includes(s))
-    }
-    return list
-  }, [fixtures, divisionFilter, statusFilter, search, allResults])
+  const played = useMemo(() => {
+    return enriched
+      .filter(e => e.played)
+      .filter(e => divisionFilter === 'all' || e.f.division === divisionFilter)
+      .sort((a, b) => String(b.result?.date || b.result?.approvedAt || '').localeCompare(String(a.result?.date || a.result?.approvedAt || '')))
+  }, [enriched, divisionFilter])
+
+  const groupByDivision = (list) => {
+    const groups = []
+    list.forEach(e => {
+      let g = groups.find(x => x.division === e.f.division)
+      if (!g) { g = { division: e.f.division, rows: [] }; groups.push(g) }
+      g.rows.push(e)
+    })
+    return groups
+  }
 
   const updateFixture = async (fixture, updates) => {
     const updatedFixture = { ...fixture.raw, ...updates, updatedAt: new Date().toISOString() }
@@ -189,10 +169,10 @@ export default function FixtureTracker({
     setBusyId(`r_${fixture.id}`)
     try {
       const dateTxt = fixture.scheduledDate ? ` on ${fixture.scheduledDate}` : (fixture.proposedDate ? ` (proposed: ${fixture.proposedDate})` : '')
-      const msg = `Your ${fixture.competition} match vs ` + `{opp}` + ` is due${dateTxt}. Arrange a time to play!`
+      const msg = `Your League match vs ` + `{opp}` + ` is due${dateTxt}. Arrange a time to play!`
       await notifyUser(fixture.p1.id, 'Fixture Reminder', msg.replace('{opp}', fixture.p2.username), 'fixture_reminder', { fixtureId: fixture.id })
       await notifyUser(fixture.p2.id, 'Fixture Reminder', msg.replace('{opp}', fixture.p1.username), 'fixture_reminder', { fixtureId: fixture.id })
-      await logAudit('FIXTURE_REMIND', `Reminded ${fixture.p1.username} & ${fixture.p2.username} re: ${fixture.competition} fixture (${fixture.id})`)
+      await logAudit('FIXTURE_REMIND', `Reminded ${fixture.p1.username} & ${fixture.p2.username} re: League fixture (${fixture.id})`)
       showToast('Reminder sent to both players', 'success')
     } catch (e) { showToast('Remind failed: ' + e.message, 'error') }
     setBusyId('')
@@ -222,7 +202,6 @@ export default function FixtureTracker({
     const winnerP = winIsP1 ? fixture.p1 : fixture.p2
     const loserP = winIsP1 ? fixture.p2 : fixture.p1
     const resultId = `admin_${Date.now()}`
-    const targetSeason = fixture.season || adminData?.currentSeason || 'Season 1'
     try {
       const newMatch = {
         id: resultId,
@@ -234,8 +213,8 @@ export default function FixtureTracker({
         score2: winIsP1 ? 0 : 1,
         gameType: 'League',
         status: 'approved',
-        season: targetSeason,
-        division: fixture.competition === 'Cup' ? '' : (fixture.p1.division || ''),
+        season: fixture.season || currentSeason,
+        division: fixture.p1.division || '',
         date: new Date().toISOString().split('T')[0],
         submittedAt: new Date().toISOString(),
         submittedBy: 'admin',
@@ -247,7 +226,7 @@ export default function FixtureTracker({
       }
       await setDoc(doc(db, 'results', resultId), newMatch)
       await updateFixture(fixture, { status: 'approved', resultId, score1: newMatch.score1, score2: newMatch.score2 })
-      await logAudit('FIXTURE_FORFEIT', `Forfeit: ${winnerP.username} def ${loserP.username} (${fixture.competition}${fixture.season ? ' ' + fixture.season : ''})`)
+      await logAudit('FIXTURE_FORFEIT', `Forfeit: ${winnerP.username} def ${loserP.username} (League)`)
       triggerDataRefresh('all')
       showToast(`${winnerP.username} wins by forfeit - 3 points awarded`, 'success')
       setForfeitFor(null); setWinner('')
@@ -256,20 +235,19 @@ export default function FixtureTracker({
   }
 
   const handleRemove = async (fixture) => {
-    if (!window.confirm(`Delete this ${fixture.competition} fixture between ${fixture.p1.username} and ${fixture.p2.username}?`)) return
+    if (!window.confirm(`Delete this League fixture between ${fixture.p1.username} and ${fixture.p2.username}?`)) return
     if (busyId) return
     setBusyId(`x_${fixture.id}`)
     try {
       await deleteDoc(doc(db, 'fixtures', String(fixture.id)))
       updateFixtures(allFixtures.filter(x => String(x.id) !== String(fixture.id)))
-      await logAudit('FIXTURE_DELETE', `Deleted ${fixture.competition} fixture: ${fixture.p1.username} vs ${fixture.p2.username}`)
+      await logAudit('FIXTURE_DELETE', `Deleted League fixture: ${fixture.p1.username} vs ${fixture.p2.username}`)
       showToast('Fixture deleted', 'success')
     } catch (e) { showToast('Delete failed: ' + e.message, 'error') }
     setBusyId('')
   }
 
   const coverage = useMemo(() => {
-    const currentSeason = adminData?.currentSeason || ''
     return divisions.map(div => {
       const roster = allPlayers.filter(u => u.division === div)
       const rows = roster.map(u => {
@@ -280,23 +258,13 @@ export default function FixtureTracker({
           (!currentSeason || !r.season || String(r.season) === String(currentSeason)) &&
           (String(r.player1Id) === String(u.id) || String(r.player2Id) === String(u.id))
         )
-        const played = resultsFor.length
         const opponentsPlayed = new Set(resultsFor.map(r => String(r.player1Id) === String(u.id) ? r.player2Id : r.player1Id))
-        const scheduled = fixtures.filter(f =>
-          f.division === div &&
-          !['approved', 'completed', 'rejected'].includes(f.status) &&
-          (String(f.p1.id) === String(u.id) || String(f.p2.id) === String(u.id))
-        )
-        const scheduledOpponents = new Set(scheduled.map(f => String(f.p1.id) === String(u.id) ? f.p2.id : f.p1.id))
-        const owed = Math.max(0, roster.length - 1 - opponentsPlayed.size)
-        const open = roster.filter(m => m.id !== u.id && !opponentsPlayed.has(m.id)).filter(m => !scheduledOpponents.has(m.id)).length
-        return { user: u, played, scheduled: scheduled.length, owed, open }
-      }).filter(r => r)
-      return { div, roster: rows }
+        const remaining = Math.max(0, roster.length - 1 - opponentsPlayed.size)
+        return { user: u, played: resultsFor.length, remaining }
+      })
+      return { div, rows }
     })
-  }, [divisions, allPlayers, allResults, fixtures, adminData])
-
-  const cardStyle = { textAlign: 'center' }
+  }, [divisions, allPlayers, allResults, currentSeason])
 
   const actionBtn = (onClick, label, variant = 'btn-secondary', busy = false) => (
     <button
@@ -309,143 +277,147 @@ export default function FixtureTracker({
     </button>
   )
 
+  const badge = (style, text) => (
+    <span className="btn btn-sm" style={{ ...style, border: '1px solid', cursor: 'default', padding: '4px 10px', fontSize: 11, whiteSpace: 'nowrap' }}>
+      {text}
+    </span>
+  )
+
+  const toggleCard = (active, count, label, sub, onClick) => (
+    <button
+      onClick={onClick}
+      className="glass"
+      style={{
+        padding: '18px',
+        borderRadius: '12px',
+        textAlign: 'center',
+        cursor: 'pointer',
+        border: active ? '2px solid var(--accent-cyan)' : '2px solid transparent',
+        opacity: active ? 1 : 0.55,
+        transition: 'opacity 0.15s ease'
+      }}
+    >
+      <div style={{ fontSize: 34, fontWeight: 800 }}>{count}</div>
+      <div style={{ fontWeight: 700, marginTop: '2px' }}>{label}</div>
+      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{sub}</div>
+    </button>
+  )
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <div className="glass" style={{ padding: '16px', borderRadius: '12px' }}>
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div className="form-group" style={{ minWidth: '140px', marginBottom: 0 }}>
-            <label style={{ display: 'block', fontSize: 11, marginBottom: 4, color: 'var(--text-muted)' }}>Division</label>
-            <select value={divisionFilter} onChange={e => setDivisionFilter(e.target.value)} style={{ width: '100%' }}>
-              <option value="all">All Divisions</option>
-              {divisions.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
-          </div>
-          <div className="form-group" style={{ minWidth: '150px', marginBottom: 0 }}>
-            <label style={{ display: 'block', fontSize: 11, marginBottom: 4, color: 'var(--text-muted)' }}>Status</label>
-            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ width: '100%' }}>
-              <option value="all">All</option>
-              <option value="toplay">To Play</option>
-              <option value="played">Played</option>
-            </select>
-          </div>
-          <div className="form-group" style={{ flexGrow: 1, minWidth: '180px', marginBottom: 0 }}>
-            <label style={{ display: 'block', fontSize: 11, marginBottom: 4, color: 'var(--text-muted)' }}>Search</label>
-            <input placeholder="Player..." value={search} onChange={e => setSearch(e.target.value)} />
-          </div>
+        <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--accent-cyan)', marginBottom: '4px' }}>
+          {currentSeason ? `Live Season: ${currentSeason}` : 'Live Season'}
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: '12px' }}>League fixtures only · click To Play / Played to switch the list</div>
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          <button className={`btn btn-sm ${divisionFilter === 'all' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setDivisionFilter('all')}>All Divisions</button>
+          {divisions.map(d => (
+            <button key={d} className={`btn btn-sm ${divisionFilter === d ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setDivisionFilter(d)}>{d}</button>
+          ))}
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
-        <div className="glass" style={cardStyle}><div style={{ fontSize: 26, fontWeight: 800 }}>{counts.toPlay}</div><div style={{ color: 'var(--text-muted)', fontSize: 13 }}>To Play</div></div>
-        <div className="glass" style={cardStyle}><div style={{ fontSize: 26, fontWeight: 800, color: counts.conflicts ? 'var(--accent-cyan)' : 'inherit' }}>{counts.conflicts}</div><div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Scheduling Conflicts</div></div>
-        <div className="glass" style={cardStyle}><div style={{ fontSize: 26, fontWeight: 800, color: counts.awaiting ? '#ffd54f' : 'inherit' }}>{counts.awaiting}</div><div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Awaiting Review</div></div>
-        <div className="glass" style={cardStyle}><div style={{ fontSize: 26, fontWeight: 800, color: counts.overdue ? '#e57373' : 'inherit' }}>{counts.overdue}</div><div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Overdue</div></div>
-        <div className="glass" style={cardStyle}><div style={{ fontSize: 26, fontWeight: 800 }}>{playedCount}</div><div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Played</div></div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
+        {toggleCard(view === 'toplay', toPlay.length, 'To Play', 'Remaining games', () => setView('toplay'))}
+        {toggleCard(view === 'played', played.length, 'Played', 'Completed games', () => setView('played'))}
       </div>
 
-      <div className="glass" style={{ padding: '16px', borderRadius: '12px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
-          <h3 style={{ margin: 0, fontSize: 16 }}>Needs Attention</h3>
-          <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Fixtures not yet completed, worst first</span>
-        </div>
-        {queue.length === 0 ? (
-          <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '24px' }}>No outstanding fixtures. All clear!</div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {queue.map(({ f, a }) => {
-              const dateTxt = f.scheduledDate ? `${f.scheduledDate}${f.scheduledTime ? ' ' + f.scheduledTime : ''}` : (f.counterDate || f.proposedDate || '')
-              return (
-                <div key={f.id} className="glass" style={{ padding: '12px', borderRadius: '10px', border: a.overdue ? '1px solid rgba(229, 115, 115, 0.5)' : (a.conflict ? '1px dashed rgba(255, 170, 0, 0.5)' : '1px solid transparent') }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                    <div style={{ minWidth: '180px' }}>
-                      <strong>{f.p1.username}</strong> vs <strong>{f.p2.username}</strong>
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                        League · {currentSeason}{f.division !== 'Unassigned' ? ` · ${f.division}` : ''}
-                      </div>
-                    </div>
-                    <span className="btn btn-sm" style={{ ...(a.isDone ? STATUS_STYLES.approved : STATUS_STYLES.pending), border: '1px solid', cursor: 'default', padding: '4px 10px', fontSize: 11 }}>
-                      {a.isDone ? 'Played' : 'To Play'}
-                    </span>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', minWidth: '150px' }}>
-                      {dateTxt ? <>📅 {dateTxt}</> : <span style={{ color: a.conflict ? '#ffb14e' : '#aaa' }}>{a.conflict ? 'agreeing a date' : 'no date yet'}</span>}
-                      {a.overdue && <div style={{ color: '#e57373', fontWeight: 700 }}>⚠ Overdue - no result</div>}
-                      {a.result && a.submitted && <div style={{ color: '#ffd54f' }}>Result pending review</div>}
-                    </div>
-                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                      {a.submitted && onReviewResults && actionBtn(() => onReviewResults(), 'Review', 'btn-primary', busyId === `r_${f.id}`)}
-                      {actionBtn(() => handleRemind(f), 'Remind', 'btn-secondary', busyId === `r_${f.id}`)}
-                      {!a.submitted && actionBtn(() => { setSetDateFor(f); setDateVal(f.scheduledDate || ''); setTimeVal(f.scheduledTime || '') }, 'Set Date', 'btn-secondary', busyId === `d_${f.id}`)}
-                      {!a.submitted && actionBtn(() => { setForfeitFor(f); setWinner('') }, 'Forfeit', 'btn-danger', busyId === `f_${f.id}`)}
-                      {!a.submitted && onOpenSubmitResult && actionBtn(() => onOpenSubmitResult(f), 'Result', 'btn-secondary', busyId === `o_${f.id}`)}
-                      {!a.submitted && (a.conflict || a.open) && actionBtn(() => handleRemove(f), 'Delete', 'btn-secondary', busyId === `x_${f.id}`)}
-                    </div>
+      {view === 'toplay' ? (
+        <div className="glass" style={{ padding: '16px', borderRadius: '12px' }}>
+          <h3 style={{ margin: '0 0 12px', fontSize: 16 }}>Remaining Games ({toPlay.length})</h3>
+          {toPlay.length === 0 ? (
+            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '24px' }}>No games left to play. All fixtures for this season are complete!</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {groupByDivision(toPlay).map(g => (
+                <div key={g.division}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--accent-cyan)', marginBottom: '8px' }}>{g.division} · {g.rows.length} to play</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {g.rows.map(({ f, overdue }) => {
+                      const dateTxt = f.scheduledDate ? `${f.scheduledDate}${f.scheduledTime ? ' ' + f.scheduledTime : ''}` : (f.counterDate || f.proposedDate || '')
+                      return (
+                        <div key={f.id} className="glass" style={{ padding: '12px', borderRadius: '10px', border: overdue ? '1px solid rgba(229, 115, 115, 0.5)' : '1px solid transparent' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                            <div style={{ minWidth: '180px' }}>
+                              <strong>{f.p1.username}</strong> vs <strong>{f.p2.username}</strong>
+                            </div>
+                            <div style={{ fontSize: 12, color: 'var(--text-muted)', minWidth: '140px' }}>
+                              {dateTxt ? <>📅 {dateTxt}</> : <span style={{ color: '#aaa' }}>no date yet</span>}
+                              {overdue && <div style={{ color: '#e57373', fontWeight: 700 }}>⚠ Overdue</div>}
+                            </div>
+                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                              {actionBtn(() => handleRemind(f), 'Remind', 'btn-secondary', busyId === `r_${f.id}`)}
+                              {actionBtn(() => { setSetDateFor(f); setDateVal(f.scheduledDate || ''); setTimeVal(f.scheduledTime || '') }, 'Set Date', 'btn-secondary', busyId === `d_${f.id}`)}
+                              {actionBtn(() => { setForfeitFor(f); setWinner('') }, 'Forfeit', 'btn-danger', busyId === `f_${f.id}`)}
+                              {onOpenSubmitResult && actionBtn(() => onOpenSubmitResult(f), 'Result', 'btn-secondary', busyId === `o_${f.id}`)}
+                              {actionBtn(() => handleRemove(f), 'Delete', 'btn-secondary', busyId === `x_${f.id}`)}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="glass" style={{ padding: '16px', borderRadius: '12px' }}>
+          <h3 style={{ margin: '0 0 12px', fontSize: 16 }}>Games Played ({played.length})</h3>
+          {played.length === 0 ? (
+            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '24px' }}>No played games for this season yet.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {groupByDivision(played).map(g => (
+                <div key={g.division}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: '#81c784', marginBottom: '8px' }}>{g.division} · {g.rows.length} played</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {g.rows.map(({ f, result, awaiting }) => {
+                      const scoreTxt = result ? `${result.score1} - ${result.score2}` : '—'
+                      const dateTxt = result?.date || result?.approvedAt?.split('T')[0] || f.scheduledDate || '—'
+                      return (
+                        <div key={f.id} className="glass" style={{ padding: '12px', borderRadius: '10px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                            <div style={{ minWidth: '180px' }}>
+                              <strong>{result?.player1 || f.p1.username}</strong> vs <strong>{result?.player2 || f.p2.username}</strong>
+                              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>📅 {dateTxt}{result?.forfeit ? ' · ⚖ Forfeit' : ''}</div>
+                            </div>
+                            <div style={{ fontSize: 18, fontWeight: 800, minWidth: '60px', textAlign: 'center' }}>{scoreTxt}</div>
+                            {awaiting ? badge(STYLE_WARN, 'Awaiting approval') : badge(STYLE_PLAYED, 'Played')}
+                            {awaiting && onReviewResults && actionBtn(() => onReviewResults(), 'Review', 'btn-primary', busyId === `v_${f.id}`)}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
-      <div className="glass" style={{ padding: '16px', borderRadius: '12px' }}>
-        <h3 style={{ margin: '0 0 12px', fontSize: 16 }}>All Fixtures ({filtered.length})</h3>
-        {filtered.length === 0 ? (
-          <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '24px' }}>No fixtures match the current filters.</div>
-        ) : (
+      {coverage.filter(c => divisionFilter === 'all' || c.div === divisionFilter).map(({ div, rows }) => (
+        <div className="glass" key={div} style={{ padding: '16px', borderRadius: '12px' }}>
+          <h3 style={{ margin: '0 0 12px', fontSize: 16 }}>{div} · Games Left per Player</h3>
           <div style={{ overflowX: 'auto' }}>
             <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr>
-                  <th>Players</th><th>Division</th><th>Status</th><th>Date</th>
-                </tr>
+                <tr><th>Player</th><th>Played</th><th>Remaining</th></tr>
               </thead>
               <tbody>
-                {filtered.slice().sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || ''))).map(f => {
-                  const dateTxt = f.scheduledDate ? `${f.scheduledDate}${f.scheduledTime ? ' ' + f.scheduledTime : ''}` : (f.counterDate || f.proposedDate || '—')
-                  const isDone = analyze(f).isDone
-                  return (
-                    <tr key={f.id}>
-                      <td style={{ padding: '8px' }}>{f.p1.username} vs {f.p2.username}</td>
-                      <td style={{ padding: '8px' }}>{f.division}</td>
-                      <td style={{ padding: '8px' }}>
-                        <span style={{ ...(isDone ? STATUS_STYLES.approved : STATUS_STYLES.pending), border: '1px solid', borderRadius: '6px', padding: '2px 8px', fontSize: 11 }}>
-                          {isDone ? 'Played' : 'To Play'}
-                        </span>
-                      </td>
-                      <td style={{ padding: '8px' }}>{dateTxt}</td>
-                    </tr>
-                  )
-                })}
+                {rows.map(({ user: u, played, remaining }) => (
+                  <tr key={u.id}>
+                    <td style={{ padding: '8px' }}>{u.username}</td>
+                    <td style={{ padding: '8px' }}>{played}</td>
+                    <td style={{ padding: '8px', color: remaining > 0 ? '#ffb14e' : '#81c784' }}>{remaining}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
-        )}
-      </div>
-
-      {coverage.map(({ div, roster }) => (
-        <div className="glass" key={div} style={{ padding: '16px', borderRadius: '12px' }}>
-          <h3 style={{ margin: '0 0 12px', fontSize: 16 }}>{div} · Fixture Coverage</h3>
-          {roster.length === 0 ? (
-            <div style={{ color: 'var(--text-muted)' }}>No players assigned.</div>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr><th>Player</th><th>Played</th><th>Scheduled</th><th>Owed</th></tr>
-                </thead>
-                <tbody>
-                  {roster.map(({ user: u, played, scheduled, owed }) => (
-                    <tr key={u.id}>
-                      <td style={{ padding: '8px' }}>{u.username}</td>
-                      <td style={{ padding: '8px' }}>{played}</td>
-                      <td style={{ padding: '8px' }}>{scheduled}</td>
-                      <td style={{ padding: '8px', color: owed > 0 ? '#ffb14e' : '#81c784' }}>{owed}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
         </div>
       ))}
 
