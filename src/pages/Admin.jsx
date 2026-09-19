@@ -114,6 +114,28 @@ export default function Admin() {
   const [singlesPlayerForm, setSinglesPlayerForm] = useState('')
   const [auditLogs, setAuditLogs] = useState([])
   const [loadingLogs, setLoadingLogs] = useState(false)
+  const adminSubmitRef = useRef(null)
+
+  const openRecordGame = (entry, isForfeit = false) => {
+    setShowFixtureTracker(false)
+    setActiveTab('results')
+    setShowSubmitGame(true)
+    setAdminGameForm(prev => ({
+      ...prev,
+      gameType: 'League',
+      player1: entry.p1.id,
+      player2: entry.p2.id,
+      forfeit: isForfeit,
+      winner: 'p1',
+      score1: '',
+      score2: ''
+    }))
+    setTimeout(() => {
+      if (adminSubmitRef.current) {
+        adminSubmitRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }, 120)
+  }
 
   useEffect(() => {
     if (activeTab === 'openleague' || (activeTab === 'results' && showSubmitGame)) {
@@ -1544,7 +1566,7 @@ export default function Admin() {
                     triggerDataRefresh={triggerDataRefresh}
                     showToast={showToast}
                     onReviewResults={() => setActiveTab('results')}
-                    onOpenSubmitResult={(entry) => navigate(`/submit-result?opponent=${encodeURIComponent(entry.p2.id)}&season=${encodeURIComponent(adminData?.currentSeason || '')}&gameType=League${entry.fixture ? `&fixtureId=${encodeURIComponent(entry.fixture.id)}` : ''}`)}
+                    onRecordGame={openRecordGame}
                   />
                 </div>
               )}
@@ -1711,7 +1733,7 @@ export default function Admin() {
             </div>
 
             {showSubmitGame && (
-              <div className="card glass animate-fade-in" style={{ marginBottom: '24px', padding: '24px', border: '1px solid var(--accent-cyan)', background: 'rgba(0,0,0,0.3)' }}>
+              <div ref={adminSubmitRef} className="card glass animate-fade-in" style={{ marginBottom: '24px', padding: '24px', border: '1px solid var(--accent-cyan)', background: 'rgba(0,0,0,0.3)' }}>
                 <h3 style={{ marginBottom: '16px', color: 'var(--accent-cyan)' }}>Admin Quick Submit</h3>
 
                 <div style={{ marginBottom: '16px' }}>

@@ -1,11 +1,20 @@
 import { useMemo, useState } from 'react'
 import { db, doc, setDoc, deleteDoc } from '../firebase'
 import { isLeagueResult, getResultPlayerId } from '../utils/leagueResults'
+import { getApprovedResultsForStats } from '../utils/playerStats'
 
 const norm = (s) => String(s || '').toLowerCase().trim()
 
+const SEASON_START = new Date('2026-09-01T00:00:00').getTime()
+
 const STYLE_PLAYED = { background: 'rgba(76, 175, 80, 0.15)', color: '#81c784', borderColor: 'rgba(76, 175, 80, 0.4)' }
 const STYLE_TOP = { background: 'rgba(0, 212, 255, 0.12)', color: 'var(--accent-cyan)', borderColor: 'rgba(0, 212, 255, 0.35)' }
+const STYLE_WARN = { background: 'rgba(255, 193, 7, 0.15)', color: '#ffd54f', borderColor: 'rgba(255, 193, 7, 0.45)' }
+
+const dateStamp = (str) => {
+  const t = str ? new Date(str).getTime() : NaN
+  return isNaN(t) ? 0 : t
+}
 
 export default function FixtureTracker({
   user,
@@ -19,13 +28,11 @@ export default function FixtureTracker({
   triggerDataRefresh,
   showToast,
   onReviewResults,
-  onOpenSubmitResult
+  onRecordGame
 }) {
   const [divisionFilter, setDivisionFilter] = useState('all')
   const [view, setView] = useState('toplay')
   const [showBreakdown, setShowBreakdown] = useState(false)
-  const [forfeitFor, setForfeitFor] = useState(null)
-  const [winner, setWinner] = useState('')
   const [busyId, setBusyId] = useState('')
 
   const currentSeason = adminData?.currentSeason || ''
@@ -78,23 +85,72 @@ export default function FixtureTracker({
 
   const fixturesById = useMemo(() => Object.fromEntries(allFixtures.map(f => [String(f.id), f])), [allFixtures])
 
-  const seasonResults = useMemo(() => {
+  const allDivFiltered = useMemo(() => {
+    const divMap = {}
+    usersWithDivisions.forEach(u => { divMap[String(u.id)] = u.division })
     return allResults.filter(r => {
-      if (norm(r.status) !== 'approved') return false
-      if (!isLeagueResult(r, fixturesById)) return false
-      if (!currentSeason) return true
-      const resSeason = seasonNorm(r.season)
-      const actSeason = seasonNorm(currentSeason)
-      if (['season1', '2026', 'legacy'].includes(actSeason)) {
-        return ['season1', '2026', 'legacy', '', 'undefined', 'null'].includes(resSeason)
-      }
-      return resSeason === actSeason
+      const p1Id = getResultPlayerId(r, 1, usersWithDivisions)
+      const p2Id = getResultPlayerId(r, 2, usersWithDivisions)
+      if (!p1Id || !p2Id) return false
+      const d1 = divMap[p1Id]
+      const d2 = divMap[p2Id]
+      if (!d1 || !d2 || d1 === 'Unassigned' || d2 === 'Unassigned' || d1 === 'Admin' || d2 === 'Admin') return false
+      return d1 === d2
     })
-  }, [allResults, fixturesById, currentSeason])
+  }, [allResults, usersWithDivisions])
+
+  const approvedResults = useMemo(() => getApprovedResultsForStats(allDivFiltered, {
+    fixtures: allFixtures,
+    adminData,
+    leagueOnly: true,
+    currentSeason,
+    includePlayoffs: false
+  }), [allDivFiltered, allFixtures, adminData, currentSeason])
+
+  const isLivePending = (r) => {
+    if (norm(r.status) === 'rejected') return false
+    if (!isLeagueResult(r, fixturesById)) return false
+    const rs = seasonNorm(r.season)
+    const as = seasonNorm(currentSeason)
+    if (rs === as) return true
+    if (['season1', '2026', 'legacy'].includes(as)) {
+      return ['season1', '2026', 'legacy', '', 'undefined', 'null'].includes(rs)
+    }
+    if (!r.season) {
+      const t = dateStamp(r.date || r.submittedAt || r.createdAt)
+      return t === 0 ? true : t >= SEASON_START
+    }
+    return false
+  }
+
+  const pendingResults = useMemo(() => {
+    return allDivFiltered.filter(r =>
+      ['pending', 'result_submitted'].includes(norm(r.status)) && isLivePending(r)
+    )
+  }, [allDivFiltered])
+
+  const pairOf = (r) => {
+    const p1 = getResultPlayerId(r, 1, usersWithDivisions)
+    const p2 = getResultPlayerId(r, 2, usersWithDivisions)
+    if (!p1 || !p2) return null
+    return [p1, p2].sort().join('_')
+  }
+
+  const approvedPairKeys = useMemo(() => {
+    const s = new Set()
+    approvedResults.forEach(r => { const k = pairOf(r); if (k) s.add(k) })
+    return s
+  }, [approvedResults, usersWithDivisions])
+
+  const pendingPairKeys = useMemo(() => {
+    const s = new Set()
+    pendingResults.forEach(r => { const k = pairOf(r); if (k) s.add(k) })
+    return s
+  }, [pendingResults, usersWithDivisions])
 
   const playedByPlayer = useMemo(() => {
     const map = {}
-    seasonResults.forEach(r => {
+    approvedResults.forEach(r => {
       const p1 = getResultPlayerId(r, 1, usersWithDivisions)
       const p2 = getResultPlayerId(r, 2, usersWithDivisions)
       if (!p1 || !p2) return
@@ -104,7 +160,7 @@ export default function FixtureTracker({
       map[p2].add(p1)
     })
     return map
-  }, [seasonResults, usersWithDivisions])
+  }, [approvedResults, usersWithDivisions])
 
   const rosterByDivision = useMemo(() => {
     const map = {}
@@ -135,8 +191,6 @@ export default function FixtureTracker({
     return map
   }, [allFixtures, currentSeason, allPlayers])
 
-  const pairKey = (a, b) => [String(a.id), String(b.id)].sort().join('_')
-
   const toPlayRows = useMemo(() => {
     const rows = []
     Object.entries(rosterByDivision).forEach(([div, roster]) => {
@@ -145,18 +199,18 @@ export default function FixtureTracker({
         for (let j = i + 1; j < roster.length; j++) {
           const a = roster[i]
           const b = roster[j]
-          const key = pairKey(a, b)
-          if (playedByPlayer[String(a.id)] && playedByPlayer[String(a.id)].has(String(b.id))) continue
+          const key = [String(a.id), String(b.id)].sort().join('_')
+          if (approvedPairKeys.has(key) || pendingPairKeys.has(key)) continue
           rows.push({ key, p1: a, p2: b, division: div, fixture: fixtureByPairKey[key] || null })
         }
       }
     })
     return rows.sort((x, y) => String(x.p1.username).localeCompare(String(y.p1.username)) || String(x.p2.username).localeCompare(String(y.p2.username)))
-  }, [rosterByDivision, playedByPlayer, fixtureByPairKey, divisionFilter])
+  }, [rosterByDivision, approvedPairKeys, pendingPairKeys, fixtureByPairKey, divisionFilter])
 
-  const playedRows = useMemo(() => {
+  const toRows = (list, awaiting) => {
     const rows = []
-    seasonResults.forEach(r => {
+    list.forEach(r => {
       const p1Id = getResultPlayerId(r, 1, usersWithDivisions)
       const p2Id = getResultPlayerId(r, 2, usersWithDivisions)
       if (!p1Id || !p2Id) return
@@ -166,10 +220,20 @@ export default function FixtureTracker({
       const division = p1.division && p1.division !== 'Unassigned' ? p1.division : (p2.division || 'Unassigned')
       if (division === 'Unassigned' || division === 'Admin') return
       if (divisionFilter !== 'all' && division !== divisionFilter) return
-      rows.push({ key: r.id || pairKey(p1, p2), p1, p2, division, result: r })
+      rows.push({ key: r.id || pairOf(r) || `${p1Id}_${p2Id}`, p1, p2, division, result: r, awaiting })
+    })
+    return rows
+  }
+
+  const playedRows = useMemo(() => {
+    const rows = toRows(approvedResults, false)
+    pendingResults.forEach(r => {
+      const k = pairOf(r)
+      if (k && approvedPairKeys.has(k)) return
+      rows.push(...toRows([r], true))
     })
     return rows.sort((x, y) => String(y.result?.date || y.result?.submittedAt || '').localeCompare(String(x.result?.date || x.result?.submittedAt || '')))
-  }, [seasonResults, usersWithDivisions, divisionFilter])
+  }, [approvedResults, pendingResults, approvedPairKeys, usersWithDivisions, divisionFilter])
 
   const groupByDivision = (list) => {
     const groups = []
@@ -197,7 +261,7 @@ export default function FixtureTracker({
       })
   }, [divisions, rosterByDivision, playedByPlayer, divisionFilter])
 
-  const handleRemind = async (entry, opponentId) => {
+  const handleRemind = async (entry) => {
     if (busyId) return
     setBusyId(`r_${entry.key}`)
     try {
@@ -207,55 +271,6 @@ export default function FixtureTracker({
       await logAudit('FIXTURE_REMIND', `Reminded ${entry.p1.username} & ${entry.p2.username} re: League fixture`)
       showToast('Reminder sent to both players', 'success')
     } catch (e) { showToast('Remind failed: ' + e.message, 'error') }
-    setBusyId('')
-  }
-
-  const handleApplyForfeit = async () => {
-    if (!forfeitFor) return
-    if (!winner) return showToast('Select the forfeit winner', 'error')
-    if (busyId) return
-    setBusyId(`f_${forfeitFor.key}`)
-    const entry = forfeitFor
-    const winIsP1 = String(winner) === String(entry.p1.id)
-    const winnerP = winIsP1 ? entry.p1 : entry.p2
-    const loserP = winIsP1 ? entry.p2 : entry.p1
-    const resultId = `admin_${Date.now()}`
-    try {
-      const newMatch = {
-        id: resultId,
-        player1: entry.p1.username,
-        player1Id: entry.p1.id,
-        player2: entry.p2.username,
-        player2Id: entry.p2.id,
-        score1: winIsP1 ? 1 : 0,
-        score2: winIsP1 ? 0 : 1,
-        gameType: 'League',
-        status: 'approved',
-        season: currentSeason,
-        division: entry.p1.division || '',
-        date: new Date().toISOString().split('T')[0],
-        submittedAt: new Date().toISOString(),
-        submittedBy: 'admin',
-        forfeit: true,
-        forfeitWinner: winnerP.id,
-        forfeitNote: `${winnerP.username} wins by forfeit`,
-        player1Stats: {},
-        player2Stats: {}
-      }
-      await setDoc(doc(db, 'results', resultId), newMatch)
-      if (entry.fixture) {
-        const updatedFixture = { ...entry.fixture, status: 'approved', resultId, score1: newMatch.score1, score2: newMatch.score2, updatedAt: new Date().toISOString() }
-        await setDoc(doc(db, 'fixtures', String(entry.fixture.id)), updatedFixture, { merge: true })
-        const list = [...allFixtures]
-        const idx = list.findIndex(x => String(x.id) === String(entry.fixture.id))
-        if (idx !== -1) list[idx] = updatedFixture
-        updateFixtures(list)
-      }
-      await logAudit('FIXTURE_FORFEIT', `Forfeit: ${winnerP.username} def ${loserP.username} (League)`)
-      triggerDataRefresh('all')
-      showToast(`${winnerP.username} wins by forfeit - 3 points awarded`, 'success')
-      setForfeitFor(null); setWinner('')
-    } catch (e) { showToast('Forfeit failed: ' + e.message, 'error') }
     setBusyId('')
   }
 
@@ -284,11 +299,15 @@ export default function FixtureTracker({
     </button>
   )
 
-  const statusBadge = (played) => (
-    <span className="btn btn-sm" style={{ ...(played ? STYLE_PLAYED : STYLE_TOP), border: '1px solid', cursor: 'default', padding: '4px 10px', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
-      {played ? 'Played' : 'To Play'}
-    </span>
-  )
+  const statusBadge = (state) => {
+    const style = state === 'played' ? STYLE_PLAYED : state === 'awaiting' ? STYLE_WARN : STYLE_TOP
+    const label = state === 'played' ? 'Played' : state === 'awaiting' ? 'Awaiting' : 'To Play'
+    return (
+      <span className="btn btn-sm" style={{ ...style, border: '1px solid', cursor: 'default', padding: '4px 10px', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
+        {label}
+      </span>
+    )
+  }
 
   const toggleCard = (active, count, label, onClick) => (
     <button
@@ -345,11 +364,11 @@ export default function FixtureTracker({
                       <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>vs</span>
                       <strong style={{ fontSize: 13 }}>{entry.p2.username}</strong>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'center' }}>{statusBadge(false)}</div>
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>{statusBadge('toplay')}</div>
                     <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', justifyContent: 'center' }}>
                       {actionBtn(() => handleRemind(entry), 'Remind', 'btn-secondary', busyId === `r_${entry.key}`)}
-                      {actionBtn(() => { setForfeitFor(entry); setWinner('') }, 'Forfeit', 'btn-danger', busyId === `f_${entry.key}`)}
-                      {onOpenSubmitResult && actionBtn(() => onOpenSubmitResult(entry), 'Result', 'btn-secondary', busyId === `o_${entry.key}`)}
+                      {onRecordGame && actionBtn(() => onRecordGame(entry, false), 'Result', 'btn-secondary', busyId === `o_${entry.key}`)}
+                      {onRecordGame && actionBtn(() => onRecordGame(entry, true), 'Forfeit', 'btn-danger', busyId === `f_${entry.key}`)}
                       {entry.fixture && actionBtn(() => handleRemove(entry), 'Delete', 'btn-secondary', busyId === `x_${entry.key}`)}
                     </div>
                   </div>
@@ -382,11 +401,16 @@ export default function FixtureTracker({
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
                         <span style={{ fontSize: 16, fontWeight: 800 }}>{scoreTxt}</span>
-                        {statusBadge(true)}
+                        {statusBadge(entry.awaiting ? 'awaiting' : 'played')}
                       </div>
                       <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-muted)' }}>
-                        {r.forfeit ? <>⚖ {winnerName} wins by forfeit</> : <>🏆 {winnerName} wins</>}
+                        {entry.awaiting ? '⏳ Result awaiting approval' : (r.forfeit ? <>⚖ {winnerName} wins by forfeit</> : <>🏆 {winnerName} wins</>)}
                       </div>
+                      {entry.awaiting && onReviewResults && (
+                        <div style={{ display: 'flex', justifyContent: 'center' }}>
+                          {actionBtn(() => onReviewResults(), 'Review', 'btn-primary', busyId === `v_${entry.key}`)}
+                        </div>
+                      )}
                     </div>
                   )
                 })}
@@ -424,30 +448,6 @@ export default function FixtureTracker({
           </div>
         </div>
       ))}
-
-      {forfeitFor && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div className="glass" style={{ padding: '20px', borderRadius: '14px', width: '100%', maxWidth: '380px' }}>
-            <h3 style={{ margin: '0 0 12px', fontSize: 16 }}>Apply Forfeit</h3>
-            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: '12px' }}>{forfeitFor.p1.username} vs {forfeitFor.p2.username} · winner gets 3 points</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {[forfeitFor.p1, forfeitFor.p2].map(u => (
-                <button
-                  key={u.id}
-                  className={`btn btn-sm ${String(winner) === String(u.id) ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => setWinner(u.id)}
-                >
-                  {u.username}
-                </button>
-              ))}
-            </div>
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '12px' }}>
-              <button className="btn btn-secondary btn-sm" onClick={() => { setForfeitFor(null); setWinner('') }}>Cancel</button>
-              <button className="btn btn-danger btn-sm" onClick={handleApplyForfeit} disabled={!winner}>{busyId ? '...' : 'Confirm Forfeit'}</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
