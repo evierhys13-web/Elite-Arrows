@@ -56,6 +56,7 @@ export default function Admin() {
   const [approvingPaymentId, setApprovingPaymentId] = useState(null)
   const [approvalOverride, setApprovalOverride] = useState({ tier: 'elite', season: '' })
   const [isProcessing, setIsProcessing] = useState(false)
+  const [showFixtureTracker, setShowFixtureTracker] = useState(false)
   const [previewImage, setPreviewImage] = useState(null)
 
   // Form states
@@ -228,7 +229,7 @@ export default function Admin() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    const allowed = ['dashboard', 'results', 'payments', 'moneypot', 'cups', 'playoffs', 'players', 'admins', 'seasons', 'trophies', 'halloffame', 'tokens', 'surveys', 'maintenance', 'audit', 'openleague', 'new', 'bets', 'practice', 'hometournaments', 'suggestions', 'fixtures']
+    const allowed = ['dashboard', 'results', 'payments', 'moneypot', 'cups', 'playoffs', 'players', 'admins', 'seasons', 'trophies', 'halloffame', 'tokens', 'surveys', 'maintenance', 'audit', 'openleague', 'new', 'bets', 'practice', 'hometournaments', 'suggestions']
     if (tab && allowed.includes(tab)) setActiveTab(tab)
   }, [searchParams])
 
@@ -1474,12 +1475,6 @@ export default function Admin() {
     setIsApproving(false)
   }
 
-  const fixtureAttentionCount = allFixtures.filter(f => {
-    if (f._deleted) return false
-    const status = String(f.status || 'pending').toLowerCase()
-    return !['approved', 'completed', 'rejected', 'cancelled'].includes(status)
-  }).length
-
   const tabs = [
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'results', label: 'Scores', count: pendingResults.length },
@@ -1491,7 +1486,6 @@ export default function Admin() {
     { id: 'admins', label: 'Staff' },
     { id: 'cups', label: 'Cups' },
     { id: 'news', label: 'League News' },
-    { id: 'fixtures', label: 'Fixture Tracker', count: fixtureAttentionCount },
     { id: 'surveys', label: 'Surveys' },
     { id: 'highlights', label: 'Home Highlights' },
     { id: 'trophies', label: 'Trophies' },
@@ -1526,6 +1520,35 @@ export default function Admin() {
         {/* TAB: DASHBOARD */}
         {activeTab === 'dashboard' && (
           <div className="animate-fade-in">
+            <div className="glass" style={{ borderRadius: '12px', marginBottom: '28px', overflow: 'hidden' }}>
+              <button
+                onClick={() => setShowFixtureTracker(v => !v)}
+                style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', padding: '14px 18px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'inherit' }}
+              >
+                <span style={{ fontWeight: 800, fontSize: 15 }}>📋 Fixture Tracker</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  {adminData?.currentSeason || 'Live season'} · {showFixtureTracker ? 'Close ▲' : 'Manage games & forfeits ▼'}
+                </span>
+              </button>
+              {showFixtureTracker && (
+                <div style={{ padding: '18px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                  <FixtureTracker
+                    user={user}
+                    allPlayers={allPlayers}
+                    allFixtures={allFixtures}
+                    allResults={allResults}
+                    seasons={getSeasons()}
+                    adminData={adminData}
+                    updateFixtures={updateFixtures}
+                    notifyUser={notifyUser}
+                    triggerDataRefresh={triggerDataRefresh}
+                    showToast={showToast}
+                    onReviewResults={() => setActiveTab('results')}
+                    onOpenSubmitResult={(entry) => navigate(`/submit-result?opponent=${encodeURIComponent(entry.p2.id)}&season=${encodeURIComponent(adminData?.currentSeason || '')}&gameType=League${entry.fixture ? `&fixtureId=${encodeURIComponent(entry.fixture.id)}` : ''}`)}
+                  />
+                </div>
+              )}
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '24px', marginBottom: '32px' }}>
               <div className="stat-card glass" onClick={() => setActiveTab('results')} style={{ cursor: 'pointer', padding: '24px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}><div className="stat-label">Pending Results</div><div>🎯</div></div>
@@ -3201,23 +3224,6 @@ export default function Admin() {
             <h3>Practice Hub</h3>
             <button className="btn btn-primary" style={{ marginTop: '20px' }} onClick={() => triggerDataRefresh('all')}>Refresh Data</button>
           </div>
-        )}
-
-        {/* TAB: FIXTURE TRACKER */}
-        {activeTab === 'fixtures' && (
-          <FixtureTracker
-            user={user}
-            allPlayers={allPlayers}
-            allFixtures={allFixtures}
-            allResults={allResults}
-            adminData={adminData}
-            updateFixtures={updateFixtures}
-            notifyUser={notifyUser}
-            triggerDataRefresh={triggerDataRefresh}
-            showToast={showToast}
-            onReviewResults={() => setActiveTab('results')}
-            onOpenSubmitResult={(fixture) => navigate(`/submit-result?fixtureId=${encodeURIComponent(fixture.id)}&season=${encodeURIComponent(fixture.season || '')}&gameType=${encodeURIComponent(fixture.competition)}`)}
-          />
         )}
 
         {/* TAB: HIGHLIGHTS */}
