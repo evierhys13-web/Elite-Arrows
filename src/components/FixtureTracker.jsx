@@ -501,7 +501,7 @@ export default function FixtureTracker({
                   const winnerName = winnerIsP1 ? entry.p1.username : entry.p2.username
                   const outcomeTxt = !hasScore
                     ? '✅ Synced from approved fixture'
-                    : (r.forfeit ? <>⚖ {winnerName} wins by forfeit</> : <>🏆 {winnerName} wins</>)
+                    : (r.forfeit ? <>⚖ {winnerName} wins by forfeit</> : (Number(r.score1) === Number(r.score2) ? <>🤝 Draw</> : <>🏆 {winnerName} wins</>))
                   return (
                     <div key={entry.key} className="glass" style={{ padding: '12px', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
