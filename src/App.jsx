@@ -321,11 +321,19 @@ function TrainingRoute({ children }) {
 }
 
 function AppLayout({ children }) {
-  const { user, dataRefreshTrigger, adminData, forceFetchResults } = useAuth()
+  const { user, dataRefreshTrigger, adminData, forceFetchResults, triggerDataRefresh } = useAuth()
   const { showOnboarding, completeOnboarding } = useOnboarding()
   const { showWhatsNew } = useWhatsNew()
   const [whatsNewOpen, setWhatsNewOpen] = useState(showWhatsNew)
+  const [refreshing, setRefreshing] = useState(false)
   const hasMaintenance = adminData?.isMaintenanceMode
+
+  const handleRefresh = () => {
+    if (refreshing) return
+    setRefreshing(true)
+    triggerDataRefresh('all')
+    setTimeout(() => setRefreshing(false), 1200)
+  }
 
   const isEmailAdmin = user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase())
   const isDbAdmin = user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin
@@ -386,6 +394,32 @@ function AppLayout({ children }) {
 
       <BottomNav />
       <InstallPrompt />
+      <button
+        onClick={handleRefresh}
+        title="Refresh all data"
+        aria-label="Refresh all data"
+        style={{
+          position: 'fixed',
+          top: '76px',
+          right: '16px',
+          zIndex: 9999,
+          width: '44px',
+          height: '44px',
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          border: '1px solid var(--accent-cyan)',
+          background: 'rgba(0,0,0,0.55)',
+          color: 'var(--accent-cyan)',
+          cursor: 'pointer',
+          fontSize: '20px',
+          boxShadow: '0 4px 15px rgba(0,212,255,0.25)',
+          opacity: refreshing ? 0.75 : 1
+        }}
+      >
+        <span style={{ display: 'inline-block', animation: refreshing ? 'spin 0.8s linear infinite' : 'none' }}>⟳</span>
+      </button>
       <DataRefreshToast refreshTrigger={dataRefreshTrigger} />
       <NotificationPermissionPrompt />
       {showOnboarding && <OnboardingTour onComplete={completeOnboarding} />}

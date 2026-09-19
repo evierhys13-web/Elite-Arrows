@@ -29,7 +29,7 @@ export default function DataRefreshToast({ refreshTrigger }) {
   return (
     <div style={{
       position: 'fixed',
-      top: '20px',
+      top: '130px',
       right: '20px',
       background: 'linear-gradient(135deg, #00d4ff, #0099cc)',
       color: '#fff',
