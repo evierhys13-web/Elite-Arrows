@@ -28,7 +28,6 @@ export default function FixtureTracker({
   onReviewResults,
   onOpenSubmitResult
 }) {
-  const [competitionFilter, setCompetitionFilter] = useState('all')
   const [divisionFilter, setDivisionFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [search, setSearch] = useState('')
@@ -61,27 +60,30 @@ export default function FixtureTracker({
     ) || null
   }
 
+  const currentSeason = adminData?.currentSeason || ''
+
   const fixtures = useMemo(() => {
+    const isLeagueFixture = (f) => {
+      const gt = norm(f.gameType)
+      if (f.cupId) return false
+      if (gt && gt !== 'league') return false
+      if (f.season && String(f.season) !== String(currentSeason)) return false
+      return true
+    }
     return allFixtures
-      .filter(f => !f._deleted)
+      .filter(f => !f._deleted && isLeagueFixture(f))
       .map(f => {
         const p1 = findUser(f.player1Id || f.player1)
         const p2 = findUser(f.player2Id || f.player2)
         if (!p1 || !p2) return null
-        const gt = norm(f.gameType)
-        const isCup = !!f.cupId || gt === 'cup'
-        const isPlayoff = gt.includes('playoff') || gt.includes('play-off') || gt === 'playoffs'
-        const isFriendly = gt.includes('friendly')
-        const competition = isCup ? 'Cup' : isPlayoff ? 'Playoff' : isFriendly ? 'Friendly' : 'League'
         const status = norm(f.status) || 'pending'
         return {
           id: f.id,
           raw: f,
           p1,
           p2,
-          competition,
-          cupName: f.cupName || '',
-          season: f.season || '',
+          competition: 'League',
+          season: currentSeason,
           division: f.division && f.division !== 'Unassigned' ? f.division : (p1.division && p1.division !== 'Unassigned' ? p1.division : (p2.division || 'Unassigned')),
           status,
           createdAt: f.createdAt,
@@ -94,7 +96,7 @@ export default function FixtureTracker({
         }
       })
       .filter(Boolean)
-  }, [allFixtures, allPlayers])
+  }, [allFixtures, allPlayers, currentSeason])
 
   const resultForFixture = (fixture) => {
     const hit = allResults.find(r => r.fixtureId && String(r.fixtureId) === String(fixture.id))
@@ -161,15 +163,15 @@ export default function FixtureTracker({
 
   const filtered = useMemo(() => {
     let list = fixtures
-    if (competitionFilter !== 'all') list = list.filter(f => f.competition === competitionFilter)
     if (divisionFilter !== 'all') list = list.filter(f => f.division === divisionFilter)
-    if (statusFilter !== 'all') list = list.filter(f => f.status === statusFilter)
+    if (statusFilter === 'toplay') list = list.filter(f => !analyze(f).isDone)
+    if (statusFilter === 'played') list = list.filter(f => analyze(f).isDone)
     if (search) {
       const s = search.toLowerCase()
-      list = list.filter(f => f.p1.username.toLowerCase().includes(s) || f.p2.username.toLowerCase().includes(s) || f.cupName.toLowerCase().includes(s))
+      list = list.filter(f => f.p1.username.toLowerCase().includes(s) || f.p2.username.toLowerCase().includes(s))
     }
     return list
-  }, [fixtures, competitionFilter, divisionFilter, statusFilter, search])
+  }, [fixtures, divisionFilter, statusFilter, search, allResults])
 
   const updateFixture = async (fixture, updates) => {
     const updatedFixture = { ...fixture.raw, ...updates, updatedAt: new Date().toISOString() }
@@ -311,16 +313,6 @@ export default function FixtureTracker({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <div className="glass" style={{ padding: '16px', borderRadius: '12px' }}>
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div className="form-group" style={{ minWidth: '120px', marginBottom: 0 }}>
-            <label style={{ display: 'block', fontSize: 11, marginBottom: 4, color: 'var(--text-muted)' }}>Competition</label>
-            <select value={competitionFilter} onChange={e => setCompetitionFilter(e.target.value)} style={{ width: '100%' }}>
-              <option value="all">All</option>
-              <option value="League">League</option>
-              <option value="Cup">Cup</option>
-              <option value="Playoff">Playoff</option>
-              <option value="Friendly">Friendly</option>
-            </select>
-          </div>
           <div className="form-group" style={{ minWidth: '140px', marginBottom: 0 }}>
             <label style={{ display: 'block', fontSize: 11, marginBottom: 4, color: 'var(--text-muted)' }}>Division</label>
             <select value={divisionFilter} onChange={e => setDivisionFilter(e.target.value)} style={{ width: '100%' }}>
@@ -331,20 +323,14 @@ export default function FixtureTracker({
           <div className="form-group" style={{ minWidth: '150px', marginBottom: 0 }}>
             <label style={{ display: 'block', fontSize: 11, marginBottom: 4, color: 'var(--text-muted)' }}>Status</label>
             <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ width: '100%' }}>
-              <option value="all">All Statuses</option>
-              <option value="pending">Pending</option>
-              <option value="accepted">Accepted</option>
-              <option value="proposed">Proposed</option>
-              <option value="countered">Countered</option>
-              <option value="result_submitted">Result Submitted</option>
-              <option value="approved">Approved</option>
-              <option value="completed">Completed</option>
-              <option value="rejected">Rejected</option>
+              <option value="all">All</option>
+              <option value="toplay">To Play</option>
+              <option value="played">Played</option>
             </select>
           </div>
           <div className="form-group" style={{ flexGrow: 1, minWidth: '180px', marginBottom: 0 }}>
             <label style={{ display: 'block', fontSize: 11, marginBottom: 4, color: 'var(--text-muted)' }}>Search</label>
-            <input placeholder="Player or cup..." value={search} onChange={e => setSearch(e.target.value)} />
+            <input placeholder="Player..." value={search} onChange={e => setSearch(e.target.value)} />
           </div>
         </div>
       </div>
@@ -374,11 +360,11 @@ export default function FixtureTracker({
                     <div style={{ minWidth: '180px' }}>
                       <strong>{f.p1.username}</strong> vs <strong>{f.p2.username}</strong>
                       <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                        {f.competition}{f.cupName ? ` · ${f.cupName}` : ''}{f.division !== 'Unassigned' ? ` · ${f.division}` : ''}
+                        League · {currentSeason}{f.division !== 'Unassigned' ? ` · ${f.division}` : ''}
                       </div>
                     </div>
-                    <span className="btn btn-sm" style={{ ...(STATUS_STYLES[f.status] || STATUS_STYLES.pending), border: '1px solid', cursor: 'default', padding: '4px 10px', fontSize: 11 }}>
-                      {f.status.replace('_', ' ')}
+                    <span className="btn btn-sm" style={{ ...(a.isDone ? STATUS_STYLES.approved : STATUS_STYLES.pending), border: '1px solid', cursor: 'default', padding: '4px 10px', fontSize: 11 }}>
+                      {a.isDone ? 'Played' : 'To Play'}
                     </span>
                     <div style={{ fontSize: 12, color: 'var(--text-muted)', minWidth: '150px' }}>
                       {dateTxt ? <>📅 {dateTxt}</> : <span style={{ color: a.conflict ? '#ffb14e' : '#aaa' }}>{a.conflict ? 'agreeing a date' : 'no date yet'}</span>}
@@ -389,7 +375,7 @@ export default function FixtureTracker({
                       {a.submitted && onReviewResults && actionBtn(() => onReviewResults(), 'Review', 'btn-primary', busyId === `r_${f.id}`)}
                       {actionBtn(() => handleRemind(f), 'Remind', 'btn-secondary', busyId === `r_${f.id}`)}
                       {!a.submitted && actionBtn(() => { setSetDateFor(f); setDateVal(f.scheduledDate || ''); setTimeVal(f.scheduledTime || '') }, 'Set Date', 'btn-secondary', busyId === `d_${f.id}`)}
-                      {!a.submitted && f.competition !== 'Cup' && actionBtn(() => { setForfeitFor(f); setWinner('') }, 'Forfeit', 'btn-danger', busyId === `f_${f.id}`)}
+                      {!a.submitted && actionBtn(() => { setForfeitFor(f); setWinner('') }, 'Forfeit', 'btn-danger', busyId === `f_${f.id}`)}
                       {!a.submitted && onOpenSubmitResult && actionBtn(() => onOpenSubmitResult(f), 'Result', 'btn-secondary', busyId === `o_${f.id}`)}
                       {!a.submitted && (a.conflict || a.open) && actionBtn(() => handleRemove(f), 'Delete', 'btn-secondary', busyId === `x_${f.id}`)}
                     </div>
@@ -410,20 +396,20 @@ export default function FixtureTracker({
             <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  <th>Players</th><th>Competition</th><th>Division</th><th>Status</th><th>Date</th>
+                  <th>Players</th><th>Division</th><th>Status</th><th>Date</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.slice().sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || ''))).map(f => {
                   const dateTxt = f.scheduledDate ? `${f.scheduledDate}${f.scheduledTime ? ' ' + f.scheduledTime : ''}` : (f.counterDate || f.proposedDate || '—')
+                  const isDone = analyze(f).isDone
                   return (
                     <tr key={f.id}>
                       <td style={{ padding: '8px' }}>{f.p1.username} vs {f.p2.username}</td>
-                      <td style={{ padding: '8px' }}>{f.competition}{f.cupName ? ` · ${f.cupName}` : ''}</td>
                       <td style={{ padding: '8px' }}>{f.division}</td>
                       <td style={{ padding: '8px' }}>
-                        <span style={{ ...(STATUS_STYLES[f.status] || STATUS_STYLES.pending), border: '1px solid', borderRadius: '6px', padding: '2px 8px', fontSize: 11 }}>
-                          {f.status.replace('_', ' ')}
+                        <span style={{ ...(isDone ? STATUS_STYLES.approved : STATUS_STYLES.pending), border: '1px solid', borderRadius: '6px', padding: '2px 8px', fontSize: 11 }}>
+                          {isDone ? 'Played' : 'To Play'}
                         </span>
                       </td>
                       <td style={{ padding: '8px' }}>{dateTxt}</td>
