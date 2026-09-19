@@ -173,7 +173,7 @@ const addResultToPlayer = (stats, result, playerNumber, opponentScore, score, co
   stats.legsWon += effectiveScore
   stats.legsLost += effectiveOpponentScore
   stats.legDiff = stats.legsWon - stats.legsLost
-  stats.points += countsForPoints ? getLeaguePoints(effectiveScore, effectiveOpponentScore, { ...scoringOptions, isForfeit }) : 0
+  stats.points += countsForPoints ? getLeaguePoints(isForfeit ? score : effectiveScore, isForfeit ? opponentScore : effectiveOpponentScore, { ...scoringOptions, isForfeit }) : 0
 
   if (score > opponentScore) {
     stats.wins += 1
