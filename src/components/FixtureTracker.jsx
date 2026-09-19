@@ -3,8 +3,15 @@ import { db, doc, setDoc, deleteDoc } from '../firebase'
 
 const norm = (s) => String(s || '').toLowerCase().trim()
 
+const SEASON_START = new Date('2026-09-01T00:00:00').getTime()
+
 const STYLE_PLAYED = { background: 'rgba(76, 175, 80, 0.15)', color: '#81c784', borderColor: 'rgba(76, 175, 80, 0.4)' }
-const STYLE_WARN = { background: 'rgba(255, 193, 7, 0.15)', color: '#ffd54f', borderColor: 'rgba(255, 193, 7, 0.45)' }
+const STYLE_TOP = { background: 'rgba(0, 212, 255, 0.12)', color: 'var(--accent-cyan)', borderColor: 'rgba(0, 212, 255, 0.35)' }
+
+const dateStamp = (str) => {
+  const t = str ? new Date(str).getTime() : NaN
+  return isNaN(t) ? 0 : t
+}
 
 export default function FixtureTracker({
   user,
@@ -21,9 +28,6 @@ export default function FixtureTracker({
 }) {
   const [divisionFilter, setDivisionFilter] = useState('all')
   const [view, setView] = useState('toplay')
-  const [setDateFor, setSetDateFor] = useState(null)
-  const [dateVal, setDateVal] = useState('')
-  const [timeVal, setTimeVal] = useState('')
   const [forfeitFor, setForfeitFor] = useState(null)
   const [winner, setWinner] = useState('')
   const [busyId, setBusyId] = useState('')
@@ -65,20 +69,21 @@ export default function FixtureTracker({
         (String(r.player1Id) === String(p1) && String(r.player2Id) === String(p2)) ||
         (String(r.player1Id) === String(p2) && String(r.player2Id) === String(p1))
       ) &&
-      (!fixture.season || !r.season || String(r.season) === String(fixture.season))
+      (fixture.season && r.season ? String(r.season) === String(fixture.season) : true)
     ) || null
   }
 
   const fixtures = useMemo(() => {
-    const isLeagueFixture = (f) => {
+    const isLiveLeagueFixture = (f) => {
       const gt = norm(f.gameType)
       if (f.cupId) return false
       if (gt && gt !== 'league') return false
-      if (f.season && String(f.season) !== String(currentSeason)) return false
-      return true
+      if (f.season) return String(f.season) === String(currentSeason)
+      const stamp = Math.max(dateStamp(f.createdAt), dateStamp(f.fixtureDate), dateStamp(f.proposedDate), dateStamp(f.counterDate))
+      return stamp === 0 ? true : stamp >= SEASON_START
     }
     return allFixtures
-      .filter(f => !f._deleted && isLeagueFixture(f))
+      .filter(f => !f._deleted && isLiveLeagueFixture(f))
       .map(f => {
         const p1 = findUser(f.player1Id || f.player1)
         const p2 = findUser(f.player2Id || f.player2)
@@ -88,26 +93,14 @@ export default function FixtureTracker({
           raw: f,
           p1,
           p2,
-          competition: 'League',
           season: currentSeason,
           division: f.division && f.division !== 'Unassigned' ? f.division : (p1.division && p1.division !== 'Unassigned' ? p1.division : (p2.division || 'Unassigned')),
           status: norm(f.status) || 'pending',
-          createdAt: f.createdAt,
-          scheduledDate: f.fixtureDate || '',
-          scheduledTime: f.fixtureTime || '',
-          proposedDate: f.proposedDate || '',
-          counterDate: f.counterDate || ''
+          createdAt: f.createdAt
         }
       })
       .filter(Boolean)
   }, [allFixtures, allPlayers, currentSeason, allResults])
-
-  const isOverdue = (f) => {
-    if (!f.scheduledDate) return false
-    const d = new Date(`${f.scheduledDate}T23:59:59`)
-    if (isNaN(d.getTime())) return false
-    return d.getTime() < Date.now()
-  }
 
   const enriched = useMemo(() => {
     return fixtures.map(f => {
@@ -115,7 +108,7 @@ export default function FixtureTracker({
       const resultStatus = result ? norm(result.status) : ''
       const played = ['approved', 'completed'].includes(f.status) || resultStatus === 'approved'
       const awaiting = f.status === 'result_submitted' || (result && !['approved', 'rejected'].includes(resultStatus))
-      return { f, result, played: played || awaiting, awaiting, overdue: !played && !awaiting && isOverdue(f) }
+      return { f, result, awaiting, played: played || awaiting }
     })
   }, [fixtures, allResults])
 
@@ -130,10 +123,7 @@ export default function FixtureTracker({
     return enriched
       .filter(e => !e.played)
       .filter(e => divisionFilter === 'all' || e.f.division === divisionFilter)
-      .sort((a, b) => {
-        const so = (e) => e.overdue ? 0 : (e.f.scheduledDate ? 1 : 2)
-        return so(a) - so(b) || String(a.f.scheduledDate || '').localeCompare(String(b.f.scheduledDate || ''))
-      })
+      .sort((a, b) => String(a.f.p1.username).localeCompare(String(b.f.p1.username)))
   }, [enriched, divisionFilter])
 
   const played = useMemo(() => {
@@ -168,27 +158,12 @@ export default function FixtureTracker({
     if (busyId) return
     setBusyId(`r_${fixture.id}`)
     try {
-      const dateTxt = fixture.scheduledDate ? ` on ${fixture.scheduledDate}` : (fixture.proposedDate ? ` (proposed: ${fixture.proposedDate})` : '')
-      const msg = `Your League match vs ` + `{opp}` + ` is due${dateTxt}. Arrange a time to play!`
+      const msg = `Your League match vs ` + `{opp}` + ` is due. Arrange a time to play!`
       await notifyUser(fixture.p1.id, 'Fixture Reminder', msg.replace('{opp}', fixture.p2.username), 'fixture_reminder', { fixtureId: fixture.id })
       await notifyUser(fixture.p2.id, 'Fixture Reminder', msg.replace('{opp}', fixture.p1.username), 'fixture_reminder', { fixtureId: fixture.id })
       await logAudit('FIXTURE_REMIND', `Reminded ${fixture.p1.username} & ${fixture.p2.username} re: League fixture (${fixture.id})`)
       showToast('Reminder sent to both players', 'success')
     } catch (e) { showToast('Remind failed: ' + e.message, 'error') }
-    setBusyId('')
-  }
-
-  const handleSetDate = async () => {
-    if (!setDateFor) return
-    if (!dateVal) return showToast('Pick an agreed date', 'error')
-    if (busyId) return
-    setBusyId(`d_${setDateFor.id}`)
-    try {
-      await updateFixture(setDateFor, { status: 'accepted', fixtureDate: dateVal, fixtureTime: timeVal || '', acceptedBy: user?.username || 'admin', acceptedAt: new Date().toISOString() })
-      await logAudit('FIXTURE_DATE', `Admin set date ${dateVal}${timeVal ? ' ' + timeVal : ''} for ${setDateFor.p1.username} vs ${setDateFor.p2.username}`)
-      showToast('Fixture date set', 'success')
-      setSetDateFor(null); setDateVal(''); setTimeVal('')
-    } catch (e) { showToast('Failed: ' + e.message, 'error') }
     setBusyId('')
   }
 
@@ -277,9 +252,9 @@ export default function FixtureTracker({
     </button>
   )
 
-  const badge = (style, text) => (
-    <span className="btn btn-sm" style={{ ...style, border: '1px solid', cursor: 'default', padding: '4px 10px', fontSize: 11, whiteSpace: 'nowrap' }}>
-      {text}
+  const statusBadge = (played) => (
+    <span className="btn btn-sm" style={{ ...(played ? STYLE_PLAYED : STYLE_TOP), border: '1px solid', cursor: 'default', padding: '4px 10px', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
+      {played ? 'Played' : 'To Play'}
     </span>
   )
 
@@ -324,79 +299,74 @@ export default function FixtureTracker({
       </div>
 
       {view === 'toplay' ? (
-        <div className="glass" style={{ padding: '16px', borderRadius: '12px' }}>
-          <h3 style={{ margin: '0 0 12px', fontSize: 16 }}>Remaining Games ({toPlay.length})</h3>
-          {toPlay.length === 0 ? (
-            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '24px' }}>No games left to play. All fixtures for this season are complete!</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {groupByDivision(toPlay).map(g => (
-                <div key={g.division}>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--accent-cyan)', marginBottom: '8px' }}>{g.division} · {g.rows.length} to play</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {g.rows.map(({ f, overdue }) => {
-                      const dateTxt = f.scheduledDate ? `${f.scheduledDate}${f.scheduledTime ? ' ' + f.scheduledTime : ''}` : (f.counterDate || f.proposedDate || '')
-                      return (
-                        <div key={f.id} className="glass" style={{ padding: '12px', borderRadius: '10px', border: overdue ? '1px solid rgba(229, 115, 115, 0.5)' : '1px solid transparent' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                            <div style={{ minWidth: '180px' }}>
-                              <strong>{f.p1.username}</strong> vs <strong>{f.p2.username}</strong>
-                            </div>
-                            <div style={{ fontSize: 12, color: 'var(--text-muted)', minWidth: '140px' }}>
-                              {dateTxt ? <>📅 {dateTxt}</> : <span style={{ color: '#aaa' }}>no date yet</span>}
-                              {overdue && <div style={{ color: '#e57373', fontWeight: 700 }}>⚠ Overdue</div>}
-                            </div>
-                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                              {actionBtn(() => handleRemind(f), 'Remind', 'btn-secondary', busyId === `r_${f.id}`)}
-                              {actionBtn(() => { setSetDateFor(f); setDateVal(f.scheduledDate || ''); setTimeVal(f.scheduledTime || '') }, 'Set Date', 'btn-secondary', busyId === `d_${f.id}`)}
-                              {actionBtn(() => { setForfeitFor(f); setWinner('') }, 'Forfeit', 'btn-danger', busyId === `f_${f.id}`)}
-                              {onOpenSubmitResult && actionBtn(() => onOpenSubmitResult(f), 'Result', 'btn-secondary', busyId === `o_${f.id}`)}
-                              {actionBtn(() => handleRemove(f), 'Delete', 'btn-secondary', busyId === `x_${f.id}`)}
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })}
+        toPlay.length === 0 ? (
+          <div className="glass" style={{ padding: '24px', borderRadius: '12px', textAlign: 'center', color: 'var(--text-muted)' }}>
+            No games left to play. All fixtures for this season are complete!
+          </div>
+        ) : (
+          groupByDivision(toPlay).map(g => (
+            <div className="glass" key={g.division} style={{ padding: '16px', borderRadius: '12px' }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--accent-cyan)', marginBottom: '12px' }}>
+                {g.division} · {g.rows.length} to play
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '10px' }}>
+                {g.rows.map(({ f }) => (
+                  <div key={f.id} className="glass" style={{ padding: '14px', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <strong style={{ fontSize: 14 }}>{f.p1.username}</strong>
+                      <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>vs</span>
+                      <strong style={{ fontSize: 14 }}>{f.p2.username}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>{statusBadge(false)}</div>
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                      {actionBtn(() => handleRemind(f), 'Remind', 'btn-secondary', busyId === `r_${f.id}`)}
+                      {actionBtn(() => { setForfeitFor(f); setWinner('') }, 'Forfeit', 'btn-danger', busyId === `f_${f.id}`)}
+                      {onOpenSubmitResult && actionBtn(() => onOpenSubmitResult(f), 'Result', 'btn-secondary', busyId === `o_${f.id}`)}
+                      {actionBtn(() => handleRemove(f), 'Delete', 'btn-secondary', busyId === `x_${f.id}`)}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          )}
-        </div>
+          ))
+        )
       ) : (
-        <div className="glass" style={{ padding: '16px', borderRadius: '12px' }}>
-          <h3 style={{ margin: '0 0 12px', fontSize: 16 }}>Games Played ({played.length})</h3>
-          {played.length === 0 ? (
-            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '24px' }}>No played games for this season yet.</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {groupByDivision(played).map(g => (
-                <div key={g.division}>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: '#81c784', marginBottom: '8px' }}>{g.division} · {g.rows.length} played</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {g.rows.map(({ f, result, awaiting }) => {
-                      const scoreTxt = result ? `${result.score1} - ${result.score2}` : '—'
-                      const dateTxt = result?.date || result?.approvedAt?.split('T')[0] || f.scheduledDate || '—'
-                      return (
-                        <div key={f.id} className="glass" style={{ padding: '12px', borderRadius: '10px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                            <div style={{ minWidth: '180px' }}>
-                              <strong>{result?.player1 || f.p1.username}</strong> vs <strong>{result?.player2 || f.p2.username}</strong>
-                              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>📅 {dateTxt}{result?.forfeit ? ' · ⚖ Forfeit' : ''}</div>
-                            </div>
-                            <div style={{ fontSize: 18, fontWeight: 800, minWidth: '60px', textAlign: 'center' }}>{scoreTxt}</div>
-                            {awaiting ? badge(STYLE_WARN, 'Awaiting approval') : badge(STYLE_PLAYED, 'Played')}
-                            {awaiting && onReviewResults && actionBtn(() => onReviewResults(), 'Review', 'btn-primary', busyId === `v_${f.id}`)}
-                          </div>
+        played.length === 0 ? (
+          <div className="glass" style={{ padding: '24px', borderRadius: '12px', textAlign: 'center', color: 'var(--text-muted)' }}>
+            No played games for this season yet.
+          </div>
+        ) : (
+          groupByDivision(played).map(g => (
+            <div className="glass" key={g.division} style={{ padding: '16px', borderRadius: '12px' }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#81c784', marginBottom: '12px' }}>
+                {g.division} · {g.rows.length} played
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '10px' }}>
+                {g.rows.map(({ f, result, awaiting }) => {
+                  const scoreTxt = result ? `${result.score1} - ${result.score2}` : '—'
+                  return (
+                    <div key={f.id} className="glass" style={{ padding: '14px', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <strong style={{ fontSize: 14 }}>{result?.player1 || f.p1.username}</strong>
+                        <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>vs</span>
+                        <strong style={{ fontSize: 14 }}>{result?.player2 || f.p2.username}</strong>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                        <span style={{ fontSize: 18, fontWeight: 800 }}>{scoreTxt}</span>
+                        {statusBadge(true)}
+                      </div>
+                      {awaiting && onReviewResults && (
+                        <div style={{ display: 'flex', justifyContent: 'center' }}>
+                          {actionBtn(() => onReviewResults(), 'Review', 'btn-primary', busyId === `v_${f.id}`)}
                         </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              ))}
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
             </div>
-          )}
-        </div>
+          ))
+        )
       )}
 
       {coverage.filter(c => divisionFilter === 'all' || c.div === divisionFilter).map(({ div, rows }) => (
@@ -420,21 +390,6 @@ export default function FixtureTracker({
           </div>
         </div>
       ))}
-
-      {setDateFor && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div className="glass" style={{ padding: '20px', borderRadius: '14px', width: '100%', maxWidth: '360px' }}>
-            <h3 style={{ margin: '0 0 12px', fontSize: 16 }}>Set Fixture Date</h3>
-            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: '12px' }}>{setDateFor.p1.username} vs {setDateFor.p2.username}</div>
-            <div className="form-group"><label>Date</label><input type="date" value={dateVal} onChange={e => setDateVal(e.target.value)} /></div>
-            <div className="form-group"><label>Time (optional)</label><input type="time" value={timeVal} onChange={e => setTimeVal(e.target.value)} /></div>
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '12px' }}>
-              <button className="btn btn-secondary btn-sm" onClick={() => { setSetDateFor(null); setDateVal(''); setTimeVal('') }}>Cancel</button>
-              <button className="btn btn-primary btn-sm" onClick={handleSetDate} disabled={!dateVal}>{busyId ? '...' : 'Save Date'}</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {forfeitFor && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
