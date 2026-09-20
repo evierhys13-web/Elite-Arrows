@@ -101,6 +101,53 @@ export default function Admin() {
   const [surveyQuestions, setSurveyQuestions] = useState([{ id: 'q1', text: '', type: 'text', options: '' }])
   const [viewSurveyResponses, setViewSurveyResponses] = useState(null)
   const [expandedProofs, setExpandedProofs] = useState({})
+  const [welcomeDraft, setWelcomeDraft] = useState(() => ({
+    onboardingEnabled: adminData?.onboardingEnabled !== false,
+    welcomeHeader: adminData?.welcomeHeader || '',
+    welcomeMessage: adminData?.welcomeMessage || '',
+    companyName: adminData?.companyName || '',
+    brandingText: adminData?.brandingText || '',
+    finalMessage: adminData?.finalMessage || '',
+    whatsappText: adminData?.whatsappText || '',
+    whatsappGroupLink: adminData?.whatsappGroupLink || '',
+    seasonStartDate: adminData?.seasonStartDate || '',
+    seasonEndDate: adminData?.seasonEndDate || '',
+    onboardingContent: JSON.parse(JSON.stringify(adminData?.onboardingContent || {}))
+  }))
+  const UPDATE_SECTION_KEYS = ['howLeagueWorks', 'responsibilities', 'leagueRules', 'generalRules', 'whatHappensNext']
+  const handleWelcomeField = (field, value) => setWelcomeDraft(prev => ({ ...prev, [field]: value }))
+  const handleWelcomeSection = (key, field, value) => setWelcomeDraft(prev => ({
+    ...prev,
+    onboardingContent: {
+      ...(prev.onboardingContent || {}),
+      [key]: { title: prev.onboardingContent?.[key]?.title || '', body: prev.onboardingContent?.[key]?.body || '', [field]: value }
+    }
+  }))
+  const handleSaveWelcome = async () => {
+    setIsProcessing(true)
+    try {
+      await updateAdminData({
+        onboardingEnabled: welcomeDraft.onboardingEnabled,
+        welcomeHeader: welcomeDraft.welcomeHeader,
+        welcomeMessage: welcomeDraft.welcomeMessage,
+        companyName: welcomeDraft.companyName,
+        brandingText: welcomeDraft.brandingText,
+        finalMessage: welcomeDraft.finalMessage,
+        whatsappText: welcomeDraft.whatsappText,
+        whatsappGroupLink: welcomeDraft.whatsappGroupLink,
+        seasonStartDate: welcomeDraft.seasonStartDate,
+        seasonEndDate: welcomeDraft.seasonEndDate,
+        onboardingContent: welcomeDraft.onboardingContent
+      })
+      await logAudit('UPDATE_WELCOME_PAGE', 'Updated welcome page content & settings')
+      showToast('Welcome page saved!', 'success')
+      triggerDataRefresh('all')
+    } catch (e) {
+      showToast('Save failed: ' + e.message, 'error')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
 
   const toggleProof = (id, field) => {
     setExpandedProofs(prev => ({
@@ -251,7 +298,7 @@ export default function Admin() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    const allowed = ['dashboard', 'results', 'payments', 'moneypot', 'cups', 'playoffs', 'players', 'admins', 'seasons', 'trophies', 'halloffame', 'tokens', 'surveys', 'maintenance', 'audit', 'openleague', 'new', 'bets', 'practice', 'hometournaments', 'suggestions']
+    const allowed = ['dashboard', 'results', 'payments', 'moneypot', 'cups', 'playoffs', 'players', 'admins', 'seasons', 'trophies', 'halloffame', 'tokens', 'surveys', 'welcome', 'maintenance', 'audit', 'openleague', 'new', 'bets', 'practice', 'hometournaments', 'suggestions']
     if (tab && allowed.includes(tab)) setActiveTab(tab)
   }, [searchParams])
 
@@ -1509,6 +1556,7 @@ export default function Admin() {
     { id: 'cups', label: 'Cups' },
     { id: 'news', label: 'League News' },
     { id: 'surveys', label: 'Surveys' },
+    { id: 'welcome', label: 'Welcome ✍️' },
     { id: 'highlights', label: 'Home Highlights' },
     { id: 'trophies', label: 'Trophies' },
     { id: 'halloffame', label: 'Hall of Fame' },
@@ -2542,12 +2590,141 @@ export default function Admin() {
             <h3>New User Onboarding</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '20px' }}>
               {stats.newMembers.map(p => (
-                <div key={p.id} className="glass" style={{ padding: '20px', borderRadius: '16px', display: 'flex', justifyContent: 'space-between' }}>
-                  <div><div style={{ fontWeight: 800 }}>{p.username}</div><div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{p.email}</div></div>
+                <div key={p.id} className="glass" style={{ padding: '20px', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 800 }}>{p.username}</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{p.email}</div>
+                    <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span className="welcome-chip" style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '99px', fontSize: '0.72rem', fontWeight: 800,
+                        background: p.onboardingComplete ? 'rgba(34,197,94,0.15)' : 'rgba(251,191,36,0.12)',
+                        color: p.onboardingComplete ? 'var(--success)' : '#fbbf24',
+                        border: `1px solid ${p.onboardingComplete ? 'var(--success)' : 'rgba(251,191,36,0.4)'}`
+                      }}>
+                        {p.onboardingComplete ? '✅ Onboarding complete' : '⏳ Signup not finished'}
+                      </span>
+                      {p.onboardingCompletedAt && (
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                          {new Date(p.onboardingCompletedAt).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                   <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/profile/${p.id}`)}>View</button>
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* TAB: WELCOME PAGE */}
+        {activeTab === 'welcome' && (
+          <div className="card glass" style={{ padding: '32px' }}>
+            <h3>New Player Welcome Page</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '6px 0 20px' }}>
+              Everything a new player sees after signing up. New signups are sent here until they complete signup, unless disabled below.
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+              <div className="glass" style={{ padding: '20px', borderRadius: '14px' }}>
+                <h4 style={{ marginTop: 0, color: 'var(--accent-cyan)' }}>🔘 Enabled</h4>
+                <button
+                  className="btn btn-block"
+                  style={{ background: welcomeDraft.onboardingEnabled ? 'var(--success)' : 'var(--error)', color: 'white' }}
+                  onClick={() => handleWelcomeField('onboardingEnabled', !welcomeDraft.onboardingEnabled)}
+                >
+                  {welcomeDraft.onboardingEnabled ? '✅ Send new players to Welcome page' : '⏸ New players skip the Welcome page'}
+                </button>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: 0 }}>
+                  When disabled, new signups go straight into the app (no onboarding gate).
+                </p>
+              </div>
+
+              <div className="glass" style={{ padding: '20px', borderRadius: '14px' }}>
+                <h4 style={{ marginTop: 0, color: 'var(--accent-cyan)' }}>🗓️ Season Dates</h4>
+                <div className="form-group">
+                  <label>Season Start Date</label>
+                  <input type="date" className="glass" value={welcomeDraft.seasonStartDate} onChange={e => handleWelcomeField('seasonStartDate', e.target.value)} />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label>Season End Date</label>
+                  <input type="date" className="glass" value={welcomeDraft.seasonEndDate} onChange={e => handleWelcomeField('seasonEndDate', e.target.value)} />
+                </div>
+              </div>
+
+              <div className="glass" style={{ padding: '20px', borderRadius: '14px' }}>
+                <h4 style={{ marginTop: 0, color: 'var(--accent-cyan)' }}>💬 WhatsApp</h4>
+                <div className="form-group">
+                  <label>WhatsApp Group Link</label>
+                  <input className="glass" value={welcomeDraft.whatsappGroupLink} onChange={e => handleWelcomeField('whatsappGroupLink', e.target.value)} placeholder="https://chat.whatsapp.com/..." />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label>WhatsApp Section Text</label>
+                  <textarea className="glass" rows={3} value={welcomeDraft.whatsappText} onChange={e => handleWelcomeField('whatsappText', e.target.value)} style={{ width: '100%', resize: 'vertical' }} />
+                </div>
+              </div>
+
+              <div className="glass" style={{ padding: '20px', borderRadius: '14px' }}>
+                <h4 style={{ marginTop: 0, color: 'var(--accent-cyan)' }}>👋 Welcome Header &amp; Message</h4>
+                <div className="form-group">
+                  <label>Welcome Header</label>
+                  <input className="glass" value={welcomeDraft.welcomeHeader} onChange={e => handleWelcomeField('welcomeHeader', e.target.value)} placeholder="Welcome to Elite Arrows" />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label>Welcome Message</label>
+                  <textarea className="glass" rows={4} value={welcomeDraft.welcomeMessage} onChange={e => handleWelcomeField('welcomeMessage', e.target.value)} style={{ width: '100%', resize: 'vertical' }} />
+                </div>
+              </div>
+
+              <div className="glass" style={{ padding: '20px', borderRadius: '14px' }}>
+                <h4 style={{ marginTop: 0, color: 'var(--accent-cyan)' }}>🏹 Branding</h4>
+                <div className="form-group">
+                  <label>Company / League Name</label>
+                  <input className="glass" value={welcomeDraft.companyName} onChange={e => handleWelcomeField('companyName', e.target.value)} placeholder="Elite Arrows" />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label>Branding Text</label>
+                  <textarea className="glass" rows={4} value={welcomeDraft.brandingText} onChange={e => handleWelcomeField('brandingText', e.target.value)} style={{ width: '100%', resize: 'vertical' }} />
+                </div>
+              </div>
+
+              <div className="glass" style={{ padding: '20px', borderRadius: '14px' }}>
+                <h4 style={{ marginTop: 0, color: 'var(--accent-cyan)' }}>🎯 Final Message</h4>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label>Final Message</label>
+                  <textarea className="glass" rows={4} value={welcomeDraft.finalMessage} onChange={e => handleWelcomeField('finalMessage', e.target.value)} style={{ width: '100%', resize: 'vertical' }} />
+                </div>
+              </div>
+            </div>
+
+            <h4 style={{ marginTop: '28px', color: 'var(--accent-cyan)' }}>📚 Onboarding Sections</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginTop: '14px' }}>
+              {UPDATE_SECTION_KEYS.map(key => {
+                const section = welcomeDraft.onboardingContent?.[key] || { title: '', body: '' }
+                return (
+                  <div key={key} className="glass" style={{ padding: '20px', borderRadius: '14px' }}>
+                    <h4 style={{ margin: '0 0 10px', textTransform: 'capitalize' }}>{key.replace(/([A-Z])/g, ' $1')}</h4>
+                    <div className="form-group">
+                      <label>Title</label>
+                      <input className="glass" value={section.title} onChange={e => handleWelcomeSection(key, 'title', e.target.value)} />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label>Body</label>
+                      <textarea className="glass" rows={7} value={section.body} onChange={e => handleWelcomeSection(key, 'body', e.target.value)} style={{ width: '100%', resize: 'vertical' }} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <button
+              className="btn btn-primary"
+              style={{ marginTop: '24px', width: '100%', height: '48px', fontSize: '0.95rem' }}
+              onClick={handleSaveWelcome}
+              disabled={isProcessing}
+            >
+              {isProcessing ? 'Saving...' : '💾 Save Welcome Page'}
+            </button>
           </div>
         )}
 

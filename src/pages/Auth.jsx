@@ -23,10 +23,10 @@ export default function Auth() {
   const [resetLoading, setResetLoading] = useState(false)
   const [whatsappJoined, setWhatsappJoined] = useState(false)
 
-  const WHATSAPP_GROUP_LINK = 'https://chat.whatsapp.com/GNaYyJDxzMADbA1ARI1kne'
-
   const { signUp, signIn, isAuthenticated, loading: authLoading, getAllUsers, adminData } = useAuth()
   const navigate = useNavigate()
+
+  const WHATSAPP_GROUP_LINK = adminData?.whatsappGroupLink || 'https://chat.whatsapp.com/GNaYyJDxzMADbA1ARI1kne'
 
   const registrationsEnabled = adminData?.registrationsEnabled !== false
 
@@ -116,7 +116,7 @@ export default function Auth() {
       }
 
       if (isSignUp) {
-        navigate('/guide?onboarding=1')
+        navigate('/welcome')
       } else {
         navigate('/home')
       }

@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { useAuth } from './context/AuthContextInternal'
 import { ThemeProvider, useTheme } from './context/ThemeContext'
@@ -21,6 +21,7 @@ import { Capacitor } from '@capacitor/core'
 import { ADMIN_EMAILS } from './config'
 
 const Auth = lazy(() => import('./pages/Auth'))
+const Welcome = lazy(() => import('./pages/Welcome'))
 const Home = lazy(() => import('./pages/Home'))
 const Subscription = lazy(() => import('./pages/Subscription'))
 const Table = lazy(() => import('./pages/Table'))
@@ -109,8 +110,25 @@ function PageLoader() {
   )
 }
 
+function isOnboardingPending(user, adminData) {
+  if (adminData?.onboardingEnabled === false) return false
+  const isEmailAdmin = user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase())
+  const isAdmin = isEmailAdmin || user?.isAdmin === true || user?.isTournamentAdmin === true || user?.isCupAdmin === true
+  if (isAdmin) return false
+  if (user?.onboardingComplete === true) return false
+  let legacyComplete = false
+  try {
+    legacyComplete =
+      localStorage.getItem('eliteArrowsWelcomeComplete') === '1' ||
+      localStorage.getItem('eliteArrowsGuideRead') === '1' ||
+      localStorage.getItem('eliteArrowsOnboardingComplete') === 'true'
+  } catch (e) { /* ignore */ }
+  return !legacyComplete
+}
+
 function ProtectedRoute({ children }) {
-  const { isAuthenticated, loading } = useAuth()
+  const { isAuthenticated, loading, user, adminData } = useAuth()
+  const location = useLocation()
 
   if (loading) {
     return <PageLoader />
@@ -118,14 +136,26 @@ function ProtectedRoute({ children }) {
 
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />
+  }
+
+  const needsOnboarding = isOnboardingPending(user, adminData)
+  const isOnWelcome = location.pathname === '/welcome'
+
+  if (needsOnboarding && !isOnWelcome) {
+    return <Navigate to="/welcome" replace />
+  }
+
+  if (!needsOnboarding && isOnWelcome) {
+    return <Navigate to="/home" replace />
   }
 
   return children
 }
 
 function SubscribedRoute({ children }) {
-  const { user, isAuthenticated, loading } = useAuth()
+  const { user, isAuthenticated, loading, adminData } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
 
   if (loading) {
     return <PageLoader />
@@ -133,6 +163,10 @@ function SubscribedRoute({ children }) {
 
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />
+  }
+
+  if (isOnboardingPending(user, adminData) && location.pathname !== '/welcome') {
+    return <Navigate to="/welcome" replace />
   }
 
   const isFreeTier = !user?.division || user?.division === 'Unassigned'
@@ -188,8 +222,9 @@ function SubscribedRoute({ children }) {
 }
 
 function AdminRoute({ children }) {
-  const { user, isAuthenticated, loading } = useAuth()
+  const { user, isAuthenticated, loading, adminData } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
 
   if (loading) {
     return <PageLoader />
@@ -197,6 +232,10 @@ function AdminRoute({ children }) {
 
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />
+  }
+
+  if (isOnboardingPending(user, adminData) && location.pathname !== '/welcome') {
+    return <Navigate to="/welcome" replace />
   }
 
   const isEmailAdmin = user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase())
@@ -242,8 +281,9 @@ function AdminRoute({ children }) {
 }
 
 function TrainingRoute({ children }) {
-  const { user, isAuthenticated, loading } = useAuth()
+  const { user, isAuthenticated, loading, adminData } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
 
   if (loading) {
     return <PageLoader />
@@ -251,6 +291,10 @@ function TrainingRoute({ children }) {
 
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />
+  }
+
+  if (isOnboardingPending(user, adminData) && location.pathname !== '/welcome') {
+    return <Navigate to="/welcome" replace />
   }
 
   const isEmailAdmin = user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase())
@@ -434,6 +478,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/auth" element={<Suspense fallback={<PageLoader />}><Auth /></Suspense>} />
+      <Route path="/welcome" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><Welcome /></Suspense></ProtectedRoute>} />
       <Route path="/home" element={<ProtectedRoute><AppLayout><Home /></AppLayout></ProtectedRoute>} />
       <Route path="/subscription" element={<ProtectedRoute><AppLayout><Subscription /></AppLayout></ProtectedRoute>} />
       <Route path="/open-league" element={<ProtectedRoute><AppLayout><OpenLeague /></AppLayout></ProtectedRoute>} />

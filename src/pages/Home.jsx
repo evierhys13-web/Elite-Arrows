@@ -398,7 +398,7 @@ export default function Home() {
       {/* WhatsApp Community Link */}
       <div style={{ marginTop: '40px', textAlign: 'center', paddingBottom: '20px' }}>
         <a
-          href="https://chat.whatsapp.com/GNaYyJDxzMADbA1ARI1kne"
+          href={adminData?.whatsappGroupLink || 'https://chat.whatsapp.com/GNaYyJDxzMADbA1ARI1kne'}
           target="_blank"
           rel="noopener noreferrer"
           className="glass"

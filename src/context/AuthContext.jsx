@@ -68,6 +68,93 @@ const SEASON_ONE_WELCOME_START = new Date(
   "2026-05-01T00:00:00+01:00",
 ).getTime();
 
+export const DEFAULT_WHATSAPP_LINK =
+  "https://chat.whatsapp.com/GNaYyJDxzMADbA1ARI1kne";
+
+const ONBOARDING_CONTENT_DEFAULTS = {
+  howLeagueWorks: {
+    title: "How The League Works",
+    body:
+      "You're placed in a division that matches your 3-dart average. Each season you play one league match against every other player in your division. League matches are Best of 8 legs, first to 5 (or a 4-4 draw), played on DartCounter at 501, Straight In / Double Out. Every leg you win earns 1 point, plus a +3 bonus for a win or +1 for a draw. Results are submitted in the app with a proof screenshot and approved by an admin before they count.",
+  },
+  responsibilities: {
+    title: "Your Responsibilities",
+    body:
+      "Arrange your fixtures through the app and the WhatsApp division group chats, respond to fixture proposals quickly, and show up for your matches. During league games your camera must stay on with the board clearly visible. The winner submits the result within 4 hours of the match finishing, and you keep your match cards / scorecards until the result has been approved.",
+  },
+  leagueRules: {
+    title: "League Rules",
+    body:
+      "All league fixtures must be played by the end of the season - unplayed fixtures are recorded as a fixed 5-3 win for the opponent. Play less than the required number of matches and you can be relegated or banned. The winner submits the result within 4 hours, and disputes must be raised with an admin within 48 hours. Re-scheduling is allowed when both players agree and an admin is notified.",
+  },
+  generalRules: {
+    title: "Rules In General",
+    body:
+      "Elite Arrows has a zero tolerance policy for cheating, score manipulation, toxic behaviour and rage-quitting. First offence is a one-time final warning; any subsequent offence means an immediate season ban. Let us know if anything is unfair or unclear - that's what the admins are here for.",
+  },
+  whatHappensNext: {
+    title: "What Happens Next",
+    body:
+      "Once you complete signup the admins will place you into your division. Keep an eye on WhatsApp for an invite to your division group, then arrange your first fixtures and start climbing the table. An Elite Arrows Pass unlocks results, league play, cups and tournaments - browse the app and subscribe when you're ready.",
+  },
+};
+
+const ONBOARDING_DEFAULTS = {
+  onboardingEnabled: true,
+  welcomeHeader: "Welcome to Elite Arrows",
+  welcomeMessage:
+    "You've officially joined the Elite Arrows darts league. Before you can start playing, read through everything below, join the official WhatsApp group and accept the league rules.",
+  companyName: "Elite Arrows",
+  brandingText:
+    "Elite Arrows is a competitive online darts league played through DartCounter. Season after season players battle across divisions for points, promotions, cup glory and a place in the Hall of Fame.",
+  finalMessage:
+    "That's everything you need to know. If you have any questions, reach out in the WhatsApp group or contact an admin directly. Good luck at the oche!",
+  whatsappText:
+    "All games are arranged in the official WhatsApp community. Join now so you can find opponents, arrange fixtures and stay up to date.",
+  whatsappGroupLink: DEFAULT_WHATSAPP_LINK,
+  seasonStartDate: "",
+  seasonEndDate: "",
+  onboardingContent: ONBOARDING_CONTENT_DEFAULTS,
+};
+
+function normalizeAdminData(data) {
+  if (!data) data = {};
+  const content = data.onboardingContent || {};
+  const deepContent = {};
+  Object.keys(ONBOARDING_CONTENT_DEFAULTS).forEach((key) => {
+    const def = ONBOARDING_CONTENT_DEFAULTS[key];
+    const supplied = content[key] || {};
+    deepContent[key] = {
+      title: supplied.title || def.title,
+      body: supplied.body || def.body,
+    };
+  });
+  return {
+    subscriptionPot: data.subscriptionPot || 0,
+    subscriptionPot10: data.subscriptionPot10 || 0,
+    moneyHistory: data.moneyHistory || [],
+    resultStatusOverrides: data.resultStatusOverrides || {},
+    leagueTableResetAt: data.leagueTableResetAt || null,
+    isMaintenanceMode: data.isMaintenanceMode || false,
+    maintenanceMessage: data.maintenanceMessage || "",
+    registrationsEnabled:
+      data.registrationsEnabled !== undefined ? data.registrationsEnabled : true,
+    currentSeason: data.currentSeason || "Elite Arrows Season 5",
+    onboardingEnabled: data.onboardingEnabled !== false,
+    welcomeHeader: data.welcomeHeader || ONBOARDING_DEFAULTS.welcomeHeader,
+    welcomeMessage:
+      data.welcomeMessage || ONBOARDING_DEFAULTS.welcomeMessage,
+    companyName: data.companyName || ONBOARDING_DEFAULTS.companyName,
+    brandingText: data.brandingText || ONBOARDING_DEFAULTS.brandingText,
+    finalMessage: data.finalMessage || ONBOARDING_DEFAULTS.finalMessage,
+    whatsappText: data.whatsappText || ONBOARDING_DEFAULTS.whatsappText,
+    whatsappGroupLink:
+      data.whatsappGroupLink || ONBOARDING_DEFAULTS.whatsappGroupLink,
+    seasonStartDate: data.seasonStartDate || "",
+    seasonEndDate: data.seasonEndDate || "",
+    onboardingContent: deepContent,
+  };
+}
 
 export function AuthProvider({ children }) {
   const { showToast } = useToast();
@@ -140,28 +227,10 @@ export function AuthProvider({ children }) {
       const saved = localStorage.getItem("eliteArrowsAdminData");
       if (saved && saved !== "undefined") {
         const parsed = JSON.parse(saved);
-        return {
-          subscriptionPot: parsed.subscriptionPot || 0,
-          subscriptionPot10: parsed.subscriptionPot10 || 0,
-          moneyHistory: parsed.moneyHistory || [],
-          leagueTableResetAt: parsed.leagueTableResetAt || null,
-          isMaintenanceMode: parsed.isMaintenanceMode || false,
-          maintenanceMessage: parsed.maintenanceMessage || "",
-          registrationsEnabled: parsed.registrationsEnabled !== undefined ? parsed.registrationsEnabled : true,
-          currentSeason: parsed.currentSeason || "Elite Arrows Season 5",
-        };
+        return normalizeAdminData(parsed);
       }
     } catch (e) {}
-    return {
-      subscriptionPot: 0,
-      subscriptionPot10: 0,
-      moneyHistory: [],
-      leagueTableResetAt: null,
-      isMaintenanceMode: false,
-      maintenanceMessage: "",
-      registrationsEnabled: true,
-      currentSeason: "Elite Arrows Season 5",
-    };
+    return normalizeAdminData(null);
   });
   const [notificationPermission, setNotificationPermission] =
     useState("default");
@@ -522,20 +591,7 @@ export function AuthProvider({ children }) {
       (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data();
-          setAdminData({
-            subscriptionPot: data.subscriptionPot || 0,
-            subscriptionPot10: data.subscriptionPot10 || 0,
-            moneyHistory: data.moneyHistory || [],
-            resultStatusOverrides: data.resultStatusOverrides || {},
-            leagueTableResetAt: data.leagueTableResetAt || null,
-            isMaintenanceMode: data.isMaintenanceMode || false,
-            maintenanceMessage: data.maintenanceMessage || "",
-            registrationsEnabled:
-              data.registrationsEnabled !== undefined
-                ? data.registrationsEnabled
-                : true,
-            currentSeason: data.currentSeason || "Elite Arrows Season 5",
-          });
+          setAdminData(normalizeAdminData(data));
           resultStatusOverridesRef.current = data.resultStatusOverrides || {};
 
           try {
@@ -1207,6 +1263,7 @@ export function AuthProvider({ children }) {
               dndEndTime: null,
               lastSeen: new Date().toISOString(),
               createdAt: new Date().toISOString(),
+              onboardingComplete: false,
             };
             await setDoc(doc(db, "users", firebaseUser.uid), newUserData);
             const fullUser = { id: firebaseUser.uid, ...newUserData };
@@ -1264,6 +1321,7 @@ export function AuthProvider({ children }) {
         dndEndTime: null,
         lastSeen: new Date().toISOString(),
         createdAt: new Date().toISOString(),
+        onboardingComplete: false,
       };
 
       await setDoc(doc(db, "users", firebaseUser.uid), newUser);
@@ -2088,6 +2146,39 @@ export function AuthProvider({ children }) {
     window.location.reload();
   };
 
+  const completeOnboarding = useCallback(async () => {
+    if (!user?.id) return;
+    const completedAt = new Date().toISOString();
+    const updates = {
+      onboardingComplete: true,
+      onboardingCompletedAt: completedAt,
+    };
+    try {
+      const userRef = doc(db, "users", user.id);
+      await setDoc(userRef, updates, { merge: true });
+      const updatedUser = { ...user, ...updates };
+      setUser(updatedUser);
+      try {
+        localStorage.setItem(
+          "eliteArrowsCurrentUser",
+          JSON.stringify(updatedUser),
+        );
+        localStorage.setItem("eliteArrowsWelcomeComplete", "1");
+      } catch (e) {}
+      setAllUsers((prev) => {
+        const currentUsers = Array.isArray(prev) ? prev : [];
+        const updatedList = currentUsers.map((u) =>
+          u.id === user.id ? { ...u, ...updates } : u,
+        );
+        saveUsersCache(updatedList);
+        return updatedList;
+      });
+    } catch (error) {
+      console.error("Error completing onboarding:", error);
+      throw error;
+    }
+  }, [user]);
+
   const updateFixtures = useCallback((updatedFixtures) => {
     setFixtures(updatedFixtures);
     try {
@@ -2603,6 +2694,7 @@ export function AuthProvider({ children }) {
     togglePinNews,
     updateAdminData,
     addToMoneyHistory,
+    completeOnboarding,
     isAuthenticated: !!user,
   }), [
     user,
@@ -2668,7 +2760,8 @@ export function AuthProvider({ children }) {
     deleteNews,
     togglePinNews,
     updateAdminData,
-    addToMoneyHistory
+    addToMoneyHistory,
+    completeOnboarding
   ]);
 
   return (

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { useAuth } from '../context/AuthContextInternal'
 
 const chapterStyles = {
   marginTop: '20px',
@@ -8,9 +9,11 @@ const chapterStyles = {
   borderRadius: '12px',
 }
 
-const WHATSAPP_LINK = 'https://chat.whatsapp.com/GNaYyJDxzMADbA1ARI1kne'
+const DEFAULT_WHATSAPP_LINK = 'https://chat.whatsapp.com/GNaYyJDxzMADbA1ARI1kne'
 
 export default function Guide() {
+  const { adminData } = useAuth()
+  const WHATSAPP_LINK = adminData?.whatsappGroupLink || DEFAULT_WHATSAPP_LINK
   const [activeSection, setActiveSection] = useState('getting-started')
   const [openFaq, setOpenFaq] = useState(null)
   const [readComplete, setReadComplete] = useState(false)
