@@ -1,4 +1,19 @@
+import { useMemo } from 'react'
+import { useLocation } from 'react-router-dom'
+import { usePageBackgrounds } from '../context/BackgroundContext'
+import { matchPageKey } from '../config/pageBackgrounds'
+
 export default function BackgroundDecor() {
+  const location = useLocation()
+  const { backgrounds } = usePageBackgrounds()
+
+  const activeConfig = useMemo(() => {
+    const pageKey = matchPageKey(location.pathname)
+    return pageKey ? (backgrounds[pageKey] || null) : null
+  }, [location.pathname, backgrounds])
+
+  const customBg = activeConfig?.imageUrl ? activeConfig : null
+
   return (
     <div style={{
       position: 'fixed',
@@ -27,6 +42,10 @@ export default function BackgroundDecor() {
           0%, 100% { opacity: 0.15; }
           50% { opacity: 0.7; }
         }
+        @keyframes custom-bg-fade {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
         .cosmic-image-main {
           position: absolute;
           inset: -5%;
@@ -37,6 +56,9 @@ export default function BackgroundDecor() {
           animation: drift 90s ease-in-out infinite;
           opacity: 0.6;
           will-change: transform;
+        }
+        .custom-bg-fade {
+          animation: custom-bg-fade 0.6s ease-out both;
         }
         .nebula {
           position: absolute;
@@ -162,22 +184,45 @@ export default function BackgroundDecor() {
         }
       `}</style>
 
-      <div className="cosmic-image-main" />
-      <div className="nebula nebula-1" />
-      <div className="nebula nebula-2" />
-      <div className="nebula nebula-3" />
-      <div className="starfield" />
-      <div className="shooting-star shooting-star-1" />
-      <div className="shooting-star shooting-star-2" />
-      <div className="shooting-star shooting-star-3" />
-      <div className="meteor meteor-anim meteor-1" />
-      <div className="meteor meteor-anim meteor-2" />
-      <div className="meteor meteor-anim meteor-3" />
+      {customBg ? (
+        <>
+          <div className="nebula nebula-1" />
+          <div className="nebula nebula-2" />
+          <div
+            key={customBg.imageUrl}
+            className="custom-bg-fade"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              backgroundImage: `url("${customBg.imageUrl}")`,
+              backgroundSize: customBg.fit === 'contain' ? 'contain' : 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
+              opacity: Math.min(1, Math.max(0.1, customBg.opacity ?? 0.5)),
+              filter: customBg.blur ? `blur(${Math.min(20, customBg.blur)}px)` : 'none'
+            }}
+          />
+        </>
+      ) : (
+        <>
+          <div className="cosmic-image-main" />
+          <div className="nebula nebula-1" />
+          <div className="nebula nebula-2" />
+          <div className="nebula nebula-3" />
+          <div className="starfield" />
+          <div className="shooting-star shooting-star-1" />
+          <div className="shooting-star shooting-star-2" />
+          <div className="shooting-star shooting-star-3" />
+          <div className="meteor meteor-anim meteor-1" />
+          <div className="meteor meteor-anim meteor-2" />
+          <div className="meteor meteor-anim meteor-3" />
+        </>
+      )}
 
       <div style={{
         position: 'absolute',
         inset: 0,
-        background: 'radial-gradient(circle at 50% 50%, transparent 30%, rgba(0, 0, 0, 0.5) 100%)'
+        background: customBg ? 'radial-gradient(circle at 50% 50%, transparent 30%, rgba(0, 0, 0, 0.6) 100%)' : 'radial-gradient(circle at 50% 50%, transparent 30%, rgba(0, 0, 0, 0.5) 100%)'
       }} />
     </div>
   )

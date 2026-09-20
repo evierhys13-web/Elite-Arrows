@@ -2,8 +2,10 @@ import { useState, useEffect, useMemo, lazy, Suspense, useRef } from 'react'
 import { useAuth } from '../context/AuthContextInternal'
 import { ONBOARDING_CONTENT_VERSION } from '../context/AuthContext'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { db, doc, setDoc, getDoc, getDocs, collection, deleteDoc, updateDoc, writeBatch, addDoc, query, orderBy, limit, increment, storage, ref, uploadBytesResumable, getDownloadURL } from '../firebase'
+import { db, doc, setDoc, getDoc, getDocs, collection, deleteDoc, updateDoc, writeBatch, addDoc, query, orderBy, limit, increment, storage, ref, uploadString, uploadBytesResumable, getDownloadURL } from '../firebase'
 import { ADMIN_EMAILS } from '../config'
+import { SUPPORTED_PAGES, PAGE_BACKGROUND_GROUPS } from '../config/pageBackgrounds'
+import { usePageBackgrounds } from '../context/BackgroundContext'
 import UserSearchSelect from '../components/UserSearchSelect'
 import { useToast } from '../context/ToastContext'
 import { logMatchApproved } from '../utils/analytics'
@@ -44,6 +46,10 @@ export default function Admin() {
 
   const navigate = useNavigate()
   const { showToast } = useToast()
+  const { backgrounds, saveBackground, removeBackground } = usePageBackgrounds()
+  const [bgSearch, setBgSearch] = useState('')
+  const [bgUploading, setBgUploading] = useState(null)
+  const [bgDrafts, setBgDrafts] = useState({})
   const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState('dashboard')
   const [refreshKey, setRefreshKey] = useState(0)
@@ -304,7 +310,7 @@ export default function Admin() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    const allowed = ['dashboard', 'results', 'payments', 'moneypot', 'cups', 'playoffs', 'players', 'admins', 'seasons', 'trophies', 'halloffame', 'tokens', 'surveys', 'welcome', 'maintenance', 'audit', 'openleague', 'new', 'bets', 'practice', 'hometournaments', 'suggestions']
+    const allowed = ['dashboard', 'results', 'payments', 'moneypot', 'cups', 'playoffs', 'players', 'admins', 'seasons', 'trophies', 'halloffame', 'tokens', 'surveys', 'welcome', 'maintenance', 'audit', 'openleague', 'new', 'bets', 'practice', 'hometournaments', 'suggestions', 'backgrounds']
     if (tab && allowed.includes(tab)) setActiveTab(tab)
   }, [searchParams])
 
@@ -1550,6 +1556,49 @@ export default function Admin() {
     setIsApproving(false)
   }
 
+  const handleBgUpload = async (pageKey, file) => {
+    if (!file || bgUploading) return
+    setBgUploading(pageKey)
+    try {
+      const dataUrl = await compressImageToDataUrl(file, { maxDimension: 1600, maxBase64: 1500000 })
+      const storageRef = ref(storage, `page-backgrounds/${pageKey}.jpg`)
+      await uploadString(storageRef, dataUrl, 'data_url', { contentType: 'image/jpeg' })
+      const imageUrl = await getDownloadURL(storageRef)
+      const meta = backgrounds[pageKey] || {}
+      await saveBackground(pageKey, {
+        imageUrl,
+        opacity: bgDrafts[pageKey]?.opacity ?? meta.opacity ?? 0.5,
+        blur: bgDrafts[pageKey]?.blur ?? meta.blur ?? 0,
+        fit: bgDrafts[pageKey]?.fit ?? meta.fit ?? 'cover'
+      })
+      setBgDrafts(prev => ({ ...prev, [pageKey]: undefined }))
+      showToast('Background saved', 'success')
+    } catch (e) {
+      showToast('Upload failed: ' + e.message, 'error')
+    }
+    setBgUploading(null)
+  }
+
+  const handleBgRemove = async (pageKey) => {
+    try {
+      await removeBackground(pageKey)
+    } catch (e) {
+      showToast('Remove failed: ' + e.message, 'error')
+    }
+  }
+
+  const handleBgMeta = async (pageKey, field, value) => {
+    setBgDrafts(prev => ({ ...prev, [pageKey]: { ...(prev[pageKey] || {}), [field]: value } }))
+    if (backgrounds[pageKey]?.imageUrl) {
+      await saveBackground(pageKey, {
+        imageUrl: backgrounds[pageKey].imageUrl,
+        opacity: field === 'opacity' ? value : (bgDrafts[pageKey]?.opacity ?? backgrounds[pageKey].opacity),
+        blur: field === 'blur' ? value : (bgDrafts[pageKey]?.blur ?? backgrounds[pageKey].blur),
+        fit: field === 'fit' ? value : (bgDrafts[pageKey]?.fit ?? backgrounds[pageKey].fit)
+      })
+    }
+  }
+
   const tabs = [
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'results', label: 'Scores', count: pendingResults.length },
@@ -1563,6 +1612,7 @@ export default function Admin() {
     { id: 'news', label: 'League News' },
     { id: 'surveys', label: 'Surveys' },
     { id: 'welcome', label: 'Welcome ✍️' },
+    { id: 'backgrounds', label: '🎨 Page Backgrounds' },
     { id: 'highlights', label: 'Home Highlights' },
     { id: 'trophies', label: 'Trophies' },
     { id: 'halloffame', label: 'Hall of Fame' },
@@ -2633,6 +2683,128 @@ export default function Admin() {
         )}
 
         {/* TAB: WELCOME PAGE */}
+        {activeTab === 'backgrounds' && (
+          <div className="card glass" style={{ padding: '32px' }}>
+            <h3>🎨 Page Backgrounds</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '6px 0 20px' }}>
+              Give any page its own background image. Upload an image, then fine-tune opacity and blur. Pages without an image keep the default cosmic design.
+            </p>
+
+            <div className="form-group" style={{ maxWidth: '360px' }}>
+              <input
+                type="text"
+                className="glass"
+                placeholder="Search pages..."
+                value={bgSearch}
+                onChange={e => setBgSearch(e.target.value)}
+              />
+            </div>
+
+            {PAGE_BACKGROUND_GROUPS.map(group => {
+              const pages = SUPPORTED_PAGES.filter(p =>
+                p.group === group &&
+                String(p.label).toLowerCase().includes(bgSearch.toLowerCase())
+              )
+              if (pages.length === 0) return null
+              return (
+                <div key={group} style={{ marginBottom: '28px' }}>
+                  <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '12px', fontSize: '0.95rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{group}</h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+                    {pages.map(page => {
+                      const config = backgrounds[page.key]
+                      const draft = bgDrafts[page.key] || {}
+                      const preview = config?.imageUrl
+                      return (
+                        <div key={page.key} className="glass" style={{ padding: '16px', borderRadius: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ width: '56px', height: '56px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0, background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border)', position: 'relative' }}>
+                              {preview ? (
+                                <img src={preview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              ) : (
+                                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem' }}>🪐</div>
+                              )}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{page.label}</div>
+                              <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem', wordBreak: 'break-all' }}>{page.paths[0]}</div>
+                            </div>
+                            <span style={{ fontSize: '0.65rem', padding: '4px 8px', borderRadius: '20px', background: preview ? 'var(--success-bg)' : 'rgba(255,255,255,0.06)', color: preview ? 'var(--success)' : 'var(--text-muted)' }}>
+                              {preview ? 'Custom' : 'Cosmic'}
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <label className="btn btn-primary btn-block" style={{ cursor: 'pointer', margin: 0, padding: '8px 12px', fontSize: '0.78rem', textAlign: 'center' }}>
+                              {bgUploading === page.key ? 'Uploading...' : '⬆ Upload'}
+                              <input
+                                type="file"
+                                accept="image/*"
+                                style={{ display: 'none' }}
+                                disabled={bgUploading === page.key}
+                                onChange={(e) => {
+                                  const file = e.target.files && e.target.files[0]
+                                  if (file) handleBgUpload(page.key, file)
+                                  e.target.value = ''
+                                }}
+                              />
+                            </label>
+                            {preview && (
+                              <button className="btn btn-block" style={{ background: 'var(--error)', color: 'white', padding: '8px 12px', fontSize: '0.78rem', margin: 0 }} onClick={() => handleBgRemove(page.key)}>
+                                Remove
+                              </button>
+                            )}
+                          </div>
+
+                          {preview && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              <div>
+                                <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between' }}>
+                                  <span>Opacity</span><span>{Math.round(((draft.opacity ?? config.opacity) || 0.5) * 100)}%</span>
+                                </label>
+                                <input
+                                  type="range" min="0.1" max="1" step="0.05"
+                                  value={draft.opacity ?? config.opacity ?? 0.5}
+                                  onChange={(e) => handleBgMeta(page.key, 'opacity', parseFloat(e.target.value))}
+                                  style={{ width: '100%' }}
+                                />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between' }}>
+                                  <span>Blur</span><span>{draft.blur ?? config.blur ?? 0}px</span>
+                                </label>
+                                <input
+                                  type="range" min="0" max="20" step="1"
+                                  value={draft.blur ?? config.blur ?? 0}
+                                  onChange={(e) => handleBgMeta(page.key, 'blur', parseFloat(e.target.value))}
+                                  style={{ width: '100%' }}
+                                />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Fit</label>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                  {['cover', 'contain'].map(fitOpt => (
+                                    <button
+                                      key={fitOpt}
+                                      className={`btn btn-sm ${(draft.fit ?? config?.fit ?? 'cover') === fitOpt ? 'btn-primary' : 'btn-secondary'}`}
+                                      onClick={() => handleBgMeta(page.key, 'fit', fitOpt)}
+                                    >
+                                      {fitOpt === 'cover' ? 'Fill screen' : 'Fit whole image'}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
         {activeTab === 'welcome' && (
           <div className="card glass" style={{ padding: '32px' }}>
             <h3>New Player Welcome Page</h3>

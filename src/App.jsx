@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext'
 import { useAuth } from './context/AuthContextInternal'
 import { ThemeProvider, useTheme } from './context/ThemeContext'
 import { ToastProvider } from './context/ToastContext'
+import { BackgroundProvider } from './context/BackgroundContext'
 import Sidebar from './components/Sidebar'
 import BottomNav from './components/BottomNav'
 import InstallPrompt from './components/InstallPrompt'
@@ -549,7 +550,9 @@ export default function App() {
         <ToastProvider>
           <AuthProvider>
             <BrowserRouter>
-              <AppShell />
+              <BackgroundProvider>
+                <AppShell />
+              </BackgroundProvider>
             </BrowserRouter>
           </AuthProvider>
         </ToastProvider>
