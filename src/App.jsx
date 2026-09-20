@@ -115,7 +115,7 @@ function isOnboardingPending(user, adminData) {
   const isEmailAdmin = user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase())
   const isAdmin = isEmailAdmin || user?.isAdmin === true || user?.isTournamentAdmin === true || user?.isCupAdmin === true
   if (isAdmin) return false
-  if (user?.onboardingComplete === true) return false
+  if (user?.onboardingComplete !== false) return false
   let legacyComplete = false
   try {
     legacyComplete =

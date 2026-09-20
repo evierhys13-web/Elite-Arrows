@@ -2597,14 +2597,23 @@ export default function Admin() {
                     <div style={{ fontWeight: 800 }}>{p.username}</div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{p.email}</div>
                     <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      <span className="welcome-chip" style={{
-                        display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '99px', fontSize: '0.72rem', fontWeight: 800,
-                        background: p.onboardingComplete ? 'rgba(34,197,94,0.15)' : 'rgba(251,191,36,0.12)',
-                        color: p.onboardingComplete ? 'var(--success)' : '#fbbf24',
-                        border: `1px solid ${p.onboardingComplete ? 'var(--success)' : 'rgba(251,191,36,0.4)'}`
-                      }}>
-                        {p.onboardingComplete ? '✅ Onboarding complete' : '⏳ Signup not finished'}
-                      </span>
+                      {p.onboardingComplete === false ? (
+                        <span className="welcome-chip" style={{
+                          display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '99px', fontSize: '0.72rem', fontWeight: 800,
+                          background: 'rgba(251,191,36,0.12)', color: '#fbbf24',
+                          border: '1px solid rgba(251,191,36,0.4)'
+                        }}>
+                          ⏳ Signup not finished
+                        </span>
+                      ) : (
+                        <span className="welcome-chip" style={{
+                          display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '99px', fontSize: '0.72rem', fontWeight: 800,
+                          background: 'rgba(34,197,94,0.15)', color: 'var(--success)',
+                          border: '1px solid var(--success)'
+                        }}>
+                          {p.onboardingComplete === true ? '✅ Onboarding complete' : '✅ Existing member'}
+                        </span>
+                      )}
                       {p.onboardingCompletedAt && (
                         <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                           {new Date(p.onboardingCompletedAt).toLocaleDateString()}
