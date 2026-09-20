@@ -116,6 +116,8 @@ const ONBOARDING_DEFAULTS = {
   whatsappGroupLink: DEFAULT_WHATSAPP_LINK,
   seasonStartDate: "",
   seasonEndDate: "",
+  welcomeBorderEnabled: false,
+  welcomeBorderColor: "#00d4ff",
   onboardingContent: ONBOARDING_CONTENT_DEFAULTS,
 };
 
@@ -158,6 +160,8 @@ function normalizeAdminData(data) {
     whatsappGroupLink,
     seasonStartDate: data.seasonStartDate || "",
     seasonEndDate: data.seasonEndDate || "",
+    welcomeBorderEnabled: data.welcomeBorderEnabled === true,
+    welcomeBorderColor: data.welcomeBorderColor || ONBOARDING_DEFAULTS.welcomeBorderColor,
     onboardingContentVersion: Math.max(storedVersion, ONBOARDING_CONTENT_VERSION),
     onboardingContent: deepContent,
   };

@@ -113,6 +113,8 @@ export default function Admin() {
     whatsappGroupLink: adminData?.whatsappGroupLink || '',
     seasonStartDate: adminData?.seasonStartDate || '',
     seasonEndDate: adminData?.seasonEndDate || '',
+    welcomeBorderEnabled: adminData?.welcomeBorderEnabled === true,
+    welcomeBorderColor: adminData?.welcomeBorderColor || '#00d4ff',
     onboardingContent: JSON.parse(JSON.stringify(adminData?.onboardingContent || {}))
   }))
   const UPDATE_SECTION_KEYS = ['howLeagueWorks', 'responsibilities', 'leagueRules', 'generalRules', 'whatHappensNext']
@@ -138,6 +140,8 @@ export default function Admin() {
         whatsappGroupLink: welcomeDraft.whatsappGroupLink,
         seasonStartDate: welcomeDraft.seasonStartDate,
         seasonEndDate: welcomeDraft.seasonEndDate,
+        welcomeBorderEnabled: welcomeDraft.welcomeBorderEnabled,
+        welcomeBorderColor: welcomeDraft.welcomeBorderColor,
         onboardingContentVersion: ONBOARDING_CONTENT_VERSION,
         onboardingContent: welcomeDraft.onboardingContent
       })
@@ -2654,6 +2658,30 @@ export default function Admin() {
                   <label>Season End Date</label>
                   <input type="date" className="glass" value={welcomeDraft.seasonEndDate} onChange={e => handleWelcomeField('seasonEndDate', e.target.value)} />
                 </div>
+              </div>
+
+              <div className="glass" style={{ padding: '20px', borderRadius: '14px' }}>
+                <h4 style={{ marginTop: 0, color: 'var(--accent-cyan)' }}>🔲 Page Border</h4>
+                <button
+                  className="btn btn-block"
+                  style={{ background: welcomeDraft.welcomeBorderEnabled ? 'var(--success)' : 'var(--error)', color: 'white' }}
+                  onClick={() => handleWelcomeField('welcomeBorderEnabled', !welcomeDraft.welcomeBorderEnabled)}
+                >
+                  {welcomeDraft.welcomeBorderEnabled ? '✅ Border ON' : '⏸ Border OFF'}
+                </button>
+                <div className="form-group" style={{ marginTop: '14px', marginBottom: 0 }}>
+                  <label>Border Colour</label>
+                  <input
+                    type="color"
+                    className="glass"
+                    value={welcomeDraft.welcomeBorderColor}
+                    onChange={e => handleWelcomeField('welcomeBorderColor', e.target.value)}
+                    style={{ width: '100%', height: '44px', padding: '4px', cursor: 'pointer' }}
+                  />
+                </div>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: 0 }}>
+                  Adds a coloured border around the whole Welcome page content.
+                </p>
               </div>
 
               <div className="glass" style={{ padding: '20px', borderRadius: '14px' }}>

@@ -49,6 +49,8 @@ export default function Welcome() {
 
   const content = adminData?.onboardingContent || {}
   const whatsappLink = adminData?.whatsappGroupLink || 'https://chat.whatsapp.com/DcKb9AfesVBGjcFVwErEor?s=cl&p=a&mlu=4&ilr=4'
+  const pageBorderEnabled = adminData?.welcomeBorderEnabled === true
+  const pageBorderColor = adminData?.welcomeBorderColor || '#00d4ff'
 
   const activeSeason = (getSeasons() || []).find(s => s.name === adminData?.currentSeason) ||
     (getSeasons() || [])[0]
@@ -146,7 +148,14 @@ export default function Welcome() {
         </div>
       </div>
 
-      <div style={{ maxWidth: '720px', margin: '0 auto', padding: '24px 16px 60px' }}>
+      <div style={{
+        maxWidth: '720px',
+        margin: '0 auto',
+        padding: '24px 16px 60px',
+        border: pageBorderEnabled ? `2px solid ${pageBorderColor}` : 'none',
+        borderRadius: pageBorderEnabled ? '20px' : '0',
+        boxShadow: pageBorderEnabled ? `0 0 30px ${pageBorderColor}22` : 'none'
+      }}>
         {/* SECTION 1 — WELCOME */}
         <SectionShell id="welcome" num={1} center>
           <div style={{ textAlign: 'center' }}>
