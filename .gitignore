@@ -82,3 +82,7 @@ android/.gradle/
 
 status
 
+# Discord bot secret keys
+service-account*.json
+*service-account.json
+
