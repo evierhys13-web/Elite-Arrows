@@ -1,11 +1,28 @@
 // Firebase Admin data layer for the bot.
-// Maintains a live cache of the collections the bot mirrors and emits change
-// events so index.js can react (new approved result -> #results, new news -> #announcements,
-// any table-affecting change -> refresh pinned #table messages).
+//
+// Reading strategy (Firestore Spark quotas + huge proof images in `results` docs):
+//  - Live onSnapshot ONLY on cheap collections: news, users, fixtures, seasons, adminData.
+//  - `results` documents embed large proof images, and select() is NOT supported on
+//    real-time listeners, so we never watch them. Instead:
+//      * a small watcher on the 30 newest docs detects newly approved results (auto-post),
+//      * `refreshResultsCache()` fetches the current season's results with select()
+//        on demand (startup, season change, commands, table refresh).
+//  - All listeners pass an error callback and emit() guards against malformed entries.
 
 import fs from 'node:fs'
 import admin from 'firebase-admin'
 import 'dotenv/config'
+import { getResultPlayerId } from './scoring.js'
+
+const DEFAULT_SEASON = 'Elite Arrows Season 5'
+
+const RESULT_SELECT = [
+  'player1Id', 'player2Id', 'player1', 'player2',
+  'score1', 'score2', 'gameType', 'status', 'season', 'division', 'week',
+  'date', 'submittedAt', 'approvedAt', 'updatedAt', 'createdAt',
+  'excludeFromLeague', 'cupId', 'matchId', 'tournamentId', 'fixtureId',
+  'forfeit', 'forfeitWinner', 'player1Stats', 'player2Stats', 'player1Avg', 'player2Avg'
+]
 
 let firestore = null
 
@@ -17,18 +34,15 @@ function resolveCredential() {
     const raw = fs.readFileSync(process.env.FIREBASE_SERVICE_ACCOUNT, 'utf8')
     return admin.credential.cert(JSON.parse(raw))
   }
-  // Falls back to GOOGLE_APPLICATION_CREDENTIALS if set.
   return admin.credential.applicationDefault()
 }
 
 export function initFirebase() {
   if (firestore) return firestore
-
   admin.initializeApp({
     credential: resolveCredential(),
     projectId: process.env.FIREBASE_PROJECT_ID || 'elitearrowsapp'
   })
-
   firestore = admin.firestore()
   return firestore
 }
@@ -43,84 +57,180 @@ const state = {
 }
 
 const listeners = {
-  changed: [],        // data could affect the league table (results/users/fixtures/seasons/adminData)
-  newResult: [],      // a result document was created (previously unseen id)
-  newNews: []         // a news document was created (previously unseen id)
+  changed: [],
+  newResult: [],
+  newNews: []
 }
 
 function emit(list, payload) {
-  for (const fn of [...list]) {
-    try { fn(payload) } catch (e) { console.error('listener error:', e) }
+  for (const entry of [...list]) {
+    if (typeof entry !== 'function') continue
+    try { entry(payload) } catch (e) { console.error('listener error:', e) }
   }
 }
 
 const seenResults = new Set()
 const seenNews = new Set()
+let resultsWatcher = null
 
 const toArray = (snap) => snap.docs.map(d => ({ id: d.id, ...d.data() }))
+
+const currentSeason = () => state.adminData?.currentSeason || DEFAULT_SEASON
+
+const stripProof = (doc) => {
+  if (!doc) return
+  for (const key of ['proofImage', 'proofImage2', 'proof', 'proofUrl', 'proofImageUrl', 'proofFile']) {
+    if (typeof doc[key] === 'string' && doc[key].startsWith('data:image')) delete doc[key]
+  }
+}
+
+// Fetch the current season's approved results (field-projected) for standings.
+export async function refreshResultsCache() {
+  const db = firestore
+  const season = currentSeason()
+  try {
+    const snap = await db.collection('results')
+      .where('season', '==', season)
+      .select(...RESULT_SELECT)
+      .get()
+    const docs = toArray(snap)
+    docs.forEach(stripProof)
+    state.results = docs
+    emit('changed', { kind: 'results' })
+    return docs
+  } catch (e) {
+    console.error(`refreshResultsCache failed: ${e.message}`)
+    return state.results
+  }
+}
+
+// Watch only the newest results to detect newly approved ones without a full scan.
+async function attachResultsWatcher() {
+  if (resultsWatcher) {
+    resultsWatcher()
+    resultsWatcher = null
+  }
+  const db = firestore
+  const query = db.collection('results')
+    .orderBy('submittedAt', 'desc')
+    .limit(30)
+
+  try {
+    const snap = await query.get()
+    snap.docs.forEach(d => seenResults.add(d.id))
+
+    resultsWatcher = query.onSnapshot(
+      snap => {
+        let newApproved = false
+        for (const change of snap.docChanges()) {
+          if (change.type === 'added') {
+            const id = change.doc.id
+            if (!seenResults.has(id)) {
+              seenResults.add(id)
+              const data = { id, ...change.doc.data() }
+              if (String(data.status || '').toLowerCase() === 'approved') {
+                newApproved = true
+                emit('newResult', data)
+              }
+            }
+          }
+        }
+        if (newApproved) refreshResultsCache().catch(e => console.error('cache refresh failed:', e.message))
+      },
+      err => console.error('results watcher error:', err.message)
+    )
+  } catch (e) {
+    console.error('results watcher init failed:', e.message)
+  }
+}
+
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
 export async function startListeners() {
   const db = initFirebase()
 
-  // Seed "seen" sets from the current data first, so we only react to NEW docs.
-  const [resSnap, newsSnap] = await Promise.all([
-    db.collection('results').get(),
-    db.collection('news').get()
-  ])
-  resSnap.docs.forEach(d => seenResults.add(d.id))
-  newsSnap.docs.forEach(d => seenNews.add(d.id))
-  state.results = toArray(resSnap)
-  state.news = toArray(newsSnap)
+  // adminData first (tells us the current season) with retry for quota hiccups.
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    try {
+      const adminSnap = await db.collection('adminData').doc('main').get()
+      state.adminData = adminSnap.exists ? { id: adminSnap.id, ...adminSnap.data() } : null
+      break
+    } catch (e) {
+      console.error(`adminData fetch attempt ${attempt} failed: ${e.message}`)
+      await sleep(attempt * 5000)
+    }
+  }
 
-  db.collection('results').onSnapshot(snap => {
-    for (const change of snap.docChanges()) {
-      if (change.type === 'added') {
-        const id = change.doc.id
-        if (!seenResults.has(id)) {
-          seenResults.add(id)
-          if (String(change.doc.data().status || '').toLowerCase() === 'approved') {
-            emit('newResult', { id, ...change.doc.data() })
+  db.collection('adminData').doc('main').onSnapshot(
+    doc => {
+      const before = state.adminData?.currentSeason
+      state.adminData = doc.exists ? { id: doc.id, ...doc.data() } : null
+      emit('changed', { kind: 'adminData' })
+      if (before !== currentSeason()) {
+        refreshResultsCache().catch(e => console.error('season change refresh failed:', e.message))
+      }
+    },
+    err => console.error('adminData listener error:', err.message)
+  )
+
+  db.collection('news').onSnapshot(
+    snap => {
+      for (const change of snap.docChanges()) {
+        if (change.type === 'added') {
+          const id = change.doc.id
+          if (!seenNews.has(id)) {
+            seenNews.add(id)
+            emit('newNews', { id, ...change.doc.data() })
           }
         }
       }
-    }
-    const fresh = toArray(snap)
-    state.results = fresh
-    emit('changed', { kind: 'results' })
-  })
+      state.news = toArray(snap)
+    },
+    err => console.error('news listener error:', err.message)
+  )
 
-  db.collection('news').onSnapshot(snap => {
-    for (const change of snap.docChanges()) {
-      if (change.type === 'added') {
-        const id = change.doc.id
-        if (!seenNews.has(id)) {
-          seenNews.add(id)
-          emit('newNews', { id, ...change.doc.data() })
-        }
+  db.collection('users').onSnapshot(
+    snap => {
+      state.users = toArray(snap)
+      emit('changed', { kind: 'users' })
+    },
+    err => console.error('users listener error:', err.message)
+  )
+
+  db.collection('fixtures').onSnapshot(
+    snap => {
+      state.fixtures = toArray(snap)
+      emit('changed', { kind: 'fixtures' })
+    },
+    err => console.error('fixtures listener error:', err.message)
+  )
+
+  db.collection('seasons').onSnapshot(
+    snap => {
+      state.seasons = toArray(snap)
+      emit('changed', { kind: 'seasons' })
+    },
+    err => console.error('seasons listener error:', err.message)
+  )
+
+  await attachResultsWatcher()
+  await refreshResultsCache()
+
+  // Self-heal: the project can hit its Firestore daily read quota (Spark). Once the
+  // quota resets, keep retrying in the background so the bot recovers without a restart.
+  setInterval(async () => {
+    try {
+      if (!state.adminData) {
+        const adminSnap = await db.collection('adminData').doc('main').get()
+        state.adminData = adminSnap.exists ? { id: adminSnap.id, ...adminSnap.data() } : null
+        emit('changed', { kind: 'adminData' })
       }
+      if (!resultsWatcher) await attachResultsWatcher()
+      if (!state.results.length) await refreshResultsCache()
+    } catch (e) {
+      console.error('self-heal cycle failed:', e.message)
     }
-    state.news = toArray(snap)
-  })
-
-  db.collection('users').onSnapshot(snap => {
-    state.users = toArray(snap)
-    emit('changed', { kind: 'users' })
-  })
-
-  db.collection('fixtures').onSnapshot(snap => {
-    state.fixtures = toArray(snap)
-    emit('changed', { kind: 'fixtures' })
-  })
-
-  db.collection('seasons').onSnapshot(snap => {
-    state.seasons = toArray(snap)
-    emit('changed', { kind: 'seasons' })
-  })
-
-  db.collection('adminData').doc('main').onSnapshot(doc => {
-    state.adminData = doc.exists ? { id: doc.id, ...doc.data() } : null
-    emit('changed', { kind: 'adminData' })
-  })
+  }, 3 * 60 * 1000)
 
   return state
 }
@@ -154,18 +264,16 @@ export function getAdminData() {
 }
 
 export function onDataChanged(fn) {
-  listeners.changed.push(fn)
+  if (typeof fn === 'function') listeners.changed.push(fn)
 }
 
 export function onNewResult(fn) {
-  listeners.newResult.push(fn)
+  if (typeof fn === 'function') listeners.newResult.push(fn)
 }
 
 export function onNewNews(fn) {
-  listeners.newNews.push(fn)
+  if (typeof fn === 'function') listeners.newNews.push(fn)
 }
-
-import { getResultPlayerId } from './scoring.js'
 
 export function resolveResultPlayerName(result, playerNumber) {
   const id = getResultPlayerId(result, playerNumber, state.users)

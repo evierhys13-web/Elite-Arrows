@@ -87,8 +87,8 @@ async function main() {
 
   console.log(`\nProvisioning "${guild.name}"...\n`)
 
-  const adminRole = await ensureRole(guild, 'Admin', { color: 0xfbbf24 })
-  const playerRole = await ensureRole(guild, 'Player', { color: 0x38bdf8 })
+  const adminRole = await ensureRole(guild, 'Admin', { colors: [0xfbbf24] })
+  const playerRole = await ensureRole(guild, 'Player', { colors: [0x38bdf8] })
 
   const adminOverrides = ow => [
     ...ow,
