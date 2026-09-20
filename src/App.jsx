@@ -110,24 +110,15 @@ function PageLoader() {
   )
 }
 
-function isOnboardingPending(user, adminData) {
-  if (adminData?.onboardingEnabled === false) return false
+function isOnboardingPending(user) {
   const isEmailAdmin = user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase())
   const isAdmin = isEmailAdmin || user?.isAdmin === true || user?.isTournamentAdmin === true || user?.isCupAdmin === true
   if (isAdmin) return false
-  if (user?.onboardingComplete !== false) return false
-  let legacyComplete = false
-  try {
-    legacyComplete =
-      localStorage.getItem('eliteArrowsWelcomeComplete') === '1' ||
-      localStorage.getItem('eliteArrowsGuideRead') === '1' ||
-      localStorage.getItem('eliteArrowsOnboardingComplete') === 'true'
-  } catch (e) { /* ignore */ }
-  return !legacyComplete
+  return user?.onboardingComplete === false
 }
 
 function ProtectedRoute({ children }) {
-  const { isAuthenticated, loading, user, adminData } = useAuth()
+  const { isAuthenticated, loading, user } = useAuth()
   const location = useLocation()
 
   if (loading) {
@@ -138,7 +129,7 @@ function ProtectedRoute({ children }) {
     return <Navigate to="/auth" replace />
   }
 
-  const needsOnboarding = isOnboardingPending(user, adminData)
+  const needsOnboarding = isOnboardingPending(user)
   const isOnWelcome = location.pathname === '/welcome'
 
   if (needsOnboarding && !isOnWelcome) {
@@ -153,7 +144,7 @@ function ProtectedRoute({ children }) {
 }
 
 function SubscribedRoute({ children }) {
-  const { user, isAuthenticated, loading, adminData } = useAuth()
+  const { user, isAuthenticated, loading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -165,7 +156,7 @@ function SubscribedRoute({ children }) {
     return <Navigate to="/auth" replace />
   }
 
-  if (isOnboardingPending(user, adminData) && location.pathname !== '/welcome') {
+  if (isOnboardingPending(user) && location.pathname !== '/welcome') {
     return <Navigate to="/welcome" replace />
   }
 
@@ -222,7 +213,7 @@ function SubscribedRoute({ children }) {
 }
 
 function AdminRoute({ children }) {
-  const { user, isAuthenticated, loading, adminData } = useAuth()
+  const { user, isAuthenticated, loading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -234,7 +225,7 @@ function AdminRoute({ children }) {
     return <Navigate to="/auth" replace />
   }
 
-  if (isOnboardingPending(user, adminData) && location.pathname !== '/welcome') {
+  if (isOnboardingPending(user) && location.pathname !== '/welcome') {
     return <Navigate to="/welcome" replace />
   }
 
@@ -281,7 +272,7 @@ function AdminRoute({ children }) {
 }
 
 function TrainingRoute({ children }) {
-  const { user, isAuthenticated, loading, adminData } = useAuth()
+  const { user, isAuthenticated, loading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -293,7 +284,7 @@ function TrainingRoute({ children }) {
     return <Navigate to="/auth" replace />
   }
 
-  if (isOnboardingPending(user, adminData) && location.pathname !== '/welcome') {
+  if (isOnboardingPending(user) && location.pathname !== '/welcome') {
     return <Navigate to="/welcome" replace />
   }
 

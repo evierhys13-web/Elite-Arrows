@@ -2638,16 +2638,9 @@ export default function Admin() {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
               <div className="glass" style={{ padding: '20px', borderRadius: '14px' }}>
-                <h4 style={{ marginTop: 0, color: 'var(--accent-cyan)' }}>🔘 Enabled</h4>
-                <button
-                  className="btn btn-block"
-                  style={{ background: welcomeDraft.onboardingEnabled ? 'var(--success)' : 'var(--error)', color: 'white' }}
-                  onClick={() => handleWelcomeField('onboardingEnabled', !welcomeDraft.onboardingEnabled)}
-                >
-                  {welcomeDraft.onboardingEnabled ? '✅ Send new players to Welcome page' : '⏸ New players skip the Welcome page'}
-                </button>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: 0 }}>
-                  When disabled, new signups go straight into the app (no onboarding gate).
+                <h4 style={{ marginTop: 0, color: 'var(--accent-cyan)' }}>🎯 New Player Flow</h4>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', lineHeight: 1.6, margin: 0 }}>
+                  New players who sign up are always sent to the Welcome page and must tick every section before entering the app. Existing members skip it and go straight to the main website.
                 </p>
               </div>
 
