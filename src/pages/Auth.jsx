@@ -26,7 +26,7 @@ export default function Auth() {
   const { signUp, signIn, isAuthenticated, loading: authLoading, getAllUsers, adminData } = useAuth()
   const navigate = useNavigate()
 
-  const WHATSAPP_GROUP_LINK = adminData?.whatsappGroupLink || 'https://chat.whatsapp.com/GNaYyJDxzMADbA1ARI1kne'
+  const WHATSAPP_GROUP_LINK = adminData?.whatsappGroupLink || 'https://chat.whatsapp.com/DcKb9AfesVBGjcFVwErEor?s=cl&p=a&mlu=4&ilr=4'
 
   const registrationsEnabled = adminData?.registrationsEnabled !== false
 

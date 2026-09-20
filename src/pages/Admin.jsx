@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, lazy, Suspense, useRef } from 'react'
 import { useAuth } from '../context/AuthContextInternal'
+import { ONBOARDING_CONTENT_VERSION } from '../context/AuthContext'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { db, doc, setDoc, getDoc, getDocs, collection, deleteDoc, updateDoc, writeBatch, addDoc, query, orderBy, limit, increment, storage, ref, uploadBytesResumable, getDownloadURL } from '../firebase'
 import { ADMIN_EMAILS } from '../config'
@@ -137,6 +138,7 @@ export default function Admin() {
         whatsappGroupLink: welcomeDraft.whatsappGroupLink,
         seasonStartDate: welcomeDraft.seasonStartDate,
         seasonEndDate: welcomeDraft.seasonEndDate,
+        onboardingContentVersion: ONBOARDING_CONTENT_VERSION,
         onboardingContent: welcomeDraft.onboardingContent
       })
       await logAudit('UPDATE_WELCOME_PAGE', 'Updated welcome page content & settings')

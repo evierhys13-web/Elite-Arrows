@@ -39,7 +39,7 @@ export default function Welcome() {
   const alreadyComplete = user?.onboardingComplete === true
 
   const content = adminData?.onboardingContent || {}
-  const whatsappLink = adminData?.whatsappGroupLink || 'https://chat.whatsapp.com/GNaYyJDxzMADbA1ARI1kne'
+  const whatsappLink = adminData?.whatsappGroupLink || 'https://chat.whatsapp.com/DcKb9AfesVBGjcFVwErEor?s=cl&p=a&mlu=4&ilr=4'
 
   const activeSeason = (getSeasons() || []).find(s => s.name === adminData?.currentSeason) ||
     (getSeasons() || [])[0]
@@ -63,7 +63,7 @@ export default function Welcome() {
           setViewed((prev) => (prev[id] ? prev : { ...prev, [id]: true }))
         }
       })
-    }, { threshold: 0.25 })
+    }, { rootMargin: '0px 0px -20% 0px', threshold: 0 })
 
     Object.values(sectionRefs.current).forEach((el) => el && observer.observe(el))
     return () => observer.disconnect()

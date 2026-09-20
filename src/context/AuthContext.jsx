@@ -69,23 +69,25 @@ const SEASON_ONE_WELCOME_START = new Date(
 ).getTime();
 
 export const DEFAULT_WHATSAPP_LINK =
-  "https://chat.whatsapp.com/GNaYyJDxzMADbA1ARI1kne";
+  "https://chat.whatsapp.com/DcKb9AfesVBGjcFVwErEor?s=cl&p=a&mlu=4&ilr=4";
+
+export const ONBOARDING_CONTENT_VERSION = 2;
 
 const ONBOARDING_CONTENT_DEFAULTS = {
   howLeagueWorks: {
     title: "How The League Works",
     body:
-      "You're placed in a division that matches your 3-dart average. Each season you play one league match against every other player in your division. League matches are Best of 8 legs, first to 5 (or a 4-4 draw), played on DartCounter at 501, Straight In / Double Out. Every leg you win earns 1 point, plus a +3 bonus for a win or +1 for a draw. Results are submitted in the app with a proof screenshot and approved by an admin before they count.",
+      "You're placed in a division that matches your 3-dart average, and your full schedule is visible in the app. Each season you play one league match against every other player in your division. Fixtures are arranged through the WhatsApp group for your division - not in the app - so message your opponent, agree a date that suits you both and show up. League matches are Best of 8 legs, first to 5 (or a 4-4 draw), played on DartCounter at 501, Straight In / Double Out. Every leg you win earns 1 point, plus a +3 bonus for a win or +1 for a draw. Results are submitted in the app with a proof screenshot and approved by an admin before they count.",
   },
   responsibilities: {
     title: "Your Responsibilities",
     body:
-      "Arrange your fixtures through the app and the WhatsApp division group chats, respond to fixture proposals quickly, and show up for your matches. During league games your camera must stay on with the board clearly visible. The winner submits the result within 4 hours of the match finishing, and you keep your match cards / scorecards until the result has been approved.",
+      "Arrange your fixtures through the WhatsApp division group chat (your schedule is visible in the app, but games are organised via WhatsApp), respond to fixture proposals quickly, and show up for your matches. During league games your camera must stay on with the board clearly visible. The winner submits the result within 4 hours of the match finishing, and you keep your match cards / scorecards until the result has been approved.",
   },
   leagueRules: {
     title: "League Rules",
     body:
-      "All league fixtures must be played by the end of the season - unplayed fixtures are recorded as a fixed 5-3 win for the opponent. Play less than the required number of matches and you can be relegated or banned. The winner submits the result within 4 hours, and disputes must be raised with an admin within 48 hours. Re-scheduling is allowed when both players agree and an admin is notified.",
+      "All league fixtures must be played by the end of the season - unplayable fixtures are noted as a forfeit and use the forfeit rule, so the winner is awarded 3 points with no legs awarded. Play fewer than the required number of matches and you can be relegated or banned. The winner submits the result within 4 hours, and disputes must be raised with an admin within 48 hours. Re-scheduling is allowed when both players agree and an admin is notified.",
   },
   generalRules: {
     title: "Rules In General",
@@ -95,7 +97,7 @@ const ONBOARDING_CONTENT_DEFAULTS = {
   whatHappensNext: {
     title: "What Happens Next",
     body:
-      "Once you complete signup the admins will place you into your division. Keep an eye on WhatsApp for an invite to your division group, then arrange your first fixtures and start climbing the table. An Elite Arrows Pass unlocks results, league play, cups and tournaments - browse the app and subscribe when you're ready.",
+      "To complete your signup, introduce yourself in the WhatsApp group and address an admin - Rhys Howe, David Duncan, Lyndsey Letheren, Simon Diplexcito, Brent Edwards or Jay Chadwick. The admins will then place you into your division and invite you to your division group. Payment details are on the website and will also be posted in the announcements 1 week before the next season begins. An Elite Arrows Pass unlocks results, league play, cups and tournaments - browse the app and subscribe when you're ready.",
   },
 };
 
@@ -121,14 +123,19 @@ function normalizeAdminData(data) {
   if (!data) data = {};
   const content = data.onboardingContent || {};
   const deepContent = {};
+  const storedVersion = data.onboardingContentVersion || 0;
+  const migrate = storedVersion < ONBOARDING_CONTENT_VERSION;
   Object.keys(ONBOARDING_CONTENT_DEFAULTS).forEach((key) => {
     const def = ONBOARDING_CONTENT_DEFAULTS[key];
-    const supplied = content[key] || {};
+    const supplied = migrate ? {} : content[key] || {};
     deepContent[key] = {
       title: supplied.title || def.title,
       body: supplied.body || def.body,
     };
   });
+  const whatsappGroupLink = migrate
+    ? ONBOARDING_DEFAULTS.whatsappGroupLink
+    : data.whatsappGroupLink || ONBOARDING_DEFAULTS.whatsappGroupLink;
   return {
     subscriptionPot: data.subscriptionPot || 0,
     subscriptionPot10: data.subscriptionPot10 || 0,
@@ -148,10 +155,10 @@ function normalizeAdminData(data) {
     brandingText: data.brandingText || ONBOARDING_DEFAULTS.brandingText,
     finalMessage: data.finalMessage || ONBOARDING_DEFAULTS.finalMessage,
     whatsappText: data.whatsappText || ONBOARDING_DEFAULTS.whatsappText,
-    whatsappGroupLink:
-      data.whatsappGroupLink || ONBOARDING_DEFAULTS.whatsappGroupLink,
+    whatsappGroupLink,
     seasonStartDate: data.seasonStartDate || "",
     seasonEndDate: data.seasonEndDate || "",
+    onboardingContentVersion: Math.max(storedVersion, ONBOARDING_CONTENT_VERSION),
     onboardingContent: deepContent,
   };
 }

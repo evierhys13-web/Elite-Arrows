@@ -9,7 +9,7 @@ const chapterStyles = {
   borderRadius: '12px',
 }
 
-const DEFAULT_WHATSAPP_LINK = 'https://chat.whatsapp.com/GNaYyJDxzMADbA1ARI1kne'
+const DEFAULT_WHATSAPP_LINK = 'https://chat.whatsapp.com/DcKb9AfesVBGjcFVwErEor?s=cl&p=a&mlu=4&ilr=4'
 
 export default function Guide() {
   const { adminData } = useAuth()
