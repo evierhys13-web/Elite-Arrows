@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContextInternal'
 import { ADMIN_EMAILS } from '../config'
@@ -17,6 +17,18 @@ const SECTION_LABELS = {
   final: 'Final message'
 }
 
+const SECTION_ACCEPT_LABELS = {
+  welcome: "I've read the welcome message",
+  season: "I've read the season start dates",
+  league: "I've read how the league works",
+  responsibilities: "I've read my responsibilities",
+  whatsapp: "I've joined the WhatsApp group",
+  rules: "I've read and accept the League Rules & Code of Conduct",
+  next: "I've read what happens next",
+  branding: "I've read about Elite Arrows",
+  final: "I've read the final message"
+}
+
 function formatDate(iso) {
   if (!iso) return null
   const d = new Date(iso)
@@ -27,12 +39,9 @@ function formatDate(iso) {
 export default function Welcome() {
   const { user, adminData, completeOnboarding, getSeasons, signOut } = useAuth()
   const navigate = useNavigate()
-  const [viewed, setViewed] = useState({})
-  const [whatsappJoined, setWhatsappJoined] = useState(false)
-  const [rulesAccepted, setRulesAccepted] = useState(false)
+  const [read, setRead] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
-  const sectionRefs = useRef({})
 
   const isStaff = user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin ||
     (user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase()))
@@ -47,27 +56,11 @@ export default function Welcome() {
   const seasonEnd = adminData?.seasonEndDate || activeSeason?.endDate || null
   const seasonName = adminData?.currentSeason || activeSeason?.name || 'the upcoming season'
 
-  const allViewed = SECTION_IDS.every(id => viewed[id])
-  const canComplete = (isStaff || alreadyComplete) || (allViewed && whatsappJoined && rulesAccepted)
-  const viewedCount = SECTION_IDS.filter(id => viewed[id]).length
+  const allRead = SECTION_IDS.every(id => read[id])
+  const canComplete = (isStaff || alreadyComplete) || allRead
+  const readCount = SECTION_IDS.filter(id => read[id]).length
 
-  const setSectionRef = useCallback((id) => (el) => {
-    if (el) sectionRefs.current[id] = el
-  }, [])
-
-  useEffect(() => {
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          const id = entry.target.getAttribute('data-section')
-          setViewed((prev) => (prev[id] ? prev : { ...prev, [id]: true }))
-        }
-      })
-    }, { rootMargin: '0px 0px -20% 0px', threshold: 0 })
-
-    Object.values(sectionRefs.current).forEach((el) => el && observer.observe(el))
-    return () => observer.disconnect()
-  }, [])
+  const toggleRead = (id) => setRead(prev => ({ ...prev, [id]: !prev[id] }))
 
   const handleSignOut = async () => {
     await signOut()
@@ -87,17 +80,17 @@ export default function Welcome() {
     }
   }
 
-  const SectionShell = ({ id, num, children, viewedFlag }) => (
-    <section
-      data-section={id}
-      ref={setSectionRef(id)}
-      className={`glass ${viewedFlag ? 'is-viewed' : ''}`}
-      style={{ padding: '0', borderRadius: '20px', overflow: 'hidden', marginBottom: '18px' }}
-    >
+  const SectionShell = ({ id, num, children, center }) => (
+    <section data-section={id} className={`glass ${read[id] ? 'is-read' : ''}`} style={{ padding: '0', borderRadius: '20px', overflow: 'hidden', marginBottom: '18px' }}>
       <div style={{ padding: '24px', display: 'flex', gap: '18px', alignItems: 'flex-start' }}>
         <div className="section-num">{num}</div>
-        <div style={{ flex: 1 }}>{children}</div>
+        <div style={{ flex: 1, textAlign: center ? 'center' : 'left' }}>{children}</div>
       </div>
+      <label className={`read-toggle ${read[id] ? 'is-read' : ''}`} style={{ margin: '0 24px 22px' }}>
+        <input type="checkbox" checked={!!read[id]} onChange={() => toggleRead(id)} />
+        <span className="read-toggle-box">{read[id] ? '✓' : ''}</span>
+        <span>{SECTION_ACCEPT_LABELS[id]}</span>
+      </label>
     </section>
   )
 
@@ -127,20 +120,25 @@ export default function Welcome() {
           font-weight: 900; font-size: 0.95rem; color: var(--accent-cyan);
           background: rgba(0,212,255,0.12); border: 2px solid var(--accent-cyan);
         }
-        section.is-viewed { border-color: rgba(34,197,94,0.5) !important; }
-        section.is-viewed .section-num { color: var(--success); border-color: var(--success); background: rgba(34,197,94,0.12); }
+        section.is-read { border-color: rgba(34,197,94,0.5) !important; }
+        section.is-read .section-num { color: var(--success); border-color: var(--success); background: rgba(34,197,94,0.12); }
+        .read-toggle { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; background: rgba(0,0,0,0.15); user-select: none; transition: border-color 0.2s, background 0.2s; }
+        .read-toggle input { position: absolute; opacity: 0; pointer-events: none; }
+        .read-toggle-box { width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--border); background: rgba(0,0,0,0.25); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; color: #fff; flex-shrink: 0; transition: all 0.2s; }
+        .read-toggle.is-read { border-color: var(--success); background: rgba(34,197,94,0.08); }
+        .read-toggle.is-read .read-toggle-box { background: var(--success); border-color: var(--success); }
       `}</style>
 
       <div className="welcome-progress-track">
         <div style={{ maxWidth: '720px', margin: '0 auto', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
           <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 700 }}>
-            SIGNUP — {viewedCount}/{SECTION_IDS.length} sections read
+            SIGNUP — {readCount}/{SECTION_IDS.length} sections ticked
           </span>
           <div style={{ display: 'flex', gap: '6px' }}>
             {SECTION_IDS.map(id => (
               <div key={id} style={{
                 width: '10px', height: '10px', borderRadius: '50%',
-                background: viewed[id] ? 'var(--success)' : 'rgba(255,255,255,0.15)',
+                background: read[id] ? 'var(--success)' : 'rgba(255,255,255,0.15)',
                 transition: 'background 0.3s'
               }} />
             ))}
@@ -150,11 +148,8 @@ export default function Welcome() {
 
       <div style={{ maxWidth: '720px', margin: '0 auto', padding: '24px 16px 60px' }}>
         {/* SECTION 1 — WELCOME */}
-        <section data-section="welcome" ref={setSectionRef('welcome')} className={`glass ${viewed.welcome ? 'is-viewed' : ''}`} style={{ padding: '0', borderRadius: '20px', overflow: 'hidden', marginBottom: '18px' }}>
-          <div style={{
-            padding: '36px 24px', textAlign: 'center',
-            background: 'linear-gradient(135deg, rgba(0,212,255,0.18), rgba(251,191,36,0.12))'
-          }}>
+        <SectionShell id="welcome" num={1} center>
+          <div style={{ textAlign: 'center' }}>
             <div style={{ width: '84px', height: '84px', margin: '0 auto 16px', borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--accent-cyan)', boxShadow: '0 8px 30px rgba(0,212,255,0.25)' }}>
               <img src="/elite arrows.jpg" alt="Elite Arrows" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
@@ -164,10 +159,10 @@ export default function Welcome() {
             </p>
             {user?.username && <p style={{ color: 'var(--accent-cyan)', fontWeight: 800, marginTop: '14px' }}>Hi, {user.username}! 👋</p>}
           </div>
-        </section>
+        </SectionShell>
 
         {/* SECTION 2 — SEASON DATES */}
-        <SectionShell id="season" num={2} viewedFlag={viewed.season}>
+        <SectionShell id="season" num={2}>
           <h2 style={{ margin: '0 0 8px', color: 'var(--accent-cyan)', fontSize: '1.15rem' }}>🗓️ Season Start Dates</h2>
           <div style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
             <p style={{ margin: '0 0 12px' }}>
@@ -190,7 +185,7 @@ export default function Welcome() {
         </SectionShell>
 
         {/* SECTION 3 — HOW THE LEAGUE WORKS */}
-        <SectionShell id="league" num={3} viewedFlag={viewed.league}>
+        <SectionShell id="league" num={3}>
           <h2 style={{ margin: '0 0 8px', color: 'var(--accent-cyan)', fontSize: '1.15rem' }}>
             {content?.howLeagueWorks?.title || 'How The League Works'}
           </h2>
@@ -200,7 +195,7 @@ export default function Welcome() {
         </SectionShell>
 
         {/* SECTION 4 — PLAYER RESPONSIBILITIES */}
-        <SectionShell id="responsibilities" num={4} viewedFlag={viewed.responsibilities}>
+        <SectionShell id="responsibilities" num={4}>
           <h2 style={{ margin: '0 0 8px', color: 'var(--accent-cyan)', fontSize: '1.15rem' }}>
             {content?.responsibilities?.title || 'Your Responsibilities'}
           </h2>
@@ -210,7 +205,7 @@ export default function Welcome() {
         </SectionShell>
 
         {/* SECTION 5 — WHATSAPP */}
-        <SectionShell id="whatsapp" num={5} viewedFlag={viewed.whatsapp}>
+        <SectionShell id="whatsapp" num={5}>
           <h2 style={{ margin: '0 0 8px', color: 'var(--accent-cyan)', fontSize: '1.15rem' }}>💬 Join the Official WhatsApp Group</h2>
           <p style={{ color: 'var(--text-muted)', lineHeight: '1.6', fontSize: '0.9rem' }}>
             {adminData?.whatsappText || 'All games are arranged in the official WhatsApp community.'}
@@ -219,27 +214,24 @@ export default function Welcome() {
             href={whatsappLink}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() => setWhatsappJoined(true)}
-            className={`btn btn-block ${whatsappJoined ? 'btn-success' : ''}`}
+            className="btn btn-block"
             style={{
               textDecoration: 'none',
-              background: whatsappJoined ? 'var(--success)' : '#25D366',
+              background: '#25D366',
               borderColor: '#25D366', color: '#fff',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '8px'
             }}
           >
             <span style={{ fontSize: '1.2rem' }}>💬</span>
-            {whatsappJoined ? '✓ Joined WhatsApp' : 'Open & Join the WhatsApp Group'}
+            Open & Join the WhatsApp Group
           </a>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: '10px 0 0', lineHeight: '1.5' }}>
-            {whatsappJoined
-              ? '✅ Confirmed — you can arrange games with your division here.'
-              : '⚠️ Open the link above and join the group to complete this step.'}
+            Open the link above and join the group, then tick the box below to confirm.
           </p>
         </SectionShell>
 
         {/* SECTION 6 — LEAGUE RULES */}
-        <SectionShell id="rules" num={6} viewedFlag={viewed.rules}>
+        <SectionShell id="rules" num={6}>
           <h2 style={{ margin: '0 0 8px', color: 'var(--accent-cyan)', fontSize: '1.15rem' }}>⚖️ League Rules & Rules In General</h2>
           <h3 style={{ margin: '12px 0 6px', color: 'var(--text-primary)', fontSize: '1rem' }}>
             {content?.leagueRules?.title || 'League Rules'}
@@ -253,27 +245,13 @@ export default function Welcome() {
           <p style={{ color: 'var(--text-muted)', lineHeight: '1.7', fontSize: '0.9rem', margin: 0 }}>
             {content?.generalRules?.body}
           </p>
-          <p style={{ fontSize: '0.85rem', margin: '14px 0 12px' }}>
+          <p style={{ fontSize: '0.85rem', margin: '14px 0 0' }}>
             Read the full official rulebook: <a href="#/rules" onClick={(e) => { e.preventDefault(); navigate('/rules') }} style={{ color: 'var(--accent-cyan)', fontWeight: 800 }}>League Rules →</a>
           </p>
-          <label className="checkbox-group" style={{
-            alignItems: 'flex-start', color: 'var(--text-primary)', lineHeight: '1.5',
-            border: `1px solid ${rulesAccepted ? 'var(--success)' : 'var(--border)'}`,
-            borderRadius: '10px', padding: '12px',
-            background: rulesAccepted ? 'rgba(34,197,94,0.08)' : 'rgba(0,0,0,0.15)'
-          }}>
-            <input
-              type="checkbox"
-              checked={rulesAccepted}
-              onChange={(e) => setRulesAccepted(e.target.checked)}
-              style={{ marginTop: '4px' }}
-            />
-            <span>I have read and accept the <strong>League Rules</strong> and agree to the <strong>Code of Conduct</strong>.</span>
-          </label>
         </SectionShell>
 
         {/* SECTION 7 — WHAT HAPPENS NEXT */}
-        <SectionShell id="next" num={7} viewedFlag={viewed.next}>
+        <SectionShell id="next" num={7}>
           <h2 style={{ margin: '0 0 8px', color: 'var(--accent-cyan)', fontSize: '1.15rem' }}>
             {content?.whatHappensNext?.title || 'What Happens Next'}
           </h2>
@@ -283,7 +261,7 @@ export default function Welcome() {
         </SectionShell>
 
         {/* SECTION 8 — BRANDING */}
-        <SectionShell id="branding" num={8} viewedFlag={viewed.branding}>
+        <SectionShell id="branding" num={8}>
           <h2 style={{ margin: '0 0 8px', color: 'var(--accent-cyan)', fontSize: '1.15rem' }}>
             🏹 About {adminData?.companyName || 'Elite Arrows'}
           </h2>
@@ -293,66 +271,58 @@ export default function Welcome() {
         </SectionShell>
 
         {/* SECTION 9 — FINAL MESSAGE + COMPLETE */}
-        <section data-section="final" ref={setSectionRef('final')} style={{ padding: '0', borderRadius: '20px', overflow: 'hidden', marginBottom: '18px' }}>
-          <div className={`glass ${viewed.final ? 'is-viewed' : ''}`} style={{
-            padding: '28px', textAlign: 'center',
-            border: `2px solid ${canComplete ? 'var(--success)' : 'var(--border)'}`,
-            background: canComplete ? 'rgba(34,197,94,0.08)' : 'rgba(0,0,0,0.2)'
-          }}>
-            <div style={{ fontSize: '2.4rem', marginBottom: '8px' }}>🎯</div>
-            <h2 style={{ margin: '0 0 8px', color: '#fff', fontSize: '1.4rem' }}>Final Message</h2>
-            <p style={{ color: 'var(--text-muted)', lineHeight: '1.7', fontSize: '0.9rem', maxWidth: '500px', margin: '0 auto 20px' }}>
-              {adminData?.finalMessage || 'You are all set — good luck at the oche!'}
-            </p>
+        <SectionShell id="final" num={9} center>
+          <div style={{ fontSize: '2.4rem', marginBottom: '8px' }}>🎯</div>
+          <h2 style={{ margin: '0 0 8px', color: '#fff', fontSize: '1.4rem' }}>Final Message</h2>
+          <p style={{ color: 'var(--text-muted)', lineHeight: '1.7', fontSize: '0.9rem', maxWidth: '500px', margin: '0 auto 20px' }}>
+            {adminData?.finalMessage || 'You are all set — good luck at the oche!'}
+          </p>
 
-            {error && <div className="form-error" style={{ marginBottom: '12px' }}>{error}</div>}
+          {error && <div className="form-error" style={{ marginBottom: '12px' }}>{error}</div>}
 
-            {!canComplete ? (
-              <div style={{ textAlign: 'center' }}>
-                <button className="btn btn-primary btn-block" disabled style={{ opacity: 0.55, cursor: 'not-allowed' }}>🔒 Complete Signup</button>
-                <div style={{ marginTop: '16px', display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
-                  {SECTION_IDS.map(id => (
-                    <span key={id} className="welcome-chip" style={{
-                      background: viewed[id] ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.05)',
-                      color: viewed[id] ? 'var(--success)' : 'var(--text-muted)',
-                      border: `1px solid ${viewed[id] ? 'var(--success)' : 'var(--border)'}`
-                    }}>
-                      {viewed[id] ? '✓' : '•'} {SECTION_LABELS[id]}
-                    </span>
-                  ))}
-                  {!whatsappJoined && <span className="welcome-chip" style={{ background: 'rgba(37,211,102,0.1)', color: '#25D366', border: '1px solid rgba(37,211,102,0.4)' }}>• Join the WhatsApp group</span>}
-                  {!rulesAccepted && <span className="welcome-chip" style={{ background: 'rgba(251,191,36,0.1)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.4)' }}>• Accept the rules</span>}
-                </div>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: '16px 0 0' }}>
-                  Read through every section above, join the WhatsApp group and accept the rules to unlock your account.
-                </p>
+          {!canComplete ? (
+            <div style={{ textAlign: 'center' }}>
+              <button className="btn btn-primary btn-block" disabled style={{ opacity: 0.55, cursor: 'not-allowed' }}>🔒 Complete Signup</button>
+              <div style={{ marginTop: '16px', display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
+                {SECTION_IDS.map(id => (
+                  <span key={id} className="welcome-chip" style={{
+                    background: read[id] ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.05)',
+                    color: read[id] ? 'var(--success)' : 'var(--text-muted)',
+                    border: `1px solid ${read[id] ? 'var(--success)' : 'var(--border)'}`
+                  }}>
+                    {read[id] ? '✓' : '•'} {SECTION_LABELS[id]}
+                  </span>
+                ))}
               </div>
-            ) : (
-              <>
-                <button
-                  className="btn btn-block"
-                  onClick={handleComplete}
-                  disabled={submitting}
-                  style={{ height: '52px', fontSize: '1rem', background: 'var(--success)', borderColor: 'var(--success)', color: '#fff', boxShadow: '0 4px 14px rgba(34,197,94,0.4)' }}
-                >
-                  {submitting ? (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
-                      <span className="spinner" style={{ width: '16px', height: '16px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }}></span>
-                      Completing Signup...
-                    </span>
-                  ) : isStaff ? (
-                    'Enter the App (Staff)'
-                  ) : (
-                    '🚀 Completed Signup — Enter the App'
-                  )}
-                </button>
-                <p style={{ color: 'var(--success)', fontSize: '0.8rem', margin: '12px 0 0', fontWeight: 700 }}>
-                  ✅ You've read everything and accepted the rules. Click above to finish.
-                </p>
-              </>
-            )}
-          </div>
-        </section>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: '16px 0 0' }}>
+                Tick the box in all {SECTION_IDS.length} sections above to unlock your account.
+              </p>
+            </div>
+          ) : (
+            <>
+              <button
+                className="btn btn-block"
+                onClick={handleComplete}
+                disabled={submitting}
+                style={{ height: '52px', fontSize: '1rem', background: 'var(--success)', borderColor: 'var(--success)', color: '#fff', boxShadow: '0 4px 14px rgba(34,197,94,0.4)' }}
+              >
+                {submitting ? (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
+                    <span className="spinner" style={{ width: '16px', height: '16px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }}></span>
+                    Completing Signup...
+                  </span>
+                ) : isStaff ? (
+                  'Enter the App (Staff)'
+                ) : (
+                  '🚀 Completed Signup — Enter the App'
+                )}
+              </button>
+              <p style={{ color: 'var(--success)', fontSize: '0.8rem', margin: '12px 0 0', fontWeight: 700 }}>
+                ✅ You've ticked every section. Click above to finish.
+              </p>
+            </>
+          )}
+        </SectionShell>
 
         <div style={{ textAlign: 'center', padding: '16px 0 40px' }}>
           <button onClick={handleSignOut} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.8rem', textDecoration: 'underline', cursor: 'pointer' }}>
