@@ -14,7 +14,11 @@ function CupManagement() {
   const [allCupResults, setAllCupResults] = useState([])
   const [showResultModal, setShowResultModal] = useState(false)
   const [showSwapModal, setShowSwapModal] = useState(false)
+  const [isManualSwap, setIsManualSwap] = useState(false)
+  const [manualSwapName, setManualSwapName] = useState('')
   const [showSetPlayerModal, setShowSetPlayerModal] = useState(false)
+  const [isManualInput, setIsManualInput] = useState(false)
+  const [manualPlayerName, setManualPlayerName] = useState('')
   const [setPlayerForm, setSetPlayerForm] = useState({
     cup: null,
     match: null,
@@ -564,7 +568,8 @@ function CupManagement() {
   }
 
   const handleSwapPlayerInBracket = async () => {
-    if (!swapCup || !playerToRemove || !playerToAdd) return showToast('Please select both players', 'error')
+    const finalPlayerToAdd = isManualSwap ? manualSwapName : playerToAdd
+    if (!swapCup || !playerToRemove || !finalPlayerToAdd) return showToast('Please select both players', 'error')
 
     setIsSubmitting(true)
     try {
@@ -573,24 +578,29 @@ function CupManagement() {
       if (!cupSnap.exists()) throw new Error('Cup not found')
 
       const cupData = cupSnap.data()
-      const newPlayer = allUsers.find(u => u.id === playerToAdd)
-      if (!newPlayer) throw new Error('New player not found')
+
+      let replacementName = finalPlayerToAdd
+      if (!isManualSwap) {
+        const newPlayer = allUsers.find(u => u.id === finalPlayerToAdd)
+        if (!newPlayer) throw new Error('New player not found')
+        replacementName = newPlayer.username
+      }
 
       // 1. Update participants list
-      const updatedPlayers = cupData.players.map(pid => String(pid) === String(playerToRemove) ? playerToAdd : pid)
+      const updatedPlayers = cupData.players.map(pid => String(pid) === String(playerToRemove) ? finalPlayerToAdd : pid)
 
       // 2. Update groups
       const updatedGroups = (cupData.groups || []).map(g => ({
         ...g,
-        players: g.players.map(pid => String(pid) === String(playerToRemove) ? playerToAdd : pid)
+        players: g.players.map(pid => String(pid) === String(playerToRemove) ? finalPlayerToAdd : pid)
       }))
 
       // 3. Update all matches (swap the ID everywhere it appears)
       const updatedMatches = cupData.matches.map(m => ({
         ...m,
-        player1: String(m.player1) === String(playerToRemove) ? playerToAdd : m.player1,
-        player2: String(m.player2) === String(playerToRemove) ? playerToAdd : m.player2,
-        winner: String(m.winner) === String(playerToRemove) ? playerToAdd : m.winner
+        player1: String(m.player1) === String(playerToRemove) ? finalPlayerToAdd : m.player1,
+        player2: String(m.player2) === String(playerToRemove) ? finalPlayerToAdd : m.player2,
+        winner: String(m.winner) === String(playerToRemove) ? finalPlayerToAdd : m.winner
       }))
 
       await setDoc(cupRef, { ...cupData, players: updatedPlayers, groups: updatedGroups, matches: updatedMatches }, { merge: true })
@@ -606,13 +616,13 @@ function CupManagement() {
         const updates = {}
 
         if (String(fData.player1Id) === String(playerToRemove)) {
-          updates.player1Id = playerToAdd
-          updates.player1 = newPlayer.username
+          updates.player1Id = finalPlayerToAdd
+          updates.player1 = replacementName
           changed = true
         }
         if (String(fData.player2Id) === String(playerToRemove)) {
-          updates.player2Id = playerToAdd
-          updates.player2 = newPlayer.username
+          updates.player2Id = finalPlayerToAdd
+          updates.player2 = replacementName
           changed = true
         }
 
@@ -628,6 +638,8 @@ function CupManagement() {
       setShowSwapModal(false)
       setPlayerToRemove('')
       setPlayerToAdd('')
+      setManualSwapName('')
+      setIsManualSwap(false)
       triggerDataRefresh('all')
       setRefreshKey(prev => prev + 1)
     } catch (e) {
@@ -639,7 +651,8 @@ function CupManagement() {
 
   const handleSetMatchPlayer = async () => {
     const { cup, match, position, playerId } = setPlayerForm
-    if (!cup || !match || !playerId) return showToast('Please select a player', 'error')
+    const finalPlayerId = isManualInput ? manualPlayerName : playerId
+    if (!cup || !match || !finalPlayerId) return showToast('Please select a player or enter a name', 'error')
 
     setIsSubmitting(true)
     try {
@@ -648,22 +661,25 @@ function CupManagement() {
       if (!cupSnap.exists()) throw new Error('Cup not found')
 
       const cupData = cupSnap.data()
-      const newPlayer = allUsers.find(u => u.id === playerId)
-      if (!newPlayer) throw new Error('Player not found')
+
+      if (!isManualInput) {
+        const newPlayer = allUsers.find(u => u.id === finalPlayerId)
+        if (!newPlayer) throw new Error('Player not found')
+      }
 
       const updatedMatches = (cupData.matches || []).map(m => {
         if (String(m.id) === String(match.id)) {
           return {
             ...m,
-            [position === 1 ? 'player1' : 'player2']: playerId
+            [position === 1 ? 'player1' : 'player2']: finalPlayerId
           }
         }
         return m
       })
 
       const updatedPlayers = [...(cupData.players || [])]
-      if (!updatedPlayers.includes(playerId)) {
-        updatedPlayers.push(playerId)
+      if (!isManualInput && !updatedPlayers.includes(finalPlayerId)) {
+        updatedPlayers.push(finalPlayerId)
       }
 
       const nextCupData = { ...cupData, players: updatedPlayers, matches: updatedMatches }
@@ -687,9 +703,9 @@ function CupManagement() {
             startScore: roundFormat.startScore,
             bestOf: roundFormat.bestOf,
             firstTo: roundFormat.firstTo || Math.ceil(roundFormat.bestOf / 2),
-            player1: p1?.username || 'Unknown',
+            player1: p1?.username || updatedMatch.player1,
             player1Id: updatedMatch.player1,
-            player2: p2?.username || 'Unknown',
+            player2: p2?.username || updatedMatch.player2,
             player2Id: updatedMatch.player2,
             matchId: updatedMatch.id,
             round: updatedMatch.round || 0,
@@ -705,6 +721,8 @@ function CupManagement() {
 
       showToast('Set player for match.', 'success')
       setShowSetPlayerModal(false)
+      setIsManualInput(false)
+      setManualPlayerName('')
       triggerDataRefresh('all')
       setRefreshKey(prev => prev + 1)
     } catch (e) {
@@ -1078,27 +1096,58 @@ function CupManagement() {
           <div className="modal-content glass" style={{ maxWidth: '400px' }}>
             <h3 style={{ marginBottom: '20px' }}>Set Match Participant</h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '20px' }}>
-              Manually assign a player to <strong>Position {setPlayerForm.position}</strong> in this match.
+              Assign a player to <strong>Position {setPlayerForm.position}</strong> in this match.
             </p>
 
-            <div className="form-group">
-              <label>Select Player</label>
-              <UserSearchSelect
-                users={allUsers}
-                selectedId={setPlayerForm.playerId}
-                onSelect={(id) => setSetPlayerForm({...setPlayerForm, playerId: id})}
-                label=""
-                placeholder="Search for player..."
-                onQueryChange={searchUsers}
-              />
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', background: 'rgba(0,0,0,0.2)', padding: '4px', borderRadius: '12px' }}>
+              <button
+                className={`btn btn-sm ${!isManualInput ? 'btn-primary' : ''}`}
+                style={{ flex: 1, borderRadius: '8px', background: !isManualInput ? '' : 'transparent', border: 'none' }}
+                onClick={() => setIsManualInput(false)}
+              >
+                Search Users
+              </button>
+              <button
+                className={`btn btn-sm ${isManualInput ? 'btn-primary' : ''}`}
+                style={{ flex: 1, borderRadius: '8px', background: isManualInput ? '' : 'transparent', border: 'none' }}
+                onClick={() => setIsManualInput(true)}
+              >
+                Manual Entry
+              </button>
             </div>
 
+            {isManualInput ? (
+              <div className="form-group">
+                <label>Enter Name</label>
+                <input
+                  type="text"
+                  className="glass"
+                  value={manualPlayerName}
+                  onChange={e => setManualPlayerName(e.target.value)}
+                  placeholder="Type player name..."
+                  autoFocus
+                />
+              </div>
+            ) : (
+              <div className="form-group">
+                <label>Select Player</label>
+                <UserSearchSelect
+                  users={allUsers}
+                  selectedId={setPlayerForm.playerId}
+                  onSelect={(id) => setSetPlayerForm({...setPlayerForm, playerId: id})}
+                  label=""
+                  placeholder="Search for player..."
+                  onQueryChange={searchUsers}
+                />
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: '10px', marginTop: '30px' }}>
-              <button className="btn btn-secondary btn-block" onClick={() => setShowSetPlayerModal(false)}>Cancel</button>
+              <button className="btn btn-secondary btn-block" onClick={() => { setShowSetPlayerModal(false); setManualPlayerName(''); setIsManualInput(false); }}>Cancel</button>
               <button
                 className="btn btn-primary btn-block"
                 onClick={handleSetMatchPlayer}
-                disabled={isSubmitting || !setPlayerForm.playerId}
+                disabled={isSubmitting || (isManualInput ? !manualPlayerName : !setPlayerForm.playerId)}
               >
                 {isSubmitting ? 'Saving...' : 'Confirm Player'}
               </button>
@@ -1132,22 +1181,50 @@ function CupManagement() {
 
             <div className="form-group">
               <label>Replacement Player</label>
-              <UserSearchSelect
-                users={allUsers.filter(u => !(swapCup?.players || []).includes(u.id))}
-                selectedId={playerToAdd}
-                onSelect={setPlayerToAdd}
-                label=""
-                placeholder="Search for new player..."
-                onQueryChange={searchUsers}
-              />
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', background: 'rgba(0,0,0,0.2)', padding: '4px', borderRadius: '12px' }}>
+                <button
+                  className={`btn btn-sm ${!isManualSwap ? 'btn-primary' : ''}`}
+                  style={{ flex: 1, borderRadius: '8px', background: !isManualSwap ? '' : 'transparent', border: 'none' }}
+                  onClick={() => setIsManualSwap(false)}
+                >
+                  Search Users
+                </button>
+                <button
+                  className={`btn btn-sm ${isManualSwap ? 'btn-primary' : ''}`}
+                  style={{ flex: 1, borderRadius: '8px', background: isManualSwap ? '' : 'transparent', border: 'none' }}
+                  onClick={() => setIsManualSwap(true)}
+                >
+                  Manual Entry
+                </button>
+              </div>
+
+              {isManualSwap ? (
+                <input
+                  type="text"
+                  className="glass"
+                  value={manualSwapName}
+                  onChange={e => setManualSwapName(e.target.value)}
+                  placeholder="Type player name..."
+                  autoFocus
+                />
+              ) : (
+                <UserSearchSelect
+                  users={allUsers.filter(u => !(swapCup?.players || []).includes(u.id))}
+                  selectedId={playerToAdd}
+                  onSelect={setPlayerToAdd}
+                  label=""
+                  placeholder="Search for new player..."
+                  onQueryChange={searchUsers}
+                />
+              )}
             </div>
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '30px' }}>
-              <button className="btn btn-secondary btn-block" onClick={() => setShowSwapModal(false)}>Cancel</button>
+              <button className="btn btn-secondary btn-block" onClick={() => { setShowSwapModal(false); setManualSwapName(''); setIsManualSwap(false); }}>Cancel</button>
               <button
                 className="btn btn-primary btn-block"
                 onClick={handleSwapPlayerInBracket}
-                disabled={isSubmitting || !playerToRemove || !playerToAdd}
+                disabled={isSubmitting || !playerToRemove || (isManualSwap ? !manualSwapName : !playerToAdd)}
               >
                 {isSubmitting ? 'Swapping...' : 'Perform Swap'}
               </button>

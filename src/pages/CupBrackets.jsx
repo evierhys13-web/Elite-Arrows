@@ -18,9 +18,15 @@ export default function CupBracket() {
 
   const [showSwapModal, setShowSwapModal] = useState(false)
   const [showSetPlayerModal, setShowSetPlayerModal] = useState(false)
+  const [showPlayerActionModal, setShowPlayerActionModal] = useState(false)
+  const [actionPlayer, setActionPlayer] = useState(null)
   const [targetMatch, setTargetMatch] = useState(null)
   const [targetPosition, setTargetPosition] = useState(null)
   const [playerToSet, setPlayerToSet] = useState('')
+  const [isManualInput, setIsManualInput] = useState(false)
+  const [manualPlayerName, setManualPlayerName] = useState('')
+  const [isManualSwap, setIsManualSwap] = useState(false)
+  const [manualSwapName, setManualSwapName] = useState('')
   const [playerToRemove, setPlayerToRemove] = useState('')
   const [playerToAdd, setPlayerToAdd] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -287,7 +293,8 @@ export default function CupBracket() {
 
 
   const handleSwapPlayer = async () => {
-    if (!cup || !playerToRemove || !playerToAdd) return showToast?.('Please select both players', 'error')
+    const finalPlayerToAdd = isManualSwap ? manualSwapName : playerToAdd
+    if (!cup || !playerToRemove || !finalPlayerToAdd) return showToast?.('Please select both players', 'error')
 
     setIsSubmitting(true)
     try {
@@ -296,24 +303,29 @@ export default function CupBracket() {
       if (!cupSnap.exists()) throw new Error('Cup not found')
 
       const cupData = cupSnap.data()
-      const newPlayer = allUsers.find(u => u.id === playerToAdd)
-      if (!newPlayer) throw new Error('New player not found')
+
+      let replacementName = finalPlayerToAdd
+      if (!isManualSwap) {
+        const newPlayer = allUsers.find(u => u.id === finalPlayerToAdd)
+        if (!newPlayer) throw new Error('New player not found')
+        replacementName = newPlayer.username
+      }
 
       // 1. Update participants list
-      const updatedPlayers = cupData.players.map(pid => String(pid) === String(playerToRemove) ? playerToAdd : pid)
+      const updatedPlayers = cupData.players.map(pid => String(pid) === String(playerToRemove) ? finalPlayerToAdd : pid)
 
       // 2. Update groups
       const updatedGroups = (cupData.groups || []).map(g => ({
         ...g,
-        players: (g.players || []).map(pid => String(pid) === String(playerToRemove) ? playerToAdd : pid)
+        players: (g.players || []).map(pid => String(pid) === String(playerToRemove) ? finalPlayerToAdd : pid)
       }))
 
       // 3. Update all matches
       const updatedMatches = cupData.matches.map(m => ({
         ...m,
-        player1: String(m.player1) === String(playerToRemove) ? playerToAdd : m.player1,
-        player2: String(m.player2) === String(playerToRemove) ? playerToAdd : m.player2,
-        winner: String(m.winner) === String(playerToRemove) ? playerToAdd : m.winner
+        player1: String(m.player1) === String(playerToRemove) ? finalPlayerToAdd : m.player1,
+        player2: String(m.player2) === String(playerToRemove) ? finalPlayerToAdd : m.player2,
+        winner: String(m.winner) === String(playerToRemove) ? finalPlayerToAdd : m.winner
       }))
 
       const nextCupData = { ...cupData, players: updatedPlayers, groups: updatedGroups, matches: updatedMatches }
@@ -330,13 +342,13 @@ export default function CupBracket() {
         const updates = {}
 
         if (String(fData.player1Id) === String(playerToRemove)) {
-          updates.player1Id = playerToAdd
-          updates.player1 = newPlayer.username
+          updates.player1Id = finalPlayerToAdd
+          updates.player1 = replacementName
           changed = true
         }
         if (String(fData.player2Id) === String(playerToRemove)) {
-          updates.player2Id = playerToAdd
-          updates.player2 = newPlayer.username
+          updates.player2Id = finalPlayerToAdd
+          updates.player2 = replacementName
           changed = true
         }
 
@@ -353,6 +365,8 @@ export default function CupBracket() {
       setShowSwapModal(false)
       setPlayerToRemove('')
       setPlayerToAdd('')
+      setManualSwapName('')
+      setIsManualSwap(false)
       triggerDataRefresh('all')
       setRefreshKey(prev => prev + 1)
     } catch (e) {
@@ -363,7 +377,8 @@ export default function CupBracket() {
   }
 
   const handleSetMatchPlayer = async () => {
-    if (!cup || !targetMatch || !playerToSet) return showToast?.('Please select a player', 'error')
+    const finalPlayerId = isManualInput ? manualPlayerName : playerToSet
+    if (!cup || !targetMatch || !finalPlayerId) return showToast?.('Please select a player or enter a name', 'error')
 
     setIsSubmitting(true)
     try {
@@ -372,24 +387,28 @@ export default function CupBracket() {
       if (!cupSnap.exists()) throw new Error('Cup not found')
 
       const cupData = cupSnap.data()
-      const newPlayer = allUsers.find(u => u.id === playerToSet)
-      if (!newPlayer) throw new Error('Player not found')
+
+      // If using UserSearchSelect, verify player exists. If manual, use as-is.
+      if (!isManualInput) {
+        const newPlayer = allUsers.find(u => u.id === finalPlayerId)
+        if (!newPlayer) throw new Error('Player not found in database')
+      }
 
       // 1. Update the match in cupData.matches
       const updatedMatches = (cupData.matches || []).map(m => {
         if (String(m.id) === String(targetMatch.id)) {
           return {
             ...m,
-            [targetPosition === 1 ? 'player1' : 'player2']: playerToSet
+            [targetPosition === 1 ? 'player1' : 'player2']: finalPlayerId
           }
         }
         return m
       })
 
-      // 2. Ensure player is in cup.players list
+      // 2. Ensure player is in cup.players list (only if it's a real user ID)
       const updatedPlayers = [...(cupData.players || [])]
-      if (!updatedPlayers.includes(playerToSet)) {
-        updatedPlayers.push(playerToSet)
+      if (!isManualInput && !updatedPlayers.includes(finalPlayerId)) {
+        updatedPlayers.push(finalPlayerId)
       }
 
       const nextCupData = { ...cupData, players: updatedPlayers, matches: updatedMatches }
@@ -413,9 +432,9 @@ export default function CupBracket() {
             startScore: roundFormat.startScore,
             bestOf: roundFormat.bestOf,
             firstTo: roundFormat.firstTo || Math.ceil(roundFormat.bestOf / 2),
-            player1: p1?.username || 'Unknown',
+            player1: p1?.username || updatedMatch.player1,
             player1Id: updatedMatch.player1,
-            player2: p2?.username || 'Unknown',
+            player2: p2?.username || updatedMatch.player2,
             player2Id: updatedMatch.player2,
             matchId: updatedMatch.id,
             round: updatedMatch.round || 0,
@@ -434,6 +453,8 @@ export default function CupBracket() {
       setShowSetPlayerModal(false)
       setTargetMatch(null)
       setPlayerToSet('')
+      setManualPlayerName('')
+      setIsManualInput(false)
       triggerDataRefresh('all')
       setRefreshKey(prev => prev + 1)
     } catch (e) {
@@ -857,13 +878,16 @@ export default function CupBracket() {
                               cursor: 'pointer'
                             }}
                             onClick={() => {
-                              if (match.player1) {
+                              if (isAdmin) {
+                                setActionPlayer({
+                                  id: match.player1,
+                                  name: p1Name || 'TBD',
+                                  match,
+                                  position: 1
+                                })
+                                setShowPlayerActionModal(true)
+                              } else if (match.player1) {
                                 navigate(`/match-log?playerId=${match.player1}&competition=Cup`);
-                              } else if (isAdmin) {
-                                setTargetMatch(match)
-                                setTargetPosition(1)
-                                setPlayerToSet(match.player1 || '')
-                                setShowSetPlayerModal(true)
                               }
                             }}
                           >
@@ -911,13 +935,16 @@ export default function CupBracket() {
                               cursor: 'pointer'
                             }}
                             onClick={() => {
-                              if (match.player2) {
+                              if (isAdmin) {
+                                setActionPlayer({
+                                  id: match.player2,
+                                  name: p2Name || 'TBD',
+                                  match,
+                                  position: 2
+                                })
+                                setShowPlayerActionModal(true)
+                              } else if (match.player2) {
                                 navigate(`/match-log?playerId=${match.player2}&competition=Cup`);
-                              } else if (isAdmin) {
-                                setTargetMatch(match)
-                                setTargetPosition(2)
-                                setPlayerToSet(match.player2 || '')
-                                setShowSetPlayerModal(true)
                               }
                             }}
                           >
@@ -1061,32 +1088,124 @@ export default function CupBracket() {
         )}
       </div>
 
+      {showPlayerActionModal && (
+        <div className="modal-overlay">
+          <div className="modal-content glass" style={{ maxWidth: '400px' }}>
+            <h3 style={{ marginBottom: '10px' }} className="text-gradient">Player Actions</h3>
+            <p style={{ fontSize: '0.9rem', marginBottom: '20px', color: 'var(--text-muted)' }}>
+              Managing <strong>{actionPlayer?.name}</strong> in {getRoundName(actionPlayer?.match?.round)}
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {actionPlayer?.id && (
+                <button
+                  className="btn btn-secondary btn-block"
+                  onClick={() => {
+                    navigate(`/match-log?playerId=${actionPlayer.id}&competition=Cup`);
+                  }}
+                  style={{ textAlign: 'left', padding: '15px' }}
+                >
+                  📈 View Match Log
+                </button>
+              )}
+
+              <button
+                className="btn btn-secondary btn-block"
+                onClick={() => {
+                  setTargetMatch(actionPlayer.match);
+                  setTargetPosition(actionPlayer.position);
+                  setPlayerToSet(actionPlayer.id || '');
+                  setShowSetPlayerModal(true);
+                  setShowPlayerActionModal(false);
+                }}
+                style={{ textAlign: 'left', padding: '15px' }}
+              >
+                🎯 Change Participant for this Match
+              </button>
+
+              {actionPlayer?.id && (
+                <button
+                  className="btn btn-secondary btn-block"
+                  onClick={() => {
+                    setPlayerToRemove(actionPlayer.id);
+                    setShowSwapModal(true);
+                    setShowPlayerActionModal(false);
+                  }}
+                  style={{ textAlign: 'left', padding: '15px', color: 'var(--accent-cyan)' }}
+                >
+                  🔄 Global Swap (Replace throughout Cup)
+                </button>
+              )}
+            </div>
+
+            <button
+              className="btn btn-block"
+              onClick={() => setShowPlayerActionModal(false)}
+              style={{ marginTop: '20px', background: 'rgba(255,255,255,0.05)' }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {showSetPlayerModal && (
         <div className="modal-overlay">
           <div className="modal-content glass" style={{ maxWidth: '400px' }}>
             <h3 style={{ marginBottom: '20px' }}>Set Match Participant</h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '20px' }}>
-              Manually assign a player to <strong>Position {targetPosition}</strong> in this match.
+              Assign a player to <strong>Position {targetPosition}</strong> in this match.
             </p>
 
-            <div className="form-group">
-              <label>Select Player</label>
-              <UserSearchSelect
-                users={allUsers}
-                selectedId={playerToSet}
-                onSelect={setPlayerToSet}
-                label=""
-                placeholder="Search for player..."
-                onQueryChange={searchUsers}
-              />
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', background: 'rgba(0,0,0,0.2)', padding: '4px', borderRadius: '12px' }}>
+              <button
+                className={`btn btn-sm ${!isManualInput ? 'btn-primary' : ''}`}
+                style={{ flex: 1, borderRadius: '8px', background: !isManualInput ? '' : 'transparent', border: 'none' }}
+                onClick={() => setIsManualInput(false)}
+              >
+                Search Users
+              </button>
+              <button
+                className={`btn btn-sm ${isManualInput ? 'btn-primary' : ''}`}
+                style={{ flex: 1, borderRadius: '8px', background: isManualInput ? '' : 'transparent', border: 'none' }}
+                onClick={() => setIsManualInput(true)}
+              >
+                Manual Entry
+              </button>
             </div>
 
+            {isManualInput ? (
+              <div className="form-group">
+                <label>Enter Name</label>
+                <input
+                  type="text"
+                  className="glass"
+                  value={manualPlayerName}
+                  onChange={e => setManualPlayerName(e.target.value)}
+                  placeholder="Type player name..."
+                  autoFocus
+                />
+              </div>
+            ) : (
+              <div className="form-group">
+                <label>Select Player</label>
+                <UserSearchSelect
+                  users={allUsers}
+                  selectedId={playerToSet}
+                  onSelect={setPlayerToSet}
+                  label=""
+                  placeholder="Search for player..."
+                  onQueryChange={searchUsers}
+                />
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: '10px', marginTop: '30px' }}>
-              <button className="btn btn-secondary btn-block" onClick={() => { setShowSetPlayerModal(false); setTargetMatch(null); }}>Cancel</button>
+              <button className="btn btn-secondary btn-block" onClick={() => { setShowSetPlayerModal(false); setTargetMatch(null); setManualPlayerName(''); setIsManualInput(false); }}>Cancel</button>
               <button
                 className="btn btn-primary btn-block"
                 onClick={handleSetMatchPlayer}
-                disabled={isSubmitting || !playerToSet}
+                disabled={isSubmitting || (isManualInput ? !manualPlayerName : !playerToSet)}
               >
                 {isSubmitting ? 'Saving...' : 'Confirm Player'}
               </button>
@@ -1120,22 +1239,50 @@ export default function CupBracket() {
 
             <div className="form-group">
               <label>Replacement Player</label>
-              <UserSearchSelect
-                users={allUsers.filter(u => !(cup?.players || []).includes(u.id))}
-                selectedId={playerToAdd}
-                onSelect={setPlayerToAdd}
-                label=""
-                placeholder="Search for new player..."
-                onQueryChange={searchUsers}
-              />
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', background: 'rgba(0,0,0,0.2)', padding: '4px', borderRadius: '12px' }}>
+                <button
+                  className={`btn btn-sm ${!isManualSwap ? 'btn-primary' : ''}`}
+                  style={{ flex: 1, borderRadius: '8px', background: !isManualSwap ? '' : 'transparent', border: 'none' }}
+                  onClick={() => setIsManualSwap(false)}
+                >
+                  Search Users
+                </button>
+                <button
+                  className={`btn btn-sm ${isManualSwap ? 'btn-primary' : ''}`}
+                  style={{ flex: 1, borderRadius: '8px', background: isManualSwap ? '' : 'transparent', border: 'none' }}
+                  onClick={() => setIsManualSwap(true)}
+                >
+                  Manual Entry
+                </button>
+              </div>
+
+              {isManualSwap ? (
+                <input
+                  type="text"
+                  className="glass"
+                  value={manualSwapName}
+                  onChange={e => setManualSwapName(e.target.value)}
+                  placeholder="Type player name..."
+                  autoFocus
+                />
+              ) : (
+                <UserSearchSelect
+                  users={allUsers.filter(u => !(cup?.players || []).includes(u.id))}
+                  selectedId={playerToAdd}
+                  onSelect={setPlayerToAdd}
+                  label=""
+                  placeholder="Search for new player..."
+                  onQueryChange={searchUsers}
+                />
+              )}
             </div>
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '30px' }}>
-              <button className="btn btn-secondary btn-block" onClick={() => setShowSwapModal(false)}>Cancel</button>
+              <button className="btn btn-secondary btn-block" onClick={() => { setShowSwapModal(false); setManualSwapName(''); setIsManualSwap(false); }}>Cancel</button>
               <button
                 className="btn btn-primary btn-block"
                 onClick={handleSwapPlayer}
-                disabled={isSubmitting || !playerToRemove || !playerToAdd}
+                disabled={isSubmitting || !playerToRemove || (isManualSwap ? !manualSwapName : !playerToAdd)}
               >
                 {isSubmitting ? 'Swapping...' : 'Perform Swap'}
               </button>
