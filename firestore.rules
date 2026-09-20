@@ -236,5 +236,10 @@ service cloud.firestore {
     match /mail/{mailId} {
       allow create: if isAdmin();
     }
+
+    match /pageBackgrounds/{pageKey} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
   }
 }

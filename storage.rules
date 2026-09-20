@@ -46,5 +46,10 @@ service firebase.storage {
       allow read: if signedIn();
       allow create: if signedIn();
     }
+
+    match /page-backgrounds/{fileName} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
   }
 }
