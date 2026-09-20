@@ -7,9 +7,18 @@
 //      * a small watcher on the 30 newest docs detects newly approved results (auto-post),
 //      * `refreshResultsCache()` fetches the current season's results with select()
 //        on demand (startup, season change, commands, table refresh).
-//  - All listeners pass an error callback and emit() guards against malformed entries.
+//
+// Quota resilience (no paid plan needed):
+//  - The last good data snapshot is persisted to data/cache.json, so the bot can keep
+//    serving real (if slightly stale) snapshots whenever Firestore is unavailable.
+//  - `isCoreDataAvailable()` tells post code whether we can safely render empty states:
+//    if we haven't successfully read anything and have no cache, we skip posting
+//    entirely instead of posting "no data" embeds that would be misleading.
+//  - Failed reads are cheap (they return immediately when the project is over quota).
 
 import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import admin from 'firebase-admin'
 import 'dotenv/config'
 import { getResultPlayerId } from './scoring.js'
@@ -23,6 +32,9 @@ const RESULT_SELECT = [
   'excludeFromLeague', 'cupId', 'matchId', 'tournamentId', 'fixtureId',
   'forfeit', 'forfeitWinner', 'player1Stats', 'player2Stats', 'player1Avg', 'player2Avg'
 ]
+
+const CACHE_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data')
+const CACHE_FILE = path.join(CACHE_DIR, 'cache.json')
 
 let firestore = null
 
@@ -62,6 +74,19 @@ const listeners = {
   newNews: []
 }
 
+// true once we have successfully read from Firestore this session (or loaded a cache).
+let dataAvailable = false
+
+// per-collection "we have a live, real value" flags (avoid rendering misleading empties)
+const synced = {
+  adminData: false,
+  news: false,
+  users: false,
+  fixtures: false,
+  seasons: false
+}
+let resultsFetchOk = false
+
 function emit(list, payload) {
   for (const entry of [...list]) {
     if (typeof entry !== 'function') continue
@@ -77,11 +102,97 @@ const toArray = (snap) => snap.docs.map(d => ({ id: d.id, ...d.data() }))
 
 const currentSeason = () => state.adminData?.currentSeason || DEFAULT_SEASON
 
+// Whether a collection has a real (non-empty or sync-confirmed) value to render.
+export function isCollectionSynced(name) {
+  return Boolean(synced[name]) || state[name]?.length > 0 || Boolean(state.adminData)
+}
+
+// Whether the standings/results snapshots can be trusted (results read once since boot,
+// or cached results exist from a previous successful read).
+export function getResultsReadable() {
+  return resultsFetchOk || state.results.length > 0
+}
+
 const stripProof = (doc) => {
   if (!doc) return
   for (const key of ['proofImage', 'proofImage2', 'proof', 'proofUrl', 'proofImageUrl', 'proofFile']) {
     if (typeof doc[key] === 'string' && doc[key].startsWith('data:image')) delete doc[key]
   }
+}
+
+// Drop any big inline blobs (data URLs) so the cache file stays small and clean.
+const sanitizeForCache = (value) => {
+  if (typeof value === 'string') {
+    if (value.startsWith('data:image') || value.length > 20000) return undefined
+    return value
+  }
+  if (Array.isArray(value)) return value.map(sanitizeForCache).filter(v => v !== undefined)
+  if (value && typeof value === 'object') {
+    const out = {}
+    for (const [k, v] of Object.entries(value)) {
+      const clean = sanitizeForCache(v)
+      if (clean !== undefined) out[k] = clean
+    }
+    return out
+  }
+  return value
+}
+
+function loadCache() {
+  try {
+    if (!fs.existsSync(CACHE_FILE)) return
+    const cached = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'))
+    if (cached?.state) {
+      state.users = Array.isArray(cached.state.users) ? cached.state.users : []
+      state.results = Array.isArray(cached.state.results) ? cached.state.results : []
+      state.fixtures = Array.isArray(cached.state.fixtures) ? cached.state.fixtures : []
+      state.seasons = Array.isArray(cached.state.seasons) ? cached.state.seasons : []
+      state.news = Array.isArray(cached.state.news) ? cached.state.news : []
+      state.adminData = cached.state.adminData || null
+      dataAvailable = true
+      console.log(`cache loaded: ${state.users.length} users, ${state.results.length} results, ${state.fixtures.length} fixtures`)
+    }
+  } catch (e) {
+    console.error(`cache load failed: ${e.message}`)
+  }
+}
+
+let persistTimer = null
+function schedulePersist() {
+  clearTimeout(persistTimer)
+  persistTimer = setTimeout(persistState, 3000)
+}
+
+function persistState() {
+  try {
+    if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true })
+    const snapshot = sanitizeForCache({
+      updatedAt: new Date().toISOString(),
+      state: {
+        users: state.users,
+        results: state.results,
+        fixtures: state.fixtures,
+        seasons: state.seasons,
+        news: state.news,
+        adminData: state.adminData
+      }
+    })
+    fs.writeFileSync(CACHE_FILE, JSON.stringify(snapshot))
+  } catch (e) {
+    console.error(`cache save failed: ${e.message}`)
+  }
+}
+
+function markDataAvailable() {
+  dataAvailable = true
+}
+
+export function isCoreDataAvailable() {
+  return dataAvailable ||
+    Boolean(state.adminData) ||
+    state.users.length > 0 ||
+    state.results.length > 0 ||
+    state.fixtures.length > 0
 }
 
 // Fetch the current season's approved results (field-projected) for standings.
@@ -96,18 +207,23 @@ export async function refreshResultsCache() {
     const docs = toArray(snap)
     docs.forEach(stripProof)
     state.results = docs
+    resultsFetchOk = true
+    markDataAvailable()
+    schedulePersist()
     emit('changed', { kind: 'results' })
     return docs
   } catch (e) {
-    console.error(`refreshResultsCache failed: ${e.message}`)
+    console.error(`refreshResultsCache failed: ${e.message} (using ${state.results.length} cached results)`)
     return state.results
   }
 }
 
 // Watch only the newest results to detect newly approved ones without a full scan.
+// No initial GET: the watch's first snapshot seeds `seenResults` without emitting,
+// so this also works when one-shot GETs are rate-limited.
 async function attachResultsWatcher() {
   if (resultsWatcher) {
-    resultsWatcher()
+    try { resultsWatcher() } catch {}
     resultsWatcher = null
   }
   const db = firestore
@@ -115,45 +231,54 @@ async function attachResultsWatcher() {
     .orderBy('submittedAt', 'desc')
     .limit(30)
 
-  try {
-    const snap = await query.get()
-    snap.docs.forEach(d => seenResults.add(d.id))
-
-    resultsWatcher = query.onSnapshot(
-      snap => {
-        let newApproved = false
-        for (const change of snap.docChanges()) {
-          if (change.type === 'added') {
-            const id = change.doc.id
-            if (!seenResults.has(id)) {
-              seenResults.add(id)
-              const data = { id, ...change.doc.data() }
-              if (String(data.status || '').toLowerCase() === 'approved') {
-                newApproved = true
-                emit('newResult', data)
-              }
+  let seeded = false
+  resultsWatcher = query.onSnapshot(
+    snap => {
+      markDataAvailable()
+      if (!seeded) {
+        seeded = true
+        snap.docs.forEach(d => seenResults.add(d.id))
+        return
+      }
+      let newApproved = false
+      for (const change of snap.docChanges()) {
+        if (change.type === 'added') {
+          const id = change.doc.id
+          if (!seenResults.has(id)) {
+            seenResults.add(id)
+            const data = { id, ...change.doc.data() }
+            if (String(data.status || '').toLowerCase() === 'approved') {
+              newApproved = true
+              emit('newResult', data)
             }
           }
         }
-        if (newApproved) refreshResultsCache().catch(e => console.error('cache refresh failed:', e.message))
-      },
-      err => console.error('results watcher error:', err.message)
-    )
-  } catch (e) {
-    console.error('results watcher init failed:', e.message)
-  }
+      }
+      if (newApproved) refreshResultsCache().catch(e => console.error('cache refresh failed:', e.message))
+    },
+    err => {
+      console.error('results watcher error:', err.message)
+      resultsWatcher = null // allow self-heal to re-attach later
+    }
+  )
 }
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
 export async function startListeners() {
-  const db = initFirebase()
+  initFirebase()
+  loadCache()
+
+  const db = firestore
 
   // adminData first (tells us the current season) with retry for quota hiccups.
   for (let attempt = 1; attempt <= 5; attempt++) {
     try {
       const adminSnap = await db.collection('adminData').doc('main').get()
       state.adminData = adminSnap.exists ? { id: adminSnap.id, ...adminSnap.data() } : null
+      synced.adminData = true
+      markDataAvailable()
+      schedulePersist()
       break
     } catch (e) {
       console.error(`adminData fetch attempt ${attempt} failed: ${e.message}`)
@@ -163,8 +288,11 @@ export async function startListeners() {
 
   db.collection('adminData').doc('main').onSnapshot(
     doc => {
+      markDataAvailable()
       const before = state.adminData?.currentSeason
       state.adminData = doc.exists ? { id: doc.id, ...doc.data() } : null
+      synced.adminData = true
+      schedulePersist()
       emit('changed', { kind: 'adminData' })
       if (before !== currentSeason()) {
         refreshResultsCache().catch(e => console.error('season change refresh failed:', e.message))
@@ -175,6 +303,7 @@ export async function startListeners() {
 
   db.collection('news').onSnapshot(
     snap => {
+      markDataAvailable()
       for (const change of snap.docChanges()) {
         if (change.type === 'added') {
           const id = change.doc.id
@@ -185,13 +314,18 @@ export async function startListeners() {
         }
       }
       state.news = toArray(snap)
+      synced.news = true
+      schedulePersist()
     },
     err => console.error('news listener error:', err.message)
   )
 
   db.collection('users').onSnapshot(
     snap => {
+      markDataAvailable()
       state.users = toArray(snap)
+      synced.users = true
+      schedulePersist()
       emit('changed', { kind: 'users' })
     },
     err => console.error('users listener error:', err.message)
@@ -199,7 +333,10 @@ export async function startListeners() {
 
   db.collection('fixtures').onSnapshot(
     snap => {
+      markDataAvailable()
       state.fixtures = toArray(snap)
+      synced.fixtures = true
+      schedulePersist()
       emit('changed', { kind: 'fixtures' })
     },
     err => console.error('fixtures listener error:', err.message)
@@ -207,7 +344,10 @@ export async function startListeners() {
 
   db.collection('seasons').onSnapshot(
     snap => {
+      markDataAvailable()
       state.seasons = toArray(snap)
+      synced.seasons = true
+      schedulePersist()
       emit('changed', { kind: 'seasons' })
     },
     err => console.error('seasons listener error:', err.message)
@@ -216,17 +356,20 @@ export async function startListeners() {
   await attachResultsWatcher()
   await refreshResultsCache()
 
-  // Self-heal: the project can hit its Firestore daily read quota (Spark). Once the
-  // quota resets, keep retrying in the background so the bot recovers without a restart.
+  // Self-heal: the project can hit its Firestore daily read quota (Spark). Retry in the
+  // background so the bot recovers and finally renders snapshots without a restart.
   setInterval(async () => {
     try {
       if (!state.adminData) {
         const adminSnap = await db.collection('adminData').doc('main').get()
         state.adminData = adminSnap.exists ? { id: adminSnap.id, ...adminSnap.data() } : null
+        synced.adminData = true
+        markDataAvailable()
+        schedulePersist()
         emit('changed', { kind: 'adminData' })
       }
       if (!resultsWatcher) await attachResultsWatcher()
-      if (!state.results.length) await refreshResultsCache()
+      if (!resultsFetchOk) await refreshResultsCache()
     } catch (e) {
       console.error('self-heal cycle failed:', e.message)
     }

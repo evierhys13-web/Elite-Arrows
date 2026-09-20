@@ -20,6 +20,9 @@ import {
   getSeasons,
   getAdminData,
   refreshResultsCache,
+  isCoreDataAvailable,
+  isCollectionSynced,
+  getResultsReadable,
   onDataChanged,
   onNewResult,
   onNewNews,
@@ -105,39 +108,63 @@ function buildTables() {
 }
 
 async function applySnapshots() {
+  // If we cannot read Firestore and have no cached data yet, don't post anything:
+  // an empty snapshot would look like a genuine "no data" state when it's really a
+  // temporary outage. Existing snapshot messages are left untouched.
+  if (!isCoreDataAvailable()) {
+    console.log('data unavailable - skipping snapshot sync (no misleading empty embeds)')
+    return
+  }
+
   const tables = buildTables()
   const season = getCurrentSeason(getAdminData())
+
+  // Table + results depend on the results read. If results haven't been readable yet
+  // (quota outage, no cache), skip them rather than post misleading empty/zero data.
+  const resultsReadable = getResultsReadable()
 
   // #table: one message per division (Overall + each division).
   const tableChannel = await findChannel('table')
   let postedTables = 0
-  if (tableChannel) {
-    for (const division of DIVISION_CHOICES) {
-      const rows = tables[division]
-      if (!rows || !rows.length) continue
-      await postOrEdit(`table:${division}`, tableChannel, tableEmbed({ division, rows, season }))
-      postedTables += 1
+  if (resultsReadable) {
+    if (tableChannel) {
+      for (const division of DIVISION_CHOICES) {
+        const rows = tables[division]
+        if (!rows || !rows.length) continue
+        await postOrEdit(`table:${division}`, tableChannel, tableEmbed({ division, rows, season }))
+        postedTables += 1
+      }
+    } else {
+      console.error('no #table channel found for snapshot')
     }
   } else {
-    console.error('no #table channel found for snapshot')
+    console.log('results not readable - skipping #table snapshot')
   }
 
   // #results: the 12 most recent league results.
-  const resultsChannel = await findChannel('results')
-  if (resultsChannel) {
-    const entries = recentLeagueResults(getResults(), getUsers(), getFixtures(), season, 12)
-    await postOrEdit('results', resultsChannel, resultsEmbed(entries, season))
+  if (resultsReadable) {
+    const resultsChannel = await findChannel('results')
+    if (resultsChannel) {
+      const entries = recentLeagueResults(getResults(), getUsers(), getFixtures(), season, 12)
+      await postOrEdit('results', resultsChannel, resultsEmbed(entries, season))
+    } else {
+      console.error('no #results channel found for snapshot')
+    }
   } else {
-    console.error('no #results channel found for snapshot')
+    console.log('results not readable - skipping #results snapshot')
   }
 
-  // #fixtures: the next upcoming league fixtures.
-  const fixturesChannel = await findChannel('fixtures')
-  if (fixturesChannel) {
-    const fixtures = upcomingLeagueFixtures(getFixtures(), getUsers(), season)
-    await postOrEdit('fixtures', fixturesChannel, fixturesEmbed(fixtures, season, 8))
+  // #fixtures: the next upcoming league fixtures (real value from the live watch or cache).
+  if (isCollectionSynced('fixtures')) {
+    const fixturesChannel = await findChannel('fixtures')
+    if (fixturesChannel) {
+      const fixtures = upcomingLeagueFixtures(getFixtures(), getUsers(), season)
+      await postOrEdit('fixtures', fixturesChannel, fixturesEmbed(fixtures, season, 8))
+    } else {
+      console.error('no #fixtures channel found for snapshot')
+    }
   } else {
-    console.error('no #fixtures channel found for snapshot')
+    console.log('fixtures not synced - skipping #fixtures snapshot')
   }
 
   console.log(`snapshots synced: #table x${postedTables}, #results, #fixtures (${season})`)
@@ -312,10 +339,12 @@ async function main() {
     }
 
     // Initial snapshot, then keep them fresh on a cycle (data refetch + resync).
+    // The cycle is gentle (2h) to respect the project's free Firestore read quota;
+    // live changes are handled by the Firestore watchers, not this timer.
     refreshCycle().catch(e => console.error('initial snapshot failed:', e.message))
     setInterval(() => {
       refreshCycle().catch(e => console.error('periodic snapshot failed:', e.message))
-    }, 30 * 60 * 1000)
+    }, 2 * 60 * 60 * 1000)
   })
 
   client.on('interactionCreate', async interaction => {

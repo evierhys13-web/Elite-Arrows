@@ -86,3 +86,6 @@ status
 service-account*.json
 *service-account.json
 
+# Discord bot local data cache
+discord-bot/data/
+
