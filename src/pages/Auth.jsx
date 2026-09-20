@@ -21,12 +21,9 @@ export default function Auth() {
   const [resetEmail, setResetEmail] = useState('')
   const [resetSent, setResetSent] = useState(false)
   const [resetLoading, setResetLoading] = useState(false)
-  const [whatsappJoined, setWhatsappJoined] = useState(false)
 
   const { signUp, signIn, isAuthenticated, loading: authLoading, getAllUsers, adminData } = useAuth()
   const navigate = useNavigate()
-
-  const WHATSAPP_GROUP_LINK = adminData?.whatsappGroupLink || 'https://chat.whatsapp.com/DcKb9AfesVBGjcFVwErEor?s=cl&p=a&mlu=4&ilr=4'
 
   const registrationsEnabled = adminData?.registrationsEnabled !== false
 
@@ -91,9 +88,6 @@ export default function Auth() {
         }
         if (formData.password !== formData.confirmPassword) {
           throw new Error('Passwords do not match')
-        }
-        if (!whatsappJoined) {
-          throw new Error('Please open and join the WhatsApp group link before signing up')
         }
         const avg = parseFloat(formData.threeDartAverage) || 0;
 
@@ -303,31 +297,7 @@ export default function Auth() {
                   )}
                 </div>
 
-                {isSignUp && (
-                  <div className="form-group" style={{ marginBottom: '16px' }}>
-                    <div style={{ padding: '14px', borderRadius: '10px', border: whatsappJoined ? '1px solid var(--success)' : '1px solid var(--accent-cyan)', background: whatsappJoined ? 'rgba(16,185,129,0.08)' : 'rgba(0,212,255,0.06)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                        <span style={{ fontSize: '1.4rem' }}>💬</span>
-                        <div style={{ fontSize: '0.9rem', fontWeight: 800 }}>Join the Official WhatsApp Group</div>
-                      </div>
-                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '10px', lineHeight: '1.5' }}>
-                        All games are arranged in the WhatsApp community. Open and join the group below to create your account.
-                      </p>
-                      <a
-                        href={WHATSAPP_GROUP_LINK}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`btn btn-block btn-sm ${whatsappJoined ? 'btn-success' : 'btn-primary'}`}
-                        onClick={() => setWhatsappJoined(true)}
-                        style={{ textDecoration: 'none' }}
-                      >
-                        {whatsappJoined ? '✓ Joined WhatsApp' : 'Open WhatsApp Join Link'}
-                      </a>
-                    </div>
-                  </div>
-                )}
-
-                <button type="submit" className="btn btn-primary btn-block" disabled={loading || (isSignUp && !whatsappJoined)} style={{ height: '52px', fontSize: '1rem', opacity: isSignUp && !whatsappJoined ? 0.6 : 1 }}>
+                <button type="submit" className="btn btn-primary btn-block" disabled={loading} style={{ height: '52px', fontSize: '1rem' }}>
                   {loading ? (
                     <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span className="spinner" style={{ width: '16px', height: '16px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }}></span>
@@ -337,11 +307,6 @@ export default function Auth() {
                     isSignUp ? 'Create Account' : 'Sign In'
                   )}
                 </button>
-                {isSignUp && !whatsappJoined && (
-                  <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px' }}>
-                    Open the WhatsApp join link above to unlock your account.
-                  </div>
-                )}
               </>
             )}
           </form>

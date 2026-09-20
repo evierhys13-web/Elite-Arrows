@@ -36,6 +36,34 @@ function formatDate(iso) {
   return d.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 }
 
+function SectionShell({ id, num, children, center, read, onToggle }) {
+  return (
+    <section data-section={id} className={`glass ${read ? 'is-read' : ''}`} style={{ padding: '0', borderRadius: '20px', overflow: 'hidden', marginBottom: '18px' }}>
+      <div style={{ padding: '24px', display: 'flex', gap: '18px', alignItems: 'flex-start' }}>
+        <div className="section-num">{num}</div>
+        <div style={{ flex: 1, textAlign: center ? 'center' : 'left' }}>{children}</div>
+      </div>
+      <div
+        role="checkbox"
+        aria-checked={!!read}
+        tabIndex={0}
+        onClick={onToggle}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onToggle()
+          }
+        }}
+        className={`read-toggle ${read ? 'is-read' : ''}`}
+        style={{ margin: '0 24px 22px' }}
+      >
+        <span className="read-toggle-box">{read ? '✓' : ''}</span>
+        <span>{SECTION_ACCEPT_LABELS[id]}</span>
+      </div>
+    </section>
+  )
+}
+
 export default function Welcome() {
   const { user, adminData, completeOnboarding, getSeasons, signOut } = useAuth()
   const navigate = useNavigate()
@@ -82,20 +110,6 @@ export default function Welcome() {
     }
   }
 
-  const SectionShell = ({ id, num, children, center }) => (
-    <section data-section={id} className={`glass ${read[id] ? 'is-read' : ''}`} style={{ padding: '0', borderRadius: '20px', overflow: 'hidden', marginBottom: '18px' }}>
-      <div style={{ padding: '24px', display: 'flex', gap: '18px', alignItems: 'flex-start' }}>
-        <div className="section-num">{num}</div>
-        <div style={{ flex: 1, textAlign: center ? 'center' : 'left' }}>{children}</div>
-      </div>
-      <label className={`read-toggle ${read[id] ? 'is-read' : ''}`} style={{ margin: '0 24px 22px' }}>
-        <input type="checkbox" checked={!!read[id]} onChange={() => toggleRead(id)} />
-        <span className="read-toggle-box">{read[id] ? '✓' : ''}</span>
-        <span>{SECTION_ACCEPT_LABELS[id]}</span>
-      </label>
-    </section>
-  )
-
   if (alreadyComplete) {
     return (
       <div className="page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
@@ -125,7 +139,6 @@ export default function Welcome() {
         section.is-read { border-color: rgba(34,197,94,0.5) !important; }
         section.is-read .section-num { color: var(--success); border-color: var(--success); background: rgba(34,197,94,0.12); }
         .read-toggle { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; background: rgba(0,0,0,0.15); user-select: none; transition: border-color 0.2s, background 0.2s; }
-        .read-toggle input { position: absolute; opacity: 0; pointer-events: none; }
         .read-toggle-box { width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--border); background: rgba(0,0,0,0.25); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; color: #fff; flex-shrink: 0; transition: all 0.2s; }
         .read-toggle.is-read { border-color: var(--success); background: rgba(34,197,94,0.08); }
         .read-toggle.is-read .read-toggle-box { background: var(--success); border-color: var(--success); }
@@ -156,8 +169,7 @@ export default function Welcome() {
         borderRadius: pageBorderEnabled ? '20px' : '0',
         boxShadow: pageBorderEnabled ? `0 0 30px ${pageBorderColor}22` : 'none'
       }}>
-        {/* SECTION 1 — WELCOME */}
-        <SectionShell id="welcome" num={1} center>
+        <SectionShell id="welcome" num={1} center read={read.welcome} onToggle={() => toggleRead('welcome')}>
           <div style={{ textAlign: 'center' }}>
             <div style={{ width: '84px', height: '84px', margin: '0 auto 16px', borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--accent-cyan)', boxShadow: '0 8px 30px rgba(0,212,255,0.25)' }}>
               <img src="/elite arrows.jpg" alt="Elite Arrows" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -170,8 +182,7 @@ export default function Welcome() {
           </div>
         </SectionShell>
 
-        {/* SECTION 2 — SEASON DATES */}
-        <SectionShell id="season" num={2}>
+        <SectionShell id="season" num={2} read={read.season} onToggle={() => toggleRead('season')}>
           <h2 style={{ margin: '0 0 8px', color: 'var(--accent-cyan)', fontSize: '1.15rem' }}>🗓️ Season Start Dates</h2>
           <div style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
             <p style={{ margin: '0 0 12px' }}>
@@ -193,8 +204,7 @@ export default function Welcome() {
           </div>
         </SectionShell>
 
-        {/* SECTION 3 — HOW THE LEAGUE WORKS */}
-        <SectionShell id="league" num={3}>
+        <SectionShell id="league" num={3} read={read.league} onToggle={() => toggleRead('league')}>
           <h2 style={{ margin: '0 0 8px', color: 'var(--accent-cyan)', fontSize: '1.15rem' }}>
             {content?.howLeagueWorks?.title || 'How The League Works'}
           </h2>
@@ -203,8 +213,7 @@ export default function Welcome() {
           </p>
         </SectionShell>
 
-        {/* SECTION 4 — PLAYER RESPONSIBILITIES */}
-        <SectionShell id="responsibilities" num={4}>
+        <SectionShell id="responsibilities" num={4} read={read.responsibilities} onToggle={() => toggleRead('responsibilities')}>
           <h2 style={{ margin: '0 0 8px', color: 'var(--accent-cyan)', fontSize: '1.15rem' }}>
             {content?.responsibilities?.title || 'Your Responsibilities'}
           </h2>
@@ -213,8 +222,7 @@ export default function Welcome() {
           </p>
         </SectionShell>
 
-        {/* SECTION 5 — WHATSAPP */}
-        <SectionShell id="whatsapp" num={5}>
+        <SectionShell id="whatsapp" num={5} read={read.whatsapp} onToggle={() => toggleRead('whatsapp')}>
           <h2 style={{ margin: '0 0 8px', color: 'var(--accent-cyan)', fontSize: '1.15rem' }}>💬 Join the Official WhatsApp Group</h2>
           <p style={{ color: 'var(--text-muted)', lineHeight: '1.6', fontSize: '0.9rem' }}>
             {adminData?.whatsappText || 'All games are arranged in the official WhatsApp community.'}
@@ -239,8 +247,7 @@ export default function Welcome() {
           </p>
         </SectionShell>
 
-        {/* SECTION 6 — LEAGUE RULES */}
-        <SectionShell id="rules" num={6}>
+        <SectionShell id="rules" num={6} read={read.rules} onToggle={() => toggleRead('rules')}>
           <h2 style={{ margin: '0 0 8px', color: 'var(--accent-cyan)', fontSize: '1.15rem' }}>⚖️ League Rules & Rules In General</h2>
           <h3 style={{ margin: '12px 0 6px', color: 'var(--text-primary)', fontSize: '1rem' }}>
             {content?.leagueRules?.title || 'League Rules'}
@@ -259,8 +266,7 @@ export default function Welcome() {
           </p>
         </SectionShell>
 
-        {/* SECTION 7 — WHAT HAPPENS NEXT */}
-        <SectionShell id="next" num={7}>
+        <SectionShell id="next" num={7} read={read.next} onToggle={() => toggleRead('next')}>
           <h2 style={{ margin: '0 0 8px', color: 'var(--accent-cyan)', fontSize: '1.15rem' }}>
             {content?.whatHappensNext?.title || 'What Happens Next'}
           </h2>
@@ -269,8 +275,7 @@ export default function Welcome() {
           </p>
         </SectionShell>
 
-        {/* SECTION 8 — BRANDING */}
-        <SectionShell id="branding" num={8}>
+        <SectionShell id="branding" num={8} read={read.branding} onToggle={() => toggleRead('branding')}>
           <h2 style={{ margin: '0 0 8px', color: 'var(--accent-cyan)', fontSize: '1.15rem' }}>
             🏹 About {adminData?.companyName || 'Elite Arrows'}
           </h2>
@@ -279,8 +284,7 @@ export default function Welcome() {
           </p>
         </SectionShell>
 
-        {/* SECTION 9 — FINAL MESSAGE + COMPLETE */}
-        <SectionShell id="final" num={9} center>
+        <SectionShell id="final" num={9} center read={read.final} onToggle={() => toggleRead('final')}>
           <div style={{ fontSize: '2.4rem', marginBottom: '8px' }}>🎯</div>
           <h2 style={{ margin: '0 0 8px', color: '#fff', fontSize: '1.4rem' }}>Final Message</h2>
           <p style={{ color: 'var(--text-muted)', lineHeight: '1.7', fontSize: '0.9rem', maxWidth: '500px', margin: '0 auto 20px' }}>
