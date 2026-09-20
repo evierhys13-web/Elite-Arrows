@@ -12,7 +12,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyBRAM_91550mH8OUGiVlaL1ewWjrCWhgkY",
   authDomain: "elitearrowsapp.firebaseapp.com",
   projectId: "elitearrowsapp",
-  storageBucket: "elitearrowsapp.firebasestorage.app",
+  storageBucket: "elitearrowsapp.appspot.com",
   messagingSenderId: "848326452210",
   appId: "1:848326452210:web:3626c7f4214167d51ec16b",
   measurementId: "G-6BPQKR71P5"
