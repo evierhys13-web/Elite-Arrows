@@ -1,3 +1,14 @@
+export const dataUrlToBlob = (dataUrl) => {
+  const [head, body] = String(dataUrl).split(',')
+  const mimeMatch = /data:([^;]+);/.exec(head || '')
+  const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg'
+  const binary = atob(body)
+  const len = binary.length
+  const bytes = new Uint8Array(len)
+  for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i)
+  return new Blob([bytes], { type: mime })
+}
+
 export const compressImageToDataUrl = (file, { maxDimension = 800, maxBase64 = 400000 } = {}) => {
   return new Promise((resolve, reject) => {
     if (!file) return reject(new Error('No file selected'))

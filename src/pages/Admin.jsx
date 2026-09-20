@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, lazy, Suspense, useRef } from 'react'
 import { useAuth } from '../context/AuthContextInternal'
 import { ONBOARDING_CONTENT_VERSION } from '../context/AuthContext'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { db, doc, setDoc, getDoc, getDocs, collection, deleteDoc, updateDoc, writeBatch, addDoc, query, orderBy, limit, increment, storage, ref, uploadString, uploadBytesResumable, getDownloadURL } from '../firebase'
+import { db, doc, setDoc, getDoc, getDocs, collection, deleteDoc, updateDoc, writeBatch, addDoc, query, orderBy, limit, increment, storage, ref, uploadBytesResumable, getDownloadURL } from '../firebase'
 import { ADMIN_EMAILS } from '../config'
 import { SUPPORTED_PAGES, PAGE_BACKGROUND_GROUPS } from '../config/pageBackgrounds'
 import { usePageBackgrounds } from '../context/BackgroundContext'
@@ -11,7 +11,7 @@ import { useToast } from '../context/ToastContext'
 import { logMatchApproved } from '../utils/analytics'
 import { checkMatchAchievements } from '../utils/achievements'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
-import { compressImageToDataUrl } from '../utils/imageUtils'
+import { compressImageToDataUrl, dataUrlToBlob } from '../utils/imageUtils'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 import CupManagement from './CupManagement'
@@ -49,6 +49,7 @@ export default function Admin() {
   const { backgrounds, saveBackground, removeBackground } = usePageBackgrounds()
   const [bgSearch, setBgSearch] = useState('')
   const [bgUploading, setBgUploading] = useState(null)
+  const [bgProgress, setBgProgress] = useState({})
   const [bgDrafts, setBgDrafts] = useState({})
   const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState('dashboard')
@@ -1557,13 +1558,35 @@ export default function Admin() {
   }
 
   const handleBgUpload = async (pageKey, file) => {
-    if (!file || bgUploading) return
+    if (!file || (bgUploading && bgUploading !== pageKey)) return
     setBgUploading(pageKey)
+    setBgProgress(prev => ({ ...prev, [pageKey]: 0 }))
     try {
       const dataUrl = await compressImageToDataUrl(file, { maxDimension: 1600, maxBase64: 1500000 })
+      const blob = dataUrlToBlob(dataUrl)
       const storageRef = ref(storage, `page-backgrounds/${pageKey}.jpg`)
-      await uploadString(storageRef, dataUrl, 'data_url', { contentType: 'image/jpeg' })
-      const imageUrl = await getDownloadURL(storageRef)
+      const uploadTask = uploadBytesResumable(storageRef, blob, { contentType: blob.type || 'image/jpeg' })
+      const imageUrl = await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error('Upload timed out — check your connection and try again')), 60000)
+        uploadTask.on('state_changed',
+          (snapshot) => {
+            const progress = snapshot.totalBytes > 0 ? Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100) : 0
+            setBgProgress(prev => ({ ...prev, [pageKey]: progress }))
+          },
+          (error) => {
+            clearTimeout(timeout)
+            reject(error)
+          },
+          async () => {
+            clearTimeout(timeout)
+            try {
+              resolve(await getDownloadURL(uploadTask.snapshot.ref))
+            } catch (e) {
+              reject(e)
+            }
+          }
+        )
+      })
       const meta = backgrounds[pageKey] || {}
       await saveBackground(pageKey, {
         imageUrl,
@@ -1575,8 +1598,10 @@ export default function Admin() {
       showToast('Background saved', 'success')
     } catch (e) {
       showToast('Upload failed: ' + e.message, 'error')
+    } finally {
+      setBgUploading(null)
+      setBgProgress(prev => ({ ...prev, [pageKey]: undefined }))
     }
-    setBgUploading(null)
   }
 
   const handleBgRemove = async (pageKey) => {
@@ -2735,7 +2760,7 @@ export default function Admin() {
 
                           <div style={{ display: 'flex', gap: '8px' }}>
                             <label className="btn btn-primary btn-block" style={{ cursor: 'pointer', margin: 0, padding: '8px 12px', fontSize: '0.78rem', textAlign: 'center' }}>
-                              {bgUploading === page.key ? 'Uploading...' : '⬆ Upload'}
+                              {bgUploading === page.key ? (bgProgress[page.key] && bgProgress[page.key] > 0 && bgProgress[page.key] < 100 ? `Uploading ${bgProgress[page.key]}%` : 'Uploading...') : '⬆ Upload'}
                               <input
                                 type="file"
                                 accept="image/*"
