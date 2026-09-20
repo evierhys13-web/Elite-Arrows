@@ -199,3 +199,41 @@ export function resultsEmbed(results, season) {
   embed.setDescription(lines.join('\n'))
   return embed
 }
+
+const RECORD_LABELS = {
+  '180s': { emoji: '\u{1F3AF}', title: 'Most 180s', unit: '180s' },
+  average: { emoji: '\u{1F3C5}', title: 'Best 3-dart Average', unit: 'avg' },
+  checkout: { emoji: '\u{1F48E}', title: 'Best Checkout', unit: 'checkout' },
+  wins: { emoji: '\u{1F3C6}', title: 'Most League Wins', unit: 'wins' },
+  points: { emoji: '\u{1F4C8}', title: 'Most Points', unit: 'pts' }
+}
+
+export function rankForStat(rows, stat) {
+  const valueOf = (player) => {
+    switch (stat) {
+      case 'average': return player.stats.average || 0
+      case 'checkout': return player.stats.highestCheckout || 0
+      case 'wins': return player.stats.wins || 0
+      case 'points': return player.stats.points || (player.stats.played > 0 ? -1 : 0)
+      default: return player.stats['180s'] || 0
+    }
+  }
+  return rows
+    .map(p => ({ name: p.username || p.displayName || '?', value: valueOf(p) }))
+    .filter(e => e.value > 0)
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5)
+}
+
+export function recordsEmbed(entries, stat, season) {
+  const meta = RECORD_LABELS[stat] || RECORD_LABELS['180s']
+  const medals = ['\u{1F947}', '\u{1F948}', '\u{1F949}']
+  const lines = entries.length
+    ? entries.map((e, i) => `${medals[i] || `${i + 1}.`} **${e.name}** — ${e.value} ${meta.unit}`)
+    : 'No records yet this season.'
+  return new EmbedBuilder()
+    .setTitle(`${meta.emoji} League Records`)
+    .setDescription(`${meta.title}\n\n${lines.join('\n')}`)
+    .setColor(0xfbbf24)
+    .setFooter({ text: `${season || ''} · Elite Arrows Darts League`.trim() })
+}

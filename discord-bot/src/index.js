@@ -1,7 +1,8 @@
 // Elite Arrows darts league Discord bot.
-// v1 scope: mirror the app's league table, results and fixtures on Discord,
-// plus announcements. Data comes from Firestore and mirrors the app's own
-// scoring logic (see scoring.js / standings.js).
+// Purpose: take snapshots of the league's relevant info (table, results,
+// fixtures) and keep them posted in the matching channels, updated automatically
+// as data changes. Data comes from Firestore and mirrors the app's own scoring
+// logic (see scoring.js / standings.js).
 
 import 'dotenv/config'
 import http from 'node:http'
@@ -18,6 +19,7 @@ import {
   getFixtures,
   getSeasons,
   getAdminData,
+  refreshResultsCache,
   onDataChanged,
   onNewResult,
   onNewNews,
@@ -32,7 +34,9 @@ import {
   fixturesEmbed,
   newsEmbed,
   recentLeagueResults,
-  resultsEmbed
+  resultsEmbed,
+  rankForStat,
+  recordsEmbed
 } from './format.js'
 
 const DIVISION_CHOICES = ['Overall', 'Elite', 'Emerald', 'Diamond', 'Platinum']
@@ -46,20 +50,47 @@ http.createServer((req, res) => {
   console.log(`health server listening on :${port} — /healthz`)
 })
 
-// ---- table message tracking (in-memory; /post-table re-creates after restart) ----
-const tableMessages = new Map() // division -> { channelId, messageId }
-let tablePosted = false
 let hostGuild = null
+
+const stripEmoji = (value) =>
+  String(value || '')
+    .toLowerCase()
+    .replace(/[\u{1F000}-\u{1FFFF}\u{1FA00}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}]+/gu, '')
+    .replace(/[^a-z0-9]/g, '')
 
 async function findChannel(name) {
   if (!hostGuild) return null
   try {
     const channels = await hostGuild.channels.fetch()
-    return channels.find(c => c.name === name && c.type === 0) || null
+    const keyword = stripEmoji(name)
+    return channels.find(c =>
+      c.type === 0 &&
+      (c.name === name || stripEmoji(c.name) === keyword || stripEmoji(c.name).includes(keyword))
+    ) || null
   } catch (e) {
     console.error(`could not fetch channels: ${e.message}`)
     return null
   }
+}
+
+// ---- snapshot engine: one maintained message per snapshot, edited in place ----
+const snapshotMessages = new Map() // key -> { channelId, messageId }
+
+async function postOrEdit(key, channel, embed) {
+  const existing = snapshotMessages.get(key)
+  if (existing && existing.channelId === channel.id) {
+    try {
+      const msg = await channel.messages.fetch(existing.messageId)
+      if (msg) {
+        await msg.edit({ embeds: [embed] })
+        return
+      }
+    } catch (e) {
+      snapshotMessages.delete(key)
+    }
+  }
+  const sent = await channel.send({ embeds: [embed] })
+  snapshotMessages.set(key, { channelId: channel.id, messageId: sent.id })
 }
 
 function buildTables() {
@@ -73,50 +104,57 @@ function buildTables() {
   })
 }
 
-async function postTableMessage(division, embed) {
-  const channel = await findChannel('table')
-  if (!channel) {
-    console.error('no #table channel found - run `npm run setup` or create it')
-    return
-  }
-  const existing = tableMessages.get(division)
-  if (existing) {
-    try {
-      const msg = await channel.messages.fetch(existing.messageId)
-      await msg.edit({ embeds: [embed] })
-      return
-    } catch (e) {
-      tableMessages.delete(division)
-    }
-  }
-  const sent = await channel.send({ embeds: [embed] })
-  tableMessages.set(division, { channelId: channel.id, messageId: sent.id })
-}
-
-async function refreshTableMessages(sendMissing = true) {
+async function applySnapshots() {
   const tables = buildTables()
   const season = getCurrentSeason(getAdminData())
-  const divisions = ['Overall', ...DIVISION_CHOICES.filter(d => d !== 'Overall')]
-  for (const division of divisions) {
-    const rows = tables[division]
-    if (!rows) continue
-    const hadMessage = tableMessages.has(division)
-    if (!hadMessage && !sendMissing && !tablePosted) continue
-    try {
-      await postTableMessage(division, tableEmbed({ division, rows, season }))
-    } catch (e) {
-      console.error(`table post failed for ${division}: ${e.message}`)
+
+  // #table: one message per division (Overall + each division).
+  const tableChannel = await findChannel('table')
+  let postedTables = 0
+  if (tableChannel) {
+    for (const division of DIVISION_CHOICES) {
+      const rows = tables[division]
+      if (!rows || !rows.length) continue
+      await postOrEdit(`table:${division}`, tableChannel, tableEmbed({ division, rows, season }))
+      postedTables += 1
     }
+  } else {
+    console.error('no #table channel found for snapshot')
   }
-  tablePosted = true
+
+  // #results: the 12 most recent league results.
+  const resultsChannel = await findChannel('results')
+  if (resultsChannel) {
+    const entries = recentLeagueResults(getResults(), getUsers(), getFixtures(), season, 12)
+    await postOrEdit('results', resultsChannel, resultsEmbed(entries, season))
+  } else {
+    console.error('no #results channel found for snapshot')
+  }
+
+  // #fixtures: the next upcoming league fixtures.
+  const fixturesChannel = await findChannel('fixtures')
+  if (fixturesChannel) {
+    const fixtures = upcomingLeagueFixtures(getFixtures(), getUsers(), season)
+    await postOrEdit('fixtures', fixturesChannel, fixturesEmbed(fixtures, season, 8))
+  } else {
+    console.error('no #fixtures channel found for snapshot')
+  }
+
+  console.log(`snapshots synced: #table x${postedTables}, #results, #fixtures (${season})`)
 }
 
-let tableTimer = null
-function scheduleTableRefresh() {
-  clearTimeout(tableTimer)
-  tableTimer = setTimeout(() => {
-    refreshTableMessages(false).catch(e => console.error('auto table refresh failed:', e.message))
-  }, 30000)
+let snapshotDebounce = null
+function scheduleSnapshots() {
+  clearTimeout(snapshotDebounce)
+  snapshotDebounce = setTimeout(() => {
+    applySnapshots().catch(e => console.error('snapshot refresh failed:', e.message))
+  }, 15000)
+}
+
+// Refresh data from Firestore once a cycle, then resync the snapshots.
+async function refreshCycle() {
+  await refreshResultsCache()
+  await applySnapshots()
 }
 
 // ---- admin gate (Admins only model) ----
@@ -145,14 +183,24 @@ const commands = [
     .setName('next-match')
     .setDescription('The next few league fixtures'),
   new SlashCommandBuilder()
+    .setName('records')
+    .setDescription('League record holders (180s, average, checkout, wins)')
+    .addStringOption(o => o.setName('stat').setDescription('Record to show').setRequired(false)
+      .addChoices(
+        { name: 'Most 180s', value: '180s' },
+        { name: 'Best average', value: 'average' },
+        { name: 'Best checkout', value: 'checkout' },
+        { name: 'Most wins', value: 'wins' }
+      )),
+  new SlashCommandBuilder()
     .setName('help')
     .setDescription('What this bot can do'),
   new SlashCommandBuilder()
     .setName('post-table')
-    .setDescription('[Admin] Post/refresh the league table in #table'),
+    .setDescription('[Admin] Snapshot the league table into #table'),
   new SlashCommandBuilder()
     .setName('post-fixtures')
-    .setDescription('[Admin] Post upcoming fixtures to #fixtures'),
+    .setDescription('[Admin] Snapshot the upcoming fixtures into #fixtures'),
   new SlashCommandBuilder()
     .setName('post-announcement')
     .setDescription('[Admin] Post an announcement to #announcements')
@@ -196,6 +244,13 @@ async function handleCommand(interaction) {
       await interaction.reply({ embeds: [fixturesEmbed(fixtures, season, 4)] })
       return
     }
+    case 'records': {
+      const stat = interaction.options.getString('stat') || '180s'
+      const tables = buildTables()
+      const entries = rankForStat(tables.Overall || [], stat)
+      await interaction.reply({ embeds: [recordsEmbed(entries, stat, season)] })
+      return
+    }
     case 'help': {
       await interaction.reply({
         embeds: [{
@@ -207,6 +262,8 @@ async function handleCommand(interaction) {
             { name: '/results', value: 'The most recent league results.', inline: false },
             { name: '/fixtures', value: 'Who is playing next, and when.', inline: false },
             { name: '/next-match', value: 'Quick look at the next few fixtures.', inline: false },
+            { name: '/records', value: 'League record holders — 180s, averages, best checkouts, wins.', inline: false },
+            { name: 'Auto-snapshots', value: 'The bot keeps **#table**, **#results** and **#fixtures** updated automatically as results come in.', inline: false },
             { name: 'Auto-posts', value: 'New approved results land in **#results** and new announcements in **#announcements**.', inline: false },
             { name: 'Admin commands', value: '/post-table · /post-fixtures · /post-announcement', inline: false }
           ]
@@ -214,20 +271,12 @@ async function handleCommand(interaction) {
       })
       return
     }
-    case 'post-table': {
-      if (!isAdminUser(interaction)) return permissionDenied(interaction)
-      await interaction.deferReply({ ephemeral: true })
-      await refreshTableMessages(true)
-      await interaction.editReply({ content: ':white_check_mark: **#table** updated.' })
-      return
-    }
+    case 'post-table':
     case 'post-fixtures': {
       if (!isAdminUser(interaction)) return permissionDenied(interaction)
-      const fixtures = upcomingLeagueFixtures(getFixtures(), getUsers(), season)
-      const channel = await findChannel('fixtures')
-      if (!channel) return interaction.reply({ content: ':x: No #fixtures channel found.', ephemeral: true })
-      await channel.send({ embeds: [fixturesEmbed(fixtures, season, 8)] })
-      await interaction.reply({ content: ':white_check_mark: Fixtures posted to **#fixtures**.', ephemeral: true })
+      await interaction.deferReply({ ephemeral: true })
+      await refreshCycle()
+      await interaction.editReply({ content: ':white_check_mark: Snapshots updated in **#table**, **#results** and **#fixtures**.' })
       return
     }
     case 'post-announcement': {
@@ -261,6 +310,12 @@ async function main() {
       await client.application.commands.set(commands.map(c => c.toJSON()), hostGuild.id)
       console.log(`Registered ${commands.length} commands in ${hostGuild.name}`)
     }
+
+    // Initial snapshot, then keep them fresh on a cycle (data refetch + resync).
+    refreshCycle().catch(e => console.error('initial snapshot failed:', e.message))
+    setInterval(() => {
+      refreshCycle().catch(e => console.error('periodic snapshot failed:', e.message))
+    }, 30 * 60 * 1000)
   })
 
   client.on('interactionCreate', async interaction => {
@@ -277,20 +332,22 @@ async function main() {
     }
   })
 
-  // ---- live data mirrors ----
+  // ---- live mirrors ----
   onNewResult(async result => {
     const channel = await findChannel('results')
-    if (!channel) return console.error('no #results channel found')
-    const embed = resultEmbed(
-      result,
-      { resolveName: resolveResultPlayerName, divisionForResult: getDivisionForResult }
-    )
-    try {
-      await channel.send({ embeds: [embed] })
-    } catch (e) {
-      console.error('failed to post result:', e.message)
+    if (channel) {
+      const embed = resultEmbed(
+        result,
+        { resolveName: resolveResultPlayerName, divisionForResult: getDivisionForResult }
+      )
+      try {
+        await channel.send({ embeds: [embed] })
+      } catch (e) {
+        console.error('failed to post result:', e.message)
+      }
     }
-    scheduleTableRefresh()
+    // Results cache is refreshed by the watcher; resync the channel snapshots shortly after.
+    scheduleSnapshots()
   })
 
   onNewNews(async news => {
@@ -304,7 +361,7 @@ async function main() {
     }
   })
 
-  onDataChanged(() => scheduleTableRefresh())
+  onDataChanged(() => scheduleSnapshots())
 
   await client.login(process.env.DISCORD_TOKEN)
 
