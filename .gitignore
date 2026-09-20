@@ -79,3 +79,6 @@ android/.gradle/
 *.aab
 .idea/
 .DS_Store
+
+status
+
