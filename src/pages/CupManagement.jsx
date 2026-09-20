@@ -5,7 +5,7 @@ import UserSearchSelect from '../components/UserSearchSelect'
 import { useToast } from '../context/ToastContext'
 
 function CupManagement() {
-  const { getAllUsers, getCups, getFixtures, getResults, advanceCupBracket, triggerDataRefresh, dataRefreshTrigger, notifyUser } = useAuth()
+  const { getAllUsers, getCups, getFixtures, getResults, advanceCupBracket, triggerDataRefresh, dataRefreshTrigger, notifyUser, searchUsers } = useAuth()
   const { showToast } = useToast()
   const [refreshKey, setRefreshKey] = useState(0)
   const [cups, setCups] = useState([])
@@ -1089,6 +1089,7 @@ function CupManagement() {
                 onSelect={(id) => setSetPlayerForm({...setPlayerForm, playerId: id})}
                 label=""
                 placeholder="Search for player..."
+                onQueryChange={searchUsers}
               />
             </div>
 
@@ -1137,6 +1138,7 @@ function CupManagement() {
                 onSelect={setPlayerToAdd}
                 label=""
                 placeholder="Search for new player..."
+                onQueryChange={searchUsers}
               />
             </div>
 

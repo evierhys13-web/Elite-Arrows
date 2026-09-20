@@ -9,7 +9,7 @@ import { ADMIN_EMAILS } from '../config'
 export default function CupBracket() {
   const { cupId } = useParams()
   const navigate = useNavigate()
-  const { user, getAllUsers, getCups, getFixtures, getResults, dataRefreshTrigger, triggerDataRefresh } = useAuth()
+  const { user, getAllUsers, getCups, getFixtures, getResults, dataRefreshTrigger, triggerDataRefresh, searchUsers } = useAuth()
   const { showToast } = useToast()
   const [cup, setCup] = useState(null)
   const [fixtures, setFixtures] = useState([])
@@ -1077,6 +1077,7 @@ export default function CupBracket() {
                 onSelect={setPlayerToSet}
                 label=""
                 placeholder="Search for player..."
+                onQueryChange={searchUsers}
               />
             </div>
 
@@ -1125,6 +1126,7 @@ export default function CupBracket() {
                 onSelect={setPlayerToAdd}
                 label=""
                 placeholder="Search for new player..."
+                onQueryChange={searchUsers}
               />
             </div>
 

@@ -4,7 +4,7 @@ import { db, collection, addDoc, getDocs, query, orderBy, doc, deleteDoc } from 
 import UserSearchSelect from '../components/UserSearchSelect'
 
 export default function Tournaments() {
-  const { user, getAllUsers } = useAuth()
+  const { user, getAllUsers, searchUsers } = useAuth()
   const [tournaments, setTournaments] = useState([])
   const [showAddForm, setShowAddForm] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -120,11 +120,11 @@ export default function Tournaments() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '20px' }}>
             <div className="form-group">
               <label>🏆 Overall Winner</label>
-              <UserSearchSelect users={allUsers} selectedId={form.winnerId} onSelect={id => setForm({...form, winnerId: id})} label="Select Winner" />
+              <UserSearchSelect users={allUsers} selectedId={form.winnerId} onSelect={id => setForm({...form, winnerId: id})} label="Select Winner" onQueryChange={searchUsers} />
             </div>
             <div className="form-group">
               <label>🥈 Runner-up</label>
-              <UserSearchSelect users={allUsers} selectedId={form.runnerUpId} onSelect={id => setForm({...form, runnerUpId: id})} label="Select Runner-up" />
+              <UserSearchSelect users={allUsers} selectedId={form.runnerUpId} onSelect={id => setForm({...form, runnerUpId: id})} label="Select Runner-up" onQueryChange={searchUsers} />
             </div>
           </div>
 
@@ -142,10 +142,10 @@ export default function Tournaments() {
                   borderRadius: '12px',
                   border: '1px solid rgba(255,255,255,0.05)'
                 }}>
-                  <UserSearchSelect users={allUsers} selectedId={game.p1} onSelect={id => updateGame(idx, 'p1', id)} label="P1" />
+                  <UserSearchSelect users={allUsers} selectedId={game.p1} onSelect={id => updateGame(idx, 'p1', id)} label="P1" onQueryChange={searchUsers} />
                   <div className="form-group" style={{ marginBottom: 0 }}><input type="number" placeholder="S1" value={game.s1} onChange={e => updateGame(idx, 's1', e.target.value)} /></div>
                   <div className="form-group" style={{ marginBottom: 0 }}><input type="number" placeholder="S2" value={game.s2} onChange={e => updateGame(idx, 's2', e.target.value)} /></div>
-                  <UserSearchSelect users={allUsers} selectedId={game.p2} onSelect={id => updateGame(idx, 'p2', id)} label="P2" />
+                  <UserSearchSelect users={allUsers} selectedId={game.p2} onSelect={id => updateGame(idx, 'p2', id)} label="P2" onQueryChange={searchUsers} />
                   <button className="btn btn-danger" style={{ padding: '8px', height: '42px', minWidth: '40px' }} onClick={() => handleRemoveGame(idx)}>×</button>
                 </div>
               ))}

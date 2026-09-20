@@ -8,7 +8,7 @@ import { useToast } from '../context/ToastContext'
 import { ADMIN_EMAILS } from '../config'
 
 export default function MatchLog() {
-  const { user, getAllUsers, getFixtures, getResults, getCups, adminData, getSeasons, triggerDataRefresh, updateFixtures } = useAuth()
+  const { user, getAllUsers, getFixtures, getResults, getCups, adminData, getSeasons, triggerDataRefresh, updateFixtures, searchUsers } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const { showToast } = useToast()
@@ -330,6 +330,7 @@ export default function MatchLog() {
           selectedId={targetPlayerId}
           onSelect={setTargetPlayerId}
           label="Select Player"
+          onQueryChange={searchUsers}
         />
       </div>
 

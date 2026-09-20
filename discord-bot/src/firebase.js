@@ -100,7 +100,25 @@ let resultsWatcher = null
 
 const toArray = (snap) => snap.docs.map(d => ({ id: d.id, ...d.data() }))
 
-const currentSeason = () => state.adminData?.currentSeason || DEFAULT_SEASON
+// Mirror the app: current season comes from adminData; when that isn't readable yet,
+// fall back to the latest non-archived season in the watched `seasons` collection.
+const currentSeason = () => {
+  if (state.adminData?.currentSeason) return state.adminData.currentSeason
+  if (Array.isArray(state.seasons) && state.seasons.length) {
+    const active = state.seasons.filter(s => !s.isArchived && s.name)
+    if (active.length) {
+      const latest = active.sort((a, b) =>
+        new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+      )[0]
+      return latest.name
+    }
+  }
+  return DEFAULT_SEASON
+}
+
+// Matches scoring.js: legacy seasons store results under ''/'2026'/'legacy'/etc.
+const isLegacySeason = (season) =>
+  ['season1', '2026', 'legacy'].includes(String(season || '').replace(/\s+/g, '').toLowerCase())
 
 // Whether a collection has a real (non-empty or sync-confirmed) value to render.
 export function isCollectionSynced(name) {
