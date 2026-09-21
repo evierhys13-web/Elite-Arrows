@@ -33,6 +33,11 @@ service firebase.storage {
       allow write: if signedIn();
     }
 
+    match /gears/{userId} {
+      allow read: if signedIn();
+      allow write: if signedIn();
+    }
+
     match /results/{fileName} {
       allow read: if signedIn();
       allow create: if signedIn();

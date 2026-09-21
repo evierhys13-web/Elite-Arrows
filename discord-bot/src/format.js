@@ -95,7 +95,6 @@ export function upcomingLeagueFixtures(fixtures, users, season) {
       if (f.cupId || f.tournamentId || f.matchId) return false
       const nonLeague = ['super league', 'champions league', 'cup', 'friendly', 'playoff', 'tournament']
       if (nonLeague.some(t => gt.includes(t))) return false
-      if (season && f.season && String(f.season) !== season) return false
       if (!f.fixtureDate || f.fixtureDate < today) return false
       return true
     })

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContextInternal'
-import { db, doc, getDoc, setDoc, query, collection, where, getDocs, writeBatch } from '../firebase'
+import { db, doc, getDoc, setDoc, query, collection, where, getDocs, writeBatch, limit } from '../firebase'
 import UserSearchSelect from '../components/UserSearchSelect'
 import { useToast } from '../context/ToastContext'
 import { ADMIN_EMAILS } from '../config'
@@ -30,6 +30,33 @@ export default function CupBracket() {
   const [playerToRemove, setPlayerToRemove] = useState('')
   const [playerToAdd, setPlayerToAdd] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [swapUserList, setSwapUserList] = useState([])
+
+  useEffect(() => {
+    if (!showSwapModal) return
+    let active = true
+    setSwapUserList([])
+    getDocs(query(collection(db, 'users'), limit(1000)))
+      .then((snap) => {
+        if (!active) return
+        setSwapUserList(snap.docs.map((d) => {
+          const data = d.data()
+          return {
+            id: d.id,
+            username: data.username,
+            nickname: data.nickname,
+            division: data.division,
+            superLeagueDivision: data.superLeagueDivision,
+            profilePicture: data.profilePicture,
+            threeDartAverage: data.threeDartAverage,
+          }
+        }))
+      })
+      .catch(() => {
+        if (active) setSwapUserList(allUsers)
+      })
+    return () => { active = false }
+  }, [showSwapModal])
 
   const allUsers = getAllUsers()
 
@@ -306,7 +333,8 @@ export default function CupBracket() {
 
       let replacementName = finalPlayerToAdd
       if (!isManualSwap) {
-        const newPlayer = allUsers.find(u => u.id === finalPlayerToAdd)
+        const swapUsers = swapUserList.length > 0 ? swapUserList : allUsers
+        const newPlayer = swapUsers.find(u => u.id === finalPlayerToAdd)
         if (!newPlayer) throw new Error('New player not found')
         replacementName = newPlayer.username
       }
@@ -1231,7 +1259,8 @@ export default function CupBracket() {
               >
                 <option value="">Select participant...</option>
                 {cup?.players?.map(pid => {
-                  const p = allUsers.find(u => u.id === pid)
+                  const swapUsers = swapUserList.length > 0 ? swapUserList : allUsers
+                  const p = swapUsers.find(u => u.id === pid)
                   return <option key={pid} value={pid}>{p?.username || pid}</option>
                 })}
               </select>
@@ -1267,12 +1296,11 @@ export default function CupBracket() {
                 />
               ) : (
                 <UserSearchSelect
-                  users={allUsers.filter(u => !(cup?.players || []).includes(u.id))}
+                  users={(swapUserList.length > 0 ? swapUserList : allUsers).filter(u => !(cup?.players || []).includes(u.id))}
                   selectedId={playerToAdd}
                   onSelect={setPlayerToAdd}
                   label=""
                   placeholder="Search for new player..."
-                  onQueryChange={searchUsers}
                 />
               )}
             </div>

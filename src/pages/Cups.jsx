@@ -34,6 +34,33 @@ export default function CupTournaments() {
   const [playerToAdd, setPlayerToAdd] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [activeTab, setActiveTab] = useState('active')
+  const [swapUserList, setSwapUserList] = useState([])
+
+  useEffect(() => {
+    if (!showSwapModal) return
+    let active = true
+    setSwapUserList([])
+    getDocs(query(collection(db, 'users'), limit(1000)))
+      .then((snap) => {
+        if (!active) return
+        setSwapUserList(snap.docs.map((d) => {
+          const data = d.data()
+          return {
+            id: d.id,
+            username: data.username,
+            nickname: data.nickname,
+            division: data.division,
+            superLeagueDivision: data.superLeagueDivision,
+            profilePicture: data.profilePicture,
+            threeDartAverage: data.threeDartAverage,
+          }
+        }))
+      })
+      .catch(() => {
+        if (active) setSwapUserList(allUsers)
+      })
+    return () => { active = false }
+  }, [showSwapModal])
 
   const toggleCup = (cupId) => {
     setExpandedCups(prev => ({
@@ -52,7 +79,8 @@ export default function CupTournaments() {
       if (!cupSnap.exists()) throw new Error('Cup not found')
 
       const cupData = cupSnap.data()
-      const newPlayer = allUsers.find(u => u.id === playerToAdd)
+      const swapUsers = swapUserList.length > 0 ? swapUserList : allUsers
+      const newPlayer = swapUsers.find(u => u.id === playerToAdd)
       if (!newPlayer) throw new Error('New player not found')
 
       // 1. Update participants list
@@ -1067,7 +1095,8 @@ export default function CupTournaments() {
               >
                 <option value="">Select participant...</option>
                 {swapCup?.players?.map(pid => {
-                  const p = allUsers.find(u => u.id === pid)
+                  const swapUsers = swapUserList.length > 0 ? swapUserList : allUsers
+                  const p = swapUsers.find(u => u.id === pid)
                   return <option key={pid} value={pid}>{p?.username || pid}</option>
                 })}
               </select>
@@ -1076,12 +1105,11 @@ export default function CupTournaments() {
             <div className="form-group">
               <label>Replacement Player</label>
               <UserSearchSelect
-                users={allUsers.filter(u => !(swapCup?.players || []).includes(u.id))}
+                users={(swapUserList.length > 0 ? swapUserList : allUsers).filter(u => !(swapCup?.players || []).includes(u.id))}
                 selectedId={playerToAdd}
                 onSelect={setPlayerToAdd}
                 label=""
                 placeholder="Search for new player..."
-                onQueryChange={searchUsers}
               />
             </div>
 

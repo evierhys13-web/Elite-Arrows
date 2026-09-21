@@ -2,13 +2,12 @@ import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContextInternal'
 import Tooltip from '../components/Tooltip'
-import { compressImage, compressImageToBlob } from '../components/ImageUtils'
+import { compressImage } from '../components/ImageUtils'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
 import { getResultPlayerId, isLeagueResult, isPlayoffResult } from '../utils/leagueResults'
 import HighlightReel from '../components/HighlightReel'
-import { storage, ref, uploadBytesResumable, getDownloadURL } from '../firebase'
 
 const AVAILABLE_BADGES = [
   { id: 'competitive', label: 'Competitive', icon: '🏆', color: '#FFD700' },
@@ -44,9 +43,7 @@ export default function Profile() {
   })
   
   const [profilePicture, setProfilePicture] = useState('')
-  const [profilePictureBlob, setProfilePictureBlob] = useState(null)
   const [gearPhoto, setGearPhoto] = useState('')
-  const [gearPhotoBlob, setGearPhotoBlob] = useState(null)
   const [saving, setSaving] = useState(false)
   const [tags, setTags] = useState([])
   const [newTag, setNewTag] = useState('')
@@ -150,10 +147,8 @@ export default function Profile() {
   const handlePictureChange = async (e) => {
     const file = e.target.files[0]
     if (file) {
-      const dataUrl = await compressImage(file, 300, 300, 0.8)
-      const blob = await compressImageToBlob(file, 300, 300, 0.8)
+      const dataUrl = await compressImage(file, 240, 240, 0.65)
       setProfilePicture(dataUrl)
-      setProfilePictureBlob(blob)
     }
   }
 
@@ -161,42 +156,13 @@ export default function Profile() {
     const file = e.target.files[0]
     if (file) {
       const dataUrl = await compressImage(file, 800, 600, 0.7)
-      const blob = await compressImageToBlob(file, 800, 600, 0.7)
       setGearPhoto(dataUrl)
-      setGearPhotoBlob(blob)
     }
   }
 
   const handleSave = async () => {
     setSaving(true)
     try {
-      let finalProfilePic = profilePicture
-      let finalGearPhoto = gearPhoto
-
-      // Upload Profile Picture if it's new (blob)
-      if (profilePictureBlob) {
-        const picRef = ref(storage, `profiles/${displayUser.id}_avatar.jpg`)
-        const uploadTask = uploadBytesResumable(picRef, profilePictureBlob)
-        await new Promise((resolve, reject) => {
-          uploadTask.on('state_changed', null, reject, async () => {
-            finalProfilePic = await getDownloadURL(uploadTask.snapshot.ref)
-            resolve()
-          })
-        })
-      }
-
-      // Upload Gear Photo if it's new (blob)
-      if (gearPhotoBlob) {
-        const gearRef = ref(storage, `gears/${displayUser.id}_setup.jpg`)
-        const uploadTask = uploadBytesResumable(gearRef, gearPhotoBlob)
-        await new Promise((resolve, reject) => {
-          uploadTask.on('state_changed', null, reject, async () => {
-            finalGearPhoto = await getDownloadURL(uploadTask.snapshot.ref)
-            resolve()
-          })
-        })
-      }
-
       const updates = {
         username: formData.username?.trim(),
         nickname: formData.nickname?.trim(),
@@ -206,8 +172,8 @@ export default function Profile() {
         walkOnSong: formData.walkOnSong?.trim(),
         threeDartAverage: parseFloat(formData.threeDartAverage) || 0,
         averageLastUpdated: new Date().toISOString(),
-        profilePicture: finalProfilePic,
-        gearPhoto: finalGearPhoto,
+        profilePicture: profilePicture,
+        gearPhoto: gearPhoto,
         tags,
         badges: selectedBadges
       }

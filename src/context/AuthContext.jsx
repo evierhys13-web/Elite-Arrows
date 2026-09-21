@@ -68,6 +68,41 @@ const SEASON_ONE_WELCOME_START = new Date(
   "2026-05-01T00:00:00+01:00",
 ).getTime();
 
+// Quota-friendly read cache: Firestore free tier allows ~50k reads/day across the
+// whole project, so repeat navigation should reuse freshly-loaded data instead of
+// re-reading the same docs. Writes (triggerDataRefresh) bypass it temporarily so
+// your own changes show immediately.
+const NETWORK_FORCE_GLOBAL = { until: 0 };
+const forceNetworkFor = (ms = 15000) => {
+  NETWORK_FORCE_GLOBAL.until = Date.now() + ms;
+};
+const readTtlCache = (key) => {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed.ts !== "number") return null;
+    return parsed;
+  } catch (e) {
+    return null;
+  }
+};
+const writeTtlCache = (key, payload) => {
+  try {
+    localStorage.setItem(key, JSON.stringify({ ts: Date.now(), ...payload }));
+  } catch (e) {}
+};
+const ttlCacheValid = (parsed, ttlMs) =>
+  Boolean(parsed) &&
+  typeof parsed.ts === "number" &&
+  Date.now() - parsed.ts < ttlMs &&
+  Date.now() >= NETWORK_FORCE_GLOBAL.until;
+
+const TTL_RESULTS = 90000;
+const TTL_FIXTURES = 90000;
+const TTL_USERS = 300000;
+const TTL_CUPS = 300000;
+
 export const DEFAULT_WHATSAPP_LINK =
   "https://chat.whatsapp.com/DcKb9AfesVBGjcFVwErEor?s=cl&p=a&mlu=4&ilr=4";
 
@@ -494,6 +529,7 @@ export function AuthProvider({ children }) {
   );
 
   const triggerDataRefresh = useCallback((dataType = "all") => {
+    forceNetworkFor();
     setDataRefreshTrigger((prev) => prev + 1);
     if (dataType === "all" || dataType === "cups") {
       setCupsRefreshTrigger((prev) => prev + 1);
@@ -504,6 +540,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const triggerCupsRefresh = useCallback(() => {
+    forceNetworkFor();
     setCupsRefreshTrigger((prev) => prev + 1);
   }, []);
 
@@ -1055,11 +1092,20 @@ export function AuthProvider({ children }) {
     let cancelled = false;
     const fetchCups = async () => {
       try {
+        const cachedBlob = readTtlCache("eliteArrowsCups_v1");
+        if (ttlCacheValid(cachedBlob, TTL_CUPS) && Array.isArray(cachedBlob.cups)) {
+          if (!cancelled) {
+            setCups(cachedBlob.cups);
+            localStorage.setItem("eliteArrowsCups", JSON.stringify(cachedBlob.cups));
+          }
+          return;
+        }
         const snap = await getDocs(collection(db, "cups"));
         if (cancelled) return;
         const cupsData = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
         setCups(cupsData);
         localStorage.setItem("eliteArrowsCups", JSON.stringify(cupsData));
+        writeTtlCache("eliteArrowsCups_v1", { cups: cupsData });
       } catch (e) {}
     };
     fetchCups();
@@ -1072,8 +1118,16 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (!user?.id) return;
     let cancelled = false;
-    const fetchUsers = async () => {
+const fetchUsers = async () => {
       try {
+        const cachedBlob = readTtlCache("eliteArrowsUsers_v1");
+        if (ttlCacheValid(cachedBlob, TTL_USERS) && Array.isArray(cachedBlob.users) && cachedBlob.users.length > 0) {
+          if (!cancelled) {
+            setAllUsers(cachedBlob.users);
+            saveUsersCache(cachedBlob.users);
+          }
+          return;
+        }
         const snap = await getDocs(collection(db, "users"));
         if (cancelled) return;
         const usersData = snap.docs.map((d) => {
@@ -1083,6 +1137,7 @@ export function AuthProvider({ children }) {
         });
         setAllUsers(usersData);
         saveUsersCache(usersData);
+        writeTtlCache("eliteArrowsUsers_v1", { users: usersData });
       } catch (e) {}
     };
     fetchUsers();
@@ -1237,7 +1292,7 @@ export function AuthProvider({ children }) {
     };
 
     checkAutoLaunch();
-    const timer = setInterval(checkAutoLaunch, 60000); // Check every minute
+    const timer = setInterval(checkAutoLaunch, 600000); // Check every 10 minutes (read quota friendly)
     return () => clearInterval(timer);
   }, [user?.isAdmin, seasons, adminData.currentSeason, allUsers]);
 
@@ -1795,6 +1850,22 @@ export function AuthProvider({ children }) {
     async (seasonName) => {
       const stopTrace = startTrace('fetch_results_by_season');
       try {
+        const cacheKey = "eliteArrowsResultsBySeason_v1";
+        const cachedBlob = readTtlCache(cacheKey);
+        const cached =
+          cachedBlob?.seasons && cachedBlob.seasons[seasonName]
+            ? cachedBlob.seasons[seasonName]
+            : null;
+        if (ttlCacheValid(cachedBlob, TTL_RESULTS) && Array.isArray(cached)) {
+          if (cached.length > 0) {
+            updateResults(cached, { season: seasonName, status: "approved" });
+          } else {
+            updateResults(cached);
+          }
+          stopTrace({ season: seasonName, result_count: String(cached.length), cached: 'true' });
+          return cached;
+        }
+
         // For Season 1, we fetch more broadly to catch legacy results that might not have the 'season' field set
         const q =
           seasonName === "Season 1"
@@ -1818,6 +1889,15 @@ export function AuthProvider({ children }) {
           };
         });
 
+        const nextBlob = {
+          ...(readTtlCache(cacheKey) || {}),
+          seasons: {
+            ...((readTtlCache(cacheKey) || {}).seasons || {}),
+            [seasonName]: seasonResults.map(stripResultProofForCache),
+          },
+        };
+        writeTtlCache(cacheKey, nextBlob);
+
       // Only run the purge if we actually got results back. An empty response likely
       // means a data/index issue — purging on empty would wipe everything from memory.
       if (seasonResults.length > 0) {
@@ -1837,6 +1917,20 @@ export function AuthProvider({ children }) {
 
   const fetchFixturesBySeason = useCallback(async (seasonName) => {
     try {
+      const cachedBlob = readTtlCache("eliteArrowsFixtures_v1");
+      if (ttlCacheValid(cachedBlob, TTL_FIXTURES) && Array.isArray(cachedBlob.fixtures)) {
+        const cached = cachedBlob.fixtures;
+        setFixtures((prev) => {
+          const merged = [...prev];
+          cached.forEach((item) => {
+            const idx = merged.findIndex((f) => f.id === item.id);
+            if (idx !== -1) merged[idx] = item;
+            else merged.push(item);
+          });
+          return merged;
+        });
+        return cached;
+      }
       // For now, season logic in fixtures might be via division or cupId
       // If there's no season field in fixtures, we might just fetch all recent public ones
       const q = query(
@@ -1848,6 +1942,8 @@ export function AuthProvider({ children }) {
       const data = snapshot.docs
         .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
         .filter((item) => !item._deleted);
+
+      writeTtlCache("eliteArrowsFixtures_v1", { fixtures: data });
 
       setFixtures((prev) => {
         const merged = [...prev];

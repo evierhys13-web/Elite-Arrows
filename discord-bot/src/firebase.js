@@ -218,10 +218,15 @@ export async function refreshResultsCache() {
   const db = firestore
   const season = currentSeason()
   try {
-    const snap = await db.collection('results')
-      .where('season', '==', season)
-      .select(...RESULT_SELECT)
-      .get()
+    // Mirror the app: legacy seasons (Season 1 / 2026 / legacy) store results without a
+    // reliable season label, so fetch all approved; otherwise filter by season.
+    const base =
+      isLegacySeason(season)
+        ? db.collection('results').where('status', '==', 'approved')
+        : db.collection('results')
+            .where('season', '==', season)
+            .where('status', '==', 'approved')
+    const snap = await base.select(...RESULT_SELECT).get()
     const docs = toArray(snap)
     docs.forEach(stripProof)
     state.results = docs
