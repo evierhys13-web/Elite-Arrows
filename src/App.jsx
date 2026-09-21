@@ -5,12 +5,15 @@ import { useAuth } from './context/AuthContextInternal'
 import { ThemeProvider, useTheme } from './context/ThemeContext'
 import { ToastProvider } from './context/ToastContext'
 import { BackgroundProvider } from './context/BackgroundContext'
+import { SponsorshipProvider } from './context/SponsorshipContext'
 import Sidebar from './components/Sidebar'
 import BottomNav from './components/BottomNav'
 import InstallPrompt from './components/InstallPrompt'
 import DataRefreshToast from './components/DataRefreshToast'
 import BackgroundDecor from './components/BackgroundDecor'
 import NotificationPermissionPrompt from './components/NotificationPermissionPrompt'
+import CookieConsentBanner from './components/CookieConsentBanner'
+import { logPageView } from './utils/analytics'
 import OnboardingTour, { useOnboarding } from './components/OnboardingTour'
 import WhatsNewPopup, { useWhatsNew } from './components/WhatsNewPopup'
 import ProgressTrackerPopup from './components/ProgressTrackerPopup'
@@ -69,6 +72,7 @@ const TrainingCourse = lazy(() => import('./pages/TrainingCourse'))
 const TrainingLesson = lazy(() => import('./pages/TrainingLesson'))
 const TrainingDrills = lazy(() => import('./pages/TrainingDrills'))
 const TrainingTips = lazy(() => import('./pages/TrainingTips'))
+const LeaguePage = lazy(() => import('./pages/LeaguePage'))
 
 function PageLoader() {
   const [showRefresh, setShowRefresh] = useState(false)
@@ -470,6 +474,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/auth" element={<Suspense fallback={<PageLoader />}><Auth /></Suspense>} />
+      <Route path="/league/:leagueId" element={<Suspense fallback={<PageLoader />}><LeaguePage /></Suspense>} />
       <Route path="/welcome" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><Welcome /></Suspense></ProtectedRoute>} />
       <Route path="/home" element={<ProtectedRoute><AppLayout><Home /></AppLayout></ProtectedRoute>} />
       <Route path="/subscription" element={<ProtectedRoute><AppLayout><Subscription /></AppLayout></ProtectedRoute>} />
@@ -529,16 +534,22 @@ function AppRoutes() {
 function AppShell() {
   const { user } = useAuth()
   const { navMode } = useTheme()
+  const location = useLocation()
 
   useEffect(() => {
     document.body.classList.remove('nav-mode-bottom', 'nav-mode-sidebar')
     document.body.classList.add(`nav-mode-${navMode}`)
   }, [navMode])
 
+  useEffect(() => {
+    logPageView(location.pathname)
+  }, [location.pathname])
+
   return (
     <>
       <BackgroundDecor division={user?.division} />
       <AppRoutes />
+      <CookieConsentBanner />
     </>
   )
 }
@@ -551,7 +562,9 @@ export default function App() {
           <AuthProvider>
             <BrowserRouter>
               <BackgroundProvider>
-                <AppShell />
+                <SponsorshipProvider>
+                  <AppShell />
+                </SponsorshipProvider>
               </BackgroundProvider>
             </BrowserRouter>
           </AuthProvider>

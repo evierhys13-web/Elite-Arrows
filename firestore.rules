@@ -241,5 +241,21 @@ service cloud.firestore {
       allow read: if signedIn();
       allow write: if isAdmin();
     }
+
+    // Public league pages - sponsor config, images and precomputed standings digest.
+    // These collections are curated (admin-written or app-written digest) and contain
+    // no private user data, so they are readable without authentication.
+    match /sponsoredLeagues/{leagueId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /leaguePageAssets/{leagueId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /leaguePagesDigest/{leagueId} {
+      allow read: if true;
+      allow write: if signedIn();
+    }
   }
 }

@@ -2,7 +2,7 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContextInternal";
 import { derivePlayerStatsFromResults } from "../utils/playerStats";
-import { getResultPlayerId } from "../utils/leagueResults";
+import { getPlayersWithEffectiveDivisions, getDivisionFilteredResults } from "../utils/leagueStandings";
 import Breadcrumbs from "../components/Breadcrumbs";
 import { useToast } from "../context/ToastContext";
 import { db, doc, setDoc } from "../firebase";
@@ -102,38 +102,15 @@ export default function Table() {
     [seasons, selectedSeason],
   );
 
-  const usersWithCorrectDivisions = useMemo(() => {
-    const staged = activeSeasonDoc?.stagedDivisions || {};
-    const isLive = selectedSeason === (adminData?.currentSeason || "Season 1");
+  const usersWithCorrectDivisions = useMemo(
+    () => getPlayersWithEffectiveDivisions(allUsers, activeSeasonDoc, selectedSeason, adminData),
+    [allUsers, activeSeasonDoc, selectedSeason, adminData],
+  );
 
-    return allUsers.map((u) => {
-      const uid = String(u.id);
-      const effectiveDiv =
-        staged[uid] || staged[u.id] || (isLive ? u.division : "Unassigned");
-
-      return {
-        ...u,
-        division: effectiveDiv || "Unassigned",
-      };
-    });
-  }, [allUsers, activeSeasonDoc, selectedSeason, adminData?.currentSeason]);
-
-  const divisionFilteredResults = useMemo(() => {
-    const divMap = {}
-    usersWithCorrectDivisions.forEach(u => {
-      divMap[String(u.id)] = u.division
-    })
-
-    return results.filter(r => {
-      const p1Id = getResultPlayerId(r, 1, usersWithCorrectDivisions)
-      const p2Id = getResultPlayerId(r, 2, usersWithCorrectDivisions)
-      if (!p1Id || !p2Id) return false
-      const d1 = divMap[p1Id]
-      const d2 = divMap[p2Id]
-      if (!d1 || !d2 || d1 === 'Unassigned' || d2 === 'Unassigned' || d1 === 'Admin' || d2 === 'Admin') return false
-      return d1 === d2
-    })
-  }, [results, usersWithCorrectDivisions])
+  const divisionFilteredResults = useMemo(
+    () => getDivisionFilteredResults(results, usersWithCorrectDivisions),
+    [results, usersWithCorrectDivisions],
+  );
 
   const playerStats = useMemo(() => {
     return derivePlayerStatsFromResults(usersWithCorrectDivisions, divisionFilteredResults, {

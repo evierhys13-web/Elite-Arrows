@@ -6,6 +6,9 @@ import { db, doc, setDoc, getDoc, getDocs, collection, deleteDoc, updateDoc, wri
 import { ADMIN_EMAILS } from '../config'
 import { SUPPORTED_PAGES, PAGE_BACKGROUND_GROUPS } from '../config/pageBackgrounds'
 import { usePageBackgrounds } from '../context/BackgroundContext'
+import { useSponsorship } from '../context/SponsorshipContext'
+import SponsorshipLeagueEditor from '../components/SponsorshipLeagueEditor'
+import { LEAGUE_DIVISION_KEYS } from '../utils/leagueStandings'
 import UserSearchSelect from '../components/UserSearchSelect'
 import { useToast } from '../context/ToastContext'
 import { logMatchApproved } from '../utils/analytics'
@@ -47,6 +50,7 @@ export default function Admin() {
   const navigate = useNavigate()
   const { showToast } = useToast()
   const { backgrounds, saveBackground, removeBackground } = usePageBackgrounds()
+  const { configs: sponsorConfigs, assets: sponsorAssets, loading: sponsorshipLoading, saveConfig: saveSponsorConfig, saveAssets: saveSponsorAssets, removeAssetFields: removeSponsorAssets } = useSponsorship()
   const [bgSearch, setBgSearch] = useState('')
   const [bgUploading, setBgUploading] = useState(null)
   const [bgPhase, setBgPhase] = useState({})
@@ -1621,6 +1625,7 @@ export default function Admin() {
     { id: 'surveys', label: 'Surveys' },
     { id: 'welcome', label: 'Welcome ✍️' },
     { id: 'backgrounds', label: '🎨 Page Backgrounds' },
+    { id: 'sponsored', label: '🤝 Sponsored Leagues' },
     { id: 'highlights', label: 'Home Highlights' },
     { id: 'trophies', label: 'Trophies' },
     { id: 'halloffame', label: 'Hall of Fame' },
@@ -2810,6 +2815,31 @@ export default function Admin() {
                 </div>
               )
             })}
+          </div>
+        )}
+
+        {activeTab === 'sponsored' && (
+          <div className="animate-fade-in">
+            {sponsorshipLoading ? (
+              <div className="card glass" style={{ padding: '32px' }}>
+                <p style={{ color: 'var(--text-muted)' }}>Loading sponsorship config…</p>
+              </div>
+            ) : (
+              LEAGUE_DIVISION_KEYS.map((key) => (
+                <SponsorshipLeagueEditor
+                  key={key}
+                  leagueId={key}
+                  config={sponsorConfigs[key] || {}}
+                  assets={sponsorAssets[key] || {}}
+                  allUsers={getAllUsers()}
+                  seasons={getSeasons()}
+                  saveConfig={saveSponsorConfig}
+                  saveAssets={saveSponsorAssets}
+                  removeAssetFields={removeSponsorAssets}
+                  showToast={showToast}
+                />
+              ))
+            )}
           </div>
         )}
 

@@ -54,6 +54,15 @@ export default function PrivacyPolicy() {
             Data is stored securely through Firebase with industry-standard encryption.
           </p>
 
+          <h3 style={{ color: 'var(--accent-cyan)', marginBottom: '10px', marginTop: '25px' }}>5b. Cookies & Analytics</h3>
+          <p style={{ marginBottom: '15px' }}>
+            Our site uses Google Analytics to understand how the site is used (for example, how much traffic each
+            league page receives) so we can improve it. Analytics storage cookies are only used after you give consent
+            via the cookie banner — switching the choices to <strong>"Decline"</strong> or rejecting the banner means no
+            analytics data is collected on your device. You can read more about how Google processes this data at
+            Google's privacy policy.
+          </p>
+
           <h3 style={{ color: 'var(--accent-cyan)', marginBottom: '10px', marginTop: '25px' }}>6. Your Rights (GDPR)</h3>
           <p style={{ marginBottom: '15px' }}>
             Under the General Data Protection Regulation (GDPR), you have the right to:

@@ -51,6 +51,7 @@ import {
   getResultOverrideKeys,
 } from "../utils/resultIdentity";
 import { logSubscriptionActivated, logUserLogin, startTrace } from "../utils/analytics";
+import { scheduleLeagueDigestWrite } from "../utils/leaguePageDigest";
 import { useToast } from "./ToastContext";
 
 import { DIVISIONS, EMPTY_ARRAY } from "./constants";
@@ -2870,6 +2871,11 @@ const fetchUsers = async () => {
     addToMoneyHistory,
     completeOnboarding
   ]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    scheduleLeagueDigestWrite({ allUsers, results, fixtures, adminData, seasons });
+  }, [user?.id, allUsers, results, fixtures, adminData, seasons]);
 
   return (
     <AuthContext.Provider value={contextValue}>

@@ -223,6 +223,24 @@ export default function Home() {
         </div>
       </div>
 
+      {/* 1b. Sponsored league pages */}
+      <div className="card animate-fade-in-up" style={{ marginBottom: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <h2 style={{ margin: 0, color: 'var(--accent-cyan)', fontSize: '1.1rem' }}>🤝 Sponsored Leagues</h2>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Public pages · share with sponsors</span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
+          {['elite', 'emerald', 'diamond', 'platinum'].map((key) => (
+            <Link key={key} to={`/league/${key}`} style={{ textDecoration: 'none' }}>
+              <div className="glass" style={{ padding: '16px 10px', textAlign: 'center', borderRadius: '14px', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', transition: 'transform 0.2s ease', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
+                <span style={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', color: key === 'elite' ? '#fbbf24' : key === 'emerald' ? '#10b981' : key === 'diamond' ? '#38bdf8' : '#818cf8' }}>{key}</span>
+                <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>League page ➔</span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+
       {/* 2. Season Ends (Timer) */}
       <div className={`card animate-fade-in-up`} style={{ marginBottom: '20px', border: '2px solid var(--accent-cyan)' }}>
         <div style={{ textAlign: 'center' }}>

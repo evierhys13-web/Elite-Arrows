@@ -2,7 +2,7 @@ import { initializeApp } from 'firebase/app'
 import { getFirestore, collection, doc, setDoc, getDoc, getDocFromServer, getDocs, getDocsFromServer, query, where, orderBy, onSnapshot, deleteDoc, addDoc, updateDoc, writeBatch, runTransaction, limit, arrayUnion, serverTimestamp, increment, deleteField as deleteFieldFirestore } from 'firebase/firestore'
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, sendPasswordResetEmail } from 'firebase/auth'
 import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging'
-import { getAnalytics, logEvent } from 'firebase/analytics'
+import { getAnalytics, logEvent, setConsent } from 'firebase/analytics'
 import { getPerformance, trace } from 'firebase/performance'
 import { getStorage, ref, uploadString, uploadBytes, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
 
@@ -24,16 +24,29 @@ export const auth = getAuth(app)
 export const storage = getStorage(app)
 
 // Analytics and Performance require a linked Google Analytics property (measurementId).
-// Wrap in try/catch so a missing property doesn't crash the whole firebase module.
+// They are only initialised AFTER the user grants cookie/analytics consent (see
+// utils/analytics.js + CookieConsentBanner) so nothing is sent before consent.
 export let analytics = null
 export let perf = null
-if (typeof window !== 'undefined') {
-  try { analytics = getAnalytics(app) } catch (e) {
+
+export const initAnalytics = () => {
+  if (analytics || typeof window === 'undefined') return analytics
+  try {
+    analytics = getAnalytics(app)
+  } catch (e) {
     console.warn('Firebase Analytics not available:', e.message)
   }
-  try { perf = getPerformance(app) } catch (e) {
+  return analytics
+}
+
+export const initPerformance = () => {
+  if (perf || typeof window === 'undefined') return perf
+  try {
+    perf = getPerformance(app)
+  } catch (e) {
     console.warn('Firebase Performance not available:', e.message)
   }
+  return perf
 }
 export { trace }
 
@@ -72,6 +85,6 @@ export {
   setPersistence, browserSessionPersistence, browserLocalPersistence,
   sendPasswordResetEmail,
   getMessaging, getToken, onMessage, isSupported,
-  logEvent,
+  logEvent, setConsent,
   ref, uploadString, uploadBytes, uploadBytesResumable, getDownloadURL
 }
