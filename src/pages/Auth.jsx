@@ -22,7 +22,7 @@ export default function Auth() {
   const [resetSent, setResetSent] = useState(false)
   const [resetLoading, setResetLoading] = useState(false)
 
-  const { signUp, signIn, isAuthenticated, loading: authLoading, getAllUsers, adminData } = useAuth()
+  const { signUp, signIn, isAuthenticated, loading: authLoading, getAllUsers, adminData, loginAsGuest } = useAuth()
   const navigate = useNavigate()
 
   const registrationsEnabled = adminData?.registrationsEnabled !== false
@@ -307,6 +307,27 @@ export default function Auth() {
                     isSignUp ? 'Create Account' : 'Sign In'
                   )}
                 </button>
+
+                {!isSignUp && (
+                  <div style={{ marginTop: '20px', textAlign: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '16px 0', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                      <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.1)' }}></div>
+                      <span>OR</span>
+                      <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.1)' }}></div>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-block"
+                      onClick={() => {
+                        loginAsGuest();
+                        navigate('/home');
+                      }}
+                      style={{ height: '48px', fontSize: '0.9rem', borderColor: 'var(--accent-cyan)', borderWidth: '1px', borderStyle: 'solid', background: 'rgba(0,212,255,0.03)' }}
+                    >
+                      🎯 Explore as a Guest / Preview League
+                    </button>
+                  </div>
+                )}
               </>
             )}
           </form>

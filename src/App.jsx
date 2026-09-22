@@ -134,7 +134,7 @@ function ProtectedRoute({ children }) {
     return <Navigate to="/auth" replace />
   }
 
-  const needsOnboarding = isOnboardingPending(user)
+  const needsOnboarding = user?.isGuest ? false : isOnboardingPending(user)
   const isOnWelcome = location.pathname === '/welcome'
 
   if (needsOnboarding && !isOnWelcome) {
@@ -143,6 +143,63 @@ function ProtectedRoute({ children }) {
 
   if (!needsOnboarding && isOnWelcome) {
     return <Navigate to="/home" replace />
+  }
+
+  return children
+}
+
+function MemberOnlyRoute({ children }) {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+
+  if (user?.isGuest) {
+    return (
+      <div
+        style={{
+          padding: '40px',
+          textAlign: 'center',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '60vh'
+        }}
+      >
+        <div
+          style={{
+            background: 'var(--bg-secondary)',
+            padding: '40px 32px',
+            borderRadius: '16px',
+            maxWidth: '440px',
+            border: '1px solid rgba(0, 212, 255, 0.15)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.4)'
+          }}
+        >
+          <div style={{ fontSize: '3.5rem', marginBottom: '16px' }}>🔒</div>
+          <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '12px', fontWeight: 800 }}>Account Required</h2>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '28px', lineHeight: '1.6' }}>
+            This feature is reserved for league members. Create an account or sign in to track stats, log matches, chat with players, and compete in the league!
+          </p>
+          <button
+            className="btn btn-primary btn-block"
+            onClick={() => {
+              localStorage.removeItem("eliteArrowsIsGuestSession");
+              window.location.href = '/auth';
+            }}
+            style={{ marginBottom: '12px', height: '48px', fontSize: '0.95rem', fontWeight: 700 }}
+          >
+            Create Account / Sign In
+          </button>
+          <button
+            className="btn btn-secondary btn-block"
+            onClick={() => navigate('/home')}
+            style={{ height: '48px', fontSize: '0.95rem' }}
+          >
+            Continue Exploring
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return children
@@ -483,11 +540,11 @@ function AppRoutes() {
       <Route path="/match-log" element={<ProtectedRoute><AppLayout><MatchLog /></AppLayout></ProtectedRoute>} />
       <Route path="/results" element={<ProtectedRoute><AppLayout><Results /></AppLayout></ProtectedRoute>} />
       <Route path="/players" element={<ProtectedRoute><AppLayout><Players /></AppLayout></ProtectedRoute>} />
-      <Route path="/submit-result" element={<ProtectedRoute><AppLayout><SubmitResult /></AppLayout></ProtectedRoute>} />
-      <Route path="/chat" element={<ProtectedRoute><AppLayout><Chat /></AppLayout></ProtectedRoute>} />
-      <Route path="/profile" element={<ProtectedRoute><AppLayout><Profile /></AppLayout></ProtectedRoute>} />
-      <Route path="/profile/:id" element={<ProtectedRoute><AppLayout><Profile /></AppLayout></ProtectedRoute>} />
-      <Route path="/settings" element={<ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>} />
+      <Route path="/submit-result" element={<ProtectedRoute><MemberOnlyRoute><AppLayout><SubmitResult /></AppLayout></MemberOnlyRoute></ProtectedRoute>} />
+      <Route path="/chat" element={<ProtectedRoute><MemberOnlyRoute><AppLayout><Chat /></AppLayout></MemberOnlyRoute></ProtectedRoute>} />
+      <Route path="/profile" element={<ProtectedRoute><MemberOnlyRoute><AppLayout><Profile /></AppLayout></MemberOnlyRoute></ProtectedRoute>} />
+      <Route path="/profile/:id" element={<ProtectedRoute><MemberOnlyRoute><AppLayout><Profile /></AppLayout></MemberOnlyRoute></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute><MemberOnlyRoute><AppLayout><Settings /></AppLayout></MemberOnlyRoute></ProtectedRoute>} />
       <Route path="/contact" element={<ProtectedRoute><AppLayout><Contact /></AppLayout></ProtectedRoute>} />
       <Route path="/support" element={<ProtectedRoute><AppLayout><Support /></AppLayout></ProtectedRoute>} />
       <Route path="/tournaments" element={<ProtectedRoute><AppLayout><Tournaments /></AppLayout></ProtectedRoute>} />
@@ -508,15 +565,15 @@ function AppRoutes() {
       <Route path="/analytics" element={<ProtectedRoute><AppLayout><Statistics /></AppLayout></ProtectedRoute>} />
       <Route path="/statistics" element={<ProtectedRoute><AppLayout><Statistics /></AppLayout></ProtectedRoute>} />
       <Route path="/statistics/:id" element={<ProtectedRoute><AppLayout><Statistics /></AppLayout></ProtectedRoute>} />
-      <Route path="/notifications" element={<ProtectedRoute><AppLayout><Notifications /></AppLayout></ProtectedRoute>} />
+      <Route path="/notifications" element={<ProtectedRoute><MemberOnlyRoute><AppLayout><Notifications /></AppLayout></MemberOnlyRoute></ProtectedRoute>} />
       <Route path="/live-match" element={<SubscribedRoute><AppLayout><LiveMatch /></AppLayout></SubscribedRoute>} />
       <Route path="/play-online" element={<SubscribedRoute><AppLayout><PlayOnline /></AppLayout></SubscribedRoute>} />
-      <Route path="/practice" element={<ProtectedRoute><AppLayout><PracticeHub /></AppLayout></ProtectedRoute>} />
-      <Route path="/progress-tracker" element={<ProtectedRoute><AppLayout><ProgressTracker /></AppLayout></ProtectedRoute>} />
-      <Route path="/practice/:modeId" element={<ProtectedRoute><AppLayout><PracticeGame /></AppLayout></ProtectedRoute>} />
-      <Route path="/challenges" element={<ProtectedRoute><AppLayout><Challenges /></AppLayout></ProtectedRoute>} />
-      <Route path="/daily-challenges" element={<ProtectedRoute><AppLayout><DailyChallenges /></AppLayout></ProtectedRoute>} />
-      <Route path="/giveaways" element={<ProtectedRoute><AppLayout><Giveaways /></AppLayout></ProtectedRoute>} />
+      <Route path="/practice" element={<ProtectedRoute><MemberOnlyRoute><AppLayout><PracticeHub /></AppLayout></MemberOnlyRoute></ProtectedRoute>} />
+      <Route path="/progress-tracker" element={<ProtectedRoute><MemberOnlyRoute><AppLayout><PracticeHub /></AppLayout></MemberOnlyRoute></ProtectedRoute>} />
+      <Route path="/practice/:modeId" element={<ProtectedRoute><MemberOnlyRoute><AppLayout><PracticeGame /></AppLayout></MemberOnlyRoute></ProtectedRoute>} />
+      <Route path="/challenges" element={<ProtectedRoute><MemberOnlyRoute><AppLayout><Challenges /></AppLayout></MemberOnlyRoute></ProtectedRoute>} />
+      <Route path="/daily-challenges" element={<ProtectedRoute><MemberOnlyRoute><AppLayout><DailyChallenges /></AppLayout></MemberOnlyRoute></ProtectedRoute>} />
+      <Route path="/giveaways" element={<ProtectedRoute><MemberOnlyRoute><AppLayout><Giveaways /></AppLayout></MemberOnlyRoute></ProtectedRoute>} />
       <Route path="/training" element={<ProtectedRoute><AppLayout><TrainingHub /></AppLayout></ProtectedRoute>} />
       <Route path="/training/course/:courseId" element={<TrainingRoute><AppLayout><TrainingCourse /></AppLayout></TrainingRoute>} />
       <Route path="/training/lesson/:lessonId" element={<TrainingRoute><AppLayout><TrainingLesson /></AppLayout></TrainingRoute>} />

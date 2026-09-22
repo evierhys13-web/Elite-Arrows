@@ -204,7 +204,7 @@ export default function Sidebar() {
 
           <button className="nav-item nav-item-signout" onClick={handleSignOut} style={{ marginTop: 'auto' }}>
             <LogOutIcon />
-            <span>Sign Out</span>
+            <span>{user?.isGuest ? 'Exit Preview / Sign In' : 'Sign Out'}</span>
           </button>
         </nav>
       </aside>

@@ -208,6 +208,10 @@ export function AuthProvider({ children }) {
   // Initialize state from local cache to prevent data flickering on refresh
   const [user, setUser] = useState(() => {
     try {
+      const isGuest = localStorage.getItem("eliteArrowsIsGuestSession") === "true";
+      if (isGuest) {
+        return { id: "guest_player", username: "Guest Player", isGuest: true, division: "Unassigned", isSubscribed: false, isAdmin: false };
+      }
       const saved = localStorage.getItem("eliteArrowsCurrentUser");
       return saved && saved !== "undefined" ? JSON.parse(saved) : null;
     } catch (e) {
@@ -1345,8 +1349,13 @@ const fetchUsers = async () => {
           if (stored) setUser(JSON.parse(stored));
         }
       } else {
-        setUser(null);
-        localStorage.removeItem("eliteArrowsCurrentUser");
+        const isGuest = localStorage.getItem("eliteArrowsIsGuestSession") === "true";
+        if (isGuest) {
+          setUser({ id: "guest_player", username: "Guest Player", isGuest: true, division: "Unassigned", isSubscribed: false, isAdmin: false });
+        } else {
+          setUser(null);
+          localStorage.removeItem("eliteArrowsCurrentUser");
+        }
       }
       setLoading(false);
     });
@@ -1430,7 +1439,8 @@ const fetchUsers = async () => {
   }, []);
 
   const handleSignOut = useCallback(async () => {
-    if (user) {
+    localStorage.removeItem("eliteArrowsIsGuestSession");
+    if (user && !user.isGuest) {
       try {
         await setDoc(
           doc(db, "users", user.id),
@@ -1442,6 +1452,13 @@ const fetchUsers = async () => {
     await firebaseSignOut(auth);
     setUser(null);
   }, [user]);
+
+  const loginAsGuest = useCallback(() => {
+    localStorage.setItem("eliteArrowsIsGuestSession", "true");
+    const guestUser = { id: "guest_player", username: "Guest Player", isGuest: true, division: "Unassigned", isSubscribed: false, isAdmin: false };
+    setUser(guestUser);
+    localStorage.setItem("eliteArrowsCurrentUser", JSON.stringify(guestUser));
+  }, []);
 
   const updateUser = useCallback(async (updates, showAlert = true) => {
     if (!user?.id) return;
@@ -2766,6 +2783,7 @@ const fetchUsers = async () => {
     signUp,
     signIn,
     signOut: handleSignOut,
+    loginAsGuest,
     updateUser,
     updateOtherUser,
     addUserManually,
@@ -2833,6 +2851,7 @@ const fetchUsers = async () => {
     signUp,
     signIn,
     handleSignOut,
+    loginAsGuest,
     updateUser,
     updateOtherUser,
     addUserManually,
