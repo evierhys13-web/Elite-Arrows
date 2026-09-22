@@ -10,22 +10,40 @@ export function SponsorshipProvider({ children }) {
 
   useEffect(() => {
     const unsubs = []
+    let configsLoaded = false
+    let assetsLoaded = false
+
+    const checkLoading = () => {
+      if (configsLoaded && assetsLoaded) setLoading(false)
+    }
+
     try {
       unsubs.push(
         onSnapshot(collection(db, 'sponsoredLeagues'), (snap) => {
           const map = {}
           snap.docs.forEach((d) => { map[d.id] = d.data() })
           setConfigs(map)
-        }, (err) => console.warn('sponsoredLeagues listener error:', err)),
+          configsLoaded = true
+          checkLoading()
+        }, (err) => {
+          console.warn('sponsoredLeagues listener error:', err)
+          configsLoaded = true
+          checkLoading()
+        }),
       )
       unsubs.push(
         onSnapshot(collection(db, 'leaguePageAssets'), (snap) => {
           const map = {}
           snap.docs.forEach((d) => { map[d.id] = d.data() })
           setAssets(map)
-        }, (err) => console.warn('leaguePageAssets listener error:', err)),
+          assetsLoaded = true
+          checkLoading()
+        }, (err) => {
+          console.warn('leaguePageAssets listener error:', err)
+          assetsLoaded = true
+          checkLoading()
+        }),
       )
-      setLoading(false)
     } catch (e) {
       console.warn('sponsorship init error:', e)
       setLoading(false)

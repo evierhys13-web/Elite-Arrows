@@ -68,6 +68,8 @@ export default function SponsorshipLeagueEditor({ leagueId, config, assets, allU
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
+    if (saving) return // Don't reset internal draft while save in progress
+
     setDraft({
       enabled: Boolean(config?.enabled),
       sponsorName: config?.sponsorName || '',
@@ -89,8 +91,7 @@ export default function SponsorshipLeagueEditor({ leagueId, config, assets, allU
     })
     setPrizeImages(assets?.prizeImages || {})
     setPlayerBgs(assets?.playerBackgrounds || {})
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leagueId])
+  }, [leagueId, config, assets, saving])
 
   if (!draft) return null
 
