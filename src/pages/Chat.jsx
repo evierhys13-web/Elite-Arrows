@@ -108,6 +108,10 @@ export default function Chat() {
 
   const handleSend = async (e) => {
     e.preventDefault()
+    if (user?.isGuest) {
+      showToast('Account Required: Guests cannot send messages in the league chat room. Please register to participate!', 'error')
+      return
+    }
     if (!newMessage.trim()) return
 
     if (activeChat === 'announcements' && !user.isAdmin) {

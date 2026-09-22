@@ -556,6 +556,10 @@ export default function SubmitResult() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (user?.isGuest) {
+      showToast('Account Required: Guests cannot submit match results. Please register to participate in the league!', 'error')
+      return
+    }
     setError('')
     setSuccessMessage('')
     

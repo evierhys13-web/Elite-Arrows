@@ -35,6 +35,10 @@ export default function Players() {
   })
 
   const handleProposeTime = async () => {
+    if (user?.isGuest) {
+      showToast('Account Required: Guests cannot propose match fixtures. Please register an account!', 'error')
+      return
+    }
     if (!proposeForm.date || !proposeForm.time) return showToast('Please select date and time', 'error')
 
     const newFixture = {

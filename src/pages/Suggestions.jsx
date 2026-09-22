@@ -59,6 +59,10 @@ export default function Suggestions() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (user?.isGuest) {
+      showToast('Account Required: Guests cannot submit layout suggestions. Please register to participate!', 'error')
+      return
+    }
     if (!form.title.trim() || !form.message.trim()) {
       showToast('Please add a title and some details', 'error')
       return

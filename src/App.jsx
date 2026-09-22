@@ -149,59 +149,6 @@ function ProtectedRoute({ children }) {
 }
 
 function MemberOnlyRoute({ children }) {
-  const { user } = useAuth()
-  const navigate = useNavigate()
-
-  if (user?.isGuest) {
-    return (
-      <div
-        style={{
-          padding: '40px',
-          textAlign: 'center',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '60vh'
-        }}
-      >
-        <div
-          style={{
-            background: 'var(--bg-secondary)',
-            padding: '40px 32px',
-            borderRadius: '16px',
-            maxWidth: '440px',
-            border: '1px solid rgba(0, 212, 255, 0.15)',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.4)'
-          }}
-        >
-          <div style={{ fontSize: '3.5rem', marginBottom: '16px' }}>🔒</div>
-          <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '12px', fontWeight: 800 }}>Account Required</h2>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '28px', lineHeight: '1.6' }}>
-            This feature is reserved for league members. Create an account or sign in to track stats, log matches, chat with players, and compete in the league!
-          </p>
-          <button
-            className="btn btn-primary btn-block"
-            onClick={() => {
-              localStorage.removeItem("eliteArrowsIsGuestSession");
-              window.location.href = '/auth';
-            }}
-            style={{ marginBottom: '12px', height: '48px', fontSize: '0.95rem', fontWeight: 700 }}
-          >
-            Create Account / Sign In
-          </button>
-          <button
-            className="btn btn-secondary btn-block"
-            onClick={() => navigate('/home')}
-            style={{ height: '48px', fontSize: '0.95rem' }}
-          >
-            Continue Exploring
-          </button>
-        </div>
-      </div>
-    )
-  }
-
   return children
 }
 
