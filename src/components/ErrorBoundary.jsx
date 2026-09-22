@@ -25,7 +25,10 @@ export default class ErrorBoundary extends React.Component {
                          error?.message?.includes('chunk') ||
                          error?.message?.includes('Loading chunk') ||
                          error?.message?.includes('Failed to fetch dynamically imported module') ||
-                         error?.message?.includes('importing a module script failed')
+                         error?.message?.includes('importing a module script failed') ||
+                         error?.message?.includes('before initialization') ||
+                         error?.message?.includes('Cannot access') ||
+                         error?.message?.includes('is not defined')
 
     if (isChunkError) {
       setTimeout(() => window.location.reload(), 0)
@@ -38,7 +41,10 @@ export default class ErrorBoundary extends React.Component {
                            this.state.error?.message?.includes('chunk') ||
                            this.state.error?.message?.includes('Loading chunk') ||
                            this.state.error?.message?.includes('Failed to fetch dynamically imported module') ||
-                           this.state.error?.message?.includes('importing a module script failed')
+                           this.state.error?.message?.includes('importing a module script failed') ||
+                           this.state.error?.message?.includes('before initialization') ||
+                           this.state.error?.message?.includes('Cannot access') ||
+                           this.state.error?.message?.includes('is not defined')
 
       return (
         <div style={{

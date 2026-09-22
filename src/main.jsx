@@ -49,6 +49,10 @@ function isChunkLoadError(value) {
   return value.name === 'ChunkLoadError' ||
          message.includes('Loading chunk') ||
          message.includes('Failed to fetch dynamically imported module') ||
+         message.includes('importing a module script failed') ||
+         message.includes('before initialization') ||
+         message.includes('Cannot access') ||
+         message.includes('is not defined') ||
          message.includes('chunk') ||
          /assets\/[^"']*\.js/.test(message)
 }
