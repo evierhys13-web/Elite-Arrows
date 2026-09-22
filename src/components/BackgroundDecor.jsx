@@ -18,6 +18,7 @@ export default function BackgroundDecor({ division: userDivision }) {
     return pageKey ? (backgrounds[pageKey] || null) : null
   }, [location.pathname, backgrounds])
 
+  const sponsorBg = useMemo(() => {
     if (!division && !location.pathname.startsWith('/league/')) return null
 
     let key = null
@@ -38,7 +39,7 @@ export default function BackgroundDecor({ division: userDivision }) {
       blur: config.banner?.blur ?? 0,
       fit: config.banner?.fit ?? 'cover'
     }
-  }, [division, configs, assets])
+  }, [division, location.pathname, configs, assets])
 
   const customBg = activeConfig?.imageUrl ? activeConfig : sponsorBg
 
