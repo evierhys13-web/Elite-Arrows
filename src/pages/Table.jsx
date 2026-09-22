@@ -6,6 +6,7 @@ import { getPlayersWithEffectiveDivisions, getDivisionFilteredResults, LEAGUE_DI
 import Breadcrumbs from "../components/Breadcrumbs";
 import { useToast } from "../context/ToastContext";
 import { useSponsorship } from "../context/SponsorshipContext";
+import { usePageBackgrounds } from "../context/BackgroundContext";
 import { db, doc, setDoc } from "../firebase";
 
 const DIVISION_COLORS = {
