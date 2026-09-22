@@ -9,6 +9,7 @@ import { usePageBackgrounds } from '../context/BackgroundContext'
 import { useSponsorship } from '../context/SponsorshipContext'
 import SponsorshipLeagueEditor from '../components/SponsorshipLeagueEditor'
 import { LEAGUE_DIVISION_KEYS } from '../utils/leagueStandings'
+import { scheduleLeagueDigestWrite } from '../utils/leaguePageDigest'
 import UserSearchSelect from '../components/UserSearchSelect'
 import { useToast } from '../context/ToastContext'
 import { logMatchApproved } from '../utils/analytics'
@@ -2952,6 +2953,21 @@ export default function Admin() {
 
         {activeTab === 'sponsored' && (
           <div className="animate-fade-in">
+            <div className="card glass" style={{ padding: '24px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h2 style={{ margin: 0 }}>League Sponsorship</h2>
+                <p style={{ margin: '4px 0 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Configure branded pages and standings for each division.</p>
+              </div>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => {
+                  scheduleLeagueDigestWrite({ allUsers: getAllUsers(), results: getResults(), fixtures: getFixtures(), adminData, seasons: getSeasons() });
+                  showToast('Syncing public standings...', 'info');
+                }}
+              >
+                🔄 Force Standings Sync
+              </button>
+            </div>
             {sponsorshipLoading ? (
               <div className="card glass" style={{ padding: '32px' }}>
                 <p style={{ color: 'var(--text-muted)' }}>Loading sponsorship config…</p>

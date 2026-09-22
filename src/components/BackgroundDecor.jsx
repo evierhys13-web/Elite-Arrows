@@ -1,18 +1,36 @@
 import { useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
 import { usePageBackgrounds } from '../context/BackgroundContext'
+import { useSponsorship } from '../context/SponsorshipContext'
 import { matchPageKey } from '../config/pageBackgrounds'
+import { LEAGUE_DIVISION_NAMES } from '../utils/leagueStandings'
 
-export default function BackgroundDecor() {
+export default function BackgroundDecor({ division }) {
   const location = useLocation()
   const { backgrounds } = usePageBackgrounds()
+  const { configs, assets } = useSponsorship()
 
   const activeConfig = useMemo(() => {
     const pageKey = matchPageKey(location.pathname)
     return pageKey ? (backgrounds[pageKey] || null) : null
   }, [location.pathname, backgrounds])
 
-  const customBg = activeConfig?.imageUrl ? activeConfig : null
+  const sponsorBg = useMemo(() => {
+    if (!division) return null
+    const key = Object.keys(LEAGUE_DIVISION_NAMES).find(k => LEAGUE_DIVISION_NAMES[k] === division)
+    if (!key || !configs[key]?.enabled) return null
+    const asset = assets[key]
+    const config = configs[key]
+    if (!asset?.bannerImage) return null
+    return {
+      imageUrl: asset.bannerImage,
+      opacity: config.banner?.opacity ?? 0.5,
+      blur: config.banner?.blur ?? 0,
+      fit: config.banner?.fit ?? 'cover'
+    }
+  }, [division, configs, assets])
+
+  const customBg = activeConfig?.imageUrl ? activeConfig : sponsorBg
 
   return (
     <div style={{

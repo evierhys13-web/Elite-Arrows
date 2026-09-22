@@ -2,9 +2,10 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContextInternal";
 import { derivePlayerStatsFromResults } from "../utils/playerStats";
-import { getPlayersWithEffectiveDivisions, getDivisionFilteredResults } from "../utils/leagueStandings";
+import { getPlayersWithEffectiveDivisions, getDivisionFilteredResults, LEAGUE_DIVISION_NAMES } from "../utils/leagueStandings";
 import Breadcrumbs from "../components/Breadcrumbs";
 import { useToast } from "../context/ToastContext";
+import { useSponsorship } from "../context/SponsorshipContext";
 import { db, doc, setDoc } from "../firebase";
 
 const DIVISION_COLORS = {
@@ -29,11 +30,22 @@ export default function Table() {
     fetchUsersByDivision,
   } = useAuth();
 
+  const { configs, assets } = useSponsorship();
+
   const allUsers = getAllUsers();
   const fixtures = getFixtures();
   const results = getResults();
 
   const [activeDivision, setActiveDivision] = useState("Overall");
+
+  const activeLeagueId = useMemo(() => {
+    return Object.keys(LEAGUE_DIVISION_NAMES).find(k => LEAGUE_DIVISION_NAMES[k] === activeDivision);
+  }, [activeDivision]);
+
+  const sponsorConfig = activeLeagueId ? configs[activeLeagueId] : null;
+  const sponsorAssets = activeLeagueId ? assets[activeLeagueId] : null;
+  const isSponsored = sponsorConfig?.enabled;
+
   const { showToast } = useToast();
   const [refreshKey, setRefreshKey] = useState(0);
   const [selectedSeason, setSelectedSeason] = useState(adminData?.currentSeason || "Elite Arrows Season 5");
@@ -310,6 +322,36 @@ export default function Table() {
           { label: "League Table", path: "/table" },
         ]}
       />
+
+      {isSponsored && (
+        <div className="card glass animate-fade-in" style={{
+          padding: '16px 20px',
+          marginBottom: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px',
+          border: `1px solid ${DIVISION_COLORS[activeDivision] || 'var(--border)'}44`,
+          background: `linear-gradient(90deg, ${DIVISION_COLORS[activeDivision] || 'var(--accent-cyan)'}11, transparent)`
+        }}>
+          {sponsorAssets?.sponsorLogo && (
+            <img src={sponsorAssets.sponsorLogo} alt="Sponsor" style={{ height: '44px', maxWidth: '120px', objectFit: 'contain', borderRadius: '6px' }} />
+          )}
+          <div>
+            <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', marginBottom: '2px' }}>
+              Official Partner of {activeDivision} Division
+            </div>
+            <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#fff' }}>
+              {sponsorConfig.namingTitle || `${sponsorConfig.sponsorName} ${activeDivision} League`}
+            </div>
+          </div>
+          {sponsorConfig.sponsorUrl && (
+            <a href={sponsorConfig.sponsorUrl} target="_blank" rel="noopener noreferrer" className="btn btn-sm" style={{ marginLeft: 'auto', background: 'rgba(255,255,255,0.05)', fontSize: '0.75rem' }}>
+              Visit Sponsor
+            </a>
+          )}
+        </div>
+      )}
+
 
       <div className="page-header" style={{ marginBottom: "24px" }}>
         <div

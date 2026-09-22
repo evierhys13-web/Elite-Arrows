@@ -763,7 +763,7 @@ export function AuthProvider({ children }) {
       ? query(
           collection(db, "results"),
           orderBy("submittedAt", "desc"),
-          limit(200),
+          limit(2000),
         )
       : query(
           collection(db, "results"),

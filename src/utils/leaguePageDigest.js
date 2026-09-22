@@ -6,7 +6,7 @@ import { computeDivisionStandings, LEAGUE_DIVISION_KEYS, LEAGUE_DIVISION_NAMES }
 // digest per league division that only contains display-safe standings rows.
 // Writes are debounced and throttled so the shared write quota stays healthy.
 
-const DIGEST_THROTTLE_MS = 90000
+const DIGEST_THROTTLE_MS = 30000
 let digestTimer = null
 let lastDigestWrite = 0
 
@@ -29,6 +29,7 @@ const stripRow = (p) => ({
 })
 
 const writeLeagueDigest = async ({ allUsers, results, fixtures, adminData, seasons }) => {
+  if (!allUsers || allUsers.length === 0) return
   const seasonName = adminData?.currentSeason
   if (!seasonName) return
   const seasonDoc = (seasons || []).find((s) => s.name === seasonName)
