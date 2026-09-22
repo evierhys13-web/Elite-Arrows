@@ -9,7 +9,7 @@ import { usePageBackgrounds } from '../context/BackgroundContext'
 import { useSponsorship } from '../context/SponsorshipContext'
 import SponsorshipLeagueEditor from '../components/SponsorshipLeagueEditor'
 import { LEAGUE_DIVISION_KEYS } from '../utils/leagueStandings'
-import { scheduleLeagueDigestWrite } from '../utils/leaguePageDigest'
+import { scheduleLeagueDigestWrite, writeLeagueDigestNow } from '../utils/leaguePageDigest'
 import UserSearchSelect from '../components/UserSearchSelect'
 import { useToast } from '../context/ToastContext'
 import { logMatchApproved } from '../utils/analytics'
@@ -2979,9 +2979,14 @@ export default function Admin() {
               </div>
               <button
                 className="btn btn-secondary btn-sm"
-                onClick={() => {
-                  scheduleLeagueDigestWrite({ allUsers: getAllUsers(), results: getResults(), fixtures: getFixtures(), adminData, seasons: getSeasons() });
+                onClick={async () => {
                   showToast('Syncing public standings...', 'info');
+                  const res = await writeLeagueDigestNow({ allUsers: getAllUsers(), results: getResults(), fixtures: getFixtures(), adminData, seasons: getSeasons() });
+                  if (res.ok) {
+                    showToast(`Synced ${res.leagues} league pages (${res.season})`, 'success');
+                  } else {
+                    showToast(`Sync failed: ${res.error}`, 'error');
+                  }
                 }}
               >
                 🔄 Force Standings Sync

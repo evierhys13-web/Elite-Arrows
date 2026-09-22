@@ -29,12 +29,21 @@ const stripRow = (p) => ({
   average: p.stats.average || 0,
 })
 
-const writeLeagueDigest = async ({ allUsers, results, fixtures, adminData, seasons }) => {
-  if (!allUsers || allUsers.length === 0) return
-  const seasonName = adminData?.currentSeason
-  if (!seasonName) return
+const writeLeagueDigest = async (payload) => {
+  const res = await writeLeagueDigestNow(payload)
+  if (!res.ok) console.warn('league page digest write failed:', res.error)
+}
+
+// Immediate (non-throttled) digest write used by the admin "Force Standings
+// Sync" button. Returns a status so the UI can report success or failure
+// instead of silently doing nothing.
+export const writeLeagueDigestNow = async ({ allUsers, results, fixtures, adminData, seasons }) => {
+  if (!adminData?.currentSeason) return { ok: false, error: 'No active season set' }
+  if (!allUsers || allUsers.length === 0) return { ok: false, error: 'No player data loaded' }
+  const seasonName = adminData.currentSeason
   const seasonDoc = (seasons || []).find((s) => s.name === seasonName)
   try {
+    let rowCount = 0
     await Promise.all(LEAGUE_DIVISION_KEYS.map(async (key) => {
       const standings = computeDivisionStandings({
         allUsers,
@@ -45,6 +54,7 @@ const writeLeagueDigest = async ({ allUsers, results, fixtures, adminData, seaso
         seasonDoc,
         division: LEAGUE_DIVISION_NAMES[key],
       })
+      rowCount = standings.length
       await setDoc(doc(db, 'leaguePagesDigest', key), {
         leagueId: key,
         division: LEAGUE_DIVISION_NAMES[key],
@@ -54,8 +64,9 @@ const writeLeagueDigest = async ({ allUsers, results, fixtures, adminData, seaso
       })
     }))
     lastDigestWrite = Date.now()
+    return { ok: true, leagues: LEAGUE_DIVISION_KEYS.length, rowCount, season: seasonName }
   } catch (e) {
-    console.warn('league page digest write failed:', e)
+    return { ok: false, error: e?.message || String(e) }
   }
 }
 
