@@ -14,7 +14,7 @@ export default function UserSearchSelect({
   placeholder = 'Search players...',
   excludeIds = [],
   label = 'Select Player',
-  maxResults = 50,
+  maxResults = 2000,
   onQueryChange
 }) {
   const [query, setQuery] = useState('')
