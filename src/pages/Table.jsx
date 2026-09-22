@@ -395,15 +395,15 @@ export default function Table() {
             </div>
           )}
 
-          {latestWinner && (
+          {(latestWinner || sponsorAssets?.championImage) && (
             <div className="card glass" style={{ borderRadius: '16px', padding: '18px', border: `1px solid ${accentColor}33`, position: 'relative', overflow: 'hidden' }}>
               {sponsorAssets?.championImage && (
                 <img src={sponsorAssets.championImage} alt="champion" style={{ width: '100%', height: '180px', objectFit: 'cover', borderRadius: '12px', display: 'block' }} />
               )}
               <div style={{ position: 'relative', marginTop: sponsorAssets?.championImage ? 12 : 0, textAlign: 'center' }}>
                 <div style={{ fontSize: '2rem' }}>👑</div>
-                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: accentColor }}>{nameOf(latestWinner, latestWinner.champUserId) || 'Champion'}</div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{latestWinner.season}</div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: accentColor }}>{latestWinner ? (nameOf(latestWinner, latestWinner.champUserId) || 'Champion') : (sponsorConfig.champion?.caption || `${activeDivision} Champion`)}</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{latestWinner?.season || ''}</div>
                 {sponsorConfig.champion?.caption && <div style={{ fontSize: '0.8rem', color: '#cbd5e1', marginTop: '4px' }}>{sponsorConfig.champion.caption}</div>}
               </div>
             </div>

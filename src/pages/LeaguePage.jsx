@@ -182,7 +182,7 @@ export default function LeaguePage() {
         </div>
       </div>
 
-      {(config.prizes?.pots?.length > 0 || latestWinner) && (
+      {(config.prizes?.pots?.length > 0 || latestWinner || asset.championImage) && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', padding: '0 16px', marginBottom: '24px' }}>
           {config.prizes?.pots?.length > 0 && (
             <div className="glass" style={{ borderRadius: '16px', padding: '18px', border: '1px solid var(--border)' }}>
@@ -208,15 +208,15 @@ export default function LeaguePage() {
             </div>
           )}
 
-          {latestWinner && (
+          {(latestWinner || asset.championImage) && (
             <div className="glass" style={{ borderRadius: '16px', padding: '18px', border: '1px solid var(--border)', position: 'relative', overflow: 'hidden' }}>
               {asset.championImage && (
                 <img src={asset.championImage} alt="champion" style={{ width: '100%', height: '180px', objectFit: 'cover', borderRadius: '12px', display: 'block' }} />
               )}
               <div style={{ position: 'relative', marginTop: asset.championImage ? 12 : 0, textAlign: 'center' }}>
                 <div style={{ fontSize: '2rem' }}>👑</div>
-                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: accent }}>{nameOf(latestWinner, latestWinner.champUserId) || 'Champion'}</div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{latestWinner.season}</div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: accent }}>{latestWinner ? (nameOf(latestWinner, latestWinner.champUserId) || 'Champion') : (config.champion?.caption || `${division} Champion`)}</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{latestWinner?.season || ''}</div>
                 {config.champion?.caption && <div style={{ fontSize: '0.8rem', color: '#cbd5e1', marginTop: '4px' }}>{config.champion.caption}</div>}
               </div>
             </div>
