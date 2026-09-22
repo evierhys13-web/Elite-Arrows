@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, lazy, Suspense, useRef } from 'react'
+import { useState, useEffect, useMemo, lazy, Suspense, useRef, useCallback } from 'react'
 import { useAuth } from '../context/AuthContextInternal'
 import { ONBOARDING_CONTENT_VERSION } from '../context/AuthContext'
 import { useNavigate, useSearchParams } from 'react-router-dom'
