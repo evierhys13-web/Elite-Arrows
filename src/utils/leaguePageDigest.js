@@ -6,7 +6,8 @@ import { computeDivisionStandings, LEAGUE_DIVISION_KEYS, LEAGUE_DIVISION_NAMES }
 // digest per league division that only contains display-safe standings rows.
 // Writes are debounced and throttled so the shared write quota stays healthy.
 
-const DIGEST_THROTTLE_MS = 30000
+const DIGEST_THROTTLE_MS = 8000
+const DIGEST_INITIAL_WAIT_MS = 2000
 let digestTimer = null
 let lastDigestWrite = 0
 
@@ -62,5 +63,5 @@ export const scheduleLeagueDigestWrite = (payload) => {
   if (!payload?.adminData?.currentSeason) return
   if (digestTimer) clearTimeout(digestTimer)
   const wait = Math.max(0, lastDigestWrite + DIGEST_THROTTLE_MS - Date.now())
-  digestTimer = setTimeout(() => writeLeagueDigest(payload), wait || 10000)
+  digestTimer = setTimeout(() => writeLeagueDigest(payload), wait || DIGEST_INITIAL_WAIT_MS)
 }

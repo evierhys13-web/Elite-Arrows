@@ -7,6 +7,7 @@ import Breadcrumbs from "../components/Breadcrumbs";
 import { useToast } from "../context/ToastContext";
 import { useSponsorship } from "../context/SponsorshipContext";
 import { usePageBackgrounds } from "../context/BackgroundContext";
+import { scheduleLeagueDigestWrite } from "../utils/leaguePageDigest";
 import { db, doc, setDoc } from "../firebase";
 
 const DIVISION_COLORS = {
@@ -77,6 +78,13 @@ export default function Table() {
     fetchResultsBySeason,
     fetchUsersByDivision,
   ]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const isCurrentSeason = selectedSeason === (adminData?.currentSeason || "Elite Arrows Season 5");
+    if (!isCurrentSeason || loadingSeason) return;
+    scheduleLeagueDigestWrite({ allUsers, results, fixtures, adminData, seasons: getSeasons() });
+  }, [user?.id, selectedSeason, loadingSeason, divisionFilteredResults, usersWithCorrectDivisions, allUsers, results, fixtures, adminData, getSeasons]);
   const [editingManual, setEditingManual] = useState(null);
   const [manualForm, setManualForm] = useState({
     played: 0,

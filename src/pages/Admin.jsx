@@ -299,6 +299,16 @@ export default function Admin() {
   const approvedResults = allResults.filter(r => String(r.status).toLowerCase() === 'approved')
   const rejectedResults = allResults.filter(r => String(r.status).toLowerCase() === 'rejected')
 
+  const syncLeagueDigest = useCallback(() => {
+    scheduleLeagueDigestWrite({
+      allUsers: allPlayers,
+      results: allResults,
+      fixtures: allFixtures,
+      adminData,
+      seasons: getSeasons(),
+    })
+  }, [allPlayers, allResults, allFixtures, adminData, getSeasons])
+
   const pendingPayments = allPlayers.filter(u => u?.paymentPending)
   const pendingTrainingPayments = allPlayers.filter(u => u?.trainingPassPaymentPending)
   const trainingSubscribers = allPlayers.filter(u => u?.trainingPassActive)
@@ -561,6 +571,7 @@ export default function Admin() {
       await incrementAdminApproval(1)
       showToast('Result Approved & Standings Updated!', 'success')
       triggerDataRefresh('all')
+      syncLeagueDigest()
     } catch (e) {
       console.error(e)
       showToast(e.message, 'error')
@@ -614,6 +625,7 @@ export default function Admin() {
       updateResults(updatedResults)
       showToast(`Approved & Fixed ${selectedResults.length} matches!`, 'success')
       triggerDataRefresh('all')
+      syncLeagueDigest()
     } catch (e) { showToast(e.message, 'error') }
     setIsApproving(false)
   }
@@ -627,6 +639,7 @@ export default function Admin() {
         String(r.id) === String(result.id) ? { ...r, excludeFromLeague: newVal } : r
       )
       updateResults(updatedResults)
+      syncLeagueDigest()
       showToast(newVal ? 'Excluded from league table' : 'Included in league table', 'success')
     } catch (e) { showToast('Failed to update: ' + e.message, 'error') }
   }
@@ -640,6 +653,7 @@ export default function Admin() {
       await logAudit('REJECT_RESULT', `Rejected match: ${res.player1} vs ${res.player2}`)
       triggerDataRefresh('results')
       showToast('Result Rejected', 'info')
+      syncLeagueDigest()
     } catch (e) { showToast(e.message, 'error') }
   }
 
@@ -653,6 +667,7 @@ export default function Admin() {
       await logAudit('DELETE_RESULT', `Deleted result: ${res?.player1} vs ${res?.player2}`)
       showToast('Result Deleted', 'info')
       triggerDataRefresh('results')
+      syncLeagueDigest()
     } catch (e) { showToast(e.message, 'error') }
   }
 
@@ -668,6 +683,7 @@ export default function Admin() {
       setEditingResult(null)
       triggerDataRefresh('results')
       showToast('Result updated!', 'success')
+      syncLeagueDigest()
     } catch (e) { showToast(e.message, 'error') }
   }
 
@@ -883,6 +899,7 @@ export default function Admin() {
       })
       triggerDataRefresh('results')
       showToast('Game submitted!', 'success')
+      syncLeagueDigest()
     } catch (e) { showToast('Error: ' + e.message, 'error') }
   }
 
@@ -1030,6 +1047,7 @@ export default function Admin() {
       triggerDataRefresh('seasons')
       showToast(`${target.username} moved to ${divisionForm.division}`, 'success')
       setDivisionForm({ player: '', division: '' })
+      syncLeagueDigest()
     } catch (e) { showToast(e.message, 'error') }
   }
 
@@ -1049,6 +1067,7 @@ export default function Admin() {
       showToast(`Assigned ${selectedMemberIds.length} members to ${bulkDivision}`, 'success')
       setSelectedMemberIds([])
       setBulkDivision('')
+      syncLeagueDigest()
     } catch (e) { showToast(e.message, 'error') }
     setIsProcessing(false)
   }
