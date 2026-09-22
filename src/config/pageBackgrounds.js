@@ -49,7 +49,12 @@ export const SUPPORTED_PAGES = [
   { key: 'seed-data', label: 'Seed Data', group: 'Admin', paths: ['/seed-data'] },
 
   { key: 'auth', label: 'Login / Signup', group: 'Flow', paths: ['/auth'] },
-  { key: 'welcome', label: 'Welcome', group: 'Flow', paths: ['/welcome'] }
+  { key: 'welcome', label: 'Welcome', group: 'Flow', paths: ['/welcome'] },
+
+  { key: 'league-elite', label: 'Elite League Page', group: 'Sponsored Leagues', paths: ['/league/elite'] },
+  { key: 'league-emerald', label: 'Emerald League Page', group: 'Sponsored Leagues', paths: ['/league/emerald'] },
+  { key: 'league-diamond', label: 'Diamond League Page', group: 'Sponsored Leagues', paths: ['/league/diamond'] },
+  { key: 'league-platinum', label: 'Platinum League Page', group: 'Sponsored Leagues', paths: ['/league/platinum'] }
 ]
 
 export function matchPageKey(pathname) {
@@ -62,4 +67,4 @@ export function matchPageKey(pathname) {
   return null
 }
 
-export const PAGE_BACKGROUND_GROUPS = ['Main', 'League & Results', 'Cups & Tournaments', 'Training & Practice', 'Social', 'Pass & Money', 'Info', 'Account', 'Admin', 'Flow']
+export const PAGE_BACKGROUND_GROUPS = ['Main', 'League & Results', 'Cups & Tournaments', 'Training & Practice', 'Social', 'Pass & Money', 'Info', 'Account', 'Admin', 'Flow', 'Sponsored Leagues']

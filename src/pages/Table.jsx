@@ -30,7 +30,9 @@ export default function Table() {
     fetchUsersByDivision,
   } = useAuth();
 
+  const { setActiveDivision: setContextDivision } = usePageBackgrounds();
   const { configs, assets } = useSponsorship();
+
 
   const allUsers = getAllUsers();
   const fixtures = getFixtures();
@@ -46,7 +48,13 @@ export default function Table() {
   const sponsorAssets = activeLeagueId ? assets[activeLeagueId] : null;
   const isSponsored = sponsorConfig?.enabled;
 
+  useEffect(() => {
+    setContextDivision(activeDivision);
+    return () => setContextDivision(null);
+  }, [activeDivision, setContextDivision]);
+
   const { showToast } = useToast();
+
   const [refreshKey, setRefreshKey] = useState(0);
   const [selectedSeason, setSelectedSeason] = useState(adminData?.currentSeason || "Elite Arrows Season 5");
   const [loadingSeason, setLoadingSeason] = useState(true);
@@ -186,7 +194,13 @@ export default function Table() {
           return b.stats.legsWon - a.stats.legsWon;
         return (b.stats.average || 0) - (a.stats.average || 0);
       });
-  }, [activeDivision, usersWithCorrectDivisions, playerStats]);
+  }, [activeDivision, usersWithCorrectDivisions, playerStats, selectedSeason]);
+
+  const archive = useMemo(() => Array.isArray(sponsorConfig?.seasonsArchive) ? sponsorConfig.seasonsArchive : [], [sponsorConfig]);
+  const latestWinner = useMemo(() => archive[archive.length - 1], [archive]);
+  const nameOf = useCallback((entry, id) => (entry?.names && entry.names[String(id)]) || (playersInDivision.find((p) => String(p.id) === String(id))?.username) || id, [playersInDivision]);
+  const accentColor = DIVISION_COLORS[activeDivision] || '#38bdf8';
+
 
   const handleRefresh = async () => {
     setLoadingSeason(true);
@@ -353,7 +367,50 @@ export default function Table() {
       )}
 
 
+      {isSponsored && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+          {sponsorConfig.prizes?.pots?.length > 0 && (
+            <div className="card glass" style={{ borderRadius: '16px', padding: '18px', border: `1px solid ${accentColor}33` }}>
+              <h3 style={{ margin: '0 0 12px', fontSize: '1rem', color: '#fff' }}>🏆 {sponsorConfig.prizes.title || 'Prize Fund'}</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {sponsorConfig.prizes.pots.map((pot, index) => (
+                  <div key={index} style={{
+                    position: 'relative',
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                    padding: '14px',
+                    background: sponsorAssets?.prizeImages?.[String(index)]
+                      ? `linear-gradient(rgba(11,5,29,0.55), rgba(11,5,29,0.75)), url(${sponsorAssets.prizeImages[String(index)]}) center/cover no-repeat`
+                      : 'rgba(255,255,255,0.05)',
+                    border: `1px solid ${accentColor}33`,
+                    color: '#fff',
+                  }}>
+                    <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#cbd5e1' }}>{pot.label || `Prize ${index + 1}`}</div>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 800, color: accentColor }}>{pot.amount || '—'}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {latestWinner && (
+            <div className="card glass" style={{ borderRadius: '16px', padding: '18px', border: `1px solid ${accentColor}33`, position: 'relative', overflow: 'hidden' }}>
+              {sponsorAssets?.championImage && (
+                <img src={sponsorAssets.championImage} alt="champion" style={{ width: '100%', height: '180px', objectFit: 'cover', borderRadius: '12px', display: 'block' }} />
+              )}
+              <div style={{ position: 'relative', marginTop: sponsorAssets?.championImage ? 12 : 0, textAlign: 'center' }}>
+                <div style={{ fontSize: '2rem' }}>👑</div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: accentColor }}>{nameOf(latestWinner, latestWinner.champUserId) || 'Champion'}</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{latestWinner.season}</div>
+                {sponsorConfig.champion?.caption && <div style={{ fontSize: '0.8rem', color: '#cbd5e1', marginTop: '4px' }}>{sponsorConfig.champion.caption}</div>}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="page-header" style={{ marginBottom: "24px" }}>
+
         <div
           style={{
             display: "flex",
@@ -438,14 +495,14 @@ export default function Table() {
       </div>
 
       <div
-        className="card glass"
+        className="card glass animate-fade-in"
         style={{
           padding: "0",
           borderRadius: "16px",
           overflow: "hidden",
           background: "rgba(10, 6, 40, 0.4)",
-          border: "2px solid rgba(168, 85, 247, 0.55)",
-          boxShadow: "0 20px 80px rgba(0, 0, 0, 0.6), 0 0 45px rgba(168, 85, 247, 0.3), 0 0 90px rgba(56, 189, 248, 0.1), inset 0 0 30px rgba(168, 85, 247, 0.08), inset 0 0 0 1px rgba(255,255,255,0.06)"
+          border: `2px solid ${DIVISION_COLORS[activeDivision] || 'rgba(168, 85, 247, 0.55)'}`,
+          boxShadow: `0 20px 80px rgba(0, 0, 0, 0.6), 0 0 45px ${(DIVISION_COLORS[activeDivision] || '#a855f7')}44, 0 0 90px rgba(56, 189, 248, 0.1), inset 0 0 30px ${(DIVISION_COLORS[activeDivision] || '#a855f7')}11, inset 0 0 0 1px rgba(255,255,255,0.06)`
         }}
       >
         <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
@@ -459,10 +516,11 @@ export default function Table() {
                   fontWeight: "900",
                   textTransform: "uppercase",
                   letterSpacing: "0.06em",
-                  borderBottom: "2px solid rgba(168, 85, 247, 0.35)",
+                  borderBottom: `2px solid ${DIVISION_COLORS[activeDivision] || 'rgba(168, 85, 247, 0.35)'}`,
                   textShadow: "0 0 8px rgba(255, 255, 255, 0.3), 0 1px 2px rgba(0, 0, 0, 0.6)"
                 }}
               >
+
                 <th
                   style={{
                     width: isMobile ? "22px" : "28px",

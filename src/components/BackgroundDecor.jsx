@@ -5,20 +5,30 @@ import { useSponsorship } from '../context/SponsorshipContext'
 import { matchPageKey } from '../config/pageBackgrounds'
 import { LEAGUE_DIVISION_NAMES } from '../utils/leagueStandings'
 
-export default function BackgroundDecor({ division }) {
+export default function BackgroundDecor({ division: userDivision }) {
   const location = useLocation()
-  const { backgrounds } = usePageBackgrounds()
+  const { backgrounds, activeDivision: contextDivision } = usePageBackgrounds()
   const { configs, assets } = useSponsorship()
+
+  const division = contextDivision || userDivision
+
 
   const activeConfig = useMemo(() => {
     const pageKey = matchPageKey(location.pathname)
     return pageKey ? (backgrounds[pageKey] || null) : null
   }, [location.pathname, backgrounds])
 
-  const sponsorBg = useMemo(() => {
-    if (!division) return null
-    const key = Object.keys(LEAGUE_DIVISION_NAMES).find(k => LEAGUE_DIVISION_NAMES[k] === division)
+    if (!division && !location.pathname.startsWith('/league/')) return null
+
+    let key = null
+    if (location.pathname.startsWith('/league/')) {
+      key = location.pathname.split('/')[2]
+    } else {
+      key = Object.keys(LEAGUE_DIVISION_NAMES).find(k => LEAGUE_DIVISION_NAMES[k] === division)
+    }
+
     if (!key || !configs[key]?.enabled) return null
+
     const asset = assets[key]
     const config = configs[key]
     if (!asset?.bannerImage) return null

@@ -54,7 +54,16 @@ export function BackgroundProvider({ children }) {
     }
   }, [])
 
-  const value = useMemo(() => ({ backgrounds, loading, saveBackground, removeBackground }), [backgrounds, loading, saveBackground, removeBackground])
+  const [activeDivision, setActiveDivision] = useState(null)
+
+  const value = useMemo(() => ({
+    backgrounds,
+    loading,
+    saveBackground,
+    removeBackground,
+    activeDivision,
+    setActiveDivision
+  }), [backgrounds, loading, saveBackground, removeBackground, activeDivision])
 
   return (
     <BackgroundContext.Provider value={value}>
