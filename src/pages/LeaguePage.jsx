@@ -1,12 +1,19 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { db, doc, onSnapshot } from '../firebase'
 import { useSponsorship } from '../context/SponsorshipContext'
-import { LEAGUE_DIVISION_KEYS, LEAGUE_DIVISION_NAMES, DIVISION_COLORS } from '../utils/leagueStandings'
+import {
+  LEAGUE_DIVISION_KEYS,
+  LEAGUE_DIVISION_NAMES,
+  DIVISION_COLORS,
+  computeDivisionStandings,
+} from '../utils/leagueStandings'
+import { useAuth } from '../context/AuthContextInternal'
 
 export default function LeaguePage() {
   const { leagueId } = useParams()
   const { configs, assets, loading: sponsorshipLoading } = useSponsorship()
+  const { allUsers, results, fixtures, adminData, seasons } = useAuth()
 
   const valid = LEAGUE_DIVISION_KEYS.includes(leagueId)
   const config = configs[leagueId] || {}
@@ -35,6 +42,48 @@ export default function LeaguePage() {
     return () => { if (unsub) unsub() }
   }, [leagueId, valid])
 
+  // Prefer the live standings computed from the same data the main Table page
+  // uses, so the sponsored league pages always show the exact same table.
+  // Guests (no signed-in data) fall back to the public digest snapshot.
+  const liveSeason = adminData?.currentSeason || 'Elite Arrows Season 5'
+  const liveSeasonDoc = useMemo(
+    () => (seasons || []).find((s) => s.name === liveSeason),
+    [seasons, liveSeason],
+  )
+  const liveStandings = useMemo(() => {
+    if (!valid || !Array.isArray(allUsers) || allUsers.length === 0) return null
+    if (!Array.isArray(results) || results.length === 0) return null
+    return computeDivisionStandings({
+      allUsers,
+      results,
+      fixtures,
+      adminData,
+      seasonName: liveSeason,
+      seasonDoc: liveSeasonDoc,
+      division,
+    }).map((p) => ({
+      id: p.id,
+      username: p.username,
+      nickname: p.nickname,
+      name: p.name,
+      division: p.division,
+      profilePicture: p.profilePicture || '',
+      played: p.stats.played || 0,
+      wins: p.stats.wins || 0,
+      draws: p.stats.draws || 0,
+      losses: p.stats.losses || 0,
+      points: p.stats.points || 0,
+      legsWon: p.stats.legsWon || 0,
+      legsLost: p.stats.legsLost || 0,
+      legDiff: (p.stats.legsWon || 0) - (p.stats.legsLost || 0),
+      average: p.stats.average || 0,
+    }))
+  }, [valid, allUsers, results, fixtures, adminData, liveSeason, liveSeasonDoc, division])
+
+  // Live standings win when available; digest is the fallback for guests.
+  const standings = liveStandings || (Array.isArray(digest?.standings) ? digest.standings : [])
+  const showLive = Boolean(liveStandings)
+
   if (!valid) {
     return (
       <div className="page animate-fade-in" style={{ maxWidth: '900px', margin: '0 auto', padding: '48px 20px', textAlign: 'center' }}>
@@ -49,8 +98,9 @@ export default function LeaguePage() {
   const playerBgs = asset.playerBackgrounds || {}
   const archive = Array.isArray(config.seasonsArchive) ? config.seasonsArchive : []
   const latestWinner = archive[archive.length - 1]
-  const standings = Array.isArray(digest?.standings) ? digest.standings : []
   const nameOf = (entry, id) => (entry?.names && entry.names[String(id)]) || (standings.find((s) => String(s.id) === String(id))?.username) || id
+  const shownSeason = showLive ? liveSeason : digest?.season
+  const shownUpdatedAt = showLive ? (digest?.updatedAt || null) : digest?.updatedAt
 
   const rowBackground = (playerId) => playerBgs[String(playerId)]
 
@@ -179,7 +229,7 @@ export default function LeaguePage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
           <h2 style={{ margin: 0, fontSize: '1.15rem' }}>{division} Standings</h2>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            {digest?.season ? `${digest.season} · ` : ''}Updated {digest?.updatedAt ? 'recently' : '—'}
+            {shownSeason ? `${shownSeason} · ` : ''}Updated {shownUpdatedAt ? 'recently' : '—'}
           </span>
         </div>
         <div style={{ overflowX: 'auto' }}>
@@ -198,7 +248,7 @@ export default function LeaguePage() {
               </tr>
             </thead>
             <tbody>
-              {digestLoading ? (
+              {(!showLive && digestLoading) ? (
                 <tr><td colSpan={9} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading standings…</td></tr>
               ) : standings.length === 0 ? (
                 <tr><td colSpan={9} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>No standings yet — check back soon.</td></tr>
