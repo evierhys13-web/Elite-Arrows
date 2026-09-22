@@ -43,9 +43,19 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+function isChunkLoadError(value) {
+  if (!value) return false
+  const message = typeof value.message === 'string' ? value.message : ''
+  return value.name === 'ChunkLoadError' ||
+         message.includes('Loading chunk') ||
+         message.includes('Failed to fetch dynamically imported module') ||
+         message.includes('chunk') ||
+         /assets\/[^"']*\.js/.test(message)
+}
+
 // Global handler for script load failures (ChunkLoadError)
 window.addEventListener('error', (e) => {
-  if (e.message && (e.message.includes('chunk') || e.message.includes('Loading chunk'))) {
+  if (isChunkLoadError(e.error) || (e.message && isChunkLoadError({ message: e.message }))) {
     console.log('Chunk error detected, reloading...');
     const lastReload = parseInt(sessionStorage.getItem('eliteArrowsLastChunkReload') || '0');
     const now = Date.now();
@@ -60,7 +70,7 @@ window.addEventListener('error', (e) => {
 
 // Global handler for unhandled promise rejections (often happens with dynamic imports)
 window.addEventListener('unhandledrejection', (e) => {
-  if (e.reason && (e.reason.name === 'ChunkLoadError' || (e.reason.message && e.reason.message.includes('Loading chunk')))) {
+  if (isChunkLoadError(e.reason) || (e.reason?.message && isChunkLoadError({ message: e.reason.message }))) {
     console.log('Chunk load rejection detected, reloading...');
     const lastReload = parseInt(sessionStorage.getItem('eliteArrowsLastChunkReload') || '0');
     const now = Date.now();
