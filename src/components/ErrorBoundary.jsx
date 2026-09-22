@@ -1,5 +1,15 @@
 import React from 'react'
 
+function checkIsChunkError(error) {
+  if (!error) return false
+  const msg = (error?.message || '').toLowerCase()
+  const name = error?.name || ''
+  return name === 'ChunkLoadError' ||
+         msg.includes('loading chunk') ||
+         msg.includes('failed to fetch dynamically imported module') ||
+         msg.includes('importing a module script failed')
+}
+
 export default class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props)
@@ -21,30 +31,18 @@ export default class ErrorBoundary extends React.Component {
       }))
     } catch (e) {}
 
-    const isChunkError = error?.name === 'ChunkLoadError' ||
-                         error?.message?.includes('chunk') ||
-                         error?.message?.includes('Loading chunk') ||
-                         error?.message?.includes('Failed to fetch dynamically imported module') ||
-                         error?.message?.includes('importing a module script failed') ||
-                         error?.message?.includes('before initialization') ||
-                         error?.message?.includes('Cannot access') ||
-                         error?.message?.includes('is not defined')
-
-    if (isChunkError) {
-      setTimeout(() => window.location.reload(), 0)
+    if (checkIsChunkError(error)) {
+      const reloadKey = 'ea_chunk_reload_done'
+      if (!sessionStorage.getItem(reloadKey)) {
+        sessionStorage.setItem(reloadKey, '1')
+        setTimeout(() => window.location.reload(), 300)
+      }
     }
   }
 
   render() {
     if (this.state.hasError) {
-      const isChunkError = this.state.error?.name === 'ChunkLoadError' ||
-                           this.state.error?.message?.includes('chunk') ||
-                           this.state.error?.message?.includes('Loading chunk') ||
-                           this.state.error?.message?.includes('Failed to fetch dynamically imported module') ||
-                           this.state.error?.message?.includes('importing a module script failed') ||
-                           this.state.error?.message?.includes('before initialization') ||
-                           this.state.error?.message?.includes('Cannot access') ||
-                           this.state.error?.message?.includes('is not defined')
+      const isChunkError = checkIsChunkError(this.state.error)
 
       return (
         <div style={{
@@ -67,7 +65,7 @@ export default class ErrorBoundary extends React.Component {
           <p style={{ color: 'var(--text-muted)', marginBottom: '30px', maxWidth: '400px' }}>
             {isChunkError
               ? 'We found a new version of the app. Refreshing to get the latest features for you...'
-              : "The app encountered an unexpected error. We're attempting to reload for you automatically."}
+              : 'The app encountered an unexpected error. Please try refreshing.'}
           </p>
           <div style={{ marginBottom: '30px', fontSize: '0.85rem', color: '#ef4444', background: 'rgba(239,68,68,0.1)', padding: '16px', borderRadius: '12px', maxWidth: '500px', fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
             {this.state.error?.toString()}

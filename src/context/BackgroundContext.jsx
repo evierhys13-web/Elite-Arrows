@@ -75,7 +75,14 @@ export function BackgroundProvider({ children }) {
 export function usePageBackgrounds() {
   const context = useContext(BackgroundContext)
   if (!context) {
-    throw new Error('usePageBackgrounds must be used within a BackgroundProvider')
+    return {
+      backgrounds: {},
+      loading: false,
+      saveBackground: async () => {},
+      removeBackground: async () => {},
+      activeDivision: null,
+      setActiveDivision: () => {}
+    }
   }
   return context
 }

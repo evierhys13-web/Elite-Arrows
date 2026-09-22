@@ -21,15 +21,37 @@ export default function LeaguePage() {
   const division = LEAGUE_DIVISION_NAMES[leagueId] || leagueId
   const accent = DIVISION_COLORS[division] || '#38bdf8'
 
-  const [digest, setDigest] = useState(null)
-  const [digestLoading, setDigestLoading] = useState(true)
+  const getCachedDigest = (key) => {
+    try {
+      const raw = localStorage.getItem('ea_league_digest_' + key)
+      return raw ? JSON.parse(raw) : null
+    } catch (e) {
+      return null
+    }
+  }
+
+  const [digest, setDigest] = useState(() => getCachedDigest(leagueId))
+  const [digestLoading, setDigestLoading] = useState(() => !getCachedDigest(leagueId))
 
   useEffect(() => {
     if (!valid) return
+    const cached = getCachedDigest(leagueId)
+    if (cached) {
+      setDigest(cached)
+      setDigestLoading(false)
+    } else {
+      setDigestLoading(true)
+    }
     let unsub
     try {
       unsub = onSnapshot(doc(db, 'leaguePagesDigest', leagueId), (snap) => {
-        setDigest(snap.data() || null)
+        const data = snap.data() || null
+        if (data) {
+          setDigest(data)
+          try {
+            localStorage.setItem('ea_league_digest_' + leagueId, JSON.stringify(data))
+          } catch (e) {}
+        }
         setDigestLoading(false)
       }, (err) => {
         console.warn('league digest listener error:', err)
