@@ -137,3 +137,24 @@ export const logUserLogin = (userId) => {
     method: 'email'
   });
 };
+
+/**
+ * Logs a custom "listen_start" event to Firebase Analytics.
+ * @param {string} trackName - Name of the track (default: "Elite Arrows Intro")
+ * @param {string} genre - Category / Genre (default: "Sports")
+ * @param {number} durationSeconds - Duration in seconds (default: 180)
+ */
+export const logListenStart = (
+  trackName = 'Elite Arrows Intro',
+  genre = 'Sports',
+  durationSeconds = 180
+) => {
+  if (!analytics || !hasAnalyticsConsent()) return;
+
+  logEvent(analytics, 'listen_start', {
+    track_name: trackName,
+    genre: genre,
+    duration_seconds: durationSeconds
+  });
+};
+

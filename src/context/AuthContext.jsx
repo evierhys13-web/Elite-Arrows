@@ -210,7 +210,7 @@ export function AuthProvider({ children }) {
     try {
       const isGuest = localStorage.getItem("eliteArrowsIsGuestSession") === "true";
       if (isGuest) {
-        return { id: "guest_player", username: "Guest Player", isGuest: true, division: "Unassigned", isSubscribed: false, isAdmin: false };
+        return { id: "guest_player", username: "Guest Player", isGuest: true, division: "Unassigned", isSubscribed: true, trainingPassActive: true, isAdmin: false };
       }
       const saved = localStorage.getItem("eliteArrowsCurrentUser");
       return saved && saved !== "undefined" ? JSON.parse(saved) : null;
@@ -1351,7 +1351,7 @@ const fetchUsers = async () => {
       } else {
         const isGuest = localStorage.getItem("eliteArrowsIsGuestSession") === "true";
         if (isGuest) {
-          setUser({ id: "guest_player", username: "Guest Player", isGuest: true, division: "Unassigned", isSubscribed: false, isAdmin: false });
+          setUser({ id: "guest_player", username: "Guest Player", isGuest: true, division: "Unassigned", isSubscribed: true, trainingPassActive: true, isAdmin: false });
         } else {
           setUser(null);
           localStorage.removeItem("eliteArrowsCurrentUser");
@@ -1455,7 +1455,7 @@ const fetchUsers = async () => {
 
   const loginAsGuest = useCallback(() => {
     localStorage.setItem("eliteArrowsIsGuestSession", "true");
-    const guestUser = { id: "guest_player", username: "Guest Player", isGuest: true, division: "Unassigned", isSubscribed: false, isAdmin: false };
+    const guestUser = { id: "guest_player", username: "Guest Player", isGuest: true, division: "Unassigned", isSubscribed: true, trainingPassActive: true, isAdmin: false };
     setUser(guestUser);
     localStorage.setItem("eliteArrowsCurrentUser", JSON.stringify(guestUser));
   }, []);

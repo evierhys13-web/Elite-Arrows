@@ -165,6 +165,10 @@ function SubscribedRoute({ children }) {
     return <Navigate to="/auth" replace />
   }
 
+  if (user?.isGuest) {
+    return children
+  }
+
   if (isOnboardingPending(user) && location.pathname !== '/welcome') {
     return <Navigate to="/welcome" replace />
   }
@@ -291,6 +295,10 @@ function TrainingRoute({ children }) {
 
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />
+  }
+
+  if (user?.isGuest) {
+    return children
   }
 
   if (isOnboardingPending(user) && location.pathname !== '/welcome') {

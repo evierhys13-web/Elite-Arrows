@@ -921,6 +921,29 @@ export default function SubmitResult() {
       </div>
 
       <div className="card" style={{ padding: '25px', borderRadius: '16px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
+        {user?.isGuest && (
+          <div style={{
+            background: 'rgba(239, 68, 68, 0.12)',
+            border: '1px solid var(--error)',
+            borderRadius: '12px',
+            padding: '18px 20px',
+            marginBottom: '25px',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '1.6rem', marginBottom: '6px' }}>🔒</div>
+            <h3 style={{ margin: '0 0 6px', color: '#fca5a5', fontSize: '1.1rem' }}>Guest Preview Mode</h3>
+            <p style={{ margin: '0 0 14px', fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+              Guest users have full access to explore features across Elite Arrows. However, submitting official match results requires a registered member account.
+            </p>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={() => navigate('/auth')}
+            >
+              Sign In or Create Account
+            </button>
+          </div>
+        )}
         <form className="submit-result-form" onSubmit={handleSubmit} style={{ maxWidth: 'none' }}>
           <div className="form-group" style={{ marginBottom: '25px' }}>
             <label style={{ fontWeight: '600', marginBottom: '10px', display: 'block' }}>Match Type</label>
@@ -1531,7 +1554,7 @@ export default function SubmitResult() {
           <button 
             type="submit"
             className={`btn ${submitted ? 'btn-success' : 'btn-primary'} btn-block`}
-            disabled={submitted || isSubmitting}
+            disabled={submitted || isSubmitting || user?.isGuest}
             style={{
               padding: '20px',
               fontSize: '1.1rem',
@@ -1572,6 +1595,11 @@ export default function SubmitResult() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
                 <span style={{ fontSize: '1.5rem' }}>✅</span>
                 <span>Submitted Successfully!</span>
+              </div>
+            ) : user?.isGuest ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '1.2rem' }}>🔒</span>
+                <span>Sign In Required to Submit</span>
               </div>
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
