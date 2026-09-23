@@ -250,7 +250,7 @@ export default function Table() {
     // 1. Handle Division Change
     const newDiv = manualForm.division;
     if (newDiv !== editingManual.division) {
-      if (selectedSeason === (adminData?.currentSeason || "Season 1")) {
+      if (selectedSeason === (adminData?.currentSeason || "Elite Arrows Season 5")) {
         // Update live division
         await setDoc(
           doc(db, "users", targetId),

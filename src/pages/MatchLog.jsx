@@ -68,7 +68,7 @@ export default function MatchLog() {
   const seasons = getSeasons()
   const fixturesById = Object.fromEntries(fixtures.map(fixture => [String(fixture.id), fixture]))
   
-  const currentSeasonName = adminData?.currentSeason || 'Season 1'
+  const currentSeasonName = adminData?.currentSeason || 'Elite Arrows Season 5'
   const activeSeasonDoc = seasons.find(s => s.name === currentSeasonName)
 
   // Calculate effective user (with division for the active season)
