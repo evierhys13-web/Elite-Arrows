@@ -47,6 +47,10 @@ service cloud.firestore {
       ]);
     }
 
+    function isRegisteredUser() {
+      return signedIn() && request.auth.token.get('firebase', {}).get('sign_in_provider', '') != 'anonymous';
+    }
+
     match /users/{userId} {
       allow read: if signedIn();
       allow write: if isOwner(userId) || isAdmin();
@@ -57,7 +61,7 @@ service cloud.firestore {
 
     match /results/{resultId} {
       allow read: if signedIn();
-      allow create: if signedIn();
+      allow create: if isRegisteredUser();
       allow update, delete: if isAdmin();
     }
 

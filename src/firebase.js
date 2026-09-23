@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app'
 import { getFirestore, collection, doc, setDoc, getDoc, getDocFromServer, getDocs, getDocsFromServer, query, where, orderBy, onSnapshot, deleteDoc, addDoc, updateDoc, writeBatch, runTransaction, limit, arrayUnion, serverTimestamp, increment, deleteField as deleteFieldFirestore } from 'firebase/firestore'
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, sendPasswordResetEmail } from 'firebase/auth'
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, sendPasswordResetEmail, signInAnonymously } from 'firebase/auth'
 import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging'
 import { getAnalytics, logEvent, setConsent } from 'firebase/analytics'
 import { getPerformance, trace } from 'firebase/performance'
@@ -81,7 +81,7 @@ export const openLeagueSinglesCollection = collection(db, 'openLeagueSingles')
 
 export { 
   doc, setDoc, getDoc, getDocFromServer, getDocs, getDocsFromServer, query, where, orderBy, onSnapshot, deleteDoc, collection, addDoc, updateDoc, writeBatch, runTransaction, limit, arrayUnion, serverTimestamp, increment, deleteFieldFirestore as deleteField,
-  signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged,
+  signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInAnonymously,
   setPersistence, browserSessionPersistence, browserLocalPersistence,
   sendPasswordResetEmail,
   getMessaging, getToken, onMessage, isSupported,

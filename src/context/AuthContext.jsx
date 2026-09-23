@@ -30,6 +30,7 @@ import {
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
   onAuthStateChanged,
+  signInAnonymously,
   setPersistence,
   browserSessionPersistence,
   browserLocalPersistence,
@@ -1304,53 +1305,72 @@ const fetchUsers = async () => {
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        try {
-          const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
-          if (userDoc.exists()) {
-            let userData = userDoc.data();
-            SENSITIVE_FIELDS.forEach((field) => delete userData[field]);
-            const fullUser = { id: userDoc.id, ...userData };
-            setUser(fullUser);
+        if (firebaseUser.isAnonymous) {
+          const guestUser = {
+            id: "guest_player",
+            username: "Guest Player",
+            isGuest: true,
+            division: "Unassigned",
+            isSubscribed: true,
+            trainingPassActive: true,
+            isAdmin: false
+          };
+          setUser(guestUser);
+          localStorage.setItem("eliteArrowsCurrentUser", JSON.stringify(guestUser));
+        } else {
+          try {
+            const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
+            if (userDoc.exists()) {
+              let userData = userDoc.data();
+              SENSITIVE_FIELDS.forEach((field) => delete userData[field]);
+              const fullUser = { id: userDoc.id, ...userData };
+              setUser(fullUser);
 
-            localStorage.setItem(
-              "eliteArrowsCurrentUser",
-              JSON.stringify(fullUser),
-            );
-          } else {
-            const newUserData = {
-              username: firebaseUser.email?.split("@")[0] || "User",
-              email: firebaseUser.email,
-              threeDartAverage: 0,
-              division: null,
-              isAdmin: false,
-              isTournamentAdmin: false,
-              isSubscribed: false,
-              freeAdminSubscription: false,
-              adminRequestPending: false,
-              friends: [],
-              isOnline: true,
-              showOnlineStatus: true,
-              doNotDisturb: false,
-              dndEndTime: null,
-              lastSeen: new Date().toISOString(),
-              createdAt: new Date().toISOString(),
-              onboardingComplete: false,
-            };
-            await setDoc(doc(db, "users", firebaseUser.uid), newUserData);
-            const fullUser = { id: firebaseUser.uid, ...newUserData };
-            setUser(fullUser);
-            localStorage.setItem(
-              "eliteArrowsCurrentUser",
-              JSON.stringify(fullUser),
-            );
+              localStorage.setItem(
+                "eliteArrowsCurrentUser",
+                JSON.stringify(fullUser),
+              );
+            } else {
+              const newUserData = {
+                username: firebaseUser.email?.split("@")[0] || "User",
+                email: firebaseUser.email,
+                threeDartAverage: 0,
+                division: null,
+                isAdmin: false,
+                isTournamentAdmin: false,
+                isSubscribed: false,
+                freeAdminSubscription: false,
+                adminRequestPending: false,
+                friends: [],
+                isOnline: true,
+                showOnlineStatus: true,
+                doNotDisturb: false,
+                dndEndTime: null,
+                lastSeen: new Date().toISOString(),
+                createdAt: new Date().toISOString(),
+                onboardingComplete: false,
+              };
+              await setDoc(doc(db, "users", firebaseUser.uid), newUserData);
+              const fullUser = { id: firebaseUser.uid, ...newUserData };
+              setUser(fullUser);
+              localStorage.setItem(
+                "eliteArrowsCurrentUser",
+                JSON.stringify(fullUser),
+              );
+            }
+          } catch (e) {
+            const stored = localStorage.getItem("eliteArrowsCurrentUser");
+            if (stored) setUser(JSON.parse(stored));
           }
-        } catch (e) {
-          const stored = localStorage.getItem("eliteArrowsCurrentUser");
-          if (stored) setUser(JSON.parse(stored));
         }
       } else {
         const isGuest = localStorage.getItem("eliteArrowsIsGuestSession") === "true";
         if (isGuest) {
+          try {
+            await signInAnonymously(auth);
+          } catch (e) {
+            console.warn("Anonymous auth error:", e);
+          }
           setUser({ id: "guest_player", username: "Guest Player", isGuest: true, division: "Unassigned", isSubscribed: true, trainingPassActive: true, isAdmin: false });
         } else {
           setUser(null);
@@ -1453,11 +1473,18 @@ const fetchUsers = async () => {
     setUser(null);
   }, [user]);
 
-  const loginAsGuest = useCallback(() => {
+  const loginAsGuest = useCallback(async () => {
     localStorage.setItem("eliteArrowsIsGuestSession", "true");
     const guestUser = { id: "guest_player", username: "Guest Player", isGuest: true, division: "Unassigned", isSubscribed: true, trainingPassActive: true, isAdmin: false };
     setUser(guestUser);
     localStorage.setItem("eliteArrowsCurrentUser", JSON.stringify(guestUser));
+    try {
+      if (!auth.currentUser) {
+        await signInAnonymously(auth);
+      }
+    } catch (e) {
+      console.warn("loginAsGuest anonymous auth error:", e);
+    }
   }, []);
 
   const updateUser = useCallback(async (updates, showAlert = true) => {
