@@ -947,7 +947,9 @@ export function AuthProvider({ children }) {
       }
     );
 
-    let unsubscribeFixtures2 = onSnapshot(fixturesQuery2, (snapshot) => {
+    let unsubscribeFixtures2 = null;
+    if (fixturesQuery2) {
+      unsubscribeFixtures2 = onSnapshot(fixturesQuery2, (snapshot) => {
         const data = snapshot.docs
           .map((doc) => ({ id: doc.id, ...doc.data() }))
           .filter((item) => !item._deleted);
@@ -965,6 +967,7 @@ export function AuthProvider({ children }) {
       }, (error) => {
         console.error("Fixtures2 listener error:", error);
       });
+    }
 
     let unsubscribeFixtures3 = null;
     if (fixturesQuery3) {
