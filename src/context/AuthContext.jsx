@@ -2176,20 +2176,20 @@ const fetchUsers = async () => {
       showToast?.("Performing deep sync with server...", "info");
 
       // 1. Fetch Results - Get approved results for current season
-      const currentSeason = adminData?.currentSeason || "Season 1";
+      const currentSeason = adminData?.currentSeason || "Elite Arrows Season 5";
 
-      // IMPORTANT: Using getDocsFromServer to bypass local cache entirely
       let resultsSnap;
       try {
-        const q = (currentSeason === "Season 1" || !currentSeason)
-          ? query(collection(db, "results"), where("status", "==", "approved"))
-          : query(collection(db, "results"), where("season", "==", currentSeason), where("status", "==", "approved"));
-
+        const q = query(collection(db, "results"), where("season", "==", currentSeason), where("status", "==", "approved"));
         resultsSnap = await getDocsFromServer(q);
       } catch (queryErr) {
         console.warn("Season-specific query failed, falling back to broad fetch:", queryErr);
         const fallbackQ = query(collection(db, "results"), where("status", "==", "approved"));
-        resultsSnap = await getDocsFromServer(fallbackQ);
+        try {
+          resultsSnap = await getDocsFromServer(fallbackQ);
+        } catch (e2) {
+          resultsSnap = await getDocs(fallbackQ);
+        }
       }
 
       const freshResults = resultsSnap.docs.map((docSnap) => {
@@ -2198,7 +2198,13 @@ const fetchUsers = async () => {
       });
 
       // 2. Fetch Users
-      const usersSnap = await getDocsFromServer(query(collection(db, "users"), limit(1000)));
+      let usersSnap;
+      try {
+        usersSnap = await getDocsFromServer(query(collection(db, "users"), limit(1000)));
+      } catch (eUsers) {
+        usersSnap = await getDocs(query(collection(db, "users"), limit(1000)));
+      }
+
       const freshUsers = usersSnap.docs.map((docSnap) => {
         const data = docSnap.data();
         SENSITIVE_FIELDS.forEach((f) => delete data[f]);
