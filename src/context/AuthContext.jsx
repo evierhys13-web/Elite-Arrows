@@ -773,7 +773,7 @@ export function AuthProvider({ children }) {
           limit(500),
         );
 
-    const userResultsQuery1 = !user?.isAdmin
+    const userResultsQuery1 = (!user?.isAdmin && !user?.isGuest && user?.id)
       ? query(
           collection(db, "results"),
           where("player1Id", "==", user.id),
@@ -781,7 +781,7 @@ export function AuthProvider({ children }) {
           limit(50),
         )
       : null;
-    const userResultsQuery2 = !user?.isAdmin
+    const userResultsQuery2 = (!user?.isAdmin && !user?.isGuest && user?.id)
       ? query(
           collection(db, "results"),
           where("player2Id", "==", user.id),
@@ -893,7 +893,7 @@ export function AuthProvider({ children }) {
       });
     }
 
-    const fixturesQuery = user?.isAdmin
+    const fixturesQuery = (user?.isAdmin || user?.isGuest)
       ? query(
           collection(db, "fixtures"),
           orderBy("createdAt", "desc"),
@@ -905,11 +905,13 @@ export function AuthProvider({ children }) {
           limit(50),
         );
 
-    const fixturesQuery2 = query(
+    const fixturesQuery2 = (!user?.isAdmin && !user?.isGuest && user?.id)
+      ? query(
           collection(db, "fixtures"),
           where("player2Id", "==", user.id),
           limit(50),
-        );
+        )
+      : null;
 
     // If admin, we also want to explicitly query for their own fixtures
     // in case they are older than the last 200 globally.

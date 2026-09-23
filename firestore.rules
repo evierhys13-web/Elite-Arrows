@@ -52,7 +52,7 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if signedIn();
+      allow read: if true;
       allow write: if isOwner(userId) || isAdmin();
       allow update: if signedIn() &&
         request.resource.data.diff(resource.data).affectedKeys()
@@ -60,7 +60,7 @@ service cloud.firestore {
     }
 
     match /results/{resultId} {
-      allow read: if signedIn();
+      allow read: if true;
       allow create: if isRegisteredUser();
       allow update, delete: if isAdmin();
     }
@@ -72,29 +72,29 @@ service cloud.firestore {
     }
 
     match /fixtures/{fixtureId} {
-      allow read: if signedIn();
+      allow read: if true;
       allow create: if signedIn();
       allow update: if signedIn() && (isAdmin() || (isFixtureParticipant(resource.data) && participantFixtureUpdateIsSafe()));
       allow delete: if signedIn() && (isAdmin() || isFixtureParticipant(resource.data));
     }
 
     match /cups/{cupId} {
-      allow read: if signedIn();
+      allow read: if true;
       allow write: if isAdmin();
     }
 
     match /tournaments/{tournamentId} {
-      allow read: if signedIn();
+      allow read: if true;
       allow write: if isAdmin();
     }
 
     match /tournament_records/{recordId} {
-      allow read: if signedIn();
+      allow read: if true;
       allow write: if isAdmin();
     }
 
     match /adminData/{docId} {
-      allow read: if signedIn();
+      allow read: if true;
       allow write: if isAdmin();
     }
 
@@ -105,12 +105,12 @@ service cloud.firestore {
     }
 
     match /seasons/{seasonId} {
-      allow read: if signedIn();
+      allow read: if true;
       allow write: if isAdmin();
     }
 
     match /news/{newsId} {
-      allow read: if signedIn();
+      allow read: if true;
       allow write: if isAdmin();
     }
 
@@ -130,23 +130,23 @@ service cloud.firestore {
     }
 
     match /tournamentSignups/{signupId} {
-      allow read: if signedIn();
+      allow read: if true;
       allow create: if signedIn();
       allow update, delete: if isAdmin();
     }
 
     match /giveaways/{giveawayId} {
-      allow read: if signedIn();
+      allow read: if true;
       allow write: if isAdmin();
     }
 
     match /challenges/{challengeId} {
-      allow read: if signedIn();
+      allow read: if true;
       allow write: if isAdmin();
     }
 
     match /challengeSubmissions/{submissionId} {
-      allow read: if signedIn();
+      allow read: if true;
       allow create: if signedIn();
       allow update, delete: if isAdmin();
     }
@@ -158,22 +158,22 @@ service cloud.firestore {
     }
 
     match /openLeagueDuos/{duoId} {
-      allow read: if signedIn();
+      allow read: if true;
       allow write: if isAdmin();
     }
 
     match /openLeagueSingles/{singlesId} {
-      allow read: if signedIn();
+      allow read: if true;
       allow write: if isAdmin();
     }
 
     match /hallOfFame/{entryId} {
-      allow read: if signedIn();
+      allow read: if true;
       allow create, update, delete: if isAdmin();
     }
 
     match /homeTournaments/{entryId} {
-      allow read: if signedIn();
+      allow read: if true;
       allow create, update, delete: if isAdmin();
     }
 
@@ -182,7 +182,7 @@ service cloud.firestore {
     }
 
     match /suggestions/{suggestionId} {
-      allow read: if signedIn();
+      allow read: if true;
       allow create: if signedIn();
       allow update: if isAdmin() || (
         signedIn() &&
@@ -194,7 +194,7 @@ service cloud.firestore {
     }
 
     match /highlights/{highlightId} {
-      allow read: if signedIn();
+      allow read: if true;
       allow create: if signedIn();
       allow update, delete: if isAdmin() || isOwner(resource.data.userId);
     }
@@ -212,7 +212,8 @@ service cloud.firestore {
     }
 
     match /practiceLeaderboard/{entryId} {
-      allow read, create, update: if signedIn();
+      allow read: if true;
+      allow create, update: if signedIn();
     }
 
     match /liveGames/{gameId} {
@@ -242,7 +243,7 @@ service cloud.firestore {
     }
 
     match /pageBackgrounds/{pageKey} {
-      allow read: if signedIn();
+      allow read: if true;
       allow write: if isAdmin();
     }
 
