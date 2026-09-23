@@ -7,6 +7,8 @@ import { derivePlayerStatsFromResults } from '../utils/playerStats'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
 import { getResultPlayerId, isLeagueResult, isPlayoffResult } from '../utils/leagueResults'
+import { getCupEligibility } from '../utils/seasonEligibility'
+import { db, collection, getDocs } from '../firebase'
 import HighlightReel from '../components/HighlightReel'
 
 const AVAILABLE_BADGES = [
@@ -31,6 +33,26 @@ export default function Profile() {
   const isViewingOther = id && id !== user.id
   const viewedUser = isViewingOther ? allUsers.find(u => u.id === id) : null
   const displayUser = isViewingOther ? viewedUser : user
+
+  const currentSeason = adminData?.currentSeason || 'Season 1'
+  const eligibility = displayUser?.id ? getCupEligibility(displayUser, allResults, fixtures, currentSeason) : null
+  const [seasonReports, setSeasonReports] = useState([])
+
+  useEffect(() => {
+    let active = true
+    if (!displayUser?.id) { setSeasonReports([]); return }
+    getDocs(collection(db, 'seasonReports'))
+      .then((snap) => {
+        if (!active) return
+        const reports = snap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter((r) => String(r.userId) === String(displayUser.id))
+          .sort((a, b) => String(a.season).localeCompare(String(b.season)))
+        setSeasonReports(reports)
+      })
+      .catch(() => { if (active) setSeasonReports([]) })
+    return () => { active = false }
+  }, [displayUser?.id])
   
   const [formData, setFormData] = useState({
     username: '',
@@ -518,6 +540,23 @@ export default function Profile() {
                 </div>
               </div>
 
+              {/* Cup Eligibility */}
+              {eligibility && (
+                <div className="card glass" style={{ borderLeft: `4px solid ${eligibility.eligible ? 'var(--success)' : 'var(--error)'}` }}>
+                  <h3 className="card-title">🏆 Cup Eligibility</h3>
+                  <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.7 }}>
+                    {eligibility.eligible ? (
+                      <p><span style={{ color: 'var(--success)', fontWeight: 700 }}>✅ Eligible</span> for cups and tournament entry.</p>
+                    ) : (
+                      <p><span style={{ color: 'var(--error)', fontWeight: 700 }}>⛔ New-member probation</span> — new members must play at least 75% of league fixtures before entering cups or tournaments.</p>
+                    )}
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      Fixtures played: <strong>{eligibility.played}</strong> / <strong>{eligibility.total}</strong> ({Math.round(eligibility.ratio * 100)}%) this season.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Badge Selector */}
               {!isViewingOther && (
                 <div className="card glass">
@@ -556,6 +595,31 @@ export default function Profile() {
               )}
             </div>
           </div>
+
+          {/* Season Report Cards */}
+          {seasonReports.length > 0 && (
+            <div className="card glass" style={{ marginBottom: '32px' }}>
+              <h3 className="card-title">📋 Season Report Cards</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+                {seasonReports.map((report) => (
+                  <div key={report.id} style={{ padding: '20px', background: 'rgba(0,0,0,0.2)', borderRadius: '16px', border: '1px solid var(--border)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                      <span style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{report.season}</span>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{report.division}</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', fontSize: '0.9rem' }}>
+                      <div><span style={{ color: 'var(--text-muted)' }}>Played</span><br /><strong>{report.played}</strong></div>
+                      <div><span style={{ color: 'var(--text-muted)' }}>W-L-D</span><br /><strong>{report.wins}-{report.losses}-{report.draws}</strong></div>
+                      <div><span style={{ color: 'var(--text-muted)' }}>3-Dart Avg</span><br /><strong>{report.average ? report.average.toFixed(2) : '-'}</strong></div>
+                      <div><span style={{ color: 'var(--text-muted)' }}>Best Checkout</span><br /><strong>{report.highestCheckout || '-'}</strong></div>
+                      <div><span style={{ color: 'var(--text-muted)' }}>180s</span><br /><strong>{report['180s'] || 0}</strong></div>
+                      <div><span style={{ color: 'var(--text-muted)' }}>Cups ({report.cupWins}/{report.cupsEntered})</span><br /><strong>{report.cupsEntered} entered</strong></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Match Log Section */}
           <div className="card glass" style={{ marginBottom: '32px' }}>

@@ -70,6 +70,12 @@ const SEASON_ONE_WELCOME_START = new Date(
   "2026-05-01T00:00:00+01:00",
 ).getTime();
 
+export const isTimedBanned = (user) => {
+  if (!user || typeof user.bannedUntil !== "string") return false;
+  const until = new Date(user.bannedUntil);
+  return Number.isFinite(until.getTime()) && until.getTime() > Date.now();
+};
+
 // Quota-friendly read cache: Firestore free tier allows ~50k reads/day across the
 // whole project, so repeat navigation should reuse freshly-loaded data instead of
 // re-reading the same docs. Writes (triggerDataRefresh) bypass it temporarily so
@@ -124,7 +130,7 @@ const ONBOARDING_CONTENT_DEFAULTS = {
   leagueRules: {
     title: "League Rules",
     body:
-      "All league fixtures must be played by the end of the season - unplayable fixtures are noted as a forfeit and use the forfeit rule, so the winner is awarded 3 points with no legs awarded. Play fewer than the required number of matches and you can be relegated or banned. The winner submits the result within 4 hours, and disputes must be raised with an admin within 48 hours. Re-scheduling is allowed when both players agree and an admin is notified.",
+      "All league fixtures must be played by the end of the season - unplayable fixtures are noted as a forfeit and use the forfeit rule, so the winner is awarded 3 points with no legs awarded. Play fewer than the required number of matches and you can be relegated or banned. Effective 1st October, forfeiting a season without a valid reason pre-approved by an admin means automatic relegation plus a one month ban. New members must play at least 75% of their fixtures in their first season to be eligible for cups and tournaments. The winner submits the result within 4 hours, and disputes must be raised with an admin within 48 hours. Re-scheduling is allowed when both players agree and an admin is notified.",
   },
   generalRules: {
     title: "Rules In General",
@@ -743,7 +749,7 @@ export function AuthProvider({ children }) {
             localStorage.setItem("eliteArrowsCurrentUser", JSON.stringify(currentUserData));
           } catch (e) {}
 
-          if (currentUserData.isBanned) {
+          if (currentUserData.isBanned || isTimedBanned(currentUserData)) {
             firebaseSignOut(auth);
             setUser(null);
             try {

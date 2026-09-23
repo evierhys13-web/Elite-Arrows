@@ -47,6 +47,22 @@ export default function Rules() {
             </ul>
           </div>
 
+          <div style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.25)' }}>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '10px', color: 'white' }}>🏳️ Season Forfeit Penalty <span style={{ fontSize: '0.75rem', color: 'var(--warning)', fontWeight: 800 }}>EFFECTIVE 1st OCTOBER</span></h3>
+            <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
+              <li>Forfeiting a season without a <strong>valid reason pre-approved by an admin</strong> results in <strong>automatic relegation</strong> plus a <strong>one month ban</strong>.</li>
+              <li>The <strong>1-month ban</strong> is timed and lifts automatically — a valid reason must be agreed with an admin <strong>before</strong> you stop playing.</li>
+            </ul>
+          </div>
+
+          <div style={{ background: 'rgba(56, 189, 248, 0.08)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(56, 189, 248, 0.25)' }}>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '10px', color: 'white' }}>🌱 New Member Probation</h3>
+            <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
+              <li>New members must play <strong>at least 75% of their league fixtures</strong> in their <strong>first season</strong> to be eligible to enter cups and tournaments.</li>
+              <li>Eligibility resets once the probation season is completed.</li>
+            </ul>
+          </div>
+
           <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
             <h3 style={{ fontSize: '1.1rem', marginBottom: '10px', color: 'white' }}>🗓️ Re-scheduling Games</h3>
             <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>

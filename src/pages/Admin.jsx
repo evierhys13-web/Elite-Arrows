@@ -295,6 +295,7 @@ export default function Admin() {
   const allPlayers = getAllUsers() || []
   const allResults = getResults() || []
   const allFixtures = getFixtures() || []
+  const currentSeason = adminData?.currentSeason || 'Season 1'
   const pendingResults = allResults.filter(r => String(r.status).toLowerCase() === 'pending')
   const approvedResults = allResults.filter(r => String(r.status).toLowerCase() === 'approved')
   const rejectedResults = allResults.filter(r => String(r.status).toLowerCase() === 'rejected')
@@ -336,6 +337,27 @@ export default function Admin() {
   useEffect(() => {
     setRefreshKey(prev => prev + 1)
   }, [dataRefreshTrigger])
+
+  // Unban sweep: clear expired timed bans so users don't manually need to be unbanned.
+  useEffect(() => {
+    const expired = allPlayers.filter(p => p.bannedUntil && new Date(p.bannedUntil).getTime() <= Date.now())
+    if (expired.length === 0) return
+    const runSweep = async () => {
+      try {
+        const batch = writeBatch(db)
+        expired.forEach(p => {
+          batch.update(doc(db, 'users', p.id), { bannedUntil: null })
+        })
+        await batch.commit()
+        const names = expired.map(p => p.username).join(', ')
+        await logAudit('UNBAN_SWEEP', `Auto-unbanned expired bans: ${names}`)
+        triggerDataRefresh('users')
+      } catch (e) {
+        console.error('Unban sweep failed', e)
+      }
+    }
+    runSweep()
+  }, [allPlayers])
 
   const filteredResultsList = useMemo(() => {
     let list = allResults.filter(r => String(r.status).toLowerCase() === resultFilter)
@@ -1115,10 +1137,62 @@ export default function Admin() {
       const target = allPlayers.find(p => p.id === targetId)
       if (targetId === user.id) return showToast('You cannot ban yourself.', 'error')
       const newStatus = !currentStatus
-      await setDoc(doc(db, 'users', targetId), { isBanned: newStatus }, { merge: true })
+      await setDoc(doc(db, 'users', targetId), { isBanned: newStatus, bannedUntil: null }, { merge: true })
       await logAudit(newStatus ? 'BAN_USER' : 'UNBAN_USER', `${newStatus ? 'Banned' : 'Unbanned'} user: ${target?.username}`)
       triggerDataRefresh('users')
       showToast(`User ${target?.username} ${newStatus ? 'banned' : 'unbanned'}.`, 'success')
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
+  const handleTimedBan = async (targetId, days = 30) => {
+    try {
+      const target = allPlayers.find(p => String(p.id) === String(targetId))
+      if (String(targetId) === String(user.id)) return showToast('You cannot ban yourself.', 'error')
+      const bannedUntil = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
+      await setDoc(doc(db, 'users', targetId), { isBanned: false, bannedUntil }, { merge: true })
+      await logAudit('TIMED_BAN_USER', `Banned user ${target?.username} for ${days} days (until ${new Date(bannedUntil).toLocaleDateString()})`)
+      triggerDataRefresh('users')
+      showToast(`User ${target?.username} banned until ${new Date(bannedUntil).toLocaleDateString()}.`, 'success')
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
+  const isUserBanned = (p) => p.isBanned === true || (p.bannedUntil && new Date(p.bannedUntil).getTime() > Date.now())
+
+  const handlePickBan = async (target) => {
+    const choice = prompt(`Ban ${target?.username}. Enter "1" for 1-month timed ban, "perm" for permanent ban:`, '1')
+    if (!choice) return
+    const trimmed = choice.trim().toLowerCase()
+    if (trimmed === 'perm') {
+      await handleToggleBan(target.id, false)
+    } else {
+      const days = parseInt(trimmed, 10)
+      if (Number.isFinite(days) && days > 0) {
+        await handleTimedBan(target.id, days)
+      } else {
+        showToast('Invalid ban duration', 'error')
+      }
+    }
+  }
+
+  const handleForfeitSeason = async (targetId) => {
+    try {
+      const target = allPlayers.find(p => String(p.id) === String(targetId))
+      if (!target) return showToast('Player not found', 'error')
+      const divisionOrder = ['Elite', 'Emerald', 'Diamond', 'Platinum']
+      const currentIdx = divisionOrder.indexOf(target.division)
+      const nextDivision = currentIdx >= 0 && currentIdx < divisionOrder.length - 1 ? divisionOrder[currentIdx + 1] : target.division || 'Unassigned'
+      const bannedUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+      const updates = {
+        division: nextDivision,
+        isBanned: false,
+        bannedUntil,
+        forfeitedSeason: currentSeason || 'Unknown',
+        forfeitedAt: new Date().toISOString()
+      }
+      await setDoc(doc(db, 'users', targetId), updates, { merge: true })
+      await logAudit('FORFEIT_SEASON', `Season forfeit penalty for ${target?.username}: relegated ${target?.division || 'Unassigned'} → ${nextDivision}, banned until ${new Date(bannedUntil).toLocaleDateString()}`)
+      triggerDataRefresh('users')
+      showToast(`🏳️ ${target?.username} relegated to ${nextDivision} + banned 1 month for season forfeit.`, 'success')
     } catch (e) { showToast(e.message, 'error') }
   }
 
@@ -3739,6 +3813,10 @@ export default function Admin() {
                     </div>
                     <div style={{ display: 'flex', gap: '10px' }}>
                       <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); navigate(`/profile/${p.id}`) }}>View</button>
+                      {isFullAdmin && isUserBanned(p)
+                        ? <button className="btn btn-success btn-sm" onClick={(e) => { e.stopPropagation(); handleToggleBan(p.id, true) }}>Unban</button>
+                        : isFullAdmin && <button className="btn btn-danger btn-sm" onClick={(e) => { e.stopPropagation(); handlePickBan(p) }}>Ban</button>}
+                      {isFullAdmin && <button className="btn btn-warning btn-sm" onClick={(e) => { e.stopPropagation(); if (confirm(`🏳️ Apply season forfeit penalty to ${p.username}? They get automatic relegation + a 1-month ban (rule effective 1st Oct).`)) handleForfeitSeason(p.id) }}>🏳️ Forfeit</button>}
                       <button className="btn btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); handleUpdateAdminRole(p.id, 'isTournamentAdmin', true); setActiveTab('admins'); }}>Promote</button>
                       {isFullAdmin && <button className="btn btn-danger btn-sm" onClick={(e) => { e.stopPropagation(); handleDeleteUser(p.id) }}>🗑️</button>}
                     </div>

@@ -85,6 +85,7 @@ export default function Sidebar() {
           { path: '/leaderboards', label: 'Leaderboards', icon: TrophyIcon },
           { path: '/cups', label: 'Cups', icon: TrophyIcon },
           { path: '/hall-of-fame', label: 'Hall of Fame', icon: StarIcon },
+          { path: '/player-of-month', label: 'Player of the Month', icon: StarIcon },
           { path: '/statistics', label: 'Statistics', icon: BarChartIcon },
           { path: '/practice', label: 'Practice Hub', icon: TargetIcon },
           { path: '/training', label: 'Darts Academy', icon: AcademyIcon },

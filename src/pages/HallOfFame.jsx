@@ -17,6 +17,7 @@ export default function HallOfFame() {
 
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
+  const [seasonReports, setSeasonReports] = useState([])
   const [form, setForm] = useState({ player: '', name: '', icon: '🏆', season: '', visible: true, image: '' })
   const [saving, setSaving] = useState(false)
   const [imageError, setImageError] = useState('')
@@ -40,7 +41,16 @@ export default function HallOfFame() {
         setLoading(false)
       }
     }
+    const fetchSeasonReports = async () => {
+      try {
+        const snap = await getDocs(collection(db, 'seasonReports'))
+        setSeasonReports(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      } catch (e) {
+        console.error('Failed to fetch season reports', e)
+      }
+    }
     fetchEntries()
+    fetchSeasonReports()
   }, [])
 
   const logAudit = async (action, details) => {
@@ -317,6 +327,16 @@ export default function HallOfFame() {
                           {entry.username}
                         </div>
                         <div style={{ fontSize: '0.78rem', color: 'rgba(251,191,36,0.92)', fontWeight: 700, lineHeight: 1.4 }}>{entry.name}</div>
+                        {(() => {
+                          const report = seasonReports.find(r => String(r.userId) === String(entry.userId) && r.season === entry.season)
+                          if (!report) return null
+                          return (
+                            <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.65)', fontWeight: 600, lineHeight: 1.5, marginTop: '6px' }}>
+                              {report.played} played · {report.wins}-{report.losses}-{report.draws} W-L-D{report.average ? ` · ${report.average.toFixed(1)} avg` : ''}
+                              {report.highestCheckout ? ` · ${report.highestCheckout} checkout` : ''}
+                            </div>
+                          )
+                        })()}
                         {entry.visible === false && (
                           <span style={{ fontSize: '0.6rem', color: 'var(--warning)', fontWeight: 800, textTransform: 'uppercase' }}>Hidden</span>
                         )}

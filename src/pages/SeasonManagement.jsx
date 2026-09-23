@@ -6,6 +6,7 @@ import Breadcrumbs from '../components/Breadcrumbs'
 import UserSearchSelect from '../components/UserSearchSelect'
 import { useToast } from '../context/ToastContext'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
+import { buildSeasonReportCard } from '../utils/seasonReport'
 
 const CHAMPIONS_LEAGUE_DIVISIONS = ['Champions']
 
@@ -245,6 +246,35 @@ export default function SeasonManagement() {
       triggerDataRefresh('seasons')
     } catch (e) {
       showToast('Error ending season', 'error')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const generateReportCards = async (season) => {
+    if (!season?.name) return showToast('Select a season first', 'error')
+    if (!confirm(`Generate season report cards for "${season.name}" for all players? This will be stored and shown on profiles and the Hall of Fame.`)) return
+
+    setIsProcessing(true)
+    try {
+      const allResults = getResults()
+      const fixtures = []
+      const batch = writeBatch(db)
+      let count = 0
+
+      allPlayers.forEach(player => {
+        const card = buildSeasonReportCard({ user: player, results: allResults, fixtures, season: season.name })
+        if (!card) return
+        const docId = `${season.name.replace(/[^a-zA-Z0-9]/g, '_')}_${player.id}`
+        batch.set(doc(db, 'seasonReports', docId), card)
+        count++
+      })
+
+      await batch.commit()
+      showToast(`Generated ${count} report cards for ${season.name}`, 'success')
+      triggerDataRefresh('seasons')
+    } catch (e) {
+      showToast('Error generating report cards: ' + e.message, 'error')
     } finally {
       setIsProcessing(false)
     }
@@ -761,6 +791,7 @@ export default function SeasonManagement() {
                   {s.name !== championsLeagueSeason && (
                     <button className="btn btn-warning btn-sm" onClick={() => updateChampionsLeagueSeason(s.name)}>Set Champions Active</button>
                   )}
+                  <button className="btn btn-secondary btn-sm" onClick={() => generateReportCards(s)}>Generate Report Cards</button>
                   {!s.isArchived ? (
                     <button className="btn btn-danger btn-sm" onClick={() => endSeason(s)}>End Season</button>
                   ) : (

@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContextInternal'
 import { db, doc, setDoc, deleteDoc, getDoc, runTransaction, writeBatch, collection, query, where, getDocs, limit } from '../firebase'
 import UserSearchSelect from '../components/UserSearchSelect'
 import { useToast } from '../context/ToastContext'
+import { getCupEligibility } from '../utils/seasonEligibility'
 
 function CupManagement() {
   const { getAllUsers, getCups, getFixtures, getResults, advanceCupBracket, triggerDataRefresh, dataRefreshTrigger, notifyUser, searchUsers } = useAuth()
@@ -77,6 +78,14 @@ function CupManagement() {
     p2_avg: ''
   })
   const allUsers = useMemo(() => getAllUsers(), [getAllUsers])
+
+  const getPlayerEligibility = (playerId) => {
+    if (!playerId) return null
+    const player = allUsers.find(u => String(u.id) === String(playerId))
+    if (!player) return null
+    const currentSeason = localStorage.getItem('eliteArrowsCurrentSeason') || 'Season 1'
+    return getCupEligibility(player, getResults(), getFixtures(), currentSeason)
+  }
 
   const handleUpdateCurrentRound = async (cup) => {
     const newVal = prompt(`Enter new Current Round for "${cup.name}" (0 for Group Stage, 1+ for Knockout):`, cup.currentRound || 0)
@@ -612,6 +621,17 @@ function CupManagement() {
         const newPlayer = swapUsers.find(u => u.id === finalPlayerToAdd)
         if (!newPlayer) throw new Error('New player not found')
         replacementName = newPlayer.username
+
+        const eligibility = getPlayerEligibility(finalPlayerToAdd)
+        if (eligibility?.firstSeason && !eligibility.eligible) {
+          const proceed = window.confirm(
+            `${newPlayer.username} is on new-member probation: ${eligibility.reason}. New members must play 75% of fixtures before entering cups. Add them anyway?`
+          )
+          if (!proceed) {
+            setIsSubmitting(false)
+            return showToast('Added player must meet the 75% fixture rule (new-member probation)', 'error')
+          }
+        }
       }
 
       // 1. Update participants list
@@ -693,6 +713,17 @@ function CupManagement() {
       if (!isManualInput) {
         const newPlayer = allUsers.find(u => u.id === finalPlayerId)
         if (!newPlayer) throw new Error('Player not found')
+
+        const eligibility = getPlayerEligibility(finalPlayerId)
+        if (eligibility?.firstSeason && !eligibility.eligible) {
+          const proceed = window.confirm(
+            `${newPlayer.username} is on new-member probation: ${eligibility.reason}. New members must play 75% of fixtures before entering cups. Assign them anyway?`
+          )
+          if (!proceed) {
+            setIsSubmitting(false)
+            return showToast('Player must meet the 75% fixture rule (new-member probation)', 'error')
+          }
+        }
       }
 
       const updatedMatches = (cupData.matches || []).map(m => {
