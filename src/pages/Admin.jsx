@@ -13,6 +13,7 @@ import { scheduleLeagueDigestWrite, writeLeagueDigestNow } from '../utils/league
 import UserSearchSelect from '../components/UserSearchSelect'
 import { useToast } from '../context/ToastContext'
 import { logMatchApproved } from '../utils/analytics'
+import { pushResultApproved, pushResultsApproved, pushNews, isDiscordRelayConfigured } from '../utils/discordPush'
 import { checkMatchAchievements } from '../utils/achievements'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
 import { compressImageToDataUrl } from '../utils/imageUtils'
@@ -562,6 +563,7 @@ export default function Admin() {
       const approvedResult = { ...res, ...updates }
       await setDoc(doc(db, 'results', targetId), approvedResult, { merge: true })
       logMatchApproved(approvedResult)
+      pushResultApproved(adminData, approvedResult)
 
       const checkAndAward = async (uid, matchData) => {
         if (!uid) return
@@ -639,6 +641,7 @@ export default function Admin() {
       await incrementAdminApproval(selectedResults.length)
       for (const res of cupResults) { await advanceCupBracket(res) }
       await logAudit('BULK_APPROVE', `Approved ${selectedResults.length} matches`)
+      pushResultsApproved(adminData, resultsToUpdate)
       setSelectedResults([])
       const updatedResults = allResults.map(r => {
         const match = resultsToUpdate.find(u => String(u.id) === String(r.id))
@@ -1334,6 +1337,13 @@ export default function Admin() {
       await postNews(newsForm.title, newsForm.message, newsForm.pinned)
       await logAudit('CREATE_NEWS', `Created news announcement: ${newsForm.title}`)
       showToast('News announcement posted!', 'success')
+      pushNews(adminData, {
+        title: newsForm.title,
+        message: newsForm.message,
+        pinned: newsForm.pinned,
+        authorName: user?.username || 'Admin',
+        createdAt: new Date().toISOString()
+      })
       setNewsForm({ title: '', message: '', pinned: false })
       triggerDataRefresh('all')
     } catch (e) { showToast(e.message, 'error') }
@@ -4522,6 +4532,35 @@ export default function Admin() {
                 <h4>Recovery Tools</h4>
                 <button className="btn btn-success btn-sm btn-block" onClick={handleHealUserDivisions}>Heal Divisions</button>
                 <button className="btn btn-secondary btn-sm btn-block" onClick={handleBulkSyncAnalytics} style={{ marginTop: '10px' }}>Analytics Sync</button>
+              </div>
+              <div className="glass" style={{ padding: '24px' }}>
+                <h4>Discord Relay</h4>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '12px' }}>
+                  Push approved results & news to your Discord bot (no Firestore reads). Leave the URL empty to disable.
+                </p>
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Bot relay URL</label>
+                  <input
+                    className="glass"
+                    placeholder="https://your-bot.onrender.com"
+                    value={adminData?.discordRelayUrl || ''}
+                    onChange={e => updateAdminData({ discordRelayUrl: e.target.value })}
+                    style={{ width: '100%', marginTop: '6px' }}
+                  />
+                </div>
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Shared secret (optional, must match the bot's env)</label>
+                  <input
+                    className="glass"
+                    placeholder="Same value as DISCORD_RELAY_SECRET on the bot"
+                    value={adminData?.discordRelaySecret || ''}
+                    onChange={e => updateAdminData({ discordRelaySecret: e.target.value })}
+                    style={{ width: '100%', marginTop: '6px' }}
+                  />
+                </div>
+                <div style={{ fontSize: '0.8rem', color: isDiscordRelayConfigured(adminData) ? 'var(--success)' : 'var(--warning)', fontWeight: 800 }}>
+                  {isDiscordRelayConfigured(adminData) ? '✅ Relay active — results & news will reach Discord.' : '⚙️ Not configured — set the bot relay URL to enable.'}
+                </div>
               </div>
               <div className="glass" style={{ padding: '24px', background: adminData?.isMaintenanceMode ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.05)' }}>
                 <h4>Maintenance Mode</h4>

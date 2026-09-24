@@ -149,6 +149,37 @@ export function formatDate(dateKey) {
   return `${day} ${d} ${month}`
 }
 
+export function relayResultEmbed(result) {
+  const p1 = result.player1 || result.player1Name || 'Player 1'
+  const p2 = result.player2 || result.player2Name || 'Player 2'
+  const s1 = Number(result.score1) ?? 0
+  const s2 = Number(result.score2) ?? 0
+
+  const winner = s1 > s2 ? p1 : s2 > s1 ? p2 : null
+  const headline = winner
+    ? `**${winner}** beat ${winner === p1 ? `**${p2}**` : `**${p1}**`} ${Math.max(s1, s2)}-${Math.min(s1, s2)}`
+    : `**${p1}** ${s1}-${s2} **${p2}** (draw)`
+
+  const notes = []
+  if (result.player1Stats?.avg || result.player1Avg) notes.push(`Averages: ${p1} ${Number(result.player1Stats?.avg || result.player1Avg).toFixed(2)} · ${p2} ${Number(result.player2Stats?.avg || result.player2Avg).toFixed(2)}`)
+  if (result.player1Stats?.['180s'] || result.player2Stats?.['180s']) {
+    notes.push(`180s: ${p1} × ${result.player1Stats?.['180s'] || 0} · ${p2} × ${result.player2Stats?.['180s'] || 0}`)
+  }
+  if (result.forfeit) notes.push('Awarded by forfeit')
+
+  const division = result.division || 'League'
+  const season = result.season || ''
+  const week = result.week ? ` · Week ${result.week}` : ''
+
+  const embed = new EmbedBuilder()
+    .setTitle(`\u2705 Result In — ${division}${week}`)
+    .setDescription(`${headline}\n${result.gameType || 'League'}${season ? ` · ${season}` : ''}${result.date ? `\n${result.date}` : ''}`)
+    .setColor(0x10b981)
+    .setTimestamp(result.date ? new Date(result.date) : new Date())
+  if (notes.length) embed.addFields({ name: 'Details', value: notes.join('\n') })
+  return embed
+}
+
 export function recentLeagueResults(results, users, fixtures, season, limit = 10) {
   const todayKey = new Date()
   const today = `${todayKey.getFullYear()}-${String(todayKey.getMonth() + 1).padStart(2, '0')}-${String(todayKey.getDate()).padStart(2, '0')}`

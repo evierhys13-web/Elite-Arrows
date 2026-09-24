@@ -12,8 +12,8 @@ Mirrors the Elite Arrows darts league on Discord: the **league table**, **result
 | `/lfg` | Post a friendly-match request to `#friendly-matches` |
 | `/division [role]` | Join/leave your division role (drives per-division channels) |
 | `/links` | Every page of the Elite Arrows site, one click away |
-| Auto: new approved result → post to `#results` | Listens to Firestore |
-| Auto: new announcement (news) → post to `#announcements` | Listens to Firestore |
+| Auto: new approved result → post to `#results` | Webhook push from the app (default) — zero Firestore reads |
+| Auto: new announcement (news) → post to `#announcements` | Webhook push from the app (default) — zero Firestore reads |
 | Auto: per-division table → its own `#<division>-division` channel | Each division has its own room |
 | `/post-table` | [Admin] Post/refresh the pinned table in `#table` |
 | `/post-fixtures` | [Admin] Post fixtures to `#fixtures` |
@@ -92,9 +92,19 @@ Roles: `@Admin`, `@Player`, `@Division Captain`, per-division roles (`@Elite`, `
    - `GUILD_ID`
    - `FIREBASE_PROJECT_ID` = `elitearrowsapp`
    - `FIREBASE_SERVICE_ACCOUNT_JSON` = the **entire contents** of `service-account.json` pasted as one line
+   - `DISCORD_RELAY_MODE` = `webhook` (optional but recommended — see below)
+   - `DISCORD_RELAY_SECRET` = a long random string (must match the Admin panel setting)
 4. Deploy. Then add a free UptimeRobot monitor hitting `https://YOUR-APP.onrender.com/healthz` every 5 minutes so the bot stays awake on the free tier.
 
 The repo also ships `render.yaml` — if you deploy via Blueprint ("New → Blueprint"), Render will create the service for you; you still fill in the secrets.
+
+### Zero-quota relay (recommended)
+The "Quota exceeded" error on Blaze comes from **watch/listener usage**, not billing. To stop the app's dashboard from counting that quota, the bot no longer watches `results`/`news` by default: instead the **Admin panel** (System Maintenance → Discord Relay) holds a bot URL + secret, and every time you approve a match or post an announcement the app **pushes** it to the bot (`POST /webhooks/result` / `/webhooks/results` / `/webhooks/news`) and the bot posts it to Discord. Zero extra Firestore reads.
+
+To enable:
+1. In the Discord bot's dashboard add `DISCORD_RELAY_MODE` = `webhook` and `DISCORD_RELAY_SECRET` = `<long-random-string>` (Render) or in `.env` locally.
+2. In the app's **Admin → System Maintenance → Discord Relay**, paste the bot URL (e.g. `https://YOUR-APP.onrender.com`) and the same secret.
+3. Done — approvals and news now flow to Discord via push. The bot still reads Firestore for the table/fixtures snapshots (`/post-table`, `/post-fixtures`); those are one-shot fetches on demand, not permanent watches.
 
 ### Option B — your own machine
 Just run `npm start` (needs the PC on). Perfect for development or if the bot only needs to be live while you play.

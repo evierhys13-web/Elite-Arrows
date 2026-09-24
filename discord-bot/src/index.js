@@ -39,23 +39,101 @@ import {
   recentLeagueResults,
   resultsEmbed,
   rankForStat,
-  recordsEmbed
+  recordsEmbed,
+  relayResultEmbed
 } from './format.js'
 import { SITE_URL, SITE_SECTIONS, pageUrl, APPLICATIONS_URL, MERCH_URL } from './site.js'
 
 const DIVISION_CHOICES = ['Overall', 'Elite', 'Emerald', 'Diamond', 'Platinum']
 
 // ---- tiny keep-alive + liveness health server (Render free tier spins down otherwise) ----
+// Also serves the app's zero-read webhook relay: the website POSTs approved
+// results / news here, the bot posts them to Discord. No Firestore reads.
 const port = Number(process.env.PORT) || 8080
-http.createServer((req, res) => {
-  res.writeHead(200, { 'Content-Type': 'application/json' })
-  res.end(JSON.stringify({
-    ok: true,
-    service: 'elite-arrows-discord-bot',
-    uptime: Math.round(process.uptime())
-  }))
+const RELAY_MODE = process.env.DISCORD_RELAY_MODE === 'webhook'
+const RELAY_SECRET = process.env.DISCORD_RELAY_SECRET || ''
+
+const readBody = (req) => new Promise((resolve, reject) => {
+  let data = ''
+  req.on('data', chunk => { data += chunk; if (data.length > 5e6) req.destroy() })
+  req.on('end', () => {
+    try { resolve(data ? JSON.parse(data) : {}) } catch (e) { reject(e) }
+  })
+  req.on('error', reject)
+})
+
+function sendJson(res, status, body) {
+  res.writeHead(status, {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, x-elite-arrows-secret'
+  })
+  res.end(JSON.stringify(body))
+}
+
+http.createServer(async (req, res) => {
+  if (req.method === 'OPTIONS') return sendJson(res, 204, {})
+
+  if (req.method === 'GET') {
+    if (req.url.startsWith('/healthz') || req.url === '/') {
+      return sendJson(res, 200, {
+        ok: true,
+        service: 'elite-arrows-discord-bot',
+        relay: RELAY_MODE,
+        uptime: Math.round(process.uptime())
+      })
+    }
+    return sendJson(res, 404, { ok: false })
+  }
+
+  if (req.method === 'POST' && req.url.startsWith('/webhooks/')) {
+    if (RELAY_SECRET) {
+      const provided = req.headers['x-elite-arrows-secret']
+      if (provided !== RELAY_SECRET) return sendJson(res, 401, { ok: false, error: 'unauthorized' })
+    }
+    let payload
+    try {
+      payload = await readBody(req)
+    } catch {
+      return sendJson(res, 400, { ok: false, error: 'invalid json' })
+    }
+
+    try {
+      if (req.url === '/webhooks/result' && payload.result) {
+        const channel = await findChannel('results')
+        if (!channel) return sendJson(res, 200, { ok: false, error: 'no #results channel' })
+        const embed = relayResultEmbed(payload.result)
+        await channel.send({ embeds: [embed] })
+        return sendJson(res, 200, { ok: true, posted: 'result' })
+      }
+      if (req.url === '/webhooks/results' && Array.isArray(payload.results)) {
+        const channel = await findChannel('results')
+        if (!channel) return sendJson(res, 200, { ok: false, error: 'no #results channel' })
+        const embeds = payload.results.slice(0, 10).map(relayResultEmbed)
+        await channel.send({ embeds })
+        return sendJson(res, 200, { ok: true, posted: embeds.length })
+      }
+      if (req.url === '/webhooks/news' && payload.news) {
+        const channel = await findChannel('announcements')
+        if (!channel) return sendJson(res, 200, { ok: false, error: 'no #announcements channel' })
+        const embed = newsEmbed({ ...payload.news, authorName: payload.news.authorName })
+        await channel.send({
+          embeds: [embed],
+          content: payload.news.pinned ? '@everyone' : undefined
+        })
+        return sendJson(res, 200, { ok: true, posted: 'news' })
+      }
+      return sendJson(res, 400, { ok: false, error: 'unknown webhook' })
+    } catch (e) {
+      console.error(`webhook ${req.url} failed:`, e.message)
+      return sendJson(res, 500, { ok: false, error: e.message })
+    }
+  }
+
+  return sendJson(res, 404, { ok: false })
 }).listen(port, () => {
-  console.log(`health server listening on :${port} — /healthz`)
+  console.log(`health server listening on :${port} — /healthz (relay mode: ${RELAY_MODE ? 'webhook' : 'firestore'})`)
 })
 
 let hostGuild = null
@@ -465,8 +543,11 @@ async function main() {
   })
 
   // ---- live mirrors ----
+  // In relay mode the app pushes new results/news to the webhook endpoints, so
+  // don't double-post from the Firestore watchers. The watchers still refresh
+  // the table/results snapshots.
   onNewResult(async result => {
-    const channel = await findChannel('results')
+    const channel = !RELAY_MODE ? await findChannel('results') : null
     if (channel) {
       const embed = resultEmbed(
         result,
@@ -483,8 +564,8 @@ async function main() {
   })
 
   onNewNews(async news => {
-    const channel = await findChannel('announcements')
-    if (!channel) return console.error('no #announcements channel found')
+    const channel = !RELAY_MODE ? await findChannel('announcements') : null
+    if (!channel) return console[RELAY_MODE ? 'debug' : 'error']('announcements relay handled by webhook' + (RELAY_MODE ? '' : ': no channel found'))
     const embed = newsEmbed(news)
     try {
       await channel.send({ embeds: [embed], content: news.pinned ? '@everyone' : undefined })
