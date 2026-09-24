@@ -1,6 +1,6 @@
 # Elite Arrows Discord Bot
 
-Mirrors the Elite Arrows darts league on Discord: the **league table**, **results**, **fixtures** and **announcements**, straight from the app's Firestore (same scoring logic as the app, so the numbers always match).
+Mirrors the Elite Arrows darts league on Discord: the **league table**, **results**, **fixtures** and **announcements**, straight from the app's Firestore (same scoring logic as the app, so the numbers always match). The server is structured like the **Virtual Darts League** (VDL) — per-division channels, cup/tournament rooms, an LFG corner and a community area.
 
 ## What you get
 
@@ -9,12 +9,15 @@ Mirrors the Elite Arrows darts league on Discord: the **league table**, **result
 | `/table [division]` | Full standings (Overall + each division) |
 | `/results [division]` | Recent league results |
 | `/fixtures` / `/next-match` | Upcoming league fixtures |
+| `/lfg` | Post a friendly-match request to `#friendly-matches` |
+| `/division [role]` | Join/leave your division role (drives per-division channels) |
 | Auto: new approved result → post to `#results` | Listens to Firestore |
 | Auto: new announcement (news) → post to `#announcements` | Listens to Firestore |
+| Auto: per-division table → its own `#<division>-division` channel | Like VDL, each division has its own room |
 | `/post-table` | [Admin] Post/refresh the pinned table in `#table` |
 | `/post-fixtures` | [Admin] Post fixtures to `#fixtures` |
 | `/post-announcement` | [Admin] Post to `#announcements` (optional @everyone) |
-| `npm run setup` | Creates roles, categories and channels for you |
+| `npm run setup` | Creates the VDL-style roles, categories and channels for you |
 
 Admins-only model: only people with the **@Admin** role (or Manage Server) can use the admin commands.
 
@@ -55,6 +58,22 @@ npm start          # bot goes live
 
 Then try in Discord: `/table` → `/post-table` (in `#table`) → `/post-fixtures` → `/help`.
 
+### What `npm run setup` creates (VDL-style)
+
+| Category | Channels |
+| --- | --- |
+| **Welcome** | `#welcome` · `#rules` · `#player-guide` |
+| **Announcements** | `#announcements` · `#giveaways` |
+| **Divisions** | `#elite-division` · `#emerald-division` · `#diamond-division` · `#platinum-division` · `#free-agent-league` (reserves) |
+| **League** | `#fixtures` · `#results` · `#table` · `#commands` |
+| **Cups & Tournaments** | `#cup-draws` · `#cup-scores` · `#daily-tournaments` |
+| **Community** | `#general` · `#friendly-matches` (LFG) · `#darts-talk` · `#off-topic` · `#memes` · `#mental-health` |
+| **Staff & Feedback** | `#suggestions` · `#reaction-roles` · `#sponsors` |
+| **Premium** | `#premium-leagues` · `#premium-chat` |
+| **Voice** | `#match-comms` · `#tournament-bubbles` |
+
+Roles: `@Admin`, `@Player`, `@Division Captain`, per-division roles (`@Elite`, `@Emerald`, `@Diamond`, `@Platinum`), `@Free Agent`, `@Premium`, `@Cup Winner`, `@Tournament Winner`, `@Socials Team`. Re-running is **idempotent** — nothing existing is touched.
+
 ## Hosting for free (24/7)
 
 ### Option A — Render (free)
@@ -85,12 +104,12 @@ Just run `npm start` (needs the PC on). Perfect for development or if the bot on
 ## Files
 
 ```
-src/index.js      bot entry: commands + live Firestore listeners
+src/index.js      bot entry: commands + live Firestore listeners + /lfg + /division + per-division snapshots
 src/firebase.js   Firestore cache + change events
 src/scoring.js    exact port of the app's scoring engine
 src/standings.js  league table builder (mirrors Table.jsx)
 src/format.js     Discord embed builders
-src/setup.js      one-time server provisioning
+src/setup.js      one-time VDL-style server provisioning
 .env.example      configuration template
 render.yaml       Render deploy config
 ```

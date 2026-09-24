@@ -44,11 +44,15 @@ import {
 
 const DIVISION_CHOICES = ['Overall', 'Elite', 'Emerald', 'Diamond', 'Platinum']
 
-// ---- tiny keep-alive health server (Render free tier spins down otherwise) ----
+// ---- tiny keep-alive + liveness health server (Render free tier spins down otherwise) ----
 const port = Number(process.env.PORT) || 8080
 http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'application/json' })
-  res.end(JSON.stringify({ ok: true, service: 'elite-arrows-discord-bot' }))
+  res.end(JSON.stringify({
+    ok: true,
+    service: 'elite-arrows-discord-bot',
+    uptime: Math.round(process.uptime())
+  }))
 }).listen(port, () => {
   console.log(`health server listening on :${port} — /healthz`)
 })
@@ -72,6 +76,19 @@ async function findChannel(name) {
     ) || null
   } catch (e) {
     console.error(`could not fetch channels: ${e.message}`)
+    return null
+  }
+}
+
+// VDL-style per-division channels are named `<division>-division` (e.g. #elite-division).
+async function findDivisionChannel(division) {
+  if (!hostGuild) return null
+  try {
+    const channels = await hostGuild.channels.fetch()
+    const target = `${stripEmoji(division)}-division`
+    return channels.find(c => c.type === 0 && stripEmoji(c.name) === target) || null
+  } catch (e) {
+    console.error(`could not fetch division channels: ${e.message}`)
     return null
   }
 }
@@ -136,6 +153,15 @@ async function applySnapshots() {
       }
     } else {
       console.error('no #table channel found for snapshot')
+    }
+
+    // VDL-style: each division also gets its own table pinned in its own channel.
+    for (const division of DIVISION_CHOICES.slice(1)) {
+      const rows = tables[division]
+      if (!rows || !rows.length) continue
+      const divChannel = await findDivisionChannel(division)
+      if (!divChannel) continue
+      await postOrEdit(`table:${division}`, divChannel, tableEmbed({ division, rows, season }))
     }
   } else {
     console.log('results not readable - skipping #table snapshot')
@@ -220,6 +246,18 @@ const commands = [
         { name: 'Most wins', value: 'wins' }
       )),
   new SlashCommandBuilder()
+    .setName('lfg')
+    .setDescription('Post a friendly-match request to #friendly-matches')
+    .addStringOption(o => o.setName('format').setDescription('Format you want to play').setRequired(false))
+    .addStringOption(o => o.setName('when').setDescription('When you are free').setRequired(false))
+    .addStringOption(o => o.setName('details').setDescription('Anything else (DartCounter id, rules…)').setRequired(false)),
+  new SlashCommandBuilder()
+    .setName('division')
+    .setDescription('Join or leave your division role (drives the per-division channels)')
+    .addStringOption(o => o.setName('role').setDescription('Which division you play in').setRequired(true)
+      .addChoices(...DIVISION_CHOICES.slice(1).map(d => ({ name: d, value: d }))))
+    .addBooleanOption(o => o.setName('leave').setDescription('Remove the role instead of adding it').setRequired(false)),
+  new SlashCommandBuilder()
     .setName('help')
     .setDescription('What this bot can do'),
   new SlashCommandBuilder()
@@ -290,12 +328,52 @@ async function handleCommand(interaction) {
             { name: '/fixtures', value: 'Who is playing next, and when.', inline: false },
             { name: '/next-match', value: 'Quick look at the next few fixtures.', inline: false },
             { name: '/records', value: 'League record holders — 180s, averages, best checkouts, wins.', inline: false },
-            { name: 'Auto-snapshots', value: 'The bot keeps **#table**, **#results** and **#fixtures** updated automatically as results come in.', inline: false },
+            { name: '/lfg', value: 'Looking for game — post a friendly-match request to **#friendly-matches**.', inline: false },
+            { name: '/division', value: 'Join/leave your division role so matches and reminders ping the right channel.', inline: false },
+            { name: 'Auto-snapshots', value: 'The bot keeps **#table** (and each **#<division>-division** channel) updated automatically as results come in.', inline: false },
             { name: 'Auto-posts', value: 'New approved results land in **#results** and new announcements in **#announcements**.', inline: false },
             { name: 'Admin commands', value: '/post-table · /post-fixtures · /post-announcement', inline: false }
           ]
         }]
       })
+      return
+    }
+    case 'lfg': {
+      const format = interaction.options.getString('format') || 'friendly match'
+      const when = interaction.options.getString('when') || 'anytime'
+      const details = interaction.options.getString('details') || ''
+      const channel = await findChannel('friendly-matches')
+      if (!channel) {
+        return interaction.reply({ content: ':x: No #friendly-matches channel found — did you run `npm run setup`?', ephemeral: true })
+      }
+      const lines = [`**${interaction.member.displayName}** is looking for a **${format}**.`, `When: ${when}`, details].filter(Boolean)
+      await channel.send({ embeds: [{
+        color: 0x38bdf8,
+        title: '\u{1F3AF} LFG — Friendly Match',
+        description: lines.join('\n'),
+        timestamp: new Date().toISOString()
+      }] })
+      await interaction.reply({ content: `:white_check_mark: Request posted to **#friendly-matches**.`, ephemeral: true })
+      return
+    }
+    case 'division': {
+      const roleName = interaction.options.getString('role', true)
+      const leave = interaction.options.getBoolean('leave') === true
+      const role = hostGuild?.roles.cache.find(r => r.name === roleName)
+      if (!role) {
+        return interaction.reply({ content: `:x: Could not find the **@${roleName}** role — did you run \`npm run setup\`?`, ephemeral: true })
+      }
+      if (!interaction.member) {
+        return interaction.reply({ content: ':x: Could not read your roles.', ephemeral: true })
+      }
+      const has = interaction.member.roles.cache.has(role.id)
+      if (leave || has) {
+        await interaction.member.roles.remove(role)
+        await interaction.reply({ content: `:outbox_tray: Removed **@${roleName}**.`, ephemeral: true })
+      } else {
+        await interaction.member.roles.add(role)
+        await interaction.reply({ content: `:inbox_tray: Added **@${roleName}**.`, ephemeral: true })
+      }
       return
     }
     case 'post-table':
