@@ -1,6 +1,6 @@
 # Elite Arrows Discord Bot
 
-Mirrors the Elite Arrows darts league on Discord: the **league table**, **results**, **fixtures** and **announcements**, straight from the app's Firestore (same scoring logic as the app, so the numbers always match). The server is structured like the **Virtual Darts League** (VDL) — per-division channels, cup/tournament rooms, an LFG corner and a community area.
+Mirrors the Elite Arrows darts league on Discord: the **league table**, **results**, **fixtures** and **announcements**, straight from the app's Firestore (same scoring logic as the app, so the numbers always match). The server mirrors the **Elite Arrows website** — every section of the site (standings, cups, tournaments, academy, Elite Pass, giveaways…) has its own Discord room, and each channel's **topic links straight to its page** on the app.
 
 ## What you get
 
@@ -11,13 +11,14 @@ Mirrors the Elite Arrows darts league on Discord: the **league table**, **result
 | `/fixtures` / `/next-match` | Upcoming league fixtures |
 | `/lfg` | Post a friendly-match request to `#friendly-matches` |
 | `/division [role]` | Join/leave your division role (drives per-division channels) |
+| `/links` | Every page of the Elite Arrows site, one click away |
 | Auto: new approved result → post to `#results` | Listens to Firestore |
 | Auto: new announcement (news) → post to `#announcements` | Listens to Firestore |
-| Auto: per-division table → its own `#<division>-division` channel | Like VDL, each division has its own room |
+| Auto: per-division table → its own `#<division>-division` channel | Each division has its own room |
 | `/post-table` | [Admin] Post/refresh the pinned table in `#table` |
 | `/post-fixtures` | [Admin] Post fixtures to `#fixtures` |
 | `/post-announcement` | [Admin] Post to `#announcements` (optional @everyone) |
-| `npm run setup` | Creates the VDL-style roles, categories and channels for you |
+| `npm run setup` | Creates the Elite Arrows roles, categories and channels (site-linked) |
 
 Admins-only model: only people with the **@Admin** role (or Manage Server) can use the admin commands.
 
@@ -58,21 +59,24 @@ npm start          # bot goes live
 
 Then try in Discord: `/table` → `/post-table` (in `#table`) → `/post-fixtures` → `/help`.
 
-### What `npm run setup` creates (VDL-style)
+### What `npm run setup` creates (mirrors the Elite Arrows site)
+
+Each channel's **topic links to the matching page** on the app, e.g. `#rules` → `/rules`, `#hall-of-fame` → `/hall-of-fame`, `#elite-pass` → `/subscription`.
 
 | Category | Channels |
 | --- | --- |
-| **Welcome** | `#welcome` · `#rules` · `#player-guide` |
-| **Announcements** | `#announcements` · `#giveaways` |
+| **Welcome** | `#welcome` · `#player-guide` → /guide · `#rules` → /rules |
+| **Announcements** | `#announcements` → /news · `#giveaways` → /giveaways · `#suggestion-box` → /suggestions |
 | **Divisions** | `#elite-division` · `#emerald-division` · `#diamond-division` · `#platinum-division` · `#free-agent-league` (reserves) |
-| **League** | `#fixtures` · `#results` · `#table` · `#commands` |
-| **Cups & Tournaments** | `#cup-draws` · `#cup-scores` · `#daily-tournaments` |
+| **Main League** | `#table` → /table · `#fixtures` → /match-log · `#results` → /results · `#submit-score` → /submit-result · `#commands` |
+| **Compete** | `#leaderboards` · `#cups` · `#cup-draws` · `#cup-scores` · `#tournaments` · `#hall-of-fame` · `#player-of-month` · `#statistics` · `#daily-challenges` · `#friendly-league` → /open-league |
+| **Academy** | `#practice-hub` → /practice · `#darts-academy` → /training · `#progress-tracker` |
 | **Community** | `#general` · `#friendly-matches` (LFG) · `#darts-talk` · `#off-topic` · `#memes` · `#mental-health` |
-| **Staff & Feedback** | `#suggestions` · `#reaction-roles` · `#sponsors` |
-| **Premium** | `#premium-leagues` · `#premium-chat` |
+| **Staff & Help** | `#support` · `#contact` · `#donations` · `#applications` · `#sponsors` |
+| **Elite Pass** | `#elite-pass` → /subscription · `#play-online` · `#live-match` · `#premium-chat` |
 | **Voice** | `#match-comms` · `#tournament-bubbles` |
 
-Roles: `@Admin`, `@Player`, `@Division Captain`, per-division roles (`@Elite`, `@Emerald`, `@Diamond`, `@Platinum`), `@Free Agent`, `@Premium`, `@Cup Winner`, `@Tournament Winner`, `@Socials Team`. Re-running is **idempotent** — nothing existing is touched.
+Roles: `@Admin`, `@Player`, `@Division Captain`, per-division roles (`@Elite`, `@Emerald`, `@Diamond`, `@Platinum`), `@Free Agent`, `@Elite Pass`, `@Cup Winner`, `@Tournament Winner`, `@Player of the Month`, `@Socials Team`. Re-running is **idempotent** — nothing existing is touched (topics are refreshed to the current site links).
 
 ## Hosting for free (24/7)
 
@@ -104,12 +108,13 @@ Just run `npm start` (needs the PC on). Perfect for development or if the bot on
 ## Files
 
 ```
-src/index.js      bot entry: commands + live Firestore listeners + /lfg + /division + per-division snapshots
+src/index.js      bot entry: commands + live Firestore listeners + /lfg + /division + /links + per-division snapshots
 src/firebase.js   Firestore cache + change events
 src/scoring.js    exact port of the app's scoring engine
 src/standings.js  league table builder (mirrors Table.jsx)
 src/format.js     Discord embed builders
-src/setup.js      one-time VDL-style server provisioning
+src/site.js       map of every Elite Arrows site page (used for topics + /links)
+src/setup.js      one-time site-mirroring server provisioning
 .env.example      configuration template
 render.yaml       Render deploy config
 ```

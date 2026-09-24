@@ -8,7 +8,7 @@
 "scripts": {
     "start": "node src/index.js",
     "setup": "node src/setup.js",
-    "check": "node --check src/index.js && node --check src/setup.js && node --check src/firebase.js && node --check src/scoring.js && node --check src/standings.js && node --check src/format.js"
+    "check": "node --check src/index.js && node --check src/setup.js && node --check src/firebase.js && node --check src/scoring.js && node --check src/standings.js && node --check src/format.js && node --check src/site.js"
   },
   "engines": {
     "node": ">=20"

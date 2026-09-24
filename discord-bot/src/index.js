@@ -41,6 +41,7 @@ import {
   rankForStat,
   recordsEmbed
 } from './format.js'
+import { SITE_URL, SITE_SECTIONS, pageUrl, APPLICATIONS_URL, MERCH_URL } from './site.js'
 
 const DIVISION_CHOICES = ['Overall', 'Elite', 'Emerald', 'Diamond', 'Platinum']
 
@@ -258,6 +259,9 @@ const commands = [
       .addChoices(...DIVISION_CHOICES.slice(1).map(d => ({ name: d, value: d }))))
     .addBooleanOption(o => o.setName('leave').setDescription('Remove the role instead of adding it').setRequired(false)),
   new SlashCommandBuilder()
+    .setName('links')
+    .setDescription('Every Elite Arrows site page, one click away'),
+  new SlashCommandBuilder()
     .setName('help')
     .setDescription('What this bot can do'),
   new SlashCommandBuilder()
@@ -330,6 +334,7 @@ async function handleCommand(interaction) {
             { name: '/records', value: 'League record holders — 180s, averages, best checkouts, wins.', inline: false },
             { name: '/lfg', value: 'Looking for game — post a friendly-match request to **#friendly-matches**.', inline: false },
             { name: '/division', value: 'Join/leave your division role so matches and reminders ping the right channel.', inline: false },
+            { name: '/links', value: 'Every page of the Elite Arrows site, one click away.', inline: false },
             { name: 'Auto-snapshots', value: 'The bot keeps **#table** (and each **#<division>-division** channel) updated automatically as results come in.', inline: false },
             { name: 'Auto-posts', value: 'New approved results land in **#results** and new announcements in **#announcements**.', inline: false },
             { name: 'Admin commands', value: '/post-table · /post-fixtures · /post-announcement', inline: false }
@@ -374,6 +379,26 @@ async function handleCommand(interaction) {
         await interaction.member.roles.add(role)
         await interaction.reply({ content: `:inbox_tray: Added **@${roleName}**.`, ephemeral: true })
       }
+      return
+    }
+    case 'links': {
+      const fields = SITE_SECTIONS.map(section => ({
+        name: section.name,
+        value: section.items.map(item => `- **[${item.label}](${pageUrl(item.path)})**`).join('\n'),
+        inline: false
+      }))
+      fields.push(
+        { name: 'Player / Role Applications', value: `- [Apply here](${APPLICATIONS_URL})`, inline: false },
+        { name: 'Merch', value: `- [Elite Arrows Merch](${MERCH_URL})`, inline: false }
+      )
+      await interaction.reply({
+        embeds: [{
+          color: 0xfbbf24,
+          title: '\u{1F517} Elite Arrows — Everything on the Site',
+          description: `The app is the hub. Every page, one click: **${SITE_URL}**`,
+          fields
+        }]
+      })
       return
     }
     case 'post-table':
