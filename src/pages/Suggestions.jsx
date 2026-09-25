@@ -55,7 +55,7 @@ export default function Suggestions() {
     fetchSuggestions()
   }, [fetchSuggestions])
 
-  const votedIds = (user?.id && suggestions.filter(s => (s.voters || []).includes(String(user.id))).map(s => s.id)) || []
+  const votedIds = (user?.id && suggestions.filter(s => Array.isArray(s.voters) && s.voters.map(String).includes(String(user.id))).map(s => s.id)) || []
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -92,18 +92,34 @@ export default function Suggestions() {
   }
 
   const handleVote = async (s) => {
-    if (!user?.id) return
-    if (votedIds.includes(s.id)) return
+    if (!user?.id) {
+      showToast('Account Required: Please log in to vote on suggestions', 'error')
+      return
+    }
+    if (user?.isGuest) {
+      showToast('Account Required: Guests cannot vote on suggestions. Please register to participate!', 'error')
+      return
+    }
+    const userIdStr = String(user.id)
+    const currentVoters = Array.isArray(s.voters) ? s.voters.map(String) : []
+    if (votedIds.includes(s.id) || currentVoters.includes(userIdStr)) {
+      showToast('You have already voted for this idea', 'info')
+      return
+    }
     try {
       await updateDoc(doc(db, 'suggestions', s.id), {
         votes: increment(1),
-        voters: arrayUnion(user.id)
+        voters: arrayUnion(userIdStr)
       })
-      setSuggestions(prev => prev.map(x => x.id === s.id ? { ...x, votes: (Number(x.votes) || 0) + 1, voters: [...(x.voters || []), String(user.id)] } : x))
+      setSuggestions(prev => prev.map(x => x.id === s.id ? {
+        ...x,
+        votes: (Number(x.votes) || 0) + 1,
+        voters: [...(Array.isArray(x.voters) ? x.voters.map(String) : []), userIdStr]
+      } : x))
       showToast('Vote added!', 'success')
     } catch (err) {
-      console.error(err)
-      showToast('Could not vote', 'error')
+      console.error('Error voting on suggestion:', err)
+      showToast('Could not vote: ' + (err.message || 'Permission denied'), 'error')
     }
   }
 

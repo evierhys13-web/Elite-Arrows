@@ -199,12 +199,7 @@ service cloud.firestore {
     match /suggestions/{suggestionId} {
       allow read: if true;
       allow create: if signedIn();
-      allow update: if isAdmin() || (
-        signedIn() &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['votes', 'voters']) &&
-        request.resource.data.votes == resource.data.votes + 1 &&
-        request.resource.data.voters.hasAll(resource.data.voters)
-      );
+      allow update: if signedIn();
       allow delete: if isAdmin();
     }
 
