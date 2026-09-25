@@ -369,7 +369,7 @@ export default function Guide() {
         <div style={chapterStyles}>
           <h4 style={{ color: 'var(--accent-cyan)', margin: '0 0 10px' }}>In-Game Disputes & Video Proof</h4>
           <ul style={{ color: 'var(--text-muted)', lineHeight: '1.9', paddingLeft: '20px', margin: 0 }}>
-            <li>If an issue occurs: <strong>1. Screenshot -> 2. Pause -> 3. In-Game Message -> 4. Exit & Report to Division Captain</strong>.</li>
+            <li>If an issue occurs: <strong>1. Screenshot &rarr; 2. Pause &rarr; 3. In-Game Message &rarr; 4. Exit &amp; Report to Division Captain</strong>.</li>
             <li>Game recording is optional, but <strong>video proof is required</strong> if raising a formal dispute.</li>
             <li>Division Captains are listed at the top of each division's Standings Table.</li>
           </ul>

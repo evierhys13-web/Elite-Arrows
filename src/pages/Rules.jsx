@@ -73,7 +73,7 @@ export default function Rules() {
           <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
              <h3 style={{ fontSize: '1.05rem', marginBottom: '10px', color: 'white' }}>🎯 Board & Darts Scoring Etiquette</h3>
              <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-                <li><strong>High Scores (>100):</strong> Darts scoring over 100 must be pointed out clearly on camera for your opponent.</li>
+                <li><strong>High Scores (&gt;100):</strong> Darts scoring over 100 must be pointed out clearly on camera for your opponent.</li>
                 <li><strong>Obscured Darts:</strong> If a dart obscures another high-scoring dart, remove the obscuring dart so your opponent can verify the score.</li>
                 <li><strong>Checkouts & Doubles:</strong> ALL double finishes (and trebles forming checkouts) must be shown clearly on camera.</li>
                 <li><strong>Target Omni Scoring:</strong> Permitted. Any counting errors MUST be rectified BEFORE removing darts from the board. Opponents must have access to camera view.</li>
