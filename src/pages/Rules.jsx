@@ -126,10 +126,10 @@ export default function Rules() {
           </div>
 
           <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-            <h3 style={{ fontSize: '1.05rem', marginBottom: '10px', color: 'white' }}>⚠️ Warnings & Strikes</h3>
+            <h3 style={{ fontSize: '1.05rem', marginBottom: '10px', color: 'white' }}>⚠️ Warnings & 1-Strike Removal Policy</h3>
             <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
               <li><strong>2 Warnings</strong> = <strong>1 Strike</strong></li>
-              <li><strong>3 Strikes</strong> in a single season = Immediate removal from the league and potential season ban.</li>
+              <li><strong>1 Strike Policy:</strong> Receiving <strong>1 Strike</strong> in a season results in <strong>immediate removal from the league and an official season ban</strong>.</li>
             </ul>
           </div>
         </div>

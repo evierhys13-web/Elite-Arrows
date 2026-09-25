@@ -349,10 +349,11 @@ export default function Guide() {
         </p>
 
         <div style={chapterStyles}>
-          <h4 style={{ color: 'var(--accent-cyan)', margin: '0 0 10px' }}>Evaluated Forfeit Policy (Non-Table Impact)</h4>
+          <h4 style={{ color: 'var(--accent-cyan)', margin: '0 0 10px' }}>Evaluated Forfeit & Strike Policy</h4>
           <ul style={{ color: 'var(--text-muted)', lineHeight: '1.9', paddingLeft: '20px', margin: 0 }}>
             <li>When a player forfeits or drops out, matches for that player do <strong>NOT affect the League Table</strong> (0 points/legs on the table).</li>
             <li>Played games stay saved in <strong>Match Logs & Stats</strong> — 180s, checkouts, and averages are fully preserved.</li>
+            <li><strong>1 Strike Policy:</strong> 2 Warnings = 1 Strike. Receiving 1 Strike results in immediate league removal and season ban.</li>
             <li>Non-responsive opponents (3 tags without reply) receive a 24h notice from Division Captains before removal.</li>
           </ul>
         </div>
