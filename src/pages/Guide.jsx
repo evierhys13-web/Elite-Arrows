@@ -243,7 +243,7 @@ export default function Guide() {
       <div className="card">
         <h2 className="card-title">📊 How Scoring Works</h2>
         <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-          League games are <strong>best of 8 legs</strong> — first to 5 wins the match. Your points come from two things: the legs you win, plus a match bonus.
+          League games are played according to division format: <strong>Elite (BO12)</strong>, <strong>Emerald (BO10)</strong>, and <strong>Diamond/Platinum (BO8)</strong>. Your points come from the legs you win plus match outcome bonuses (+3 Win, +1 Draw).
         </p>
 
         <div style={{ marginTop: '20px', overflowX: 'auto' }}>
@@ -345,33 +345,33 @@ export default function Guide() {
       <div className="card">
         <h2 className="card-title">⚖️ Fair Play & Rules</h2>
         <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-          A few simple rules keep the league friendly, fair and moving forward.
+          Key rules keep the league friendly, fair and competitive for everyone.
         </p>
 
         <div style={chapterStyles}>
-          <h4 style={{ color: 'var(--accent-cyan)', margin: '0 0 10px' }}>When a Match Doesn't Happen</h4>
+          <h4 style={{ color: 'var(--accent-cyan)', margin: '0 0 10px' }}>Evaluated Forfeit Policy (Non-Table Impact)</h4>
           <ul style={{ color: 'var(--text-muted)', lineHeight: '1.9', paddingLeft: '20px', margin: 0 }}>
-            <li>Fixture windows exist for a reason — matches should be arranged and played within them.</li>
-            <li>No match, no points <strong>unless</strong> one player can show they tried to arrange it. Then they take the win and the inactive player takes the loss.</li>
-            <li>Fall below the minimum games for your division size and <strong>all your results are voided</strong>.</li>
+            <li>When a player forfeits or drops out, matches for that player do <strong>NOT affect the League Table</strong> (0 points/legs on the table).</li>
+            <li>Played games stay saved in <strong>Match Logs & Stats</strong> — 180s, checkouts, and averages are fully preserved.</li>
+            <li>Non-responsive opponents (3 tags without reply) receive a 24h notice from Division Captains before removal.</li>
           </ul>
         </div>
 
         <div style={chapterStyles}>
-          <h4 style={{ color: 'var(--accent-cyan)', margin: '0 0 10px' }}>Interrupted Matches</h4>
+          <h4 style={{ color: 'var(--accent-cyan)', margin: '0 0 10px' }}>Camera Setup & In-Game Etiquette</h4>
           <ul style={{ color: 'var(--text-muted)', lineHeight: '1.9', paddingLeft: '20px', margin: 0 }}>
-            <li>Technical glitch or something out of your control? Resume from the <strong>last confirmed score</strong>.</li>
-            <li>Opponent refuses to continue or bails on purpose? They lose by <strong>default</strong>.</li>
-            <li>Score can't be verified by either side? Replay the match <strong>in full, from 0–0</strong>.</li>
+            <li>Cameras must stay <strong>ON at all times</strong> (bullseye height, ~1m away).</li>
+            <li>Darts scoring over 100, obscuring darts, and checkout doubles must be <strong>clearly shown on camera</strong>.</li>
+            <li><strong>Strict Prohibition:</strong> No practice throws during your opponent's turn.</li>
           </ul>
         </div>
 
         <div style={chapterStyles}>
-          <h4 style={{ color: 'var(--accent-cyan)', margin: '0 0 10px' }}>The Spirit of the League</h4>
+          <h4 style={{ color: 'var(--accent-cyan)', margin: '0 0 10px' }}>In-Game Disputes & Video Proof</h4>
           <ul style={{ color: 'var(--text-muted)', lineHeight: '1.9', paddingLeft: '20px', margin: 0 }}>
-            <li>One match against each opponent per season — it's a league, not a rivalry rematch.</li>
-            <li>Proof screenshots for every league result. Always.</li>
-            <li>If in doubt, ask an admin. That's what they're here for.</li>
+            <li>If an issue occurs: <strong>1. Screenshot -> 2. Pause -> 3. In-Game Message -> 4. Exit & Report to Division Captain</strong>.</li>
+            <li>Game recording is optional, but <strong>video proof is required</strong> if raising a formal dispute.</li>
+            <li>Division Captains are listed at the top of each division's Standings Table.</li>
           </ul>
         </div>
 

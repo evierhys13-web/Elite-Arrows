@@ -8,132 +8,169 @@ export default function Rules() {
 
       <div className="page-header" style={{ marginBottom: '32px', textAlign: 'center' }}>
         <h1 className="page-title text-gradient" style={{ fontSize: '2.5rem' }}>League Rules</h1>
-        <p style={{ color: 'var(--text-muted)' }}>Everything you need to know about playing in Elite Arrows</p>
+        <p style={{ color: 'var(--text-muted)' }}>Official match guidelines, division formats, and league regulations for Elite Arrows</p>
       </div>
 
+      {/* 1. Division Match Formats & Game Settings */}
       <div className="card glass" style={{ marginBottom: '24px', padding: '30px' }}>
-        <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>Standard Match Format</h2>
+        <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
+          🎯 Division Match Formats & Settings
+        </h2>
+
         <div style={{ display: 'grid', gap: '20px' }}>
-          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-             <h3 style={{ fontSize: '1.1rem', marginBottom: '10px', color: 'white' }}>🎯 Game Settings</h3>
-             <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-                <li><strong>Format:</strong> Best of 8 legs (First to 5 or 4-4 Draw).</li>
-                <li><strong>Start Score:</strong> 501.</li>
-                <li><strong>Finish:</strong> Straight In, Double Out.</li>
-                <li><strong>Platform:</strong> Primarily played on <strong>DartCounter</strong>.</li>
-             </ul>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '15px' }}>
+            <div style={{ background: 'rgba(251, 191, 36, 0.08)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(251, 191, 36, 0.25)' }}>
+              <div style={{ color: '#fbbf24', fontWeight: 800, fontSize: '1.1rem', marginBottom: '6px' }}>👑 Elite Division</div>
+              <div style={{ color: 'white', fontWeight: 700, fontSize: '1rem' }}>Best of 12 Legs</div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '4px' }}>First to 7 wins, or 6–6 Draw.</p>
+            </div>
+
+            <div style={{ background: 'rgba(16, 185, 129, 0.08)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+              <div style={{ color: '#10b981', fontWeight: 800, fontSize: '1.1rem', marginBottom: '6px' }}>❇️ Emerald Division</div>
+              <div style={{ color: 'white', fontWeight: 700, fontSize: '1rem' }}>Best of 10 Legs</div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '4px' }}>First to 6 wins, or 5–5 Draw.</p>
+            </div>
+
+            <div style={{ background: 'rgba(56, 189, 248, 0.08)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(56, 189, 248, 0.25)' }}>
+              <div style={{ color: '#38bdf8', fontWeight: 800, fontSize: '1.1rem', marginBottom: '6px' }}>💎 Diamond Division</div>
+              <div style={{ color: 'white', fontWeight: 700, fontSize: '1rem' }}>Best of 8 Legs</div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '4px' }}>First to 5 wins, or 4–4 Draw.</p>
+            </div>
+
+            <div style={{ background: 'rgba(226, 232, 240, 0.08)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(226, 232, 240, 0.25)' }}>
+              <div style={{ color: '#e2e8f0', fontWeight: 800, fontSize: '1.1rem', marginBottom: '6px' }}>💿 Platinum Division</div>
+              <div style={{ color: 'white', fontWeight: 700, fontSize: '1rem' }}>Best of 8 Legs</div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '4px' }}>First to 5 wins, or 4–4 Draw.</p>
+            </div>
           </div>
 
           <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-             <h3 style={{ fontSize: '1.1rem', marginBottom: '10px', color: 'white' }}>📷 Visual Requirements (Strict)</h3>
+             <h3 style={{ fontSize: '1.05rem', marginBottom: '10px', color: 'white' }}>⚙️ Universal Game Rules</h3>
              <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-                <li><strong>CAM:</strong> Must be ON at all times during league games.</li>
-                <li><strong>Visibility:</strong> The board and darts must be clearly visible to your opponent.</li>
-                <li><strong>Omni:</strong> The use of Omni is optional, but traditional camera use is mandatory.</li>
+                <li><strong>Start Score:</strong> 501 SIDO (Straight In, Double Out).</li>
+                <li><strong>First Throw:</strong> Players must <strong>Bull Up every time</strong> to decide who throws first in all league fixtures.</li>
+                <li><strong>Game Timer:</strong> Match scorer/timer must be set to a minimum of <strong>60 seconds</strong>.</li>
+                <li><strong>Platform:</strong> Primary league platform is <strong>DartCounter</strong>.</li>
              </ul>
           </div>
         </div>
       </div>
 
+      {/* 2. Camera Setup & In-Game Etiquette */}
       <div className="card glass" style={{ marginBottom: '24px', padding: '30px' }}>
-        <h2 style={{ color: 'var(--accent-primary)', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>League Fixtures & Forfeits</h2>
-        <div style={{ display: 'grid', gap: '20px' }}>
-          <div style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.25)' }}>
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '10px', color: 'white' }}>⚠️ Unplayed Games</h3>
-            <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-              <li>If you do not play <strong>all of your games</strong> in the season, you will be <strong>instantly relegated</strong> and given a <strong>final warning ban</strong>.</li>
-              <li>If you <strong>forfeit the season</strong>, the same applies.</li>
-              <li>The only exception is if an <strong>admin has been notified</strong> and given a <strong>good reason</strong> beforehand.</li>
-            </ul>
+        <h2 style={{ color: 'var(--accent-primary)', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
+          📷 Camera Setup & In-Game Etiquette
+        </h2>
+        <div style={{ display: 'grid', gap: '16px' }}>
+          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+             <h3 style={{ fontSize: '1.05rem', marginBottom: '10px', color: 'white' }}>📹 Camera Requirements</h3>
+             <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
+                <li><strong>No Camera = No Game:</strong> Cameras must remain ON at all times during matches. If a camera fails, pause immediately until resolved.</li>
+                <li><strong>Camera Setup:</strong> Place camera at <strong>bullseye height</strong> approximately <strong>1 meter away</strong> from the dartboard. Board and darts must be clearly visible.</li>
+             </ul>
           </div>
 
-          <div style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.25)' }}>
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '10px', color: 'white' }}>🏳️ Season Forfeit Penalty <span style={{ fontSize: '0.75rem', color: 'var(--warning)', fontWeight: 800 }}>EFFECTIVE 1st OCTOBER</span></h3>
-            <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-              <li>Forfeiting a season without a <strong>valid reason pre-approved by an admin</strong> results in <strong>automatic relegation</strong> plus a <strong>one month ban</strong>.</li>
-              <li>The <strong>1-month ban</strong> is timed and lifts automatically — a valid reason must be agreed with an admin <strong>before</strong> you stop playing.</li>
-            </ul>
+          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+             <h3 style={{ fontSize: '1.05rem', marginBottom: '10px', color: 'white' }}>🎯 Board & Darts Scoring Etiquette</h3>
+             <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
+                <li><strong>High Scores (>100):</strong> Darts scoring over 100 must be pointed out clearly on camera for your opponent.</li>
+                <li><strong>Obscured Darts:</strong> If a dart obscures another high-scoring dart, remove the obscuring dart so your opponent can verify the score.</li>
+                <li><strong>Checkouts & Doubles:</strong> ALL double finishes (and trebles forming checkouts) must be shown clearly on camera.</li>
+                <li><strong>Target Omni Scoring:</strong> Permitted. Any counting errors MUST be rectified BEFORE removing darts from the board. Opponents must have access to camera view.</li>
+                <li><strong>🚫 No Practice Throwing:</strong> Throwing practice darts during your opponent's turn is strictly prohibited. You must wait until your opponent enters their score and the camera switches.</li>
+             </ul>
           </div>
+        </div>
+      </div>
 
-          <div style={{ background: 'rgba(56, 189, 248, 0.08)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(56, 189, 248, 0.25)' }}>
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '10px', color: 'white' }}>🌱 New Member Probation</h3>
+      {/* 3. Fixture Planning, Scheduling & Division Captains */}
+      <div className="card glass" style={{ marginBottom: '24px', padding: '30px' }}>
+        <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
+          💬 Fixture Planning & Division Captains
+        </h2>
+        <div style={{ display: 'grid', gap: '16px' }}>
+          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+            <h3 style={{ fontSize: '1.05rem', marginBottom: '10px', color: 'white' }}>🛡️ Division Captains</h3>
             <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-              <li>New members must play <strong>at least 75% of their league fixtures</strong> in their <strong>first season</strong> to be eligible to enter cups and tournaments.</li>
-              <li>Eligibility resets once the probation season is completed.</li>
+              <li>Each division has assigned <strong>Division Captains (Admins)</strong> responsible for scheduling overwatch and dispute handling.</li>
+              <li>Division Captains are prominently displayed at the top banner of each division's <strong>Standings Table</strong>.</li>
             </ul>
           </div>
 
           <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '10px', color: 'white' }}>🗓️ Re-scheduling Games</h3>
+            <h3 style={{ fontSize: '1.05rem', marginBottom: '10px', color: 'white' }}>📅 Match Planning & Non-Responsive Protocol</h3>
             <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-              <li>Re-scheduling games is allowed if <strong>both players agree</strong> and an <strong>admin is notified</strong>.</li>
-              <li>Admin approval is <strong>not required</strong> — as long as both players agree, the re-schedule is valid.</li>
+              <li>Arrange matches through WhatsApp division chats or dedicated planning channels by tagging your opponent (<strong style={{ color: 'var(--accent-cyan)' }}>@theirname</strong>).</li>
+              <li><strong>Non-Responsive Opponents:</strong> If an opponent is tagged on <strong>3 separate days</strong> without reply, inform your Division Captain. The captain will issue a 24-hour notice before player removal.</li>
+              <li><strong>Late Arrivals:</strong> Provide at least <strong>1 hour notice</strong> if running late. Arriving late without notice rendering a game unplayable results in a forfeit win for the punctual opponent.</li>
+              <li><strong>15-Minute No-Show Rule:</strong> Wait 15 minutes past the scheduled time before informing your Division Captain.</li>
             </ul>
           </div>
+        </div>
+      </div>
 
-          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '10px', color: 'white' }}>💬 Arranging Games</h3>
-            <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-              <li>Fixtures should be arranged through the <strong>WhatsApp Division group chats</strong> so there is a <strong>record</strong> if a no-show or dispute arises.</li>
-            </ul>
-          </div>
-
-          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '10px', color: 'white' }}>🤝 One Match Per Opponent</h3>
-            <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-              <li>Each opponent is faced <strong>once per season</strong> in league fixtures.</li>
-            </ul>
-          </div>
-
+      {/* 4. Evaluated Forfeit Policy */}
+      <div className="card glass" style={{ marginBottom: '24px', padding: '30px', border: '1px solid rgba(251, 191, 36, 0.3)' }}>
+        <h2 style={{ color: 'var(--warning)', marginBottom: '20px', borderBottom: '1px solid rgba(251, 191, 36, 0.2)', paddingBottom: '10px' }}>
+          🏳️ Evaluated Forfeit Policy
+        </h2>
+        <div style={{ display: 'grid', gap: '16px' }}>
           <div style={{ background: 'rgba(251, 191, 36, 0.08)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(251, 191, 36, 0.25)' }}>
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '10px', color: 'white' }}>🏳️ Forfeit Rule (Fixed Result for Unplayed Fixtures)</h3>
+            <h3 style={{ fontSize: '1.05rem', marginBottom: '10px', color: 'white' }}>📊 League Table Parity (Non-Table Impact)</h3>
             <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-              <li>If a player <strong>forfeits the remainder of their fixtures</strong>, all completed matches remain <strong>valid and unchanged</strong>.</li>
-              <li>Any <strong>unplayed fixtures</strong> are recorded as a <strong>fixed, mild result in favour of the opponent</strong> (e.g., <strong>5–3</strong>).</li>
-              <li>This avoids free heavy wins while preserving earned results and keeping the league table as stable as possible.</li>
+              <li>When a player forfeits or drops out mid-season, fixtures for that player are designated as <strong>Forfeit / Non-Table Fixtures</strong>.</li>
+              <li>These fixtures <strong>do NOT affect the League Table / Standings</strong> (no points or leg differences are granted or deducted on the table). This ensures 100% fair table parity for all active players.</li>
+              <li><strong>Match Logs & Stats Preserved:</strong> Completed matches remain logged in Match History/Logs with a "Forfeit / Non-Table" indicator. Player achievements (180s, high checkouts, 3-dart averages) remain fully preserved in personal statistics.</li>
+              <li><strong>Rescheduling Protection:</strong> If a player communicates around match time (±15 mins), the fixture MUST be rescheduled rather than declared an immediate forfeit.</li>
             </ul>
           </div>
 
           <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '10px', color: 'white' }}>📅 Match Deadlines</h3>
+            <h3 style={{ fontSize: '1.05rem', marginBottom: '10px', color: 'white' }}>⚠️ Warnings & Strikes</h3>
             <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-              <li>All league fixtures must be played by the <strong>end of the season</strong>.</li>
-              <li>Games not played by the deadline fall under the <strong>forfeit rule</strong>.</li>
-            </ul>
-          </div>
-
-          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '10px', color: 'white' }}>🚫 Forfeit Rule (Fixed Result for Unplayed Fixtures)</h3>
-            <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-              <li>Any unplayed fixtures are recorded as a fixed, mild result in favour of the opponent (e.g., <strong>3 points only to the winner, no legs given</strong>).</li>
-              <li>However, if the player <strong>notified their opponent about rescheduling beforehand</strong>, or <strong>around the match time (±15 minutes before or after)</strong>, the fixture should be <strong>re-scheduled</strong> instead.</li>
-            </ul>
-          </div>
-
-          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '10px', color: 'white' }}>📝 Result Submission</h3>
-            <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-              <li>The <strong>winner must submit the result</strong> within <strong>4 hours</strong> of the match.</li>
-              <li>Keep your <strong>match log/scorecard</strong> until the result has been approved.</li>
-              <li>In a dispute, the player who <strong>cannot provide proof</strong> loses the result.</li>
-            </ul>
-          </div>
-
-          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '10px', color: 'white' }}>⚖️ Disputed Results</h3>
-            <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-              <li>Any disputed result must be raised with an <strong>admin within 48 hours</strong> of submission.</li>
-              <li>After that time, the <strong>result stands</strong>.</li>
+              <li><strong>2 Warnings</strong> = <strong>1 Strike</strong></li>
+              <li><strong>3 Strikes</strong> in a single season = Immediate removal from the league and potential season ban.</li>
             </ul>
           </div>
         </div>
       </div>
 
+      {/* 5. In-Game Dispute Resolution & Recording */}
       <div className="card glass" style={{ marginBottom: '24px', padding: '30px' }}>
-        <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>Scoring & Standings</h2>
+        <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
+          ⚖️ In-Game Dispute Resolution & Recording
+        </h2>
+        <div style={{ display: 'grid', gap: '16px' }}>
+          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+            <h3 style={{ fontSize: '1.05rem', marginBottom: '10px', color: 'white' }}>🚨 4-Step In-Game Dispute Sequence</h3>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '12px', fontSize: '0.9rem' }}>If an issue occurs during a live match, follow this exact sequence:</p>
+            <ol style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
+              <li><strong>Screenshot:</strong> Take a screenshot of the issue immediately.</li>
+              <li><strong>Pause:</strong> Pause the game immediately.</li>
+              <li><strong>In-Game Message:</strong> Message your opponent in-game explaining the issue and screenshot the message.</li>
+              <li><strong>Exit & Report:</strong> If unresolved or if the opponent disagrees, exit the game immediately and report to your Division Captain. <em>Do NOT complete the match or argue online.</em></li>
+            </ol>
+          </div>
+
+          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+            <h3 style={{ fontSize: '1.05rem', marginBottom: '10px', color: 'white' }}>🎥 Game Recording Policy</h3>
+            <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
+              <li>Game recording is <strong>optional and not enforced</strong> for standard match play.</li>
+              <li>However, video recording is <strong>required to support any formal dispute</strong> raised with a Division Captain or Admin.</li>
+              <li>Result submissions must be submitted by the winner within <strong>4 hours</strong> of match completion.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* 6. Points System & Standings */}
+      <div className="card glass" style={{ marginBottom: '24px', padding: '30px' }}>
+        <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
+          📊 Scoring & League Points System
+        </h2>
         <div style={{ display: 'grid', gap: '20px' }}>
            <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-             League points are calculated based on your performance in each match.
+             League points are earned through legs won plus match outcome bonuses:
            </p>
            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
               <div className="stat-card" style={{ padding: '15px', textAlign: 'center' }}>
@@ -150,36 +187,29 @@ export default function Rules() {
               </div>
            </div>
            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center' }}>
-             Example: A 5-3 win gives you 5 (legs) + 3 (win bonus) = 8 total points.
+             Example (Diamond Division BO8): A 5–3 win awards 5 (legs) + 3 (win bonus) = 8 total points.
            </p>
         </div>
       </div>
 
-      <div className="card glass" style={{ marginBottom: '24px', padding: '30px', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
-        <h2 style={{ color: 'var(--error)', marginBottom: '20px', borderBottom: '1px solid rgba(239, 68, 68, 0.2)', paddingBottom: '10px' }}>Code of Conduct</h2>
+      {/* 7. Code of Conduct & Subscriptions */}
+      <div className="card glass" style={{ marginBottom: '40px', padding: '30px', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+        <h2 style={{ color: 'var(--error)', marginBottom: '20px', borderBottom: '1px solid rgba(239, 68, 68, 0.2)', paddingBottom: '10px' }}>
+          🛡️ Code of Conduct & Prize Eligibility
+        </h2>
         <div style={{ color: 'var(--text-muted)', lineHeight: '1.8' }}>
            <p>Elite Arrows maintains a <strong>Zero Tolerance Policy</strong> for the following:</p>
-           <ul style={{ paddingLeft: '20px', marginBottom: '20px' }}>
-              <li>Cheating or score manipulation.</li>
-              <li>Toxic behavior, bullying, or harassment of any member.</li>
+           <ul style={{ paddingLeft: '20px', marginBottom: '16px' }}>
+              <li>Cheating, score manipulation, or intentionally obscuring darts.</li>
+              <li>Toxic behavior, bullying, or harassment in public or private channels.</li>
               <li>Intentional disconnection or rage-quitting during live matches.</li>
            </ul>
-           <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: '15px', borderRadius: '8px', border: '1px solid var(--error)' }}>
-              <strong style={{ color: 'white' }}>Consequences:</strong> Breaking these rules results in a one-time final warning, followed by an immediate season ban for any subsequent offense.
+           <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: '15px', borderRadius: '8px', border: '1px solid var(--error)', marginBottom: '16px' }}>
+              <strong style={{ color: 'white' }}>Consequences:</strong> Breaking these rules results in an official warning/strike, up to immediate season ban for major offenses.
            </div>
-        </div>
-      </div>
-
-      <div className="card glass" style={{ marginBottom: '40px', padding: '30px' }}>
-        <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>Prizes & Subscriptions</h2>
-        <div style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-<p style={{ marginBottom: '15px' }}>
-              Elite Pass subscribers are eligible for season prizes and entry into official tournaments.
-            </p>
-            <ul style={{ paddingLeft: '20px' }}>
-              <li><strong>Prize Eligibility:</strong> To be eligible for season prizes you must have played all, or at least <strong>75%</strong> of, your fixtures.</li>
-              <li><strong>Refunds:</strong> Subscriptions are eligible for a full refund within 14 days of purchase, provided no tournament prizes have been won.</li>
-            </ul>
+           <p style={{ fontSize: '0.9rem' }}>
+             <strong>Prize Eligibility:</strong> To be eligible for season prizes, players must have completed at least <strong>75%</strong> of their division fixtures.
+           </p>
         </div>
       </div>
     </div>

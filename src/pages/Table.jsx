@@ -17,6 +17,22 @@ const DIVISION_COLORS = {
   Overall: "#818cf8",
 };
 
+const DIVISION_CAPTAINS = {
+  Elite: "Division Captain: Admin Team",
+  Emerald: "Division Captain: Admin Team",
+  Diamond: "Division Captain: Admin Team",
+  Platinum: "Division Captain: Admin Team",
+  Overall: "League Overseer: Admin Team",
+};
+
+const DIVISION_FORMAT_LABELS = {
+  Elite: "Best of 12 Legs (First to 7 / 6–6 Draw)",
+  Emerald: "Best of 10 Legs (First to 6 / 5–5 Draw)",
+  Diamond: "Best of 8 Legs (First to 5 / 4–4 Draw)",
+  Platinum: "Best of 8 Legs (First to 5 / 4–4 Draw)",
+  Overall: "Formats: Elite (BO12) • Emerald (BO10) • Diamond/Platinum (BO8)",
+};
+
 export default function Table() {
   const {
     user,
@@ -494,6 +510,39 @@ export default function Table() {
             {div}
           </button>
         ))}
+      </div>
+
+      {/* Division Captain & Format Banner */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: "12px",
+          background: "rgba(10, 6, 40, 0.4)",
+          padding: "12px 20px",
+          borderRadius: "14px",
+          border: `1px solid ${DIVISION_COLORS[activeDivision] || 'rgba(168, 85, 247, 0.4)'}`,
+          marginBottom: "16px",
+          backdropFilter: "blur(10px)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <span style={{ fontSize: "1.1rem" }}>🛡️</span>
+          <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "white" }}>
+            {DIVISION_CAPTAINS[activeDivision] || "Division Captain: Admin Team"}
+          </span>
+        </div>
+        <div
+          style={{
+            fontSize: "0.8rem",
+            fontWeight: 700,
+            color: DIVISION_COLORS[activeDivision] || "var(--accent-cyan)",
+          }}
+        >
+          🎯 {DIVISION_FORMAT_LABELS[activeDivision] || "501 SIDO / Bull Up Every Time"}
+        </div>
       </div>
 
       <div
