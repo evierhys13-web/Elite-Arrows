@@ -14,6 +14,7 @@ import Breadcrumbs from '../components/Breadcrumbs'
 import CountUp from '../components/CountUp'
 
 const DIVISION_COLORS = {
+  'Pro League': '#ec4899',
   'Elite': '#fbbf24',
   'Emerald': '#10b981',
   'Diamond': '#38bdf8',
@@ -21,7 +22,7 @@ const DIVISION_COLORS = {
   'Unassigned': '#6B7280'
 }
 
-const DIVISIONS = ['Elite', 'Emerald', 'Diamond', 'Platinum']
+const DIVISIONS = ['Pro League', 'Elite', 'Emerald', 'Diamond', 'Platinum']
 
 const TOOLTIP_STYLE = {
   background: 'rgba(15, 23, 42, 0.92)',

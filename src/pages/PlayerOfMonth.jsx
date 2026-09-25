@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContextInternal'
 import { db, collection, getDocs, doc, setDoc, deleteDoc } from '../firebase'
 import { useToast } from '../context/ToastContext'
 
-const DIVISIONS = ['Elite', 'Emerald', 'Diamond', 'Platinum']
+const DIVISIONS = ['Pro League', 'Elite', 'Emerald', 'Diamond', 'Platinum']
 
 const monthKeyFor = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
 

@@ -2,6 +2,7 @@ import { derivePlayerStatsFromResults } from './playerStats'
 import { getResultPlayerId } from './leagueResults'
 
 export const DIVISION_COLORS = {
+  'Pro League': '#ec4899',
   Elite: '#fbbf24',
   Emerald: '#10b981',
   Diamond: '#38bdf8',
@@ -9,9 +10,10 @@ export const DIVISION_COLORS = {
   Overall: '#818cf8',
 }
 
-export const LEAGUE_DIVISION_KEYS = ['elite', 'emerald', 'diamond', 'platinum']
+export const LEAGUE_DIVISION_KEYS = ['pro_league', 'elite', 'emerald', 'diamond', 'platinum']
 
 export const LEAGUE_DIVISION_NAMES = {
+  pro_league: 'Pro League',
   elite: 'Elite',
   emerald: 'Emerald',
   diamond: 'Diamond',
@@ -22,9 +24,9 @@ export const getDivisionsForSeason = (selectedSeason, adminData) => {
   const isNewStructure =
     selectedSeason === (adminData?.currentSeason || 'Elite Arrows Season 5')
   if (isNewStructure || selectedSeason === 'Season 4' || selectedSeason === 'Season 5') {
-    return ['Overall', 'Elite', 'Emerald', 'Diamond', 'Platinum']
+    return ['Overall', 'Pro League', 'Elite', 'Emerald', 'Diamond', 'Platinum']
   }
-  return ['Overall', 'Elite', 'Emerald', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze']
+  return ['Overall', 'Pro League', 'Elite', 'Emerald', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze']
 }
 
 export const getPlayersWithEffectiveDivisions = (allUsers, seasonDoc, selectedSeason, adminData) => {

@@ -1181,7 +1181,7 @@ export default function Admin() {
     try {
       const target = allPlayers.find(p => String(p.id) === String(targetId))
       if (!target) return showToast('Player not found', 'error')
-      const divisionOrder = ['Elite', 'Emerald', 'Diamond', 'Platinum']
+      const divisionOrder = ['Pro League', 'Elite', 'Emerald', 'Diamond', 'Platinum']
       const currentIdx = divisionOrder.indexOf(target.division)
       const nextDivision = currentIdx >= 0 && currentIdx < divisionOrder.length - 1 ? divisionOrder[currentIdx + 1] : target.division || 'Unassigned'
       const bannedUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
@@ -3730,6 +3730,7 @@ export default function Admin() {
                 style={{ fontSize: '0.8rem', padding: '6px 10px', minWidth: '120px' }}
               >
                 <option value="">Division...</option>
+                <option value="Pro League">Pro League</option>
                 <option value="Elite">Elite</option>
                 <option value="Emerald">Emerald</option>
                 <option value="Diamond">Diamond</option>

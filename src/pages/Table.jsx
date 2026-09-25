@@ -10,6 +10,7 @@ import { usePageBackgrounds } from "../context/BackgroundContext";
 import { db, doc, setDoc } from "../firebase";
 
 const DIVISION_COLORS = {
+  "Pro League": "#ec4899",
   Elite: "#fbbf24",
   Emerald: "#10b981",
   Diamond: "#38bdf8",
@@ -18,6 +19,7 @@ const DIVISION_COLORS = {
 };
 
 const DIVISION_CAPTAINS = {
+  "Pro League": "Division Captain: Admin Team",
   Elite: "Division Captain: Admin Team",
   Emerald: "Division Captain: Admin Team",
   Diamond: "Division Captain: Admin Team",
@@ -26,11 +28,12 @@ const DIVISION_CAPTAINS = {
 };
 
 const DIVISION_FORMAT_LABELS = {
+  "Pro League": "Best of 12 Legs (First to 7 / 6–6 Draw)",
   Elite: "Best of 12 Legs (First to 7 / 6–6 Draw)",
   Emerald: "Best of 10 Legs (First to 6 / 5–5 Draw)",
   Diamond: "Best of 8 Legs (First to 5 / 4–4 Draw)",
   Platinum: "Best of 8 Legs (First to 5 / 4–4 Draw)",
-  Overall: "Formats: Elite (BO12) • Emerald (BO10) • Diamond/Platinum (BO8)",
+  Overall: "Formats: Pro League/Elite (BO12) • Emerald (BO10) • Diamond/Platinum (BO8)",
 };
 
 export default function Table() {
@@ -119,10 +122,10 @@ export default function Table() {
     // For the current/live season format, use the new division structure
     const isNewStructure = selectedSeason === (adminData?.currentSeason || "Elite Arrows Season 5");
     if (isNewStructure || selectedSeason === "Season 4" || selectedSeason === "Season 5") {
-      return ["Overall", "Elite", "Emerald", "Diamond", "Platinum"];
+      return ["Overall", "Pro League", "Elite", "Emerald", "Diamond", "Platinum"];
     }
     // Fallback for older seasons
-    return ["Overall", "Elite", "Emerald", "Diamond", "Platinum", "Gold", "Silver", "Bronze"];
+    return ["Overall", "Pro League", "Elite", "Emerald", "Diamond", "Platinum", "Gold", "Silver", "Bronze"];
   }, [selectedSeason, adminData?.currentSeason]);
 
   const divisions = getDivisionsForSeason();
@@ -699,7 +702,7 @@ export default function Table() {
                   const useNewRules = selectedSeason === "Season 4" || selectedSeason === "Season 5" || selectedSeason === (adminData?.currentSeason || "Elite Arrows Season 5");
 
                   const isPromotion = useNewRules
-                    ? (index < 3 && activeDivision !== "Overall" && activeDivision !== "Elite")
+                    ? (index < 3 && activeDivision !== "Overall" && activeDivision !== "Elite" && activeDivision !== "Pro League")
                     : (index < 2 && activeDivision !== "Overall");
 
                   const isRelegation = useNewRules

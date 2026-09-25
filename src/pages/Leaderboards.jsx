@@ -7,6 +7,7 @@ import Breadcrumbs from '../components/Breadcrumbs'
 import { useToast } from '../context/ToastContext'
 
 const DIVISION_COLORS = {
+  'Pro League': '#ec4899',
   'Elite': '#fbbf24',
   'Emerald': '#10b981',
   'Diamond': '#38bdf8',
@@ -75,7 +76,7 @@ export default function Leaderboards() {
     fixtures, adminData, leagueOnly: true, currentSeason: currentSeasonName, includePlayoffs: false
   }), [allUsers, results, fixtures, adminData, currentSeasonName, refreshKey])
 
-  const divisions = ['all', 'Elite', 'Emerald', 'Diamond', 'Platinum']
+  const divisions = ['all', 'Pro League', 'Elite', 'Emerald', 'Diamond', 'Platinum']
 
   const leagueBoard = useMemo(() => {
     let list = Object.values(playerStats).filter(p => p.played > 0)

@@ -281,6 +281,7 @@ export default function Results() {
         <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', overflowX: 'auto', paddingBottom: '8px' }}>
           {[
             { id: 'all', label: 'All Divisions' },
+            { id: 'Pro League', label: 'Pro League' },
             { id: 'Elite', label: 'Elite' },
             { id: 'Emerald', label: 'Emerald' },
             { id: 'Diamond', label: 'Diamond' },
