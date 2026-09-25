@@ -588,6 +588,6 @@ async function main() {
 }
 
 main().catch(err => {
-  console.error('Fatal:', err.message)
+  console.error('Fatal:', err.stack || err.message)
   process.exit(1)
 })

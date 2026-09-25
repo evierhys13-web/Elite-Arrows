@@ -215,7 +215,7 @@ export function isCoreDataAvailable() {
 
 // Fetch the current season's approved results (field-projected) for standings.
 export async function refreshResultsCache() {
-  const db = firestore
+  const db = initFirebase()
   const season = currentSeason()
   try {
     // Mirror the app: legacy seasons (Season 1 / 2026 / legacy) store results without a
@@ -249,7 +249,7 @@ async function attachResultsWatcher() {
     try { resultsWatcher() } catch {}
     resultsWatcher = null
   }
-  const db = firestore
+  const db = initFirebase()
   const query = db.collection('results')
     .orderBy('submittedAt', 'desc')
     .limit(30)
@@ -289,25 +289,29 @@ async function attachResultsWatcher() {
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
 export async function startListeners() {
-  initFirebase()
+  const db = initFirebase()
   loadCache()
 
-  const db = firestore
-
-  // adminData first (tells us the current season) with retry for quota hiccups.
-  for (let attempt = 1; attempt <= 5; attempt++) {
-    try {
-      const adminSnap = await db.collection('adminData').doc('main').get()
-      state.adminData = adminSnap.exists ? { id: adminSnap.id, ...adminSnap.data() } : null
-      synced.adminData = true
-      markDataAvailable()
-      schedulePersist()
-      break
-    } catch (e) {
-      console.error(`adminData fetch attempt ${attempt} failed: ${e.message}`)
-      await sleep(attempt * 5000)
+  // adminData first (tells us the current season) - fire and forget so it can
+  // NEVER block Discord login. When the project is over its read quota the retry
+  // would stall startup; the onSnapshot below + self-heal cycle backfill it, and
+  // currentSeason() has a sensible fallback meanwhile.
+  const warmUpAdminData = (async () => {
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      try {
+        const adminSnap = await db.collection('adminData').doc('main').get()
+        state.adminData = adminSnap.exists ? { id: adminSnap.id, ...adminSnap.data() } : null
+        synced.adminData = true
+        markDataAvailable()
+        schedulePersist()
+        break
+      } catch (e) {
+        console.error(`adminData fetch attempt ${attempt} failed: ${e.message}`)
+        await sleep(attempt * 5000)
+      }
     }
-  }
+  })()
+  warmUpAdminData.catch(e => console.error(`adminData warm-up failed: ${e.message}`))
 
   db.collection('adminData').doc('main').onSnapshot(
     doc => {
@@ -376,8 +380,16 @@ export async function startListeners() {
     err => console.error('seasons listener error:', err.message)
   )
 
-  await attachResultsWatcher()
-  await refreshResultsCache()
+  // In relay mode the website pushes new results via webhooks, so skip the
+  // results watcher entirely - it only exists to auto-post newly approved results
+  // and it adds watch quota pressure for nothing.
+  if (process.env.DISCORD_RELAY_MODE !== 'webhook') await attachResultsWatcher()
+  // Best-effort results cache for table snapshots; never blocks startup (quota
+  // hiccups are cheap and the self-heal cycle retries in the background).
+  refreshResultsCache().catch(e => {
+    if (process.env.DISCORD_RELAY_MODE === 'webhook') return
+    console.error(`initial results cache failed: ${e.message}`)
+  })
 
   // Self-heal: the project can hit its Firestore daily read quota (Spark). Retry in the
   // background so the bot recovers and finally renders snapshots without a restart.
