@@ -78,7 +78,7 @@ export default function BackgroundDecor({ division: userDivision }) {
         .cosmic-image-main {
           position: absolute;
           inset: -5%;
-          background-image: url('/cosmic%20primary%20image.png');
+          background-image: url('/cosmic-bg.webp');
           background-size: cover;
           background-position: center;
           background-repeat: no-repeat;

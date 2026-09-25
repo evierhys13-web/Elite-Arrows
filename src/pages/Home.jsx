@@ -17,8 +17,6 @@ export default function Home() {
   const fixtures = getFixtures()
   const allResults = getResults()
 
-  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
-  const [seasonPhase, setSeasonPhase] = useState('upcoming')
   const [visible, setVisible] = useState(false)
   const [surveyAnswers, setSurveyAnswers] = useState({})
   const [submittingSurvey, setSubmittingSurvey] = useState(null)
@@ -74,35 +72,6 @@ export default function Home() {
       console.error('Home live data sync failed:', e)
     })
   }, [loading, user?.id, user?.division, activeSeason.name, fetchResultsBySeason, fetchUsersByDivision])
-
-  useEffect(() => {
-    const calculateTimeLeft = () => {
-      const now = new Date()
-      const startDate = new Date(activeSeason.startDate)
-      const endDate = new Date(activeSeason.endDate)
-
-      const nextPhase = now < startDate ? 'upcoming' : now < endDate ? 'active' : 'ended'
-      const targetDate = nextPhase === 'upcoming' ? startDate : nextPhase === 'active' ? endDate : null
-      const diff = targetDate ? targetDate - now : 0
-
-      setSeasonPhase(nextPhase)
-      
-      if (diff > 0) {
-        setTimeLeft({
-          days: Math.floor(diff / (1000 * 60 * 60 * 24)),
-          hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
-          minutes: Math.floor((diff / (1000 * 60)) % 60),
-          seconds: Math.floor((diff / 1000) % 60)
-        })
-      } else {
-        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 })
-      }
-    }
-    
-    calculateTimeLeft()
-    const timer = setInterval(calculateTimeLeft, 1000)
-    return () => clearInterval(timer)
-  }, [activeSeason])
 
   const fixturesById = useMemo(() =>
     Object.fromEntries(fixtures.map(fixture => [String(fixture.id), fixture])),
@@ -208,9 +177,6 @@ export default function Home() {
   if (loading) return <div className="page glass"><div style={{ padding: '60px', textAlign: 'center' }}><div className="spinner"></div></div></div>
   if (!user) return <div className="page glass"><div style={{ padding: '60px', textAlign: 'center' }}>Please sign in.</div></div>
 
-  const isSeasonActive = seasonPhase === 'active'
-  const seasonTimerTitle = seasonPhase === 'active' ? 'Season 5 Ends In:' : seasonPhase === 'ended' ? 'Season 5 Ended' : 'Season 5 Starts In'
-
   return (
     <div className="page">
       <Breadcrumbs items={[{ label: 'Home', path: '/home' }]} />
@@ -242,19 +208,7 @@ export default function Home() {
       </div>
 
       {/* 2. Season Ends (Timer) */}
-      <div className={`card animate-fade-in-up`} style={{ marginBottom: '20px', border: '2px solid var(--accent-cyan)' }}>
-        <div style={{ textAlign: 'center' }}>
-          <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>{seasonTimerTitle}</h2>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '20px' }}>
-            {Object.entries(timeLeft).map(([label, value]) => (
-              <div key={label} className="stat-card" style={{ padding: '15px' }}>
-                <div className="stat-value" style={{ fontSize: '1.5rem' }}>{value}</div>
-                <div className="stat-label">{label.charAt(0).toUpperCase() + label.slice(1, 4)}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      <SeasonCountdownCard season={{ startDate: activeSeason.startDate, endDate: activeSeason.endDate }} />
 
       {/* 2b. Upcoming Tournaments */}
       {tournaments.length > 0 && (
@@ -440,6 +394,58 @@ export default function Home() {
           </svg>
           Join Official WhatsApp
         </a>
+      </div>
+    </div>
+  )
+}
+
+function SeasonCountdownCard({ season }) {
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
+  const [seasonPhase, setSeasonPhase] = useState('upcoming')
+
+  useEffect(() => {
+    const calculateTimeLeft = () => {
+      const now = new Date()
+      const startDate = new Date(season.startDate)
+      const endDate = new Date(season.endDate)
+
+      const nextPhase = now < startDate ? 'upcoming' : now < endDate ? 'active' : 'ended'
+      const targetDate = nextPhase === 'upcoming' ? startDate : nextPhase === 'active' ? endDate : null
+      const diff = targetDate ? targetDate - now : 0
+
+      setSeasonPhase(prev => (prev === nextPhase ? prev : nextPhase))
+
+      if (diff > 0) {
+        setTimeLeft({
+          days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+          hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+          minutes: Math.floor((diff / (1000 * 60)) % 60),
+          seconds: Math.floor((diff / 1000) % 60)
+        })
+      } else {
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 })
+      }
+    }
+
+    calculateTimeLeft()
+    const timer = setInterval(calculateTimeLeft, 1000)
+    return () => clearInterval(timer)
+  }, [season.startDate, season.endDate])
+
+  const seasonTimerTitle = seasonPhase === 'active' ? 'Season 5 Ends In:' : seasonPhase === 'ended' ? 'Season 5 Ended' : 'Season 5 Starts In'
+
+  return (
+    <div className="card animate-fade-in-up" style={{ marginBottom: '20px', border: '2px solid var(--accent-cyan)' }}>
+      <div style={{ textAlign: 'center' }}>
+        <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>{seasonTimerTitle}</h2>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '20px' }}>
+          {Object.entries(timeLeft).map(([label, value]) => (
+            <div key={label} className="stat-card" style={{ padding: '15px' }}>
+              <div className="stat-value" style={{ fontSize: '1.5rem' }}>{value}</div>
+              <div className="stat-label">{label.charAt(0).toUpperCase() + label.slice(1, 4)}</div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )

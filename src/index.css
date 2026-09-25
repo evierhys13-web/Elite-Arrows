@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&display=swap');
+
 :root {
   /* Brand Palette - Cosmic Purple (Matched to your image) */
   --bg-primary: #0b051d; /* Deep Dark Space */
@@ -40,8 +42,6 @@
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
-
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&display=swap');
 
 * {
   margin: 0;

@@ -3,10 +3,12 @@ import { getResultIdentityKey, getResultOverrideKeys } from "../utils/resultIden
 export const RESULT_CACHE_KEY = "eliteArrowsResults";
 export const RESULT_PROOF_FIELDS = [
   "proofImage",
+  "proofImage2",
   "proof",
   "proofUrl",
   "proofImageUrl",
   "proofFile",
+  "proofVideo",
 ];
 export const MINIMAL_RESULT_CACHE_FIELDS = [
   "id",
