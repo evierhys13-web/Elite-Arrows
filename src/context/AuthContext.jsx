@@ -135,7 +135,7 @@ const ONBOARDING_CONTENT_DEFAULTS = {
   generalRules: {
     title: "Rules In General",
     body:
-      "Elite Arrows has a zero tolerance policy for cheating, score manipulation, toxic behaviour and rage-quitting. First offence is a one-time final warning; any subsequent offence means an immediate season ban. Let us know if anything is unfair or unclear - that's what the admins are here for.",
+      "Elite Arrows has a zero tolerance policy for cheating, score manipulation, toxic behaviour and rage-quitting. 1 Strike Policy in effect (1 strike ONLY – NOT 3 strikes): First offence is a one-time final warning (2 warnings = 1 strike); 1 strike results in an immediate season ban. Let us know if anything is unfair or unclear - that's what the admins are here for.",
   },
   whatHappensNext: {
     title: "What Happens Next",

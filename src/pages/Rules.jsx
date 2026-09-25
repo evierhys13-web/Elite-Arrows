@@ -116,11 +116,11 @@ export default function Rules() {
         </h2>
         <div style={{ display: 'grid', gap: '16px' }}>
           <div style={{ background: 'rgba(251, 191, 36, 0.08)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(251, 191, 36, 0.25)' }}>
-            <h3 style={{ fontSize: '1.05rem', marginBottom: '10px', color: 'white' }}>📊 League Table Parity (Non-Table Impact)</h3>
+            <h3 style={{ fontSize: '1.05rem', marginBottom: '10px', color: 'white' }}>📊 Forfeit Award Rules (3 Points to Winner)</h3>
             <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-              <li>When a player forfeits or drops out mid-season, fixtures for that player are designated as <strong>Forfeit / Non-Table Fixtures</strong>.</li>
-              <li>These fixtures <strong>do NOT affect the League Table / Standings</strong> (no points or leg differences are granted or deducted on the table). This ensures 100% fair table parity for all active players.</li>
-              <li><strong>Match Logs & Stats Preserved:</strong> Completed matches remain logged in Match History/Logs with a "Forfeit / Non-Table" indicator. Player achievements (180s, high checkouts, 3-dart averages) remain fully preserved in personal statistics.</li>
+              <li>When a player forfeits or drops out mid-season, remaining unplayed fixtures award <strong>3 points only to the winner (non-offenders)</strong> with 0 legs awarded.</li>
+              <li>The offending player receives 0 points and 0 legs.</li>
+              <li><strong>Match Logs & Stats Preserved:</strong> All previously played matches remain logged in Match History/Logs and personal statistics (180s, high checkouts, 3-dart averages) are fully preserved for non-offending opponents.</li>
               <li><strong>Rescheduling Protection:</strong> If a player communicates around match time (±15 mins), the fixture MUST be rescheduled rather than declared an immediate forfeit.</li>
             </ul>
           </div>
@@ -129,7 +129,7 @@ export default function Rules() {
             <h3 style={{ fontSize: '1.05rem', marginBottom: '10px', color: 'white' }}>⚠️ Warnings & 1-Strike Removal Policy</h3>
             <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
               <li><strong>2 Warnings</strong> = <strong>1 Strike</strong></li>
-              <li><strong>1 Strike Policy:</strong> Receiving <strong>1 Strike</strong> in a season results in <strong>immediate removal from the league and an official season ban</strong>.</li>
+              <li><strong>1 Strike Policy (1 Strike ONLY – NOT 3 strikes):</strong> Receiving <strong>1 Strike</strong> in a season results in <strong>immediate removal from the league and an official season ban</strong>.</li>
             </ul>
           </div>
         </div>
@@ -205,7 +205,7 @@ export default function Rules() {
               <li>Intentional disconnection or rage-quitting during live matches.</li>
            </ul>
            <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: '15px', borderRadius: '8px', border: '1px solid var(--error)', marginBottom: '16px' }}>
-              <strong style={{ color: 'white' }}>Consequences:</strong> Breaking these rules results in an official warning/strike, up to immediate season ban for major offenses.
+              <strong style={{ color: 'white' }}>Consequences:</strong> Breaking these rules results in an official warning/strike (strict 1 Strike policy in effect — NOT 3 strikes), up to an immediate season ban for major offenses.
            </div>
            <p style={{ fontSize: '0.9rem' }}>
              <strong>Prize Eligibility:</strong> To be eligible for season prizes, players must have completed at least <strong>75%</strong> of their division fixtures.
