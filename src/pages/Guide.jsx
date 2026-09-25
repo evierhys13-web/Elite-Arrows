@@ -202,6 +202,7 @@ export default function Guide() {
           <h4 style={{ color: 'var(--accent-cyan)' }}>The Tiers (top to bottom)</h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
             {[
+              { name: 'Pro League', color: '#ec4899', blurb: 'The premier tier — First to 10 legs, no draws.' },
               { name: 'Elite', color: '#fbbf24', blurb: 'The very best — title favourites and serious machines.' },
               { name: 'Emerald', color: '#34d399', blurb: 'High-flyers just below the top tier, pushing for promotion.' },
               { name: 'Diamond', color: '#38bdf8', blurb: 'The deep middle of the league — where most rivalries live.' },

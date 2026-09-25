@@ -21,8 +21,8 @@ export default function Rules() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '15px' }}>
             <div style={{ background: 'rgba(236, 72, 153, 0.08)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(236, 72, 153, 0.25)' }}>
               <div style={{ color: '#ec4899', fontWeight: 800, fontSize: '1.1rem', marginBottom: '6px' }}>⚡ Pro League Division</div>
-              <div style={{ color: 'white', fontWeight: 700, fontSize: '1rem' }}>Best of 12 Legs</div>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '4px' }}>First to 7 wins, or 6–6 Draw.</p>
+              <div style={{ color: 'white', fontWeight: 700, fontSize: '1rem' }}>Best of 19 Legs</div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '4px' }}>First to 10 wins (No Draws).</p>
             </div>
 
             <div style={{ background: 'rgba(251, 191, 36, 0.08)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(251, 191, 36, 0.25)' }}>
