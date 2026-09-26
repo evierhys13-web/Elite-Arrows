@@ -15,7 +15,9 @@ export const DIVISION_FORMATS = {
 
 export const formatFromBestOf = (bestOf) => {
   const legs = Number(bestOf) || 8
-  return { bestOf: legs, firstTo: Math.ceil(legs / 2), noDraw: legs % 2 === 1 }
+  const noDraw = legs % 2 === 1
+  const firstTo = noDraw ? Math.ceil(legs / 2) : Math.ceil(legs / 2) + 1
+  return { bestOf: legs, firstTo, noDraw }
 }
 
 export const getDivisionFormat = (division, adminData) => {

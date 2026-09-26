@@ -461,7 +461,7 @@ function PlayerView({ user, personalStats, allTime, seasonal, seasonName, onBack
                   {(user?.division || 'Unassigned').toUpperCase()}
                 </span>
                 <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-                  {personalStats.played} matches · {personalStats.points} pts · {personalStats.wins}W {personalStats.losses}L
+                  {personalStats.played} matches · {personalStats.points} pts · {personalStats.wins}W {personalStats.losses}L{personalStats.draws ? ` ${personalStats.draws}D` : ''}
                 </span>
               </div>
               <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '8px', lineHeight: 1.5 }}>
@@ -505,7 +505,7 @@ function PlayerView({ user, personalStats, allTime, seasonal, seasonName, onBack
             <div className="home-stats-grid" style={{ marginBottom: '16px' }}>
               <StatTile icon="🎯" value={<CountUp end={Number(seasonal?.played) || personalStats.played} />} label="Games Played" color="#10b981" />
               <StatTile icon="📊" value={<CountUp end={Number(seasonal?.points) || personalStats.points} />} label="Points" color="#38bdf8" />
-              <StatTile icon="⚔️" value={`${Number(seasonal?.wins) || personalStats.wins}-${Number(seasonal?.losses) || personalStats.losses}`} label="Record (W-L)" color="#a78bfa" />
+              <StatTile icon="⚔️" value={`${Number(seasonal?.wins) || personalStats.wins}-${Number(seasonal?.losses) || personalStats.losses}${Number(seasonal?.draws) || personalStats.draws ? `-${Number(seasonal?.draws) || personalStats.draws}` : ''}`} label="Record (W-L-D)" color="#a78bfa" />
               <StatTile icon="🎯" value={seasonAvg > 0 ? seasonAvg.toFixed(1) : '—'} label="3-Dart Avg" color={avgColor(seasonAvg)} />
               <StatTile icon="🐟" value={seasonDoubles !== null ? `${seasonDoubles.toFixed(0)}%` : '—'} label="Doubles %" color={seasonDoubles !== null && seasonDoubles >= 40 ? '#10b981' : '#f97316'} />
               <StatTile icon="💥" value={Number(seasonal?.highestCheckout) > 0 ? seasonal.highestCheckout : '—'} label="Best Checkout" color="#ef4444" />
@@ -976,7 +976,7 @@ function SeasonPlayerBrowser({ seasonStatsMap, results, seasonName, divFilter, f
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   {chip('GP', p.stats?.played || 0, 'white')}
                   {chip('Avg', p.stats?.average > 0 ? Number(p.stats.average).toFixed(1) : '—', avgColor(Number(p.stats?.average)))}
-                  {chip('W-L', `${p.stats?.wins || 0}-${p.stats?.losses || 0}`, p.stats?.wins > 0 ? 'var(--success)' : 'var(--error)')}
+                  {chip('W-L-D', `${p.stats?.wins || 0}-${p.stats?.losses || 0}${p.stats?.draws ? `-${p.stats.draws}` : ''}`, p.stats?.wins > 0 ? 'var(--success)' : 'var(--error)')}
                   {chip('Pts', p.stats?.points || 0, 'var(--accent-cyan)')}
                   {chip('180s', p.stats?.['180s'] || 0, '#fbbf24')}
                   {chip('CO', p.stats?.highestCheckout > 0 ? p.stats.highestCheckout : '—', '#ef4444')}
