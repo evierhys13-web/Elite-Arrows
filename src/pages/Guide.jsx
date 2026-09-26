@@ -226,7 +226,7 @@ export default function Guide() {
             <li>League games are played <strong>within your division</strong> — one match per opponent per season.</li>
             <li>There are <strong>no automatic promotions</strong> — the Pro League is filled by the <strong>top 6 Elite players</strong> each season, and league winners are set by the admins.</li>
             <li>Admins can fine-tune placements, and results over time keep everyone honest.</li>
-            <li>Everyone must play <strong>at least 2 fixtures per week</strong> (Mon–Thu plus 1–2 weekend games) unless a valid reason is given to the division captain and addressed to your division.</li>
+            <li>Everyone must play <strong>at least 2 fixtures per week</strong> — on any day (weekday or weekend) unless a valid reason is given to the division captain and addressed to your division.</li>
           </ul>
         </div>
 
@@ -356,7 +356,7 @@ export default function Guide() {
             <li>When a player forfeits or drops out, unplayed fixtures award <strong>3 points only to the winner (non-offenders)</strong> with 0 legs.</li>
             <li>All previously played matches remain saved in <strong>Match Logs & Stats</strong> — 180s, checkouts, and averages are fully preserved.</li>
             <li><strong>1 Strike Policy (1 Strike ONLY – NOT 3 strikes):</strong> 2 Warnings = 1 Strike. Receiving 1 Strike results in immediate league removal and season ban.</li>
-            <li><strong>Weekly fixtures:</strong> Everyone must play at least 2 fixtures per week (Mon–Thu plus 1–2 weekend games). Fewer than 2 without a valid reason given to the division captain = a warning.</li>
+            <li><strong>Weekly fixtures:</strong> Everyone must play at least 2 fixtures per week (on any day, weekday or weekend). Fewer than 2 without a valid reason given to the division captain = a warning.</li>
             <li>Non-responsive opponents (3 tags without reply) receive a 24h notice from Division Captains before removal.</li>
           </ul>
         </div>

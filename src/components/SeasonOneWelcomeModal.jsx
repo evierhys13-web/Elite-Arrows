@@ -56,7 +56,7 @@ export default function SeasonOneWelcomeModal({ isOpen, onAcknowledge, userName 
               <li>League fixtures are played against players in the same division.</li>
               <li>There is no automatic promotion between divisions - league winners and Pro League places are set by the admins each season.</li>
               <li>League match format depends on your division: Pro League BO15 (first to 8), all other divisions BO8 (first to 5).</li>
-              <li>Everyone must play at least 2 fixtures per week (Mon-Thu plus 1-2 weekend games) unless a valid reason is given to the division captain and addressed to the division.</li>
+              <li>Everyone must play at least 2 fixtures per week (any day of the week) unless a valid reason is given to the division captain and addressed to the division.</li>
               <li>Results must be submitted through the app and approved by admins before counting.</li>
             </ul>
           </section>

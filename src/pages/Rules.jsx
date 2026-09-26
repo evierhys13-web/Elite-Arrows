@@ -118,7 +118,7 @@ export default function Rules() {
             <h3 style={{ fontSize: '1.05rem', marginBottom: '10px', color: 'white' }}>🗓️ Weekly Fixture Requirement</h3>
             <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
               <li>Every player must play <strong>at least 2 fixtures per week</strong>.</li>
-              <li>Fixtures can be played on a <strong>weekday of your choice (Monday – Thursday)</strong>, plus <strong>1 or 2 games at the weekend</strong>.</li>
+              <li>Fixtures can be played on <strong>any day of the week – weekday or weekend</strong>, as long as you complete <strong>at least 2 games every week</strong>.</li>
               <li>If you have a valid reason for playing fewer than 2 fixtures in a week, you must notify your <strong>Division Captain</strong> and it must be <strong>addressed to all players in your division</strong>.</li>
               <li>Playing <strong>fewer than 2 games in a week without a valid reason</strong> results in a <strong>warning</strong>.</li>
               <li><strong>2 warnings = 1 Strike.</strong></li>
