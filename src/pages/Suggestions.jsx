@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../context/AuthContextInternal'
-import { db, collection, getDocs, addDoc, updateDoc, increment, arrayUnion } from '../firebase'
+import { db, collection, doc, getDocs, addDoc, updateDoc, increment, arrayUnion } from '../firebase'
 import { useToast } from '../context/ToastContext'
 import Breadcrumbs from '../components/Breadcrumbs'
 

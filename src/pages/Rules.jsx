@@ -1,5 +1,6 @@
 import Breadcrumbs from '../components/Breadcrumbs'
 import Tooltip from '../components/Tooltip'
+import { Link } from 'react-router-dom'
 
 export default function Rules() {
   return (
@@ -226,6 +227,9 @@ export default function Rules() {
            <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: '15px', borderRadius: '8px', border: '1px solid var(--error)', marginBottom: '16px' }}>
               <strong style={{ color: 'white' }}>Consequences:</strong> Breaking these rules results in an official warning/strike (strict 1 Strike policy in effect — NOT 3 strikes), up to an immediate season ban for major offenses.
            </div>
+           <p style={{ fontSize: '0.9rem' }}>
+              <strong>Respect & Conduct:</strong> See the full guidelines on <Link to="/conduct" style={{ color: 'var(--accent-cyan)' }}>Respect & Conduct</Link> — how we treat each other, how banter should be used, and our zero tolerance on racism and discrimination.
+           </p>
 <p style={{ fontSize: '0.9rem' }}>
               <strong>Division Titles & Prizes:</strong> There are no automatic promotions between divisions. The <strong>league winner (top 1)</strong> of each division wins a share of the prize pot, announced at the end of the season. The Pro League is filled by the <strong>top 6 Elite players</strong> each season and assigned by the admins.
            </p>
