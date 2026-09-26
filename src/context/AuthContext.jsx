@@ -207,6 +207,8 @@ function normalizeAdminData(data) {
     welcomeBorderColor: data.welcomeBorderColor || ONBOARDING_DEFAULTS.welcomeBorderColor,
     onboardingContentVersion: Math.max(storedVersion, ONBOARDING_CONTENT_VERSION),
     onboardingContent: deepContent,
+    divisionCaptains: data.divisionCaptains || {},
+    divisionFormats: data.divisionFormats || {},
   };
 }
 
