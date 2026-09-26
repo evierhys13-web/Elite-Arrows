@@ -192,6 +192,13 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // Dart shirt designs - admin-curated gallery shown to all members, each with
+    // an external order link.
+    match /shirtDesigns/{designId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     match /auditLogs/{logId} {
       allow read, create: if isAdmin();
     }

@@ -87,6 +87,7 @@ export default function Conduct() {
               <li>Racist, discriminatory, or seriously abusive behaviour results in <strong>instant removal from the league and an official season ban</strong> — no warning, no strike required.</li>
               <li>Other conduct offences (bullying, harassment, toxic behaviour) follow the <strong>Warnings & 1-Strike policy</strong>: 2 warnings = 1 strike, and 1 strike = <strong>immediate removal from the league + season ban</strong>.</li>
               <li>Repeat offenders are removed at the admins' discretion.</li>
+              <li><strong>No second chances:</strong> If any of the above happens, the offender is <strong>permanently banned from the community until they prove they can behave</strong>. Returning is only possible after demonstrating good behaviour to the admins — and any repeat offence during that period ends it for good.</li>
             </ul>
           </div>
         </div>

@@ -7,6 +7,7 @@ import Breadcrumbs from '../components/Breadcrumbs'
 import { getResultPlayerId, isLeagueResult } from '../utils/leagueResults'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
 import GlobalHighlightReel from '../components/GlobalHighlightReel'
+import ShirtBanner from '../components/ShirtBanner'
 import { collection, getDocs } from '../firebase'
 
 export default function Home() {
@@ -189,7 +190,10 @@ export default function Home() {
         </div>
       </div>
 
-      {/* 1b. Sponsored league pages */}
+      {/* 1b. Official Shirts Banner */}
+      <ShirtBanner />
+
+      {/* 1c. Sponsored league pages */}
       <div className="card animate-fade-in-up" style={{ marginBottom: '20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <h2 style={{ margin: 0, color: 'var(--accent-cyan)', fontSize: '1.1rem' }}>🤝 Sponsored Leagues</h2>

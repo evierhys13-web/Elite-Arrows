@@ -245,7 +245,7 @@ export default function Guide() {
       <div className="card">
         <h2 className="card-title">📊 How Scoring Works</h2>
         <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-          League games are played according to division format: <strong>Pro League (BO15)</strong>, <strong>Elite (BO12)</strong>, <strong>Emerald (BO10)</strong>, and <strong>Diamond/Platinum (BO8)</strong>. Your points come from the legs you win plus match outcome bonuses (+3 Win, +1 Draw).
+          League games are played according to division format: <strong>Pro League (BO15)</strong> and <strong>Elite/Emerald/Diamond/Platinum (BO8)</strong>. Your points come from the legs you win plus match outcome bonuses (+3 Win, +1 Draw).
         </p>
 
         <div style={{ marginTop: '20px', overflowX: 'auto' }}>

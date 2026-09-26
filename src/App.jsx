@@ -48,6 +48,7 @@ const CupFixtures = lazy(() => import('./pages/CupFixtures'))
 const Guide = lazy(() => import('./pages/Guide'))
 const Rules = lazy(() => import('./pages/Rules'))
 const Conduct = lazy(() => import('./pages/Conduct'))
+const Shirts = lazy(() => import('./pages/Shirts'))
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
 const DeleteAccount = lazy(() => import('./pages/DeleteAccount'))
 const Donations = lazy(() => import('./pages/Donations'))
@@ -517,6 +518,7 @@ function AppRoutes() {
       <Route path="/guide" element={<ProtectedRoute><AppLayout><Guide /></AppLayout></ProtectedRoute>} />
       <Route path="/rules" element={<ProtectedRoute><AppLayout><Rules /></AppLayout></ProtectedRoute>} />
       <Route path="/conduct" element={<ProtectedRoute><AppLayout><Conduct /></AppLayout></ProtectedRoute>} />
+      <Route path="/shirts" element={<ProtectedRoute><AppLayout><Shirts /></AppLayout></ProtectedRoute>} />
       <Route path="/privacy-policy" element={<ProtectedRoute><AppLayout><PrivacyPolicy /></AppLayout></ProtectedRoute>} />
       <Route path="/delete-account" element={<ProtectedRoute><AppLayout><DeleteAccount /></AppLayout></ProtectedRoute>} />
       <Route path="/donations" element={<ProtectedRoute><AppLayout><Donations /></AppLayout></ProtectedRoute>} />

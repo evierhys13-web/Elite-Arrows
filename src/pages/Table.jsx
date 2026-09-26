@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContextInternal";
 import { derivePlayerStatsFromResults } from "../utils/playerStats";
 import { getPlayersWithEffectiveDivisions, getDivisionFilteredResults, LEAGUE_DIVISION_NAMES } from "../utils/leagueStandings";
+import { getDivisionFormat, getDivisionFormatLabel } from "../context/constants";
 import Breadcrumbs from "../components/Breadcrumbs";
 import { useToast } from "../context/ToastContext";
 import { useSponsorship } from "../context/SponsorshipContext";
@@ -16,24 +17,6 @@ const DIVISION_COLORS = {
   Diamond: "#38bdf8",
   Platinum: "#818cf8",
   Overall: "#818cf8",
-};
-
-const DIVISION_CAPTAINS = {
-  "Pro League": "Division Captain: Admin Team",
-  Elite: "Division Captain: Admin Team",
-  Emerald: "Division Captain: Admin Team",
-  Diamond: "Division Captain: Admin Team",
-  Platinum: "Division Captain: Admin Team",
-  Overall: "League Overseer: Admin Team",
-};
-
-const DIVISION_FORMAT_LABELS = {
-  "Pro League": "Best of 15 Legs (First to 8 / No Draws)",
-  Elite: "Best of 12 Legs (First to 7 / 6–6 Draw)",
-  Emerald: "Best of 10 Legs (First to 6 / 5–5 Draw)",
-  Diamond: "Best of 8 Legs (First to 5 / 4–4 Draw)",
-  Platinum: "Best of 8 Legs (First to 5 / 4–4 Draw)",
-  Overall: "Formats: Pro League (BO15) • Elite (BO12) • Emerald (BO10) • Diamond/Platinum (BO8)",
 };
 
 export default function Table() {
@@ -534,7 +517,9 @@ export default function Table() {
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           <span style={{ fontSize: "1.1rem" }}>🛡️</span>
           <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "white" }}>
-            {DIVISION_CAPTAINS[activeDivision] || "Division Captain: Admin Team"}
+            {activeDivision === "Overall"
+              ? `League Overseer: ${adminData?.divisionCaptains?.Overall || "Admin Team"}`
+              : `Division Captain: ${adminData?.divisionCaptains?.[activeDivision] || "Admin Team"}`}
           </span>
         </div>
         <div
@@ -544,7 +529,7 @@ export default function Table() {
             color: DIVISION_COLORS[activeDivision] || "var(--accent-cyan)",
           }}
         >
-          🎯 {DIVISION_FORMAT_LABELS[activeDivision] || "501 SIDO / Bull Up Every Time"}
+          🎯 {getDivisionFormatLabel(getDivisionFormat(activeDivision, adminData), activeDivision) || "501 SIDO / Bull Up Every Time"}
         </div>
       </div>
 

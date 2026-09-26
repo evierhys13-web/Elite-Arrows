@@ -290,7 +290,7 @@ export default function SubmitResult() {
         }))
       }
     } else if (opponentParam || gameTypeParam) {
-      const fmt = gameTypeParam === 'League' ? getDivisionFormat(userEffectiveDiv) : null
+      const fmt = gameTypeParam === 'League' ? getDivisionFormat(userEffectiveDiv, adminData) : null
       setFormData(prev => ({
         ...prev,
         opponent: opponentParam || prev.opponent,
@@ -342,7 +342,7 @@ export default function SubmitResult() {
     }
     if (name === 'gameType') {
       if (value === 'League') {
-        const fmt = getDivisionFormat(userEffectiveDiv)
+const fmt = getDivisionFormat(userEffectiveDiv, adminData)
         setFormData(prev => ({
           ...prev,
           opponent: availablePlayers.find(p => p.id === prev.opponent)?.division === user.division ? prev.opponent : '',
@@ -615,7 +615,7 @@ export default function SubmitResult() {
     }
 
     if (formData.gameType === 'League') {
-      const fmt = getDivisionFormat(userEffectiveDiv)
+      const fmt = getDivisionFormat(userEffectiveDiv, adminData)
       if (Number(formData.bestOf) !== fmt.bestOf || Number(formData.firstTo) !== fmt.firstTo) {
         setError(`League games in the ${userEffectiveDiv} division must be Best of ${fmt.bestOf} (First to ${fmt.firstTo} legs)`)
         return

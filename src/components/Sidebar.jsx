@@ -35,6 +35,7 @@ const DownloadIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentC
 const ExternalLinkIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
 const BulbIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18h6" /><path d="M10 22h4" /><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.4 1 2.3h6c0-.9.4-1.8 1-2.3A7 7 0 0 0 12 2z" /></svg>
 const AcademyIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10L12 5 2 10l10 5 10-5z" /><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5" /><path d="M22 10v6" /></svg>
+const ShirtIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.38 3.46L16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z" /></svg>
 const PanelLeftIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="9" y1="3" x2="9" y2="21" /></svg>
 
 const OPEN_LEAGUE_LAUNCH_DATE = new Date('2026-07-01T00:00:00')
@@ -99,6 +100,7 @@ export default function Sidebar() {
           { path: '/news', label: 'League News', icon: MessageIcon },
           { path: '/rules', label: 'League Rules', icon: ShieldIcon },
           { path: '/conduct', label: 'Respect & Conduct', icon: HeartIcon },
+          { path: '/shirts', label: 'Dart Shirts', icon: ShirtIcon },
           ...(isOpenLeagueVisible ? [{ path: '/open-league', label: 'Friendly League', icon: TrophyIcon }] : []),
           { path: '/daily-challenges', label: 'Daily Challenges', icon: StarIcon },
           { path: '/players', label: 'Players', icon: UsersIcon },

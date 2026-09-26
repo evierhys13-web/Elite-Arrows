@@ -120,7 +120,7 @@ const ONBOARDING_CONTENT_DEFAULTS = {
   howLeagueWorks: {
     title: "How The League Works",
     body:
-      "You're placed in a division that matches your 3-dart average, and your full schedule is visible in the app. Each season you play one league match against every other player in your division. Fixtures are arranged through the WhatsApp group for your division - not in the app - so message your opponent, agree a date that suits you both and show up. League match formats follow your division: Pro League is Best of 15 (first to 8, no draws), Elite is Best of 12 (first to 7 or 6-6 draw), Emerald is Best of 10 (first to 6 or 5-5 draw), and Diamond/Platinum are Best of 8 (first to 5 or 4-4 draw). All played on DartCounter at 501, Straight In / Double Out. Every leg you win earns 1 point, plus a +3 bonus for a win or +1 for a draw. Results are submitted in the app with a proof screenshot and approved by an admin before they count.",
+      "You're placed in a division that matches your 3-dart average, and your full schedule is visible in the app. Each season you play one league match against every other player in your division. Fixtures are arranged through the WhatsApp group for your division - not in the app - so message your opponent, agree a date that suits you both and show up. League match formats follow your division: Pro League is Best of 15 (first to 8, no draws), and every other division is Best of 8 (first to 5 or 4-4 draw). All played on DartCounter at 501, Straight In / Double Out. Every leg you win earns 1 point, plus a +3 bonus for a win or +1 for a draw. Results are submitted in the app with a proof screenshot and approved by an admin before they count.",
   },
   responsibilities: {
     title: "Your Responsibilities",
