@@ -114,13 +114,13 @@ const TTL_CUPS = 300000;
 export const DEFAULT_WHATSAPP_LINK =
   "https://chat.whatsapp.com/DcKb9AfesVBGjcFVwErEor?s=cl&p=a&mlu=4&ilr=4";
 
-export const ONBOARDING_CONTENT_VERSION = 2;
+export const ONBOARDING_CONTENT_VERSION = 3;
 
 const ONBOARDING_CONTENT_DEFAULTS = {
   howLeagueWorks: {
     title: "How The League Works",
     body:
-      "You're placed in a division that matches your 3-dart average, and your full schedule is visible in the app. Each season you play one league match against every other player in your division. Fixtures are arranged through the WhatsApp group for your division - not in the app - so message your opponent, agree a date that suits you both and show up. League matches are Best of 8 legs, first to 5 (or a 4-4 draw), played on DartCounter at 501, Straight In / Double Out. Every leg you win earns 1 point, plus a +3 bonus for a win or +1 for a draw. Results are submitted in the app with a proof screenshot and approved by an admin before they count.",
+      "You're placed in a division that matches your 3-dart average, and your full schedule is visible in the app. Each season you play one league match against every other player in your division. Fixtures are arranged through the WhatsApp group for your division - not in the app - so message your opponent, agree a date that suits you both and show up. League match formats follow your division: Pro League is Best of 15 (first to 8, no draws), Elite is Best of 12 (first to 7 or 6-6 draw), Emerald is Best of 10 (first to 6 or 5-5 draw), and Diamond/Platinum are Best of 8 (first to 5 or 4-4 draw). All played on DartCounter at 501, Straight In / Double Out. Every leg you win earns 1 point, plus a +3 bonus for a win or +1 for a draw. Results are submitted in the app with a proof screenshot and approved by an admin before they count.",
   },
   responsibilities: {
     title: "Your Responsibilities",
@@ -130,7 +130,7 @@ const ONBOARDING_CONTENT_DEFAULTS = {
   leagueRules: {
     title: "League Rules",
     body:
-      "All league fixtures must be played by the end of the season - unplayable fixtures are noted as a forfeit and use the forfeit rule, so the winner is awarded 3 points with no legs awarded. Play fewer than the required number of matches and you can be relegated or banned. Effective 1st October, forfeiting a season without a valid reason pre-approved by an admin means automatic relegation plus a one month ban. New members must play at least 75% of their fixtures in their first season to be eligible for cups and tournaments. The winner submits the result within 4 hours, and disputes must be raised with an admin within 48 hours. Re-scheduling is allowed when both players agree and an admin is notified.",
+      "All league fixtures must be played by the end of the season - unplayable fixtures are noted as a forfeit and use the forfeit rule, so the winner is awarded 3 points with no legs awarded. You must play at least 2 fixtures every week - fixtures can be played on a weekday of your choice (Monday - Thursday) plus 1 or 2 games at the weekend. If you have a valid reason for playing fewer than 2 games in a week, notify your Division Captain and address it to all players in your division. Playing fewer than 2 games in a week without a valid reason earns a warning; 2 warnings = 1 strike; 1 strike results in immediate removal from the league and an official season ban. Play fewer than the required number of matches and you can be relegated or banned. Effective 1st October, forfeiting a season without a valid reason pre-approved by an admin means automatic relegation plus a one month ban. New members must play at least 75% of their fixtures in their first season to be eligible for cups and tournaments. The winner submits the result within 4 hours, and disputes must be raised with an admin within 48 hours. Re-scheduling is allowed when both players agree and an admin is notified.",
   },
   generalRules: {
     title: "Rules In General",

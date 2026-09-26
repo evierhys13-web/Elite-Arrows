@@ -28,12 +28,12 @@ const DIVISION_CAPTAINS = {
 };
 
 const DIVISION_FORMAT_LABELS = {
-  "Pro League": "Best of 19 Legs (First to 10 / No Draws)",
+  "Pro League": "Best of 15 Legs (First to 8 / No Draws)",
   Elite: "Best of 12 Legs (First to 7 / 6–6 Draw)",
   Emerald: "Best of 10 Legs (First to 6 / 5–5 Draw)",
   Diamond: "Best of 8 Legs (First to 5 / 4–4 Draw)",
   Platinum: "Best of 8 Legs (First to 5 / 4–4 Draw)",
-  Overall: "Formats: Pro League (First to 10) • Elite (BO12) • Emerald (BO10) • Diamond/Platinum (BO8)",
+  Overall: "Formats: Pro League (BO15) • Elite (BO12) • Emerald (BO10) • Diamond/Platinum (BO8)",
 };
 
 export default function Table() {

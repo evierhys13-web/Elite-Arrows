@@ -4,6 +4,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { db, doc, setDoc, storage, ref, uploadString, uploadBytes, uploadBytesResumable, getDownloadURL, collection, getDocs } from '../firebase'
 import { useToast } from '../context/ToastContext'
 import { logResultSubmitted } from '../utils/analytics'
+import { getDivisionFormat } from '../context/constants'
 import UserSearchSelect from '../components/UserSearchSelect'
 import Confetti from '../components/Confetti'
 
@@ -289,16 +290,17 @@ export default function SubmitResult() {
         }))
       }
     } else if (opponentParam || gameTypeParam) {
+      const fmt = gameTypeParam === 'League' ? getDivisionFormat(userEffectiveDiv) : null
       setFormData(prev => ({
         ...prev,
         opponent: opponentParam || prev.opponent,
         gameType: gameTypeParam || prev.gameType,
         season: searchParams.get('season') || prev.season,
-        bestOf: gameTypeParam === 'League' ? '8' : prev.bestOf,
-        firstTo: gameTypeParam === 'League' ? '5' : prev.firstTo
+        bestOf: fmt ? String(fmt.bestOf) : prev.bestOf,
+        firstTo: fmt ? String(fmt.firstTo) : prev.firstTo
       }))
     }
-  }, [selectedFixture, opponentParam, gameTypeParam, searchParams, user.id])
+  }, [selectedFixture, opponentParam, gameTypeParam, searchParams, user.id, userEffectiveDiv])
 
   const checkExistingLeagueMatch = (opponentId) => {
     const existingMatches = allResults.filter(r => {
@@ -340,11 +342,12 @@ export default function SubmitResult() {
     }
     if (name === 'gameType') {
       if (value === 'League') {
+        const fmt = getDivisionFormat(userEffectiveDiv)
         setFormData(prev => ({
           ...prev,
           opponent: availablePlayers.find(p => p.id === prev.opponent)?.division === user.division ? prev.opponent : '',
-          bestOf: '8',
-          firstTo: '5'
+          bestOf: String(fmt.bestOf),
+          firstTo: String(fmt.firstTo)
         }))
       } else if (value === 'Friendly League Singles') {
         setFormData(prev => ({
@@ -611,9 +614,23 @@ export default function SubmitResult() {
       }
     }
 
-    if (formData.gameType === 'League' && (formData.bestOf !== '8' || formData.firstTo !== '5')) {
-      setError('League games must be Best of 8 (First to 5 legs)')
-      return
+    if (formData.gameType === 'League') {
+      const fmt = getDivisionFormat(userEffectiveDiv)
+      if (Number(formData.bestOf) !== fmt.bestOf || Number(formData.firstTo) !== fmt.firstTo) {
+        setError(`League games in the ${userEffectiveDiv} division must be Best of ${fmt.bestOf} (First to ${fmt.firstTo} legs)`)
+        return
+      }
+      const legsWon = Number(formData.yourScore) || 0
+      const legsLost = Number(formData.opponentScore) || 0
+      if (legsWon > fmt.firstTo || legsLost > fmt.firstTo) {
+        setError(`Scores cannot exceed ${fmt.firstTo} legs for a Best of ${fmt.bestOf} match`)
+        return
+      }
+      const totalLegs = legsWon + legsLost
+      if (totalLegs !== fmt.bestOf && !(legsWon === fmt.firstTo || legsLost === fmt.firstTo)) {
+        setError(`Invalid scoreline: a Best of ${fmt.bestOf} match must reach ${fmt.firstTo} legs to finish, or total exactly ${fmt.bestOf} legs on a draw.`)
+        return
+      }
     }
 
     let cupFixture = null
@@ -1163,8 +1180,11 @@ export default function SubmitResult() {
                 <option value="7">Best of 7</option>
                 <option value="8">Best of 8</option>
                 <option value="9">Best of 9</option>
+                <option value="10">Best of 10</option>
                 <option value="11">Best of 11</option>
+                <option value="12">Best of 12</option>
                 <option value="13">Best of 13</option>
+                <option value="15">Best of 15</option>
               </select>
             </div>
             <div className="form-group" style={{ marginBottom: 0 }}>

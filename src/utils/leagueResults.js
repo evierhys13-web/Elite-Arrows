@@ -42,11 +42,11 @@ export const isLeagueResult = (result, fixturesById = {}) => {
 
   // 5. For legacy/unlabeled matches (Season 1 support)
   if (!gameType || gameType === 'unknown' || gameType === '') {
-    // Only allow if it matches the standard league format (Best of 8 / max 8 legs)
+    // Only allow if it matches a valid league format (max 15 legs for Pro League BO15)
     const s1 = Number(result.score1) || 0
     const s2 = Number(result.score2) || 0
-    // Strictly max 8 legs for league
-    return (s1 + s2) <= 8 && (s1 + s2) > 0
+    // Strictly max 15 legs for league
+    return (s1 + s2) <= 15 && (s1 + s2) > 0
   }
 
   return false

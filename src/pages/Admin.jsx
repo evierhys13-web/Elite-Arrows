@@ -1199,6 +1199,59 @@ export default function Admin() {
     } catch (e) { showToast(e.message, 'error') }
   }
 
+  const handleGiveWarning = async (targetId, applyStrikeDirect = false) => {
+    try {
+      const target = allPlayers.find(p => String(p.id) === String(targetId))
+      if (!target) return showToast('Player not found', 'error')
+      const currentWarnings = Number(target.warningCount) || 0
+      const newWarnings = currentWarnings + 1
+      const updates = { warningCount: applyStrikeDirect ? 0 : newWarnings }
+
+      if (applyStrikeDirect) {
+        if (!confirm(`🚨 Apply a strike to ${target?.username}? They get immediate removal from the league + season ban.`)) return
+        updates.strikeCount = (Number(target.strikeCount) || 0) + 1
+        updates.isBanned = true
+        updates.bannedUntil = null
+        updates.strikeReason = 'Strike issued by admin'
+        await setDoc(doc(db, 'users', targetId), updates, { merge: true })
+        await logAudit('GIVE_STRIKE', `Strike issued to ${target?.username}. Removal + season ban applied.`)
+        triggerDataRefresh('users')
+        showToast(`🚨 ${target?.username} removed + season banned (strike applied)`, 'success')
+        return
+      }
+
+      if (newWarnings >= 2) {
+        if (!confirm(`⚠️ ${target?.username} is on ${newWarnings} warnings. This converts to a STRIKE → immediate removal from the league + season ban. Continue?`)) return
+        updates.warningCount = 0
+        updates.strikeCount = (Number(target.strikeCount) || 0) + 1
+        updates.isBanned = true
+        updates.bannedUntil = null
+        updates.strikeReason = `2 warnings accumulated (weekly fixture / conduct)`
+        await setDoc(doc(db, 'users', targetId), updates, { merge: true })
+        await logAudit('GIVE_STRIKE', `Strike issued to ${target?.username} (2 warnings reached). Removal + season ban applied.`)
+        triggerDataRefresh('users')
+        showToast(`🚨 ${target?.username} removed + season banned (strike applied)`, 'success')
+      } else {
+        await setDoc(doc(db, 'users', targetId), updates, { merge: true })
+        await logAudit('GIVE_WARNING', `Warning ${newWarnings}/2 issued to ${target?.username}`)
+        triggerDataRefresh('users')
+        showToast(`⚠️ Warning ${newWarnings}/2 issued to ${target?.username}`, 'success')
+      }
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
+  const handleResetDiscipline = async (targetId) => {
+    try {
+      const target = allPlayers.find(p => String(p.id) === String(targetId))
+      if (!target) return showToast('Player not found', 'error')
+      if (!confirm(`Reset warnings/strikes for ${target?.username} back to 0?`)) return
+      await setDoc(doc(db, 'users', targetId), { warningCount: 0, strikeCount: 0, strikeReason: '' }, { merge: true })
+      await logAudit('RESET_DISCIPLINE', `Discipline record reset for ${target?.username}`)
+      triggerDataRefresh('users')
+      showToast(`Discipline record reset for ${target?.username}`, 'success')
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
   const handleCreateSeason = async () => {
     if (!seasonForm.name) return showToast('Name required', 'error')
     try {
@@ -3820,10 +3873,20 @@ export default function Admin() {
                           {p.email} • {p.division || 'Unassigned'}
                           {p.isSubscribed && <span style={{ color: 'var(--success)', marginLeft: '8px' }}>✓ Elite Pass</span>}
                         </div>
+                        {(Number(p.warningCount) > 0 || Number(p.strikeCount) > 0) && (
+                          <div style={{ fontSize: '0.75rem', marginTop: '4px' }}>
+                            {Number(p.warningCount) > 0 && <span style={{ color: 'var(--warning)', fontWeight: 700 }}>⚠️ {p.warningCount} warning(s)</span>}
+                            {Number(p.warningCount) > 0 && Number(p.strikeCount) > 0 && <span style={{ margin: '0 4px', opacity: 0.4 }}>•</span>}
+                            {Number(p.strikeCount) > 0 && <span style={{ color: 'var(--error)', fontWeight: 800 }}>🚨 {p.strikeCount} strike(s)</span>}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: '10px' }}>
                       <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); navigate(`/profile/${p.id}`) }}>View</button>
+                      {isFullAdmin && !isUserBanned(p) && <button className="btn btn-sm" style={{ background: 'rgba(251,191,36,0.15)', border: '1px solid rgba(251,191,36,0.4)', color: '#fbbf24' }} onClick={(e) => { e.stopPropagation(); handleGiveWarning(p.id) }}>⚠️ Warning</button>}
+                      {isFullAdmin && <button className="btn btn-danger btn-sm" onClick={(e) => { e.stopPropagation(); handleGiveWarning(p.id, true) }}>🚨 Strike</button>}
+                      {isFullAdmin && <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); handleResetDiscipline(p.id) }}>Reset</button>}
                       {isFullAdmin && isUserBanned(p)
                         ? <button className="btn btn-success btn-sm" onClick={(e) => { e.stopPropagation(); handleToggleBan(p.id, true) }}>Unban</button>
                         : isFullAdmin && <button className="btn btn-danger btn-sm" onClick={(e) => { e.stopPropagation(); handlePickBan(p) }}>Ban</button>}

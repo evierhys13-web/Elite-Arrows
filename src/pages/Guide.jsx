@@ -79,7 +79,7 @@ export default function Guide() {
     {
       icon: '📈',
       title: 'Watch the table move',
-      body: 'Your legs and match bonuses go straight into the league table. Win your division and you\'re promoted — plus Cups, prizes and Hall of Fame glory.',
+      body: 'Your legs and match bonuses go straight into the league table. Win your division or an official cup and your name goes into the Hall of Fame and prize pool — league winners are announced at the end of each season.',
     },
   ]
 
@@ -202,7 +202,7 @@ export default function Guide() {
           <h4 style={{ color: 'var(--accent-cyan)' }}>The Tiers (top to bottom)</h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
             {[
-              { name: 'Pro League', color: '#ec4899', blurb: 'The premier tier — First to 10 legs, no draws.' },
+              { name: 'Pro League', color: '#ec4899', blurb: 'The premier tier — Best of 15 legs (first to 8). Filled by the top 6 from Elite each season.' },
               { name: 'Elite', color: '#fbbf24', blurb: 'The very best — title favourites and serious machines.' },
               { name: 'Emerald', color: '#34d399', blurb: 'High-flyers just below the top tier, pushing for promotion.' },
               { name: 'Diamond', color: '#38bdf8', blurb: 'The deep middle of the league — where most rivalries live.' },
@@ -224,8 +224,9 @@ export default function Guide() {
           <ul style={{ color: 'var(--text-muted)', lineHeight: '1.9', paddingLeft: '20px', margin: 0 }}>
             <li>Your <strong>3-dart average</strong> decides your starting division.</li>
             <li>League games are played <strong>within your division</strong> — one match per opponent per season.</li>
-            <li>Finish top and you'll be <strong>promoted</strong>; drop to the bottom and you risk <strong>relegation</strong>.</li>
+            <li>There are <strong>no automatic promotions</strong> — the Pro League is filled by the <strong>top 6 Elite players</strong> each season, and league winners are set by the admins.</li>
             <li>Admins can fine-tune placements, and results over time keep everyone honest.</li>
+            <li>Everyone must play <strong>at least 2 fixtures per week</strong> (Mon–Thu plus 1–2 weekend games) unless a valid reason is given to the division captain and addressed to your division.</li>
           </ul>
         </div>
 
@@ -244,7 +245,7 @@ export default function Guide() {
       <div className="card">
         <h2 className="card-title">📊 How Scoring Works</h2>
         <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-          League games are played according to division format: <strong>Elite (BO12)</strong>, <strong>Emerald (BO10)</strong>, and <strong>Diamond/Platinum (BO8)</strong>. Your points come from the legs you win plus match outcome bonuses (+3 Win, +1 Draw).
+          League games are played according to division format: <strong>Pro League (BO15)</strong>, <strong>Elite (BO12)</strong>, <strong>Emerald (BO10)</strong>, and <strong>Diamond/Platinum (BO8)</strong>. Your points come from the legs you win plus match outcome bonuses (+3 Win, +1 Draw).
         </p>
 
         <div style={{ marginTop: '20px', overflowX: 'auto' }}>
@@ -355,6 +356,7 @@ export default function Guide() {
             <li>When a player forfeits or drops out, unplayed fixtures award <strong>3 points only to the winner (non-offenders)</strong> with 0 legs.</li>
             <li>All previously played matches remain saved in <strong>Match Logs & Stats</strong> — 180s, checkouts, and averages are fully preserved.</li>
             <li><strong>1 Strike Policy (1 Strike ONLY – NOT 3 strikes):</strong> 2 Warnings = 1 Strike. Receiving 1 Strike results in immediate league removal and season ban.</li>
+            <li><strong>Weekly fixtures:</strong> Everyone must play at least 2 fixtures per week (Mon–Thu plus 1–2 weekend games). Fewer than 2 without a valid reason given to the division captain = a warning.</li>
             <li>Non-responsive opponents (3 tags without reply) receive a 24h notice from Division Captains before removal.</li>
           </ul>
         </div>

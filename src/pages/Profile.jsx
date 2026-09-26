@@ -33,6 +33,7 @@ export default function Profile() {
   const isViewingOther = id && id !== user.id
   const viewedUser = isViewingOther ? allUsers.find(u => u.id === id) : null
   const displayUser = isViewingOther ? viewedUser : user
+  const isAdminViewer = user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin
 
   const currentSeason = adminData?.currentSeason || 'Season 1'
   const eligibility = displayUser?.id ? getCupEligibility(displayUser, allResults, fixtures, currentSeason) : null
@@ -251,6 +252,13 @@ export default function Profile() {
               {displayUser.division || 'League Member'}
             </span>
             {displayUser.isAdmin && <span className="admin-badge" style={{ padding: '8px 20px', borderRadius: '99px' }}>Official Admin</span>}
+            {isAdminViewer && (Number(displayUser.warningCount) > 0 || Number(displayUser.strikeCount) > 0) && (
+              <span className="admin-badge" style={{ padding: '8px 20px', borderRadius: '99px', background: Number(displayUser.strikeCount) > 0 ? 'rgba(239,68,68,0.12)' : 'rgba(251,191,36,0.12)', border: `1px solid ${Number(displayUser.strikeCount) > 0 ? 'var(--error)' : 'var(--warning)'}`, color: Number(displayUser.strikeCount) > 0 ? 'var(--error)' : 'var(--warning)', fontWeight: 800 }}>
+                {Number(displayUser.strikeCount) > 0
+                  ? `🚨 ${displayUser.strikeCount} Strike`
+                  : `⚠️ ${displayUser.warningCount} Warning`}
+              </span>
+            )}
           </div>
 
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '32px', flexWrap: 'wrap' }}>

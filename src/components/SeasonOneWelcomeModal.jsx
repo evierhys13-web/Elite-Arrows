@@ -54,7 +54,9 @@ export default function SeasonOneWelcomeModal({ isOpen, onAcknowledge, userName 
             <ul style={{ margin: 0, paddingLeft: '20px', color: 'var(--text-muted)', lineHeight: 1.7 }}>
               <li>Players compete in their assigned division.</li>
               <li>League fixtures are played against players in the same division.</li>
-              <li>Each league match is Best of 8 legs, first to 5.</li>
+              <li>There is no automatic promotion between divisions - league winners and Pro League places are set by the admins each season.</li>
+              <li>League match format depends on your division: Pro League BO15 (first to 8), Elite BO12 (first to 7), Emerald BO10 (first to 6), Diamond/Platinum BO8 (first to 5).</li>
+              <li>Everyone must play at least 2 fixtures per week (Mon-Thu plus 1-2 weekend games) unless a valid reason is given to the division captain and addressed to the division.</li>
               <li>Results must be submitted through the app and approved by admins before counting.</li>
             </ul>
           </section>

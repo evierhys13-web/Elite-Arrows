@@ -21,8 +21,8 @@ export default function Rules() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '15px' }}>
             <div style={{ background: 'rgba(236, 72, 153, 0.08)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(236, 72, 153, 0.25)' }}>
               <div style={{ color: '#ec4899', fontWeight: 800, fontSize: '1.1rem', marginBottom: '6px' }}>⚡ Pro League Division</div>
-              <div style={{ color: 'white', fontWeight: 700, fontSize: '1rem' }}>Best of 19 Legs</div>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '4px' }}>First to 10 wins (No Draws).</p>
+              <div style={{ color: 'white', fontWeight: 700, fontSize: '1rem' }}>Best of 15 Legs</div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '4px' }}>First to 8 wins (No Draws). Filled by the top 6 from Elite each season.</p>
             </div>
 
             <div style={{ background: 'rgba(251, 191, 36, 0.08)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(251, 191, 36, 0.25)' }}>
@@ -112,6 +112,18 @@ export default function Rules() {
               <li><strong>15-Minute No-Show Rule:</strong> Wait 15 minutes past the scheduled time before informing your Division Captain.</li>
             </ul>
           </div>
+
+          <div style={{ background: 'rgba(251, 191, 36, 0.08)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(251, 191, 36, 0.25)' }}>
+            <h3 style={{ fontSize: '1.05rem', marginBottom: '10px', color: 'white' }}>🗓️ Weekly Fixture Requirement</h3>
+            <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
+              <li>Every player must play <strong>at least 2 fixtures per week</strong>.</li>
+              <li>Fixtures can be played on a <strong>weekday of your choice (Monday – Thursday)</strong>, plus <strong>1 or 2 games at the weekend</strong>.</li>
+              <li>If you have a valid reason for playing fewer than 2 fixtures in a week, you must notify your <strong>Division Captain</strong> and it must be <strong>addressed to all players in your division</strong>.</li>
+              <li>Playing <strong>fewer than 2 games in a week without a valid reason</strong> results in a <strong>warning</strong>.</li>
+              <li><strong>2 warnings = 1 Strike.</strong></li>
+              <li><strong>1 Strike</strong> results in <strong>immediate removal from the league and an official season ban</strong> (see the Warnings & 1-Strike Policy below).</li>
+            </ul>
+          </div>
         </div>
       </div>
 
@@ -135,6 +147,7 @@ export default function Rules() {
             <h3 style={{ fontSize: '1.05rem', marginBottom: '10px', color: 'white' }}>⚠️ Warnings & 1-Strike Removal Policy</h3>
             <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
               <li><strong>2 Warnings</strong> = <strong>1 Strike</strong></li>
+              <li>Warnings are issued for <strong>playing fewer than 2 fixtures in a week without a valid reason</strong> (see Weekly Fixture Requirement) plus conduct offences.</li>
               <li><strong>1 Strike Policy (1 Strike ONLY – NOT 3 strikes):</strong> Receiving <strong>1 Strike</strong> in a season results in <strong>immediate removal from the league and an official season ban</strong>.</li>
             </ul>
           </div>
@@ -213,8 +226,11 @@ export default function Rules() {
            <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: '15px', borderRadius: '8px', border: '1px solid var(--error)', marginBottom: '16px' }}>
               <strong style={{ color: 'white' }}>Consequences:</strong> Breaking these rules results in an official warning/strike (strict 1 Strike policy in effect — NOT 3 strikes), up to an immediate season ban for major offenses.
            </div>
+<p style={{ fontSize: '0.9rem' }}>
+              <strong>Division Titles & Prizes:</strong> There are no automatic promotions between divisions. The <strong>league winner (top 1)</strong> of each division wins a share of the prize pot, announced at the end of the season. The Pro League is filled by the <strong>top 6 Elite players</strong> each season and assigned by the admins.
+           </p>
            <p style={{ fontSize: '0.9rem' }}>
-             <strong>Prize Eligibility:</strong> To be eligible for season prizes, players must have completed at least <strong>75%</strong> of their division fixtures.
+              <strong>Prize Eligibility:</strong> To be eligible for season prizes, players must have completed at least <strong>75%</strong> of their division fixtures.
            </p>
         </div>
       </div>
