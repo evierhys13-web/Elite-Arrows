@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useAuth } from '../context/AuthContextInternal'
 import { db, collection, getDocs, doc, setDoc, deleteDoc } from '../firebase'
 import { useToast } from '../context/ToastContext'
+import { ADMIN_EMAILS } from '../config'
 
 const DIVISIONS = ['Pro League', 'Elite', 'Emerald', 'Diamond', 'Platinum']
 
@@ -20,6 +21,11 @@ export default function PlayerOfMonth() {
   const [votes, setVotes] = useState([])
   const [loading, setLoading] = useState(true)
   const [votingFor, setVotingFor] = useState(null)
+  const [showVoteBreakdown, setShowVoteBreakdown] = useState(false)
+  const isAdmin = Boolean(
+    user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin ||
+    (user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase()))
+  )
 
   const monthKey = monthKeyFor(monthDate)
   const isCurrentMonth = monthKey === monthKeyFor(new Date())
@@ -68,7 +74,13 @@ export default function PlayerOfMonth() {
         .sort((a, b) => b.votes - a.votes)
       const myVote = divisionVotes.find((v) => String(v.voterId) === String(user?.id))
       const leader = rows[0] && rows[0].votes > 0 ? rows[0] : null
-      return { division, rows, myVote, leader }
+      const votePairs = divisionVotes.map((v) => ({
+        id: v.id,
+        voter: allUsers.find((u) => String(u.id) === String(v.voterId)),
+        nominee: allUsers.find((u) => String(u.id) === String(v.nomineeId))
+      }))
+      const nonVoters = divisionUsers.filter((u) => !divisionVotes.some((v) => String(v.voterId) === String(u.id)))
+      return { division, rows, myVote, leader, votePairs, nonVoters }
     })
   }, [allUsers, votes, user])
 
@@ -110,6 +122,18 @@ export default function PlayerOfMonth() {
     }
   }
 
+  const handleAdminRemoveVote = async (vote) => {
+    if (!isAdmin) return
+    if (!window.confirm('Remove this vote? This can\'t be undone.')) return
+    try {
+      await deleteDoc(doc(db, 'playerOfMonthVotes', vote.id))
+      showToast('Vote removed', 'success')
+      setVotes((prev) => prev.filter((v) => String(v.id) !== String(vote.id)))
+    } catch (err) {
+      showToast('Could not remove vote: ' + err.message, 'error')
+    }
+  }
+
   return (
     <div className="page-container">
       <h1 className="page-title">Player of the Month</h1>
@@ -126,13 +150,32 @@ export default function PlayerOfMonth() {
         {!isCurrentMonth && (
           <button className="btn btn-primary btn-sm" onClick={() => setMonthDate(new Date())}>Current month</button>
         )}
+        {isAdmin && (
+          <button
+            className="btn btn-sm"
+            style={{
+              background: showVoteBreakdown ? 'rgba(251,191,36,0.15)' : 'rgba(0,212,255,0.12)',
+              border: showVoteBreakdown ? '1px solid rgba(251,191,36,0.5)' : '1px solid rgba(0,212,255,0.4)',
+              color: 'white', marginLeft: 'auto'
+            }}
+            onClick={() => setShowVoteBreakdown(!showVoteBreakdown)}
+          >
+            {showVoteBreakdown ? '🙈 Hide vote breakdown' : '🔎 Show who voted for who'}
+          </button>
+        )}
       </div>
+
+      {isAdmin && showVoteBreakdown && (
+        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '16px', fontStyle: 'italic' }}>
+          Admin view — shows exactly who voted for whom. Admins can remove votes (e.g. gathered through vote solicitation).
+        </p>
+      )}
 
       {loading ? (
         <div className="glass" style={{ padding: '32px', textAlign: 'center' }}>Loading votes...</div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-          {divisionVotes.map(({ division, rows, myVote, leader }) => (
+          {divisionVotes.map(({ division, rows, myVote, leader, votePairs, nonVoters }) => (
             <div key={division} className="card glass">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <h3 style={{ margin: 0 }}>{division}</h3>
@@ -194,6 +237,34 @@ export default function PlayerOfMonth() {
                   myVote ? 'You have voted for this division. Remove your vote to pick someone else.' : 'Pick your player of the month for this division (one vote per member).'
                 ) : 'Voting closed for this month.'}
               </p>
+
+              {isAdmin && showVoteBreakdown && (
+                <div style={{ marginTop: '14px', borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--accent-cyan)', marginBottom: '8px' }}>
+                    🔎 Who voted for who ({votePairs.length} votes)
+                  </div>
+                  {votePairs.length === 0 && <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>No votes cast in this division for this month.</p>}
+                  {votePairs.map((pair) => (
+                    <div key={pair.id} style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <span style={{ color: '#e2e8f0' }}>{pair.voter?.username || pair.voter?.nickname || 'Unknown voter'}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ color: 'var(--accent-cyan)', fontWeight: 700 }}>→ {pair.nominee?.username || pair.nominee?.nickname || 'Unknown'}</span>
+                        <button className="btn btn-danger btn-sm" style={{ padding: '2px 8px', fontSize: '0.65rem' }} onClick={() => handleAdminRemoveVote(pair)}>✕</button>
+                      </span>
+                    </div>
+                  ))}
+                  {nonVoters.length > 0 && (
+                    <>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--warning)', fontWeight: 700, marginTop: '10px' }}>
+                        ⏳ Not voted yet ({nonVoters.length})
+                      </div>
+                      <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px', lineHeight: 1.5 }}>
+                        {nonVoters.map((u) => u.username || u.nickname || 'Unknown').join(', ')}
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>
