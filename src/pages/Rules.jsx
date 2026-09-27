@@ -212,6 +212,33 @@ export default function Rules() {
         </div>
       </div>
 
+      {/* 6b. Player of the Month */}
+      <div className="card glass" style={{ marginBottom: '24px', padding: '30px', border: '1px solid rgba(251, 191, 36, 0.3)' }}>
+        <h2 style={{ color: 'var(--warning)', marginBottom: '20px', borderBottom: '1px solid rgba(251, 191, 36, 0.2)', paddingBottom: '10px' }}>
+          🏆 Player of the Month
+        </h2>
+        <div style={{ display: 'grid', gap: '16px' }}>
+          <div style={{ background: 'rgba(251, 191, 36, 0.08)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(251, 191, 36, 0.25)' }}>
+            <h3 style={{ fontSize: '1.05rem', marginBottom: '10px', color: 'white' }}>🗳️ Voting Rules</h3>
+            <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
+              <li>Members vote for the <strong>Player of the Month</strong> in each division — the standings leader isn't automatically the winner.</li>
+              <li>Every member casts <strong>one vote</strong> per division.</li>
+              <li>Votes are cast privately through the <strong>Player of the Month</strong> page in the app.</li>
+              <li><strong>No Asking, No Begging:</strong> Players must <strong>not ask, beg, or campaign</strong> for votes — this includes tagging members, posting in division WhatsApp groups, or sending private messages asking to be voted for.</li>
+            </ul>
+          </div>
+
+          <div style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.25)' }}>
+            <h3 style={{ fontSize: '1.05rem', marginBottom: '10px', color: 'white' }}>🚫 Vote Solicitation Consequences</h3>
+            <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
+              <li>Vote solicitation is treated as a <strong>conduct offence</strong> and falls under the <strong>Warnings & 1-Strike Policy</strong>.</li>
+              <li><strong>Votes may be disregarded</strong> — any votes gathered through asking or begging can be removed, and the player can be made ineligible for that month's award.</li>
+              <li>Repeated offences can result in a <strong>strike</strong> (immediate removal from the league and an official season ban).</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
       {/* 7. Code of Conduct & Subscriptions */}
       <div className="card glass" style={{ marginBottom: '40px', padding: '30px', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
         <h2 style={{ color: 'var(--error)', marginBottom: '20px', borderBottom: '1px solid rgba(239, 68, 68, 0.2)', paddingBottom: '10px' }}>
