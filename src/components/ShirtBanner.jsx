@@ -18,12 +18,19 @@ export default function ShirtBanner() {
         onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)' }}
         onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)' }}
       >
-        <div style={{ transition: 'transform 0.2s ease' }}>
-          <div style={{ fontSize: '1.15rem', fontWeight: 900, color: 'white', letterSpacing: '0.3px' }}>
-            👕 Elite Arrows Shirts
-          </div>
-          <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.75)', marginTop: '4px' }}>
-            Official dart shirts — grab yours at barbarc.com
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: 0 }}>
+          <img
+            src="/elite arrows.jpg"
+            alt="Elite Arrows"
+            style={{ width: '56px', height: '56px', borderRadius: '14px', objectFit: 'cover', flexShrink: 0, border: '1px solid rgba(255,255,255,0.15)' }}
+          />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: '1.15rem', fontWeight: 900, color: 'white', letterSpacing: '0.3px' }}>
+              👕 Elite Arrows Shirts
+            </div>
+            <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.75)', marginTop: '4px' }}>
+              Official dart shirts — grab yours at barbarc.com
+            </div>
           </div>
         </div>
         <div
