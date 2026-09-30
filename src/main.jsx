@@ -8,38 +8,77 @@ if (typeof window !== 'undefined' && window.Capacitor) {
   import('@capacitor/core')
 }
 
+// Collects custom background/banner image URLs already cached in localStorage
+// so the service worker can start downloading them the moment it is ready.
+function collectCachedBackgroundUrls() {
+  const keys = ['eliteArrowsPageBackgrounds', 'eliteArrowsLeaguePageAssets']
+  const urls = []
+  for (const key of keys) {
+    try {
+      const raw = localStorage.getItem(key)
+      if (!raw || raw === 'undefined') continue
+      const map = JSON.parse(raw)
+      for (const id in map) {
+        const entry = map[id]
+        const u = (entry && (entry.imageUrl || entry.bannerImage)) || null
+        if (u) urls.push(u)
+      }
+    } catch (e) {}
+  }
+  return urls
+}
+
+// Posts the cached image URLs to the service worker so it fetches and caches
+// them immediately, and kicks off browser-side preloads so the images are
+// already in memory/HTTP cache before the first frame of the app is painted.
+function warmBackgroundCache() {
+  const urls = collectCachedBackgroundUrls()
+  for (const u of urls) {
+    const img = new Image()
+    img.src = u
+  }
+  if (!('serviceWorker' in navigator)) return
+  navigator.serviceWorker.ready
+    .then((reg) => {
+      if (reg.active) {
+        reg.active.postMessage({ type: 'PRECACHE_ASSETS', urls })
+      }
+    })
+    .catch(() => {})
+}
+
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then((registration) => {
-        console.log('SW registered:', registration.scope);
-        
-        registration.addEventListener('updatefound', () => {
-          const newWorker = registration.installing;
-          if (newWorker) {
-            newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                // A new version is available, skip waiting and notify
-                console.log('New version found, updating...');
-                newWorker.postMessage({ type: 'SKIP_WAITING' });
-              }
-            });
-          }
-        });
-      })
-      .catch((error) => {
-        console.log('SW registration failed:', error);
+  navigator.serviceWorker.register('/sw.js')
+    .then((registration) => {
+      console.log('SW registered:', registration.scope);
+
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing;
+        if (newWorker) {
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              // A new version is available, skip waiting and notify
+              console.log('New version found, updating...');
+              newWorker.postMessage({ type: 'SKIP_WAITING' });
+            }
+          });
+        }
       });
 
-    // Reload when the new service worker has taken over
-    let refreshing = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (!refreshing) {
-        refreshing = true;
-        console.log('Service worker changed, reloading page...');
-        window.location.reload();
-      }
+      warmBackgroundCache();
+    })
+    .catch((error) => {
+      console.log('SW registration failed:', error);
     });
+
+  // Reload when the new service worker has taken over
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) {
+      refreshing = true;
+      console.log('Service worker changed, reloading page...');
+      window.location.reload();
+    }
   });
 }
 
