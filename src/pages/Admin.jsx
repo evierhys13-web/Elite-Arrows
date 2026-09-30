@@ -1045,6 +1045,23 @@ export default function Admin() {
     } catch (e) { showToast?.('Error updating rank: ' + e.message, 'error') }
   }
 
+  const handleRevokeElitePass = async (u) => {
+    if (!u) return
+    if (!confirm(`Remove the Elite Pass from ${u.username}? They will lose member access immediately.`)) return
+    try {
+      await setDoc(doc(db, 'users', u.id), {
+        isSubscribed: false,
+        subscribedSeasons: [],
+        subscriptionTier: null,
+        elitePassRevokedAt: new Date().toISOString(),
+        elitePassRevokedBy: user?.id || null
+      }, { merge: true })
+      await logAudit('REVOKE_ELITE_PASS', `Removed Elite Pass from ${u.username}`)
+      triggerDataRefresh('users')
+      showToast(`Elite Pass removed from ${u.username}`, 'success')
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
   const handleGrantSubscription = async () => {
     if (!grantSubForm.player) return showToast('Select a player', 'error')
     try {
@@ -2804,7 +2821,10 @@ export default function Admin() {
                         <div style={{ fontWeight: 700 }}>{u.username}</div>
                         <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{u.subscriptionTier || 'Elite'} • {Array.isArray(u.subscribedSeasons) ? u.subscribedSeasons.join(', ') : 'S1'}</div>
                       </div>
-                      <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/profile/${u.id}`)}>Profile</button>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/profile/${u.id}`)}>Profile</button>
+                        <button className="btn btn-danger btn-sm" onClick={() => handleRevokeElitePass(u)}>Remove Pass</button>
+                      </div>
                     </div>
                   ))}
                 </div>
