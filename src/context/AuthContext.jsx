@@ -39,10 +39,6 @@ import {
   runTransaction,
   writeBatch,
   FieldValue,
-  getMessagingInstance,
-  getToken,
-  onMessage,
-  isSupported,
   limit,
 } from "../firebase";
 import { ADMIN_EMAILS } from "../config";
@@ -227,7 +223,12 @@ export function AuthProvider({ children }) {
       return null;
     }
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => {
+    try {
+      if (localStorage.getItem("eliteArrowsCurrentUser")) return false;
+    } catch (e) {}
+    return true;
+  });
   const [allUsers, setAllUsers] = useState(() => {
     try {
       const saved = localStorage.getItem("eliteArrowsUsers");
@@ -346,6 +347,7 @@ export function AuthProvider({ children }) {
     if (!user?.id) return null;
 
     try {
+      const { isSupported, getMessagingInstance, getToken } = await import("../firebaseMessaging");
       const supported = await isSupported();
       if (!supported) {
         return null;
@@ -2731,6 +2733,7 @@ const fetchUsers = async () => {
       if (!user?.id) return;
 
       try {
+        const { getMessagingInstance, onMessage } = await import("../firebaseMessaging");
         const messaging = await getMessagingInstance();
         if (!messaging) return;
 
