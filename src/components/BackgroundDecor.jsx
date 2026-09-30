@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
 import { usePageBackgrounds } from '../context/BackgroundContext'
 import { useSponsorship } from '../context/SponsorshipContext'
@@ -7,10 +7,15 @@ import { LEAGUE_DIVISION_NAMES } from '../utils/leagueStandings'
 
 export default function BackgroundDecor({ division: userDivision }) {
   const location = useLocation()
-  const { backgrounds, activeDivision: contextDivision } = usePageBackgrounds()
-  const { configs, assets } = useSponsorship()
+  const { backgrounds, activeDivision: contextDivision, refresh: refreshBackgrounds } = usePageBackgrounds()
+  const { configs, assets, refresh: refreshSponsorship } = useSponsorship()
 
   const division = contextDivision || userDivision
+
+  useEffect(() => {
+    refreshBackgrounds()
+    refreshSponsorship()
+  }, [location.pathname, refreshBackgrounds, refreshSponsorship])
 
 
   const activeConfig = useMemo(() => {

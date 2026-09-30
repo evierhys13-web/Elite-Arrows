@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react'
-import { db, collection, doc, onSnapshot, setDoc, deleteDoc, serverTimestamp } from '../firebase'
+import { db, collection, doc, getDocs, onSnapshot, setDoc, deleteDoc, serverTimestamp } from '../firebase'
 
 const BackgroundContext = createContext(null)
 
@@ -56,14 +56,34 @@ export function BackgroundProvider({ children }) {
 
   const [activeDivision, setActiveDivision] = useState(null)
 
+  const refresh = useCallback(async () => {
+    try {
+      const snap = await getDocs(collection(db, 'pageBackgrounds'))
+      const map = {}
+      snap.docs.forEach((d) => {
+        const data = d.data() || {}
+        map[d.id] = {
+          imageUrl: data.imageUrl || '',
+          opacity: typeof data.opacity === 'number' ? data.opacity : 0.5,
+          blur: typeof data.blur === 'number' ? data.blur : 0,
+          fit: data.fit === 'contain' ? 'contain' : 'cover'
+        }
+      })
+      setBackgrounds(map)
+    } catch (e) {
+      console.warn('pageBackgrounds refresh error:', e)
+    }
+  }, [])
+
   const value = useMemo(() => ({
     backgrounds,
     loading,
     saveBackground,
     removeBackground,
+    refresh,
     activeDivision,
     setActiveDivision
-  }), [backgrounds, loading, saveBackground, removeBackground, activeDivision])
+  }), [backgrounds, loading, saveBackground, removeBackground, refresh, activeDivision])
 
   return (
     <BackgroundContext.Provider value={value}>
@@ -80,6 +100,7 @@ export function usePageBackgrounds() {
       loading: false,
       saveBackground: async () => {},
       removeBackground: async () => {},
+      refresh: async () => {},
       activeDivision: null,
       setActiveDivision: () => {}
     }

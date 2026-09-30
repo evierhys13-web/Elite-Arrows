@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react'
-import { db, collection, doc, onSnapshot, setDoc, serverTimestamp, deleteField } from '../firebase'
+import { db, collection, doc, getDocs, onSnapshot, setDoc, serverTimestamp, deleteField } from '../firebase'
 
 const SponsorshipContext = createContext(null)
 
@@ -67,9 +67,26 @@ export function SponsorshipProvider({ children }) {
     )
   }, [])
 
+  const refresh = useCallback(async () => {
+    try {
+      const [cSnap, aSnap] = await Promise.all([
+        getDocs(collection(db, 'sponsoredLeagues')),
+        getDocs(collection(db, 'leaguePageAssets')),
+      ])
+      const cMap = {}
+      cSnap.docs.forEach((d) => { cMap[d.id] = d.data() })
+      const aMap = {}
+      aSnap.docs.forEach((d) => { aMap[d.id] = d.data() })
+      setConfigs(cMap)
+      setAssets(aMap)
+    } catch (e) {
+      console.warn('sponsorship refresh error:', e)
+    }
+  }, [])
+
   const value = useMemo(
-    () => ({ configs, assets, loading, saveConfig, saveAssets, removeAssetFields }),
-    [configs, assets, loading, saveConfig, saveAssets, removeAssetFields],
+    () => ({ configs, assets, loading, saveConfig, saveAssets, removeAssetFields, refresh }),
+    [configs, assets, loading, saveConfig, saveAssets, removeAssetFields, refresh],
   )
 
   return (
