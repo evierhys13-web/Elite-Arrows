@@ -1907,7 +1907,7 @@ const fetchUsers = async () => {
   );
 
   const fetchResultsBySeason = useCallback(
-    async (seasonName) => {
+    async (seasonName, opts = {}) => {
       const stopTrace = startTrace('fetch_results_by_season');
       try {
         const cacheKey = "eliteArrowsResultsBySeason_v1";
@@ -1916,7 +1916,7 @@ const fetchUsers = async () => {
           cachedBlob?.seasons && cachedBlob.seasons[seasonName]
             ? cachedBlob.seasons[seasonName]
             : null;
-        if (ttlCacheValid(cachedBlob, TTL_RESULTS) && Array.isArray(cached)) {
+        if (!opts.force && ttlCacheValid(cachedBlob, TTL_RESULTS) && Array.isArray(cached)) {
           if (cached.length > 0) {
             updateResults(cached, { season: seasonName, status: "approved" });
           } else {
@@ -2245,6 +2245,16 @@ const fetchUsers = async () => {
       return false;
     }
   }, [publishResults, user, triggerDataRefresh, showToast, adminData?.currentSeason]);
+
+  // On app load, pull the current season's results straight from the server in
+  // the background (bypassing the TTL cache) so standings refresh instantly
+  // without waiting for the next cache window. Renders stay instant because the
+  // cached data is shown first and this fills in the latest in the background.
+  useEffect(() => {
+    if (!user?.id) return;
+    const season = adminData?.currentSeason || "Elite Arrows Season 5";
+    fetchResultsBySeason(season, { force: true }).catch(() => {});
+  }, [user?.id, adminData?.currentSeason, fetchResultsBySeason]);
 
   const getFixtures = useCallback(() => {
     if (Array.isArray(fixtures) && fixtures.length > 0) return fixtures;
