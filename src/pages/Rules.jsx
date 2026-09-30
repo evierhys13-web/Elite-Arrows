@@ -63,7 +63,46 @@ export default function Rules() {
         </div>
       </div>
 
-      {/* 2. Camera Setup & In-Game Etiquette */}
+      {/* 2. Fixture Planning, Scheduling & Division Captains */}
+      <div className="card glass" style={{ marginBottom: '24px', padding: '30px' }}>
+        <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
+          💬 Fixture Planning & Division Captains
+        </h2>
+        <div style={{ display: 'grid', gap: '16px' }}>
+          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+            <h3 style={{ fontSize: '1.05rem', marginBottom: '10px', color: 'white' }}>🛡️ Division Captains</h3>
+            <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
+              <li>Each division has assigned <strong>Division Captains (Admins)</strong> responsible for scheduling overwatch and dispute handling.</li>
+              <li>Division Captains are prominently displayed at the top banner of each division's <strong>Standings Table</strong>.</li>
+            </ul>
+          </div>
+
+          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+            <h3 style={{ fontSize: '1.05rem', marginBottom: '10px', color: 'white' }}>📅 Match Planning & Non-Responsive Protocol</h3>
+            <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
+              <li>Arrange matches through WhatsApp division chats or dedicated planning channels by tagging your opponent (<strong style={{ color: 'var(--accent-cyan)' }}>@theirname</strong>).</li>
+              <li><strong>Non-Responsive Opponents:</strong> If an opponent is tagged on <strong>3 separate days</strong> without reply, inform your Division Captain. The captain will issue them a <strong>warning</strong>.</li>
+              <li><strong>Late Arrivals:</strong> Provide at least <strong>1 hour notice</strong> if running late. Arriving late without notice results in a <strong>warning</strong>.</li>
+              <li><strong>No-Show Rule:</strong> Give your opponent at least <strong>1 hour notice</strong> if you cannot make your fixture. If no notice was given and the match cannot be played, the punctual player must <strong>dispute the no-show with their Division Captain</strong>.</li>
+            </ul>
+          </div>
+
+          <div style={{ background: 'rgba(251, 191, 36, 0.08)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(251, 191, 36, 0.25)' }}>
+            <h3 style={{ fontSize: '1.05rem', marginBottom: '10px', color: 'white' }}>🗓️ Weekly Fixture Requirement</h3>
+            <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
+              <li>Every player must play <strong>at least 3 fixtures per week</strong>.</li>
+              <li>Fixtures can be played on <strong>any day of the week – weekday or weekend</strong>, as long as you complete <strong>at least 3 games every week</strong>.</li>
+              <li>If you have a valid reason for playing fewer than 3 fixtures in a week, you must notify your <strong>Division Captain</strong> and it must be <strong>addressed to all players in your division</strong>.</li>
+              <li>Playing <strong>fewer than 3 games in a week without a valid reason</strong> results in a <strong>warning</strong>.</li>
+              <li><strong>3 warnings = 1 Strike.</strong></li>
+              <li><strong>1 strike</strong> puts you on a <strong>final official warning</strong>; <strong>2 strikes</strong> results in <strong>immediate removal from the league and an official season ban</strong>.</li>
+              <li><strong>Serious (major) offences result in an instant ban</strong> (see the Warnings & Strike Policy below).</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Camera Setup & In-Game Etiquette */}
       <div className="card glass" style={{ marginBottom: '24px', padding: '30px' }}>
         <h2 style={{ color: 'var(--accent-primary)', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
           📷 Camera Setup & In-Game Etiquette
@@ -90,44 +129,6 @@ export default function Rules() {
         </div>
       </div>
 
-      {/* 3. Fixture Planning, Scheduling & Division Captains */}
-      <div className="card glass" style={{ marginBottom: '24px', padding: '30px' }}>
-        <h2 style={{ color: 'var(--accent-cyan)', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
-          💬 Fixture Planning & Division Captains
-        </h2>
-        <div style={{ display: 'grid', gap: '16px' }}>
-          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-            <h3 style={{ fontSize: '1.05rem', marginBottom: '10px', color: 'white' }}>🛡️ Division Captains</h3>
-            <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-              <li>Each division has assigned <strong>Division Captains (Admins)</strong> responsible for scheduling overwatch and dispute handling.</li>
-              <li>Division Captains are prominently displayed at the top banner of each division's <strong>Standings Table</strong>.</li>
-            </ul>
-          </div>
-
-          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-            <h3 style={{ fontSize: '1.05rem', marginBottom: '10px', color: 'white' }}>📅 Match Planning & Non-Responsive Protocol</h3>
-            <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-              <li>Arrange matches through WhatsApp division chats or dedicated planning channels by tagging your opponent (<strong style={{ color: 'var(--accent-cyan)' }}>@theirname</strong>).</li>
-              <li><strong>Non-Responsive Opponents:</strong> If an opponent is tagged on <strong>3 separate days</strong> without reply, inform your Division Captain. The captain will issue a 24-hour notice before player removal.</li>
-              <li><strong>Late Arrivals:</strong> Provide at least <strong>1 hour notice</strong> if running late. Arriving late without notice rendering a game unplayable results in a forfeit win for the punctual opponent.</li>
-              <li><strong>15-Minute No-Show Rule:</strong> Wait 15 minutes past the scheduled time before informing your Division Captain.</li>
-            </ul>
-          </div>
-
-          <div style={{ background: 'rgba(251, 191, 36, 0.08)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(251, 191, 36, 0.25)' }}>
-            <h3 style={{ fontSize: '1.05rem', marginBottom: '10px', color: 'white' }}>🗓️ Weekly Fixture Requirement</h3>
-            <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-              <li>Every player must play <strong>at least 2 fixtures per week</strong>.</li>
-              <li>Fixtures can be played on <strong>any day of the week – weekday or weekend</strong>, as long as you complete <strong>at least 2 games every week</strong>.</li>
-              <li>If you have a valid reason for playing fewer than 2 fixtures in a week, you must notify your <strong>Division Captain</strong> and it must be <strong>addressed to all players in your division</strong>.</li>
-              <li>Playing <strong>fewer than 2 games in a week without a valid reason</strong> results in a <strong>warning</strong>.</li>
-              <li><strong>2 warnings = 1 Strike.</strong></li>
-              <li><strong>1 Strike</strong> results in <strong>immediate removal from the league and an official season ban</strong> (see the Warnings & 1-Strike Policy below).</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
       {/* 4. Evaluated Forfeit Policy */}
       <div className="card glass" style={{ marginBottom: '24px', padding: '30px', border: '1px solid rgba(251, 191, 36, 0.3)' }}>
         <h2 style={{ color: 'var(--warning)', marginBottom: '20px', borderBottom: '1px solid rgba(251, 191, 36, 0.2)', paddingBottom: '10px' }}>
@@ -135,9 +136,10 @@ export default function Rules() {
         </h2>
         <div style={{ display: 'grid', gap: '16px' }}>
           <div style={{ background: 'rgba(251, 191, 36, 0.08)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(251, 191, 36, 0.25)' }}>
-            <h3 style={{ fontSize: '1.05rem', marginBottom: '10px', color: 'white' }}>📊 Forfeit Award Rules (3 Points to Winner)</h3>
+            <h3 style={{ fontSize: '1.05rem', marginBottom: '10px', color: 'white' }}>📊 Forfeit Award Rules (Max Draw Points)</h3>
             <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-              <li>When a player forfeits or drops out mid-season, remaining unplayed fixtures award <strong>3 points only to the winner (non-offenders)</strong> with 0 legs awarded.</li>
+              <li>When a player forfeits or drops out mid-season, remaining unplayed fixtures award the <strong>maximum points for a draw</strong> in the winner's division, with 0 legs awarded.</li>
+              <li>Forfeit awards are per division: <strong>Elite 7</strong> • <strong>Emerald 6</strong> • <strong>Diamond 5</strong> • <strong>Platinum 5</strong> points to the winner (non-offenders).</li>
               <li>The offending player receives 0 points and 0 legs.</li>
               <li><strong>Match Logs & Stats Preserved:</strong> All previously played matches remain logged in Match History/Logs and personal statistics (180s, high checkouts, 3-dart averages) are fully preserved for non-offending opponents.</li>
               <li><strong>Rescheduling Protection:</strong> If a player communicates around match time (±15 mins), the fixture MUST be rescheduled rather than declared an immediate forfeit.</li>
@@ -145,11 +147,12 @@ export default function Rules() {
           </div>
 
           <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-            <h3 style={{ fontSize: '1.05rem', marginBottom: '10px', color: 'white' }}>⚠️ Warnings & 1-Strike Removal Policy</h3>
+            <h3 style={{ fontSize: '1.05rem', marginBottom: '10px', color: 'white' }}>⚠️ Warnings & Strike Policy</h3>
             <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-              <li><strong>2 Warnings</strong> = <strong>1 Strike</strong></li>
-              <li>Warnings are issued for <strong>playing fewer than 2 fixtures in a week without a valid reason</strong> (see Weekly Fixture Requirement) plus conduct offences.</li>
-              <li><strong>1 Strike Policy (1 Strike ONLY – NOT 3 strikes):</strong> Receiving <strong>1 Strike</strong> in a season results in <strong>immediate removal from the league and an official season ban</strong>.</li>
+              <li><strong>3 Warnings</strong> = <strong>1 Strike</strong></li>
+              <li>Warnings are issued for <strong>playing fewer than 3 fixtures in a week without a valid reason</strong> (see Weekly Fixture Requirement) plus conduct offences.</li>
+              <li><strong>Strike Policy:</strong> Receiving <strong>1 strike</strong> puts you on a <strong>final official warning</strong>. Receiving <strong>2 strikes</strong> results in <strong>immediate removal from the league and an official season ban</strong>.</li>
+              <li><strong>Serious offences (cheating, score manipulation, abuse, harassment, rage-quitting) result in an instant ban.</strong></li>
             </ul>
           </div>
         </div>
@@ -190,24 +193,24 @@ export default function Rules() {
         </h2>
         <div style={{ display: 'grid', gap: '20px' }}>
            <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-             League points are earned through legs won plus match outcome bonuses:
+             League points are awarded for each match result:
            </p>
            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
-              <div className="stat-card" style={{ padding: '15px', textAlign: 'center' }}>
-                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Leg Won</div>
-                 <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>1 Point</div>
-              </div>
               <div className="stat-card" style={{ padding: '15px', textAlign: 'center', borderBottom: '2px solid var(--success)' }}>
                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Match Win</div>
-                 <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--success)' }}>+3 Bonus</div>
+                 <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--success)' }}>3 Points</div>
               </div>
               <div className="stat-card" style={{ padding: '15px', textAlign: 'center', borderBottom: '2px solid var(--warning)' }}>
                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Match Draw</div>
-                 <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--warning)' }}>+1 Bonus</div>
+                 <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--warning)' }}>1 Point</div>
+              </div>
+              <div className="stat-card" style={{ padding: '15px', textAlign: 'center' }}>
+                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Match Loss</div>
+                 <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>0 Points</div>
               </div>
            </div>
            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center' }}>
-             Example (Diamond Division BO8): A 5–3 win awards 5 (legs) + 3 (win bonus) = 8 total points.
+             So the results are 3 points for a win, 1 point for a draw, and 0 points for a loss. Forfeit wins award the maximum draw points for your division (see the Evaluated Forfeit Policy).
            </p>
         </div>
       </div>
@@ -223,6 +226,7 @@ export default function Rules() {
             <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
               <li>Members vote for the <strong>Player of the Month</strong> in each division — the standings leader isn't automatically the winner.</li>
               <li>Every member casts <strong>one vote</strong> per division.</li>
+              <li><strong>Vote in Your Own Division Only:</strong> You can only vote for players in <strong>your own division</strong> — you cannot vote for someone in a different division.</li>
               <li>Votes are cast privately through the <strong>Player of the Month</strong> page in the app.</li>
               <li><strong>No Asking, No Begging:</strong> Players must <strong>not ask, beg, or campaign</strong> for votes — this includes tagging members, posting in division WhatsApp groups, or sending private messages asking to be voted for.</li>
             </ul>
@@ -231,9 +235,9 @@ export default function Rules() {
           <div style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.25)' }}>
             <h3 style={{ fontSize: '1.05rem', marginBottom: '10px', color: 'white' }}>🚫 Vote Solicitation Consequences</h3>
             <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-              <li>Vote solicitation is treated as a <strong>conduct offence</strong> and falls under the <strong>Warnings & 1-Strike Policy</strong>.</li>
+              <li>Vote solicitation is treated as a <strong>conduct offence</strong> and falls under the <strong>Warnings & Strike Policy</strong>.</li>
               <li><strong>Votes may be disregarded</strong> — any votes gathered through asking or begging can be removed, and the player can be made ineligible for that month's award.</li>
-              <li>Repeated offences can result in a <strong>strike</strong> (immediate removal from the league and an official season ban).</li>
+              <li>Repeated offences can result in a <strong>strike</strong>; 2 strikes leads to dismissal from the league, and serious offences result in an instant ban.</li>
             </ul>
           </div>
         </div>
@@ -252,7 +256,7 @@ export default function Rules() {
               <li>Intentional disconnection or rage-quitting during live matches.</li>
            </ul>
            <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: '15px', borderRadius: '8px', border: '1px solid var(--error)', marginBottom: '16px' }}>
-              <strong style={{ color: 'white' }}>Consequences:</strong> Breaking these rules results in an official warning/strike (strict 1 Strike policy in effect — NOT 3 strikes), up to an immediate season ban for major offenses. No second chances — seriously abusive behaviour results in a <strong style={{ color: 'white' }}>permanent community ban until you prove you can behave</strong>.
+              <strong style={{ color: 'white' }}>Consequences:</strong> Breaking these rules results in an official warning; <strong>3 warnings = 1 strike</strong>, and <strong>2 strikes</strong> results in dismissal from the league. <strong>Serious offences result in an instant ban.</strong> No second chances — seriously abusive behaviour results in a <strong style={{ color: 'white' }}>permanent community ban until you prove you can behave</strong>.
            </div>
            <p style={{ fontSize: '0.9rem' }}>
               <strong>Respect & Conduct:</strong> See the full guidelines on <Link to="/conduct" style={{ color: 'var(--accent-cyan)' }}>Respect & Conduct</Link> — how we treat each other, how banter should be used, and our zero tolerance on racism and discrimination.

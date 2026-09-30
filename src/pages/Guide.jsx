@@ -245,31 +245,27 @@ export default function Guide() {
       <div className="card">
         <h2 className="card-title">📊 How Scoring Works</h2>
         <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-          League games are played according to division format: <strong>Pro League (BO15)</strong> and <strong>Elite/Emerald/Diamond/Platinum (BO8)</strong>. Your points come from the legs you win plus match outcome bonuses (+3 Win, +1 Draw).
+          League games are played according to division format: <strong>Pro League (BO15)</strong> and <strong>Elite/Emerald/Diamond/Platinum (BO8)</strong>. Match results are scored <strong>3 points for a win, 1 point for a draw, and 0 points for a loss</strong>.
         </p>
 
         <div style={{ marginTop: '20px', overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '420px' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '320px' }}>
             <thead>
               <tr>
-                {['Result', 'Legs Points', 'Match Bonus', 'Total Points'].map(h => (
+                {['Result', 'Points'].map(h => (
                   <th key={h} style={{ textAlign: 'left', padding: '12px', background: 'var(--bg-secondary)', color: 'var(--accent-cyan)', fontSize: '0.85rem' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {[
-                { r: '5–3 win', legs: '5 points', bonus: '+3', total: '8' },
-                { r: '5–4 win', legs: '5 points', bonus: '+3', total: '8' },
-                { r: '4–4 draw', legs: '4 points', bonus: '+1', total: '5' },
-                { r: '3–5 loss', legs: '3 points', bonus: '+0', total: '3' },
-                { r: '0–5 loss', legs: '0 points', bonus: '+0', total: '0' },
+                { r: 'Win', points: '3' },
+                { r: 'Draw', points: '1' },
+                { r: 'Loss', points: '0' },
               ].map((row, i) => (
                 <tr key={row.r} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={{ padding: '11px', fontWeight: 700 }}>{row.r}</td>
-                  <td style={{ padding: '11px', color: 'var(--text-muted)' }}>{row.legs}</td>
-                  <td style={{ padding: '11px', color: 'var(--text-muted)' }}>{row.bonus}</td>
-                  <td style={{ padding: '11px', fontWeight: 800, color: 'var(--accent-cyan)' }}>{row.total}</td>
+                  <td style={{ padding: '11px', fontWeight: 800, color: 'var(--accent-cyan)' }}>{row.points}</td>
                 </tr>
               ))}
             </tbody>
@@ -279,8 +275,9 @@ export default function Guide() {
         <div style={{ marginTop: '20px', padding: '15px', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '8px', borderLeft: '4px solid var(--success)' }}>
           <h4 style={{ color: 'var(--success)' }}>💡 The Formula</h4>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>
-            Legs won + win bonus (win <strong>+3</strong>, draw <strong>+1</strong>, loss <strong>+0</strong>).
-            So even a 3–5 defeat earns you 3 points for your legs — every leg you take counts. Groups and stats are tracked in
+            Win = <strong>3 points</strong>, Draw = <strong>1 point</strong>, Loss = <strong>0 points</strong>.
+            Forfeit wins award the maximum draw points for your division (see the
+            <Link to="/rules" style={{ color: 'var(--accent-cyan)' }}> League Rules</Link>). Groups and stats are tracked in
             <Link to="/statistics" style={{ color: 'var(--accent-cyan)' }}> Statistics</Link>.
           </p>
         </div>
@@ -353,11 +350,11 @@ export default function Guide() {
         <div style={chapterStyles}>
           <h4 style={{ color: 'var(--accent-cyan)', margin: '0 0 10px' }}>Evaluated Forfeit & Strike Policy</h4>
           <ul style={{ color: 'var(--text-muted)', lineHeight: '1.9', paddingLeft: '20px', margin: 0 }}>
-            <li>When a player forfeits or drops out, unplayed fixtures award <strong>3 points only to the winner (non-offenders)</strong> with 0 legs.</li>
+            <li>When a player forfeits or drops out, unplayed fixtures award the <strong>maximum draw points for your division</strong> (Elite 7, Emerald 6, Diamond 5, Platinum 5) to the winner (non-offenders) with 0 legs.</li>
             <li>All previously played matches remain saved in <strong>Match Logs & Stats</strong> — 180s, checkouts, and averages are fully preserved.</li>
-            <li><strong>1 Strike Policy (1 Strike ONLY – NOT 3 strikes):</strong> 2 Warnings = 1 Strike. Receiving 1 Strike results in immediate league removal and season ban.</li>
-            <li><strong>Weekly fixtures:</strong> Everyone must play at least 2 fixtures per week (on any day, weekday or weekend). Fewer than 2 without a valid reason given to the division captain = a warning.</li>
-            <li>Non-responsive opponents (3 tags without reply) receive a 24h notice from Division Captains before removal.</li>
+            <li><strong>Warnings & Strike Policy:</strong> 3 Warnings = 1 Strike. Receiving 2 Strikes results in immediate league removal and season ban. Serious offences result in an instant ban.</li>
+            <li><strong>Weekly fixtures:</strong> Everyone must play at least 3 fixtures per week (on any day, weekday or weekend). Fewer than 3 without a valid reason given to the division captain = a warning.</li>
+            <li>Non-responsive opponents (3 tags without reply) receive a warning from Division Captains. No-shows without 1 hour notice must be disputed with the Division Captain.</li>
           </ul>
         </div>
 

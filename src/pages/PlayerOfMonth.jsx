@@ -30,6 +30,9 @@ export default function PlayerOfMonth() {
   const monthKey = monthKeyFor(monthDate)
   const isCurrentMonth = monthKey === monthKeyFor(new Date())
 
+  const myUser = allUsers.find((u) => String(u.id) === String(user?.id))
+  const myDivision = myUser?.division || user?.division || null
+
   const loadUsers = useCallback(() => {
     const users = getAllUsers()
     setAllUsers(users)
@@ -80,14 +83,16 @@ export default function PlayerOfMonth() {
         nominee: allUsers.find((u) => String(u.id) === String(v.nomineeId))
       }))
       const nonVoters = divisionUsers.filter((u) => !divisionVotes.some((v) => String(v.voterId) === String(u.id)))
-      return { division, rows, myVote, leader, votePairs, nonVoters }
+      const allowedToVote = Boolean(myDivision && String(myDivision) === division)
+      return { division, rows, myVote, leader, votePairs, nonVoters, allowedToVote }
     })
-  }, [allUsers, votes, user])
+  }, [allUsers, votes, user, myDivision])
 
   const handleVote = async (division, nomineeId, e) => {
     e.stopPropagation()
     if (!user?.id) return showToast('You need to be signed in to vote', 'error')
     if (!isCurrentMonth) return showToast('Voting is only open for the current month', 'error')
+    if (!myDivision || String(division) !== String(myDivision)) return showToast('You can only vote for players in your own division', 'error')
     if (String(nomineeId) === String(user.id)) return showToast('You cannot vote for yourself', 'error')
 
     setVotingFor(`${division}_${nomineeId}`)
@@ -138,7 +143,7 @@ export default function PlayerOfMonth() {
     <div className="page-container">
       <h1 className="page-title">Player of the Month</h1>
       <p className="page-subtitle" style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '24px' }}>
-        Members vote for the player of the month in each division - the standings leader isn't automatically the winner.
+        Members vote for the player of the month in their own division only — players can only vote for candidates in the same league as them.
       </p>
 
       <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap' }}>
@@ -175,7 +180,7 @@ export default function PlayerOfMonth() {
         <div className="glass" style={{ padding: '32px', textAlign: 'center' }}>Loading votes...</div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-          {divisionVotes.map(({ division, rows, myVote, leader, votePairs, nonVoters }) => (
+          {divisionVotes.map(({ division, rows, myVote, leader, votePairs, nonVoters, allowedToVote }) => (
             <div key={division} className="card glass">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <h3 style={{ margin: 0 }}>{division}</h3>
@@ -215,7 +220,7 @@ export default function PlayerOfMonth() {
                           <button className="btn btn-secondary btn-sm" onClick={(e) => handleRemoveVote(division, e)}>
                             Remove
                           </button>
-                        ) : (
+                        ) : allowedToVote ? (
                           !isMine && isCurrentMonth && (
                             <button
                               className="btn btn-primary btn-sm"
@@ -224,6 +229,12 @@ export default function PlayerOfMonth() {
                             >
                               {isVoting ? '...' : 'Vote'}
                             </button>
+                          )
+                        ) : (
+                          !isMine && (
+                            <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }} title="You can only vote for players in your own division">
+                              🔒
+                            </span>
                           )
                         )}
                       </div>
@@ -234,7 +245,11 @@ export default function PlayerOfMonth() {
 
               <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '14px', lineHeight: 1.5 }}>
                 {isCurrentMonth ? (
-                  myVote ? 'You have voted for this division. Remove your vote to pick someone else.' : 'Pick your player of the month for this division (one vote per member).'
+                  !allowedToVote
+                    ? 'Voting is restricted to players in this division. You can view the results but not vote here.'
+                    : myVote
+                      ? 'You have voted for this division. Remove your vote to pick someone else.'
+                      : 'Pick your player of the month for this division (one vote per member).'
                 ) : 'Voting closed for this month.'}
               </p>
 
