@@ -92,7 +92,8 @@ export default function Admin() {
     p1_checkout: '', p2_checkout: '',
     p1_doubles: '', p2_doubles: '',
     p1_avg: '', p2_avg: '',
-    proofImage: ''
+    proofImage: '',
+    proofVideo: ''
   })
   const [seasonForm, setSeasonForm] = useState({ name: '', startDate: new Date().toISOString().split('T')[0], endDate: '' })
   const [grantSubForm, setGrantSubForm] = useState({ player: '', tier: 'elite', season: '' })
@@ -118,6 +119,8 @@ export default function Admin() {
   const [highlights, setHighlights] = useState([])
   const [hlUploadProgress, setHlUploadProgress] = useState(0)
   const [isUploadingHl, setIsUploadingHl] = useState(false)
+  const [isUploadingGameVideo, setIsUploadingGameVideo] = useState(false)
+  const [gameVideoProgress, setGameVideoProgress] = useState(0)
   const [playoffForm, setPlayoffForm] = useState({ player1: '', player2: '', division: '', date: '', time: '', bestOf: '3' })
   const [surveyForm, setSurveyForm] = useState({ title: '', description: '', targetType: 'all', targetUserIds: [] })
   const [surveyQuestions, setSurveyQuestions] = useState([{ id: 'q1', text: '', type: 'text', options: '' }])
@@ -753,6 +756,44 @@ export default function Admin() {
     reader.readAsDataURL(file)
   }
 
+  const handleAdminProofVideoUpload = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    if (file.size > 20 * 1024 * 1024) {
+      showToast('Video must be less than 20MB.', 'error')
+      e.target.value = ''
+      return
+    }
+    setIsUploadingGameVideo(true)
+    setGameVideoProgress(1)
+    const taskId = `admin_${Date.now()}`
+    const task = uploadBytesResumable(ref(storage, `results/${taskId}_video.mp4`), file)
+    task.on(
+      'state_changed',
+      (snapshot) => {
+        const pct = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+        setGameVideoProgress(Math.max(1, Math.round(pct)))
+      },
+      async (err) => {
+        console.error('Admin video upload failed', err)
+        setIsUploadingGameVideo(false)
+        showToast('Video upload failed.', 'error')
+      },
+      async () => {
+        try {
+          const url = await getDownloadURL(task.snapshot.ref)
+          setAdminGameForm(prev => ({ ...prev, proofVideo: url }))
+          showToast('Video attached!', 'success')
+        } catch (err) {
+          showToast('Could not get video URL.', 'error')
+        } finally {
+          setIsUploadingGameVideo(false)
+        }
+      }
+    )
+    e.target.value = ''
+  }
+
   const handleAdminSubmitGame = async () => {
     const f = adminGameForm
     if (!f.player1 || !f.player2) return showToast('Select both players/teams.', 'error')
@@ -870,6 +911,7 @@ export default function Admin() {
         ...(cupId && { cupId, matchId, cupName }),
         ...(fixtureId && { fixtureId }),
         ...(f.proofImage ? { proofImage: f.proofImage } : {}),
+        ...(f.proofVideo ? { proofVideo: f.proofVideo } : {}),
         ...(isForfeit
           ? { player1Stats: {}, player2Stats: {} }
           : {
@@ -925,7 +967,8 @@ export default function Admin() {
         p1_checkout: '', p2_checkout: '',
         p1_doubles: '', p2_doubles: '',
         p1_avg: '', p2_avg: '',
-        proofImage: ''
+        proofImage: '',
+        proofVideo: ''
       })
       triggerDataRefresh('results')
       showToast('Game submitted!', 'success')
@@ -2169,6 +2212,7 @@ export default function Admin() {
                 </>)}
                 <div style={{ marginBottom: '16px', padding: '14px', borderRadius: '12px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
                   <label style={{ display: 'block', fontSize: '0.8rem', opacity: 0.7, marginBottom: '8px' }}>📎 Proof (optional)</label>
+                  <label style={{ display: 'block', fontSize: '0.72rem', opacity: 0.6, marginBottom: '4px' }}>Screenshot / photo</label>
                   <input
                     type="file"
                     accept="image/*"
@@ -2176,8 +2220,18 @@ export default function Admin() {
                     className="glass"
                     style={{ width: '100%', padding: '8px 12px' }}
                   />
+                  <label style={{ display: 'block', fontSize: '0.72rem', opacity: 0.6, margin: '10px 0 4px' }}>
+                    Video (MP4, max 20MB){isUploadingGameVideo ? ` — uploading ${gameVideoProgress}%` : ''}
+                  </label>
+                  <input
+                    type="file"
+                    accept="video/mp4,video/*"
+                    onChange={handleAdminProofVideoUpload}
+                    className="glass"
+                    style={{ width: '100%', padding: '8px 12px' }}
+                  />
                   <p style={{ fontSize: '0.72rem', opacity: 0.6, marginTop: '6px' }}>
-                    Attach a screenshot as evidence. This is optional — not required to submit.
+                    Attach a screenshot or video as evidence. This is optional — not required to submit.
                   </p>
                   {adminGameForm.proofImage && (
                     <img
@@ -2186,12 +2240,19 @@ export default function Admin() {
                       style={{ width: '100%', maxHeight: '160px', objectFit: 'cover', borderRadius: '8px', marginTop: '10px', border: '1px solid var(--border)' }}
                     />
                   )}
-                  {adminGameForm.proofImage && (
+                  {adminGameForm.proofVideo && (
+                    <video
+                      src={adminGameForm.proofVideo}
+                      controls
+                      style={{ width: '100%', maxHeight: '220px', borderRadius: '8px', marginTop: '10px', border: '1px solid var(--border)' }}
+                    />
+                  )}
+                  {(adminGameForm.proofImage || adminGameForm.proofVideo) && (
                     <button
                       type="button"
                       className="btn btn-secondary btn-sm"
                       style={{ marginTop: '8px', padding: '4px 10px' }}
-                      onClick={() => setAdminGameForm(prev => ({ ...prev, proofImage: '' }))}
+                      onClick={() => setAdminGameForm(prev => ({ ...prev, proofImage: '', proofVideo: '' }))}
                     >
                       Remove proof
                     </button>
@@ -2203,7 +2264,7 @@ export default function Admin() {
                   </div>
                 )}
                 <div style={{ display: 'flex', gap: '10px' }}>
-                  <button className="btn btn-primary" style={{ flex: 2 }} onClick={handleAdminSubmitGame}>Submit Result</button>
+                  <button className="btn btn-primary" style={{ flex: 2 }} onClick={handleAdminSubmitGame} disabled={isUploadingGameVideo}>{isUploadingGameVideo ? `Uploading video ${gameVideoProgress}%...` : 'Submit Result'}</button>
                   <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowSubmitGame(false)}>Cancel</button>
                 </div>
               </div>

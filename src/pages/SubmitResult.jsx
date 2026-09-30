@@ -120,10 +120,14 @@ export default function SubmitResult() {
   const isAdmin = user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin
   const isFriendlyLeague = formData.gameType === 'Friendly League Singles'
 
-  // Robust season detection
-  const getDefaultSeason = () => {
-    return formData.season || searchParams.get('season') || adminData?.currentSeason || 'Season 1'
-  }
+// Robust season detection. The live season is authoritative: when a season is
+// active we always file into it, so a stale ?season= link (e.g. an old schedule
+// card) can't file a new result into a previous season.
+const getDefaultSeason = () => {
+  const active = adminData?.currentSeason
+  if (active) return active
+  return formData.season || searchParams.get('season') || 'Season 1'
+}
 
   const currentSeasonLabel = getDefaultSeason()
   const targetSeasonDoc = seasons.find(s => s.name === currentSeasonLabel)
@@ -196,18 +200,12 @@ export default function SubmitResult() {
   }, [])
 
   useEffect(() => {
-    // Only default to the live season when the user did NOT explicitly navigate
-    // here with a season (e.g. from the Home schedule). This prevents an explicit
-    // season such as a brand-new live season being overwritten before submit.
-    if (
-      adminData?.currentSeason &&
-      !seasonParam &&
-      !searchParams.get('season') &&
-      formData.season !== adminData.currentSeason
-    ) {
+    // The active season always wins, including over an explicit ?season= param,
+    // so results can never be filed into a previous season after a rollover.
+    if (adminData?.currentSeason && formData.season !== adminData.currentSeason) {
       setFormData(prev => ({ ...prev, season: adminData.currentSeason }))
     }
-  }, [adminData?.currentSeason, seasonParam, searchParams])
+  }, [adminData?.currentSeason, formData.season])
 
   const userSubmittedResults = allResults
     .filter(result => (
@@ -285,7 +283,7 @@ export default function SubmitResult() {
           ...prev,
           gameType: selectedFixture.gameType || 'League',
           opponent: opponentId || '',
-          season: searchParams.get('season') || prev.season,
+          season: adminData?.currentSeason || searchParams.get('season') || prev.season,
           bestOf: selectedFixture.bestOf ? selectedFixture.bestOf.toString() : prev.bestOf,
           firstTo: selectedFixture.firstTo ? selectedFixture.firstTo.toString() : prev.firstTo
         }))
@@ -296,7 +294,7 @@ export default function SubmitResult() {
         ...prev,
         opponent: opponentParam || prev.opponent,
         gameType: gameTypeParam || prev.gameType,
-        season: searchParams.get('season') || prev.season,
+        season: adminData?.currentSeason || searchParams.get('season') || prev.season,
         bestOf: fmt ? String(fmt.bestOf) : prev.bestOf,
         firstTo: fmt ? String(fmt.firstTo) : prev.firstTo
       }))
