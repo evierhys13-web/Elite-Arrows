@@ -20,13 +20,19 @@ export const LEAGUE_DIVISION_NAMES = {
   platinum: 'Platinum',
 }
 
+// Divisions not currently in use and hidden from public-facing lists
+export const HIDDEN_LEAGUE_DIVISIONS = ['Pro League']
+
+// Divisions shown on the site (in order)
+export const ACTIVE_LEAGUE_DIVISIONS = ['Elite', 'Emerald', 'Diamond', 'Platinum']
+
 export const getDivisionsForSeason = (selectedSeason, adminData) => {
   const isNewStructure =
     selectedSeason === (adminData?.currentSeason || 'Elite Arrows Season 5')
   if (isNewStructure || selectedSeason === 'Season 4' || selectedSeason === 'Season 5') {
-    return ['Overall', 'Pro League', 'Elite', 'Emerald', 'Diamond', 'Platinum']
+    return ['Overall', ...ACTIVE_LEAGUE_DIVISIONS]
   }
-  return ['Overall', 'Pro League', 'Elite', 'Emerald', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze']
+  return ['Overall', ...ACTIVE_LEAGUE_DIVISIONS, 'Gold', 'Silver', 'Bronze']
 }
 
 export const getPlayersWithEffectiveDivisions = (allUsers, seasonDoc, selectedSeason, adminData) => {

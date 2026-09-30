@@ -76,7 +76,7 @@ export default function Leaderboards() {
     fixtures, adminData, leagueOnly: true, currentSeason: currentSeasonName, includePlayoffs: false
   }), [allUsers, results, fixtures, adminData, currentSeasonName, refreshKey])
 
-  const divisions = ['all', 'Pro League', 'Elite', 'Emerald', 'Diamond', 'Platinum']
+  const divisions = ['all', 'Elite', 'Emerald', 'Diamond', 'Platinum']
 
   const leagueBoard = useMemo(() => {
     let list = Object.values(playerStats).filter(p => p.played > 0)

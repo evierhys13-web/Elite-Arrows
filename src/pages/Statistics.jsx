@@ -22,7 +22,7 @@ const DIVISION_COLORS = {
   'Unassigned': '#6B7280'
 }
 
-const DIVISIONS = ['Pro League', 'Elite', 'Emerald', 'Diamond', 'Platinum']
+const DIVISIONS = ['Elite', 'Emerald', 'Diamond', 'Platinum']
 
 const TOOLTIP_STYLE = {
   background: 'rgba(15, 23, 42, 0.92)',

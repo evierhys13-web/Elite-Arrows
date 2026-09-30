@@ -115,10 +115,10 @@ export default function Table() {
     // For the current/live season format, use the new division structure
     const isNewStructure = selectedSeason === (adminData?.currentSeason || "Elite Arrows Season 5");
     if (isNewStructure || selectedSeason === "Season 4" || selectedSeason === "Season 5") {
-      return ["Overall", "Pro League", "Elite", "Emerald", "Diamond", "Platinum"];
+      return ["Overall", "Elite", "Emerald", "Diamond", "Platinum"];
     }
     // Fallback for older seasons
-    return ["Overall", "Pro League", "Elite", "Emerald", "Diamond", "Platinum", "Gold", "Silver", "Bronze"];
+    return ["Overall", "Elite", "Emerald", "Diamond", "Platinum", "Gold", "Silver", "Bronze"];
   }, [selectedSeason, adminData?.currentSeason]);
 
   const divisions = getDivisionsForSeason();

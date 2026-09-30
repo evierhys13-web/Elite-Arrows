@@ -4,7 +4,7 @@ import { db, collection, getDocs, doc, setDoc, deleteDoc } from '../firebase'
 import { useToast } from '../context/ToastContext'
 import { ADMIN_EMAILS } from '../config'
 
-const DIVISIONS = ['Pro League', 'Elite', 'Emerald', 'Diamond', 'Platinum']
+const DIVISIONS = ['Elite', 'Emerald', 'Diamond', 'Platinum']
 
 const monthKeyFor = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
 
