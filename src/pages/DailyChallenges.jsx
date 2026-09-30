@@ -22,6 +22,11 @@ export default function DailyChallenges() {
   const [videoPreview, setVideoPreview] = useState(null)
   const [previewImage, setPreviewImage] = useState(null)
 
+  const [lbRange, setLbRange] = useState(7)
+  const [lbDays, setLbDays] = useState([])
+  const [lbLoading, setLbLoading] = useState(false)
+  const [expandedDay, setExpandedDay] = useState(null)
+
   const isAdmin = useMemo(() => {
     return ADMIN_EMAILS.includes(user?.email?.toLowerCase()) || user?.isAdmin || user?.isTournamentAdmin
   }, [user])
@@ -54,6 +59,85 @@ export default function DailyChallenges() {
   useEffect(() => {
     fetchData()
   }, [fetchData])
+
+  useEffect(() => {
+    let cancelled = false
+    const loadLeaderboard = async () => {
+      setLbLoading(true)
+      try {
+        const cSnap = await getDocs(query(collection(db, 'dailyChallenges'), orderBy('date', 'desc'), limit(30)))
+        const recent = cSnap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+
+        const windowDays = recent.slice(0, lbRange)
+        const ids = windowDays.map(d => d.id)
+
+        const allSubs = []
+        for (let i = 0; i < ids.length; i += 10) {
+          const chunk = ids.slice(i, i + 10)
+          if (!chunk.length) continue
+          const sSnap = await getDocs(query(collection(db, 'dailyChallengeSubmissions'), where('challengeId', 'in', chunk)))
+          sSnap.docs.forEach(d => allSubs.push({ id: d.id, ...d.data() }))
+        }
+
+        if (cancelled) return
+        setLbDays(windowDays.map(d => ({ ...d, subs: allSubs.filter(s => s.challengeId === d.id) })))
+      } catch (e) {
+        console.error(e)
+        if (!cancelled) setLbDays([])
+      }
+      if (!cancelled) setLbLoading(false)
+    }
+    loadLeaderboard()
+    return () => { cancelled = true }
+  }, [lbRange])
+
+  const lbBoard = useMemo(() => {
+    const counts = new Map()
+    lbDays.forEach(d => {
+      d.subs.filter(s => s.status === 'approved').forEach(s => {
+        const prev = counts.get(s.userId) || { userId: s.userId, username: s.username, count: 0 }
+        prev.count += 1
+        if (s.username) prev.username = s.username
+        counts.set(s.userId, prev)
+      })
+    })
+    return [...counts.values()].sort((a, b) => b.count - a.count || String(a.username).localeCompare(String(b.username)))
+  }, [lbDays])
+
+  const myLbEntry = useMemo(
+    () => lbBoard.find(p => p.userId === user?.id),
+    [lbBoard, user]
+  )
+  const myRank = useMemo(
+    () => (myLbEntry ? lbBoard.findIndex(p => p.userId === user.id) + 1 : null),
+    [lbBoard, myLbEntry, user]
+  )
+
+  const myStreaks = useMemo(() => {
+    const isDone = d => d.subs.some(s => s.userId === user?.id && s.status === 'approved')
+    let current = 0
+    for (const d of lbDays) {
+      if (isDone(d)) current += 1
+      else break
+    }
+    let best = 0
+    let run = 0
+    for (const d of lbDays) {
+      if (isDone(d)) { run += 1; best = Math.max(best, run) }
+      else run = 0
+    }
+    const pending = lbDays.filter(d => d.subs.some(s => s.userId === user?.id && s.status !== 'approved')).length
+    return { current, best, pending }
+  }, [lbDays, user])
+
+  const myDayStatus = useCallback((d) => {
+    const mine = d.subs.filter(s => s.userId === user?.id)
+    if (mine.some(s => s.status === 'approved')) return 'approved'
+    if (mine.length > 0) return 'pending'
+    return 'none'
+  }, [user])
 
   const handleCreateChallenge = async () => {
     if (!newChallenge.title || !newChallenge.description) return
@@ -296,6 +380,140 @@ export default function DailyChallenges() {
           </div>
         </div>
       )}
+
+      <div className="card glass" style={{ marginTop: '30px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '6px' }}>
+          <h3 className="card-title" style={{ margin: 0 }}>Daily Leaderboard</h3>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            {[7, 14, 30].map(r => (
+              <button
+                key={r}
+                className={`btn btn-sm ${lbRange === r ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ padding: '4px 12px', fontSize: '0.75rem' }}
+                onClick={() => setLbRange(r)}
+              >
+                {r}d
+              </button>
+            ))}
+          </div>
+        </div>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '18px' }}>
+          Track your daily completions over the last {lbRange} days.
+        </p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px', marginBottom: '22px' }}>
+          {[
+            { label: 'Completed', value: `${myLbEntry?.count || 0}/${lbDays.length}`, color: 'var(--success)' },
+            { label: 'Current Streak', value: `${myStreaks.current}d`, color: 'var(--warning)' },
+            { label: 'Best Streak', value: `${myStreaks.best}d`, color: 'var(--accent-cyan)' },
+            { label: 'Your Rank', value: myRank ? `#${myRank}` : '—', color: 'var(--accent-cyan)' }
+          ].map(s => (
+            <div key={s.label} style={{ padding: '14px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', textAlign: 'center' }}>
+              <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', fontWeight: 800 }}>{s.label}</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 900, color: s.color, marginTop: '4px' }}>{s.value}</div>
+            </div>
+          ))}
+        </div>
+
+        <h4 style={{ fontSize: '0.9rem', margin: '0 0 10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          Standings
+        </h4>
+        {lbLoading ? (
+          <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '16px' }}>Loading leaderboard...</p>
+        ) : lbBoard.length === 0 ? (
+          <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '16px' }}>No approved completions in this period yet.</p>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '10px' }}>
+            {lbBoard.slice(0, 25).map((p, i) => {
+              const isMe = p.userId === user?.id
+              return (
+                <div key={p.userId} style={{
+                  display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px',
+                  borderRadius: '10px',
+                  background: isMe ? 'rgba(34,211,238,0.10)' : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${isMe ? 'rgba(34,211,238,0.35)' : 'var(--border)'}`
+                }}>
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    width: '30px', height: '30px', borderRadius: '50%', flexShrink: 0,
+                    background: i < 3 ? ['#fbbf24', '#94a3b8', '#d97706'][i] : 'rgba(255,255,255,0.07)',
+                    color: i < 3 ? '#0b051d' : 'var(--text-muted)',
+                    fontWeight: 900, fontSize: '0.75rem'
+                  }}>{i + 1}</span>
+                  <div style={{ fontWeight: 700, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {p.username}
+                    {isMe && <span style={{ color: 'var(--accent-cyan)', fontSize: '0.7rem', marginLeft: '6px' }}>YOU</span>}
+                  </div>
+                  <div style={{ marginLeft: 'auto', fontWeight: 900, color: 'var(--accent-cyan)', fontSize: '0.9rem' }}>
+                    {p.count}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        <h4 style={{ fontSize: '0.9rem', margin: '24px 0 10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          Your Daily Record
+        </h4>
+        {lbLoading ? (
+          <p style={{ color: 'var(--text-muted)', padding: '12px 0' }}>Loading...</p>
+        ) : lbDays.length === 0 ? (
+          <p style={{ color: 'var(--text-muted)', padding: '12px 0' }}>No daily challenges have been set yet.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {lbDays.map(d => {
+              const st = myDayStatus(d)
+              const approved = d.subs.filter(s => s.status === 'approved')
+              const isOpen = expandedDay === d.id
+              const badge = st === 'approved'
+                ? { icon: '✅', label: 'Completed', color: 'var(--success)', bg: 'rgba(16,185,129,0.12)', bd: 'rgba(16,185,129,0.3)' }
+                : st === 'pending'
+                  ? { icon: '⏳', label: 'Pending', color: 'var(--warning)', bg: 'rgba(245,158,11,0.12)', bd: 'rgba(245,158,11,0.3)' }
+                  : { icon: '❌', label: 'Not submitted', color: 'var(--text-muted)', bg: 'rgba(255,255,255,0.03)', bd: 'var(--border)' }
+              return (
+                <div key={d.id} style={{ border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden', background: 'rgba(255,255,255,0.02)' }}>
+                  <div
+                    onClick={() => setExpandedDay(isOpen ? null : d.id)}
+                    style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '11px 14px', cursor: 'pointer' }}
+                  >
+                    <span style={{ fontSize: '1rem' }}>{badge.icon}</span>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.title}</div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        {new Date(`${d.date}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
+                        {' · '}{approved.length} completed
+                      </div>
+                    </div>
+                    <span style={{
+                      fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em',
+                      color: badge.color, background: badge.bg, border: `1px solid ${badge.bd}`,
+                      padding: '4px 10px', borderRadius: '20px', whiteSpace: 'nowrap'
+                    }}>{badge.label}</span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{isOpen ? '▲' : '▼'}</span>
+                  </div>
+                  {isOpen && (
+                    <div style={{ padding: '0 14px 14px', borderTop: '1px solid var(--border)' }}>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '12px 0 8px' }}>{d.description}</p>
+                      {approved.length === 0 ? (
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>Nobody has completed this one yet.</p>
+                      ) : (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                          {approved.map(s => (
+                            <span key={s.id} style={{ fontSize: '0.78rem', padding: '3px 9px', borderRadius: '20px', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)' }}>
+                              ✅ {s.username}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
 
       {isAdmin && submissions.length > 0 && (
         <div style={{ marginTop: '40px' }}>
