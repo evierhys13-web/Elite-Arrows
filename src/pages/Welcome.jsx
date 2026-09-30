@@ -76,7 +76,7 @@ export default function Welcome() {
   const alreadyComplete = user?.onboardingComplete === true
 
   const content = adminData?.onboardingContent || {}
-  const whatsappLink = adminData?.whatsappGroupLink || 'https://chat.whatsapp.com/DcKb9AfesVBGjcFVwErEor?s=cl&p=a&mlu=4&ilr=4'
+  const whatsappLink = adminData?.whatsappGroupLink || 'https://chat.whatsapp.com/LsH5bhL3NJ7IrfZNgEnEBW?s=cl&p=a&mlu=4&ilr=4'
   const pageBorderEnabled = adminData?.welcomeBorderEnabled === true
   const pageBorderColor = adminData?.welcomeBorderColor || '#00d4ff'
 

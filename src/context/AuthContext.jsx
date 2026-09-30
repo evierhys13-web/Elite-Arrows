@@ -108,7 +108,7 @@ const TTL_USERS = 300000;
 const TTL_CUPS = 300000;
 
 export const DEFAULT_WHATSAPP_LINK =
-  "https://chat.whatsapp.com/DcKb9AfesVBGjcFVwErEor?s=cl&p=a&mlu=4&ilr=4";
+  "https://chat.whatsapp.com/LsH5bhL3NJ7IrfZNgEnEBW?s=cl&p=a&mlu=4&ilr=4";
 
 export const ONBOARDING_CONTENT_VERSION = 3;
 
