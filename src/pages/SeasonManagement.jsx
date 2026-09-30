@@ -7,11 +7,12 @@ import UserSearchSelect from '../components/UserSearchSelect'
 import { useToast } from '../context/ToastContext'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
 import { buildSeasonReportCard } from '../utils/seasonReport'
+import { computeDivisionStandings, getDivisionsForSeason } from '../utils/leagueStandings'
 
 const CHAMPIONS_LEAGUE_DIVISIONS = ['Champions']
 
 export default function SeasonManagement() {
-  const { user, getAllUsers, getResults, updateResults, getSeasons, adminData, updateAdminData, triggerDataRefresh, searchUsers } = useAuth()
+  const { user, getAllUsers, getResults, updateResults, getSeasons, adminData, updateAdminData, triggerDataRefresh, searchUsers, getFixtures } = useAuth()
   const { showToast } = useToast()
 
   const [showCreateForm, setShowCreateForm] = useState(false)
@@ -253,14 +254,15 @@ export default function SeasonManagement() {
 
   const generateReportCards = async (season) => {
     if (!season?.name) return showToast('Select a season first', 'error')
-    if (!confirm(`Generate season report cards for "${season.name}" for all players? This will be stored and shown on profiles and the Hall of Fame.`)) return
+    if (!confirm(`Generate season report cards for "${season.name}" for all players? Only the 1st place finisher in each division is added to the Hall of Fame.`)) return
 
     setIsProcessing(true)
     try {
       const allResults = getResults()
-      const fixtures = []
+      const fixtures = getFixtures() || []
       const batch = writeBatch(db)
       let count = 0
+      let championCount = 0
 
       allPlayers.forEach(player => {
         const card = buildSeasonReportCard({ user: player, results: allResults, fixtures, season: season.name })
@@ -270,8 +272,42 @@ export default function SeasonManagement() {
         count++
       })
 
+      // Only the 1st place finisher in each division is added to the Hall of Fame
+      const existingSnap = await getDocs(collection(db, 'hallOfFame'))
+      const existingKeys = new Set(existingSnap.docs.map(d => {
+        const data = d.data()
+        return `${data.userId}:${data.season}`
+      }))
+
+      const divisions = getDivisionsForSeason(season.name, adminData).filter(d => d !== 'Overall')
+      for (const div of divisions) {
+        const standings = computeDivisionStandings({
+          allUsers: allPlayers,
+          results: allResults,
+          fixtures,
+          adminData,
+          seasonName: season.name,
+          seasonDoc: season,
+          division: div
+        })
+        const champion = standings.find(p => p.stats.played >= 1)
+        if (!champion) continue
+        const key = `${champion.id}:${season.name}`
+        if (existingKeys.has(key)) continue
+        batch.set(doc(collection(db, 'hallOfFame')), {
+          userId: champion.id,
+          username: champion.username || champion.nickname || 'Unknown',
+          name: `${div} Division Champion`,
+          icon: '🏆',
+          season: season.name,
+          visible: true,
+          awardedAt: new Date().toISOString()
+        })
+        championCount++
+      }
+
       await batch.commit()
-      showToast(`Generated ${count} report cards for ${season.name}`, 'success')
+      showToast(`Generated ${count} report cards${championCount ? ` + ${championCount} Hall of Fame champion(s)` : ''} for ${season.name}`, 'success')
       triggerDataRefresh('seasons')
     } catch (e) {
       showToast('Error generating report cards: ' + e.message, 'error')
