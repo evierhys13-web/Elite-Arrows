@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react'
 import { db, collection, doc, getDocs, onSnapshot, setDoc, deleteDoc, serverTimestamp } from '../firebase'
+import { precacheAssets } from '../utils/swPrecache'
 
 const BackgroundContext = createContext(null)
 
@@ -22,6 +23,7 @@ export function BackgroundProvider({ children }) {
     try {
       localStorage.setItem(BACKGROUNDS_CACHE_KEY, JSON.stringify(backgrounds))
     } catch (e) {}
+    precacheAssets(Object.values(backgrounds).map((b) => b.imageUrl))
   }, [backgrounds])
 
   useEffect(() => {

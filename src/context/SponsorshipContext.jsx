@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react'
 import { db, collection, doc, getDocs, onSnapshot, setDoc, serverTimestamp, deleteField } from '../firebase'
+import { precacheAssets } from '../utils/swPrecache'
 
 const SponsorshipContext = createContext(null)
 
@@ -30,6 +31,7 @@ export function SponsorshipProvider({ children }) {
     try {
       localStorage.setItem(ASSETS_CACHE_KEY, JSON.stringify(assets))
     } catch (e) {}
+    precacheAssets(Object.values(assets).map((a) => a.bannerImage).filter(Boolean))
   }, [assets])
 
   useEffect(() => {
