@@ -246,6 +246,20 @@ service cloud.firestore {
       allow create, update: if signedIn();
     }
 
+    // Live lobby presence for Play Online (transient, written by signed-in players).
+    match /lobbyPresence/{userId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && (isOwner(userId) || isAdmin());
+      allow delete: if signedIn() && (isOwner(userId) || isAdmin());
+    }
+
+    // Temporary guest users created during guest sign-in flow.
+    match /tempUsers/{tempId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+
     match /liveGames/{gameId} {
       allow read, write: if signedIn();
     }
