@@ -110,12 +110,6 @@ export default function Admin() {
   const [suggestions, setSuggestions] = useState([])
   const [homeTournamentForm, setHomeTournamentForm] = useState({ title: '', date: '', linkUrl: '', password: '', visible: true })
   const [editingTournamentId, setEditingTournamentId] = useState(null)
-  const [shirtDesigns, setShirtDesigns] = useState([])
-  const [shirtForm, setShirtForm] = useState({ title: '', description: '', imageUrl: '', linkUrl: 'https://www.barbarc.com', visible: true })
-  const [shirtImageFile, setShirtImageFile] = useState(null)
-  const [editingShirtId, setEditingShirtId] = useState(null)
-  const [shirtUploadProgress, setShirtUploadProgress] = useState(0)
-  const [isUploadingShirt, setIsUploadingShirt] = useState(false)
   const [captainDraft, setCaptainDraft] = useState(null)
   const [formatDraft, setFormatDraft] = useState(null)
   const [savingDivisions, setSavingDivisions] = useState(false)
@@ -276,15 +270,6 @@ export default function Admin() {
         } catch (e) { console.error('Failed to fetch suggestions', e) }
       }
       fetchSuggestions()
-    }
-    if (activeTab === 'shirts') {
-      const fetchShirtDesigns = async () => {
-        try {
-          const snap = await getDocs(collection(db, 'shirtDesigns'))
-          setShirtDesigns(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-        } catch (e) { console.error('Failed to fetch shirt designs', e) }
-      }
-      fetchShirtDesigns()
     }
   }, [activeTab, refreshKey])
 
@@ -1403,96 +1388,6 @@ export default function Admin() {
     } catch (e) { showToast(e.message, 'error') }
   }
 
-  const handleShirtImageSelect = (file) => {
-    if (!file) return
-    if (!file.type.startsWith('image/')) return showToast('Please choose an image file', 'error')
-    if (file.size > 10 * 1024 * 1024) return showToast('Image too large (max 10MB)', 'error')
-    setShirtImageFile(file)
-    setShirtUploadProgress(0)
-  }
-
-  const handleUploadShirtImage = async () => {
-    if (!shirtImageFile) return showToast('Choose an image first', 'error')
-    setIsUploadingShirt(true)
-    setShirtUploadProgress(1)
-    const shirtId = `shirt_${Date.now()}`
-    const storageRef = ref(storage, `shirt-designs/${shirtId}.jpg`)
-    const uploadTask = uploadBytesResumable(storageRef, shirtImageFile)
-    uploadTask.on('state_changed',
-      (snapshot) => {
-        const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)
-        setShirtUploadProgress(progress)
-      },
-      (error) => {
-        showToast('Upload failed: ' + error.message, 'error')
-        setIsUploadingShirt(false)
-      },
-      async () => {
-        const url = await getDownloadURL(uploadTask.snapshot.ref)
-        setShirtForm(prev => ({ ...prev, imageUrl: url }))
-        setIsUploadingShirt(false)
-        showToast('Image uploaded and ready!', 'success')
-      }
-    )
-  }
-
-  const handleSaveShirtDesign = async () => {
-    if (!shirtForm.imageUrl) return showToast('Please upload a design image', 'error')
-    if (!shirtForm.title.trim()) return showToast('Design title required', 'error')
-    try {
-      const data = {
-        title: shirtForm.title.trim(),
-        description: shirtForm.description.trim(),
-        imageUrl: shirtForm.imageUrl,
-        linkUrl: shirtForm.linkUrl.trim() || 'https://www.barbarc.com',
-        visible: shirtForm.visible,
-        updatedAt: new Date().toISOString()
-      }
-      if (editingShirtId) {
-        await updateDoc(doc(db, 'shirtDesigns', editingShirtId), data)
-        setShirtDesigns(prev => prev.map(d => d.id === editingShirtId ? { ...d, ...data } : d))
-        await logAudit('UPDATE_SHIRT_DESIGN', `Updated shirt design: ${data.title}`)
-        showToast('Shirt design updated!', 'success')
-      } else {
-        const entry = { ...data, createdAt: new Date().toISOString() }
-        const docRef = await addDoc(collection(db, 'shirtDesigns'), entry)
-        setShirtDesigns(prev => [...prev, { id: docRef.id, ...entry }])
-        await logAudit('ADD_SHIRT_DESIGN', `Added shirt design: ${data.title}`)
-        showToast('Shirt design added!', 'success')
-      }
-      setShirtForm({ title: '', description: '', imageUrl: '', linkUrl: 'https://www.barbarc.com', visible: true })
-      setShirtImageFile(null)
-      setShirtUploadProgress(0)
-      setEditingShirtId(null)
-      triggerDataRefresh('all')
-    } catch (e) { showToast(e.message, 'error') }
-  }
-
-  const handleEditShirtDesign = (design) => {
-    setEditingShirtId(design.id)
-    setShirtForm({
-      title: design.title || '',
-      description: design.description || '',
-      imageUrl: design.imageUrl || '',
-      linkUrl: design.linkUrl || 'https://www.barbarc.com',
-      visible: design.visible !== false
-    })
-    setShirtImageFile(null)
-    setShirtUploadProgress(0)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
-  const handleRemoveShirtDesign = async (design) => {
-    if (!window.confirm(`Remove shirt design "${design.title || 'Untitled'}"?`)) return
-    try {
-      await deleteDoc(doc(db, 'shirtDesigns', design.id))
-      setShirtDesigns(prev => prev.filter(d => d.id !== design.id))
-      await logAudit('REMOVE_SHIRT_DESIGN', `Removed shirt design: ${design.title || 'Untitled'}`)
-      showToast('Shirt design removed', 'info')
-      triggerDataRefresh('all')
-    } catch (e) { showToast(e.message, 'error') }
-  }
-
   const DIVISION_EDITOR_DIVISIONS = ['Pro League', 'Elite', 'Emerald', 'Diamond', 'Platinum']
 
   const captainValues = useMemo(() => captainDraft || adminData?.divisionCaptains || {}, [captainDraft, adminData?.divisionCaptains])
@@ -1963,7 +1858,6 @@ export default function Admin() {
     { id: 'admins', label: 'Staff' },
     { id: 'cups', label: 'Cups' },
     { id: 'news', label: 'League News' },
-    { id: 'shirts', label: '👕 Shirt Designs' },
     { id: 'surveys', label: 'Surveys' },
     { id: 'welcome', label: 'Welcome ✍️' },
     { id: 'backgrounds', label: '🎨 Page Backgrounds' },
@@ -4485,86 +4379,6 @@ export default function Admin() {
                     <span className="btn btn-sm btn-secondary" style={{ cursor: 'default' }}>{entry.visible ? 'Visible' : 'Hidden'}</span>
                     <button className="btn btn-sm btn-secondary" onClick={() => handleEditHomeTournament(entry)}>✏️</button>
                     <button className="btn btn-danger btn-sm" onClick={() => handleRemoveHomeTournament(entry)}>🗑️</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* TAB: SHIRT DESIGNS */}
-        {activeTab === 'shirts' && (
-          <div className="card glass">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-              <div>
-                <h3>👕 Shirt Designs</h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '6px' }}>Dart shirt designs shown on the Dart Shirts page. Each design links out to an order page.</p>
-              </div>
-              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Shown in the app → League &gt; Dart Shirts</span>
-            </div>
-
-            <div className="glass" style={{ padding: '24px', borderRadius: '16px', marginTop: '20px', marginBottom: '24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h4 style={{ margin: 0, color: 'var(--accent-cyan)' }}>{editingShirtId ? 'Edit Design' : 'Add New Design'}</h4>
-                {editingShirtId && (
-                  <button className="btn btn-sm btn-secondary" onClick={() => { setEditingShirtId(null); setShirtForm({ title: '', description: '', imageUrl: '', linkUrl: 'https://www.barbarc.com', visible: true }); setShirtImageFile(null); setShirtUploadProgress(0) }}>Cancel Edit</button>
-                )}
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
-                <input className="glass" placeholder="Design title (e.g. Season 6 Home Shirt)" value={shirtForm.title} onChange={e => setShirtForm({ ...shirtForm, title: e.target.value })} />
-                <input className="glass" placeholder="Order link (https://...)" value={shirtForm.linkUrl} onChange={e => setShirtForm({ ...shirtForm, linkUrl: e.target.value })} />
-              </div>
-              <textarea
-                className="glass"
-                placeholder="Short description (optional)"
-                value={shirtForm.description}
-                onChange={e => setShirtForm({ ...shirtForm, description: e.target.value })}
-                rows={2}
-                style={{ marginTop: '16px', width: '100%', resize: 'vertical' }}
-              />
-
-              <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-                <input type="file" accept="image/*" onChange={e => handleShirtImageSelect(e.target.files?.[0])} />
-                {shirtImageFile && !shirtForm.imageUrl && (
-                  <button className="btn btn-sm" style={{ background: 'rgba(0,212,255,0.15)', border: '1px solid rgba(0,212,255,0.4)', color: '#fff' }} onClick={handleUploadShirtImage}>
-                    {isUploadingShirt ? `Uploading… ${shirtUploadProgress}%` : '⬆️ Upload Image'}
-                  </button>
-                )}
-                {isUploadingShirt && <span style={{ color: 'var(--accent-cyan)', fontWeight: 800 }}>{shirtUploadProgress}%</span>}
-                {shirtForm.imageUrl && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <img src={shirtForm.imageUrl} alt="Design preview" style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border)' }} />
-                    <span style={{ fontSize: '0.72rem', color: 'var(--success)' }}>✓ Image ready</span>
-                  </div>
-                )}
-              </div>
-
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '16px', fontSize: '0.9rem' }}>
-                <input type="checkbox" checked={shirtForm.visible} onChange={e => setShirtForm({ ...shirtForm, visible: e.target.checked })} />
-                Visible on the Dart Shirts page
-              </label>
-
-              <button className="btn btn-primary btn-block" style={{ marginTop: '16px' }} onClick={handleSaveShirtDesign} disabled={isUploadingShirt}>
-                {editingShirtId ? 'Save Changes' : 'Add Design'}
-              </button>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '14px' }}>
-              {shirtDesigns.length === 0 && <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '30px', gridColumn: '1 / -1' }}>No shirt designs added yet.</p>}
-              {shirtDesigns.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).map(design => (
-                <div key={design.id} className="glass" style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  {design.imageUrl
-                    ? <img src={design.imageUrl} alt={design.title || 'Design'} style={{ width: '100%', aspectRatio: '4 / 4.6', objectFit: 'cover', display: 'block', background: '#0b0f1e' }} />
-                    : <div style={{ aspectRatio: '4 / 4.6', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.04)', fontSize: '2rem' }}>👕</div>}
-                  <div style={{ padding: '12px' }}>
-                    <div style={{ fontWeight: 800, fontSize: '0.85rem' }}>{design.title || 'Untitled'}</div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{design.linkUrl || 'No link'}</div>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '10px' }}>
-                      <span className="btn btn-sm btn-secondary" style={{ cursor: 'default', fontSize: '0.65rem', padding: '4px 8px' }}>{design.visible !== false ? 'Visible' : 'Hidden'}</span>
-                      <button className="btn btn-sm btn-secondary" onClick={() => handleEditShirtDesign(design)}>✏️</button>
-                      <button className="btn btn-danger btn-sm" onClick={() => handleRemoveShirtDesign(design)}>🗑️</button>
-                    </div>
                   </div>
                 </div>
               ))}

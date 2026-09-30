@@ -1,8 +1,11 @@
-import { Link } from 'react-router-dom'
-
 export default function ShirtBanner() {
   return (
-    <Link to="/shirts" style={{ textDecoration: 'none', display: 'block' }}>
+    <a
+      href="https://barbarc.com/elitearrowsdartshirt"
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{ textDecoration: 'none', display: 'block' }}
+    >
       <div
         className="glass animate-fade-in-up"
         style={{
@@ -20,7 +23,7 @@ export default function ShirtBanner() {
             👕 Elite Arrows Shirts
           </div>
           <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.75)', marginTop: '4px' }}>
-            Official dart shirt designs — new drops from the community
+            Official dart shirts — grab yours at barbarc.com
           </div>
         </div>
         <div
@@ -30,9 +33,9 @@ export default function ShirtBanner() {
             display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap'
           }}
         >
-          View Designs ➔
+          Shop Now ➔
         </div>
       </div>
-    </Link>
+    </a>
   )
 }
