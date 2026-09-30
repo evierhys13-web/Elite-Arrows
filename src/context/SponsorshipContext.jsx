@@ -3,10 +3,34 @@ import { db, collection, doc, getDocs, onSnapshot, setDoc, serverTimestamp, dele
 
 const SponsorshipContext = createContext(null)
 
+const CONFIGS_CACHE_KEY = 'eliteArrowsSponsoredLeagues'
+const ASSETS_CACHE_KEY = 'eliteArrowsLeaguePageAssets'
+
+function loadCached(key) {
+  try {
+    const saved = localStorage.getItem(key)
+    return saved && saved !== 'undefined' ? JSON.parse(saved) : {}
+  } catch (e) {
+    return {}
+  }
+}
+
 export function SponsorshipProvider({ children }) {
-  const [configs, setConfigs] = useState({})
-  const [assets, setAssets] = useState({})
+  const [configs, setConfigs] = useState(() => loadCached(CONFIGS_CACHE_KEY))
+  const [assets, setAssets] = useState(() => loadCached(ASSETS_CACHE_KEY))
   const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CONFIGS_CACHE_KEY, JSON.stringify(configs))
+    } catch (e) {}
+  }, [configs])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ASSETS_CACHE_KEY, JSON.stringify(assets))
+    } catch (e) {}
+  }, [assets])
 
   useEffect(() => {
     const unsubs = []

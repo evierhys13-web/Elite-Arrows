@@ -3,9 +3,26 @@ import { db, collection, doc, getDocs, onSnapshot, setDoc, deleteDoc, serverTime
 
 const BackgroundContext = createContext(null)
 
+const BACKGROUNDS_CACHE_KEY = 'eliteArrowsPageBackgrounds'
+
+function loadCachedBackgrounds() {
+  try {
+    const saved = localStorage.getItem(BACKGROUNDS_CACHE_KEY)
+    return saved && saved !== 'undefined' ? JSON.parse(saved) : {}
+  } catch (e) {
+    return {}
+  }
+}
+
 export function BackgroundProvider({ children }) {
-  const [backgrounds, setBackgrounds] = useState({})
+  const [backgrounds, setBackgrounds] = useState(loadCachedBackgrounds)
   const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(BACKGROUNDS_CACHE_KEY, JSON.stringify(backgrounds))
+    } catch (e) {}
+  }, [backgrounds])
 
   useEffect(() => {
     let unsub
