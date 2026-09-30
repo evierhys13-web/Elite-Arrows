@@ -1,4 +1,4 @@
-import { analytics, perf, initAnalytics, initPerformance, logEvent, trace, setConsent } from '../firebase';
+import { initAnalytics, initPerformance, setAnalyticsConsent as consentViaSdk, fireAnalyticsEvent, safeTrace, getAnalyticsRef } from '../firebaseAnalytics';
 
 export const CONSENT_KEY = 'eliteArrowsConsent';
 
@@ -15,12 +15,12 @@ export const hasAnalyticsConsent = () => {
  * Turns on google-analytics storage + initialises the SDK, so events only
  * arrive after explicit consent.
  */
-export const grantAnalyticsConsent = () => {
+export const grantAnalyticsConsent = async () => {
   try {
     localStorage.setItem(CONSENT_KEY, 'granted');
-    setConsent({ analytics_storage: 'granted', ad_storage: 'denied' });
-    initAnalytics();
-    initPerformance();
+    await consentViaSdk({ analytics_storage: 'granted', ad_storage: 'denied' });
+    await initAnalytics();
+    await initPerformance();
   } catch (e) {
     console.warn('Failed to enable analytics:', e.message);
   }
@@ -30,10 +30,10 @@ export const grantAnalyticsConsent = () => {
  * Perform this when the user rejects cookies/analytics.
  * Consent stays denied and analytics is never initialised on this device.
  */
-export const denyAnalyticsConsent = () => {
+export const denyAnalyticsConsent = async () => {
   try {
     localStorage.setItem(CONSENT_KEY, 'denied');
-    setConsent({ analytics_storage: 'denied', ad_storage: 'denied' });
+    await consentViaSdk({ analytics_storage: 'denied', ad_storage: 'denied' });
   } catch (e) {}
 };
 
@@ -51,32 +51,18 @@ export const setAnalyticsConsent = (granted) => {
  *   await doSomething()
  *   stop()
  */
-export const startTrace = (traceName) => {
-  if (!perf) return () => {};
-  try {
-    const t = trace(perf, traceName);
-    t.start();
-    return (attributes = {}) => {
-      try {
-        Object.entries(attributes).forEach(([key, value]) => {
-          t.putAttribute(key, String(value));
-        });
-        t.stop();
-      } catch (e) {}
-    };
-  } catch (e) {
-    return () => {};
-  }
-};
+export const startTrace = (traceName) => safeTrace(traceName);
+
+const hasAnalytics = () => Boolean(getAnalyticsRef() && hasAnalyticsConsent());
 
 /**
  * Logs a match approval event to Firebase Analytics.
  * @param {Object} match - The match result object.
  */
 export const logMatchApproved = (match) => {
-  if (!analytics || !hasAnalyticsConsent()) return;
+  if (!hasAnalytics()) return;
 
-  logEvent(analytics, 'match_approved', {
+  fireAnalyticsEvent('match_approved', {
     match_id: match.id,
     player1: match.player1,
     player2: match.player2,
@@ -94,9 +80,9 @@ export const logMatchApproved = (match) => {
  * @param {string} tier - The subscription tier (standard/premium).
  */
 export const logSubscriptionActivated = (userId, tier) => {
-  if (!analytics || !hasAnalyticsConsent()) return;
+  if (!hasAnalytics()) return;
 
-  logEvent(analytics, 'subscription_activated', {
+  fireAnalyticsEvent('subscription_activated', {
     user_id: userId,
     tier: tier,
     timestamp: new Date().toISOString()
@@ -108,9 +94,9 @@ export const logSubscriptionActivated = (userId, tier) => {
  * but useful for custom tracking).
  */
 export const logPageView = (pageName) => {
-  if (!analytics || !hasAnalyticsConsent()) return;
+  if (!hasAnalytics()) return;
 
-  logEvent(analytics, 'page_view', {
+  fireAnalyticsEvent('page_view', {
     page_name: pageName
   });
 };
@@ -119,8 +105,8 @@ export const logPageView = (pageName) => {
  * Logs a result submission event.
  */
 export const logResultSubmitted = (gameType, division) => {
-  if (!analytics || !hasAnalyticsConsent()) return;
-  logEvent(analytics, 'result_submitted', {
+  if (!hasAnalytics()) return;
+  fireAnalyticsEvent('result_submitted', {
     game_type: gameType,
     division: division,
     timestamp: new Date().toISOString()
@@ -131,8 +117,8 @@ export const logResultSubmitted = (gameType, division) => {
  * Logs a user login event.
  */
 export const logUserLogin = (userId) => {
-  if (!analytics || !hasAnalyticsConsent()) return;
-  logEvent(analytics, 'login', {
+  if (!hasAnalytics()) return;
+  fireAnalyticsEvent('login', {
     user_id: userId,
     method: 'email'
   });
@@ -149,9 +135,9 @@ export const logListenStart = (
   genre = 'Sports',
   durationSeconds = 180
 ) => {
-  if (!analytics || !hasAnalyticsConsent()) return;
+  if (!hasAnalytics()) return;
 
-  logEvent(analytics, 'listen_start', {
+  fireAnalyticsEvent('listen_start', {
     track_name: trackName,
     genre: genre,
     duration_seconds: durationSeconds

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useAuth } from '../context/AuthContextInternal'
-import { db, doc, setDoc, getDocs, collection, deleteDoc, updateDoc, storage, ref, uploadBytesResumable, getDownloadURL } from '../firebase'
+import { db, doc, setDoc, getDocs, collection, deleteDoc, updateDoc } from '../firebase'
+import { storage, ref, uploadBytesResumable, getDownloadURL } from '../firebaseStorage'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { useToast } from '../context/ToastContext'
 import { ADMIN_EMAILS } from '../config'

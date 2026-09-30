@@ -6,7 +6,7 @@ export default defineConfig({
   base: '/',
   build: {
     outDir: 'dist',
-    target: 'es2015',
-    cssTarget: 'chrome61'
+    target: 'es2020',
+    cssTarget: 'chrome80'
   }
 })

@@ -39,11 +39,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Network-first for navigations and app assets so deployed fixes arrive without a hard refresh.
-  if (request.mode === 'navigate' ||
-      url.pathname.endsWith('.html') ||
-      url.pathname.endsWith('.js') ||
-      url.pathname.endsWith('.css')) {
+  // Network-first for navigations and index.html so deployed fixes arrive without a hard refresh.
+  if (request.mode === 'navigate' || url.pathname.endsWith('.html')) {
     event.respondWith(
       fetch(request)
         .then((response) => {
@@ -62,6 +59,28 @@ self.addEventListener('fetch', (event) => {
             return new Response('Offline', { status: 503 });
           });
         })
+    );
+    return;
+  }
+
+  // Hashed JS/CSS assets are immutable per deploy version, so serve the cached
+  // copy instantly while revalidating in the background (stale-while-revalidate).
+  // A new deploy produces new hashes, so old cached assets are never mistakes.
+  if (url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then((cache) => {
+        return cache.match(request).then((cachedResponse) => {
+          const networkPromise = fetch(request)
+            .then((response) => {
+              if (response.status === 200) {
+                cache.put(request, response.clone());
+              }
+              return response;
+            })
+            .catch(() => cachedResponse);
+          return cachedResponse || networkPromise;
+        });
+      })
     );
     return;
   }

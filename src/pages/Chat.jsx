@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContextInternal'
-import { db, chatMessagesCollection, doc, setDoc, deleteDoc, query, where, onSnapshot, storage, ref, uploadBytesResumable, getDownloadURL } from '../firebase'
+import { db, chatMessagesCollection, doc, setDoc, deleteDoc, query, where, onSnapshot } from '../firebase'
+import { storage, ref, uploadBytesResumable, getDownloadURL } from '../firebaseStorage'
 import { useToast } from '../context/ToastContext'
 
 export default function Chat() {

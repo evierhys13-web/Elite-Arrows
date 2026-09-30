@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContextInternal";
 import { initStore, requestPurchase } from "../utils/store";
 import { Capacitor } from "@capacitor/core";
-import { storage, ref, uploadBytesResumable, getDownloadURL } from '../firebase'
+import { storage, ref, uploadBytesResumable, getDownloadURL } from '../firebaseStorage'
 import { ADMIN_EMAILS } from '../config'
 
 const SUBSCRIPTION_PRODUCT_IDS = {

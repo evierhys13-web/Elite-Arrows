@@ -2,9 +2,6 @@ import { initializeApp } from 'firebase/app'
 import { getFirestore, collection, doc, setDoc, getDoc, getDocFromServer, getDocs, getDocsFromServer, query, where, orderBy, onSnapshot, deleteDoc, addDoc, updateDoc, writeBatch, runTransaction, limit, arrayUnion, serverTimestamp, increment, deleteField as deleteFieldFirestore } from 'firebase/firestore'
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserSessionPersistence, browserLocalPersistence, sendPasswordResetEmail, signInAnonymously } from 'firebase/auth'
 import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging'
-import { getAnalytics, logEvent, setConsent } from 'firebase/analytics'
-import { getPerformance, trace } from 'firebase/performance'
-import { getStorage, ref, uploadString, uploadBytes, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
 
 export const FieldValue = deleteFieldFirestore
 
@@ -18,37 +15,9 @@ const firebaseConfig = {
   measurementId: "G-6BPQKR71P5"
 }
 
-const app = initializeApp(firebaseConfig)
+export const app = initializeApp(firebaseConfig)
 export const db = getFirestore(app)
 export const auth = getAuth(app)
-export const storage = getStorage(app)
-
-// Analytics and Performance require a linked Google Analytics property (measurementId).
-// They are only initialised AFTER the user grants cookie/analytics consent (see
-// utils/analytics.js + CookieConsentBanner) so nothing is sent before consent.
-export let analytics = null
-export let perf = null
-
-export const initAnalytics = () => {
-  if (analytics || typeof window === 'undefined') return analytics
-  try {
-    analytics = getAnalytics(app)
-  } catch (e) {
-    console.warn('Firebase Analytics not available:', e.message)
-  }
-  return analytics
-}
-
-export const initPerformance = () => {
-  if (perf || typeof window === 'undefined') return perf
-  try {
-    perf = getPerformance(app)
-  } catch (e) {
-    console.warn('Firebase Performance not available:', e.message)
-  }
-  return perf
-}
-export { trace }
 
 let messaging = null
 export const getMessagingInstance = async () => {
@@ -84,7 +53,5 @@ export {
   signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInAnonymously,
   setPersistence, browserSessionPersistence, browserLocalPersistence,
   sendPasswordResetEmail,
-  getMessaging, getToken, onMessage, isSupported,
-  logEvent, setConsent,
-  ref, uploadString, uploadBytes, uploadBytesResumable, getDownloadURL
+  getMessaging, getToken, onMessage, isSupported
 }
