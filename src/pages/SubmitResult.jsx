@@ -707,8 +707,14 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
       // The fixture's player1/player2 is the bracket order. The form scores/stats
       // are submitted as (yourScore = submitter, opponentScore = opponent). Align
       // scores + stats with the forced player order so player1Id always holds
-      // player1's score/stats.
-      const needScoreSwap = String(finalPlayer1Id) === String(formData.opponent)
+      // player1's score/stats. Cup matches opened via the fixture dropdown store
+      // the FIXTURE id in formData.opponent (not a player id), so decide the swap
+      // by which bracket slot the submitter occupies instead of comparing ids.
+      const submitterIsPlayer1 = String(finalPlayer1Id) === String(user.id)
+      const submitterIsPlayer2 = String(finalPlayer2Id) === String(user.id)
+      const needScoreSwap =
+        (submitterIsPlayer2 && !submitterIsPlayer1) ||
+        (!submitterIsPlayer1 && !submitterIsPlayer2 && String(finalPlayer1Id) === String(formData.opponent))
       let player1Score = formData.yourScore
       let player2Score = formData.opponentScore
       if (needScoreSwap) {
