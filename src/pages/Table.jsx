@@ -60,19 +60,29 @@ export default function Table() {
 
   const [refreshKey, setRefreshKey] = useState(0);
   const [selectedSeason, setSelectedSeason] = useState(adminData?.currentSeason || "Elite Arrows Season 5");
-  const [loadingSeason, setLoadingSeason] = useState(true);
+  const [loadingSeason, setLoadingSeason] = useState(
+    () => allUsers.length > 0 || results.length > 0 ? false : true,
+  );
   const [hasInitializedSeason, setHasInitializedSeason] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     const loadSeasonData = async () => {
-      setLoadingSeason(true);
+      // If we already have data in memory, don't block the table — render it
+      // instantly and refresh from the network in the background.
+      if (allUsers.length > 0 || results.length > 0) {
+        setLoadingSeason(false);
+      } else {
+        setLoadingSeason(true);
+      }
       await Promise.all([
         fetchResultsBySeason(selectedSeason),
         fetchUsersByDivision(activeDivision),
       ]);
-      setLoadingSeason(false);
+      if (!cancelled) setLoadingSeason(false);
     };
     loadSeasonData();
+    return () => { cancelled = true; };
   }, [
     selectedSeason,
     activeDivision,
