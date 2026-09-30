@@ -151,6 +151,19 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // Daily challenges - admins set the daily challenge, players submit a video
+    // against it and admins approve/delete submissions.
+    match /dailyChallenges/{challengeId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /dailyChallengeSubmissions/{submissionId} {
+      allow read: if true;
+      allow create: if signedIn();
+      allow update, delete: if isAdmin();
+    }
+
     match /disputes/{disputeId} {
       allow read: if isAdmin();
       allow create: if signedIn();

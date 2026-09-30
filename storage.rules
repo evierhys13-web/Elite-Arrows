@@ -56,5 +56,12 @@ service firebase.storage {
       allow read: if signedIn();
       allow write: if isAdmin();
     }
+
+    // Daily challenge submission videos.
+    match /dailyChallengeSubmissions/{fileName} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update, delete: if isAdmin();
+    }
   }
 }
