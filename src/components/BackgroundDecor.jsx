@@ -7,7 +7,7 @@ import { LEAGUE_DIVISION_NAMES } from '../utils/leagueStandings'
 
 export default function BackgroundDecor({ division: userDivision }) {
   const location = useLocation()
-  const { backgrounds, activeDivision: contextDivision, refresh: refreshBackgrounds } = usePageBackgrounds()
+  const { backgrounds, activeDivision: contextDivision, loading: backgroundsLoading, refresh: refreshBackgrounds } = usePageBackgrounds()
   const { configs, assets, refresh: refreshSponsorship } = useSponsorship()
 
   const division = contextDivision || userDivision
@@ -24,6 +24,10 @@ export default function BackgroundDecor({ division: userDivision }) {
   }, [location.pathname, backgrounds])
 
   const sponsorBg = useMemo(() => {
+    // Only once the custom page backgrounds have resolved — never show a
+    // sponsor banner before we know for sure the page has no custom image,
+    // otherwise the banner briefly replaces the correct image on load.
+    if (backgroundsLoading) return null
     if (!division && !location.pathname.startsWith('/league/')) return null
 
     let key = null
@@ -44,9 +48,13 @@ export default function BackgroundDecor({ division: userDivision }) {
       blur: config.banner?.blur ?? 0,
       fit: config.banner?.fit ?? 'cover'
     }
-  }, [division, location.pathname, configs, assets])
+  }, [division, location.pathname, configs, assets, backgroundsLoading])
 
   const customBg = activeConfig?.imageUrl ? activeConfig : sponsorBg
+  // Show the decorative default star-field only when we have confirmed there is
+  // no custom background for this page. Until then render a neutral backdrop so
+  // nothing ever appears then "switches" to the correct background.
+  const showStarfield = !customBg && !backgroundsLoading
 
   return (
     <div style={{
@@ -237,7 +245,7 @@ export default function BackgroundDecor({ division: userDivision }) {
             }}
           />
         </>
-      ) : (
+      ) : showStarfield ? (
         <>
           <div className="cosmic-image-main" />
           <div className="nebula nebula-1" />
@@ -250,6 +258,11 @@ export default function BackgroundDecor({ division: userDivision }) {
           <div className="meteor meteor-anim meteor-1" />
           <div className="meteor meteor-anim meteor-2" />
           <div className="meteor meteor-anim meteor-3" />
+        </>
+      ) : (
+        <>
+          <div className="nebula nebula-1" />
+          <div className="nebula nebula-2" />
         </>
       )}
 
