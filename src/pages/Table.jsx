@@ -2,7 +2,7 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContextInternal";
 import { derivePlayerStatsFromResults } from "../utils/playerStats";
-import { getPlayersWithEffectiveDivisions, getDivisionFilteredResults, LEAGUE_DIVISION_NAMES } from "../utils/leagueStandings";
+import { getPlayersWithEffectiveDivisions, getDivisionFilteredResults, LEAGUE_DIVISION_NAMES, HIDDEN_LEAGUE_DIVISIONS } from "../utils/leagueStandings";
 import { getDivisionFormat, getDivisionFormatLabel } from "../context/constants";
 import Breadcrumbs from "../components/Breadcrumbs";
 import { useToast } from "../context/ToastContext";
@@ -188,6 +188,9 @@ export default function Table() {
       }))
       .filter((p) => {
         if (activeDivision !== "Overall") return true;
+
+        // Pro League is a separate tier and is not part of the Overall table
+        if (HIDDEN_LEAGUE_DIVISIONS.includes(p.division)) return false;
 
         // Show all players for Season 4 Overall who are in a division (excluding Unassigned and Admin)
         if (selectedSeason === "Season 4") {

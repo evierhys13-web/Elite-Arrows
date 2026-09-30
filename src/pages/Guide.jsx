@@ -245,7 +245,7 @@ export default function Guide() {
       <div className="card">
         <h2 className="card-title">📊 How Scoring Works</h2>
         <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-          League games are played according to division format: <strong>Pro League (BO15)</strong> and <strong>Elite/Emerald/Diamond/Platinum (BO8)</strong>. You get <strong>1 point for every leg you win</strong>, plus match outcome points (+3 Win, +1 Draw, +0 Loss).
+          League games are played according to division format: <strong>Elite (BO12)</strong>, <strong>Emerald (BO10)</strong>, <strong>Diamond and Platinum (BO8)</strong>, and <strong>Pro League (BO15)</strong>. You get <strong>1 point for every leg you win</strong>, plus match outcome points (+3 Win, +1 Draw, +0 Loss).
         </p>
 
         <div style={{ marginTop: '20px', overflowX: 'auto' }}>

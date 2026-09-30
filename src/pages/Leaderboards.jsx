@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContextInternal'
 import { db, collection, query, getDocs, orderBy, limit } from '../firebase'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
+import { HIDDEN_LEAGUE_DIVISIONS } from '../utils/leagueStandings'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { useToast } from '../context/ToastContext'
 
@@ -79,32 +80,32 @@ export default function Leaderboards() {
   const divisions = ['all', 'Elite', 'Emerald', 'Diamond', 'Platinum']
 
   const leagueBoard = useMemo(() => {
-    let list = Object.values(playerStats).filter(p => p.played > 0)
+    let list = Object.values(playerStats).filter(p => p.played > 0 && !HIDDEN_LEAGUE_DIVISIONS.includes(p.division))
       .sort((a, b) => b.points - a.points || b.wins - a.wins || b.legDiff - a.legDiff)
     if (selectedDivision !== 'all') list = list.filter(p => p.division === selectedDivision)
     return list
   }, [playerStats, selectedDivision])
 
   const board180s = useMemo(() => {
-    let list = Object.values(playerStats).filter(p => p.played > 0 && p['180s'] > 0)
+    let list = Object.values(playerStats).filter(p => p.played > 0 && p['180s'] > 0 && !HIDDEN_LEAGUE_DIVISIONS.includes(p.division))
       .sort((a, b) => b['180s'] - a['180s'] || b.played - a.played)
     if (selectedDivision !== 'all') list = list.filter(p => p.division === selectedDivision)
     return list
   }, [playerStats, selectedDivision])
 
   const boardCheckouts = useMemo(() => {
-    let list = Object.values(playerStats).filter(p => p.played > 0 && p.highestCheckout > 0)
+    let list = Object.values(playerStats).filter(p => p.played > 0 && p.highestCheckout > 0 && !HIDDEN_LEAGUE_DIVISIONS.includes(p.division))
       .sort((a, b) => b.highestCheckout - a.highestCheckout || b.played - a.played)
     if (selectedDivision !== 'all') list = list.filter(p => p.division === selectedDivision)
     return list
   }, [playerStats, selectedDivision])
 
   const top180s = useMemo(() =>
-    Object.values(playerStats).reduce((max, p) => (!max || p['180s'] > max['180s']) ? p : max, null)
+    Object.values(playerStats).filter(p => !HIDDEN_LEAGUE_DIVISIONS.includes(p.division)).reduce((max, p) => (!max || p['180s'] > max['180s']) ? p : max, null)
   , [playerStats])
 
   const topCheckout = useMemo(() =>
-    Object.values(playerStats).reduce((max, p) => (!max || p.highestCheckout > max.highestCheckout) ? p : max, null)
+    Object.values(playerStats).filter(p => !HIDDEN_LEAGUE_DIVISIONS.includes(p.division)).reduce((max, p) => (!max || p.highestCheckout > max.highestCheckout) ? p : max, null)
   , [playerStats])
 
   const pointsLeader = leagueBoard[0] || null

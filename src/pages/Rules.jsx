@@ -28,14 +28,14 @@ export default function Rules() {
 
             <div style={{ background: 'rgba(251, 191, 36, 0.08)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(251, 191, 36, 0.25)' }}>
               <div style={{ color: '#fbbf24', fontWeight: 800, fontSize: '1.1rem', marginBottom: '6px' }}>👑 Elite Division</div>
-              <div style={{ color: 'white', fontWeight: 700, fontSize: '1rem' }}>Best of 8 Legs</div>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '4px' }}>First to 5 wins, or 4–4 Draw.</p>
+              <div style={{ color: 'white', fontWeight: 700, fontSize: '1rem' }}>Best of 12 Legs</div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '4px' }}>First to 7 wins, or 6–6 Draw.</p>
             </div>
 
             <div style={{ background: 'rgba(16, 185, 129, 0.08)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
               <div style={{ color: '#10b981', fontWeight: 800, fontSize: '1.1rem', marginBottom: '6px' }}>❇️ Emerald Division</div>
-              <div style={{ color: 'white', fontWeight: 700, fontSize: '1rem' }}>Best of 8 Legs</div>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '4px' }}>First to 5 wins, or 4–4 Draw.</p>
+              <div style={{ color: 'white', fontWeight: 700, fontSize: '1rem' }}>Best of 10 Legs</div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '4px' }}>First to 6 wins, or 5–5 Draw.</p>
             </div>
 
             <div style={{ background: 'rgba(56, 189, 248, 0.08)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(56, 189, 248, 0.25)' }}>

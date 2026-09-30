@@ -7,8 +7,8 @@ export const DIVISIONS = [
 
 export const DIVISION_FORMATS = {
   "Pro League": { bestOf: 15, firstTo: 8, noDraw: true },
-  Elite: { bestOf: 8, firstTo: 5, noDraw: false },
-  Emerald: { bestOf: 8, firstTo: 5, noDraw: false },
+  Elite: { bestOf: 12, firstTo: 7, noDraw: false },
+  Emerald: { bestOf: 10, firstTo: 6, noDraw: false },
   Diamond: { bestOf: 8, firstTo: 5, noDraw: false },
   Platinum: { bestOf: 8, firstTo: 5, noDraw: false },
 };
@@ -29,7 +29,7 @@ export const getDivisionFormat = (division, adminData) => {
 export const getDivisionFormatLabel = (fmt, division) => {
   if (!fmt) return null
   if (division === 'Overall') {
-    return `Pro League (BO${DIVISION_FORMATS['Pro League'].bestOf}) • Elite/Emerald/Diamond/Platinum (BO${fmt.bestOf})`
+    return `Elite (BO${DIVISION_FORMATS.Elite.bestOf}) • Emerald (BO${DIVISION_FORMATS.Emerald.bestOf}) • Diamond/Platinum (BO${DIVISION_FORMATS.Diamond.bestOf})`
   }
   return fmt.noDraw
     ? `Best of ${fmt.bestOf} Legs (First to ${fmt.firstTo} / No Draws)`
