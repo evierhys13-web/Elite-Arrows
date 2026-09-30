@@ -187,7 +187,7 @@ export default function Subscription() {
         // Web logic: Upload to Storage first
         let finalProofUrl = proofImage;
         if (proofFile) {
-          const storageRef = ref(storage, `payments/${user.id}_${Date.now()}_proof.jpg`);
+          const storageRef = ref(storage, `payments/${user.id}/${Date.now()}_proof.jpg`);
           const uploadTask = uploadBytesResumable(storageRef, proofFile);
 
           await new Promise((resolve, reject) => {
@@ -240,7 +240,7 @@ export default function Subscription() {
     try {
       let finalProofUrl = trainingProofImage;
       if (trainingProofFile) {
-        const storageRef = ref(storage, `training-payments/${user.id}_${Date.now()}_proof.jpg`);
+          const storageRef = ref(storage, `training-payments/${user.id}/${Date.now()}_proof.jpg`);
         const uploadTask = uploadBytesResumable(storageRef, trainingProofFile);
         await new Promise((resolve, reject) => {
           uploadTask.on('state_changed', null, reject, async () => {

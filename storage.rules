@@ -63,5 +63,32 @@ service firebase.storage {
       allow create: if signedIn();
       allow update, delete: if isAdmin();
     }
+
+    // Weekly challenge images and player submission videos.
+    match /challenges/{fileName} {
+      allow read: if signedIn();
+      allow create: if isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
+    match /challengeSubmissions/{fileName} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    // Season-pass and training payment proof photos. Scoped to the owner's
+    // folder so other members cannot browse payment documents.
+    match /payments/{userId}/{fileName} {
+      allow read: if signedIn() && (isOwner(userId) || isAdmin());
+      allow create: if signedIn() && (isOwner(userId) || isAdmin());
+      allow update, delete: if isAdmin();
+    }
+
+    match /training-payments/{userId}/{fileName} {
+      allow read: if signedIn() && (isOwner(userId) || isAdmin());
+      allow create: if signedIn() && (isOwner(userId) || isAdmin());
+      allow update, delete: if isAdmin();
+    }
   }
 }
