@@ -193,9 +193,13 @@ export default function Rules() {
         </h2>
         <div style={{ display: 'grid', gap: '20px' }}>
            <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-             League points are awarded for each match result:
+             League points are earned through <strong>legs won plus match outcome points</strong>:
            </p>
-           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '15px' }}>
+              <div className="stat-card" style={{ padding: '15px', textAlign: 'center' }}>
+                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Leg Won</div>
+                 <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>1 Point</div>
+              </div>
               <div className="stat-card" style={{ padding: '15px', textAlign: 'center', borderBottom: '2px solid var(--success)' }}>
                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Match Win</div>
                  <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--success)' }}>3 Points</div>
@@ -210,7 +214,7 @@ export default function Rules() {
               </div>
            </div>
            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center' }}>
-             So the results are 3 points for a win, 1 point for a draw, and 0 points for a loss. Forfeit wins award the maximum draw points for your division (see the Evaluated Forfeit Policy).
+             So it is 1 point per leg won, plus 3 points for a win, 1 point for a draw, and 0 points for a loss. Example (Diamond Division BO8): a 5–3 win awards 5 (legs) + 3 (win) = 8 total points. Forfeit wins award the maximum draw points for your division (see the Evaluated Forfeit Policy).
            </p>
         </div>
       </div>
