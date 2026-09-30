@@ -80,6 +80,9 @@ android/.gradle/
 .idea/
 .DS_Store
 
+# Local admin documents
+Admin Roster/
+
 status
 
 # Discord bot secret keys
