@@ -100,7 +100,6 @@ export default function Admin() {
   })
   const [seasonForm, setSeasonForm] = useState({ name: '', startDate: new Date().toISOString().split('T')[0], endDate: '' })
   const [grantSubForm, setGrantSubForm] = useState({ player: '', tier: 'elite', season: '' })
-  const [superRankForm, setSuperRankForm] = useState({ player: '', rank: '' })
   const [divisionForm, setDivisionForm] = useState({ player: '', division: '' })
   const [potAdjust, setPotAdjust] = useState({ amount: 0 })
   const [selectedMemberIds, setSelectedMemberIds] = useState([])
@@ -561,16 +560,15 @@ export default function Admin() {
       const s1 = Number(res.score1) || 0;
       const s2 = Number(res.score2) || 0;
       const totalLegs = s1 + s2;
-      const isSuperFormat = (s1 === 6 || s2 === 6) && totalLegs <= 11 && totalLegs >= 6;
       const isStandardFormat = totalLegs <= 8;
 
-      const p1Data = allPlayers.find(u => String(u.id) === String(p1Id));
-      const p2Data = allPlayers.find(u => String(u.id) === String(p2Id));
-      const isSuperMatch = p1Data?.superLeagueDivision || p2Data?.superLeagueDivision;
-
+      // Champions League is retired: any legacy 'Champions League' label gets
+      // healed to League rather than preserved, so approval can never recreate it.
+      const legacyChampionsLabel = /champions|super\s*league/i.test(String(res.gameType || ''));
       if (!res.gameType || ['league', 'friendly', 'unknown', ''].includes(String(res.gameType).toLowerCase())) {
-        if (isSuperFormat || (isSuperMatch && totalLegs > 8)) updates.gameType = 'Champions League';
-        else if (isStandardFormat && totalLegs > 0) updates.gameType = 'League';
+        if (isStandardFormat && totalLegs > 0) updates.gameType = 'League';
+      } else if (legacyChampionsLabel) {
+        updates.gameType = 'League';
       }
 
       if (!res.season || ['2026', 'legacy', ''].includes(String(res.season).toLowerCase())) {
@@ -645,9 +643,11 @@ export default function Admin() {
           const s1 = Number(res.score1) || 0;
           const s2 = Number(res.score2) || 0;
           const totalLegs = s1 + s2;
+          const legacyChampionsLabel = /champions|super\s*league/i.test(String(res.gameType || ''));
           if (!res.gameType || ['league', 'friendly', ''].includes(String(res.gameType).toLowerCase())) {
-            if ((s1 === 6 || s2 === 6) && totalLegs <= 11) updates.gameType = 'Champions League';
-            else if (totalLegs <= 8) updates.gameType = 'League';
+            if (totalLegs <= 8) updates.gameType = 'League';
+          } else if (legacyChampionsLabel) {
+            updates.gameType = 'League';
           }
           if (!res.season) {
             const matchTime = new Date(res.date || res.submittedAt || Date.now()).getTime();
@@ -836,7 +836,6 @@ export default function Admin() {
 
     const resultId = `admin_${Date.now()}`
     try {
-      const isSuper = f.gameType === 'Champions League'
       const isLeague = f.gameType === 'League'
       const isCup = f.gameType === 'Cup'
       const isForfeit = Boolean(f.forfeit)
@@ -902,12 +901,6 @@ export default function Admin() {
         }
       }
 
-      const matchTime = new Date().getTime()
-      const s2Start = new Date('2026-08-01T00:00:00').getTime()
-      if (isSuper && (!f.season || f.season === 'Season 1' || f.season === '2026')) {
-        if (matchTime >= s2Start) targetSeason = 'Season 4'
-      }
-
       const newMatch = {
         id: resultId,
         player1: p1.username,
@@ -918,7 +911,7 @@ export default function Admin() {
         gameType: isForfeit ? 'League' : f.gameType,
         status: 'approved',
         season: targetSeason,
-        division: isSuper ? (p1.superLeagueDivision || '') : (isLeague ? (p1.division || '') : ''),
+        division: isLeague ? (p1.division || '') : '',
         date: new Date().toISOString().split('T')[0],
         submittedAt: new Date().toISOString(),
         submittedBy: 'admin',
@@ -1052,19 +1045,6 @@ export default function Admin() {
       triggerDataRefresh('users')
       showToast(`Subscription updated for ${u.username}`, 'success')
     } catch (e) { showToast(e.message, 'error') }
-  }
-
-  const handleUpdateSuperRank = async () => {
-    if (!superRankForm.player || !superRankForm.rank) return
-    try {
-      const isNone = superRankForm.rank === 'None'
-      await setDoc(doc(db, 'users', superRankForm.player), {
-        superLeagueDivision: isNone ? null : superRankForm.rank
-      }, { merge: true })
-      showToast?.(`Player updated in Champions League`, 'success')
-      setSuperRankForm({ player: '', rank: '' })
-      triggerDataRefresh('all')
-    } catch (e) { showToast?.('Error updating rank: ' + e.message, 'error') }
   }
 
   const handleRevokeElitePass = async (u) => {
@@ -1705,7 +1685,6 @@ export default function Admin() {
         const s1 = Number(match.score1) || 0; const s2 = Number(match.score2) || 0;
         const totalLegs = s1 + s2;
         const isStandardFormat = totalLegs <= 8 && totalLegs > 0;
-        const isSuperFormat = (s1 === 6 || s2 === 6) && totalLegs <= 11 && totalLegs >= 6;
         let isCupGame = Boolean(match.cupId || match.matchId || match.tournamentId);
         if (!isCupGame && match.fixtureId) {
           const fx = allFixtures.find(f => String(f.id) === String(match.fixtureId));
@@ -1714,7 +1693,7 @@ export default function Admin() {
         if (isCupGame) { if (match.gameType !== 'Cup') updates.gameType = 'Cup'; }
         else {
           let targetType = match.gameType;
-          if (isSuperFormat) targetType = 'Champions League';
+          if (/champions|super\s*league/i.test(String(match.gameType || ''))) targetType = 'League';
           else if (isStandardFormat) targetType = 'League';
           else if (!match.gameType || match.gameType === 'Unknown') targetType = 'League';
           if (match.gameType !== targetType) updates.gameType = targetType;
@@ -1816,30 +1795,6 @@ export default function Admin() {
       await updateAdminData({ leagueTableResetAt: null }); await logAudit('CLEAR_TABLE_RESET', 'Cleared reset'); triggerDataRefresh('all'); showToast('Full history restored!', 'success')
     } catch (e) { showToast(e.message, 'error') }
   };
-
-  const handleResetSuperLeagueTable = async () => {
-    const currentSeason = adminData?.currentSeason || 'Season 4'
-    if (!window.confirm(`Reset Champions League standings?`)) return
-    setIsApproving(true);
-    try {
-      const users = getAllUsers(); const results = getResults(); let batch = writeBatch(db); let ops = 0; let userCount = 0; let resultCount = 0
-      for (const u of users) { if (u.manualSuperStats) { batch.update(doc(db, 'users', u.id), { manualSuperStats: null }); userCount++; ops++; if (ops >= 450) { await batch.commit(); batch = writeBatch(db); ops = 0 } } }
-      const updatesById = {}
-      for (const r of results) {
-        if (String(r.status).toLowerCase() !== 'approved') continue
-        const s1 = Number(r.score1); const s2 = Number(r.score2); const isSuperFormat = (s1 === 6 || s2 === 6) && (s1 + s2) <= 11; const isLabeledSuper = String(r.gameType || '').toLowerCase().includes('super')
-        if (isSuperFormat || isLabeledSuper) {
-          const updates = {}; if (r.season !== currentSeason) updates.season = currentSeason; if (r.gameType !== 'Champions League') updates.gameType = 'Champions League'
-          if (Object.keys(updates).length > 0) { const tid = r.firestoreId || String(r.id); batch.update(doc(db, 'results', tid), updates); updatesById[tid] = updates; resultCount++; ops++; if (ops >= 450) { await batch.commit(); batch = writeBatch(db); ops = 0 } }
-        }
-      }
-      if (ops > 0) await batch.commit()
-      await logAudit('RESET_CHAMPIONS_LEAGUE', `Reset CL for ${userCount} users and ${resultCount} matches.`)
-      const updatedResults = results.map(r => { const key = r.firestoreId || String(r.id); return updatesById[key] ? { ...r, ...updatesById[key] } : r })
-      updateResults(updatedResults); triggerDataRefresh('all'); showToast(`CL Reset Complete`, 'success')
-    } catch (e) { showToast('Reset failed: ' + e.message, 'error') }
-    setIsApproving(false)
-  }
 
   const handleBgUpload = async (pageKey, file) => {
     if (!file || (bgUploading && bgUploading !== pageKey)) return
@@ -2647,7 +2602,6 @@ export default function Admin() {
                   <option value="all">All types</option>
                   <option value="league">League</option>
                   <option value="cup">Cup</option>
-                  <option value="champions league">Champions League</option>
                   <option value="playoff">Playoff</option>
                   <option value="friendly league singles">Friendly League</option>
                 </select>

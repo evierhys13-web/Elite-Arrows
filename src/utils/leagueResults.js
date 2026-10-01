@@ -20,7 +20,12 @@ export const isLeagueResult = (result, fixturesById = {}) => {
 
   const gameType = normalizeText(result.gameType)
 
-  // 1. Explicitly ignore non-league types in the gameType label
+  // 1. Explicitly ignore non-league types in the gameType label.
+  // NOTE: 'super league' / 'champions league' are retained here on purpose even
+  // though the competition is retired. Results written before the retirement
+  // still carry those labels in Firestore, and dropping the entry would silently
+  // fold them into league standings and retroactively change past tables. They
+  // stay excluded here permanently; approving them now relabels them to League.
   const nonLeagueTypes = ['super league', 'champions league', 'cup', 'friendly', 'playoff', 'tournament', 'friendly league', 'open league']
   if (nonLeagueTypes.some(type => gameType.includes(type))) return false
 
@@ -52,37 +57,35 @@ export const isLeagueResult = (result, fixturesById = {}) => {
   return false
 }
 
+// Champions League / Super League is retired. This still recognises results that
+// were written under the old labels so they keep their original scoring and stay
+// out of league standings until Admin relabels them.
 export const isSuperLeagueResult = (result, fixturesById = {}) => {
   const gameType = normalizeText(result.gameType)
 
-  // 1. Explicit labels
-  if (gameType.includes('super league') || gameType.includes('superleague') || gameType.includes('champions league') || gameType.includes('championsleague')) return true
+  const isChampionsLabel = (text) =>
+    text.includes('super league') ||
+    text.includes('superleague') ||
+    text.includes('champions league') ||
+    text.includes('championsleague')
 
-  // 2. Division-specific labels
+  if (isChampionsLabel(gameType)) return true
+
+  // Legacy division-named labels (e.g. an old "Pro League" fixture).
   const superDivisions = ['premier', 'pro', 'amateur', 'champions']
   if (superDivisions.some(div => gameType.includes(div)) && !gameType.includes('cup')) return true
 
-  const s1 = Number(result.score1) || 0
-  const s2 = Number(result.score2) || 0
-
-  // 3. Score-based detection (First to 6 / Best of 11 format)
-  const otherTypes = ['cup', 'friendly', 'playoff', 'tournament', 'friendly league', 'open league']
-  if (otherTypes.some(type => gameType.includes(type))) return false
-  if (result.cupId || result.matchId || result.tournamentId) return false
-
-  // Standard Champions League is First to 6
-  if ((s1 === 6 || s2 === 6) && (s1 + s2) <= 11 && (s1 + s2) >= 6) {
-    return true
-  }
-
-  // 4. Fixture-based detection
   const fixture = result.fixtureId ? fixturesById[String(result.fixtureId)] : null
   if (fixture) {
     const fixtureGameType = normalizeText(fixture.gameType)
-    if (fixtureGameType.includes('super league') || fixtureGameType.includes('superleague') || fixtureGameType.includes('champions league')) return true
+    if (isChampionsLabel(fixtureGameType)) return true
     if (superDivisions.some(div => fixtureGameType.includes(div))) return true
   }
 
+  // NOTE: score-based detection (any 6-x within 11 legs) was removed. With the
+  // competition retired there is no longer any legitimate 6-x competition
+  // result, and keeping the heuristic mislabelled ordinary league matches as
+  // Champions League, applying the old no-win-bonus scoring to them.
   return false
 }
 
