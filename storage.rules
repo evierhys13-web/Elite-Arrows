@@ -1,6 +1,6 @@
-// For storage on google firebase
 rules_version = '2';
 
+// For storage on google firebase
 service firebase.storage {
   match /b/{bucket}/o {
     match /{allPaths=**} {
