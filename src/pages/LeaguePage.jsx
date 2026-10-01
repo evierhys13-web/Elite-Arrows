@@ -135,7 +135,18 @@ export default function LeaguePage() {
   }
 
   return (
-    <div className="page animate-fade-in" style={{ maxWidth: '1000px', margin: '0 auto', padding: '0 0 60px' }}>
+    <div
+      className="page animate-fade-in"
+      style={{
+        maxWidth: '1000px',
+        margin: '0 auto',
+        padding: '0 0 60px',
+        // Allow vertical panning/swiping on touch devices.
+        touchAction: 'pan-y',
+        WebkitOverflowScrolling: 'touch',
+        overflowX: 'hidden'
+      }}
+    >
       {/* BANNER */}
       <div style={{
         position: 'relative',
@@ -254,8 +265,8 @@ export default function LeaguePage() {
             {shownSeason ? `${shownSeason} · ` : ''}Updated {shownUpdatedAt ? 'recently' : '—'}
           </span>
         </div>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehaviorX: 'contain' }}>
+          <table style={{ width: '100%', minWidth: '620px', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
             <thead>
               <tr>
                 <th style={{ textAlign: 'center', padding: '10px 8px', width: '40px' }}>#</th>

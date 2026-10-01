@@ -9,6 +9,21 @@ import { getDivisionFormat } from '../context/constants'
 import UserSearchSelect from '../components/UserSearchSelect'
 import Confetti from '../components/Confetti'
 
+const SUBMITTABLE_GAME_TYPES = ['League', 'Cup', 'Playoff', 'Friendly League Singles']
+
+// Champions League is retired from player submissions. Fixtures and deep links
+// can still carry the old label, so anything unrecognised falls back to League
+// rather than silently creating a Champions League result.
+function resolveGameType(raw) {
+  const value = String(raw || '').trim()
+  if (!value) return 'League'
+  const exact = SUBMITTABLE_GAME_TYPES.find((t) => t.toLowerCase() === value.toLowerCase())
+  if (exact) return exact
+  if (/champions|super\s*league/i.test(value)) return 'League'
+  const alias = SUBMITTABLE_GAME_TYPES.find((t) => value.toLowerCase().includes(t.toLowerCase().split(' ')[0]))
+  return alias || 'League'
+}
+
 const INITIAL_RESULT_FORM = {
   gameType: 'League',
   opponent: '',
@@ -177,9 +192,6 @@ const getDefaultSeason = () => {
 
       baseOptions = baseOptions.filter(u => !playedOpponentIds.includes(String(u.id)))
     }
-    else if (formData.gameType === 'Champions League') {
-      baseOptions = availablePlayers.filter(u => u.superLeagueDivision === 'Champions')
-    }
 
     return baseOptions
   }, [availablePlayers, formData.gameType, userEffectiveDiv, allResults, currentSeasonLabel, user.id])
@@ -297,7 +309,7 @@ const getDefaultSeason = () => {
         const opponentId = getFixtureOpponentId(selectedFixture)
         setFormData((prev) => ({
           ...prev,
-          gameType: selectedFixture.gameType || 'League',
+          gameType: resolveGameType(selectedFixture.gameType),
           opponent: opponentId || '',
           season: adminData?.currentSeason || searchParams.get('season') || prev.season,
           bestOf: selectedFixture.bestOf ? selectedFixture.bestOf.toString() : prev.bestOf,
@@ -305,11 +317,12 @@ const getDefaultSeason = () => {
         }))
       }
     } else if (opponentParam || gameTypeParam) {
-      const fmt = gameTypeParam === 'League' ? getDivisionFormat(userEffectiveDiv, adminData) : null
+      const resolved = resolveGameType(gameTypeParam)
+      const fmt = resolved === 'League' ? getDivisionFormat(userEffectiveDiv, adminData) : null
       setFormData(prev => ({
         ...prev,
         opponent: opponentParam || prev.opponent,
-        gameType: gameTypeParam || prev.gameType,
+        gameType: resolved,
         season: adminData?.currentSeason || searchParams.get('season') || prev.season,
         bestOf: fmt ? String(fmt.bestOf) : prev.bestOf,
         firstTo: fmt ? String(fmt.firstTo) : prev.firstTo
@@ -988,7 +1001,7 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
           <div className="form-group" style={{ marginBottom: '25px' }}>
             <label style={{ fontWeight: '600', marginBottom: '10px', display: 'block' }}>Match Type</label>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              {['League', 'Cup', 'Playoff', 'Friendly League Singles'].map(type => (
+              {SUBMITTABLE_GAME_TYPES.map(type => (
                 <button
                   key={type}
                   type="button"
