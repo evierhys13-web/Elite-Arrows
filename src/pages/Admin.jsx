@@ -207,7 +207,14 @@ export default function Admin() {
       forfeit: isForfeit,
       winner: 'p1',
       score1: '',
-      score2: ''
+      score2: '',
+      // Clear the previous match's stats, otherwise abandoning one entry and
+      // opening another carries the old 180s/checkout/avg values across.
+      p1_180s: '', p2_180s: '',
+      p1_checkout: '', p2_checkout: '',
+      p1_doubles: '', p2_doubles: '',
+      p1_avg: '', p2_avg: '',
+      p1_9dart: '', p2_9dart: ''
     }))
     setTimeout(() => {
       if (adminSubmitRef.current) {
@@ -2207,6 +2214,10 @@ export default function Admin() {
                   <div className="form-group"><label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Score 2</label><input type="number" className="glass" style={{ width: '100%' }} value={adminGameForm.score2} onChange={e => setAdminGameForm({...adminGameForm, score2: e.target.value})} placeholder="0" /></div>
                   <div className="form-group"><label style={{ fontSize: '0.8rem', opacity: 0.7 }}>P1 180s</label><input type="number" className="glass" style={{ width: '100%' }} value={adminGameForm.p1_180s} onChange={e => setAdminGameForm({...adminGameForm, p1_180s: e.target.value})} placeholder="0" /></div>
                   <div className="form-group"><label style={{ fontSize: '0.8rem', opacity: 0.7 }}>P2 180s</label><input type="number" className="glass" style={{ width: '100%' }} value={adminGameForm.p2_180s} onChange={e => setAdminGameForm({...adminGameForm, p2_180s: e.target.value})} placeholder="0" /></div>
+                  <div className="form-group"><label style={{ fontSize: '0.8rem', opacity: 0.7 }}>P1 Highest Checkout</label><input type="number" min="0" max="170" className="glass" style={{ width: '100%' }} value={adminGameForm.p1_checkout} onChange={e => setAdminGameForm({...adminGameForm, p1_checkout: e.target.value})} placeholder="0" /></div>
+                  <div className="form-group"><label style={{ fontSize: '0.8rem', opacity: 0.7 }}>P2 Highest Checkout</label><input type="number" min="0" max="170" className="glass" style={{ width: '100%' }} value={adminGameForm.p2_checkout} onChange={e => setAdminGameForm({...adminGameForm, p2_checkout: e.target.value})} placeholder="0" /></div>
+                  <div className="form-group"><label style={{ fontSize: '0.8rem', opacity: 0.7 }}>P1 Checkout Success %</label><input type="number" min="0" max="100" step="0.01" className="glass" style={{ width: '100%' }} value={adminGameForm.p1_doubles} onChange={e => setAdminGameForm({...adminGameForm, p1_doubles: e.target.value})} placeholder="0.00" /></div>
+                  <div className="form-group"><label style={{ fontSize: '0.8rem', opacity: 0.7 }}>P2 Checkout Success %</label><input type="number" min="0" max="100" step="0.01" className="glass" style={{ width: '100%' }} value={adminGameForm.p2_doubles} onChange={e => setAdminGameForm({...adminGameForm, p2_doubles: e.target.value})} placeholder="0.00" /></div>
                   <div className="form-group"><label style={{ fontSize: '0.8rem', opacity: 0.7 }}>P1 Avg</label><input type="number" step="0.01" className="glass" style={{ width: '100%' }} value={adminGameForm.p1_avg} onChange={e => setAdminGameForm({...adminGameForm, p1_avg: e.target.value})} placeholder="0.00" /></div>
                   <div className="form-group"><label style={{ fontSize: '0.8rem', opacity: 0.7 }}>P2 Avg</label><input type="number" step="0.01" className="glass" style={{ width: '100%' }} value={adminGameForm.p2_avg} onChange={e => setAdminGameForm({...adminGameForm, p2_avg: e.target.value})} placeholder="0.00" /></div>
                   <div className="form-group"><label style={{ fontSize: '0.8rem', opacity: 0.7 }}>P1 9-Dart Avg</label><input type="number" step="0.01" className="glass" style={{ width: '100%' }} value={adminGameForm.p1_9dart} onChange={e => setAdminGameForm({...adminGameForm, p1_9dart: e.target.value})} placeholder="0.00" /></div>
