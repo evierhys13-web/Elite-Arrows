@@ -54,8 +54,9 @@ export default function Home() {
   const activeSeason = useMemo(() => {
     return {
       name: 'Elite Arrows Season 5',
-      startDate: '2026-09-01T00:00:00',
-      endDate: '2026-10-01T00:00:00'
+      label: 'Season 6',
+      startDate: '2026-10-01T00:00:00',
+      endDate: '2026-11-01T00:00:00'
     }
   }, [])
 
@@ -212,7 +213,7 @@ export default function Home() {
       </div>
 
       {/* 2. Season Ends (Timer) */}
-      <SeasonCountdownCard season={{ startDate: activeSeason.startDate, endDate: activeSeason.endDate }} />
+      <SeasonCountdownCard season={{ label: activeSeason.label, startDate: activeSeason.startDate, endDate: activeSeason.endDate }} />
 
       {/* 2b. Upcoming Tournaments */}
       {tournaments.length > 0 && (
@@ -436,7 +437,7 @@ function SeasonCountdownCard({ season }) {
     return () => clearInterval(timer)
   }, [season.startDate, season.endDate])
 
-  const seasonTimerTitle = seasonPhase === 'active' ? 'Season 5 Ends In:' : seasonPhase === 'ended' ? 'Season 5 Ended' : 'Season 5 Starts In'
+  const seasonTimerTitle = `${season.label || 'Season'} ${seasonPhase === 'active' ? 'Ends In:' : seasonPhase === 'ended' ? 'Ended' : 'Starts In'}`
 
   return (
     <div className="card animate-fade-in-up" style={{ marginBottom: '20px', border: '2px solid var(--accent-cyan)' }}>
