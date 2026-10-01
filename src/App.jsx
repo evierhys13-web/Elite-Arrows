@@ -117,6 +117,34 @@ function PageLoader() {
   )
 }
 
+// Shown once on a cold page load so the realtime listeners have a moment to
+// hydrate fresh data before content paints (avoids flashing stale cache).
+// It never blocks longer than MAX_SPLASH_MS, so a slow/offline network can't
+// trap the user on the loading screen.
+const MIN_SPLASH_MS = 1000
+const MAX_SPLASH_MS = 3500
+
+function StartupSplash({ children }) {
+  const { loading, isAuthenticated, allUsers, results } = useAuth()
+  const [minElapsed, setMinElapsed] = useState(false)
+  const [maxElapsed, setMaxElapsed] = useState(false)
+
+  useEffect(() => {
+    const minTimer = setTimeout(() => setMinElapsed(true), MIN_SPLASH_MS)
+    const maxTimer = setTimeout(() => setMaxElapsed(true), MAX_SPLASH_MS)
+    return () => {
+      clearTimeout(minTimer)
+      clearTimeout(maxTimer)
+    }
+  }, [])
+
+  const hasData = (allUsers?.length || 0) > 0 || (results?.length || 0) > 0
+  const ready = minElapsed && !loading && (!isAuthenticated || hasData || maxElapsed)
+
+  if (!ready) return <PageLoader />
+  return children
+}
+
 function isOnboardingPending(user) {
   const isEmailAdmin = user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase())
   const isAdmin = isEmailAdmin || user?.isAdmin === true || user?.isTournamentAdmin === true || user?.isCupAdmin === true
@@ -564,7 +592,9 @@ function AppShell() {
   return (
     <>
       <BackgroundDecor division={user?.division} />
-      <AppRoutes />
+      <StartupSplash>
+        <AppRoutes />
+      </StartupSplash>
       <CookieConsentBanner />
     </>
   )

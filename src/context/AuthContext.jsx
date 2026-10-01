@@ -102,10 +102,13 @@ const ttlCacheValid = (parsed, ttlMs) =>
   Date.now() - parsed.ts < ttlMs &&
   Date.now() >= NETWORK_FORCE_GLOBAL.until;
 
-const TTL_RESULTS = 90000;
-const TTL_FIXTURES = 90000;
-const TTL_USERS = 300000;
-const TTL_CUPS = 300000;
+// Longer TTLs reduce Firestore reads dramatically. Live data still arrives
+// instantly through the realtime onSnapshot listeners, so these only govern
+// how often the explicit fetch helpers re-hit the network.
+const TTL_RESULTS = 300000;
+const TTL_FIXTURES = 300000;
+const TTL_USERS = 900000;
+const TTL_CUPS = 600000;
 
 export const DEFAULT_WHATSAPP_LINK =
   "https://chat.whatsapp.com/LsH5bhL3NJ7IrfZNgEnEBW?s=cl&p=a&mlu=4&ilr=4";
@@ -303,6 +306,7 @@ export function AuthProvider({ children }) {
   const unsubscribeRef = useRef(null);
   const seenNotificationIdsRef = useRef(new Set());
   const resultRowsRef = useRef([]);
+  const allUsersRef = useRef(allUsers);
   const publishDebounceRef = useRef(null);
   const saveResultsCacheThrottleRef = useRef(null);
   const resultStatusOverridesRef = useRef(
@@ -316,6 +320,12 @@ export function AuthProvider({ children }) {
       }
     })(),
   );
+
+  // Keep a ref mirror of allUsers so fetch helpers can serve from memory
+  // (populated by the realtime users listener) instead of re-reading Firestore.
+  useEffect(() => {
+    allUsersRef.current = allUsers;
+  }, [allUsers]);
 
   const requestNotificationPermission = useCallback(async () => {
     if (!("Notification" in window)) {
@@ -2024,6 +2034,19 @@ const fetchUsers = async () => {
   const fetchUsersByDivision = useCallback(async (division) => {
     try {
       const isSuperDivision = ['Champions'].includes(division);
+
+      // The realtime users listener already keeps every user in memory, so
+      // serve the division from there instead of issuing another Firestore
+      // read. Only fall through to the network when we have nothing yet.
+      const inMemory = allUsersRef.current || [];
+      if (inMemory.length > 0) {
+        return division === "Overall"
+          ? inMemory
+          : isSuperDivision
+            ? inMemory.filter((u) => u.superLeagueDivision === division)
+            : inMemory.filter((u) => u.division === division);
+      }
+
       const q =
         division === "Overall"
           ? query(collection(db, "users"), limit(500))
@@ -2246,14 +2269,14 @@ const fetchUsers = async () => {
     }
   }, [publishResults, user, triggerDataRefresh, showToast, adminData?.currentSeason]);
 
-  // On app load, pull the current season's results straight from the server in
-  // the background (bypassing the TTL cache) so standings refresh instantly
-  // without waiting for the next cache window. Renders stay instant because the
-  // cached data is shown first and this fills in the latest in the background.
+  // On app load, refresh the current season's results in the background.
+  // This now respects the TTL cache (and the realtime results listener keeps
+  // things live), so it no longer forces a full season re-read on every load —
+  // which was the single biggest driver of Firestore read usage.
   useEffect(() => {
     if (!user?.id) return;
     const season = adminData?.currentSeason || "Elite Arrows Season 5";
-    fetchResultsBySeason(season, { force: true }).catch(() => {});
+    fetchResultsBySeason(season).catch(() => {});
   }, [user?.id, adminData?.currentSeason, fetchResultsBySeason]);
 
   const getFixtures = useCallback(() => {
