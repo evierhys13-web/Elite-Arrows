@@ -1,46 +1,61 @@
-import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { db, collection, doc, getDocs, onSnapshot, setDoc, deleteDoc, serverTimestamp } from '../firebase'
 import { precacheAssets } from '../utils/swPrecache'
+import { loadCachedBackgrounds, saveCachedBackgrounds } from '../utils/bgCache'
 
 const BackgroundContext = createContext(null)
 
-const BACKGROUNDS_CACHE_KEY = 'eliteArrowsPageBackgrounds'
-
-function loadCachedBackgrounds() {
-  try {
-    const saved = localStorage.getItem(BACKGROUNDS_CACHE_KEY)
-    return saved && saved !== 'undefined' ? JSON.parse(saved) : {}
-  } catch (e) {
-    return {}
-  }
+// A pageBackgrounds snapshot is expensive (images are multi-hundred-KB data
+// URLs), so the single onSnapshot below is the only thing that should ever
+// read it. Do not add ad-hoc getDocs calls on route changes.
+function mapBackgrounds(snap) {
+  const map = {}
+  snap.docs.forEach((d) => {
+    const data = d.data() || {}
+    map[d.id] = {
+      imageUrl: data.imageUrl || '',
+      opacity: typeof data.opacity === 'number' ? data.opacity : 0.5,
+      blur: typeof data.blur === 'number' ? data.blur : 0,
+      fit: data.fit === 'contain' ? 'contain' : 'cover'
+    }
+  })
+  return map
 }
 
 export function BackgroundProvider({ children }) {
-  const [backgrounds, setBackgrounds] = useState(loadCachedBackgrounds)
+  const [backgrounds, setBackgrounds] = useState({})
   const [loading, setLoading] = useState(true)
+  const hydratedRef = useRef(false)
+
+  // Hydrate from IndexedDB first so returning visitors see their background on
+  // the very first paint, before any network round-trip.
+  useEffect(() => {
+    let cancelled = false
+    loadCachedBackgrounds().then((cached) => {
+      if (cancelled) return
+      if (cached && Object.keys(cached).length > 0) {
+        setBackgrounds(cached)
+      }
+      hydratedRef.current = true
+    })
+    return () => { cancelled = true }
+  }, [])
 
   useEffect(() => {
-    try {
-      localStorage.setItem(BACKGROUNDS_CACHE_KEY, JSON.stringify(backgrounds))
-    } catch (e) {}
-    precacheAssets(Object.values(backgrounds).map((b) => b.imageUrl))
+    if (!hydratedRef.current) return
+    saveCachedBackgrounds(backgrounds)
+    precacheAssets(
+      Object.values(backgrounds)
+        .map((b) => b.imageUrl)
+        .filter((u) => typeof u === 'string' && u.startsWith('http'))
+    )
   }, [backgrounds])
 
   useEffect(() => {
     let unsub
     try {
       unsub = onSnapshot(collection(db, 'pageBackgrounds'), (snap) => {
-        const map = {}
-        snap.docs.forEach((d) => {
-          const data = d.data() || {}
-          map[d.id] = {
-            imageUrl: data.imageUrl || '',
-            opacity: typeof data.opacity === 'number' ? data.opacity : 0.5,
-            blur: typeof data.blur === 'number' ? data.blur : 0,
-            fit: data.fit === 'contain' ? 'contain' : 'cover'
-          }
-        })
-        setBackgrounds(map)
+        setBackgrounds(mapBackgrounds(snap))
         setLoading(false)
       }, (err) => {
         console.warn('pageBackgrounds listener error:', err)
@@ -75,20 +90,13 @@ export function BackgroundProvider({ children }) {
 
   const [activeDivision, setActiveDivision] = useState(null)
 
+  // Explicit opt-in re-read, for the Admin "save background" flow. Never call
+  // this on navigation — it duplicates the live listener and costs a full
+  // read of every stored image.
   const refresh = useCallback(async () => {
     try {
       const snap = await getDocs(collection(db, 'pageBackgrounds'))
-      const map = {}
-      snap.docs.forEach((d) => {
-        const data = d.data() || {}
-        map[d.id] = {
-          imageUrl: data.imageUrl || '',
-          opacity: typeof data.opacity === 'number' ? data.opacity : 0.5,
-          blur: typeof data.blur === 'number' ? data.blur : 0,
-          fit: data.fit === 'contain' ? 'contain' : 'cover'
-        }
-      })
-      setBackgrounds(map)
+      setBackgrounds(mapBackgrounds(snap))
     } catch (e) {
       console.warn('pageBackgrounds refresh error:', e)
     }

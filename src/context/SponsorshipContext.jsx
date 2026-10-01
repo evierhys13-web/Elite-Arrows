@@ -5,8 +5,11 @@ import { precacheAssets } from '../utils/swPrecache'
 const SponsorshipContext = createContext(null)
 
 const CONFIGS_CACHE_KEY = 'eliteArrowsSponsoredLeagues'
-const ASSETS_CACHE_KEY = 'eliteArrowsLeaguePageAssets'
 
+// Banner images can be multi-hundred-KB data URLs, which overflows the ~5MB
+// localStorage ceiling and loses the cache silently. Keep only the small
+// config map in localStorage; the live listener is the source of truth for
+// assets, and they render straight from that state.
 function loadCached(key) {
   try {
     const saved = localStorage.getItem(key)
@@ -18,21 +21,19 @@ function loadCached(key) {
 
 export function SponsorshipProvider({ children }) {
   const [configs, setConfigs] = useState(() => loadCached(CONFIGS_CACHE_KEY))
-  const [assets, setAssets] = useState(() => loadCached(ASSETS_CACHE_KEY))
+  const [assets, setAssets] = useState({})
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     try {
       localStorage.setItem(CONFIGS_CACHE_KEY, JSON.stringify(configs))
     } catch (e) {}
-  }, [configs])
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(ASSETS_CACHE_KEY, JSON.stringify(assets))
-    } catch (e) {}
-    precacheAssets(Object.values(assets).map((a) => a.bannerImage).filter(Boolean))
-  }, [assets])
+    precacheAssets(
+      Object.values(assets)
+        .map((a) => a.bannerImage)
+        .filter((u) => typeof u === 'string' && u.startsWith('http'))
+    )
+  }, [configs, assets])
 
   useEffect(() => {
     const unsubs = []

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
 import { usePageBackgrounds } from '../context/BackgroundContext'
 import { useSponsorship } from '../context/SponsorshipContext'
@@ -7,15 +7,14 @@ import { LEAGUE_DIVISION_NAMES } from '../utils/leagueStandings'
 
 export default function BackgroundDecor({ division: userDivision }) {
   const location = useLocation()
-  const { backgrounds, activeDivision: contextDivision, loading: backgroundsLoading, refresh: refreshBackgrounds } = usePageBackgrounds()
-  const { configs, assets, refresh: refreshSponsorship } = useSponsorship()
+  const { backgrounds, activeDivision: contextDivision, loading: backgroundsLoading } = usePageBackgrounds()
+  const { configs, assets } = useSponsorship()
 
   const division = contextDivision || userDivision
 
-  useEffect(() => {
-    refreshBackgrounds()
-    refreshSponsorship()
-  }, [location.pathname, refreshBackgrounds, refreshSponsorship])
+  // No refresh on navigation. BackgroundProvider and SponsorshipProvider each own
+  // a live onSnapshot that stays current for the app's lifetime; re-fetching here
+  // re-downloaded every stored background image on every route change.
 
 
   const activeConfig = useMemo(() => {
