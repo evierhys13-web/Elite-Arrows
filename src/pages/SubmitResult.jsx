@@ -39,6 +39,8 @@ const INITIAL_RESULT_FORM = {
   yourDuoId: '',
   yourAvg: '',
   opponentAvg: '',
+  your9DartAvg: '',
+  opponent9DartAvg: '',
   highlightVideoFile: null,
   highlightVideoUrl: ''
 }
@@ -187,6 +189,18 @@ const getDefaultSeason = () => {
     return userEffectiveDiv
   }, [userEffectiveDiv, user])
 
+  const leagueFormat = useMemo(() => getDivisionFormat(userEffectiveDiv, adminData), [userEffectiveDiv, adminData])
+
+  // League games are locked to the format of the player's division, so the
+  // best-of / first-to values can never drift from the division rules.
+  useEffect(() => {
+    if (formData.gameType !== 'League') return
+    const fmt = getDivisionFormat(userEffectiveDiv, adminData)
+    if (String(formData.bestOf) !== String(fmt.bestOf) || String(formData.firstTo) !== String(fmt.firstTo)) {
+      setFormData(prev => ({ ...prev, bestOf: String(fmt.bestOf), firstTo: String(fmt.firstTo) }))
+    }
+  }, [formData.gameType, formData.bestOf, formData.firstTo, userEffectiveDiv, adminData])
+
   useEffect(() => {
     const fetchDuos = async () => {
       try {
@@ -275,7 +289,9 @@ const getDefaultSeason = () => {
           bestOf: selectedFixture.bestOf ? selectedFixture.bestOf.toString() : prev.bestOf,
           firstTo: selectedFixture.firstTo ? selectedFixture.firstTo.toString() : prev.firstTo,
           yourAvg: '',
-          opponentAvg: ''
+          opponentAvg: '',
+          your9DartAvg: '',
+          opponent9DartAvg: ''
         }))
       } else {
         const opponentId = getFixtureOpponentId(selectedFixture)
@@ -723,13 +739,15 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
         '180s': parseInt(needScoreSwap ? formData.opponent180s : formData.your180s) || 0,
         highestCheckout: parseInt(needScoreSwap ? formData.opponentHighestCheckout : formData.yourHighestCheckout) || 0,
         doubleSuccess: parseFloat(needScoreSwap ? formData.opponentDoubleSuccess : formData.yourDoubleSuccess) || 0,
-        avg: parseFloat(needScoreSwap ? formData.opponentAvg : formData.yourAvg) || 0
+        avg: parseFloat(needScoreSwap ? formData.opponentAvg : formData.yourAvg) || 0,
+        nineDartAvg: parseFloat(needScoreSwap ? formData.opponent9DartAvg : formData.your9DartAvg) || 0
       }
       const player2Stats = {
         '180s': parseInt(needScoreSwap ? formData.your180s : formData.opponent180s) || 0,
         highestCheckout: parseInt(needScoreSwap ? formData.yourHighestCheckout : formData.opponentHighestCheckout) || 0,
         doubleSuccess: parseFloat(needScoreSwap ? formData.yourDoubleSuccess : formData.opponentDoubleSuccess) || 0,
-        avg: parseFloat(needScoreSwap ? formData.yourAvg : formData.opponentAvg) || 0
+        avg: parseFloat(needScoreSwap ? formData.yourAvg : formData.opponentAvg) || 0,
+        nineDartAvg: parseFloat(needScoreSwap ? formData.your9DartAvg : formData.opponent9DartAvg) || 0
       }
 
       // Helper for creating the document structure
@@ -1178,30 +1196,42 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
           }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label style={{ fontSize: '0.85rem' }}>Best of (legs)</label>
-              <select name="bestOf" value={formData.bestOf} onChange={handleChange} style={{ background: 'var(--bg-primary)' }}>
-                <option value="1">Best of 1</option>
-                <option value="3">Best of 3</option>
-                <option value="5">Best of 5</option>
-                <option value="7">Best of 7</option>
-                <option value="8">Best of 8</option>
-                <option value="9">Best of 9</option>
-                <option value="10">Best of 10</option>
-                <option value="11">Best of 11</option>
-                <option value="12">Best of 12</option>
-                <option value="13">Best of 13</option>
-                <option value="15">Best of 15</option>
-              </select>
+              {formData.gameType === 'League' ? (
+                <div style={{ padding: '10px 12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border)', fontWeight: 700 }}>
+                  Best of {formData.bestOf} {leagueFormat?.noDraw ? '(no draws)' : ''}
+                </div>
+              ) : (
+                <select name="bestOf" value={formData.bestOf} onChange={handleChange} style={{ background: 'var(--bg-primary)' }}>
+                  <option value="1">Best of 1</option>
+                  <option value="3">Best of 3</option>
+                  <option value="5">Best of 5</option>
+                  <option value="7">Best of 7</option>
+                  <option value="8">Best of 8</option>
+                  <option value="9">Best of 9</option>
+                  <option value="10">Best of 10</option>
+                  <option value="11">Best of 11</option>
+                  <option value="12">Best of 12</option>
+                  <option value="13">Best of 13</option>
+                  <option value="15">Best of 15</option>
+                </select>
+              )}
             </div>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label style={{ fontSize: '0.85rem' }}>First to (legs)</label>
-              <input
-                type="number"
-                name="firstTo"
-                value={formData.firstTo}
-                onChange={handleChange}
-                min="1"
-                style={{ background: 'var(--bg-primary)' }}
-              />
+              {formData.gameType === 'League' ? (
+                <div style={{ padding: '10px 12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border)', fontWeight: 700 }}>
+                  First to {formData.firstTo} legs
+                </div>
+              ) : (
+                <input
+                  type="number"
+                  name="firstTo"
+                  value={formData.firstTo}
+                  onChange={handleChange}
+                  min="1"
+                  style={{ background: 'var(--bg-primary)' }}
+                />
+              )}
             </div>
           </div>
 
@@ -1236,6 +1266,18 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
                     min="0"
                     placeholder="0.00"
                     required={formData.gameType === 'Cup'}
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontSize: '0.8rem' }}>9-Dart Average</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="your9DartAvg"
+                    value={formData.your9DartAvg}
+                    onChange={handleChange}
+                    min="0"
+                    placeholder="0.00"
                   />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
@@ -1295,6 +1337,18 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
                     min="0"
                     placeholder="0.00"
                     required={formData.gameType === 'Cup'}
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontSize: '0.8rem' }}>9-Dart Average</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="opponent9DartAvg"
+                    value={formData.opponent9DartAvg}
+                    onChange={handleChange}
+                    min="0"
+                    placeholder="0.00"
                   />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>

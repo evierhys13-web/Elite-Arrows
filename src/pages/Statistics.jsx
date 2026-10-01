@@ -9,7 +9,7 @@ import {
 } from 'recharts'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
 import { isLeagueResult } from '../utils/leagueResults'
-import { getLeaguePoints } from '../utils/leagueScoring'
+import { getLeaguePoints, getForfeitWinPoints } from '../utils/leagueScoring'
 import Breadcrumbs from '../components/Breadcrumbs'
 import CountUp from '../components/CountUp'
 
@@ -172,7 +172,7 @@ export default function Statistics() {
       (String(r.player1Id) === String(id) || String(r.player2Id) === String(id)) &&
       isLeagueResult(r, fixturesById)
     )
-    const stats = { played: 0, wins: 0, losses: 0, draws: 0, points: 0, legsWon: 0, legsLost: 0, total180s: 0, highestCheckout: 0 }
+    const stats = { played: 0, wins: 0, losses: 0, draws: 0, points: 0, legsWon: 0, legsLost: 0, total180s: 0, highestCheckout: 0, nineDartTotal: 0, nineDartCount: 0 }
     const monthlyData = {}
     const checkoutTrend = []
     const legsPerMatchValues = []
@@ -197,9 +197,11 @@ export default function Statistics() {
       if (myScore > theirScore) stats.wins++
       else if (myScore < theirScore) stats.losses++
       else stats.draws++
-      stats.points += isForfeit ? (myScore > theirScore ? 3 : 0) : getLeaguePoints(myScore, theirScore)
+      stats.points += isForfeit ? (myScore > theirScore ? getForfeitWinPoints(r.division, adminData) : 0) : getLeaguePoints(myScore, theirScore)
       stats.total180s += Number(myStats?.['180s'] || 0)
       if (Number(myStats?.highestCheckout || 0) > stats.highestCheckout) stats.highestCheckout = Number(myStats.highestCheckout)
+      const nineDart = Number(myStats?.nineDartAvg || 0)
+      if (nineDart > 0) { stats.nineDartTotal += nineDart; stats.nineDartCount += 1 }
 
       legsPerMatchValues.push(effMy)
       if (myStats?.doubleSuccess !== undefined) checkoutTrend.push({ date: matchDate, doubleSuccess: parseFloat(myStats.doubleSuccess) })
@@ -228,13 +230,14 @@ export default function Statistics() {
 
     return {
       ...stats,
+      nineDartAvg: stats.nineDartCount > 0 ? Number((stats.nineDartTotal / stats.nineDartCount).toFixed(1)) : 0,
       winRate: stats.played > 0 ? ((stats.wins / stats.played) * 100).toFixed(1) : 0,
       monthlyData: Object.values(monthlyData).sort((a, b) => a.month.localeCompare(b.month)),
       checkoutTrend,
       radarData,
       last5Matches: formGuide.slice(-5)
     }
-  }, [approvedResults, id, fixtures])
+  }, [approvedResults, id, fixtures, adminData])
 
   const leagueStats = useMemo(() => {
     const divisionData = {}
@@ -507,6 +510,7 @@ function PlayerView({ user, personalStats, allTime, seasonal, seasonName, onBack
               <StatTile icon="📊" value={<CountUp end={Number(seasonal?.points) || personalStats.points} />} label="Points" color="#38bdf8" />
               <StatTile icon="⚔️" value={`${Number(seasonal?.wins) || personalStats.wins}-${Number(seasonal?.losses) || personalStats.losses}${Number(seasonal?.draws) || personalStats.draws ? `-${Number(seasonal?.draws) || personalStats.draws}` : ''}`} label="Record (W-L-D)" color="#a78bfa" />
               <StatTile icon="🎯" value={seasonAvg > 0 ? seasonAvg.toFixed(1) : '—'} label="3-Dart Avg" color={avgColor(seasonAvg)} />
+              <StatTile icon="🎯" value={personalStats.nineDartAvg > 0 ? personalStats.nineDartAvg.toFixed(1) : '—'} label="9-Dart Avg" color={avgColor(personalStats.nineDartAvg)} />
               <StatTile icon="🐟" value={seasonDoubles !== null ? `${seasonDoubles.toFixed(0)}%` : '—'} label="Doubles %" color={seasonDoubles !== null && seasonDoubles >= 40 ? '#10b981' : '#f97316'} />
               <StatTile icon="💥" value={Number(seasonal?.highestCheckout) > 0 ? seasonal.highestCheckout : '—'} label="Best Checkout" color="#ef4444" />
               <StatTile icon="💯" value={<CountUp end={Number(seasonal?.['180s']) || 0} />} label="180s" color="#fbbf24" />

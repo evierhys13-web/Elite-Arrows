@@ -1,3 +1,13 @@
+import { getDivisionFormat } from '../context/constants'
+
+// A forfeit win awards the maximum points available from a draw in the player's
+// division (Elite 7, Emerald 6, Diamond 5, Platinum 5) with no legs awarded.
+// That maximum is the "first to" leg count (draw legs + 1 draw bonus).
+export const getForfeitWinPoints = (division, adminData) => {
+  const fmt = getDivisionFormat(division, adminData)
+  return fmt?.firstTo || 5
+}
+
 export const getOutcomePoints = (legsWon, legsLost, options = {}) => {
   const won = Number(legsWon) || 0
   const lost = Number(legsLost) || 0

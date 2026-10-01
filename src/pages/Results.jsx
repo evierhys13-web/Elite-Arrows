@@ -150,7 +150,7 @@ export default function Results() {
 
         {result.forfeit && (
           <div style={{ textAlign: 'center', marginTop: '10px', fontSize: '0.8rem', color: '#fbbf24', fontWeight: 900 }}>
-            🏳️ FORFEIT WIN — 3 Points, No Legs Played
+            🏳️ FORFEIT WIN — Max Draw Points (Elite 7, Emerald 6, Diamond 5, Platinum 5), No Legs Played
           </div>
         )}
 

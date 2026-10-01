@@ -1,4 +1,4 @@
-import { getLeaguePoints } from './leagueScoring'
+import { getLeaguePoints, getForfeitWinPoints } from './leagueScoring'
 import { getResultEffectiveTime, getResultPlayerId, isLeagueResult, isSuperLeagueResult, isPlayoffResult } from './leagueResults'
 import { getResultIdentityKey } from './resultIdentity'
 
@@ -164,7 +164,7 @@ export const createEmptyPlayerStats = (player = {}) => ({
   history: []
 })
 
-const addResultToPlayer = (stats, result, playerNumber, opponentScore, score, countsForPoints, scoringOptions = {}) => {
+const addResultToPlayer = (stats, result, playerNumber, opponentScore, score, countsForPoints, scoringOptions = {}, adminData = null) => {
   const submittedStats = result[`player${playerNumber}Stats`] || {}
   const isForfeit = Boolean(result.forfeit)
   const effectiveScore = isForfeit ? 0 : score
@@ -173,7 +173,13 @@ const addResultToPlayer = (stats, result, playerNumber, opponentScore, score, co
   stats.legsWon += effectiveScore
   stats.legsLost += effectiveOpponentScore
   stats.legDiff = stats.legsWon - stats.legsLost
-  stats.points += countsForPoints ? getLeaguePoints(isForfeit ? score : effectiveScore, isForfeit ? opponentScore : effectiveOpponentScore, { ...scoringOptions, isForfeit }) : 0
+  if (countsForPoints) {
+    if (isForfeit) {
+      stats.points += score > opponentScore ? getForfeitWinPoints(stats.division, adminData) : 0
+    } else {
+      stats.points += getLeaguePoints(effectiveScore, effectiveOpponentScore, scoringOptions)
+    }
+  }
 
   if (score > opponentScore) {
     stats.wins += 1
@@ -279,10 +285,10 @@ export const derivePlayerStatsFromResults = (users = [], results = [], options =
     const scoringOptions = { noDrawBonus: isSuper || isPlayoff, noWinBonus: isSuper, isChampionsLeague: isSuper }
 
     if (player1Id && statsByPlayerId[player1Id]) {
-      addResultToPlayer(statsByPlayerId[player1Id], result, 1, score2, score1, countsForPoints, scoringOptions)
+      addResultToPlayer(statsByPlayerId[player1Id], result, 1, score2, score1, countsForPoints, scoringOptions, adminData)
     }
     if (player2Id && statsByPlayerId[player2Id]) {
-      addResultToPlayer(statsByPlayerId[player2Id], result, 2, score1, score2, countsForPoints, scoringOptions)
+      addResultToPlayer(statsByPlayerId[player2Id], result, 2, score1, score2, countsForPoints, scoringOptions, adminData)
     }
   })
 

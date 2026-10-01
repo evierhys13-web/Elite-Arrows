@@ -2176,7 +2176,7 @@ export default function Admin() {
                 <div style={{ marginBottom: '16px', padding: '14px', borderRadius: '12px', border: adminGameForm.forfeit ? '1px solid #fbbf24' : '1px solid var(--border)', background: adminGameForm.forfeit ? 'rgba(251,191,36,0.08)' : 'transparent' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontWeight: 700 }}>
                     <input type="checkbox" checked={adminGameForm.forfeit} onChange={e => setAdminGameForm({...adminGameForm, forfeit: e.target.checked, score1: '', score2: ''})} />
-                    🏳️ Forfeit Match <span style={{ fontSize: '0.75rem', opacity: 0.7, fontWeight: 400 }}>(win is worth 3 points only, no legs)</span>
+                    🏳️ Forfeit Match <span style={{ fontSize: '0.75rem', opacity: 0.7, fontWeight: 400 }}>(winner gets the maximum draw points for their division, no legs)</span>
                   </label>
                   {adminGameForm.forfeit && (
                     <div style={{ marginTop: '12px' }}>
