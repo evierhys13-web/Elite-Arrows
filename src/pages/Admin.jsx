@@ -6,6 +6,7 @@ import { db, doc, setDoc, getDoc, getDocs, collection, deleteDoc, updateDoc, wri
 import { storage, ref, uploadBytesResumable, getDownloadURL } from '../firebaseStorage'
 import { ADMIN_EMAILS } from '../config'
 import { formatFromBestOf, getDivisionFormatLabel, DIVISION_FORMATS } from '../context/constants'
+import { getForfeitWinPoints } from '../utils/leagueScoring'
 import { SUPPORTED_PAGES, PAGE_BACKGROUND_GROUPS } from '../config/pageBackgrounds'
 import { usePageBackgrounds } from '../context/BackgroundContext'
 import { useSponsorship } from '../context/SponsorshipContext'
@@ -92,6 +93,7 @@ export default function Admin() {
     p1_checkout: '', p2_checkout: '',
     p1_doubles: '', p2_doubles: '',
     p1_avg: '', p2_avg: '',
+    p1_9dart: '', p2_9dart: '',
     proofImage: '',
     proofVideo: ''
   })
@@ -919,13 +921,15 @@ export default function Admin() {
               '180s': parseInt(f.p1_180s) || 0,
               highestCheckout: parseInt(f.p1_checkout) || 0,
               doubleSuccess: parseFloat(f.p1_doubles) || 0,
-              avg: parseFloat(f.p1_avg) || 0
+              avg: parseFloat(f.p1_avg) || 0,
+              nineDartAvg: parseFloat(f.p1_9dart) || 0
             },
             player2Stats: {
               '180s': parseInt(f.p2_180s) || 0,
               highestCheckout: parseInt(f.p2_checkout) || 0,
               doubleSuccess: parseFloat(f.p2_doubles) || 0,
-              avg: parseFloat(f.p2_avg) || 0
+              avg: parseFloat(f.p2_avg) || 0,
+              nineDartAvg: parseFloat(f.p2_9dart) || 0
             }
           })
       }
@@ -967,6 +971,7 @@ export default function Admin() {
         p1_checkout: '', p2_checkout: '',
         p1_doubles: '', p2_doubles: '',
         p1_avg: '', p2_avg: '',
+        p1_9dart: '', p2_9dart: '',
         proofImage: '',
         proofVideo: ''
       })
@@ -2218,6 +2223,8 @@ export default function Admin() {
                   <div className="form-group"><label style={{ fontSize: '0.8rem', opacity: 0.7 }}>P2 180s</label><input type="number" className="glass" style={{ width: '100%' }} value={adminGameForm.p2_180s} onChange={e => setAdminGameForm({...adminGameForm, p2_180s: e.target.value})} placeholder="0" /></div>
                   <div className="form-group"><label style={{ fontSize: '0.8rem', opacity: 0.7 }}>P1 Avg</label><input type="number" step="0.01" className="glass" style={{ width: '100%' }} value={adminGameForm.p1_avg} onChange={e => setAdminGameForm({...adminGameForm, p1_avg: e.target.value})} placeholder="0.00" /></div>
                   <div className="form-group"><label style={{ fontSize: '0.8rem', opacity: 0.7 }}>P2 Avg</label><input type="number" step="0.01" className="glass" style={{ width: '100%' }} value={adminGameForm.p2_avg} onChange={e => setAdminGameForm({...adminGameForm, p2_avg: e.target.value})} placeholder="0.00" /></div>
+                  <div className="form-group"><label style={{ fontSize: '0.8rem', opacity: 0.7 }}>P1 9-Dart Avg</label><input type="number" step="0.01" className="glass" style={{ width: '100%' }} value={adminGameForm.p1_9dart} onChange={e => setAdminGameForm({...adminGameForm, p1_9dart: e.target.value})} placeholder="0.00" /></div>
+                  <div className="form-group"><label style={{ fontSize: '0.8rem', opacity: 0.7 }}>P2 9-Dart Avg</label><input type="number" step="0.01" className="glass" style={{ width: '100%' }} value={adminGameForm.p2_9dart} onChange={e => setAdminGameForm({...adminGameForm, p2_9dart: e.target.value})} placeholder="0.00" /></div>
                   <div className="form-group">
                     <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Season</label>
                     <select className="glass" style={{ width: '100%' }} value={adminGameForm.season} onChange={e => setAdminGameForm({...adminGameForm, season: e.target.value})}>
@@ -2275,11 +2282,16 @@ export default function Admin() {
                     </button>
                   )}
                 </div>
-                {adminGameForm.forfeit && (
-                  <div style={{ fontSize: '0.85rem', color: '#fbbf24', marginBottom: '16px', padding: '12px', borderRadius: '10px', background: 'rgba(251,191,36,0.06)' }}>
-                    ⚡ This will be recorded as an instant win worth <strong>3 points</strong> (winner) and <strong>0 points</strong> (loser). No legs or averages are added for either player.
-                  </div>
-                )}
+                {adminGameForm.forfeit && (() => {
+                  const winnerId = adminGameForm.winner === 'p1' ? adminGameForm.player1 : adminGameForm.player2
+                  const winner = allPlayers.find(u => String(u.id) === String(winnerId))
+                  const pts = getForfeitWinPoints(winner?.division, adminData)
+                  return (
+                    <div style={{ fontSize: '0.85rem', color: '#fbbf24', marginBottom: '16px', padding: '12px', borderRadius: '10px', background: 'rgba(251,191,36,0.06)' }}>
+                      ⚡ This will be recorded as an instant win worth <strong>{pts} points</strong> for {winner?.username || 'the winner'} ({winner?.division || 'Unassigned'}) and <strong>0 points</strong> for the loser. No legs or averages are added for either player.
+                    </div>
+                  )
+                })()}
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button className="btn btn-primary" style={{ flex: 2 }} onClick={handleAdminSubmitGame} disabled={isUploadingGameVideo}>{isUploadingGameVideo ? `Uploading video ${gameVideoProgress}%...` : 'Submit Result'}</button>
                   <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowSubmitGame(false)}>Cancel</button>
