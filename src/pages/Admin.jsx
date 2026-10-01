@@ -65,6 +65,7 @@ export default function Admin() {
   const [refreshKey, setRefreshKey] = useState(0)
   const [isApproving, setIsApproving] = useState(false)
   const [resultFilter, setResultFilter] = useState('pending')
+  const [showArchive, setShowArchive] = useState(false)
   const [paymentSubTab, setPaymentSubTab] = useState('pending')
   const [selectedResults, setSelectedResults] = useState([])
   const [resultSearch, setResultSearch] = useState('')
@@ -370,8 +371,24 @@ export default function Admin() {
     runSweep()
   }, [allPlayers])
 
+  // Only the live season's games show in the main results list; anything from a
+  // previous/archived season is kept behind the Archive toggle.
+  const activeSeasonName = adminData?.currentSeason || 'Elite Arrows Season 5'
+  const archivedResultCount = useMemo(
+    () => allResults.filter(r => {
+      const seasonKey = String(r.season || '').trim()
+      return seasonKey !== '' && seasonKey !== activeSeasonName
+    }).length,
+    [allResults, activeSeasonName]
+  )
+
   const filteredResultsList = useMemo(() => {
-    let list = allResults.filter(r => String(r.status).toLowerCase() === resultFilter)
+    let list = allResults.filter(r => {
+      const seasonKey = String(r.season || '').trim()
+      const isArchivedSeason = seasonKey !== '' && seasonKey !== activeSeasonName
+      return showArchive ? isArchivedSeason : !isArchivedSeason
+    })
+    list = list.filter(r => String(r.status).toLowerCase() === resultFilter)
     if (resultSearch) { const s = resultSearch.toLowerCase(); list = list.filter(r => String(r.player1).toLowerCase().includes(s) || String(r.player2).toLowerCase().includes(s)) }
     if (resultTypeFilter !== 'all') {
       if (resultTypeFilter === 'cup') {
@@ -383,7 +400,7 @@ export default function Admin() {
       }
     }
     return list.sort((a, b) => new Date(b.date || b.submittedAt) - new Date(a.date || a.submittedAt))
-  }, [allResults, resultFilter, resultSearch, resultTypeFilter])
+  }, [allResults, resultFilter, resultSearch, resultTypeFilter, showArchive, activeSeasonName])
 
   const stats = useMemo(() => {
     const lastWeek = new Date(); lastWeek.setDate(lastWeek.getDate() - 7)
@@ -2132,12 +2149,26 @@ export default function Admin() {
         {activeTab === 'results' && (
           <div className="card glass">
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-              <div><h3>Match History & Review</h3></div>
+              <div>
+                <h3>{showArchive ? 'Archived Season Results' : 'Match History & Review'}</h3>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  {showArchive
+                    ? 'Showing results from previous seasons — read only for review.'
+                    : `Showing ${activeSeasonName} only · ${filteredResultsList.length} ${resultFilter} result${filteredResultsList.length === 1 ? '' : 's'}`}
+                </div>
+              </div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <button className="btn btn-sm btn-secondary glass" onClick={async () => { const ok = await forceFetchResults(); showToast(ok ? 'Sync Complete' : 'Sync Failed', ok ? 'success' : 'warning'); }}>🔄 Sync Standings</button>
-                {resultFilter === 'pending' && selectedResults.length > 0 && <button className="btn btn-sm btn-primary" onClick={handleBulkApprove} disabled={isApproving}>Approve Selected ({selectedResults.length})</button>}
+                {!showArchive && resultFilter === 'pending' && selectedResults.length > 0 && <button className="btn btn-sm btn-primary" onClick={handleBulkApprove} disabled={isApproving}>Approve Selected ({selectedResults.length})</button>}
                 <button className={`btn btn-sm ${showSubmitGame ? 'btn-success' : 'btn-secondary'}`} onClick={() => setShowSubmitGame(!showSubmitGame)}>{showSubmitGame ? 'Close' : '+ Submit Game'}</button>
-                {['pending', 'approved', 'rejected'].map(f => <button key={f} className={`btn btn-sm ${resultFilter === f ? 'btn-primary' : 'btn-secondary'}`} onClick={() => { setResultFilter(f); setSelectedResults([]); }}>{f.toUpperCase()}</button>)}
+                {['pending', 'approved', 'rejected'].map(f => <button key={f} className={`btn btn-sm ${resultFilter === f && !showArchive ? 'btn-primary' : 'btn-secondary'}`} onClick={() => { setResultFilter(f); setSelectedResults([]); setShowArchive(false); }}>{f.toUpperCase()}</button>)}
+                <button
+                  className={`btn btn-sm ${showArchive ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => { setShowArchive(v => !v); setSelectedResults([]) }}
+                  title={showArchive ? 'Back to current season' : 'View results from archived seasons'}
+                >
+                  🗄️ ARCHIVE ({archivedResultCount}){showArchive ? ' •' : ''}
+                </button>
               </div>
             </div>
             <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
@@ -2425,7 +2456,7 @@ export default function Admin() {
                   {resultFilter === 'pending' && <input type="checkbox" checked={selectedResults.includes(r.id)} onChange={() => toggleSelectResult(r.id)} style={{ width: '20px', height: '20px' }} />}
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ fontWeight: 700 }}>{r.player1} <span style={{ color: 'var(--accent-cyan)' }}>vs</span> {r.player2}</span><span style={{ fontWeight: 900, color: 'var(--accent-cyan)' }}>{r.score1}-{r.score2}</span></div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{r.gameType} | {r.date} {r.excludeFromLeague && <span style={{ color: 'var(--error)' }}>🚫 EXCLUDED</span>}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{r.gameType} | {r.date} {r.season && <span style={{ color: showArchive ? 'var(--accent-cyan)' : 'var(--text-muted)' }}> | {r.season}</span>} {r.excludeFromLeague && <span style={{ color: 'var(--error)' }}>🚫 EXCLUDED</span>}</div>
 
                     {/* Stats Display for Verification */}
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>

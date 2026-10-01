@@ -110,6 +110,10 @@ const TTL_FIXTURES = 300000;
 const TTL_USERS = 900000;
 const TTL_CUPS = 600000;
 
+// Only surface a sync failure toast once per session so a failing query can't
+// spam the user every time a page mounts.
+let resultsFetchErrorNotified = false;
+
 export const DEFAULT_WHATSAPP_LINK =
   "https://chat.whatsapp.com/LsH5bhL3NJ7IrfZNgEnEBW?s=cl&p=a&mlu=4&ilr=4";
 
@@ -1981,9 +1985,21 @@ const fetchUsers = async () => {
     } catch (e) {
       console.error("fetchResultsBySeason error:", e);
       stopTrace({ season: seasonName, error: 'true' });
+      if (!resultsFetchErrorNotified) {
+        resultsFetchErrorNotified = true;
+        const quotaHit =
+          String(e?.code || "").includes("resource-exhausted") ||
+          /quota/i.test(e?.message || "");
+        showToast?.(
+          quotaHit
+            ? "Live standings unavailable — Firebase read quota exceeded. Results may be out of date."
+            : "Could not load live standings. Results may be out of date.",
+          "error",
+        );
+      }
       return [];
     }
-  }, [updateResults]);
+  }, [updateResults, showToast]);
 
   const fetchFixturesBySeason = useCallback(async (seasonName) => {
     try {
