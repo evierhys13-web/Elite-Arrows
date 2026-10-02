@@ -85,10 +85,6 @@ Admin Roster/
 
 status
 
-# Discord bot secret keys
 service-account*.json
 *service-account.json
-
-# Discord bot local data cache
-discord-bot/data/
 
