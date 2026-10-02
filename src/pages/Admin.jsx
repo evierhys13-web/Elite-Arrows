@@ -101,6 +101,8 @@ export default function Admin() {
   const [seasonForm, setSeasonForm] = useState({ name: '', startDate: new Date().toISOString().split('T')[0], endDate: '' })
   const [grantSubForm, setGrantSubForm] = useState({ player: '', tier: 'elite', season: '' })
   const [divisionForm, setDivisionForm] = useState({ player: '', division: '' })
+  const [approvalCountForm, setApprovalCountForm] = useState({ player: '', total: '' })
+  const [isSettingApprovals, setIsSettingApprovals] = useState(false)
   const [potAdjust, setPotAdjust] = useState({ amount: 0 })
   const [selectedMemberIds, setSelectedMemberIds] = useState([])
   const [memberSearch, setMemberSearch] = useState('')
@@ -519,7 +521,14 @@ export default function Admin() {
     const num = seasonName.match(/(\d+)/)
     const seasonNumber = num ? parseInt(num[1], 10) : 0
     // Approval counts only start from Season 5 onwards
-    if (seasonNumber < 5 || !user?.id || !seasonName) return
+    if (!user?.id) return
+    if (!seasonName || seasonNumber < 5) {
+      // Previously this returned silently, so approvals vanished from the
+      // chart with no clue why. Surface it instead of losing the count.
+      console.warn(`Approval not counted: currentSeason "${seasonName}" did not resolve to Season 5+`)
+      showToast?.(`Approval not counted - current season "${seasonName || 'unknown'}" is not Season 5 or later`, 'error')
+      return
+    }
     try {
       const seasonKey = seasonName.replace(/\./g, '_')
       await updateDoc(doc(db, 'users', user.id), {
@@ -529,6 +538,7 @@ export default function Admin() {
       triggerDataRefresh('users')
     } catch (e) {
       console.error('Failed to increment admin approval count', e)
+      showToast?.('Approval counted? Failed to update the approval chart', 'error')
     }
   }
 
@@ -1741,6 +1751,36 @@ export default function Admin() {
       updateResults(updatedResults); triggerDataRefresh('all'); showToast(`Updated ${count} results to Season 4`, 'success')
     } catch (e) { showToast('Failed: ' + e.message, 'error') }
     setIsApproving(false)
+  }
+
+  const handleSetApprovalCount = async () => {
+    const targetId = approvalCountForm.player
+    const total = parseInt(approvalCountForm.total, 10)
+    if (!targetId || Number.isNaN(total) || total < 0) {
+      return showToast('Pick an admin and enter a valid count', 'error')
+    }
+    const target = allPlayers.find(u => String(u.id) === String(targetId))
+    const previous = target?.approvalStats?.totalApprovals || 0
+    if (total === previous) return showToast(`${target?.username || 'Admin'} is already on ${total}`, 'info')
+    if (!window.confirm(`Set ${target?.username || 'this admin'}'s total approvals from ${previous} to ${total}?`)) return
+    setIsSettingApprovals(true)
+    try {
+      const seasonName = String(adminData?.currentSeason || '').trim()
+      const seasonKey = seasonName.replace(/\./g, '_')
+      await setDoc(doc(db, 'users', targetId), {
+        approvalStats: {
+          ...(target?.approvalStats || {}),
+          totalApprovals: total,
+          ...(seasonName && seasonKey ? { [`bySeason.${seasonKey}`]: total } : {})
+        }
+      }, { merge: true })
+      showToast(`${target?.username || 'Admin'} set to ${total} approvals`, 'success')
+      setApprovalCountForm({ player: '', total: '' })
+      triggerDataRefresh('users')
+    } catch (e) {
+      showToast('Error setting count: ' + e.message, 'error')
+    }
+    setIsSettingApprovals(false)
   }
 
   const handleHealUserDivisions = async () => {
@@ -4782,6 +4822,40 @@ export default function Admin() {
                 <h4>Recovery Tools</h4>
                 <button className="btn btn-success btn-sm btn-block" onClick={handleHealUserDivisions}>Heal Divisions</button>
                 <button className="btn btn-secondary btn-sm btn-block" onClick={handleBulkSyncAnalytics} style={{ marginTop: '10px' }}>Analytics Sync</button>
+              </div>
+              <div className="glass" style={{ padding: '24px' }}>
+                <h4>Approval Count Correction</h4>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '12px' }}>
+                  Override an admin's total approvals on the dashboard chart. Use this to backfill a correct baseline.
+                </p>
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Admin</label>
+                  <UserSearchSelect
+                    users={allPlayers.filter(u => u?.isAdmin || u?.isTournamentAdmin || u?.isCupAdmin || ADMIN_EMAILS.includes(String(u?.email || '').toLowerCase()))}
+                    selectedId={approvalCountForm.player}
+                    onSelect={id => setApprovalCountForm({ ...approvalCountForm, player: id })}
+                    onQueryChange={searchUsers}
+                  />
+                </div>
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ fontSize: '0.8rem', opacity: 0.7 }}>Total approvals</label>
+                  <input
+                    type="number"
+                    min="0"
+                    className="glass"
+                    style={{ width: '100%', marginTop: '6px' }}
+                    value={approvalCountForm.total}
+                    onChange={e => setApprovalCountForm({ ...approvalCountForm, total: e.target.value })}
+                    placeholder="0"
+                  />
+                </div>
+                <button
+                  className="btn btn-secondary btn-sm btn-block"
+                  onClick={handleSetApprovalCount}
+                  disabled={isSettingApprovals || !approvalCountForm.player || approvalCountForm.total === ''}
+                >
+                  {isSettingApprovals ? 'Saving...' : 'Set Count'}
+                </button>
               </div>
               <div className="glass" style={{ padding: '24px', background: adminData?.isMaintenanceMode ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.05)' }}>
                 <h4>Maintenance Mode</h4>
