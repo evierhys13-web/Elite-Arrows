@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../context/AuthContextInternal'
 import { db, setDoc, getDocs, doc, collection, addDoc } from '../firebase'
 import { ADMIN_EMAILS } from '../config'
@@ -8,7 +8,7 @@ import { SkeletonList } from '../components/Skeleton'
 import PullToRefresh from '../components/PullToRefresh'
 
 export default function Results() {
-  const { user, getAllUsers, getResults, triggerDataRefresh, notifyAdmins, loading, fetchMoreResults } = useAuth()
+  const { user, getAllUsers, getResults, triggerDataRefresh, notifyAdmins, loading, fetchMoreResults, getSeasons, adminData } = useAuth()
 
   const allResults = getResults() || []
 
@@ -39,13 +39,30 @@ export default function Results() {
   const isAdmin = user?.isAdmin || user?.isTournamentAdmin || ADMIN_EMAILS.includes(user?.email?.toLowerCase())
   const isSubscribed = user?.isSubscribed === true || isAdmin
 
+  // Only show results from the current season onwards. Anything dated before the
+  // season start belongs to a previous season and stays in the Admin archive.
+  const resultsCutoff = useMemo(() => {
+    const current = String(adminData?.currentSeason || '').trim()
+    const seasons = typeof getSeasons === 'function' ? getSeasons() : []
+    const match = (seasons || []).find(s => String(s.name || '').trim() === current && s.startDate)
+    const start = match?.startDate || '2026-10-01T00:00:00'
+    const parsed = new Date(start)
+    return Number.isNaN(parsed.getTime()) ? new Date('2026-10-01T00:00:00') : parsed
+  }, [adminData?.currentSeason, getSeasons])
+
+  const isCupResult = (r) => r.gameType === 'Cup' || Boolean(r.cupId)
+
   const filteredResults = allResults.filter(r => {
+    const resultDate = new Date(r.date || r.submittedAt || 0)
+    if (!Number.isNaN(resultDate.getTime()) && resultDate < resultsCutoff) return false
+
     if (typeFilter !== 'all') {
       if (typeFilter === 'league' && r.gameType !== 'League') return false
-      if (typeFilter === 'cup' && r.gameType !== 'Cup' && !r.cupId) return false
+      if (typeFilter === 'cup' && !isCupResult(r)) return false
       if (typeFilter === 'open' && !String(r.gameType).toLowerCase().includes('friendly league')) return false
     }
-    if (divisionFilter !== 'all' && r.division !== divisionFilter) return false
+    // Cups aren't tied to a division, so a division filter must not hide them.
+    if (divisionFilter !== 'all' && !isCupResult(r) && r.division !== divisionFilter) return false
     return true
   })
 
@@ -115,7 +132,7 @@ export default function Results() {
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
           <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            {result.gameType} • {result.division || 'Unassigned'}
+            {result.gameType}{!isCupResult(result) && ` • ${result.division || 'Unassigned'}`}
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             {result.date ? new Date(result.date).toLocaleDateString() : 'Unknown date'}
