@@ -194,7 +194,7 @@ function normalizeAdminData(data) {
     maintenanceMessage: data.maintenanceMessage || "",
     registrationsEnabled:
       data.registrationsEnabled !== undefined ? data.registrationsEnabled : true,
-    currentSeason: data.currentSeason || "Elite Arrows Season 5",
+    currentSeason: data.currentSeason || "Elite Arrows Season 6",
     onboardingEnabled: data.onboardingEnabled !== false,
     welcomeHeader: data.welcomeHeader || ONBOARDING_DEFAULTS.welcomeHeader,
     welcomeMessage:
@@ -1189,9 +1189,13 @@ const fetchUsers = async () => {
       const now = new Date();
       const nowTime = now.getTime();
 
-      // Hardcoded Season 4 Auto-Launch Trigger
+      // Legacy Season 4 auto-launch. This is historical one-off migration
+      // logic and must never run again: it rewrote currentSeason to "Season 4"
+      // and rewrote every user's isSubscribed/division. Guarded so it can only
+      // ever fire for the exact original Season 1 state.
       const s1End = new Date("2026-08-01T00:00:00").getTime();
-      if (nowTime >= s1End && adminData.currentSeason === "Season 1") {
+      const LEGACY_S4_MIGRATION_ALREADY_DONE = true;
+      if (!LEGACY_S4_MIGRATION_ALREADY_DONE && nowTime >= s1End && adminData.currentSeason === "Season 1") {
         console.log("Season 1 finished. Triggering Season 4 launch...");
 
         // Find if Season 4 doc exists, otherwise create basic shell
@@ -1229,15 +1233,23 @@ const fetchUsers = async () => {
 
           allUsers.forEach((u) => {
             const updates = {};
-            const isSubscribedForS4 = (u.subscribedSeasons || []).includes(
-              "Season 4",
-            );
-            if (u.isSubscribed !== isSubscribedForS4)
-              updates.isSubscribed = isSubscribedForS4;
+            // Preserve existing subscriptions. This previously overwrote
+            // isSubscribed with false unless subscribedSeasons contained the
+            // literal string "Season 4", which wiped Elite passes for anyone
+            // whose seasons are stored under a different label.
+            if (u.isSubscribed === false) {
+              const isSubscribedForS4 = (u.subscribedSeasons || []).some(
+                (s) => String(s).includes("Season 4"),
+              );
+              if (isSubscribedForS4) updates.isSubscribed = true;
+            }
 
-            // Apply staged divisions - ONLY if we actually have some staged data
-            if (hasStagedData) {
-              const nextDiv = stagedDivisions[u.id] || "Unassigned";
+            // Apply staged divisions - ONLY if we actually have some staged
+            // data, and never overwrite an existing division with
+            // "Unassigned". Falling back to "Unassigned" here was wiping
+            // divisions for every player missing from the staged map.
+            if (hasStagedData && stagedDivisions[u.id]) {
+              const nextDiv = stagedDivisions[u.id];
               if (u.division !== nextDiv) updates.division = nextDiv;
             }
 
@@ -2225,7 +2237,7 @@ const fetchUsers = async () => {
       showToast?.("Performing deep sync with server...", "info");
 
       // 1. Fetch Results - Get approved results for current season
-      const currentSeason = adminData?.currentSeason || "Elite Arrows Season 5";
+      const currentSeason = adminData?.currentSeason || "Elite Arrows Season 6";
 
       let resultsSnap;
       try {
@@ -2291,7 +2303,7 @@ const fetchUsers = async () => {
   // which was the single biggest driver of Firestore read usage.
   useEffect(() => {
     if (!user?.id) return;
-    const season = adminData?.currentSeason || "Elite Arrows Season 5";
+    const season = adminData?.currentSeason || "Elite Arrows Season 6";
     fetchResultsBySeason(season).catch(() => {});
   }, [user?.id, adminData?.currentSeason, fetchResultsBySeason]);
 

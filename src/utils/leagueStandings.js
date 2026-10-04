@@ -28,7 +28,7 @@ export const ACTIVE_LEAGUE_DIVISIONS = ['Elite', 'Emerald', 'Diamond', 'Platinum
 
 export const getDivisionsForSeason = (selectedSeason, adminData) => {
   const isNewStructure =
-    selectedSeason === (adminData?.currentSeason || 'Elite Arrows Season 5')
+    selectedSeason === (adminData?.currentSeason || 'Elite Arrows Season 6')
   if (isNewStructure || selectedSeason === 'Season 4' || selectedSeason === 'Season 5') {
     return ['Overall', ...ACTIVE_LEAGUE_DIVISIONS]
   }
@@ -37,7 +37,7 @@ export const getDivisionsForSeason = (selectedSeason, adminData) => {
 
 export const getPlayersWithEffectiveDivisions = (allUsers, seasonDoc, selectedSeason, adminData) => {
   const staged = seasonDoc?.stagedDivisions || {}
-  const currentSeason = adminData?.currentSeason || 'Elite Arrows Season 5'
+  const currentSeason = adminData?.currentSeason || 'Elite Arrows Season 6'
   const isLive = !selectedSeason || selectedSeason === currentSeason || selectedSeason === 'Season 5' || selectedSeason.includes('Season 5')
   return allUsers.map((u) => {
     const uid = String(u.id)

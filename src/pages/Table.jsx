@@ -59,7 +59,7 @@ export default function Table() {
   const { showToast } = useToast();
 
   const [refreshKey, setRefreshKey] = useState(0);
-  const [selectedSeason, setSelectedSeason] = useState(adminData?.currentSeason || "Elite Arrows Season 5");
+  const [selectedSeason, setSelectedSeason] = useState(adminData?.currentSeason || "Elite Arrows Season 6");
   const [loadingSeason, setLoadingSeason] = useState(
     () => allUsers.length > 0 || results.length > 0 ? false : true,
   );
@@ -113,7 +113,7 @@ export default function Table() {
 
   const getDivisionsForSeason = useCallback(() => {
     // For the current/live season format, use the new division structure
-    const isNewStructure = selectedSeason === (adminData?.currentSeason || "Elite Arrows Season 5");
+    const isNewStructure = selectedSeason === (adminData?.currentSeason || "Elite Arrows Season 6");
     if (isNewStructure || selectedSeason === "Season 4" || selectedSeason === "Season 5") {
       return ["Overall", "Elite", "Emerald", "Diamond", "Platinum"];
     }
@@ -126,7 +126,7 @@ export default function Table() {
 
   useEffect(() => {
     if (!hasInitializedSeason) {
-      setSelectedSeason(adminData?.currentSeason || "Elite Arrows Season 5");
+      setSelectedSeason(adminData?.currentSeason || "Elite Arrows Season 6");
       setHasInitializedSeason(true);
     }
   }, [hasInitializedSeason]);
@@ -265,7 +265,7 @@ export default function Table() {
     // 1. Handle Division Change
     const newDiv = manualForm.division;
     if (newDiv !== editingManual.division) {
-      if (selectedSeason === (adminData?.currentSeason || "Elite Arrows Season 5")) {
+      if (selectedSeason === (adminData?.currentSeason || "Elite Arrows Season 6")) {
         // Update live division
         await setDoc(
           doc(db, "users", targetId),
@@ -697,7 +697,7 @@ export default function Table() {
                   const legDiff = player.stats.legsWon - player.stats.legsLost;
 
                   // Updated rules for Season 4+
-                  const useNewRules = selectedSeason === "Season 4" || selectedSeason === "Season 5" || selectedSeason === (adminData?.currentSeason || "Elite Arrows Season 5");
+                  const useNewRules = selectedSeason === "Season 4" || selectedSeason === "Season 5" || selectedSeason === (adminData?.currentSeason || "Elite Arrows Season 6");
 
                   const isPromotion = useNewRules
                     ? (index < 3 && activeDivision !== "Overall" && activeDivision !== "Elite" && activeDivision !== "Pro League")

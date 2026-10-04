@@ -18,7 +18,7 @@ import { derivePlayerStatsFromResults } from '../utils/playerStats'
 import { getResultPlayerId } from '../utils/leagueResults'
 import { ADMIN_EMAILS } from '../config'
 
-const ACTIVE_SEASON = { name: 'Elite Arrows Season 5' }
+const ACTIVE_SEASON = { name: 'Elite Arrows Season 6' }
 
 export default function TrainingHub() {
   const navigate = useNavigate()

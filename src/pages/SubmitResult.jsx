@@ -570,7 +570,7 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
     }
     setFormData({
       ...INITIAL_RESULT_FORM,
-      season: adminData?.currentSeason || 'Elite Arrows Season 5'
+      season: adminData?.currentSeason || 'Elite Arrows Season 6'
     })
     setHlVideoUrl('')
     setHlUploadProgress(0)

@@ -71,7 +71,7 @@ export default function Leaderboards() {
   const fixtures = getFixtures()
   const results = getResults()
 
-  const currentSeasonName = adminData?.currentSeason || 'Elite Arrows Season 5'
+  const currentSeasonName = adminData?.currentSeason || 'Elite Arrows Season 6'
 
   const playerStats = useMemo(() => derivePlayerStatsFromResults(allUsers, results, {
     fixtures, adminData, leagueOnly: true, currentSeason: currentSeasonName, includePlayoffs: false

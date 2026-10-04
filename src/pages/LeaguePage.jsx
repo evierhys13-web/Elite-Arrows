@@ -67,7 +67,7 @@ export default function LeaguePage() {
   // Prefer the live standings computed from the same data the main Table page
   // uses, so the sponsored league pages always show the exact same table.
   // Guests (no signed-in data) fall back to the public digest snapshot.
-  const liveSeason = adminData?.currentSeason || 'Elite Arrows Season 5'
+  const liveSeason = adminData?.currentSeason || 'Elite Arrows Season 6'
   const liveSeasonDoc = useMemo(
     () => (seasons || []).find((s) => s.name === liveSeason),
     [seasons, liveSeason],

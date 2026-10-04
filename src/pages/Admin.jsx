@@ -381,7 +381,7 @@ export default function Admin() {
 
   // Only the live season's games show in the main results list; anything from a
   // previous/archived season is kept behind the Archive toggle.
-  const activeSeasonName = adminData?.currentSeason || 'Elite Arrows Season 5'
+  const activeSeasonName = adminData?.currentSeason || 'Elite Arrows Season 6'
   const archivedResultCount = useMemo(
     () => allResults.filter(r => {
       const seasonKey = String(r.season || '').trim()
@@ -589,9 +589,10 @@ export default function Admin() {
       }
 
       if (!res.season || ['2026', 'legacy', ''].includes(String(res.season).toLowerCase())) {
-        const matchTime = new Date(res.date || res.submittedAt || Date.now()).getTime();
-        const s2Start = new Date('2026-08-01T00:00:00').getTime();
-        updates.season = matchTime >= s2Start ? 'Season 4' : 'Season 1';
+        // Stamp the live season rather than a hardcoded "Season 4"/"Season 1".
+        // Matches approved during Season 6 were being labelled Season 4, which
+        // kept them out of current standings.
+        updates.season = adminData?.currentSeason || 'Elite Arrows Season 6';
       }
 
       if (!res.division || res.division === 'Unassigned') {
@@ -1679,7 +1680,7 @@ export default function Admin() {
       for (const match of approvedMatches) {
         const updates = {}; const targetId = match.firestoreId || String(match.id);
         const currentResSeason = String(match.season || '').trim();
-        const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Season 1'].includes(currentResSeason);
+const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Season 1', 'Season 4'].includes(currentResSeason);
         if (isLegacyLabel && currentResSeason !== currentSeason) updates.season = currentSeason;
         let p1Id = match.player1Id; let p2Id = match.player2Id;
         if (!p1Id && match.player1) {
@@ -1796,8 +1797,18 @@ export default function Admin() {
       for (const u of users) {
         let updates = {}; const detectedDiv = userDivisionMap[u.id] || userDivisionMap[String(u.id)]
         if (detectedDiv && u.division !== detectedDiv) updates.division = detectedDiv
-        if (u.username?.toLowerCase() === 'diplexicto87' || u.email?.toLowerCase() === 'brentedwards87@gmail.com') { if (!u.isAdmin) updates.isAdmin = true; if (u.division !== 'Elite') updates.division = 'Elite' }
-        if (ADMIN_EMAILS.includes(u.email?.toLowerCase())) { if (!u.isAdmin) updates.isAdmin = true }
+        // Restore admin/tournament-admin flags from the source of truth instead
+        // of relying on a hardcoded list of accounts. Roles were previously
+        // only repaired for two specific usernames, so anyone else who lost
+        // their flag stayed unstaffed with no way back.
+        const emailLower = String(u.email || '').toLowerCase()
+        if (ADMIN_EMAILS.includes(emailLower) && !u.isAdmin) updates.isAdmin = true
+        if (u.username?.toLowerCase() === 'diplexicto87' || emailLower === 'brentedwards87@gmail.com') { if (!u.isAdmin) updates.isAdmin = true; if (u.division !== 'Elite') updates.division = 'Elite' }
+        // Staff keep a playable division so they stay out of "Unassigned".
+        const isStaffUser = u.isAdmin || u.isTournamentAdmin || u.isCupAdmin || ADMIN_EMAILS.includes(emailLower)
+        if (isStaffUser && (!u.division || u.division === 'Unassigned') && detectedDiv && detectedDiv !== 'Unassigned') {
+          updates.division = detectedDiv
+        }
         if (Object.keys(updates).length > 0) { batch.update(doc(db, 'users', u.id), updates); count++; ops++; }
         if (ops >= 450) { await batch.commit(); ops = 0; }
       }

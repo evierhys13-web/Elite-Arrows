@@ -53,7 +53,7 @@ export default function Home() {
 
   const activeSeason = useMemo(() => {
     return {
-      name: 'Elite Arrows Season 5',
+      name: 'Elite Arrows Season 6',
       label: 'Season 6',
       startDate: '2026-10-01T00:00:00',
       endDate: '2026-11-01T00:00:00'

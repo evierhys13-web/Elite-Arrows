@@ -89,7 +89,7 @@ export default function Statistics() {
   const { user, getAllUsers, getResults, getFixtures, adminData, forceFetchResults, triggerDataRefresh, getSeasons } = useAuth()
   const { showToast } = useToast()
   const [isSyncing, setIsSyncing] = useState(false)
-  const [selectedSeason, setSelectedSeason] = useState(adminData?.currentSeason || 'Elite Arrows Season 5')
+  const [selectedSeason, setSelectedSeason] = useState(adminData?.currentSeason || 'Elite Arrows Season 6')
   const [hasInitializedSeason, setHasInitializedSeason] = useState(false)
   const [selectedDivFilter, setSelectedDivFilter] = useState('all')
   const [allLeagueResults, setAllLeagueResults] = useState(null)
