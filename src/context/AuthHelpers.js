@@ -70,6 +70,8 @@ export const USER_CACHE_FIELDS = [
   "isAdmin",
   "isTournamentAdmin",
   "isCupAdmin",
+  "isPermanentAdmin",
+  "permanentRoles",
   "isSubscribed",
   "isBanned",
   "bannedUntil",
@@ -89,6 +91,34 @@ export const stripUserForCache = (u) => {
   });
   return stripped;
 };
+
+// Admin role flags a user can hold. Kept here so the pin, the self-heal and the
+// admin panel all agree on the same set - a mismatch is exactly how a role goes
+// missing without anything to restore it from.
+export const ADMIN_ROLE_FLAGS = [
+  "isAdmin",
+  "isTournamentAdmin",
+  "isCupAdmin",
+];
+
+// Roles snapshotted onto a user when they are pinned as permanent. Normalises
+// both shapes the doc has carried: a plain array of flag names, and the older
+// boolean-only `isPermanentAdmin` which implied every role currently held.
+export const getPermanentRoles = (u) => {
+  if (!u) return [];
+  const raw = Array.isArray(u.permanentRoles) ? u.permanentRoles : [];
+  const roles = raw.filter((r) => ADMIN_ROLE_FLAGS.includes(r));
+  if (roles.length > 0) return roles;
+  if (u.isPermanentAdmin === true) {
+    return ADMIN_ROLE_FLAGS.filter((flag) => u[flag] === true);
+  }
+  return [];
+};
+
+// Returns the pinned roles that are currently missing on the doc, so a caller
+// can write back only what was lost instead of blanket-forcing every flag.
+export const getLostPermanentRoles = (u) =>
+  getPermanentRoles(u).filter((flag) => u?.[flag] !== true);
 
 export const saveUsersCache = (users) => {
   try {

@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { db, doc, setDoc, getDoc, getDocs, collection, deleteDoc, updateDoc, writeBatch, addDoc, query, orderBy, limit, increment } from '../firebase'
 import { storage, ref, uploadBytesResumable, getDownloadURL } from '../firebaseStorage'
 import { ADMIN_EMAILS } from '../config'
+import { ADMIN_ROLE_FLAGS, getPermanentRoles, getLostPermanentRoles } from '../context/AuthHelpers'
 import { formatFromBestOf, getDivisionFormatLabel, DIVISION_FORMATS } from '../context/constants'
 import { getForfeitWinPoints } from '../utils/leagueScoring'
 import { SUPPORTED_PAGES, PAGE_BACKGROUND_GROUPS } from '../config/pageBackgrounds'
@@ -103,6 +104,7 @@ export default function Admin() {
   const [divisionForm, setDivisionForm] = useState({ player: '', division: '' })
   const [approvalCountForm, setApprovalCountForm] = useState({ player: '', total: '' })
   const [isSettingApprovals, setIsSettingApprovals] = useState(false)
+  const [isPinningAdmins, setIsPinningAdmins] = useState(false)
   const [potAdjust, setPotAdjust] = useState({ amount: 0 })
   const [selectedMemberIds, setSelectedMemberIds] = useState([])
   const [memberSearch, setMemberSearch] = useState('')
@@ -1211,11 +1213,67 @@ export default function Admin() {
   const handleUpdateAdminRole = async (targetId, role, value) => {
     try {
       const target = allPlayers.find(p => String(p.id) === String(targetId))
+      // Pinned staff can only be demoted by removing the pin first - this is
+      // what stops an accidental untick (or a lower-privileged staff member)
+      // silently stripping someone's role.
+      if (value === false && target && getPermanentRoles(target).includes(role)) {
+        return showToast(`${target.username || 'This user'} is a permanent admin. Remove the permanent pin first.`, 'error')
+      }
       await setDoc(doc(db, 'users', targetId), { [role]: value }, { merge: true })
       await logAudit('UPDATE_ROLE', `Updated ${role} to ${value} for ${target?.username || targetId}`)
       triggerDataRefresh('users')
       showToast(`Permissions updated for ${target?.username || 'user'}`, 'success')
     } catch (e) { showToast(e.message, 'error') }
+  }
+
+  // Snapshot a member's current role flags as permanent, so they are restored
+  // automatically if they are ever cleared.
+  const handleTogglePermanentAdmin = async (targetId) => {
+    const target = allPlayers.find(p => String(p.id) === String(targetId))
+    if (!target) return
+    try {
+      const alreadyPinned = getPermanentRoles(target).length > 0
+      if (alreadyPinned) {
+        if (!confirm(`Remove the permanent admin pin from ${target.username}? Their roles can then be changed normally.`)) return
+        await setDoc(doc(db, 'users', targetId), { isPermanentAdmin: false, permanentRoles: [] }, { merge: true })
+        await logAudit('UNPIN_PERMANENT_ADMIN', `Removed permanent admin pin from ${target.username}`)
+        showToast(`${target.username} is no longer pinned`, 'success')
+      } else {
+        const held = ADMIN_ROLE_FLAGS.filter(flag => target[flag] === true)
+        if (held.length === 0) {
+          await setDoc(doc(db, 'users', targetId), { isPermanentAdmin: true, permanentRoles: ['isAdmin'] }, { merge: true })
+        } else {
+          await setDoc(doc(db, 'users', targetId), { isPermanentAdmin: true, permanentRoles: held }, { merge: true })
+        }
+        await logAudit('PIN_PERMANENT_ADMIN', `Pinned ${target.username} as permanent admin (${(held.length ? held : ['isAdmin']).join(', ')})`)
+        showToast(`${target.username} pinned as a permanent admin`, 'success')
+      }
+      triggerDataRefresh('users')
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
+  // One-shot: pin every member who currently holds any staff role. Run this
+  // once to lock in the existing staff list.
+  const handlePinAllCurrentAdmins = async () => {
+    const staff = allPlayers.filter(p => !p.isGuest && (p.isAdmin || p.isTournamentAdmin || p.isCupAdmin || ADMIN_EMAILS.includes(String(p?.email || '').toLowerCase())))
+    if (staff.length === 0) return showToast('No staff members found to pin', 'info')
+    if (!confirm(`Pin ${staff.length} staff member(s) as permanent admins? Their current roles will be restored automatically if ever lost.`)) return
+    setIsPinningAdmins(true)
+    try {
+      const batch = writeBatch(db)
+      let count = 0
+      staff.forEach(p => {
+        const held = ADMIN_ROLE_FLAGS.filter(flag => p[flag] === true)
+        const roles = held.length > 0 ? held : ['isAdmin']
+        batch.update(doc(db, 'users', p.id), { isPermanentAdmin: true, permanentRoles: roles })
+        count += 1
+      })
+      await batch.commit()
+      await logAudit('PIN_ALL_PERMANENT_ADMINS', `Pinned ${count} staff member(s) as permanent admins`)
+      triggerDataRefresh('users')
+      showToast(`${count} staff member(s) pinned as permanent admins`, 'success')
+    } catch (e) { showToast(e.message, 'error') }
+    setIsPinningAdmins(false)
   }
 
   const handleToggleBan = async (targetId, currentStatus) => {
@@ -1803,9 +1861,13 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
         // their flag stayed unstaffed with no way back.
         const emailLower = String(u.email || '').toLowerCase()
         if (ADMIN_EMAILS.includes(emailLower) && !u.isAdmin) updates.isAdmin = true
+        // Pinned roles are restored for every staff member, not just the
+        // hardcoded email list - that list was the reason staff outside it
+        // had no way back after losing a flag.
+        getLostPermanentRoles(u).forEach(flag => { updates[flag] = true })
         if (u.username?.toLowerCase() === 'diplexicto87' || emailLower === 'brentedwards87@gmail.com') { if (!u.isAdmin) updates.isAdmin = true; if (u.division !== 'Elite') updates.division = 'Elite' }
         // Staff keep a playable division so they stay out of "Unassigned".
-        const isStaffUser = u.isAdmin || u.isTournamentAdmin || u.isCupAdmin || ADMIN_EMAILS.includes(emailLower)
+        const isStaffUser = u.isAdmin || u.isTournamentAdmin || u.isCupAdmin || getPermanentRoles(u).length > 0 || ADMIN_EMAILS.includes(emailLower)
         if (isStaffUser && (!u.division || u.division === 'Unassigned') && detectedDiv && detectedDiv !== 'Unassigned') {
           updates.division = detectedDiv
         }
@@ -3634,21 +3696,49 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h3 style={{ margin: 0 }}>Staff & Permissions</h3>
             </div>
+            {isFullAdmin && (
             <div style={{ marginBottom: '30px', padding: '20px', background: 'rgba(56, 189, 248, 0.05)', borderRadius: '16px', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
                <h4 style={{ marginBottom: '10px' }}>Add New Staff Member</h4>
                <UserSearchSelect users={allPlayers} selectedId={''} onSelect={id => handleUpdateAdminRole(id, 'isTournamentAdmin', true)} label="Search User by Name" onQueryChange={searchUsers} />
             </div>
+            )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-               {allPlayers.filter(p => p.isAdmin || p.isTournamentAdmin || p.isCupAdmin).map(p => (
-                 <div key={p.id} className="glass" style={{ padding: '16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div><div style={{ fontWeight: 700 }}>{p.username}</div><div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)' }}>{p.email}</div></div>
-                    <div style={{ display: 'flex', gap: '15px' }}>
-                       <label style={{ fontSize: '0.7rem' }}><input type="checkbox" checked={p.isAdmin || false} onChange={e => handleUpdateAdminRole(p.id, 'isAdmin', e.target.checked)} /><br/>Super</label>
-                       <label style={{ fontSize: '0.7rem' }}><input type="checkbox" checked={p.isTournamentAdmin || false} onChange={e => handleUpdateAdminRole(p.id, 'isTournamentAdmin', e.target.checked)} /><br/>Tourny</label>
-                       <label style={{ fontSize: '0.7rem' }}><input type="checkbox" checked={p.isCupAdmin || false} onChange={e => handleUpdateAdminRole(p.id, 'isCupAdmin', e.target.checked)} /><br/>Cup</label>
+               {allPlayers.filter(p => p.isAdmin || p.isTournamentAdmin || p.isCupAdmin).map(p => {
+                 const pinnedRoles = getPermanentRoles(p)
+                 const isPinned = pinnedRoles.length > 0
+                 return (
+                 <div key={p.id} className="glass" style={{ padding: '16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                    <div>
+                      <div style={{ fontWeight: 700 }}>{p.username}{isPinned && <span style={{ marginLeft: '8px', fontSize: '0.65rem', padding: '2px 8px', borderRadius: '99px', background: 'rgba(16,185,129,0.15)', color: 'var(--success)', border: '1px solid rgba(16,185,129,0.4)' }}>PINNED</span>}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)' }}>{p.email}</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                       {isFullAdmin && ['isAdmin', 'isTournamentAdmin', 'isCupAdmin'].map(flag => (
+                         <label key={flag} style={{ fontSize: '0.7rem', opacity: isPinned && pinnedRoles.includes(flag) ? 0.5 : 1 }}>
+                           <input
+                             type="checkbox"
+                             checked={Boolean(p[flag])}
+                             disabled={isPinned && pinnedRoles.includes(flag)}
+                             onChange={e => handleUpdateAdminRole(p.id, flag, e.target.checked)}
+                           />
+                           <br/>{{ isAdmin: 'Super', isTournamentAdmin: 'Tourny', isCupAdmin: 'Cup' }[flag]}
+                         </label>
+                       ))}
+                       {isFullAdmin && (
+                         <button
+                           className="btn btn-sm"
+                           style={isPinned
+                             ? { background: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.4)' }
+                             : { background: 'rgba(16,185,129,0.15)', color: 'var(--success)', border: '1px solid rgba(16,185,129,0.4)' }}
+                           onClick={() => handleTogglePermanentAdmin(p.id)}
+                         >
+                           {isPinned ? 'Unpin' : 'Make Permanent'}
+                         </button>
+                       )}
                     </div>
                  </div>
-               ))}
+                 )
+               })}
             </div>
           </div>
         )}
@@ -4128,7 +4218,7 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
                         ? <button className="btn btn-success btn-sm" onClick={(e) => { e.stopPropagation(); handleToggleBan(p.id, true) }}>Unban</button>
                         : isFullAdmin && <button className="btn btn-danger btn-sm" onClick={(e) => { e.stopPropagation(); handlePickBan(p) }}>Ban</button>}
                       {isFullAdmin && <button className="btn btn-warning btn-sm" onClick={(e) => { e.stopPropagation(); if (confirm(`🏳️ Apply season forfeit penalty to ${p.username}? They get automatic relegation + a 1-month ban (rule effective 1st Oct).`)) handleForfeitSeason(p.id) }}>🏳️ Forfeit</button>}
-                      <button className="btn btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); handleUpdateAdminRole(p.id, 'isTournamentAdmin', true); setActiveTab('admins'); }}>Promote</button>
+                      {isFullAdmin && <button className="btn btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); handleUpdateAdminRole(p.id, 'isTournamentAdmin', true); setActiveTab('admins'); }}>Promote</button>}
                       {isFullAdmin && <button className="btn btn-danger btn-sm" onClick={(e) => { e.stopPropagation(); handleDeleteUser(p.id) }}>🗑️</button>}
                     </div>
                   </div>
@@ -4833,6 +4923,22 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
                 <h4>Recovery Tools</h4>
                 <button className="btn btn-success btn-sm btn-block" onClick={handleHealUserDivisions}>Heal Divisions</button>
                 <button className="btn btn-secondary btn-sm btn-block" onClick={handleBulkSyncAnalytics} style={{ marginTop: '10px' }}>Analytics Sync</button>
+              </div>
+              <div className="glass" style={{ padding: '24px' }}>
+                <h4>Permanent Admins</h4>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '12px' }}>
+                  Pins every current staff member's roles so they are restored automatically if ever cleared. Pinned roles cannot be unticked until unpinned.
+                </p>
+                <button
+                  className="btn btn-success btn-sm btn-block"
+                  onClick={handlePinAllCurrentAdmins}
+                  disabled={isPinningAdmins}
+                >
+                  {isPinningAdmins ? 'Pinning...' : `Pin ${allPlayers.filter(p => !p.isGuest && (p.isAdmin || p.isTournamentAdmin || p.isCupAdmin || ADMIN_EMAILS.includes(String(p?.email || '').toLowerCase()))).length} Current Admins`}
+                </button>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '10px' }}>
+                  Currently pinned: {allPlayers.filter(p => getPermanentRoles(p).length > 0).length}
+                </p>
               </div>
               <div className="glass" style={{ padding: '24px' }}>
                 <h4>Approval Count Correction</h4>

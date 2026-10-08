@@ -11,6 +11,7 @@ service cloud.firestore {
         (request.auth.token.email != null && request.auth.token.email.lower() in [
           'rhyshowe2023@outlook.com',
           'dhineberry@yahoo.com',
+          'davidduncan777@hotmail.co.uk',
           'test@elitearrows.co.uk'
         ]) ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
@@ -19,6 +20,37 @@ service cloud.firestore {
           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isCupAdmin', false) == true
         ))
       );
+    }
+
+    // Admin role flags and the permanent pin that protects them. Only staff may
+    // grant or clear these - a member writing their own doc must never be able
+    // to escalate, which the old blanket owner-write rule allowed.
+    function roleFlagKeys() {
+      return ['isAdmin', 'isTournamentAdmin', 'isCupAdmin', 'isPermanentAdmin', 'permanentRoles'];
+    }
+
+    function roleFlagsChanged() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasAny(roleFlagKeys());
+    }
+
+    // Self-heal path: a member may write back only roles an admin already
+    // pinned on them (the pin itself stays staff-only, and an empty pin means
+    // nothing is restorable).
+    function restoresPinnedRole() {
+      let affected = request.resource.data.diff(resource.data).affectedKeys();
+      return affected.size() > 0
+        && affected.hasOnly(resource.data.get('permanentRoles', []));
+    }
+
+    // Brand-new account may not carry any role flag. Allow-listed admin emails
+    // still get isAdmin written by the sign-up flow (isAdmin() covers them).
+    function newAccountRoleFlagsSafe() {
+      return request.resource.data.get('isAdmin', false) == false
+        && request.resource.data.get('isTournamentAdmin', false) == false
+        && request.resource.data.get('isCupAdmin', false) == false
+        && request.resource.data.get('isPermanentAdmin', false) == false
+        && request.resource.data.get('permanentRoles', []).size() == 0;
     }
 
     function isOwner(userId) {
@@ -53,10 +85,15 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if true;
-      allow write: if isOwner(userId) || isAdmin();
-      allow update: if signedIn() &&
-        request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['friends', 'sentFriendRequests', 'receivedFriendRequests']);
+      allow create: if isAdmin() ||
+        (isOwner(userId) && newAccountRoleFlagsSafe());
+      allow update: if isAdmin() ||
+        (isOwner(userId) && !roleFlagsChanged()) ||
+        (isOwner(userId) && restoresPinnedRole()) ||
+        (signedIn() &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['friends', 'sentFriendRequests', 'receivedFriendRequests']));
+      allow delete: if isOwner(userId) || isAdmin();
     }
 
     match /results/{resultId} {

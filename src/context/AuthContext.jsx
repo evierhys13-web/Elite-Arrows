@@ -60,6 +60,8 @@ import {
   getCachedResults,
   saveResultsCache,
   stripResultProofForCache,
+  getPermanentRoles,
+  getLostPermanentRoles,
 } from "./AuthHelpers";
 
 const SEASON_ONE_WELCOME_START = new Date(
@@ -721,6 +723,68 @@ export function AuthProvider({ children }) {
     };
   }, [publishResults]);
 
+  // Write back any pinned admin role that has gone missing on a user doc.
+  //
+  // Roles were being lost with no recovery path: the only repair tool restored
+  // flags for a hardcoded email list, so anyone granted staff outside it stayed
+  // demoted. Pinned admins self-heal here instead, on every users snapshot.
+  //
+  // The attempt set stops a doc that rejects the write (rules, stale role) from
+  // re-firing a snapshot loop, and a write that lands simply produces a snapshot
+  // with nothing left to restore.
+  //
+  // Firestore only lets a user fix their own doc unless they are staff, so the
+  // candidate list is filtered by what this session may actually write - no point
+  // firing doomed writes (and warnings) from every signed-in member.
+  const permanentHealAttemptsRef = useRef(new Set());
+  const healAuthRef = useRef({ userId: null, canWriteOthers: false });
+  useEffect(() => {
+    healAuthRef.current = {
+      userId: user?.id || null,
+      canWriteOthers:
+        Boolean(user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin) ||
+        ADMIN_EMAILS.includes(String(user?.email || "").toLowerCase()),
+    };
+  });
+  const healLostPermanentRoles = useCallback((users) => {
+    const { userId, canWriteOthers } = healAuthRef.current;
+    if (!userId) return;
+
+    const damaged = (users || []).filter(
+      (u) =>
+        u?.id &&
+        !u.isGuest &&
+        (canWriteOthers || String(u.id) === String(userId)) &&
+        getPermanentRoles(u).length > 0 &&
+        getLostPermanentRoles(u).length > 0,
+    );
+    if (damaged.length === 0) return;
+
+    const batch = writeBatch(db);
+    let ops = 0;
+    damaged.forEach((u) => {
+      const attemptKey = `${u.id}:${getLostPermanentRoles(u).join(",")}`;
+      if (permanentHealAttemptsRef.current.has(attemptKey)) return;
+      permanentHealAttemptsRef.current.add(attemptKey);
+      const restore = {};
+      getLostPermanentRoles(u).forEach((flag) => {
+        restore[flag] = true;
+      });
+      batch.update(doc(db, "users", u.id), restore);
+      ops += 1;
+    });
+    if (ops === 0) return;
+    batch
+      .commit()
+      .then(() => {
+        console.info(`Restored pinned admin roles on ${ops} user(s).`);
+        triggerDataRefresh("users");
+      })
+      .catch((e) => {
+        console.warn("Permanent admin role heal failed:", e?.message || e);
+      });
+  }, [triggerDataRefresh]);
+
   useEffect(() => {
     if (!user?.id) return;
 
@@ -761,6 +825,8 @@ export function AuthProvider({ children }) {
 
         setAllUsers(allFetchedUsers);
         saveUsersCache(allFetchedUsers);
+
+        healLostPermanentRoles(allFetchedUsers);
 
         const currentUserData = allFetchedUsers.find(
           (item) => String(item.id) === String(user?.id),
@@ -1127,7 +1193,7 @@ export function AuthProvider({ children }) {
       unsubscribeSeasons();
       unsubscribeNotifications();
     };
-  }, [user?.id, triggerDataRefresh, publishResults, showLocalNotification, updateBadgeCount, showToast]);
+  }, [user?.id, triggerDataRefresh, publishResults, showLocalNotification, updateBadgeCount, showToast, healLostPermanentRoles]);
 
   // Re-fetch cups from Firestore when cupsRefreshTrigger changes
   useEffect(() => {
