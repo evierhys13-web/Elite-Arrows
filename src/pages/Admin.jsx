@@ -548,7 +548,18 @@ export default function Admin() {
     if (isApproving) return
     setIsApproving(true)
     try {
-      const res = allResults.find(r => String(r.id) === String(resultId))
+      let res = allResults.find(r => String(r.id) === String(resultId))
+      const targetId = res?.firestoreId || String(resultId)
+
+      try {
+        const docSnap = await getDoc(doc(db, 'results', targetId))
+        if (docSnap.exists()) {
+          res = { id: docSnap.id, ...docSnap.data() }
+        }
+      } catch (err) {
+        console.warn('Could not fetch fresh result doc from Firestore, using local state:', err)
+      }
+
       if (!res) throw new Error('Result not found')
 
       const updates = { status: 'approved', approvedAt: new Date().toISOString() };
@@ -4407,6 +4418,12 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
             <div className="glass" style={{ padding: '24px', borderRadius: '16px', marginTop: '20px' }}>
               <UserSearchSelect users={allPlayers} selectedId={trophyForm.player} onSelect={id => setTrophyForm({...trophyForm, player: id})} label="Player" onQueryChange={searchUsers} />
               <input className="glass" placeholder="Trophy Name" value={trophyForm.name} onChange={e => setTrophyForm({...trophyForm, name: e.target.value})} style={{ marginTop: '15px' }} />
+              <div style={{ display: 'flex', gap: '6px', marginTop: '10px', flexWrap: 'wrap' }}>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setTrophyForm({...trophyForm, icon: '🥇', name: trophyForm.name || 'League Winner'})}>🥇 League Winner</button>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setTrophyForm({...trophyForm, icon: '🏆', name: trophyForm.name || 'Cup Winner'})}>🏆 Cup Winner</button>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setTrophyForm({...trophyForm, icon: '🎯', name: trophyForm.name || 'High Checkout Winner'})}>🎯 High Checkout</button>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setTrophyForm({...trophyForm, icon: '⭐', name: trophyForm.name || 'Player of the Month'})}>⭐ Player of Month</button>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '15px' }}>
                 <input className="glass" placeholder="Icon (emoji)" value={trophyForm.icon} onChange={e => setTrophyForm({...trophyForm, icon: e.target.value})} />
                 <select className="glass" value={trophyForm.season} onChange={e => setTrophyForm({...trophyForm, season: e.target.value})}>
@@ -4508,6 +4525,12 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
             <div className="glass" style={{ padding: '24px', borderRadius: '16px', marginTop: '20px', marginBottom: '24px' }}>
               <UserSearchSelect users={allPlayers} selectedId={hallOfFameForm.player} onSelect={id => setHallOfFameForm({...hallOfFameForm, player: id})} label="Select Player" onQueryChange={searchUsers} />
               <input className="glass" placeholder="Hall of Fame Title (e.g. Season 1 Champion)" value={hallOfFameForm.name} onChange={e => setHallOfFameForm({...hallOfFameForm, name: e.target.value})} style={{ marginTop: '15px' }} />
+              <div style={{ display: 'flex', gap: '6px', marginTop: '10px', flexWrap: 'wrap' }}>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setHallOfFameForm({...hallOfFameForm, icon: '🥇', name: hallOfFameForm.name || 'League Winner'})}>🥇 League Winner</button>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setHallOfFameForm({...hallOfFameForm, icon: '🏆', name: hallOfFameForm.name || 'Cup Winner'})}>🏆 Cup Winner</button>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setHallOfFameForm({...hallOfFameForm, icon: '🎯', name: hallOfFameForm.name || 'High Checkout Winner'})}>🎯 High Checkout</button>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setHallOfFameForm({...hallOfFameForm, icon: '⭐', name: hallOfFameForm.name || 'Player of the Month'})}>⭐ Player of Month</button>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '15px' }}>
                 <input className="glass" placeholder="Icon (emoji)" value={hallOfFameForm.icon} onChange={e => setHallOfFameForm({...hallOfFameForm, icon: e.target.value})} />
                 <select className="glass" value={hallOfFameForm.season} onChange={e => setHallOfFameForm({...hallOfFameForm, season: e.target.value})}>
