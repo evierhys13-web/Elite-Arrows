@@ -1394,6 +1394,20 @@ export default function Admin() {
     } catch (e) { showToast(e.message, 'error') }
   }
 
+  const handleRemoveWarning = async (targetId) => {
+    try {
+      const target = allPlayers.find(p => String(p.id) === String(targetId))
+      if (!target) return showToast('Player not found', 'error')
+      const currentWarnings = Number(target.warningCount) || 0
+      if (currentWarnings <= 0) return showToast('Player has no active warnings', 'info')
+      const newWarnings = currentWarnings - 1
+      await setDoc(doc(db, 'users', targetId), { warningCount: newWarnings }, { merge: true })
+      await logAudit('REMOVE_WARNING', `Removed 1 warning from ${target?.username} (now ${newWarnings})`)
+      triggerDataRefresh('users')
+      showToast(`⚠️ Removed 1 warning from ${target?.username} (${newWarnings} remaining)`, 'success')
+    } catch (e) { showToast(e.message, 'error') }
+  }
+
   const handleResetDiscipline = async (targetId) => {
     try {
       const target = allPlayers.find(p => String(p.id) === String(targetId))
@@ -4225,6 +4239,7 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
                     <div style={{ display: 'flex', gap: '10px' }}>
                       <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); navigate(`/profile/${p.id}`) }}>View</button>
                       {isFullAdmin && !isUserBanned(p) && <button className="btn btn-sm" style={{ background: 'rgba(251,191,36,0.15)', border: '1px solid rgba(251,191,36,0.4)', color: '#fbbf24' }} onClick={(e) => { e.stopPropagation(); handleGiveWarning(p.id) }}>⚠️ Warning</button>}
+                      {isFullAdmin && Number(p.warningCount) > 0 && <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); handleRemoveWarning(p.id) }} title="Remove 1 Warning">➖ Warn</button>}
                       {isFullAdmin && <button className="btn btn-danger btn-sm" onClick={(e) => { e.stopPropagation(); handleGiveWarning(p.id, true) }}>🚨 Strike</button>}
                       {isFullAdmin && <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); handleResetDiscipline(p.id) }}>Reset</button>}
                       {isFullAdmin && isUserBanned(p)
