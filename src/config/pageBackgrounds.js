@@ -16,7 +16,7 @@ export const SUPPORTED_PAGES = [
   { key: 'practice', label: 'Practice', group: 'Training & Practice', paths: ['/practice'] },
   { key: 'progress-tracker', label: 'Progress Tracker', group: 'Training & Practice', paths: ['/progress-tracker'] },
   { key: 'challenges', label: 'Challenges', group: 'Training & Practice', paths: ['/challenges'] },
-  { key: 'daily-challenges', label: 'Daily Challenges', group: 'Training & Practice', paths: ['/daily-challenges'] },
+  { key: 'weekly-challenges', label: 'Weekly Challenges', group: 'Training & Practice', paths: ['/weekly-challenges'] },
 
   { key: 'chat', label: 'Chat', group: 'Social', paths: ['/chat'] },
   { key: 'players', label: 'Players', group: 'Social', paths: ['/players'] },

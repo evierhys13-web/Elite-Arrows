@@ -100,7 +100,7 @@ export default function Sidebar() {
           { path: '/rules', label: 'League Rules', icon: ShieldIcon },
           { path: '/conduct', label: 'Respect & Conduct', icon: HeartIcon },
           ...(isOpenLeagueVisible ? [{ path: '/open-league', label: 'Friendly League', icon: TrophyIcon }] : []),
-          { path: '/daily-challenges', label: 'Daily Challenges', icon: StarIcon },
+          { path: '/weekly-challenges', label: 'Weekly Challenges', icon: StarIcon },
           { path: '/players', label: 'Players', icon: UsersIcon },
           { path: '/suggestions', label: 'Suggestion Box', icon: BulbIcon },
           { path: '/giveaways', label: 'Giveaways', icon: GiftIcon },

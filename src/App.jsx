@@ -63,7 +63,7 @@ const PracticeHub = lazy(() => import('./pages/PracticeHub'))
 const PracticeGame = lazy(() => import('./pages/PracticeGame'))
 const OpenLeague = lazy(() => import('./pages/OpenLeague'))
 const ProgressTracker = lazy(() => import('./pages/ProgressTracker'))
-const DailyChallenges = lazy(() => import('./pages/DailyChallenges'))
+const WeeklyChallenges = lazy(() => import('./pages/WeeklyChallenges'))
 const PlayOnline = lazy(() => import('./pages/PlayOnline'))
 const HallOfFame = lazy(() => import('./pages/HallOfFame'))
 const News = lazy(() => import('./pages/News'))
@@ -668,7 +668,7 @@ function AppRoutes() {
       <Route path="/progress-tracker" element={<ProtectedRoute><MemberOnlyRoute><AppLayout><PracticeHub /></AppLayout></MemberOnlyRoute></ProtectedRoute>} />
       <Route path="/practice/:modeId" element={<ProtectedRoute><MemberOnlyRoute><AppLayout><PracticeGame /></AppLayout></MemberOnlyRoute></ProtectedRoute>} />
       <Route path="/challenges" element={<ProtectedRoute><MemberOnlyRoute><AppLayout><Challenges /></AppLayout></MemberOnlyRoute></ProtectedRoute>} />
-      <Route path="/daily-challenges" element={<ProtectedRoute><MemberOnlyRoute><AppLayout><DailyChallenges /></AppLayout></MemberOnlyRoute></ProtectedRoute>} />
+      <Route path="/weekly-challenges" element={<ProtectedRoute><MemberOnlyRoute><AppLayout><WeeklyChallenges /></AppLayout></MemberOnlyRoute></ProtectedRoute>} />
       <Route path="/giveaways" element={<ProtectedRoute><MemberOnlyRoute><AppLayout><Giveaways /></AppLayout></MemberOnlyRoute></ProtectedRoute>} />
       <Route path="/training" element={<ProtectedRoute><AppLayout><TrainingHub /></AppLayout></ProtectedRoute>} />
       <Route path="/training/course/:courseId" element={<TrainingRoute><AppLayout><TrainingCourse /></AppLayout></TrainingRoute>} />
