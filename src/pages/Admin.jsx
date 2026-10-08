@@ -615,7 +615,6 @@ export default function Admin() {
         if (division && division !== 'Unassigned') updates.division = division;
       }
 
-      const targetId = res.firestoreId || String(resultId)
       const approvedResult = { ...res, ...updates }
       await setDoc(doc(db, 'results', targetId), approvedResult, { merge: true })
       logMatchApproved(approvedResult)
