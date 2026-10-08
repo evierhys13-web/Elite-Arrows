@@ -76,7 +76,7 @@ const TrainingTips = lazy(() => import('./pages/TrainingTips'))
 const LeaguePage = lazy(() => import('./pages/LeaguePage'))
 const PlayerOfMonth = lazy(() => import('./pages/PlayerOfMonth'))
 
-function PageLoader() {
+function PageLoader({ label = 'Loading Elite Arrows...' }) {
   const [showRefresh, setShowRefresh] = useState(false)
 
   useEffect(() => {
@@ -98,7 +98,7 @@ function PageLoader() {
       background: 'var(--bg-primary)'
     }}>
       <div className="spinner" style={{ width: '40px', height: '40px', marginBottom: '20px' }}></div>
-      <h2 style={{ color: 'white' }}>Loading Elite Arrows...</h2>
+      <h2 style={{ color: 'white' }}>{label}</h2>
 
       {showRefresh && (
         <div className="animate-fade-in" style={{ marginTop: '30px' }}>
@@ -121,28 +121,136 @@ function PageLoader() {
 // hydrate fresh data before content paints (avoids flashing stale cache).
 // It never blocks longer than MAX_SPLASH_MS, so a slow/offline network can't
 // trap the user on the loading screen.
-const MIN_SPLASH_MS = 1000
-const MAX_SPLASH_MS = 3500
+const MIN_SPLASH_MS = 450
+const SHOW_HELP_MS = 4000
+const MAX_SPLASH_MS = 7000
 
 function StartupSplash({ children }) {
-  const { loading, isAuthenticated, allUsers, results } = useAuth()
+  const { loading, isAuthenticated, allUsers, results, seasons, fixtures, adminData, news, cups } = useAuth()
   const [minElapsed, setMinElapsed] = useState(false)
+  const [showHelp, setShowHelp] = useState(false)
   const [maxElapsed, setMaxElapsed] = useState(false)
 
   useEffect(() => {
     const minTimer = setTimeout(() => setMinElapsed(true), MIN_SPLASH_MS)
+    const helpTimer = setTimeout(() => setShowHelp(true), SHOW_HELP_MS)
     const maxTimer = setTimeout(() => setMaxElapsed(true), MAX_SPLASH_MS)
     return () => {
       clearTimeout(minTimer)
+      clearTimeout(helpTimer)
       clearTimeout(maxTimer)
     }
   }, [])
 
-  const hasData = (allUsers?.length || 0) > 0 || (results?.length || 0) > 0
-  const ready = minElapsed && !loading && (!isAuthenticated || hasData || maxElapsed)
+  // Wait for each collection rather than "any data at all". Previously this
+  // only checked users OR results, so the splash cleared while seasons,
+  // fixtures and adminData were still in flight and pages popped in blank.
+  const checks = [
+    { id: 'account', label: 'Your account', ready: !loading },
+    { id: 'roster', label: 'Player roster', ready: (allUsers?.length || 0) > 0 },
+    { id: 'results', label: 'Match results', ready: (results?.length || 0) > 0 },
+    { id: 'seasons', label: 'Season & divisions', ready: (seasons?.length || 0) > 0 },
+    { id: 'fixtures', label: 'Fixtures', ready: (fixtures?.length || 0) > 0 },
+    { id: 'settings', label: 'Season settings', ready: Boolean(adminData?.currentSeason) },
+    { id: 'news', label: 'News & updates', ready: (news?.length || 0) > 0 },
+    { id: 'cups', label: 'Cups', ready: (cups?.length || 0) > 0 }
+  ]
 
-  if (!ready) return <PageLoader />
-  return children
+  // Guests and fresh accounts legitimately end up with empty collections, so
+  // only collections that ever arrive, or the hard timeout, force readiness.
+  const requiredForAuthed = ['account', 'roster', 'seasons', 'settings']
+  const resolved = checks.filter(c => c.ready).length
+  // Only the auth handshake gates a guest. Roster/seasons/settings are
+  // meaningless until someone signs in, so applying those gates to a guest
+  // always stalls them out at the timeout.
+  const gates = isAuthenticated ? requiredForAuthed : ['account']
+  const coreReady = gates.every(id => checks.find(c => c.id === id)?.ready)
+  const progress = Math.round((resolved / checks.length) * 100)
+
+  // Core gates first (account, roster, seasons, settings), then require at
+  // least one content collection to have arrived. A blanket "6 of 8" rule
+  // stalls accounts that legitimately have no news or cups yet.
+  const contentReady = ['results', 'fixtures', 'news', 'cups'].some(id => checks.find(c => c.id === id)?.ready)
+  const ready = maxElapsed || (minElapsed && coreReady && (!isAuthenticated || contentReady))
+
+  if (ready) return children
+
+  return (
+    <div
+      className="loading"
+      data-testid="startup-splash"
+      style={{
+        padding: '40px 24px',
+        textAlign: 'center',
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--bg-primary)'
+      }}
+    >
+      <div className="auth-logo" style={{ marginBottom: '8px' }}>
+        <h1 className="text-gradient" style={{ letterSpacing: '-0.02em' }}>Elite Arrows</h1>
+        <p>Everything loaded. Nothing skipped.</p>
+      </div>
+
+      <div
+        role="progressbar"
+        aria-valuenow={progress}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label="Loading app data"
+        style={{
+          width: '240px',
+          height: '6px',
+          borderRadius: '999px',
+          background: 'rgba(255,255,255,0.08)',
+          overflow: 'hidden',
+          margin: '24px 0 6px'
+        }}
+      >
+        <div
+          style={{
+            width: `${progress}%`,
+            height: '100%',
+            borderRadius: '999px',
+            background: 'linear-gradient(to right, var(--accent-primary), var(--accent-cyan))',
+            transition: 'width 300ms ease'
+          }}
+        />
+      </div>
+      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '24px' }}>
+        {progress}% • {resolved} of {checks.length}
+      </div>
+
+      <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px', textAlign: 'left', minWidth: '240px' }}>
+        {checks.map(c => (
+          <li key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', color: c.ready ? 'var(--success)' : 'var(--text-muted)', opacity: c.ready ? 1 : 0.6 }}>
+            <span aria-hidden="true" style={{ width: '14px', display: 'inline-block' }}>
+              {c.ready ? '✓' : ''}
+            </span>
+            <span className="spinner" style={{ width: '10px', height: '10px', display: c.ready ? 'none' : 'inline-block', border: '1.5px solid rgba(255,255,255,0.25)', borderTopColor: 'var(--accent-cyan)' }} />
+            {c.label}
+          </li>
+        ))}
+      </ul>
+
+      {showHelp && !ready && (
+        <div className="animate-fade-in" style={{ marginTop: '30px' }}>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '15px', maxWidth: '300px' }}>
+            Taking longer than usual? Stale data might be causing a delay.
+          </p>
+          <button
+            className="btn btn-primary"
+            onClick={() => window.location.reload(true)}
+          >
+            Refresh App
+          </button>
+        </div>
+      )}
+    </div>
+  )
 }
 
 function isOnboardingPending(user) {
