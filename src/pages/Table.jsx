@@ -771,6 +771,16 @@ export default function Table() {
                             }}
                           >
                             {player.username}
+                            {Number(player.strikeCount) > 0 && (
+                              <span style={{ color: 'var(--error)', fontSize: '0.65rem', fontWeight: 800, marginLeft: '6px' }} title={`${player.strikeCount} Strike(s)`}>
+                                🚨 {player.strikeCount}
+                              </span>
+                            )}
+                            {Number(player.warningCount) > 0 && (
+                              <span style={{ color: 'var(--warning)', fontSize: '0.65rem', fontWeight: 700, marginLeft: '6px' }} title={`${player.warningCount} Warning(s)`}>
+                                ⚠️ {player.warningCount}
+                              </span>
+                            )}
                             {player.stats.average > 0 && (
                               <span
                                 style={{

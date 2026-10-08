@@ -151,7 +151,7 @@ export default function Rules() {
             <ul style={{ color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
               <li><strong>3 Warnings</strong> = <strong>1 Strike</strong></li>
               <li>Warnings are issued for <strong>playing fewer than 3 fixtures in a week without a valid reason</strong> (see Weekly Fixture Requirement) plus conduct offences.</li>
-              <li><strong>Strike Policy:</strong> Receiving <strong>1 strike</strong> puts you on a <strong>final official warning</strong>. Receiving <strong>2 strikes</strong> results in <strong>immediate removal from the league and an official season ban</strong>.</li>
+              <li><strong>Strike Policy:</strong> Receiving <strong>1 strike</strong> results in <strong>immediate removal from the league and a 1-month ban</strong>.</li>
               <li><strong>Serious offences (cheating, score manipulation, abuse, harassment, rage-quitting) result in an instant ban.</strong></li>
             </ul>
           </div>

@@ -1359,34 +1359,37 @@ export default function Admin() {
       const updates = { warningCount: applyStrikeDirect ? 0 : newWarnings }
 
       if (applyStrikeDirect) {
-        if (!confirm(`🚨 Apply a strike to ${target?.username}? They get immediate removal from the league + season ban.`)) return
+        if (!confirm(`🚨 Apply a strike to ${target?.username}? They will be removed from the league and receive a 1-month ban.`)) return
+        updates.warningCount = 0
         updates.strikeCount = (Number(target.strikeCount) || 0) + 1
-        updates.isBanned = true
-        updates.bannedUntil = null
-        updates.strikeReason = 'Strike issued by admin'
+        updates.division = 'Unassigned'
+        updates.isBanned = false
+        updates.bannedUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        updates.strikeReason = 'Strike issued directly by admin'
         await setDoc(doc(db, 'users', targetId), updates, { merge: true })
-        await logAudit('GIVE_STRIKE', `Strike issued to ${target?.username}. Removal + season ban applied.`)
+        await logAudit('GIVE_STRIKE', `Strike issued to ${target?.username}. Removed from league + 1-month ban applied.`)
         triggerDataRefresh('users')
-        showToast(`🚨 ${target?.username} removed + season banned (strike applied)`, 'success')
+        showToast(`🚨 ${target?.username} removed from league + 1-month banned (strike applied)`, 'success')
         return
       }
 
-      if (newWarnings >= 2) {
-        if (!confirm(`⚠️ ${target?.username} is on ${newWarnings} warnings. This converts to a STRIKE → immediate removal from the league + season ban. Continue?`)) return
+      if (newWarnings >= 3) {
+        if (!confirm(`⚠️ ${target?.username} has reached 3 warnings. This converts to a STRIKE → removed from the league + 1-month ban. Continue?`)) return
         updates.warningCount = 0
         updates.strikeCount = (Number(target.strikeCount) || 0) + 1
-        updates.isBanned = true
-        updates.bannedUntil = null
-        updates.strikeReason = `2 warnings accumulated (weekly fixture / conduct)`
+        updates.division = 'Unassigned'
+        updates.isBanned = false
+        updates.bannedUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        updates.strikeReason = `3 warnings accumulated (weekly fixture / conduct)`
         await setDoc(doc(db, 'users', targetId), updates, { merge: true })
-        await logAudit('GIVE_STRIKE', `Strike issued to ${target?.username} (2 warnings reached). Removal + season ban applied.`)
+        await logAudit('GIVE_STRIKE', `Strike issued to ${target?.username} (3 warnings reached). Removed from league + 1-month ban applied.`)
         triggerDataRefresh('users')
-        showToast(`🚨 ${target?.username} removed + season banned (strike applied)`, 'success')
+        showToast(`🚨 ${target?.username} removed from league + 1-month banned (strike applied)`, 'success')
       } else {
         await setDoc(doc(db, 'users', targetId), updates, { merge: true })
-        await logAudit('GIVE_WARNING', `Warning ${newWarnings}/2 issued to ${target?.username}`)
+        await logAudit('GIVE_WARNING', `Warning ${newWarnings}/3 issued to ${target?.username}`)
         triggerDataRefresh('users')
-        showToast(`⚠️ Warning ${newWarnings}/2 issued to ${target?.username}`, 'success')
+        showToast(`⚠️ Warning ${newWarnings}/3 issued to ${target?.username}`, 'success')
       }
     } catch (e) { showToast(e.message, 'error') }
   }
