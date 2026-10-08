@@ -126,7 +126,7 @@ const SHOW_HELP_MS = 4000
 const MAX_SPLASH_MS = 7000
 
 function StartupSplash({ children }) {
-  const { loading, isAuthenticated, allUsers, results, seasons, fixtures, adminData, news, cups } = useAuth()
+  const { loading, isAuthenticated, allUsers, results, seasons, fixtures, adminData, cups, newsLoaded } = useAuth()
   const [minElapsed, setMinElapsed] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
   const [maxElapsed, setMaxElapsed] = useState(false)
@@ -152,19 +152,20 @@ function StartupSplash({ children }) {
     { id: 'seasons', label: 'Season & divisions', ready: (seasons?.length || 0) > 0 },
     { id: 'fixtures', label: 'Fixtures', ready: (fixtures?.length || 0) > 0 },
     { id: 'settings', label: 'Season settings', ready: Boolean(adminData?.currentSeason) },
-    { id: 'news', label: 'News & updates', ready: (news?.length || 0) > 0 },
+    { id: 'news', label: 'News & updates', ready: newsLoaded === true },
     { id: 'cups', label: 'Cups', ready: (cups?.length || 0) > 0 }
   ]
 
-  // Guests and fresh accounts legitimately end up with empty collections, so
-  // only collections that ever arrive, or the hard timeout, force readiness.
-  const requiredForAuthed = ['account', 'roster', 'seasons', 'settings']
+  // News is an explicit hard gate: its loaded flag flips on snapshot arrival
+  // (including an empty collection), so it can never block on length alone.
+  const required = isAuthenticated
+    ? ['account', 'roster', 'seasons', 'settings', 'news']
+    : ['account', 'news']
   const resolved = checks.filter(c => c.ready).length
   // Only the auth handshake gates a guest. Roster/seasons/settings are
   // meaningless until someone signs in, so applying those gates to a guest
   // always stalls them out at the timeout.
-  const gates = isAuthenticated ? requiredForAuthed : ['account']
-  const coreReady = gates.every(id => checks.find(c => c.id === id)?.ready)
+  const coreReady = required.every(id => checks.find(c => c.id === id)?.ready)
   const progress = Math.round((resolved / checks.length) * 100)
 
   // Core gates first (account, roster, seasons, settings), then require at

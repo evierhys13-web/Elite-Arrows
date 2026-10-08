@@ -305,6 +305,10 @@ export function AuthProvider({ children }) {
   const [fcmToken, setFcmToken] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [news, setNews] = useState([]);
+  // Flips true the moment the news snapshot arrives, even if the collection is
+  // empty. Length alone can't signal readiness - an account with no posts
+  // would never look "loaded" and hold the splash open until the timeout.
+  const [newsLoaded, setNewsLoaded] = useState(false);
   const [showSeasonOneWelcome, setShowSeasonOneWelcome] = useState(false);
   const [pendingGameInvite, setPendingGameInvite] = useState(null);
   const unsubscribeRef = useRef(null);
@@ -698,12 +702,16 @@ export function AuthProvider({ children }) {
           .map((doc) => ({ id: doc.id, ...doc.data() }))
           .filter((item) => !item._deleted);
         setNews(newsData);
+        setNewsLoaded(true);
         try {
           localStorage.setItem("eliteArrowsNews", JSON.stringify(newsData));
         } catch (e) {}
       },
       (error) => {
         console.error("News listener error:", error);
+        // Still mark loaded so a permission error can't block the loading
+        // screen forever; the content area renders empty instead.
+        setNewsLoaded(true);
       }
     );
 
@@ -2880,6 +2888,7 @@ const fetchUsers = async () => {
     fcmToken,
     unreadCount,
     news,
+    newsLoaded,
     triggerDataRefresh,
     triggerCupsRefresh,
     requestNotificationPermission,
@@ -2948,6 +2957,7 @@ const fetchUsers = async () => {
     fcmToken,
     unreadCount,
     news,
+    newsLoaded,
     triggerDataRefresh,
     triggerCupsRefresh,
     requestNotificationPermission,
