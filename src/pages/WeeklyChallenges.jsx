@@ -312,8 +312,8 @@ export default function WeeklyChallenges() {
 
       {/* Submit Proof Modal */}
       {showSubmitModal && (
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div className="card glass animate-fade-in" style={{ width: '100%', maxWidth: '500px', padding: '28px', borderRadius: '16px' }}>
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px', overflowY: 'auto' }}>
+          <div className="card glass animate-fade-in" style={{ width: '100%', maxWidth: '500px', padding: '28px', borderRadius: '16px', maxHeight: '90vh', overflowY: 'auto', margin: 'auto' }}>
             <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '12px' }}>Submit Weekly Proof</h3>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '20px' }}>
               Upload a clear screenshot of your DartCounter match or achievement showing you completed this week's challenge.
@@ -343,8 +343,8 @@ export default function WeeklyChallenges() {
 
       {/* Create Challenge Modal (Admin) */}
       {showCreateModal && (
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div className="card glass animate-fade-in" style={{ width: '100%', maxWidth: '500px', padding: '28px', borderRadius: '16px' }}>
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px', overflowY: 'auto' }}>
+          <div className="card glass animate-fade-in" style={{ width: '100%', maxWidth: '600px', padding: '32px', borderRadius: '16px', maxHeight: '90vh', overflowY: 'auto', margin: 'auto' }}>
             <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '16px' }}>Create New Weekly Challenge</h3>
 
             <div className="form-group" style={{ marginBottom: '14px' }}>
@@ -357,14 +357,14 @@ export default function WeeklyChallenges() {
               <input type="file" accept="image/*" onChange={handleChallengeImagePick} className="glass" style={{ width: '100%', padding: '10px' }} />
               {newChallenge.challengeImage && (
                 <div style={{ marginTop: '10px' }}>
-                  <img src={newChallenge.challengeImage} alt="Preview" style={{ width: '100%', maxHeight: '150px', objectFit: 'cover', borderRadius: '8px' }} />
+                  <img src={newChallenge.challengeImage} alt="Preview" style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '8px' }} />
                 </div>
               )}
             </div>
 
             <div className="form-group" style={{ marginBottom: '14px' }}>
               <label>Description & Rules</label>
-              <textarea className="glass" rows={4} placeholder="Detailed instructions for players..." value={newChallenge.description} onChange={e => setNewChallenge({ ...newChallenge, description: e.target.value })} style={{ width: '100%', padding: '10px' }} />
+              <textarea className="glass" rows={5} placeholder="Detailed instructions for players..." value={newChallenge.description} onChange={e => setNewChallenge({ ...newChallenge, description: e.target.value })} style={{ width: '100%', padding: '10px' }} />
             </div>
 
             <div className="form-group" style={{ marginBottom: '20px' }}>
