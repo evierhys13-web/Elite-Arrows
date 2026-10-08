@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useAuth } from '../context/AuthContextInternal'
 import { db, doc, setDoc, getDocs, collection, query, where, orderBy, limit, deleteDoc, updateDoc } from '../firebase'
 import Breadcrumbs from '../components/Breadcrumbs'
+import UserSearchSelect from '../components/UserSearchSelect'
 import { useToast } from '../context/ToastContext'
 import { ADMIN_EMAILS } from '../config'
 import { compressImageToDataUrl } from '../utils/imageUtils'
@@ -10,13 +11,17 @@ export default function WeeklyChallenges() {
   const { user, getAllUsers } = useAuth()
   const { showToast } = useToast()
 
+  const allUsers = getAllUsers() || []
+
   const [activeChallenge, setActiveChallenge] = useState(null)
   const [pastChallenges, setPastChallenges] = useState([])
   const [submissions, setSubmissions] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showSubmitModal, setShowSubmitModal] = useState(false)
+  const [showManualAddModal, setShowManualAddModal] = useState(false)
   const [proofImage, setProofImage] = useState('')
+  const [manualPlayerId, setManualPlayerId] = useState('')
   const [submitting, setSubmitting] = useState('')
 
   const [newChallenge, setNewChallenge] = useState({
@@ -127,6 +132,34 @@ export default function WeeklyChallenges() {
       setSubmissions(prev => prev.map(s => s.id === subId ? { ...s, status: 'rejected' } : s))
     } catch (e) {
       showToast('Failed to reject: ' + e.message, 'error')
+    }
+  }
+
+  const handleManualAddCompletion = async () => {
+    if (!manualPlayerId || !activeChallenge) return showToast('Please select a player', 'error')
+    const targetUser = allUsers.find(u => String(u.id) === String(manualPlayerId))
+    if (!targetUser) return showToast('Player not found', 'error')
+
+    try {
+      const subId = `${activeChallenge.id}_${targetUser.id}`
+      const submissionData = {
+        id: subId,
+        challengeId: activeChallenge.id,
+        userId: targetUser.id,
+        username: targetUser.username || targetUser.name || 'Player',
+        proofImage: null,
+        manualEntry: true,
+        status: 'approved',
+        submittedAt: new Date().toISOString()
+      }
+      await setDoc(doc(db, 'weeklyChallengeSubmissions', subId), submissionData, { merge: true })
+      showToast(`Added ${targetUser.username} to completed list!`, 'success')
+      setShowManualAddModal(false)
+      setManualPlayerId('')
+      const sSnap = await getDocs(query(collection(db, 'weeklyChallengeSubmissions'), where('challengeId', '==', activeChallenge.id)))
+      setSubmissions(sSnap.docs.map(d => ({ id: d.id, ...d.data() })))
+    } catch (e) {
+      showToast('Failed to add player: ' + e.message, 'error')
     }
   }
 
@@ -254,7 +287,7 @@ export default function WeeklyChallenges() {
             <div key={sub.id} className="glass" style={{ padding: '12px 16px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span style={{ fontSize: '1.2rem' }}>🎯</span>
               <div>
-                <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>{sub.username}</div>
+                <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>{sub.username} {sub.manualEntry && <span style={{ fontSize: '0.6rem', color: 'var(--accent-cyan)' }}>(Admin Added)</span>}</div>
                 <div style={{ fontSize: '0.65rem', color: 'var(--success)' }}>Verified {new Date(sub.submittedAt).toLocaleDateString()}</div>
               </div>
             </div>
@@ -266,16 +299,21 @@ export default function WeeklyChallenges() {
       </div>
 
       {/* Admin Review Section */}
-      {isAdmin && submissions.length > 0 && (
+      {isAdmin && activeChallenge && (
         <div className="card glass" style={{ padding: '24px', borderRadius: '16px', marginBottom: '32px', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
-          <h3 style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '16px', color: '#f87171' }}>
-            🛡️ Admin Review: Weekly Submissions ({submissions.length})
-          </h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, color: '#f87171' }}>
+              🛡️ Admin Management: Weekly Submissions ({submissions.length})
+            </h3>
+            <button className="btn btn-primary btn-sm" onClick={() => setShowManualAddModal(true)}>
+              + Add Completed Player (No Proof)
+            </button>
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {submissions.map(sub => (
               <div key={sub.id} className="glass" style={{ padding: '16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
                 <div>
-                  <div style={{ fontWeight: 800, fontSize: '0.95rem' }}>{sub.username}</div>
+                  <div style={{ fontWeight: 800, fontSize: '0.95rem' }}>{sub.username} {sub.manualEntry && <span style={{ fontSize: '0.65rem', color: 'var(--accent-cyan)' }}>(Manual)</span>}</div>
                   <div style={{ fontSize: '0.75rem', color: sub.status === 'approved' ? 'var(--success)' : sub.status === 'rejected' ? 'var(--error)' : 'var(--warning)', fontWeight: 700 }}>
                     Status: {sub.status.toUpperCase()}
                   </div>
@@ -306,6 +344,9 @@ export default function WeeklyChallenges() {
                 )}
               </div>
             ))}
+            {submissions.length === 0 && (
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No submissions yet for this week.</p>
+            )}
           </div>
         </div>
       )}
@@ -334,6 +375,36 @@ export default function WeeklyChallenges() {
                 {submitting ? 'Submitting...' : 'Send for Review'}
               </button>
               <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowSubmitModal(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manual Add Completed Player Modal (Admin) */}
+      {showManualAddModal && (
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px', overflowY: 'auto' }}>
+          <div className="card glass animate-fade-in" style={{ width: '100%', maxWidth: '500px', padding: '28px', borderRadius: '16px', maxHeight: '90vh', overflowY: 'auto', margin: 'auto' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '12px' }}>Add Completed Player (No Proof)</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '20px' }}>
+              Select a player to instantly mark them as completed for this week's challenge.
+            </p>
+
+            <div className="form-group" style={{ marginBottom: '20px' }}>
+              <UserSearchSelect
+                users={allUsers}
+                selectedId={manualPlayerId}
+                onSelect={id => setManualPlayerId(id)}
+                label="Select Player"
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleManualAddCompletion} disabled={!manualPlayerId}>
+                Add to Completed
+              </button>
+              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowManualAddModal(false)}>
                 Cancel
               </button>
             </div>
