@@ -222,6 +222,17 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    match /weeklyChallenges/{challengeId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /weeklyChallengeSubmissions/{submissionId} {
+      allow read: if true;
+      allow create: if signedIn();
+      allow update, delete: if isAdmin();
+    }
+
     // Player of the Month - members cast one vote (per month+division) which is
     // enforced on the client via a deterministic vote id. Voters can only write
     // their own vote doc.

@@ -21,8 +21,8 @@ export default function WeeklyChallenges() {
 
   const [newChallenge, setNewChallenge] = useState({
     weekLabel: 'Week 1',
-    title: '',
     description: '',
+    challengeImage: '',
     reward: 'Elite Trophy & Weekly Prize Draw Entry'
   })
 
@@ -68,6 +68,18 @@ export default function WeeklyChallenges() {
       showToast('Proof screenshot attached!', 'success')
     } catch (err) {
       showToast('Failed to process image: ' + err.message, 'error')
+    }
+  }
+
+  const handleChallengeImagePick = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    try {
+      const dataUrl = await compressImageToDataUrl(file, 1200, 0.8)
+      setNewChallenge(prev => ({ ...prev, challengeImage: dataUrl }))
+      showToast('Challenge image attached!', 'success')
+    } catch (err) {
+      showToast('Failed to process challenge image: ' + err.message, 'error')
     }
   }
 
@@ -119,7 +131,7 @@ export default function WeeklyChallenges() {
   }
 
   const handleCreateChallenge = async () => {
-    if (!newChallenge.title || !newChallenge.description) return showToast('Title and description required', 'error')
+    if (!newChallenge.description) return showToast('Challenge description required', 'error')
     try {
       const id = `week_${Date.now()}`
       const challengeDoc = {
@@ -130,7 +142,7 @@ export default function WeeklyChallenges() {
       await setDoc(doc(db, 'weeklyChallenges', id), challengeDoc)
       showToast('Weekly Challenge created!', 'success')
       setShowCreateModal(false)
-      setNewChallenge({ weekLabel: 'Week ' + (pastChallenges.length + 2), title: '', description: '', reward: 'Elite Trophy & Weekly Prize Draw Entry' })
+      setNewChallenge({ weekLabel: 'Week ' + (pastChallenges.length + 2), description: '', challengeImage: '', reward: 'Elite Trophy & Weekly Prize Draw Entry' })
       fetchChallenges()
     } catch (e) {
       showToast('Failed to create challenge: ' + e.message, 'error')
@@ -172,16 +184,19 @@ export default function WeeklyChallenges() {
               <span style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', padding: '4px 12px', borderRadius: '99px', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase' }}>
                 {activeChallenge.weekLabel || 'Active Week'}
               </span>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white', marginTop: '10px', marginBottom: '6px' }}>
-                {activeChallenge.title}
-              </h2>
             </div>
             <div style={{ background: 'rgba(0, 212, 255, 0.1)', color: 'var(--accent-cyan)', padding: '6px 14px', borderRadius: '10px', fontSize: '0.8rem', fontWeight: 700 }}>
               🎁 {activeChallenge.reward || 'Weekly Reward'}
             </div>
           </div>
 
-          <p style={{ color: 'rgba(255,255,255,0.85)', lineHeight: '1.6', fontSize: '0.95rem', marginBottom: '24px' }}>
+          {activeChallenge.challengeImage && (
+            <div style={{ marginBottom: '20px', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+              <img src={activeChallenge.challengeImage} alt="Challenge" style={{ width: '100%', maxHeight: '400px', objectFit: 'cover' }} />
+            </div>
+          )}
+
+          <p style={{ color: 'rgba(255,255,255,0.85)', lineHeight: '1.6', fontSize: '1rem', marginBottom: '24px', whiteSpace: 'pre-wrap' }}>
             {activeChallenge.description}
           </p>
 
@@ -338,8 +353,13 @@ export default function WeeklyChallenges() {
             </div>
 
             <div className="form-group" style={{ marginBottom: '14px' }}>
-              <label>Challenge Title</label>
-              <input className="glass" placeholder="e.g. Hit Three 180s in a single match" value={newChallenge.title} onChange={e => setNewChallenge({ ...newChallenge, title: e.target.value })} />
+              <label>Challenge Image / Banner</label>
+              <input type="file" accept="image/*" onChange={handleChallengeImagePick} className="glass" style={{ width: '100%', padding: '10px' }} />
+              {newChallenge.challengeImage && (
+                <div style={{ marginTop: '10px' }}>
+                  <img src={newChallenge.challengeImage} alt="Preview" style={{ width: '100%', maxHeight: '150px', objectFit: 'cover', borderRadius: '8px' }} />
+                </div>
+              )}
             </div>
 
             <div className="form-group" style={{ marginBottom: '14px' }}>
