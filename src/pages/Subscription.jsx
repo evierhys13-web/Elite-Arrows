@@ -7,8 +7,7 @@ const MONTHLY_PRICE = 10;
 
 const PRICE_BREAKDOWN = [
   { label: 'League Prize Pool', amount: 6, color: '#fbbf24' },
-  { label: 'Player of the Month', amount: 1, color: '#a78bfa' },
-  { label: 'Highest Checkout Prize', amount: 1, color: '#10b981' },
+  { label: 'Highout, Tournies & Player of the Month', amount: 2, color: '#a78bfa' },
   { label: 'Site Pot', amount: 2, color: '#38bdf8' },
 ];
 
