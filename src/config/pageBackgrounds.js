@@ -12,11 +12,8 @@ export const SUPPORTED_PAGES = [
   { key: 'cups', label: 'Cups', group: 'Cups & Tournaments', paths: ['/cups'] },
   { key: 'tournaments', label: 'Tournaments', group: 'Cups & Tournaments', paths: ['/tournaments'] },
 
-  { key: 'training', label: 'Training', group: 'Training & Practice', paths: ['/training'] },
-  { key: 'practice', label: 'Practice', group: 'Training & Practice', paths: ['/practice'] },
-  { key: 'progress-tracker', label: 'Progress Tracker', group: 'Training & Practice', paths: ['/progress-tracker'] },
-  { key: 'challenges', label: 'Challenges', group: 'Training & Practice', paths: ['/challenges'] },
-  { key: 'weekly-challenges', label: 'Weekly Challenges', group: 'Training & Practice', paths: ['/weekly-challenges'] },
+  { key: 'challenges', label: 'Challenges', group: 'Challenges', paths: ['/challenges'] },
+  { key: 'weekly-challenges', label: 'Weekly Challenges', group: 'Challenges', paths: ['/weekly-challenges'] },
 
   { key: 'chat', label: 'Chat', group: 'Social', paths: ['/chat'] },
   { key: 'players', label: 'Players', group: 'Social', paths: ['/players'] },

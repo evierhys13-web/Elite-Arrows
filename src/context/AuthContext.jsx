@@ -224,7 +224,7 @@ export function AuthProvider({ children }) {
     try {
       const isGuest = localStorage.getItem("eliteArrowsIsGuestSession") === "true";
       if (isGuest) {
-        return { id: "guest_player", username: "Guest Player", isGuest: true, division: "Unassigned", isSubscribed: true, trainingPassActive: true, isAdmin: false };
+        return { id: "guest_player", username: "Guest Player", isGuest: true, division: "Unassigned", isSubscribed: true, isAdmin: false };
       }
       const saved = localStorage.getItem("eliteArrowsCurrentUser");
       return saved && saved !== "undefined" ? JSON.parse(saved) : null;
@@ -1427,7 +1427,6 @@ const fetchUsers = async () => {
             isGuest: true,
             division: "Unassigned",
             isSubscribed: true,
-            trainingPassActive: true,
             isAdmin: false
           };
           setUser(guestUser);
@@ -1486,7 +1485,7 @@ const fetchUsers = async () => {
           } catch (e) {
             console.warn("Anonymous auth error:", e);
           }
-          setUser({ id: "guest_player", username: "Guest Player", isGuest: true, division: "Unassigned", isSubscribed: true, trainingPassActive: true, isAdmin: false });
+          setUser({ id: "guest_player", username: "Guest Player", isGuest: true, division: "Unassigned", isSubscribed: true, isAdmin: false });
         } else {
           setUser(null);
           localStorage.removeItem("eliteArrowsCurrentUser");
@@ -1590,7 +1589,7 @@ const fetchUsers = async () => {
 
   const loginAsGuest = useCallback(async () => {
     localStorage.setItem("eliteArrowsIsGuestSession", "true");
-    const guestUser = { id: "guest_player", username: "Guest Player", isGuest: true, division: "Unassigned", isSubscribed: true, trainingPassActive: true, isAdmin: false };
+    const guestUser = { id: "guest_player", username: "Guest Player", isGuest: true, division: "Unassigned", isSubscribed: true, isAdmin: false };
     setUser(guestUser);
     localStorage.setItem("eliteArrowsCurrentUser", JSON.stringify(guestUser));
     try {

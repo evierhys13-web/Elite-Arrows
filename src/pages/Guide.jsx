@@ -426,7 +426,6 @@ export default function Guide() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: '12px', marginTop: '20px' }}>
           {[
             { icon: '🤝', title: 'Friendly League', body: 'Open singles and duos against anyone, any time — no pressure, just practice with purpose.' },
-            { icon: '🎯', title: 'Practice Hub', body: 'DartBot can use online play and solo practice modes to sharpen your game between fixtures.' },
             { icon: '⚡', title: 'Daily Challenges', body: 'A little something new every day — complete them, earn recognition, stay sharp.' },
             { icon: '💬', title: 'Community', body: 'Chat with friends, coordinate matches, and hang out in the WhatsApp group on this page.' },
             { icon: '🎁', title: 'Giveaways', body: 'Occasional league giveaways and rewards — keep an eye on news and notifications.' },

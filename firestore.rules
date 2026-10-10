@@ -277,23 +277,6 @@ service cloud.firestore {
       allow update, delete: if isAdmin() || isOwner(resource.data.userId);
     }
 
-    match /practiceSessions/{sessionId} {
-      allow read: if signedIn();
-      allow create: if signedIn();
-      allow update, delete: if isOwner(resource.data.userId);
-    }
-
-    match /progressLogs/{logId} {
-      allow read: if signedIn() && (isOwner(resource.data.userId) || resource.data.get('isPublic', false) == true || isAdmin());
-      allow create: if signedIn();
-      allow update, delete: if isOwner(resource.data.userId) || isAdmin();
-    }
-
-    match /practiceLeaderboard/{entryId} {
-      allow read: if true;
-      allow create, update: if signedIn();
-    }
-
     // Live lobby presence for Play Online (transient, written by signed-in players).
     match /lobbyPresence/{userId} {
       allow read: if signedIn();

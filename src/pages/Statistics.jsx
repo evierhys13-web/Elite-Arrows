@@ -76,6 +76,77 @@ const StatTile = ({ icon, value, label, color, sub }) => (
   </div>
 )
 
+const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+const formatMonthLabel = (ym) => {
+  const [y, m] = String(ym || '').split('-')
+  const idx = Number(m) - 1
+  if (Number.isNaN(idx) || idx < 0 || idx > 11) return ym
+  return `${MONTH_LABELS[idx]} ${String(y).slice(2)}`
+}
+
+function TrendPill({ active, onClick, children }) {
+  return (
+    <button onClick={onClick} style={{
+      border: 'none', borderRadius: '99px', padding: '4px 12px', fontSize: '0.68rem', fontWeight: 800, cursor: 'pointer',
+      background: active ? 'var(--accent-cyan)' : 'transparent', color: active ? '#0b051d' : 'var(--text-muted)'
+    }}>{children}</button>
+  )
+}
+
+function MetricTrendChart({ title, subtitle, data, dataKey, color, unit = '', decimals = 1, yDomain }) {
+  const [curve, setCurve] = useState(false)
+  const hasData = Array.isArray(data) && data.some(d => Number(d[dataKey]) > 0)
+  return (
+    <div className="card glass" style={{ padding: '18px', borderRadius: '20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', flexWrap: 'wrap' }}>
+        <div>
+          <h3 className="card-title" style={{ margin: 0 }}>{title}</h3>
+          {subtitle && <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', margin: '2px 0 0' }}>{subtitle}</p>}
+        </div>
+        <div style={{ display: 'flex', gap: '2px', background: 'rgba(255,255,255,0.05)', padding: '3px', borderRadius: '99px', border: '1px solid var(--border)' }}>
+          <TrendPill active={!curve} onClick={() => setCurve(false)}>Straight</TrendPill>
+          <TrendPill active={curve} onClick={() => setCurve(true)}>Curve</TrendPill>
+        </div>
+      </div>
+      <div style={{ height: '230px', width: '100%', marginTop: '10px' }}>
+        {hasData ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={data} margin={{ top: 10, right: 14, left: -16, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <XAxis dataKey="label" stroke="var(--text-muted)" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} minTickGap={16} />
+              <YAxis stroke="var(--text-muted)" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} domain={yDomain || ['auto', 'auto']} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [`${Number(v).toFixed(decimals)}${unit}`, title]} />
+              <Line type={curve ? 'monotone' : 'linear'} dataKey={dataKey} stroke={color} strokeWidth={3} dot={{ r: 3.5, fill: color, stroke: 'var(--bg-primary)', strokeWidth: 1.5 }} activeDot={{ r: 6 }} connectNulls />
+            </LineChart>
+          </ResponsiveContainer>
+        ) : (
+          <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed var(--border)', borderRadius: '14px' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: 0 }}>No {title.toLowerCase()} data for this season yet.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function MonthlyMetricsGrid({ series, seasonLabel }) {
+  return (
+    <div style={{ marginBottom: '24px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
+        <h3 className="card-title" style={{ margin: 0, fontSize: '1.15rem' }}>📈 Month-by-Month Trends</h3>
+        <span style={{ fontSize: '0.66rem', fontWeight: 800, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.06)', padding: '3px 10px', borderRadius: '99px', border: '1px solid var(--border)' }}>{seasonLabel}</span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '20px' }}>
+        <MetricTrendChart title="3-Dart Average" subtitle="Mean match average" data={series} dataKey="avg" color="#38bdf8" decimals={2} />
+        <MetricTrendChart title="9-Dart Average" subtitle="Mean 9-dart average" data={series} dataKey="nineDart" color="#a78bfa" decimals={2} />
+        <MetricTrendChart title="Highest Checkout" subtitle="Best finish per month" data={series} dataKey="checkout" color="#10b981" decimals={0} />
+        <MetricTrendChart title="Checkout %" subtitle="Mean double success" data={series} dataKey="checkoutPct" color="#fbbf24" unit="%" decimals={1} yDomain={[0, 100]} />
+      </div>
+    </div>
+  )
+}
+
 function calcStdDev(values) {
   if (values.length === 0) return 0
   const mean = values.reduce((a, b) => a + b, 0) / values.length
@@ -210,12 +281,20 @@ export default function Statistics() {
 
       const month = String(matchDate || '').substring(0, 7)
       if (month && month.length === 7) {
-        if (!monthlyData[month]) monthlyData[month] = { month, wins: 0, losses: 0, draws: 0, legsWon: 0, legsLost: 0 }
-        monthlyData[month].legsWon += myScore
-        monthlyData[month].legsLost += theirScore
-        if (myScore > theirScore) monthlyData[month].wins++
-        else if (myScore < theirScore) monthlyData[month].losses++
-        else monthlyData[month].draws++
+        if (!monthlyData[month]) monthlyData[month] = { month, wins: 0, losses: 0, draws: 0, legsWon: 0, legsLost: 0, avgSum: 0, avgCount: 0, nineSum: 0, nineCount: 0, coMax: 0, dsSum: 0, dsCount: 0 }
+        const mRow = monthlyData[month]
+        mRow.legsWon += myScore
+        mRow.legsLost += theirScore
+        if (myScore > theirScore) mRow.wins++
+        else if (myScore < theirScore) mRow.losses++
+        else mRow.draws++
+        const avg = Number(myStats?.avg || 0)
+        if (avg > 0) { mRow.avgSum += avg; mRow.avgCount++ }
+        if (nineDart > 0) { mRow.nineSum += nineDart; mRow.nineCount++ }
+        const co = Number(myStats?.highestCheckout || 0)
+        if (co > mRow.coMax) mRow.coMax = co
+        const ds = Number(myStats?.doubleSuccess)
+        if (Number.isFinite(ds)) { mRow.dsSum += ds; mRow.dsCount++ }
       }
     })
 
@@ -233,6 +312,13 @@ export default function Statistics() {
       nineDartAvg: stats.nineDartCount > 0 ? Number((stats.nineDartTotal / stats.nineDartCount).toFixed(1)) : 0,
       winRate: stats.played > 0 ? ((stats.wins / stats.played) * 100).toFixed(1) : 0,
       monthlyData: Object.values(monthlyData).sort((a, b) => a.month.localeCompare(b.month)),
+      metricsMonthly: Object.values(monthlyData).sort((a, b) => a.month.localeCompare(b.month)).map(m => ({
+        label: formatMonthLabel(m.month),
+        avg: m.avgCount ? Number((m.avgSum / m.avgCount).toFixed(2)) : 0,
+        nineDart: m.nineCount ? Number((m.nineSum / m.nineCount).toFixed(2)) : 0,
+        checkout: m.coMax || 0,
+        checkoutPct: m.dsCount ? Number((m.dsSum / m.dsCount).toFixed(1)) : 0
+      })),
       checkoutTrend,
       radarData,
       last5Matches: formGuide.slice(-5)
@@ -285,6 +371,35 @@ export default function Statistics() {
         avg180s: div.playerGames > 0 ? (div.total180s / div.playerGames).toFixed(2) : 0
       }))
   }, [allUsers, approvedResults, playerStatsMap])
+
+  const leagueMonthlyMetrics = useMemo(() => {
+    const map = {}
+    approvedResults.forEach(r => {
+      const matchDate = r.date || r.submittedAt || r.approvedAt
+      const month = String(matchDate || '').substring(0, 7)
+      if (!month || month.length !== 7) return
+      if (!map[month]) map[month] = { month, avgSum: 0, avgCount: 0, nineSum: 0, nineCount: 0, coMax: 0, dsSum: 0, dsCount: 0 }
+      const row = map[month]
+      ;[r.player1Stats, r.player2Stats].forEach(s => {
+        if (!s) return
+        const avg = Number(s.avg || 0)
+        if (avg > 0) { row.avgSum += avg; row.avgCount++ }
+        const nine = Number(s.nineDartAvg || 0)
+        if (nine > 0) { row.nineSum += nine; row.nineCount++ }
+        const co = Number(s.highestCheckout || 0)
+        if (co > row.coMax) row.coMax = co
+        const ds = Number(s.doubleSuccess)
+        if (Number.isFinite(ds)) { row.dsSum += ds; row.dsCount++ }
+      })
+    })
+    return Object.values(map).sort((a, b) => a.month.localeCompare(b.month)).map(m => ({
+      label: formatMonthLabel(m.month),
+      avg: m.avgCount ? Number((m.avgSum / m.avgCount).toFixed(2)) : 0,
+      nineDart: m.nineCount ? Number((m.nineSum / m.nineCount).toFixed(2)) : 0,
+      checkout: m.coMax || 0,
+      checkoutPct: m.dsCount ? Number((m.dsSum / m.dsCount).toFixed(1)) : 0
+    }))
+  }, [approvedResults])
 
   const division180sByDivision = useMemo(() => {
     const divPlayers = {}
@@ -349,6 +464,21 @@ export default function Statistics() {
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <select
             className="glass"
+            value={isPlayerView ? 'personal' : 'league'}
+            onChange={e => {
+              if (e.target.value === 'personal') {
+                if (user?.id && !user?.isGuest) navigate(`/statistics/${user.id}`)
+              } else {
+                navigate('/statistics')
+              }
+            }}
+            style={{ padding: '8px 12px', borderRadius: '99px', fontSize: '0.8rem', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-primary)', fontWeight: 600 }}
+          >
+            <option value="league">League Stats</option>
+            <option value="personal" disabled={!user?.id || user?.isGuest}>Personal Stats</option>
+          </select>
+          <select
+            className="glass"
             value={selectedSeason}
             onChange={e => setSelectedSeason(e.target.value)}
             style={{ padding: '8px 12px', borderRadius: '99px', fontSize: '0.8rem', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-primary)', fontWeight: 600 }}
@@ -397,6 +527,7 @@ export default function Statistics() {
           fixtures={fixtures}
           allUsers={allUsers}
           navigate={navigate}
+          leagueMonthlyMetrics={leagueMonthlyMetrics}
         />
       )}
     </div>
@@ -657,11 +788,13 @@ function PlayerView({ user, personalStats, allTime, seasonal, seasonName, onBack
           </div>
         )}
       </div>
+
+      <MonthlyMetricsGrid series={personalStats.metricsMonthly || []} seasonLabel={`${seasonName} · League`} />
     </div>
   )
 }
 
-function DivisionOverview({ leagueStats, filteredDiv180s, selectedDivFilter, setSelectedDivFilter, approvedResults, seasonAllPlayers, seasonName, fixtures, allUsers, navigate }) {
+function DivisionOverview({ leagueStats, filteredDiv180s, selectedDivFilter, setSelectedDivFilter, approvedResults, seasonAllPlayers, seasonName, fixtures, allUsers, navigate, leagueMonthlyMetrics }) {
   const totalPlayers = useMemo(() => allUsers.filter(u => DIVISIONS.includes(u?.division)).length, [allUsers])
   const totalMatches = approvedResults.length
   const total180s = approvedResults.reduce((acc, r) => acc + Number(r.player1Stats?.['180s'] || 0) + Number(r.player2Stats?.['180s'] || 0), 0)
@@ -817,6 +950,8 @@ function DivisionOverview({ leagueStats, filteredDiv180s, selectedDivFilter, set
           </ResponsiveContainer>
         </div>
       </div>
+
+      <MonthlyMetricsGrid series={leagueMonthlyMetrics || []} seasonLabel={`${seasonName} · League-wide`} />
 
       <SeasonPlayerBrowser
         seasonStatsMap={seasonAllPlayers}

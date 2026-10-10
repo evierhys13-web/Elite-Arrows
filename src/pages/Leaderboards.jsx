@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContextInternal'
-import { db, collection, query, getDocs, orderBy, limit } from '../firebase'
+import { db, collection, getDocs } from '../firebase'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
 import { HIDDEN_LEAGUE_DIVISIONS } from '../utils/leagueStandings'
 import Breadcrumbs from '../components/Breadcrumbs'
@@ -32,26 +32,11 @@ export default function Leaderboards() {
   const { user, getAllUsers, getFixtures, getResults, dataRefreshTrigger, adminData, forceFetchResults, triggerDataRefresh } = useAuth()
   const { showToast } = useToast()
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
   const [selectedDivision, setSelectedDivision] = useState('all')
-  const [activeTab, setActiveTab] = useState(searchParams.get('tab') === 'practice' ? 'practice' : 'league')
+  const [activeTab, setActiveTab] = useState('league')
   const [isSyncing, setIsSyncing] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
-  const [practiceLeaderboard, setPracticeLeaderboard] = useState([])
   const [hallOfFame, setHallOfFame] = useState([])
-
-  useEffect(() => {
-    const fetchPracticeData = async () => {
-      try {
-        const q = query(collection(db, 'practiceLeaderboard'), orderBy('score', 'desc'), limit(50))
-        const snap = await getDocs(q)
-        setPracticeLeaderboard(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-      } catch (e) {
-        console.error('Error fetching practice leaderboard:', e)
-      }
-    }
-    if (activeTab === 'practice') fetchPracticeData()
-  }, [activeTab, refreshKey])
 
   useEffect(() => {
     const fetchHallOfFame = async () => {
@@ -133,7 +118,6 @@ export default function Leaderboards() {
   }, [leagueBoard, user?.id])
 
   const podiumPlayers = useMemo(() => {
-    if (activeTab === 'practice') return []
     const list = activeTab === '180s' ? board180s : activeTab === 'checkouts' ? boardCheckouts : leagueBoard
     return list.slice(0, 3)
   }, [activeTab, leagueBoard, board180s, boardCheckouts])
@@ -400,58 +384,6 @@ export default function Leaderboards() {
     </>
   )
 
-  const practiceUsers = useMemo(() =>
-    practiceLeaderboard.map(e => ({ ...e, user: allUsers.find(u => u.username === e.username) }))
-  , [practiceLeaderboard, allUsers])
-
-  const renderPracticeTable = () => (
-    <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <h3 className="card-title" style={{ margin: 0, fontSize: '1.15rem' }}>🎯 Practice Drills Leaderboard</h3>
-      </div>
-      <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-        {practiceUsers.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-            <p style={{ color: 'var(--text-muted)' }}>No practice sessions recorded yet.</p>
-            <button className="btn btn-primary" style={{ marginTop: '16px' }} onClick={() => navigate('/practice')}>Go to Practice Hub</button>
-          </div>
-        ) : (
-          <table style={{ width: '100%', minWidth: '500px', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)', fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                <th style={{ padding: '12px 8px' }}>Rank</th>
-                <th style={{ padding: '12px 8px' }}>Player</th>
-                <th style={{ padding: '12px 8px' }}>Drill</th>
-                <th style={{ padding: '12px 8px', textAlign: 'center' }}>Score/Acc</th>
-              </tr>
-            </thead>
-            <tbody>
-              {practiceUsers.map((entry, index) => (
-                <tr key={entry.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', fontSize: '0.9rem' }}>
-                  <td style={{ padding: '12px 8px' }}>{rankBadge(index)}</td>
-                  <td style={{ padding: '12px 8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => entry.user ? navigate(`/statistics/${entry.user.id}`) : navigate('/practice')}>
-                      {renderAvatar(entry.user || { username: entry.username }, 36)}
-                      <div style={{ fontWeight: 700 }}>{entry.username}</div>
-                    </div>
-                  </td>
-                  <td style={{ padding: '12px 8px' }}>
-                    <span style={{ padding: '4px 10px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, color: entry.modeId === 'atc' ? 'var(--accent-cyan)' : entry.modeId === '170' ? '#ef4444' : '#fbbf24' }}>
-                      {entry.modeId === 'atc' ? '🍀 Around Clock' : entry.modeId === '170' ? '💯 170 Drill' : '🎯 Scoring'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 900, color: 'var(--accent-primary)', fontSize: '1rem' }}>
-                    {entry.modeId === 'atc' ? `${entry.accuracy?.toFixed(1)}%` : entry.modeId === '170' ? `${entry.dartsThrown} darts` : entry.score}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </>
-  )
-
   return (
     <div className="page animate-fade-in">
       <Breadcrumbs items={[{ label: 'Home', path: '/home' }, { label: 'Leaderboards' }]} />
@@ -497,35 +429,28 @@ export default function Leaderboards() {
         {spotCard({ icon: '🐟', title: 'Highest Checkout', name: topCheckout?.username, value: topCheckout?.highestCheckout, unit: 'finish', color: '#10b981', sub: topCheckout?.division ? `${topCheckout.division} Division` : '—' })}
       </div>
 
-      {activeTab !== 'practice' && (
-        <div className="division-tabs" style={{ marginBottom: '22px', display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
-          {[
-            { key: 'league', label: '🏆 League Rankings' },
-            { key: '180s', label: '💯 Most 180s' },
-            { key: 'checkouts', label: '🐟 Highest Checkouts' },
-          ].map(tab => (
-            <button key={tab.key} className={`division-tab ${activeTab === tab.key ? 'active' : ''}`} onClick={() => setActiveTab(tab.key)} style={{ fontSize: '0.78rem', padding: '10px 18px' }}>
-              {tab.label}
-            </button>
-          ))}
-          <button className={`division-tab ${activeTab === 'practice' ? 'active' : ''}`} onClick={() => setActiveTab('practice')} style={{ fontSize: '0.78rem', padding: '10px 18px' }}>
-            🎯 Practice Drills
+      <div className="division-tabs" style={{ marginBottom: '22px', display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+        {[
+          { key: 'league', label: '🏆 League Rankings' },
+          { key: '180s', label: '💯 Most 180s' },
+          { key: 'checkouts', label: '🐟 Highest Checkouts' },
+        ].map(tab => (
+          <button key={tab.key} className={`division-tab ${activeTab === tab.key ? 'active' : ''}`} onClick={() => setActiveTab(tab.key)} style={{ fontSize: '0.78rem', padding: '10px 18px' }}>
+            {tab.label}
           </button>
-        </div>
-      )}
+        ))}
+      </div>
 
-      {activeTab !== 'practice' && (
-        <div className="division-tabs" style={{ marginBottom: '24px', display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
-          {divisions.map(div => (
-            <button key={div} className={`division-tab ${selectedDivision === div ? 'active' : ''}`} onClick={() => setSelectedDivision(div)} style={{ fontSize: '0.72rem', padding: '8px 16px' }}>
-              {div === 'all' ? '⭐ All Divisions' : div}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="division-tabs" style={{ marginBottom: '24px', display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+        {divisions.map(div => (
+          <button key={div} className={`division-tab ${selectedDivision === div ? 'active' : ''}`} onClick={() => setSelectedDivision(div)} style={{ fontSize: '0.72rem', padding: '8px 16px' }}>
+            {div === 'all' ? '⭐ All Divisions' : div}
+          </button>
+        ))}
+      </div>
 
       {/* PODIUM */}
-      {activeTab !== 'practice' && renderPodium()}
+      {renderPodium()}
 
       <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '32px', alignItems: 'start' }} className="leaderboard-grid">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -533,7 +458,6 @@ export default function Leaderboards() {
             {activeTab === 'league' && renderLeagueTable()}
             {activeTab === '180s' && render180sTable()}
             {activeTab === 'checkouts' && renderCheckoutsTable()}
-            {activeTab === 'practice' && renderPracticeTable()}
           </div>
         </div>
 

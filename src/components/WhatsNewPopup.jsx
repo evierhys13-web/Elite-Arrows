@@ -17,7 +17,6 @@ const CHANGELOG = [
     version: '2.5.5',
     date: 'June 2026',
     changes: [
-      { type: 'feature', title: 'New Practice Hub', description: 'Master the board with Around the Clock, 170 Drill, and Scoring practice games. Earn Elite Tokens for daily practice!' },
       { type: 'feature', title: 'Highlights Reel', description: 'Showcase your best 180s and high checkouts with video uploads on your profile. Like and share top moments.' },
       { type: 'improvement', title: 'Season Standing Updates', description: 'Improved league table logic with deeper sync, automatic promotion/relegation tracking, and manual adjustments.' },
       { type: 'improvement', title: 'Native Camera Integration', description: 'Enhanced camera permissions for smoother result proofing and video highlights.' }
