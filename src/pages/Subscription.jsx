@@ -50,7 +50,7 @@ const PAYMENT_METHODS = [
   {
     name: 'Monzo',
     icon: '🏦',
-    lines: ['Name: Rhys Howe', 'Bank: Monzo Bank', 'Account Number: 43482637'],
+    lines: ['Name: Rhys Howe', 'Bank: Monzo Bank', 'Account Number: 43482637', 'Sort Code: 04-00-06'],
   },
 ];
 
@@ -118,7 +118,7 @@ export default function Subscription() {
       )}
 
       {/* PASS SELECTION */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '18px', marginBottom: '32px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '18px', marginBottom: '32px' }}>
         {PASS_DIVISIONS.map(div => {
           const color = DIVISION_COLORS[div] || 'var(--accent-cyan)';
           const selected = selectedPass === div;
