@@ -12,7 +12,7 @@ import { SUPPORTED_PAGES, PAGE_BACKGROUND_GROUPS } from '../config/pageBackgroun
 import { usePageBackgrounds } from '../context/BackgroundContext'
 import { useSponsorship } from '../context/SponsorshipContext'
 import SponsorshipLeagueEditor from '../components/SponsorshipLeagueEditor'
-import { LEAGUE_DIVISION_KEYS } from '../utils/leagueStandings'
+import { LEAGUE_DIVISION_KEYS, DIVISION_COLORS } from '../utils/leagueStandings'
 import { scheduleLeagueDigestWrite, writeLeagueDigestNow } from '../utils/leaguePageDigest'
 import UserSearchSelect from '../components/UserSearchSelect'
 import { useToast } from '../context/ToastContext'
@@ -333,6 +333,21 @@ export default function Admin() {
   }, [allPlayers, allResults, allFixtures, adminData, getSeasons])
 
   const pendingPayments = allPlayers.filter(u => u?.paymentPending)
+  const pendingPaymentsByDivision = useMemo(() => {
+    const order = ['Elite', 'Emerald', 'Diamond', 'Platinum']
+    const groups = {}
+    pendingPayments.forEach(u => {
+      const div = u.requestedDivision || u.requestedPlan || 'Unassigned'
+      if (!groups[div]) groups[div] = []
+      groups[div].push(u)
+    })
+    return Object.keys(groups)
+      .sort((a, b) => {
+        const ia = order.indexOf(a); const ib = order.indexOf(b)
+        return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
+      })
+      .map(div => ({ division: div, players: groups[div] }))
+  }, [pendingPayments])
   const entryRequests = allPlayers.filter(u => u?.adminRequestPending)
   const subscribers = allPlayers.filter(u => u?.isSubscribed || (u?.subscribedSeasons && u.subscribedSeasons.length > 0))
 
@@ -347,6 +362,10 @@ export default function Admin() {
 
   const subscriptionPot = adminData?.subscriptionPot || 0
   const subscriptionPot10 = adminData?.subscriptionPot10 || 0
+  const potLeaguePrizePool = adminData?.potLeaguePrizePool || 0
+  const potPlayerOfMonth = adminData?.potPlayerOfMonth || 0
+  const potHighout = adminData?.potHighout || 0
+  const potSitePot = adminData?.potSitePot || 0
 
   useEffect(() => {
     const tab = searchParams.get('tab')
@@ -1019,27 +1038,46 @@ export default function Admin() {
 
   const handleApprovePayment = async (u) => {
     try {
-      const isOverriding = approvingPaymentId === u.id
-      const finalSeason = isOverriding ? approvalOverride.season : (u.requestedSeason || adminData?.currentSeason || 'Season 1')
-      const paymentAmount = 5.99
-      const currentSeasonName = adminData?.currentSeason || 'Season 1'
+      const finalSeason = u.requestedSeason || adminData?.currentSeason || 'Elite Arrows Season 6'
+      const division = u.requestedDivision || u.requestedPlan || u.division || ''
+      const validDivision = ['Elite', 'Emerald', 'Diamond', 'Platinum'].includes(division)
       const currentSeasons = Array.isArray(u.subscribedSeasons) ? u.subscribedSeasons : []
       const nextSeasons = Array.from(new Set([...currentSeasons, finalSeason]))
       const updates = {
         paymentPending: false,
+        paymentApprovedAt: new Date().toISOString(),
         subscriptionDate: new Date().toISOString(),
         subscriptionTier: 'elite',
         subscribedSeasons: nextSeasons,
-        isSubscribed: u.isSubscribed || (finalSeason === currentSeasonName)
+        isSubscribed: true,
+        requestedDivision: division || u.requestedDivision || null
       }
+      if (validDivision) updates.division = division
       await setDoc(doc(db, 'users', u.id), updates, { merge: true })
-      const currentPot = adminData?.subscriptionPot || 0
-      await updateAdminData({ subscriptionPot: currentPot + paymentAmount })
-      addToMoneyHistory('subscription', paymentAmount, `Approved payment: ${u.username} for ${finalSeason}`)
-      await logAudit('APPROVE_PAYMENT', `Approved payment for ${u.username} (£${paymentAmount}) - ${finalSeason}`)
+
+      const pot = adminData || {}
+      await updateAdminData({
+        subscriptionPot: (pot.subscriptionPot || 0) + 10,
+        potLeaguePrizePool: (pot.potLeaguePrizePool || 0) + 6,
+        potPlayerOfMonth: (pot.potPlayerOfMonth || 0) + 1,
+        potHighout: (pot.potHighout || 0) + 1,
+        potSitePot: (pot.potSitePot || 0) + 2
+      })
+      addToMoneyHistory('subscription', 10, `Approved payment: ${u.username}${division ? ` (${division})` : ''} for ${finalSeason}`)
+      await logAudit('APPROVE_PAYMENT', `Approved £10 payment for ${u.username}${division ? ` — ${division} division` : ''} (${finalSeason})`)
+      try {
+        await notifyUser(
+          u.id,
+          'Payment approved',
+          `Your £10 payment has been approved.${validDivision ? ` You'll be playing in the ${division} division this season.` : ''}`,
+          'payment',
+          { division: validDivision ? division : null, season: finalSeason }
+        )
+      } catch (ne) { console.error('Payment approval notification failed', ne) }
+
       setApprovingPaymentId(null)
       triggerDataRefresh('users')
-      showToast(`Subscription Approved for ${finalSeason}!`, 'success')
+      showToast(validDivision ? `Payment approved — ${u.username} placed in ${division}` : `Payment approved for ${u.username}`, 'success')
     } catch (e) { showToast(e.message, 'error') }
   }
 
@@ -2814,30 +2852,37 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
                 {pendingPayments.length === 0 ? (
                    <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>No pending payments.</div>
                 ) : (
-                  pendingPayments.map(u => (
-                    <div key={u.id} className="glass" style={{ padding: '20px', borderRadius: '12px', marginBottom: '15px', borderLeft: '4px solid #fbbf24' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-                        <div>
-                          <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>{u.username}</div>
-                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '8px' }}>{u.email}</div>
-                          <div style={{ display: 'flex', gap: '12px', fontSize: '0.75rem' }}>
-                            <span style={{ color: 'var(--accent-cyan)' }}>Season: {u.requestedSeason || 'N/A'}</span>
-                            <span style={{ color: 'var(--success)' }}>Plan: {u.requestedPlan || 'Elite'}</span>
+                  pendingPaymentsByDivision.map(group => (
+                    <div key={group.division} style={{ marginBottom: '26px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                        <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', background: DIVISION_COLORS[group.division] || '#fbbf24', boxShadow: `0 0 8px ${DIVISION_COLORS[group.division] || '#fbbf24'}` }} />
+                        <h4 style={{ margin: 0, color: DIVISION_COLORS[group.division] || '#fbbf24' }}>{group.division} Division</h4>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{group.players.length} awaiting approval</span>
+                      </div>
+                      {group.players.map(u => (
+                        <div key={u.id} className="glass" style={{ padding: '20px', borderRadius: '12px', marginBottom: '12px', borderLeft: `4px solid ${DIVISION_COLORS[group.division] || '#fbbf24'}` }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                            <div>
+                              <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>{u.username}</div>
+                              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '8px' }}>{u.email}</div>
+                              <div style={{ display: 'flex', gap: '12px', fontSize: '0.75rem', flexWrap: 'wrap' }}>
+                                <span style={{ color: 'var(--accent-cyan)' }}>Season: {u.requestedSeason || 'N/A'}</span>
+                                <span style={{ color: 'var(--success)' }}>Division: {u.requestedDivision || u.requestedPlan || 'N/A'}</span>
+                                <span style={{ color: 'var(--text-muted)' }}>£10/month</span>
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                              <button className="btn btn-primary btn-sm" onClick={() => handleApprovePayment(u)}>Approve & Place in {u.requestedDivision || u.requestedPlan || 'Division'}</button>
+                              <button className="btn btn-danger btn-sm" onClick={async () => {
+                                if (confirm(`Reject payment for ${u.username}?`)) {
+                                  await updateDoc(doc(db, 'users', u.id), { paymentPending: false });
+                                  triggerDataRefresh('users');
+                                }
+                              }}>Reject</button>
+                            </div>
                           </div>
                         </div>
-                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                          {u.paymentProof && (
-                            <button className="btn btn-secondary btn-sm" onClick={() => setPreviewImage(u.paymentProof)}>View Proof</button>
-                          )}
-                          <button className="btn btn-primary btn-sm" onClick={() => handleApprovePayment(u)}>Approve & Activate</button>
-                          <button className="btn btn-danger btn-sm" onClick={async () => {
-                            if (confirm(`Reject payment for ${u.username}?`)) {
-                              await updateDoc(doc(db, 'users', u.id), { paymentPending: false });
-                              triggerDataRefresh('users');
-                            }
-                          }}>Reject</button>
-                        </div>
-                      </div>
+                      ))}
                     </div>
                   ))
                 )}
@@ -3553,8 +3598,23 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
         {activeTab === 'moneypot' && (
           <div className="card glass">
             <h3>League Financials</h3>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginTop: '20px' }}>
+              {[
+                { label: 'League Prize Pool', value: potLeaguePrizePool, color: '#fbbf24' },
+                { label: 'Player of the Month', value: potPlayerOfMonth, color: '#a78bfa' },
+                { label: 'Highout Prize', value: potHighout, color: '#10b981' },
+                { label: 'Site Pot', value: potSitePot, color: '#38bdf8' }
+              ].map(pot => (
+                <div key={pot.label} className="glass" style={{ padding: '18px', borderRadius: '14px', border: `1px solid ${pot.color}44` }}>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{pot.label}</div>
+                  <div style={{ fontSize: '1.9rem', fontWeight: 900, color: pot.color }}>£{pot.value.toFixed(2)}</div>
+                </div>
+              ))}
+            </div>
+
             <div className="glass" style={{ padding: '20px', borderRadius: '12px', marginTop: '20px' }}>
-              <div style={{ color: 'var(--text-muted)' }}>Prize Pot</div>
+              <div style={{ color: 'var(--text-muted)' }}>Total Pot ({'£'}6 + {'£'}1 + {'£'}1 + {'£'}2 per monthly payment)</div>
               <div style={{ fontSize: '2.5rem', fontWeight: 900 }}>£{subscriptionPot.toFixed(2)}</div>
               <div style={{ marginTop: '15px', display: 'flex', gap: '8px' }}>
                 <input type="number" className="glass" style={{ flex: 1 }} placeholder="+/-" onChange={e => setPotAdjust({...potAdjust, amount: parseFloat(e.target.value) || 0})} />

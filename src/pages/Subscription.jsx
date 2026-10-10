@@ -1,197 +1,92 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContextInternal";
-import { initStore, requestPurchase } from "../utils/store";
-import { Capacitor } from "@capacitor/core";
-import { storage, ref, uploadBytesResumable, getDownloadURL } from '../firebaseStorage'
+import { DIVISION_COLORS } from "../utils/leagueStandings";
 
-const SUBSCRIPTION_PRODUCT_IDS = {
-  standard: 'standard_pass',
-  elite: 'elite_pass'
-}
-const SUBSCRIPTION_ENTITLEMENTS = ['standard_pass', 'elite_pass']
+const MONTHLY_PRICE = 10;
 
-// Maximum size for the proof image
-const MAX_IMAGE_BYTES = 800 * 1024;
+const PRICE_BREAKDOWN = [
+  { label: 'League Prize Pool', amount: 6, color: '#fbbf24' },
+  { label: 'Player of the Month', amount: 1, color: '#a78bfa' },
+  { label: 'Highest Checkout Prize', amount: 1, color: '#10b981' },
+  { label: 'Site Pot', amount: 2, color: '#38bdf8' },
+];
 
-function compressImage(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("Failed to read the selected file."));
-    reader.onloadend = () => {
-      const originalDataUrl = reader.result;
-      if (originalDataUrl.length <= MAX_IMAGE_BYTES) {
-        resolve(originalDataUrl);
-        return;
-      }
-      const img = new Image();
-      img.onerror = () => reject(new Error("Failed to load the image."));
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const MAX_DIM = 1200;
-        let { width, height } = img;
-        if (width > MAX_DIM || height > MAX_DIM) {
-          const ratio = Math.min(MAX_DIM / width, MAX_DIM / height);
-          width = Math.round(width * ratio);
-          height = Math.round(height * ratio);
-        }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, width, height);
-        let quality = 0.8;
-        let dataUrl = canvas.toDataURL("image/jpeg", quality);
-        while (dataUrl.length > MAX_IMAGE_BYTES && quality > 0.2) {
-          quality -= 0.1;
-          dataUrl = canvas.toDataURL("image/jpeg", quality);
-        }
-        resolve(dataUrl);
-      };
-      img.src = originalDataUrl;
-    };
-    reader.readAsDataURL(file);
-  });
-}
+const PASS_DIVISIONS = ['Elite', 'Emerald', 'Diamond', 'Platinum'];
+
+const PASS_DESCRIPTIONS = {
+  Elite: 'Top tier of the league — Best of 12.',
+  Emerald: 'Second tier — Best of 10.',
+  Diamond: 'Mid tier — Best of 8.',
+  Platinum: 'Entry tier — Best of 8.',
+};
+
+const PASS_FEATURES = [
+  'Official league entry & fixtures',
+  'Match submissions & full stats',
+  'Cups and tournament access',
+  'League prize pool eligibility',
+  'Player of the Month voting',
+];
+
+const PAYMENT_METHODS = [
+  {
+    name: 'PayPal',
+    icon: '💳',
+    detail: '@RhysHowe834',
+    href: 'https://paypal.me/RhysHowe834',
+  },
+  {
+    name: 'Bank Transfer',
+    icon: '🏦',
+    lines: ['Name: Rhys Howe', 'Account Number: 80249442', 'Sort Code: 60-09-09'],
+  },
+  {
+    name: 'Revolut',
+    icon: '⚡',
+    detail: 'revolut.me/rhys_howe',
+    href: 'https://revolut.me/rhys_howe',
+  },
+  {
+    name: 'Monzo',
+    icon: '🏦',
+    lines: ['Name: Rhys Howe', 'Bank: Monzo Bank', 'Account Number: 43482637'],
+  },
+];
+
+const RULES_SUMMARY = [
+  'You play one league match against every other player in your division each season.',
+  'All league fixtures must be played by the season end date.',
+  'The winner submits the result within 4 hours; disputes go to an admin within 48 hours.',
+  'Everyone must play at least 3 fixtures per week (unless a valid reason is given).',
+  '3 warnings = 1 strike; 1 strike results in an immediate season ban.',
+  'Zero tolerance for cheating, score manipulation, toxic behaviour and rage-quitting.',
+];
 
 export default function Subscription() {
-  const { user, updateUser, getSeasons, adminData } = useAuth();
-  const [paymentMethod, setPaymentMethod] = useState("");
-  const [targetSeason, setTargetSeason] = useState("");
-  const [proofImage, setProofImage] = useState("");
+  const { user, updateUser, adminData } = useAuth();
+  const [selectedPass, setSelectedPass] = useState("");
+  const [rulesAccepted, setRulesAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [uploading, setUploading] = useState(false);
 
-  const seasons = getSeasons();
-  const currentSeasonName = adminData?.currentSeason || 'Season 1';
+  const currentSeasonName = adminData?.currentSeason || 'Elite Arrows Season 6';
+  const isPending = Boolean(user?.paymentPending);
+  const paidDivision = user?.requestedDivision || user?.requestedPlan || '';
+  const userDivision = user?.division && user.division !== 'Unassigned' ? user.division : '';
+  const isMember = user?.isSubscribed === true || (Array.isArray(user?.subscribedSeasons) && user.subscribedSeasons.includes(currentSeasonName));
 
-  const [proofFile, setProofFile] = useState(null);
-
-  // Find upcoming seasons that are not the current one
-  const upcomingSeasons = seasons.filter(s =>
-    !s.isArchived &&
-    (s.status === 'upcoming' || (s.startDate && new Date(s.startDate) > new Date())) &&
-    s.name !== currentSeasonName
-  );
-
-  const availableSeasons = [
-    { name: currentSeasonName, label: 'Current Season' },
-    ...upcomingSeasons.map(s => ({ name: s.name, label: 'Next Season' }))
-  ];
-
-  useEffect(() => {
-    if (availableSeasons.length > 0 && !targetSeason) {
-      // Prioritize Season 4 as default if it exists in available list
-      const season4 = availableSeasons.find(s => s.name === 'Season 4');
-      setTargetSeason(season4 ? season4.name : availableSeasons[0].name);
-    }
-  }, [availableSeasons, targetSeason]);
-
-  const isNativeApp = Capacitor.isNativePlatform();
-
-  useEffect(() => {
-    if (isNativeApp) {
-      initStore((productId) => {
-        const tier = productId === 'elite_pass' ? 'premium' : 'standard';
-        updateUser({
-          isSubscribed: true,
-          subscriptionDate: new Date().toISOString(),
-          subscriptionTier: tier,
-          paymentMethod: 'google_play'
-        }, false).then(() => {
-          alert(`Success! Your ${tier.charAt(0).toUpperCase() + tier.slice(1)} pass is now active.`);
-        });
-      });
-    }
-  }, [isNativeApp]);
-
-  const handleNativePurchase = async (planId) => {
-    const productID = SUBSCRIPTION_PRODUCT_IDS[planId];
-    requestPurchase(productID);
-  };
-
-  const isSubscribedForSelected = (user?.subscribedSeasons || []).includes(targetSeason) || (targetSeason === currentSeasonName && user?.isSubscribed);
-  const hasSelectedSeason = (user?.subscribedSeasons || []).includes(targetSeason);
-
-  const plans = [
-    {
-      id: 'free',
-      name: 'Rookie Pass',
-      price: 'Free',
-      description: 'The starting point for every dart player.',
-      features: ['League Standings', 'Global Chat', 'Basic Analytics', 'User Profile'],
-      color: 'var(--text-muted)',
-      buttonText: 'Current Plan',
-      active: !hasSelectedSeason && (!user?.isSubscribed && (!user?.division || user?.division === 'Unassigned'))
-    },
-    {
-      id: 'elite',
-      name: 'Elite Pass',
-      price: '£5.99',
-      description: `Full access for ${targetSeason}.`,
-      features: ['Official League Entry', 'Top 2 Division Playoffs', 'Cash Prize Tournaments', 'Priority Support', 'Full Analytics Dashboard', 'Tournament Access', 'Match Submissions'],
-      color: '#fbbf24',
-      buttonText: hasSelectedSeason ? 'Already Paid' : 'Get Elite Pass',
-      premium: true,
-      active: hasSelectedSeason
-    }
-  ];
-
-  const handleProofUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      // For preview, we still compress or just use blob URL
-      const dataUrl = await compressImage(file);
-      setProofImage(dataUrl);
-      setProofFile(file); // Store original or we could compress to blob
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleSubmitPayment = async () => {
-    if (!isNativeApp && !proofFile) return alert("Please upload proof of payment.");
+  const handlePaid = async () => {
+    if (!selectedPass) return alert("Please choose which pass you are paying for.");
+    if (!rulesAccepted) return alert("Please read and accept the league rules first.");
     setSubmitting(true);
     try {
-      if (isNativeApp) {
-        // ... (existing native logic)
-        await updateUser({
-          adminRequestPending: true,
-          requestedPlan: paymentMethod,
-          requestedSeason: targetSeason,
-          requestDate: new Date().toISOString()
-        }, false);
-        alert(`Request sent for ${targetSeason}! An admin will contact you to arrange payment and activate your pass.`);
-      } else {
-        // Web logic: Upload to Storage first
-        let finalProofUrl = proofImage;
-        if (proofFile) {
-          const storageRef = ref(storage, `payments/${user.id}/${Date.now()}_proof.jpg`);
-          const uploadTask = uploadBytesResumable(storageRef, proofFile);
-
-          await new Promise((resolve, reject) => {
-            uploadTask.on('state_changed', null, reject, async () => {
-              finalProofUrl = await getDownloadURL(uploadTask.snapshot.ref);
-              resolve();
-            });
-          });
-        }
-
-        await updateUser({
-          paymentPending: true,
-          paymentMethod,
-          paymentProof: finalProofUrl, // URL instead of base64
-          paymentDate: new Date().toISOString(),
-          requestedSeason: targetSeason,
-          requestedPlan: paymentMethod
-        }, false);
-        alert(`Payment submitted for ${targetSeason}! Awaiting admin approval.`);
-      }
-      setPaymentMethod("");
-      setProofImage("");
-      setProofFile(null);
+      await updateUser({
+        paymentPending: true,
+        requestedDivision: selectedPass,
+        requestedPlan: selectedPass,
+        requestedSeason: currentSeasonName,
+        paymentDate: new Date().toISOString(),
+      }, false);
     } catch (err) {
       alert("Submission failed: " + err.message);
     } finally {
@@ -201,114 +96,152 @@ export default function Subscription() {
 
   return (
     <div className="page animate-fade-in" style={{ maxWidth: '1000px', margin: '0 auto' }}>
-      <div className="page-header" style={{ textAlign: 'center', marginBottom: '40px' }}>
+      <div className="page-header" style={{ textAlign: 'center', marginBottom: '32px' }}>
         <h1 className="page-title text-gradient" style={{ fontSize: '2.5rem' }}>Elite Arrows Pass</h1>
-        <p style={{ color: 'var(--text-muted)' }}>Unlock full league participation and cash prize tournaments.</p>
-
-        {availableSeasons.length > 1 && (
-          <div style={{ marginTop: '24px', display: 'inline-flex', alignItems: 'center', gap: '12px', background: 'rgba(255,255,255,0.05)', padding: '8px 16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-            <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Select Season:</span>
-            <select
-              value={targetSeason}
-              onChange={(e) => setTargetSeason(e.target.value)}
-              className="glass"
-              style={{ padding: '4px 12px', minWidth: '150px' }}
-            >
-              {availableSeasons.map(s => (
-                <option key={s.name} value={s.name}>{s.label}: {s.name}</option>
-              ))}
-            </select>
-          </div>
-        )}
+        <p style={{ color: 'var(--text-muted)' }}>
+          £{MONTHLY_PRICE} per month. Choose the division you're paying for, pay using the details below, then tap <strong>I have paid</strong>.
+        </p>
       </div>
 
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-        gap: '24px',
-        marginBottom: '40px'
-      }}>
-        {plans.map(plan => (
-          <div key={plan.id} className="card glass" style={{
-            display: 'flex',
-            flexDirection: 'column',
-            padding: '30px',
-            border: plan.premium ? '2px solid #fbbf24' : '1px solid var(--border)',
-            position: 'relative',
-            transform: plan.active ? 'scale(1.02)' : 'none',
-            background: plan.active ? 'rgba(124, 92, 252, 0.1)' : 'var(--bg-card)'
-          }}>
-            {plan.active && <div style={{ position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)', background: plan.color, color: 'black', padding: '2px 12px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 900 }}>CURRENT PLAN</div>}
+      {isMember && (
+        <div className="card glass" style={{ padding: '16px 20px', marginBottom: '24px', borderLeft: '4px solid var(--success)', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+          <span style={{ fontWeight: 800 }}>✓ You're a member this season{userDivision ? ` — ${userDivision} Division` : ''}.</span>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Paying again extends your entry for the next month.</span>
+        </div>
+      )}
 
-            <h2 style={{ fontSize: '1.5rem', marginBottom: '8px', color: plan.color }}>{plan.name}</h2>
-            <div style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '12px' }}>{plan.price}<span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>/season</span></div>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '24px', minHeight: '40px' }}>{plan.description}</p>
+      {isPending && (
+        <div className="card glass" style={{ padding: '16px 20px', marginBottom: '24px', borderLeft: '4px solid #fbbf24', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+          <span style={{ fontWeight: 800, color: '#fbbf24' }}>⏳ Payment pending approval{paidDivision ? ` — ${paidDivision} Division` : ''}.</span>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>An admin will confirm your payment shortly.</span>
+        </div>
+      )}
 
-            <div style={{ flex: 1 }}>
-              {plan.features.map(feat => (
-                <div key={feat} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', fontSize: '0.9rem' }}>
-                  <span style={{ color: plan.color }}>✓</span> {feat}
+      {/* PASS SELECTION */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '18px', marginBottom: '32px' }}>
+        {PASS_DIVISIONS.map(div => {
+          const color = DIVISION_COLORS[div] || 'var(--accent-cyan)';
+          const selected = selectedPass === div;
+          return (
+            <button
+              key={div}
+              onClick={() => setSelectedPass(div)}
+              disabled={isPending}
+              className="card glass glass-hover"
+              style={{
+                textAlign: 'left', cursor: isPending ? 'not-allowed' : 'pointer',
+                padding: '22px', borderRadius: '20px', opacity: isPending ? 0.6 : 1,
+                border: selected ? `2px solid ${color}` : `1px solid ${color}44`,
+                background: selected ? `linear-gradient(170deg, ${color}22, rgba(15,23,42,0.5))` : `linear-gradient(170deg, ${color}12, rgba(15,23,42,0.45))`,
+                position: 'relative', overflow: 'hidden',
+              }}
+            >
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: color }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontWeight: 900, fontSize: '1.2rem', color }}>{div}</span>
+                {selected && <span style={{ fontSize: '0.65rem', fontWeight: 900, color: 'black', background: color, padding: '3px 10px', borderRadius: '99px' }}>SELECTED</span>}
+              </div>
+              <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '2px' }}>Division Pass</div>
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '10px' }}>{PASS_DESCRIPTIONS[div]}</div>
+              <div style={{ marginTop: '14px', fontWeight: 900, fontSize: '1.4rem' }}>£{MONTHLY_PRICE}<span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}> /month</span></div>
+            </button>
+          );
+        })}
+      </div>
+
+      {!selectedPass && !isPending && (
+        <p style={{ textAlign: 'center', color: 'var(--text-muted)', marginBottom: '24px' }}>Select a division pass above to see payment details.</p>
+      )}
+
+      {selectedPass && (
+        <div className="animate-fade-in">
+          {/* WHAT'S INCLUDED */}
+          <div className="card glass" style={{ padding: '24px', borderRadius: '20px', marginBottom: '24px' }}>
+            <h3 className="card-title" style={{ marginBottom: '14px' }}>What's included with the {selectedPass} Pass</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px' }}>
+              {PASS_FEATURES.map(feat => (
+                <div key={feat} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem' }}>
+                  <span style={{ color: DIVISION_COLORS[selectedPass] }}>✓</span> {feat}
                 </div>
               ))}
             </div>
+          </div>
 
+          {/* WHERE YOUR MONEY GOES */}
+          <div className="card glass" style={{ padding: '24px', borderRadius: '20px', marginBottom: '24px' }}>
+            <h3 className="card-title" style={{ marginBottom: '14px' }}>Where your £{MONTHLY_PRICE} goes</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
+              {PRICE_BREAKDOWN.map(item => (
+                <div key={item.label} style={{ padding: '14px', borderRadius: '14px', background: 'rgba(255,255,255,0.03)', border: `1px solid ${item.color}44`, textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 900, color: item.color }}>£{item.amount}</div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px' }}>{item.label}</div>
+                </div>
+              ))}
+            </div>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '14px', marginBottom: 0 }}>
+              Total <strong>£{MONTHLY_PRICE} per month</strong>. Payment is made manually each month.
+            </p>
+          </div>
+
+          {/* PAYMENT DETAILS */}
+          <div className="card glass" style={{ padding: '24px', borderRadius: '20px', marginBottom: '24px', border: '1px solid var(--accent-cyan)' }}>
+            <h3 className="card-title" style={{ marginBottom: '6px' }}>Pay £{MONTHLY_PRICE} using any method below</h3>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: 0, marginBottom: '18px' }}>
+              Please use <strong style={{ color: 'var(--accent-cyan)' }}>{user?.username || 'your username'}</strong> as the payment reference so your payment can be matched.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+              {PAYMENT_METHODS.map(method => (
+                <div key={method.name} style={{ padding: '18px', background: 'rgba(0,0,0,0.2)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <h4 style={{ color: 'var(--accent-cyan)', marginTop: 0, marginBottom: '10px' }}>{method.icon} {method.name}</h4>
+                  {method.detail && (
+                    method.href ? (
+                      <a href={method.href} target="_blank" rel="noreferrer" style={{ display: 'block', padding: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', color: 'white', textAlign: 'center', textDecoration: 'none', fontWeight: 700, wordBreak: 'break-all' }}>
+                        {method.detail}
+                      </a>
+                    ) : (
+                      <div style={{ padding: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', textAlign: 'center', fontWeight: 700 }}>{method.detail}</div>
+                    )
+                  )}
+                  {method.lines && method.lines.map(line => (
+                    <div key={line} style={{ fontSize: '0.85rem', marginBottom: '4px' }}>{line}</div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* LEAGUE RULES ACCEPTANCE */}
+          <div className="card glass" style={{ padding: '24px', borderRadius: '20px', marginBottom: '24px', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <h3 className="card-title" style={{ marginBottom: '14px' }}>League Rules — please read before paying</h3>
+            <ul style={{ margin: '0 0 16px', paddingLeft: '20px', color: 'var(--text-muted)', fontSize: '0.88rem', lineHeight: 1.7 }}>
+              {RULES_SUMMARY.map(rule => <li key={rule}>{rule}</li>)}
+            </ul>
+            <p style={{ fontSize: '0.82rem', marginTop: 0 }}>
+              Read the full rules here: <Link to="/rules" style={{ color: 'var(--accent-cyan)', fontWeight: 700 }}>League Rules →</Link>
+            </p>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', marginTop: '14px' }}>
+              <input type="checkbox" checked={rulesAccepted} onChange={e => setRulesAccepted(e.target.checked)} style={{ marginTop: '3px', width: '18px', height: '18px' }} />
+              <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>I have read the league rules and I understand and accept them.</span>
+            </label>
+          </div>
+
+          {/* I HAVE PAID */}
+          <div style={{ textAlign: 'center', marginBottom: '30px' }}>
             <button
-              className={`btn btn-block ${plan.active ? 'btn-secondary' : 'btn-primary'}`}
-              disabled={plan.active || user?.paymentPending || (submitting && isNativeApp)}
-              onClick={() => isNativeApp ? handleNativePurchase(plan.id) : setPaymentMethod(plan.id)}
-              style={{ marginTop: '24px', background: plan.premium && !plan.active ? 'linear-gradient(135deg, #fbbf24, #f59e0b)' : '' }}
+              className="btn btn-primary"
+              disabled={!rulesAccepted || submitting || isPending}
+              onClick={handlePaid}
+              style={{ padding: '16px 40px', fontSize: '1rem', background: DIVISION_COLORS[selectedPass], color: 'black', border: 'none', opacity: (!rulesAccepted || submitting || isPending) ? 0.55 : 1 }}
             >
-              {user?.paymentPending ? 'Pending Approval' : (submitting && isNativeApp) ? 'Connecting Store...' : plan.buttonText}
+              {isPending ? 'Payment Pending Approval' : submitting ? 'Submitting…' : `I have paid £${MONTHLY_PRICE} for the ${selectedPass} Pass`}
             </button>
-
-            {plan.id === 'elite' && hasSelectedSeason && (
-              <p style={{ fontSize: '0.7rem', color: 'var(--success)', textAlign: 'center', marginTop: '12px', fontWeight: 700 }}>
-                ✓ You have access for {targetSeason}
-              </p>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {!isNativeApp && paymentMethod && (
-        <div className="card glass animate-fade-in" style={{ border: '1px solid var(--accent-cyan)', padding: '40px' }}>
-          <h3 style={{ marginBottom: '20px', textAlign: 'center' }}>Finalize Your {paymentMethod === 'elite' ? 'Elite' : 'Standard'} Pass for {targetSeason}</h3>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '30px' }}>
-            <div style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
-              <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '12px' }}>Option 1: PayPal</h4>
-              <p style={{ fontSize: '0.9rem', marginBottom: '10px' }}>Send £5.99 to:</p>
-              <a href="https://paypal.me/DanielHineBerry" target="_blank" rel="noreferrer" style={{ display: 'block', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', color: 'white', textAlign: 'center', textDecoration: 'none', fontWeight: 700 }}>paypal.me/DanielHineBerry</a>
-            </div>
-
-            <div style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
-              <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '12px' }}>Option 2: Bank Transfer</h4>
-              <div style={{ fontSize: '0.85rem' }}>
-                <div><strong>Acc:</strong> Rhys Howe</div>
-                <div><strong>Sort:</strong> 60-09-09</div>
-                <div><strong>No:</strong> 80249442</div>
-                <div style={{ marginTop: '8px', color: 'var(--warning)' }}>Ref: {user.username}</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="form-group" style={{ maxWidth: '500px', margin: '0 auto 20px' }}>
-            <label>Upload Proof of Payment (Screenshot)</label>
-            <input type="file" accept="image/*" onChange={handleProofUpload} className="glass" style={{ padding: '12px' }} />
-            {uploading && <p style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>Processing receipt...</p>}
-            {proofImage && <p style={{ fontSize: '0.8rem', color: 'var(--success)' }}>✓ Receipt Attached</p>}
-          </div>
-
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-            <button className="btn btn-secondary" onClick={() => setPaymentMethod("")}>Cancel</button>
-            <button className="btn btn-primary" onClick={handleSubmitPayment} disabled={submitting || !proofImage}>
-              {submitting ? 'Submitting...' : 'Confirm Payment Submission'}
-            </button>
+            {!rulesAccepted && <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '10px' }}>Accept the league rules to enable this button.</p>}
           </div>
         </div>
       )}
+
       <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', padding: '20px' }}>
-        <p><strong>Refund Policy:</strong> Elite Pass subscriptions are eligible for a full refund within 14 days of purchase, provided no tournament prizes have been won. Contact support to initiate a refund.</p>
+        <p><strong>Refund Policy:</strong> Pass subscriptions are eligible for a full refund within 14 days, provided no tournament prizes have been won. Contact support to initiate a refund.</p>
       </div>
     </div>
   );

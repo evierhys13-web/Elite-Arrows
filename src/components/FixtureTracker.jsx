@@ -34,6 +34,9 @@ export default function FixtureTracker({
   const [showBreakdown, setShowBreakdown] = useState(false)
   const [search, setSearch] = useState('')
   const [busyId, setBusyId] = useState('')
+  const [bulkOpen, setBulkOpen] = useState(false)
+  const [bulkSelected, setBulkSelected] = useState([])
+  const [bulkBusy, setBulkBusy] = useState(false)
 
   const currentSeason = adminData?.currentSeason || ''
 
@@ -386,6 +389,98 @@ export default function FixtureTracker({
     setBusyId('')
   }
 
+  const toggleBulkPlayer = (id, checked) => {
+    const sid = String(id)
+    setBulkSelected(prev => checked ? Array.from(new Set([...prev, sid])) : prev.filter(x => x !== sid))
+  }
+
+  const bulkSelectedSet = useMemo(() => new Set(bulkSelected.map(String)), [bulkSelected])
+
+  const bulkGameCount = useMemo(() => {
+    return toPlayRows.filter(e => {
+      const a = bulkSelectedSet.has(String(e.p1.id))
+      const b = bulkSelectedSet.has(String(e.p2.id))
+      return (a || b) && !(a && b)
+    }).length
+  }, [toPlayRows, bulkSelectedSet])
+
+  const handleBulkForfeit = async () => {
+    if (bulkBusy) return
+    const selectedIds = bulkSelected.map(String)
+    if (selectedIds.length === 0) return
+    const gameCount = bulkGameCount
+    if (gameCount === 0) return showToast('No unplayed games for the selected player(s).', 'error')
+    if (!window.confirm(`Forfeit all remaining league games for ${selectedIds.length} player(s)?\n\n${gameCount} game(s) will be recorded as forfeit wins for their opponents. This cannot be undone automatically.`)) return
+    setBulkBusy(true)
+    try {
+      const sel = new Set(selectedIds)
+      const touchedFixtures = new Map()
+      let created = 0
+      const base = Date.now()
+      for (const entry of toPlayRows) {
+        const aId = String(entry.p1.id)
+        const bId = String(entry.p2.id)
+        const aSel = sel.has(aId)
+        const bSel = sel.has(bId)
+        if (!aSel && !bSel) continue
+        if (aSel && bSel) continue // both forfeiting - cannot award the game
+        const winner = aSel ? entry.p2 : entry.p1
+        const winnerIsP1 = String(winner.id) === aId
+        const s1 = winnerIsP1 ? 1 : 0
+        const s2 = winnerIsP1 ? 0 : 1
+        const resultId = `forfeit_${base}_${created}`
+        const docData = {
+          id: resultId,
+          player1: entry.p1.username,
+          player1Id: entry.p1.id,
+          player2: entry.p2.username,
+          player2Id: entry.p2.id,
+          score1: s1,
+          score2: s2,
+          gameType: 'League',
+          status: 'approved',
+          season: currentSeason,
+          division: entry.division,
+          date: new Date().toISOString().split('T')[0],
+          submittedAt: new Date().toISOString(),
+          submittedBy: 'admin',
+          forfeit: true,
+          forfeitWinner: winner.id,
+          forfeitNote: `${winner.username} wins by forfeit`,
+          player1Stats: {},
+          player2Stats: {}
+        }
+        await setDoc(doc(db, 'results', resultId), docData)
+        if (entry.fixture) {
+          const updated = {
+            ...entry.fixture,
+            status: 'approved',
+            resultId,
+            score1: s1,
+            score2: s2,
+            forfeit: true,
+            updatedAt: new Date().toISOString()
+          }
+          touchedFixtures.set(String(entry.fixture.id), updated)
+          await setDoc(doc(db, 'fixtures', String(entry.fixture.id)), updated, { merge: true })
+        }
+        created++
+      }
+      if (touchedFixtures.size > 0 && updateFixtures) {
+        updateFixtures(allFixtures.map(f => touchedFixtures.has(String(f.id)) ? touchedFixtures.get(String(f.id)) : f))
+      }
+      await logAudit('BULK_FORFEIT', `Bulk forfeit: ${created} game(s) across ${selectedIds.length} player(s)`)
+      triggerDataRefresh('results')
+      triggerDataRefresh('fixtures')
+      showToast(`Recorded ${created} forfeit win(s).`, 'success')
+      setBulkSelected([])
+      setBulkOpen(false)
+    } catch (e) {
+      showToast('Bulk forfeit failed: ' + e.message, 'error')
+    }
+    setBulkBusy(false)
+  }
+
   const actionBtn = (onClick, label, variant = 'btn-secondary', busy = false) => (
     <button
       className={`btn ${variant} btn-sm`}
@@ -530,12 +625,57 @@ export default function FixtureTracker({
         )
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
         <button className="btn btn-secondary btn-sm" onClick={() => setShowBreakdown(v => !v)} style={{ whiteSpace: 'nowrap' }}>
           {showBreakdown ? 'Hide' : 'Show'} per-player breakdown
         </button>
-        {onReviewResults && <button className="btn btn-secondary btn-sm" onClick={() => onReviewResults()} style={{ whiteSpace: 'nowrap' }}>Review pending results</button>}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button className="btn btn-danger btn-sm" onClick={() => setBulkOpen(v => !v)} style={{ whiteSpace: 'nowrap' }}>
+            {bulkOpen ? 'Close bulk forfeit' : 'Bulk forfeit players'}
+          </button>
+          {onReviewResults && <button className="btn btn-secondary btn-sm" onClick={() => onReviewResults()} style={{ whiteSpace: 'nowrap' }}>Review pending results</button>}
+        </div>
       </div>
+
+      {bulkOpen && (
+        <div className="glass" style={{ padding: '14px', borderRadius: '12px', border: '1px solid rgba(255,193,7,0.45)' }}>
+          <div style={{ fontWeight: 800, color: '#ffd54f', marginBottom: '4px' }}>⚖ Bulk Forfeit</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: '12px' }}>
+            Select the player(s) who are forfeiting. Every unplayed league game this season is recorded as a forfeit win for their opponent, with no legs. Games where both players are selected are skipped.
+          </div>
+          {breakdown.every(g => g.rows.filter(r => r.remaining > 0).length === 0) ? (
+            <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>No players have unplayed fixtures{divisionFilter !== 'all' ? ` in ${divisionFilter}` : ''}.</div>
+          ) : (
+            breakdown.map(({ div, rows }) => {
+              const withRemaining = rows.filter(r => r.remaining > 0)
+              if (withRemaining.length === 0) return null
+              return (
+                <div key={div} style={{ marginBottom: '12px' }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--accent-cyan)', marginBottom: '6px' }}>{div}</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '6px' }}>
+                    {withRemaining.map(({ user: u, remaining }) => {
+                      const checked = bulkSelectedSet.has(String(u.id))
+                      return (
+                        <label key={u.id} className="glass" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', borderRadius: '8px', cursor: 'pointer', border: checked ? '1px solid #ffd54f' : '1px solid transparent' }}>
+                          <input type="checkbox" checked={checked} onChange={e => toggleBulkPlayer(u.id, e.target.checked)} />
+                          <span style={{ fontSize: 13, fontWeight: 600 }}>{u.username}</span>
+                          <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>{remaining} left</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })
+          )}
+          <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <button className="btn btn-danger btn-sm" disabled={bulkBusy || bulkSelected.length === 0 || bulkGameCount === 0} onClick={handleBulkForfeit}>
+              {bulkBusy ? 'Recording…' : `Forfeit ${bulkSelected.length} player(s) · ${bulkGameCount} game(s)`}
+            </button>
+            {bulkSelected.length > 0 && <button className="btn btn-secondary btn-sm" onClick={() => setBulkSelected([])}>Clear</button>}
+          </div>
+        </div>
+      )}
 
       {showBreakdown && breakdown.map(({ div, rows }) => (
         <div key={div} className="glass" style={{ padding: '14px', borderRadius: '12px' }}>

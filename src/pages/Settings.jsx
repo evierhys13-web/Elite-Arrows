@@ -391,29 +391,23 @@ export default function Settings() {
           <h3 className="card-title">Elite Arrows Pass</h3>
           <div style={{ padding: '20px', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center', marginBottom: '20px' }}>
             <p style={{ color: 'var(--success)', fontSize: '1.2rem', fontWeight: '600' }}>Active</p>
-            <p style={{ fontSize: '2rem', fontWeight: '700', color: 'var(--accent-cyan)', margin: '10px 0' }}>£5.99<span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>/month</span></p>
-            <p style={{ color: 'var(--text-muted)' }}>Monthly subscription</p>
+            <p style={{ fontSize: '2rem', fontWeight: '700', color: 'var(--accent-cyan)', margin: '10px 0' }}>£10<span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>/month</span></p>
+            <p style={{ color: 'var(--text-muted)' }}>Manual monthly subscription</p>
           </div>
           
           <h4 style={{ marginBottom: '12px' }}>Transactions</h4>
           <div style={{ padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px', marginBottom: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
               <span>Elite Arrows Pass - Monthly</span>
-              <span style={{ color: 'var(--success)' }}>-£5.99</span>
+              <span style={{ color: 'var(--success)' }}>-£10</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
               <span>Date paid</span>
               <span>{user?.subscriptionDate ? new Date(user.subscriptionDate).toLocaleDateString() : 'N/A'}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-              <span>Expiry date</span>
-              <span>
-                {user?.subscriptionExpiry 
-                  ? new Date(user.subscriptionExpiry).toLocaleDateString()
-                  : user?.subscriptionDate 
-                    ? new Date(new Date(user.subscriptionDate).getTime() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()
-                    : 'N/A'}
-              </span>
+              <span>Billing</span>
+              <span>Manual monthly (PayPal / Bank / Revolut / Monzo)</span>
             </div>
             {user?.freeAdminSubscription && (
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', color: 'var(--accent-cyan)', fontSize: '0.85rem' }}>

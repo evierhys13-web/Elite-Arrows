@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContextInternal'
 import { db, doc, setDoc } from '../firebase'
 import NewsFeed from '../components/NewsFeed'
 import Breadcrumbs from '../components/Breadcrumbs'
-import { getResultPlayerId, isLeagueResult } from '../utils/leagueResults'
+import { getResultPlayerId, isLeagueResult, getResultEffectiveTime } from '../utils/leagueResults'
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
 import GlobalHighlightReel from '../components/GlobalHighlightReel'
 import ShirtBanner from '../components/ShirtBanner'
@@ -89,6 +89,14 @@ export default function Home() {
       String(getResultPlayerId(r, 2, allUsers)) === String(user?.id)
     )),
   [approvedResults, allUsers, user?.id])
+
+  const recentOwnResults = useMemo(() =>
+    userResults
+      .filter(r => isLeagueResult(r, fixturesById))
+      .slice()
+      .sort((a, b) => getResultEffectiveTime(b) - getResultEffectiveTime(a))
+      .slice(0, 5),
+  [userResults, fixturesById])
 
   const currentSeasonName = activeSeason.name
 
@@ -335,12 +343,11 @@ export default function Home() {
       {/* 8. Recent Activity (Standard League) */}
       <div className="card">
         <h2 className="card-title">Recent League Activity</h2>
-        {userResults.length === 0 ? (
+        {recentOwnResults.length === 0 ? (
           <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>No recent league matches.</p>
         ) : (
           <div>
-            {userResults.slice(-10).reverse().map(r => {
-              if (!isLeagueResult(r, fixturesById)) return null
+            {recentOwnResults.map(r => {
               const isPlayer1 = String(getResultPlayerId(r, 1, allUsers)) === String(user.id)
               const score1 = Number(r.score1) || 0, score2 = Number(r.score2) || 0
               const result = isPlayer1 ? (score1 > score2 ? 'Win' : score1 < score2 ? 'Loss' : 'Draw') : (score2 > score1 ? 'Win' : score2 < score1 ? 'Loss' : 'Draw')
