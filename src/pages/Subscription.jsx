@@ -7,8 +7,9 @@ const MONTHLY_PRICE = 10;
 
 const PRICE_BREAKDOWN = [
   { label: 'League Prize Pool', amount: 7, color: '#fbbf24' },
-  { label: 'Site Pot', amount: 2, color: '#38bdf8' },
-  { label: 'Highout, Tournies & Player of the Month', amount: 1, color: '#a78bfa' },
+  { label: 'Player of the Month (£40 target / 4 divs)', amount: 1.5, color: '#a78bfa' },
+  { label: 'Highout Prize (£15 target)', amount: 0.5, color: '#10b981' },
+  { label: 'Site Pot (Rest)', amount: 1, color: '#38bdf8' },
 ];
 
 const PASS_DIVISIONS = ['Elite', 'Emerald', 'Diamond', 'Platinum'];

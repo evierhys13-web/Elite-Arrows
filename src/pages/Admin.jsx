@@ -1056,12 +1056,24 @@ export default function Admin() {
       await setDoc(doc(db, 'users', u.id), updates, { merge: true })
 
       const pot = adminData || {}
+      const currentHighout = pot.potHighout || 0
+      const currentPOTM = pot.potPlayerOfMonth || 0
+
+      let toHighout = currentHighout < 15 ? Math.min(0.5, 15 - currentHighout) : 0
+      let toPOTM = currentPOTM < 40 ? Math.min(1.5, 40 - currentPOTM) : 0
+      let toSite = 3 - toHighout - toPOTM
+      if (currentHighout >= 15 && currentPOTM >= 40) {
+        toHighout = 0
+        toPOTM = 0
+        toSite = 3
+      }
+
       await updateAdminData({
         subscriptionPot: (pot.subscriptionPot || 0) + 10,
         potLeaguePrizePool: (pot.potLeaguePrizePool || 0) + 7,
-        potPlayerOfMonth: (pot.potPlayerOfMonth || 0) + 1,
-        potHighout: (pot.potHighout || 0) + 0,
-        potSitePot: (pot.potSitePot || 0) + 2
+        potHighout: currentHighout + toHighout,
+        potPlayerOfMonth: currentPOTM + toPOTM,
+        potSitePot: (pot.potSitePot || 0) + toSite
       })
       addToMoneyHistory('subscription', 10, `Approved payment: ${u.username}${division ? ` (${division})` : ''} for ${finalSeason}`)
       await logAudit('APPROVE_PAYMENT', `Approved £10 payment for ${u.username}${division ? ` — ${division} division` : ''} (${finalSeason})`)
@@ -3490,8 +3502,9 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginTop: '20px' }}>
               {[
                 { label: 'League Prize Pool (£7)', value: potLeaguePrizePool, color: '#fbbf24' },
-                { label: 'Site Pot (£2)', value: potSitePot, color: '#38bdf8' },
-                { label: 'Highout, Tournies & POTM (£1)', value: potPlayerOfMonth, color: '#a78bfa' }
+                { label: 'Player of the Month (£40 target / 4 divs)', value: potPlayerOfMonth, color: '#a78bfa' },
+                { label: 'Highout Prize (£15 target)', value: potHighout, color: '#10b981' },
+                { label: 'Site Pot (Rest)', value: potSitePot, color: '#38bdf8' }
               ].map(pot => (
                 <div key={pot.label} className="glass" style={{ padding: '18px', borderRadius: '14px', border: `1px solid ${pot.color}44` }}>
                   <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{pot.label}</div>
@@ -3501,7 +3514,7 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
             </div>
 
             <div className="glass" style={{ padding: '20px', borderRadius: '12px', marginTop: '20px' }}>
-              <div style={{ color: 'var(--text-muted)' }}>Total Pot (£7 League Prize Pool + £2 Site Pot + £1 Highout, Tournies & POTM per monthly payment)</div>
+              <div style={{ color: 'var(--text-muted)' }}>Total Pot (£7 League Prize Pool + £3 Rest per player: £15 Highout target + £40 POTM target + Site Pot)</div>
               <div style={{ fontSize: '2.5rem', fontWeight: 900 }}>£{subscriptionPot.toFixed(2)}</div>
               <div style={{ marginTop: '15px', display: 'flex', gap: '8px' }}>
                 <input type="number" className="glass" style={{ flex: 1 }} placeholder="+/-" onChange={e => setPotAdjust({...potAdjust, amount: parseFloat(e.target.value) || 0})} />
