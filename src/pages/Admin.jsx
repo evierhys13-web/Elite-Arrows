@@ -3489,10 +3489,9 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginTop: '20px' }}>
               {[
-                { label: 'League Prize Pool', value: potLeaguePrizePool, color: '#fbbf24' },
-                { label: 'Player of the Month', value: potPlayerOfMonth, color: '#a78bfa' },
-                { label: 'Highout Prize', value: potHighout, color: '#10b981' },
-                { label: 'Site Pot', value: potSitePot, color: '#38bdf8' }
+                { label: 'League Prize Pool (£6)', value: potLeaguePrizePool, color: '#fbbf24' },
+                { label: 'Highout, Tournies & POTM (£2)', value: potPlayerOfMonth + potHighout, color: '#a78bfa' },
+                { label: 'Site Pot (£2)', value: potSitePot, color: '#38bdf8' }
               ].map(pot => (
                 <div key={pot.label} className="glass" style={{ padding: '18px', borderRadius: '14px', border: `1px solid ${pot.color}44` }}>
                   <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{pot.label}</div>
@@ -3502,7 +3501,7 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
             </div>
 
             <div className="glass" style={{ padding: '20px', borderRadius: '12px', marginTop: '20px' }}>
-              <div style={{ color: 'var(--text-muted)' }}>Total Pot ({'£'}6 + {'£'}1 + {'£'}1 + {'£'}2 per monthly payment)</div>
+              <div style={{ color: 'var(--text-muted)' }}>Total Pot (£6 League Pool + £2 Highout, Tournies & POTM + £2 Site Pot per monthly payment)</div>
               <div style={{ fontSize: '2.5rem', fontWeight: 900 }}>£{subscriptionPot.toFixed(2)}</div>
               <div style={{ marginTop: '15px', display: 'flex', gap: '8px' }}>
                 <input type="number" className="glass" style={{ flex: 1 }} placeholder="+/-" onChange={e => setPotAdjust({...potAdjust, amount: parseFloat(e.target.value) || 0})} />
