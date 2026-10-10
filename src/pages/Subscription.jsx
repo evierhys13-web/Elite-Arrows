@@ -7,9 +7,7 @@ const MONTHLY_PRICE = 10;
 
 const PRICE_BREAKDOWN = [
   { label: 'League Prize Pool', amount: 7, color: '#fbbf24' },
-  { label: 'Player of the Month (£40 target / 4 divs)', amount: 1.5, color: '#a78bfa' },
-  { label: 'Highout Prize (£15 target)', amount: 0.5, color: '#10b981' },
-  { label: 'Site Pot (Rest)', amount: 1, color: '#38bdf8' },
+  { label: 'Player of the Month, Highout Prize & Site Pot', amount: 3, color: '#a78bfa' },
 ];
 
 const PASS_DIVISIONS = ['Elite', 'Emerald', 'Diamond', 'Platinum'];
@@ -178,8 +176,8 @@ export default function Subscription() {
                 </div>
               ))}
             </div>
-            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '14px', marginBottom: 0 }}>
-              Total <strong>£{MONTHLY_PRICE} per month</strong>. Payment is made manually each month.
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '14px', marginBottom: 0, lineHeight: '1.5' }}>
+              Total <strong>£{MONTHLY_PRICE} per month</strong> (£7 for League Prize Pool + £3 towards Player of the Month (£40 target split between 4 divisions), Highout Prize (£15 target), and Site Pot). Payment is made manually each month.
             </p>
           </div>
 
