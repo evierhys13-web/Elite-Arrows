@@ -1058,9 +1058,9 @@ export default function Admin() {
       const pot = adminData || {}
       await updateAdminData({
         subscriptionPot: (pot.subscriptionPot || 0) + 10,
-        potLeaguePrizePool: (pot.potLeaguePrizePool || 0) + 6,
+        potLeaguePrizePool: (pot.potLeaguePrizePool || 0) + 7,
         potPlayerOfMonth: (pot.potPlayerOfMonth || 0) + 1,
-        potHighout: (pot.potHighout || 0) + 1,
+        potHighout: (pot.potHighout || 0) + 0,
         potSitePot: (pot.potSitePot || 0) + 2
       })
       addToMoneyHistory('subscription', 10, `Approved payment: ${u.username}${division ? ` (${division})` : ''} for ${finalSeason}`)
@@ -3489,9 +3489,9 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginTop: '20px' }}>
               {[
-                { label: 'League Prize Pool (£6)', value: potLeaguePrizePool, color: '#fbbf24' },
-                { label: 'Highout, Tournies & POTM (£2)', value: potPlayerOfMonth + potHighout, color: '#a78bfa' },
-                { label: 'Site Pot (£2)', value: potSitePot, color: '#38bdf8' }
+                { label: 'League Prize Pool (£7)', value: potLeaguePrizePool, color: '#fbbf24' },
+                { label: 'Site Pot (£2)', value: potSitePot, color: '#38bdf8' },
+                { label: 'Highout, Tournies & POTM (£1)', value: potPlayerOfMonth, color: '#a78bfa' }
               ].map(pot => (
                 <div key={pot.label} className="glass" style={{ padding: '18px', borderRadius: '14px', border: `1px solid ${pot.color}44` }}>
                   <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{pot.label}</div>
@@ -3501,7 +3501,7 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
             </div>
 
             <div className="glass" style={{ padding: '20px', borderRadius: '12px', marginTop: '20px' }}>
-              <div style={{ color: 'var(--text-muted)' }}>Total Pot (£6 League Pool + £2 Highout, Tournies & POTM + £2 Site Pot per monthly payment)</div>
+              <div style={{ color: 'var(--text-muted)' }}>Total Pot (£7 League Prize Pool + £2 Site Pot + £1 Highout, Tournies & POTM per monthly payment)</div>
               <div style={{ fontSize: '2.5rem', fontWeight: 900 }}>£{subscriptionPot.toFixed(2)}</div>
               <div style={{ marginTop: '15px', display: 'flex', gap: '8px' }}>
                 <input type="number" className="glass" style={{ flex: 1 }} placeholder="+/-" onChange={e => setPotAdjust({...potAdjust, amount: parseFloat(e.target.value) || 0})} />

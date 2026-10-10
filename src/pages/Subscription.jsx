@@ -6,9 +6,9 @@ import { DIVISION_COLORS } from "../utils/leagueStandings";
 const MONTHLY_PRICE = 10;
 
 const PRICE_BREAKDOWN = [
-  { label: 'League Prize Pool', amount: 6, color: '#fbbf24' },
-  { label: 'Highout, Tournies & Player of the Month', amount: 2, color: '#a78bfa' },
+  { label: 'League Prize Pool', amount: 7, color: '#fbbf24' },
   { label: 'Site Pot', amount: 2, color: '#38bdf8' },
+  { label: 'Highout, Tournies & Player of the Month', amount: 1, color: '#a78bfa' },
 ];
 
 const PASS_DIVISIONS = ['Elite', 'Emerald', 'Diamond', 'Platinum'];
