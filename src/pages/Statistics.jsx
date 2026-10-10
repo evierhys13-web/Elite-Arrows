@@ -85,6 +85,41 @@ const formatMonthLabel = (ym) => {
   return `${MONTH_LABELS[idx]} ${String(y).slice(2)}`
 }
 
+const seasonIndexOf = (name) => {
+  const m = String(name || '').match(/(\d+)/)
+  return m ? parseInt(m[1], 10) : 0
+}
+
+const buildMonthlyMetrics = (resultRows, pickStats) => {
+  const monthly = {}
+  resultRows.forEach(r => {
+    const matchDate = r.date || r.submittedAt || r.approvedAt
+    const month = String(matchDate || '').substring(0, 7)
+    if (!month || month.length !== 7) return
+    if (!monthly[month]) monthly[month] = { month, avgSum: 0, avgCount: 0, nineSum: 0, nineCount: 0, coMax: 0, dsSum: 0, dsCount: 0 }
+    const row = monthly[month]
+    const picked = pickStats(r)
+    ;(Array.isArray(picked) ? picked : [picked]).forEach(s => {
+      if (!s) return
+      const avg = Number(s.avg || 0)
+      if (avg > 0) { row.avgSum += avg; row.avgCount++ }
+      const nine = Number(s.nineDartAvg || 0)
+      if (nine > 0) { row.nineSum += nine; row.nineCount++ }
+      const co = Number(s.highestCheckout || 0)
+      if (co > row.coMax) row.coMax = co
+      const ds = Number(s.doubleSuccess)
+      if (Number.isFinite(ds)) { row.dsSum += ds; row.dsCount++ }
+    })
+  })
+  return Object.values(monthly).sort((a, b) => a.month.localeCompare(b.month)).map(m => ({
+    label: formatMonthLabel(m.month),
+    avg: m.avgCount ? Number((m.avgSum / m.avgCount).toFixed(2)) : 0,
+    nineDart: m.nineCount ? Number((m.nineSum / m.nineCount).toFixed(2)) : 0,
+    checkout: m.coMax || 0,
+    checkoutPct: m.dsCount ? Number((m.dsSum / m.dsCount).toFixed(1)) : 0
+  }))
+}
+
 function TrendPill({ active, onClick, children }) {
   return (
     <button onClick={onClick} style={{
@@ -157,7 +192,7 @@ function calcStdDev(values) {
 export default function Statistics() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { user, getAllUsers, getResults, getFixtures, adminData, forceFetchResults, triggerDataRefresh, getSeasons } = useAuth()
+  const { user, getAllUsers, getResults, getFixtures, adminData, forceFetchResults, triggerDataRefresh, getSeasons, fetchResultsBySeason } = useAuth()
   const { showToast } = useToast()
   const [isSyncing, setIsSyncing] = useState(false)
   const [selectedSeason, setSelectedSeason] = useState(adminData?.currentSeason || 'Elite Arrows Season 6')
@@ -204,6 +239,29 @@ export default function Statistics() {
       String(r.status || '').toLowerCase() === 'approved' &&
       (!r.season || r.season === selectedSeason)
     ), [results, selectedSeason])
+
+  const currentSeasonNum = seasonIndexOf(selectedSeason) || seasonIndexOf(adminData?.currentSeason) || 6
+
+  const seasonsToLoad = useMemo(() => {
+    const set = new Set()
+    if (selectedSeason) set.add(selectedSeason)
+    ;(seasons || []).forEach(s => {
+      if (s?.name && seasonIndexOf(s.name) >= 4) set.add(s.name)
+    })
+    ;['Season 4', 'Season 5'].forEach(n => set.add(n))
+    return [...set]
+  }, [seasons, selectedSeason])
+
+  useEffect(() => {
+    seasonsToLoad.forEach(n => { fetchResultsBySeason(n).catch(() => {}) })
+  }, [seasonsToLoad, fetchResultsBySeason])
+
+  const trendResults = useMemo(() =>
+    results.filter(r => {
+      if (String(r.status || '').toLowerCase() !== 'approved') return false
+      const num = seasonIndexOf(r.season)
+      return (num || currentSeasonNum) >= 4
+    }), [results, currentSeasonNum])
 
   const isPlayerView = Boolean(id)
 
@@ -281,20 +339,13 @@ export default function Statistics() {
 
       const month = String(matchDate || '').substring(0, 7)
       if (month && month.length === 7) {
-        if (!monthlyData[month]) monthlyData[month] = { month, wins: 0, losses: 0, draws: 0, legsWon: 0, legsLost: 0, avgSum: 0, avgCount: 0, nineSum: 0, nineCount: 0, coMax: 0, dsSum: 0, dsCount: 0 }
+        if (!monthlyData[month]) monthlyData[month] = { month, wins: 0, losses: 0, draws: 0, legsWon: 0, legsLost: 0 }
         const mRow = monthlyData[month]
         mRow.legsWon += myScore
         mRow.legsLost += theirScore
         if (myScore > theirScore) mRow.wins++
         else if (myScore < theirScore) mRow.losses++
         else mRow.draws++
-        const avg = Number(myStats?.avg || 0)
-        if (avg > 0) { mRow.avgSum += avg; mRow.avgCount++ }
-        if (nineDart > 0) { mRow.nineSum += nineDart; mRow.nineCount++ }
-        const co = Number(myStats?.highestCheckout || 0)
-        if (co > mRow.coMax) mRow.coMax = co
-        const ds = Number(myStats?.doubleSuccess)
-        if (Number.isFinite(ds)) { mRow.dsSum += ds; mRow.dsCount++ }
       }
     })
 
@@ -312,13 +363,6 @@ export default function Statistics() {
       nineDartAvg: stats.nineDartCount > 0 ? Number((stats.nineDartTotal / stats.nineDartCount).toFixed(1)) : 0,
       winRate: stats.played > 0 ? ((stats.wins / stats.played) * 100).toFixed(1) : 0,
       monthlyData: Object.values(monthlyData).sort((a, b) => a.month.localeCompare(b.month)),
-      metricsMonthly: Object.values(monthlyData).sort((a, b) => a.month.localeCompare(b.month)).map(m => ({
-        label: formatMonthLabel(m.month),
-        avg: m.avgCount ? Number((m.avgSum / m.avgCount).toFixed(2)) : 0,
-        nineDart: m.nineCount ? Number((m.nineSum / m.nineCount).toFixed(2)) : 0,
-        checkout: m.coMax || 0,
-        checkoutPct: m.dsCount ? Number((m.dsSum / m.dsCount).toFixed(1)) : 0
-      })),
       checkoutTrend,
       radarData,
       last5Matches: formGuide.slice(-5)
@@ -372,34 +416,19 @@ export default function Statistics() {
       }))
   }, [allUsers, approvedResults, playerStatsMap])
 
-  const leagueMonthlyMetrics = useMemo(() => {
-    const map = {}
-    approvedResults.forEach(r => {
-      const matchDate = r.date || r.submittedAt || r.approvedAt
-      const month = String(matchDate || '').substring(0, 7)
-      if (!month || month.length !== 7) return
-      if (!map[month]) map[month] = { month, avgSum: 0, avgCount: 0, nineSum: 0, nineCount: 0, coMax: 0, dsSum: 0, dsCount: 0 }
-      const row = map[month]
-      ;[r.player1Stats, r.player2Stats].forEach(s => {
-        if (!s) return
-        const avg = Number(s.avg || 0)
-        if (avg > 0) { row.avgSum += avg; row.avgCount++ }
-        const nine = Number(s.nineDartAvg || 0)
-        if (nine > 0) { row.nineSum += nine; row.nineCount++ }
-        const co = Number(s.highestCheckout || 0)
-        if (co > row.coMax) row.coMax = co
-        const ds = Number(s.doubleSuccess)
-        if (Number.isFinite(ds)) { row.dsSum += ds; row.dsCount++ }
-      })
-    })
-    return Object.values(map).sort((a, b) => a.month.localeCompare(b.month)).map(m => ({
-      label: formatMonthLabel(m.month),
-      avg: m.avgCount ? Number((m.avgSum / m.avgCount).toFixed(2)) : 0,
-      nineDart: m.nineCount ? Number((m.nineSum / m.nineCount).toFixed(2)) : 0,
-      checkout: m.coMax || 0,
-      checkoutPct: m.dsCount ? Number((m.dsSum / m.dsCount).toFixed(1)) : 0
-    }))
-  }, [approvedResults])
+  const leagueMonthlyMetrics = useMemo(() =>
+    buildMonthlyMetrics(trendResults, r => [r.player1Stats, r.player2Stats])
+  , [trendResults])
+
+  const personalTrendMetrics = useMemo(() => {
+    if (!id) return []
+    const fixturesById = Object.fromEntries((fixtures || []).map(f => [String(f.id), f]))
+    const userResults = trendResults.filter(r =>
+      (String(r.player1Id) === String(id) || String(r.player2Id) === String(id)) &&
+      isLeagueResult(r, fixturesById)
+    )
+    return buildMonthlyMetrics(userResults, r => (String(r.player1Id) === String(id) ? r.player1Stats : r.player2Stats))
+  }, [trendResults, id, fixtures])
 
   const division180sByDivision = useMemo(() => {
     const divPlayers = {}
@@ -414,7 +443,7 @@ export default function Statistics() {
       const pids = new Set(divPlayers[div] || [])
       let total180s = 0
       let matchesPlayed = 0
-      ;(allLeagueResults || results).forEach(r => {
+      approvedResults.forEach(r => {
         const p1 = String(r.player1Id)
         const p2 = String(r.player2Id)
         const p1InDiv = pids.has(p1)
@@ -425,7 +454,7 @@ export default function Statistics() {
       })
       return { division: div, total180s, matchesPlayed, avg180s: matchesPlayed > 0 ? (total180s / matchesPlayed).toFixed(2) : '0' }
     })
-  }, [allUsers, allLeagueResults, results])
+  }, [allUsers, approvedResults])
 
   const filteredDiv180s = useMemo(() => {
     if (selectedDivFilter === 'all') return division180sByDivision
@@ -513,6 +542,7 @@ export default function Statistics() {
           allTime={playerAllTime}
           seasonal={playerSeasonal}
           seasonName={selectedSeason}
+          trendMetrics={personalTrendMetrics}
           onBack={() => navigate('/statistics')}
         />
       ) : (
@@ -550,7 +580,7 @@ function Avatar({ user, size = 72 }) {
   )
 }
 
-function PlayerView({ user, personalStats, allTime, seasonal, seasonName, onBack }) {
+function PlayerView({ user, personalStats, allTime, seasonal, seasonName, trendMetrics, onBack }) {
   if (!personalStats) return (
     <div className="card glass" style={{ padding: '60px 24px', textAlign: 'center' }}>
       <p style={{ color: 'var(--text-muted)' }}>No stats available for this player.</p>
@@ -789,7 +819,7 @@ function PlayerView({ user, personalStats, allTime, seasonal, seasonName, onBack
         )}
       </div>
 
-      <MonthlyMetricsGrid series={personalStats.metricsMonthly || []} seasonLabel={`${seasonName} · League`} />
+      <MonthlyMetricsGrid series={trendMetrics || []} seasonLabel="Season 4 → Present" />
     </div>
   )
 }
@@ -951,7 +981,7 @@ function DivisionOverview({ leagueStats, filteredDiv180s, selectedDivFilter, set
         </div>
       </div>
 
-      <MonthlyMetricsGrid series={leagueMonthlyMetrics || []} seasonLabel={`${seasonName} · League-wide`} />
+      <MonthlyMetricsGrid series={leagueMonthlyMetrics || []} seasonLabel="Season 4 → Present" />
 
       <SeasonPlayerBrowser
         seasonStatsMap={seasonAllPlayers}
