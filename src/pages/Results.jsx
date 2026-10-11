@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../context/AuthContextInternal'
+import { getMatchApprover } from '../context/AuthHelpers'
 import { db, setDoc, getDocs, doc, collection, addDoc } from '../firebase'
 import { ADMIN_EMAILS } from '../config'
 import { derivePlayerStatsFromResults, getPersistedPlayerStats } from '../utils/playerStats'
@@ -8,7 +9,7 @@ import { SkeletonList } from '../components/Skeleton'
 import PullToRefresh from '../components/PullToRefresh'
 
 export default function Results() {
-  const { user, getAllUsers, getResults, triggerDataRefresh, notifyAdmins, loading, fetchMoreResults, getSeasons, adminData } = useAuth()
+  const { user, getAllUsers, getResults, triggerDataRefresh, notifyAdmins, loading, fetchMoreResults, getSeasons, adminData, getAuditLogs } = useAuth()
 
   const allResults = getResults() || []
 
@@ -26,13 +27,7 @@ export default function Results() {
   }
 
   const getApproverName = (result) => {
-    const allUsers = getAllUsers() || [];
-    if (result.approvedBy && result.approvedBy !== 'Admin') return result.approvedBy;
-    if (result.approvedById) {
-      const staff = allUsers.find(u => String(u.id) === String(result.approvedById));
-      if (staff?.username) return staff.username;
-    }
-    return result.approvedBy || 'Admin Staff';
+    return getMatchApprover(result, getAllUsers() || [], getAuditLogs());
   }
   const [typeFilter, setTypeFilter] = useState('all')
   const [divisionFilter, setDivisionFilter] = useState('all')

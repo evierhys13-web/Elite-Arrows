@@ -248,6 +248,24 @@ export function AuthProvider({ children }) {
     } catch (e) {}
     return [];
   });
+  const [auditLogs, setAuditLogs] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchAuditLogs = async () => {
+      try {
+        const snap = await getDocs(query(collection(db, "auditLogs"), orderBy("timestamp", "desc"), limit(500)));
+        if (cancelled) return;
+        setAuditLogs(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      } catch (e) {
+        console.warn("Could not fetch audit logs:", e);
+      }
+    };
+    fetchAuditLogs();
+    return () => { cancelled = true; };
+  }, []);
+
+  const getAuditLogs = useCallback(() => auditLogs, [auditLogs]);
   const [notifications, setNotifications] = useState(() => {
     try {
       const saved = localStorage.getItem("eliteArrowsNotifications");
@@ -2993,6 +3011,7 @@ const fetchUsers = async () => {
     updateFixtures,
     getCups,
     getSupportRequests,
+    getAuditLogs,
     advanceCupBracket,
     getSeasons,
     sendGameInvite,

@@ -163,6 +163,27 @@ export const saveResultsCache = (results) => {
   }
 };
 
+export const getMatchApprover = (result, allUsers = [], auditLogs = []) => {
+  if (result?.approvedBy && result.approvedBy !== 'Admin' && result.approvedBy !== 'Admin Staff') {
+    return result.approvedBy;
+  }
+  if (result?.approvedById) {
+    const staff = allUsers.find(u => String(u.id) === String(result.approvedById));
+    if (staff?.username) return staff.username;
+  }
+  const p1 = String(result?.player1 || '').toLowerCase().trim();
+  const p2 = String(result?.player2 || '').toLowerCase().trim();
+  if (p1 && p2 && auditLogs.length > 0) {
+    const matchLog = auditLogs.find(log => {
+      if (log.action !== 'APPROVE_RESULT') return false;
+      const details = String(log.details || '').toLowerCase();
+      return details.includes(p1) && details.includes(p2);
+    });
+    if (matchLog?.adminName) return matchLog.adminName;
+  }
+  return result?.approvedBy || 'Admin Staff';
+};
+
 export const SENSITIVE_FIELDS = [
   "password",
   "passwordString",

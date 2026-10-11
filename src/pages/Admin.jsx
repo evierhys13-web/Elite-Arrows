@@ -5,7 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { db, doc, setDoc, getDoc, getDocs, collection, deleteDoc, updateDoc, writeBatch, addDoc, query, orderBy, limit, increment } from '../firebase'
 import { storage, ref, uploadBytesResumable, getDownloadURL } from '../firebaseStorage'
 import { ADMIN_EMAILS } from '../config'
-import { ADMIN_ROLE_FLAGS, getPermanentRoles, getLostPermanentRoles } from '../context/AuthHelpers'
+import { ADMIN_ROLE_FLAGS, getPermanentRoles, getLostPermanentRoles, getMatchApprover } from '../context/AuthHelpers'
 import { formatFromBestOf, getDivisionFormatLabel, DIVISION_FORMATS } from '../context/constants'
 import { getForfeitWinPoints } from '../utils/leagueScoring'
 import { SUPPORTED_PAGES, PAGE_BACKGROUND_GROUPS } from '../config/pageBackgrounds'
@@ -50,7 +50,8 @@ export default function Admin() {
     postNews,
     deleteNews,
     togglePinNews,
-    notifyUser
+    notifyUser,
+    getAuditLogs
   } = useAuth()
 
   const navigate = useNavigate()
@@ -323,12 +324,7 @@ export default function Admin() {
   const rejectedResults = allResults.filter(r => String(r.status).toLowerCase() === 'rejected')
 
   const getApproverName = (r) => {
-    if (r.approvedBy && r.approvedBy !== 'Admin') return r.approvedBy;
-    if (r.approvedById) {
-      const staff = allPlayers.find(u => String(u.id) === String(r.approvedById));
-      if (staff?.username) return staff.username;
-    }
-    return r.approvedBy || 'Admin Staff';
+    return getMatchApprover(r, allPlayers, getAuditLogs());
   }
 
   const syncLeagueDigest = useCallback(() => {
