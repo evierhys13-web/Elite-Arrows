@@ -579,10 +579,11 @@ export default function Admin() {
 
       if (!res) throw new Error('Result not found')
 
+      const adminName = user?.username || user?.name || user?.displayName || user?.email?.split('@')[0] || 'Admin';
       const updates = {
         status: 'approved',
         approvedAt: new Date().toISOString(),
-        approvedBy: user?.username || user?.name || 'Admin',
+        approvedBy: adminName,
         approvedById: user?.id || null
       };
 
@@ -690,10 +691,11 @@ export default function Admin() {
       selectedResults.forEach(id => {
         const res = allResults.find(r => String(r.id) === String(id))
         if (res) {
+          const adminName = user?.username || user?.name || user?.displayName || user?.email?.split('@')[0] || 'Admin';
           const updates = {
             status: 'approved',
             approvedAt: new Date().toISOString(),
-            approvedBy: user?.username || user?.name || 'Admin',
+            approvedBy: adminName,
             approvedById: user?.id || null
           };
           const s1 = Number(res.score1) || 0;
@@ -2618,7 +2620,7 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
 
                     {r.status === 'approved' && (
                       <div style={{ fontSize: '0.75rem', color: 'var(--success)', marginTop: '8px', fontWeight: 700 }}>
-                        ✓ Approved by Admin{r.approvedBy ? `: ${r.approvedBy}` : ''}
+                        ✓ Approved by: <span style={{ color: 'var(--accent-cyan)' }}>{r.approvedBy || 'Admin'}</span>
                       </div>
                     )}
 
