@@ -322,6 +322,15 @@ export default function Admin() {
   const approvedResults = allResults.filter(r => String(r.status).toLowerCase() === 'approved')
   const rejectedResults = allResults.filter(r => String(r.status).toLowerCase() === 'rejected')
 
+  const getApproverName = (r) => {
+    if (r.approvedBy && r.approvedBy !== 'Admin') return r.approvedBy;
+    if (r.approvedById) {
+      const staff = allPlayers.find(u => String(u.id) === String(r.approvedById));
+      if (staff?.username) return staff.username;
+    }
+    return r.approvedBy || 'Admin Staff';
+  }
+
   const syncLeagueDigest = useCallback(() => {
     scheduleLeagueDigestWrite({
       allUsers: allPlayers,
@@ -2620,7 +2629,7 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
 
                     {r.status === 'approved' && (
                       <div style={{ fontSize: '0.75rem', color: 'var(--success)', marginTop: '8px', fontWeight: 700 }}>
-                        ✓ Approved by: <span style={{ color: 'var(--accent-cyan)' }}>{r.approvedBy || 'Admin'}</span>
+                        ✓ Approved by: <span style={{ color: 'var(--accent-cyan)' }}>{getApproverName(r)}</span>
                       </div>
                     )}
 

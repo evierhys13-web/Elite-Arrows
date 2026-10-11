@@ -24,6 +24,16 @@ export default function Results() {
       [id]: !prev[id]
     }))
   }
+
+  const getApproverName = (result) => {
+    const allUsers = getAllUsers() || [];
+    if (result.approvedBy && result.approvedBy !== 'Admin') return result.approvedBy;
+    if (result.approvedById) {
+      const staff = allUsers.find(u => String(u.id) === String(result.approvedById));
+      if (staff?.username) return staff.username;
+    }
+    return result.approvedBy || 'Admin Staff';
+  }
   const [typeFilter, setTypeFilter] = useState('all')
   const [divisionFilter, setDivisionFilter] = useState('all')
 
@@ -236,7 +246,7 @@ export default function Results() {
 
         {result.status === 'approved' && (
           <div style={{ fontSize: '0.75rem', color: 'var(--success)', marginTop: '10px', fontWeight: 700 }}>
-            ✓ Approved by: <span style={{ color: 'var(--accent-cyan)' }}>{result.approvedBy || 'Admin'}</span>
+            ✓ Approved by: <span style={{ color: 'var(--accent-cyan)' }}>{getApproverName(result)}</span>
           </div>
         )}
 
