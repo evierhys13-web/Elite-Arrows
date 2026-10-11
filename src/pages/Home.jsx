@@ -357,7 +357,14 @@ export default function Home() {
                   <div style={{ padding: '12px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between' }}>
                     <div>
                       <div>vs {opponent}</div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{r.forfeit ? '🏳️ Forfeit' : isPlayer1 ? `${score1}-${score2}` : `${score2}-${score1}`} • {r.date}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        {r.forfeit ? '🏳️ Forfeit' : isPlayer1 ? `${score1}-${score2}` : `${score2}-${score1}`} • {r.date}
+                        {r.approvedBy && (
+                          <span style={{ color: 'var(--success)', display: 'block', fontSize: '0.68rem', fontWeight: 700, marginTop: '2px' }}>
+                            ✓ Approved by Admin: {r.approvedBy}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <span style={{ color: result === 'Win' ? 'var(--success)' : result === 'Loss' ? 'var(--error)' : 'var(--warning)', fontWeight: 800 }}>{result}</span>
                   </div>

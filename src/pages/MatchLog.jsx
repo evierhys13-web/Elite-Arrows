@@ -156,7 +156,8 @@ export default function MatchLog() {
           score: r.forfeit ? '🏳️ Forfeit' : (isTeam1 ? `${r.score1}-${r.score2}` : `${r.score2}-${r.score1}`),
           date: r.date,
           season: r.season,
-          gameType: r.gameType
+          gameType: r.gameType,
+          approvedBy: r.approvedBy
         }
       })
       .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
@@ -392,6 +393,11 @@ export default function MatchLog() {
                   <div style={{ fontWeight: '700', fontSize: '1rem' }}>vs {match.opponent}</div>
                   <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                     {match.season} • {match.date}
+                    {match.approvedBy && (
+                      <span style={{ color: 'var(--success)', display: 'block', fontSize: '0.7rem', fontWeight: 700, marginTop: '2px' }}>
+                        ✓ Approved by Admin: {match.approvedBy}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
