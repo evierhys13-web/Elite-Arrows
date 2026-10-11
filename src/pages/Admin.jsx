@@ -2616,9 +2616,9 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
                       )}
                     </div>
 
-                    {r.approvedBy && (
+                    {r.status === 'approved' && (
                       <div style={{ fontSize: '0.75rem', color: 'var(--success)', marginTop: '8px', fontWeight: 700 }}>
-                        ✓ Approved by Admin: {r.approvedBy}
+                        ✓ Approved by Admin{r.approvedBy ? `: ${r.approvedBy}` : ''}
                       </div>
                     )}
 

@@ -234,9 +234,9 @@ export default function Results() {
           </div>
         )}
 
-        {result.approvedBy && (
+        {result.status === 'approved' && (
           <div style={{ fontSize: '0.75rem', color: 'var(--success)', marginTop: '10px', fontWeight: 700 }}>
-            ✓ Approved by Admin: {result.approvedBy}
+            ✓ Approved by Admin{result.approvedBy ? `: ${result.approvedBy}` : ''}
           </div>
         )}
 

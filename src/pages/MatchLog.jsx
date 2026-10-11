@@ -157,7 +157,7 @@ export default function MatchLog() {
           date: r.date,
           season: r.season,
           gameType: r.gameType,
-          approvedBy: r.approvedBy
+          approvedBy: r.approvedBy || (String(r.status).toLowerCase() === 'approved' ? 'Admin' : null)
         }
       })
       .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
@@ -395,7 +395,7 @@ export default function MatchLog() {
                     {match.season} • {match.date}
                     {match.approvedBy && (
                       <span style={{ color: 'var(--success)', display: 'block', fontSize: '0.7rem', fontWeight: 700, marginTop: '2px' }}>
-                        ✓ Approved by Admin: {match.approvedBy}
+                        ✓ Approved by Admin{match.approvedBy !== 'Admin' ? `: ${match.approvedBy}` : ''}
                       </span>
                     )}
                   </div>

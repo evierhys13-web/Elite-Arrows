@@ -359,9 +359,9 @@ export default function Home() {
                       <div>vs {opponent}</div>
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                         {r.forfeit ? '🏳️ Forfeit' : isPlayer1 ? `${score1}-${score2}` : `${score2}-${score1}`} • {r.date}
-                        {r.approvedBy && (
+                        {r.status === 'approved' && (
                           <span style={{ color: 'var(--success)', display: 'block', fontSize: '0.68rem', fontWeight: 700, marginTop: '2px' }}>
-                            ✓ Approved by Admin: {r.approvedBy}
+                            ✓ Approved by Admin{r.approvedBy ? `: ${r.approvedBy}` : ''}
                           </span>
                         )}
                       </div>
