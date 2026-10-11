@@ -234,6 +234,12 @@ export default function Results() {
           </div>
         )}
 
+        {result.approvedBy && (
+          <div style={{ fontSize: '0.75rem', color: 'var(--success)', marginTop: '10px', fontWeight: 700 }}>
+            ✓ Approved by Admin: {result.approvedBy}
+          </div>
+        )}
+
         <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
           {isMe && !isPending && (
             <button className="btn btn-secondary btn-sm btn-block" style={{ color: 'var(--error)' }} onClick={() => handleDispute(result)}>Dispute Result</button>

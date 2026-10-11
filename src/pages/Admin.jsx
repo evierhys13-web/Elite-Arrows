@@ -579,7 +579,12 @@ export default function Admin() {
 
       if (!res) throw new Error('Result not found')
 
-      const updates = { status: 'approved', approvedAt: new Date().toISOString() };
+      const updates = {
+        status: 'approved',
+        approvedAt: new Date().toISOString(),
+        approvedBy: user?.username || user?.name || 'Admin',
+        approvedById: user?.id || null
+      };
 
       const findUser = (name) => {
         if (!name) return null;
@@ -685,7 +690,12 @@ export default function Admin() {
       selectedResults.forEach(id => {
         const res = allResults.find(r => String(r.id) === String(id))
         if (res) {
-          const updates = { status: 'approved', approvedAt: new Date().toISOString() };
+          const updates = {
+            status: 'approved',
+            approvedAt: new Date().toISOString(),
+            approvedBy: user?.username || user?.name || 'Admin',
+            approvedById: user?.id || null
+          };
           const s1 = Number(res.score1) || 0;
           const s2 = Number(res.score2) || 0;
           const totalLegs = s1 + s2;
@@ -2605,6 +2615,12 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
                         </div>
                       )}
                     </div>
+
+                    {r.approvedBy && (
+                      <div style={{ fontSize: '0.75rem', color: 'var(--success)', marginTop: '8px', fontWeight: 700 }}>
+                        ✓ Approved by Admin: {r.approvedBy}
+                      </div>
+                    )}
 
                     <div style={{ display: 'flex', gap: '6px', marginTop: '12px' }}>
                       {resultFilter === 'pending' && (
