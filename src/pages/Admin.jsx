@@ -1652,6 +1652,26 @@ export default function Admin() {
     setIsProcessing(false)
   }
 
+  const handleSendGameReminder = async () => {
+    if (!confirm('Send a push notification reminder to all players to play their league matches this week?')) return
+    setIsProcessing(true)
+    try {
+      if (typeof notifyAllSubscribers === 'function') {
+        await notifyAllSubscribers(
+          '⚠️ Weekly Match Reminder',
+          'Please remember to play and submit your league fixtures this week!',
+          'reminder',
+          { type: 'game_reminder' }
+        )
+      }
+      await logAudit('SEND_GAME_REMINDER', 'Broadcasted weekly match reminder to all players')
+      showToast('Weekly game reminder broadcasted to all players!', 'success')
+    } catch (e) {
+      showToast('Failed to send reminder: ' + e.message, 'error')
+    }
+    setIsProcessing(false)
+  }
+
   const handleRemoveHallOfFame = async (id) => {
     if (!window.confirm('Remove this entry from Hall of Fame?')) return
     try {
@@ -2152,6 +2172,17 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
                 </div>
               )}
             </div>
+
+            <div style={{ marginBottom: '24px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              <button
+                className="btn btn-primary"
+                onClick={handleSendGameReminder}
+                disabled={isProcessing}
+              >
+                🔔 Broadcast Game Reminder to All Players
+              </button>
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '24px', marginBottom: '32px' }}>
               <div className="stat-card glass" onClick={() => setActiveTab('results')} style={{ cursor: 'pointer', padding: '24px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}><div className="stat-label">Pending Results</div><div>🎯</div></div>
