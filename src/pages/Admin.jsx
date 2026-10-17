@@ -52,7 +52,8 @@ export default function Admin() {
     togglePinNews,
     notifyUser,
     getAuditLogs,
-    notifyAllSubscribers
+    notifyAllSubscribers,
+    sendNotification
   } = useAuth()
 
   const navigate = useNavigate()
@@ -123,6 +124,7 @@ export default function Admin() {
   const [formatDraft, setFormatDraft] = useState(null)
   const [savingDivisions, setSavingDivisions] = useState(false)
   const [newsForm, setNewsForm] = useState({ title: '', message: '', pinned: false })
+  const [directNotif, setDirectNotif] = useState({ playerId: '', title: '', message: '' })
   const [highlightForm, setHighlightForm] = useState({ player: '', title: '', type: 'High Checkout', videoUrl: '', videoFile: null })
   const [highlights, setHighlights] = useState([])
   const [hlUploadProgress, setHlUploadProgress] = useState(0)
@@ -1672,6 +1674,31 @@ export default function Admin() {
     setIsProcessing(false)
   }
 
+  const handleSendDirectNotification = async () => {
+    if (!directNotif.playerId || !directNotif.title || !directNotif.message) {
+      return showToast('Select a player, enter a title, and message', 'error')
+    }
+    setIsProcessing(true)
+    try {
+      const targetUser = allPlayers.find(p => String(p.id) === String(directNotif.playerId))
+      if (!targetUser) throw new Error('Player not found')
+
+      if (typeof sendNotification === 'function') {
+        await sendNotification(targetUser.id, {
+          title: directNotif.title,
+          message: directNotif.message,
+          data: { type: 'admin_direct_message' }
+        })
+      }
+      await logAudit('SEND_DIRECT_NOTIFICATION', `Sent direct notification to ${targetUser.username}: ${directNotif.title}`)
+      showToast(`Notification sent to ${targetUser.username}!`, 'success')
+      setDirectNotif({ playerId: '', title: '', message: '' })
+    } catch (e) {
+      showToast('Failed to send notification: ' + e.message, 'error')
+    }
+    setIsProcessing(false)
+  }
+
   const handleRemoveHallOfFame = async (id) => {
     if (!window.confirm('Remove this entry from Hall of Fame?')) return
     try {
@@ -2180,6 +2207,46 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
                 disabled={isProcessing}
               >
                 🔔 Broadcast Game Reminder to All Players
+              </button>
+            </div>
+
+            <div className="card glass" style={{ padding: '24px', borderRadius: '16px', marginBottom: '28px' }}>
+              <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '16px' }}>✉️ Send Direct Push Notification to Player</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+                <UserSearchSelect
+                  users={allPlayers}
+                  selectedId={directNotif.playerId}
+                  onSelect={id => setDirectNotif({ ...directNotif, playerId: id })}
+                  label="Select Player"
+                  onQueryChange={searchUsers}
+                />
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label>Notification Title</label>
+                  <input
+                    className="glass"
+                    placeholder="e.g. Match Reminder"
+                    value={directNotif.title}
+                    onChange={e => setDirectNotif({ ...directNotif, title: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="form-group" style={{ marginBottom: '16px' }}>
+                <label>Message</label>
+                <textarea
+                  className="glass"
+                  rows={2}
+                  placeholder="Type message to player..."
+                  value={directNotif.message}
+                  onChange={e => setDirectNotif({ ...directNotif, message: e.target.value })}
+                  style={{ width: '100%', padding: '10px' }}
+                />
+              </div>
+              <button
+                className="btn btn-primary"
+                onClick={handleSendDirectNotification}
+                disabled={isProcessing || !directNotif.playerId || !directNotif.title || !directNotif.message}
+              >
+                Send Direct Notification
               </button>
             </div>
 
