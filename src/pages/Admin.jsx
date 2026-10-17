@@ -2200,7 +2200,44 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
               )}
             </div>
 
-            <div style={{ marginBottom: '24px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '24px', marginBottom: '32px' }}>
+              <div className="stat-card glass" onClick={() => setActiveTab('results')} style={{ cursor: 'pointer', padding: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}><div className="stat-label">Pending Results</div><div>🎯</div></div>
+                <div className="stat-value" style={{ color: stats.pendingResults > 0 ? 'var(--warning)' : 'var(--success)', fontSize: '2.5rem' }}>{stats.pendingResults}</div>
+              </div>
+              <div className="stat-card glass" onClick={() => setActiveTab('payments')} style={{ cursor: 'pointer', padding: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}><div className="stat-label">Pending Payments</div><div>💳</div></div>
+                <div className="stat-value" style={{ color: stats.pendingPayments > 0 ? 'var(--error)' : 'var(--success)', fontSize: '2.5rem' }}>{stats.pendingPayments}</div>
+              </div>
+              <div className="stat-card glass" onClick={() => setActiveTab('new')} style={{ cursor: 'pointer', padding: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}><div className="stat-label">New Users (7d)</div><div>👤</div></div>
+                <div className="stat-value" style={{ color: 'var(--accent-cyan)', fontSize: '2.5rem' }}>{stats.newUsers}</div>
+              </div>
+              <div className="stat-card glass" style={{ padding: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}><div className="stat-label">League Prize Pot</div><div>💰</div></div>
+                <div className="stat-value" style={{ fontSize: '2.5rem' }}>£{adminData?.subscriptionPot?.toFixed(2) || '0.00'}</div>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
+              <div className="card glass" style={{ padding: '24px' }}>
+                <h3 className="card-title">📊 Analytics Sync</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>Sync match results with Analytics engine.</p>
+                <button className="btn btn-primary btn-block" onClick={handleBulkSyncAnalytics} disabled={isApproving}>{isApproving ? 'Syncing...' : 'Bulk Sync All Approved Games'}</button>
+              </div>
+              <div className="card glass" style={{ padding: '24px' }}>
+                <h3 className="card-title">🚨 Urgent Actions</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {(stats.pendingResults > 0 || stats.pendingPayments > 0) ? (
+                    <>
+                      {stats.pendingResults > 0 && <div className="glass" style={{ padding: '16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: '4px solid var(--warning)' }}><span>{stats.pendingResults} matches awaiting review.</span><button className="btn btn-secondary btn-sm" onClick={() => setActiveTab('results')}>Review</button></div>}
+                      {stats.pendingPayments > 0 && <div className="glass" style={{ padding: '16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: '4px solid var(--error)' }}><span>{stats.pendingPayments} payments to verify.</span><button className="btn btn-secondary btn-sm" onClick={() => setActiveTab('payments')}>Verify</button></div>}
+                    </>
+                  ) : <div style={{ textAlign: 'center', padding: '20px' }}><p style={{ color: 'var(--text-muted)' }}>System is healthy.</p></div>}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ marginTop: '24px', marginBottom: '24px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
               <button
                 className="btn btn-primary"
                 onClick={handleSendGameReminder}
@@ -2210,7 +2247,7 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
               </button>
             </div>
 
-            <div className="card glass" style={{ padding: '24px', borderRadius: '16px', marginBottom: '28px' }}>
+            <div className="card glass" style={{ padding: '24px', borderRadius: '16px', marginBottom: '24px' }}>
               <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '16px' }}>✉️ Send Direct Push Notification to Player</h4>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '16px' }}>
                 <UserSearchSelect
@@ -2248,43 +2285,6 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
               >
                 Send Direct Notification
               </button>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '24px', marginBottom: '32px' }}>
-              <div className="stat-card glass" onClick={() => setActiveTab('results')} style={{ cursor: 'pointer', padding: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}><div className="stat-label">Pending Results</div><div>🎯</div></div>
-                <div className="stat-value" style={{ color: stats.pendingResults > 0 ? 'var(--warning)' : 'var(--success)', fontSize: '2.5rem' }}>{stats.pendingResults}</div>
-              </div>
-              <div className="stat-card glass" onClick={() => setActiveTab('payments')} style={{ cursor: 'pointer', padding: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}><div className="stat-label">Pending Payments</div><div>💳</div></div>
-                <div className="stat-value" style={{ color: stats.pendingPayments > 0 ? 'var(--error)' : 'var(--success)', fontSize: '2.5rem' }}>{stats.pendingPayments}</div>
-              </div>
-              <div className="stat-card glass" onClick={() => setActiveTab('new')} style={{ cursor: 'pointer', padding: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}><div className="stat-label">New Users (7d)</div><div>👤</div></div>
-                <div className="stat-value" style={{ color: 'var(--accent-cyan)', fontSize: '2.5rem' }}>{stats.newUsers}</div>
-              </div>
-              <div className="stat-card glass" style={{ padding: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}><div className="stat-label">League Prize Pot</div><div>💰</div></div>
-                <div className="stat-value" style={{ fontSize: '2.5rem' }}>£{adminData?.subscriptionPot?.toFixed(2) || '0.00'}</div>
-              </div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
-              <div className="card glass" style={{ padding: '24px' }}>
-                <h3 className="card-title">📊 Analytics Sync</h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>Sync match results with Analytics engine.</p>
-                <button className="btn btn-primary btn-block" onClick={handleBulkSyncAnalytics} disabled={isApproving}>{isApproving ? 'Syncing...' : 'Bulk Sync All Approved Games'}</button>
-              </div>
-              <div className="card glass" style={{ padding: '24px' }}>
-                <h3 className="card-title">🚨 Urgent Actions</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {(stats.pendingResults > 0 || stats.pendingPayments > 0) ? (
-                    <>
-                      {stats.pendingResults > 0 && <div className="glass" style={{ padding: '16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: '4px solid var(--warning)' }}><span>{stats.pendingResults} matches awaiting review.</span><button className="btn btn-secondary btn-sm" onClick={() => setActiveTab('results')}>Review</button></div>}
-                      {stats.pendingPayments > 0 && <div className="glass" style={{ padding: '16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: '4px solid var(--error)' }}><span>{stats.pendingPayments} payments to verify.</span><button className="btn btn-secondary btn-sm" onClick={() => setActiveTab('payments')}>Verify</button></div>}
-                    </>
-                  ) : <div style={{ textAlign: 'center', padding: '20px' }}><p style={{ color: 'var(--text-muted)' }}>System is healthy.</p></div>}
-                </div>
-              </div>
             </div>
 
             <div className="card glass" style={{ padding: '24px', marginTop: '24px' }}>
