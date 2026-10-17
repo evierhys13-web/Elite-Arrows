@@ -51,7 +51,8 @@ export default function Admin() {
     deleteNews,
     togglePinNews,
     notifyUser,
-    getAuditLogs
+    getAuditLogs,
+    notifyAllSubscribers
   } = useAuth()
 
   const navigate = useNavigate()
@@ -1640,8 +1641,11 @@ export default function Admin() {
     setIsProcessing(true)
     try {
       await postNews(newsForm.title, newsForm.message, newsForm.pinned)
-      await logAudit('CREATE_NEWS', `Created news announcement: ${newsForm.title}`)
-      showToast('News announcement posted!', 'success')
+      if (typeof notifyAllSubscribers === 'function') {
+        await notifyAllSubscribers(newsForm.title, newsForm.message, 'news', { title: newsForm.title })
+      }
+      await logAudit('CREATE_NEWS', `Created news announcement & broadcasted push notification: ${newsForm.title}`)
+      showToast('News announcement posted & broadcasted!', 'success')
       setNewsForm({ title: '', message: '', pinned: false })
       triggerDataRefresh('all')
     } catch (e) { showToast(e.message, 'error') }
