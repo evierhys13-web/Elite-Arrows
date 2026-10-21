@@ -1,24 +1,31 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContextInternal'
+import { useToast } from '../context/ToastContext'
 
 export default function RefreshButton({ size = 24, style = {} }) {
   const [refreshing, setRefreshing] = useState(false)
-  const navigate = useNavigate()
-  const { refreshUserData } = useAuth()
+  const { forceFetchResults, triggerDataRefresh } = useAuth()
+  const { showToast } = useToast()
 
   const handleRefresh = async () => {
     if (refreshing) return
     setRefreshing(true)
     
     try {
-      if (refreshUserData) {
-        await refreshUserData()
+      if (typeof forceFetchResults === 'function') {
+        await forceFetchResults()
       }
-      window.location.reload()
+      if (typeof triggerDataRefresh === 'function') {
+        triggerDataRefresh('all')
+      }
+      if (showToast) {
+        showToast('Site data synchronized successfully!', 'success')
+      }
+      setRefreshing(false)
     } catch (e) {
       console.error('Refresh error:', e)
       setRefreshing(false)
+      window.location.reload()
     }
   }
 
@@ -42,7 +49,7 @@ export default function RefreshButton({ size = 24, style = {} }) {
         ...style
       }}
       aria-label={refreshing ? 'Refreshing...' : 'Refresh data'}
-      title="Refresh data"
+      title="Refresh data & synchronize server state"
     >
       <svg 
         width={size} 

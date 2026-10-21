@@ -134,6 +134,24 @@ export default function Admin() {
   const [playoffForm, setPlayoffForm] = useState({ player1: '', player2: '', division: '', date: '', time: '', bestOf: '3' })
   const [surveyForm, setSurveyForm] = useState({ title: '', description: '', targetType: 'all', targetUserIds: [] })
   const [surveyQuestions, setSurveyQuestions] = useState([{ id: 'q1', text: '', type: 'text', options: '' }])
+
+  const categories = [
+    { id: 'overview', label: '📊 Overview', tabIds: ['dashboard', 'audit'] },
+    { id: 'matches', label: '🎯 Matches & Cups', tabIds: ['results', 'fixtures', 'cups', 'moneypot', 'openleague'] },
+    { id: 'members', label: '👥 Members & Staff', tabIds: ['players', 'admins', 'new'] },
+    { id: 'league', label: '🏆 League & Structure', tabIds: ['divisions', 'welcome'] },
+    { id: 'content', label: '🎨 Content & Settings', tabIds: ['news', 'surveys', 'halloffame', 'trophies', 'highlights', 'hometournaments', 'backgrounds', 'sponsored', 'suggestions', 'maintenance'] }
+  ]
+  const [activeCategory, setActiveCategory] = useState('overview')
+
+  const currentCategoryObj = useMemo(() =>
+    categories.find(c => c.tabIds.includes(activeTab)) || categories[0]
+  , [activeTab])
+
+  useEffect(() => {
+    const found = categories.find(c => c.tabIds.includes(activeTab))
+    if (found) setActiveCategory(found.id)
+  }, [activeTab])
   const [viewSurveyResponses, setViewSurveyResponses] = useState(null)
   const [expandedProofs, setExpandedProofs] = useState({})
   const [welcomeDraft, setWelcomeDraft] = useState(() => ({
@@ -2156,9 +2174,26 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Comprehensive League Management</p>
       </div>
 
-      <div style={{ display: 'flex', overflowX: 'auto', gap: '10px', marginBottom: '24px', paddingBottom: '12px', WebkitOverflowScrolling: 'touch', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-        {tabs.map(tab => (
-          <button key={tab.id} className={`division-tab ${activeTab === tab.id ? 'active' : ''}`} onClick={() => setActiveTab(tab.id)} style={{ whiteSpace: 'nowrap', padding: '10px 18px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+      <div style={{ display: 'flex', overflowX: 'auto', gap: '8px', marginBottom: '16px', paddingBottom: '8px' }}>
+        {categories.map(cat => (
+          <button
+            key={cat.id}
+            className={`btn btn-sm ${activeCategory === cat.id ? 'btn-primary' : 'btn-secondary glass'}`}
+            onClick={() => {
+              setActiveCategory(cat.id)
+              const firstTabId = cat.tabIds[0]
+              if (firstTabId) setActiveTab(firstTabId)
+            }}
+            style={{ borderRadius: '20px', padding: '8px 16px', whiteSpace: 'nowrap', fontWeight: 700 }}
+          >
+            {cat.label}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', overflowX: 'auto', gap: '8px', marginBottom: '24px', paddingBottom: '12px', WebkitOverflowScrolling: 'touch', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        {tabs.filter(t => currentCategoryObj.tabIds.includes(t.id)).map(tab => (
+          <button key={tab.id} className={`division-tab ${activeTab === tab.id ? 'active' : ''}`} onClick={() => setActiveTab(tab.id)} style={{ whiteSpace: 'nowrap', padding: '8px 16px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
             {tab.label}
             {tab.count > 0 && <span style={{ background: 'white', color: 'black', padding: '2px 6px', borderRadius: '10px', fontSize: '0.65rem', fontWeight: 900 }}>{tab.count}</span>}
           </button>

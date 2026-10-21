@@ -50,7 +50,7 @@ export default function SeasonManagement() {
   useEffect(() => {
     if (showCreateForm && !startDate) {
       const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 7); // Default to 7 days away
+      tomorrow.setDate(tomorrow.getDate() + 7);
       setStartDate(tomorrow.toISOString().split('T')[0]);
     }
   }, [showCreateForm, startDate]);
@@ -79,7 +79,6 @@ export default function SeasonManagement() {
     if (!startDate) return showToast('Please select a start date', 'error')
 
     setIsProcessing(true)
-    
     try {
       const id = Date.now().toString()
       const startDateTime = new Date(`${startDate}T${startTime}`).toISOString()
@@ -95,7 +94,7 @@ export default function SeasonManagement() {
       }
 
       await setDoc(doc(db, 'seasons', id), newSeason)
-      showToast(`Season "${newSeasonName}" created and scheduled for ${new Date(startDateTime).toLocaleString()}`, 'success')
+      showToast(`Season "${newSeasonName}" scheduled successfully!`, 'success')
       setNewSeasonName('')
       setStartDate('')
       setStartTime('00:00')
@@ -126,7 +125,7 @@ export default function SeasonManagement() {
         await updateAdminData({ currentSeason: newSeasonName })
       }
 
-      showToast('Season updated!', 'success')
+      showToast('Season updated successfully!', 'success')
       setEditingSeason(null)
       setNewSeasonName('')
       setStartDate('')
@@ -157,18 +156,14 @@ export default function SeasonManagement() {
       const batch = writeBatch(db)
       allPlayers.forEach(u => {
         const updates = {}
-        // For Season 1, we assume everyone who has any record of subscription should be active (Legacy support)
         const isSubscribedForSeason = (u.subscribedSeasons || []).includes(seasonName)
-        // Preserve elite passes: never remove an existing subscription, only ever add to it
         const shouldBeSubscribed = u.isSubscribed || isSubscribedForSeason || (seasonName === 'Season 1' && (u.isSubscribed || (u.subscribedSeasons && u.subscribedSeasons.length > 0)))
 
         if (u.isSubscribed !== shouldBeSubscribed) updates.isSubscribed = shouldBeSubscribed
 
-        // Apply Staged Divisions - only override with a staged division value; never wipe an existing one
         const nextDiv = stagedDivisions[u.id] || u.division
         if (u.division !== nextDiv) updates.division = nextDiv
 
-        // Clear manual stats for a fresh season start
         if (u.manualStats) updates.manualStats = null
 
         if (Object.keys(updates).length > 0) {
@@ -177,7 +172,7 @@ export default function SeasonManagement() {
       })
       await batch.commit()
 
-      showToast(`Season ${seasonName} is now LIVE. Table wiped and seeding applied.`, 'success')
+      showToast(`Season ${seasonName} is now LIVE. Seeding applied successfully.`, 'success')
       triggerDataRefresh('all')
     } catch (e) {
       showToast('Error updating active season: ' + e.message, 'error')
@@ -190,17 +185,14 @@ export default function SeasonManagement() {
     if (!confirm("This will set 'Season 1' as the active season and restore ALL previous subscribers. Use this if a new season launched accidentally.")) return
     setIsProcessing(true)
     try {
-      // 1. Reset current season
       await updateAdminData({ currentSeason: 'Season 1' })
 
-      // 2. Fix launched flags
       const launchedSeasons = seasons.filter(s => s.isLaunched && s.name !== 'Season 1')
       const batch = writeBatch(db)
       launchedSeasons.forEach(s => {
         batch.update(doc(db, 'seasons', s.id), { isLaunched: false, status: 'upcoming' })
       })
 
-      // 3. Restore subscriptions (Assume anyone who was a subscriber is restored)
       allPlayers.forEach(u => {
         if (!u.isSubscribed && (u.isTournamentAdmin || u.isAdmin || u.subscribedSeasons?.length > 0 || u.division)) {
           batch.update(doc(db, 'users', u.id), { isSubscribed: true })
@@ -252,7 +244,6 @@ export default function SeasonManagement() {
         count++
       })
 
-      // Only the 1st place finisher in each division is added to the Hall of Fame
       const existingSnap = await getDocs(collection(db, 'hallOfFame'))
       const existingKeys = new Set(existingSnap.docs.map(d => {
         const data = d.data()
@@ -311,7 +302,7 @@ export default function SeasonManagement() {
   }
 
   const deleteSeason = async (id) => {
-    if (!confirm('Permanently delete this season record? Match results will NOT be deleted, but they will no longer be linked to this season entry.')) return
+    if (!confirm('Permanently delete this season record? Match results will NOT be deleted.')) return
     setIsProcessing(true)
     try {
       await deleteDoc(doc(db, 'seasons', id))
@@ -325,7 +316,7 @@ export default function SeasonManagement() {
   }
 
   const resetCurrentSeasonTable = async () => {
-    if (!confirm(`DANGER: This will permanently delete ALL approved and pending results for "${currentSeason}". This cannot be undone. Are you absolutely sure?`)) return
+    if (!confirm(`DANGER: This will permanently delete ALL approved and pending results for "${currentSeason}". This cannot be undone.`)) return
     
     setIsProcessing(true)
     try {
@@ -349,7 +340,7 @@ export default function SeasonManagement() {
 
   const runSeasonTransitions = async (targetSeason, fromSeasonName) => {
     if (!fromSeasonName) return showToast('No previous season found', 'error')
-    if (!confirm(`This will calculate promotions/relegations based on "${fromSeasonName}" and save them as a DRAFT for "${targetSeason.name}". It will NOT update players yet. Proceed?`)) return
+    if (!confirm(`Calculate promotions/relegations based on "${fromSeasonName}" and save as a DRAFT for "${targetSeason.name}"?`)) return
 
     setIsProcessing(true)
     try {
@@ -406,12 +397,10 @@ export default function SeasonManagement() {
     setIsProcessing(true)
     try {
       if (seedingSeasonId === 'current') {
-        // Update live division on user profile
         await setDoc(doc(db, 'users', selectedPlayer), { division: newDivision }, { merge: true })
         const p = allPlayers.find(u => u.id === selectedPlayer)
         showToast(`${p?.username} moved to ${newDivision} in LIVE season`, 'success')
       } else {
-        // Update staged division in the selected season document
         const targetSeason = seasons.find(s => s.id === seedingSeasonId)
         if (!targetSeason) throw new Error('Target season not found')
 
@@ -438,7 +427,7 @@ export default function SeasonManagement() {
   }
 
   const clearAllDivisions = async () => {
-    if (!confirm('This will set the division to "Unassigned" for EVERY player in the league. Proceed?')) return
+    if (!confirm('Set division to "Unassigned" for EVERY player in the league?')) return
 
     setIsProcessing(true)
     try {
@@ -461,7 +450,7 @@ export default function SeasonManagement() {
     const targetSeason = seasons.find(s => s.id === seedingSeasonId)
     if (!targetSeason) return
 
-    if (!confirm(`Wipe ALL drafted seeding for "${targetSeason.name}"? This cannot be undone.`)) return
+    if (!confirm(`Wipe ALL drafted seeding for "${targetSeason.name}"?`)) return
 
     setIsProcessing(true)
     try {
@@ -485,32 +474,29 @@ export default function SeasonManagement() {
   }
 
   return (
-    <div className="page animate-fade-in">
-      <Breadcrumbs items={[{ label: 'Admin', path: '/admin' }, { label: 'Seasons' }]} />
+    <div className="page animate-fade-in" style={{ maxWidth: '1100px', margin: '0 auto', paddingBottom: '60px' }}>
+      <Breadcrumbs items={[{ label: 'Admin', path: '/admin' }, { label: 'Seasons Control' }]} />
 
       <div className="page-header" style={{ marginBottom: '32px' }}>
-        <h1 className="page-title text-gradient">Season Control</h1>
-        <p style={{ color: 'var(--text-muted)' }}>Manage league phases, transitions, and player seeding</p>
+        <h1 className="page-title text-gradient">🗓️ Season & League Control Hub</h1>
+        <p style={{ color: 'var(--text-muted)' }}>Manage league phases, season scheduling, divisions, and player seeding seamlessly.</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', marginBottom: '40px' }}>
-
-        {/* CURRENT STATUS */}
+      {/* SECTION 1: LIVE ENVIRONMENT & QUICK ACTIONS */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', marginBottom: '32px' }}>
         <div className="card glass" style={{ borderLeft: '4px solid var(--accent-cyan)' }}>
-          <h3 className="card-title">Live Environment</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', margin: '12px 0' }}>
-            <div style={{ padding: '16px', textAlign: 'center', background: 'rgba(0,0,0,0.2)', borderRadius: '16px' }}>
-              <div style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--accent-cyan)', fontWeight: 800, marginBottom: '4px' }}>League Season</div>
-              <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'white' }}>{currentSeason}</div>
-            </div>
+          <h3 className="card-title">⚡ Live Season Control</h3>
+          <div style={{ padding: '16px', background: 'rgba(0,0,0,0.25)', borderRadius: '14px', marginBottom: '16px', textAlign: 'center' }}>
+            <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--accent-cyan)', fontWeight: 800, marginBottom: '4px' }}>Active League Season</div>
+            <div style={{ fontSize: '1.6rem', fontWeight: 900, color: 'white' }}>{currentSeason}</div>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', marginTop: '8px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <select
               className="glass"
               value={selectedLiveSeason}
               onChange={(e) => setSelectedLiveSeason(e.target.value)}
-              style={{ flex: 1, fontSize: '0.8rem', padding: '8px' }}
+              style={{ flex: 1, fontSize: '0.85rem', padding: '10px' }}
             >
               <option value="">Select a season to set live...</option>
               {seasons.filter(s => s.name !== currentSeason).map(s => (
@@ -527,48 +513,48 @@ export default function SeasonManagement() {
           </div>
 
           {seasons.find(s => s.name === 'Season 4' && !s.isArchived) && (
-            <button className="btn btn-danger btn-sm btn-block" onClick={archiveSeason4Special} disabled={isProcessing} style={{ marginTop: '8px' }}>
+            <button className="btn btn-danger btn-sm btn-block" onClick={archiveSeason4Special} disabled={isProcessing} style={{ marginTop: '12px' }}>
               Archive Season 4 Now
             </button>
           )}
         </div>
 
-        {/* QUICK ACTIONS */}
         <div className="card glass">
-          <h3 className="card-title">Maintenance Tools</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
-            <button className="btn btn-secondary btn-block" onClick={() => { setEditingSeason(null); setShowCreateForm(!showCreateForm); }}>
-              {showCreateForm ? 'Close Form' : '+ New Season Entry'}
+          <h3 className="card-title">🛠️ Admin Maintenance Tools</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '8px' }}>
+            <button className="btn btn-primary btn-block" onClick={() => { setEditingSeason(null); setShowCreateForm(!showCreateForm); }}>
+              {showCreateForm ? 'Close Schedule Form' : '+ Schedule New Season'}
             </button>
             {currentSeason !== 'Season 1' && (
               <button className="btn btn-warning btn-block" onClick={emergencyRevert} disabled={isProcessing}>
                 Emergency Revert to Season 1
               </button>
             )}
-            <button className="btn btn-danger btn-block" style={{ opacity: 0.8 }} onClick={clearAllDivisions} disabled={isProcessing}>
-              Reset All Divisions
+            <button className="btn btn-danger btn-block" onClick={clearAllDivisions} disabled={isProcessing}>
+              Reset All Divisions (Unassigned)
             </button>
             <button className="btn btn-danger btn-block" onClick={resetCurrentSeasonTable} disabled={isProcessing}>
-              Clear Season Results
+              Clear Current Season Results
             </button>
           </div>
         </div>
       </div>
 
+      {/* SCHEDULE FORM MODAL / CARD */}
       {(showCreateForm || editingSeason) && (
-        <div className="card glass animate-slide-up" style={{ marginBottom: '32px', border: '1px solid var(--accent-cyan)' }}>
-          <h3 className="card-title">{editingSeason ? 'Edit Season' : 'Schedule New Season'}</h3>
+        <div className="card glass animate-fade-in" style={{ marginBottom: '32px', border: '1px solid var(--accent-cyan)' }}>
+          <h3 className="card-title">{editingSeason ? 'Edit Season Details' : 'Schedule New Season'}</h3>
           <div className="form-group">
             <label>Season Name</label>
             <input
               type="text"
               value={newSeasonName}
               onChange={(e) => setNewSeasonName(e.target.value)}
-              placeholder="e.g. Season 4, Autumn 2026..."
+              placeholder="e.g. Season 5, Spring 2027..."
               className="glass"
             />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label>Start Date</label>
               <input
@@ -588,87 +574,84 @@ export default function SeasonManagement() {
               />
             </div>
           </div>
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
-            New seasons are only visible to admins until their start date.
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '20px' }}>
+            Scheduled seasons remain hidden from members until activated by an admin.
           </p>
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button className="btn btn-primary btn-block" onClick={editingSeason ? updateSeason : createSeason} disabled={isProcessing}>
-              {isProcessing ? 'Processing...' : editingSeason ? 'Update Season' : 'Schedule Season'}
+            <button className="btn btn-primary" style={{ flex: 1 }} onClick={editingSeason ? updateSeason : createSeason} disabled={isProcessing}>
+              {isProcessing ? 'Processing...' : editingSeason ? 'Save Changes' : 'Publish Season'}
             </button>
-            <button className="btn btn-secondary" onClick={() => { setEditingSeason(null); setNewSeasonName(''); setStartDate(''); setStartTime('00:00'); setShowCreateForm(false); }}>Cancel</button>
+            <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => { setEditingSeason(null); setNewSeasonName(''); setStartDate(''); setStartTime('00:00'); setShowCreateForm(false); }}>Cancel</button>
           </div>
         </div>
       )}
 
-      {/* PLAYER SEEDING */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '24px', marginBottom: '40px' }}>
+      {/* SECTION 2: PLAYER SEEDING & ASSIGNMENT HUB */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '24px', marginBottom: '32px' }}>
         <div className="card glass">
-          <h3 className="card-title">Standard Seeding</h3>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '20px', fontSize: '0.85rem' }}>Move players in the regular league.</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <label style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontWeight: 800 }}>Target Season</label>
-            <select value={seedingSeasonId} onChange={e => setSeedingSeasonId(e.target.value)} className="glass">
-              <option value="current">Current Live Season ({currentSeason})</option>
-              {seasons.filter(s => s.name !== currentSeason).map(s => (
-                <option key={s.id} value={s.id}>{s.name} {s.isArchived ? '(Archived)' : '(Upcoming)'}</option>
-              ))}
-            </select>
+          <h3 className="card-title">🎯 Player Division Seeding</h3>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '20px', fontSize: '0.85rem' }}>Assign players to divisions for live or upcoming seasons.</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div>
+              <label style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)', fontWeight: 700, marginBottom: '6px', display: 'block' }}>Target Season</label>
+              <select value={seedingSeasonId} onChange={e => setSeedingSeasonId(e.target.value)} className="glass">
+                <option value="current">Current Live Season ({currentSeason})</option>
+                {seasons.filter(s => s.name !== currentSeason).map(s => (
+                  <option key={s.id} value={s.id}>{s.name} {s.isArchived ? '(Archived)' : '(Upcoming)'}</option>
+                ))}
+              </select>
+            </div>
 
-            <UserSearchSelect users={allPlayers} selectedId={selectedPlayer} onSelect={setSelectedPlayer} label="Player" onQueryChange={searchUsers} />
+            <UserSearchSelect users={allPlayers} selectedId={selectedPlayer} onSelect={setSelectedPlayer} label="Select Player" onQueryChange={searchUsers} />
 
-            <select value={newDivision} onChange={e => setNewDivision(e.target.value)} className="glass">
-              <option value="">Select Division...</option>
-              {DIVISIONS.map(div => <option key={div} value={div}>{div}</option>)}
-              <option value="Unassigned">Unassigned / Remove</option>
-            </select>
+            <div>
+              <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '6px', display: 'block' }}>New Division</label>
+              <select value={newDivision} onChange={e => setNewDivision(e.target.value)} className="glass">
+                <option value="">Select Division...</option>
+                {DIVISIONS.map(div => <option key={div} value={div}>{div}</option>)}
+                <option value="Unassigned">Unassigned / Remove</option>
+              </select>
+            </div>
 
             <button className="btn btn-primary" onClick={movePlayerDivision} disabled={isProcessing || !selectedPlayer || !newDivision}>
               {seedingSeasonId === 'current' ? 'Update Live Division' : 'Update Draft Seeding'}
             </button>
             {seedingSeasonId !== 'current' && (
-              <button className="btn btn-danger btn-sm" onClick={clearStagedSeeding} disabled={isProcessing} style={{ marginTop: '8px' }}>
-                Wipe Season Draft Seeding
+              <button className="btn btn-danger btn-sm" onClick={clearStagedSeeding} disabled={isProcessing}>
+                Wipe Draft Seeding for this Season
               </button>
             )}
           </div>
         </div>
 
-      </div>
-
-      {/* QUICK ASSIGNMENT LIST */}
-      <div className="card glass" style={{ marginBottom: '40px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '16px' }}>
-          <div>
-            <h3 className="card-title">Season Seeding Overview</h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              Quickly manage assignments for: <strong style={{ color: 'var(--accent-cyan)' }}>{seedingSeasonId === 'current' ? currentSeason : targetSeasonDoc?.name}</strong>
-            </p>
+        {/* SEEDING OVERVIEW GRID */}
+        <div className="card glass">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+            <h3 className="card-title" style={{ margin: 0 }}>📋 Seeding Roster</h3>
+            <span style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontWeight: 700 }}>
+              {seedingSeasonId === 'current' ? currentSeason : targetSeasonDoc?.name}
+            </span>
           </div>
-          <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+
+          <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '10px', marginBottom: '14px' }}>
             <button className={`btn btn-sm ${seedingFilter === 'all' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSeedingFilter('all')}>All</button>
             <button className={`btn btn-sm ${seedingFilter === 'unassigned' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSeedingFilter('unassigned')}>Unassigned</button>
             {DIVISIONS.map(d => (
               <button key={d} className={`btn btn-sm ${seedingFilter === d ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSeedingFilter(d)}>{d}</button>
             ))}
           </div>
-        </div>
 
-        <div style={{ maxHeight: '500px', overflowY: 'auto', paddingRight: '8px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
-            {playersBySeeding.sort((a,b) => a.username.localeCompare(b.username)).map(p => (
-              <div key={p.id} className="glass" style={{ padding: '12px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.username}</div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                    {p.effectiveDiv}
+          <div style={{ maxHeight: '360px', overflowY: 'auto', paddingRight: '4px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {playersBySeeding.sort((a,b) => a.username.localeCompare(b.username)).map(p => (
+                <div key={p.id} className="glass" style={{ padding: '10px 14px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.username}</div>
                   </div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <select
                     className="glass"
                     value={p.effectiveDiv}
-                    style={{ fontSize: '0.75rem', padding: '4px 8px', width: '130px' }}
+                    style={{ fontSize: '0.75rem', padding: '6px 10px', width: '130px' }}
                     onChange={async (e) => {
                       const val = e.target.value
                       setIsProcessing(true)
@@ -686,39 +669,39 @@ export default function SeasonManagement() {
                       setIsProcessing(false)
                     }}
                   >
-                    <option value="Unassigned">League: None</option>
+                    <option value="Unassigned">Unassigned</option>
                     {DIVISIONS.map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
-
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* SEASON LIST */}
+      {/* SECTION 3: SEASON ARCHIVE & MANAGEMENT */}
       <div className="card glass">
-        <h3 className="card-title">Season Archive</h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '20px' }}>
+        <h3 className="card-title">🏛️ Season Archive & Management</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '16px' }}>
           {seasons.length === 0 ? (
-            <p style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>No historical seasons recorded.</p>
+            <p style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>No historical seasons recorded yet.</p>
           ) : (
             seasons.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map(s => (
-              <div key={s.id} className="glass" style={{ padding: '16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div key={s.id} className="glass" style={{ padding: '18px', borderRadius: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
                 <div>
-                  <div style={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ fontWeight: 800, fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                     {s.name}
-                    {s.name === currentSeason && <span style={{ fontSize: '0.6rem', background: 'var(--success)', color: 'black', padding: '2px 6px', borderRadius: '4px' }}>LIVE</span>}
-                    {s.isArchived && <span style={{ fontSize: '0.6rem', background: 'rgba(255,255,255,0.1)', color: 'var(--text-muted)', padding: '2px 6px', borderRadius: '4px' }}>ARCHIVED</span>}
+                    {s.name === currentSeason && <span style={{ fontSize: '0.65rem', background: 'var(--success)', color: 'black', padding: '2px 8px', borderRadius: '99px', fontWeight: 800 }}>LIVE</span>}
+                    {s.isArchived && <span style={{ fontSize: '0.65rem', background: 'rgba(255,255,255,0.1)', color: 'var(--text-muted)', padding: '2px 8px', borderRadius: '99px' }}>ARCHIVED</span>}
                   </div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                     Created {new Date(s.createdAt).toLocaleDateString()}
                     {s.setLiveAt && ` • Went live ${new Date(s.setLiveAt).toLocaleDateString()}`}
                     {s.endedAt && ` • Ended ${new Date(s.endedAt).toLocaleDateString()}`}
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
+
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                   <button className="btn btn-secondary btn-sm" onClick={() => {
                     setEditingSeason(s);
                     setNewSeasonName(s.name);
@@ -729,18 +712,16 @@ export default function SeasonManagement() {
                     }
                     setShowCreateForm(false);
                   }}>Edit</button>
+
                   {s.name !== currentSeason && !s.isLaunched && !s.isArchived && (
-                    <button className="btn btn-secondary btn-sm" onClick={() => runSeasonTransitions(s, currentSeason)}>Draft Seeding from {currentSeason}</button>
+                    <button className="btn btn-secondary btn-sm" onClick={() => runSeasonTransitions(s, currentSeason)}>Draft Seeding</button>
                   )}
                   {s.name !== currentSeason && (
-                    <button className="btn btn-secondary btn-sm" onClick={() => setActiveSeason(s.name)}>Set League Active</button>
+                    <button className="btn btn-primary btn-sm" onClick={() => setActiveSeason(s.name)}>Set Live</button>
                   )}
-                  {s.name !== currentSeason && !s.isArchived && (
-                    <button className="btn btn-secondary btn-sm" onClick={() => archiveSeason(s)}>Archive</button>
-                  )}
-                  <button className="btn btn-secondary btn-sm" onClick={() => generateReportCards(s)}>Generate Report Cards</button>
+                  <button className="btn btn-secondary btn-sm" onClick={() => generateReportCards(s)}>Report Cards & HoF</button>
                   {!s.isArchived ? (
-                    <button className="btn btn-danger btn-sm" onClick={() => endSeason(s)}>End Season</button>
+                    <button className="btn btn-warning btn-sm" onClick={() => endSeason(s)}>End Season</button>
                   ) : (
                     <button className="btn btn-secondary btn-sm" onClick={() => archiveSeason({ ...s, isArchived: false, status: 'active' })}>Restore</button>
                   )}
@@ -751,7 +732,6 @@ export default function SeasonManagement() {
           )}
         </div>
       </div>
-
     </div>
   )
 }

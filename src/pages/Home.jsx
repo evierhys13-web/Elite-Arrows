@@ -192,11 +192,20 @@ export default function Home() {
       <Breadcrumbs items={[{ label: 'Home', path: '/home' }]} />
 
       {/* 1. Welcome Back (Top Header) */}
-      <div className={`animate-fade-in-up ${visible ? '' : 'opacity-0'}`} style={{ marginBottom: '24px' }}>
-        <div style={{ textAlign: 'center' }}>
+      <div className={`animate-fade-in-up ${visible ? '' : 'opacity-0'}`} style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+        <div>
           <h1 style={{ color: 'var(--accent-cyan)', fontSize: '2rem', fontWeight: 800, margin: 0 }}>Welcome back, {user.username}!</h1>
           <p style={{ color: 'var(--text-muted)', marginTop: '4px' }}>Here's your darts overview</p>
         </div>
+        <a
+          href={adminData?.whatsappGroupLink || 'https://chat.whatsapp.com/LsH5bhL3NJ7IrfZNgEnEBW?s=cl&p=a&mlu=us'}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn btn-secondary btn-sm"
+          style={{ background: 'rgba(37, 211, 102, 0.15)', color: '#25D366', borderColor: 'rgba(37, 211, 102, 0.3)', fontWeight: 800 }}
+        >
+          💬 WhatsApp Group
+        </a>
       </div>
 
       {/* 1b. Official Shirts Banner */}
@@ -290,36 +299,57 @@ export default function Home() {
       {/* 4. High Finish Videos */}
       <GlobalHighlightReel />
 
-      {/* 4b. Hall of Fame */}
-      {hallOfFame.length > 0 && (
-        <div className="card animate-fade-in-up" style={{ marginBottom: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-            <h2 className="card-title" style={{ margin: 0, color: '#fbbf24' }}>🏆 Hall of Fame</h2>
-            <Link to="/hall-of-fame" style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontWeight: 700, textDecoration: 'none' }}>View All ➔</Link>
+      {/* 4b. Hall of Fame & Player of the Month */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', marginBottom: '20px' }}>
+        {/* Hall of Fame */}
+        {hallOfFame.length > 0 && (
+          <div className="card animate-fade-in-up" style={{ margin: 0, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                <h2 className="card-title" style={{ margin: 0, color: '#fbbf24', fontSize: '1.2rem' }}>🏆 Hall of Fame</h2>
+                <Link to="/hall-of-fame" style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontWeight: 700, textDecoration: 'none' }}>View All ➔</Link>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '10px' }}>
+                {hallOfFame.slice(0, 4).map(entry => (
+                  <Link key={entry.id} to={`/profile/${entry.userId}`} style={{ textDecoration: 'none' }}>
+                    <div className="glass" style={{
+                      padding: '12px 6px', textAlign: 'center', borderRadius: '12px',
+                      border: '1px solid rgba(251, 191, 36, 0.25)', height: '100%',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px'
+                    }}>
+                      {entry.profilePicture ? (
+                        <img src={entry.profilePicture} alt="" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover' }} />
+                      ) : (
+                        <div style={{ fontSize: '1.4rem' }}>{entry.icon || '🏆'}</div>
+                      )}
+                      <div style={{ fontWeight: 800, fontSize: '0.75rem', color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+                        {entry.username}
+                      </div>
+                      <div style={{ fontSize: '0.6rem', color: '#fbbf24', fontWeight: 700, lineHeight: 1.2 }}>{entry.name}</div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '10px' }}>
-            {hallOfFame.slice(0, 6).map(entry => (
-              <Link key={entry.id} to={`/profile/${entry.userId}`} style={{ textDecoration: 'none' }}>
-                <div className="glass" style={{
-                  padding: '14px 8px', textAlign: 'center', borderRadius: '14px',
-                  border: '1px solid rgba(251, 191, 36, 0.25)', height: '100%',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '5px'
-                }}>
-                  {entry.profilePicture ? (
-                    <img src={entry.profilePicture} alt="" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
-                  ) : (
-                    <div style={{ fontSize: '1.6rem' }}>{entry.icon || '🏆'}</div>
-                  )}
-                  <div style={{ fontWeight: 800, fontSize: '0.8rem', color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
-                    {entry.username}
-                  </div>
-                  <div style={{ fontSize: '0.65rem', color: '#fbbf24', fontWeight: 700, lineHeight: 1.3 }}>{entry.name}</div>
-                </div>
-              </Link>
-            ))}
+        )}
+
+        {/* Player of the Month Widget */}
+        <div className="card animate-fade-in-up" style={{ margin: 0, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+              <h2 className="card-title" style={{ margin: 0, color: 'var(--accent-cyan)', fontSize: '1.2rem' }}>⭐ Player of the Month</h2>
+              <Link to="/player-of-month" style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontWeight: 700, textDecoration: 'none' }}>Vote & View ➔</Link>
+            </div>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '16px', lineHeight: 1.5 }}>
+              Cast your vote for the standout player of the month across your division and see monthly leaderboards!
+            </p>
           </div>
+          <Link to="/player-of-month" className="btn btn-primary btn-block" style={{ marginTop: 'auto' }}>
+            Open POTM Hub ➔
+          </Link>
         </div>
-      )}
+      </div>
 
       {/* 5. News Feed */}
       <NewsFeed showViewAll={true} limit={3} />
