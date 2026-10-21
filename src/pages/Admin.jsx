@@ -1097,29 +1097,29 @@ export default function Admin() {
       const currentHighout = pot.potHighout || 0
       const currentPOTM = pot.potPlayerOfMonth || 0
 
-      let toHighout = currentHighout < 15 ? Math.min(0.5, 15 - currentHighout) : 0
-      let toPOTM = currentPOTM < 40 ? Math.min(1.5, 40 - currentPOTM) : 0
-      let toSite = 3 - toHighout - toPOTM
+      let toHighout = currentHighout < 15 ? Math.min(0.3, 15 - currentHighout) : 0
+      let toPOTM = currentPOTM < 40 ? Math.min(0.4, 40 - currentPOTM) : 0
+      let toSite = 1 - toHighout - toPOTM
       if (currentHighout >= 15 && currentPOTM >= 40) {
         toHighout = 0
         toPOTM = 0
-        toSite = 3
+        toSite = 1
       }
 
       await updateAdminData({
-        subscriptionPot: (pot.subscriptionPot || 0) + 10,
-        potLeaguePrizePool: (pot.potLeaguePrizePool || 0) + 7,
+        subscriptionPot: (pot.subscriptionPot || 0) + 6,
+        potLeaguePrizePool: (pot.potLeaguePrizePool || 0) + 5,
         potHighout: currentHighout + toHighout,
         potPlayerOfMonth: currentPOTM + toPOTM,
         potSitePot: (pot.potSitePot || 0) + toSite
       })
-      addToMoneyHistory('subscription', 10, `Approved payment: ${u.username}${division ? ` (${division})` : ''} for ${finalSeason}`)
-      await logAudit('APPROVE_PAYMENT', `Approved £10 payment for ${u.username}${division ? ` — ${division} division` : ''} (${finalSeason})`)
+      addToMoneyHistory('subscription', 6, `Approved payment: ${u.username}${division ? ` (${division})` : ''} for ${finalSeason}`)
+      await logAudit('APPROVE_PAYMENT', `Approved £6 payment for ${u.username}${division ? ` — ${division} division` : ''} (${finalSeason})`)
       try {
         await notifyUser(
           u.id,
           'Payment approved',
-          `Your £10 payment has been approved.${validDivision ? ` You'll be playing in the ${division} division this season.` : ''}`,
+          `Your £6 payment has been approved.${validDivision ? ` You'll be playing in the ${division} division this season.` : ''}`,
           'payment',
           { division: validDivision ? division : null, season: finalSeason }
         )

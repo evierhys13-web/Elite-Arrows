@@ -3,11 +3,11 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContextInternal";
 import { DIVISION_COLORS } from "../utils/leagueStandings";
 
-const MONTHLY_PRICE = 10;
+const MONTHLY_PRICE = 6;
 
 const PRICE_BREAKDOWN = [
-  { label: 'League Prize Pool', amount: 7, color: '#fbbf24' },
-  { label: 'Player of the Month, Highout Prize & Site Pot', amount: 3, color: '#a78bfa' },
+  { label: 'League Prize Pool', amount: 5, color: '#fbbf24' },
+  { label: 'Player of the Month, Highout Prizes & Site Pot', amount: 1, color: '#a78bfa' },
 ];
 
 const PASS_DIVISIONS = ['Elite', 'Emerald', 'Diamond', 'Platinum'];
