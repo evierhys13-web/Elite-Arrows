@@ -165,22 +165,6 @@ export default function Subscription() {
             </div>
           </div>
 
-          {/* WHERE YOUR MONEY GOES */}
-          <div className="card glass" style={{ padding: '24px', borderRadius: '20px', marginBottom: '24px' }}>
-            <h3 className="card-title" style={{ marginBottom: '14px' }}>Where your £{MONTHLY_PRICE} goes</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
-              {PRICE_BREAKDOWN.map(item => (
-                <div key={item.label} style={{ padding: '14px', borderRadius: '14px', background: 'rgba(255,255,255,0.03)', border: `1px solid ${item.color}44`, textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 900, color: item.color }}>£{item.amount}</div>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px' }}>{item.label}</div>
-                </div>
-              ))}
-            </div>
-            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '14px', marginBottom: 0, lineHeight: '1.5' }}>
-              Total <strong>£{MONTHLY_PRICE} per month</strong> (£7 for League Prize Pool + £3 towards Player of the Month (£40 target split between 4 divisions), Highout Prize (£15 target), and Site Pot). Payment is made manually each month.
-            </p>
-          </div>
-
           {/* PAYMENT DETAILS */}
           <div className="card glass" style={{ padding: '24px', borderRadius: '20px', marginBottom: '24px', border: '1px solid var(--accent-cyan)' }}>
             <h3 className="card-title" style={{ marginBottom: '6px' }}>Pay £{MONTHLY_PRICE} using any method below</h3>
