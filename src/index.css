@@ -211,6 +211,12 @@ body.fullscreen-match .main-content {
   animation: slideUp 0.3s ease-out;
 }
 
+.modal-content.modal-large {
+  max-width: 1100px !important;
+  min-height: 80vh !important;
+  padding: 50px !important;
+}
+
 @keyframes slideUp {
   from { transform: translateY(20px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }

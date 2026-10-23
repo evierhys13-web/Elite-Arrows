@@ -1453,7 +1453,7 @@ export default function CupTournaments() {
 
       {cupPaymentModal && (
         <div className="modal-overlay" onClick={() => setCupPaymentModal(null)} style={{ padding: '20px', alignItems: 'center' }}>
-          <div className="modal-content glass" onClick={e => e.stopPropagation()} style={{ width: '92vw', maxWidth: '1100px', minHeight: '85vh', padding: '60px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderRadius: '28px', border: '1px solid var(--accent-cyan)' }}>
+          <div className="modal-content glass modal-large" onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderRadius: '28px', border: '1px solid var(--accent-cyan)' }}>
             <div>
               <h3 className="card-title" style={{ fontSize: '2.4rem', marginBottom: '18px' }}>🎯 Cup Entry Payment (£{cupPaymentModal.entryFee})</h3>
               <p style={{ fontSize: '1.2rem', color: 'var(--text-muted)', marginBottom: '40px', lineHeight: 1.6 }}>
