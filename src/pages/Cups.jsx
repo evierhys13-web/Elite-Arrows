@@ -643,6 +643,34 @@ export default function CupTournaments() {
                 />
               </div>
             </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Tournament Style</label>
+                <select
+                  value={formData.type}
+                  onChange={(e) => setFormData({...formData, type: e.target.value})}
+                  className="glass"
+                  style={{ width: '100%', padding: '12px', borderRadius: '10px' }}
+                >
+                  <option value="knockout">🎯 Knockout</option>
+                  <option value="groups">📋 Groups</option>
+                  <option value="group_knockout">📋 Groups → KO</option>
+                  <option value="world_cup">🏆 World Cup</option>
+                  <option value="season">📅 Season Cup</option>
+                </select>
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Target Duration (Days)</label>
+                <input
+                  type="number"
+                  value={formData.targetDurationDays}
+                  onChange={(e) => setFormData({...formData, targetDurationDays: parseInt(e.target.value) || 14})}
+                  className="glass"
+                />
+              </div>
+            </div>
+
             <button className="btn btn-primary btn-block" onClick={saveCupInRegistrationMode} style={{ background: 'linear-gradient(135deg, var(--accent-primary) 0%, #6344ef 100%)' }}>
               🚀 Open Cup for Pre-Registration Now
             </button>
