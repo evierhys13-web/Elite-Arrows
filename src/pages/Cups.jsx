@@ -466,36 +466,18 @@ export default function CupTournaments() {
 
   const saveCupInRegistrationMode = async () => {
     if (!formData.name) return alert('Enter cup name')
-    if (matches.length === 0) return alert('Generate a bracket first (you can use test players to preview the structure)')
-
-    const templateMatches = matches.map(m => ({
-      ...m,
-      player1: m.sourceP1 ? m.player1 : null,
-      player2: m.sourceP2 ? m.player2 : null,
-      winner: null,
-      score1: 0,
-      score2: 0
-    }))
-
-    const templateGroups = groups.map(g => ({
-      ...g,
-      players: []
-    }))
 
     const newCup = {
       id: Date.now(),
       ...formData,
       players: [],
-      matches: templateMatches,
-      groups: templateGroups,
-      roundFormats,
+      matches: [],
+      groups: [],
+      roundFormats: {},
       createdAt: new Date().toISOString(),
       status: 'registration',
       currentRound: 0,
-      deadlines: formData.type === 'season' ? {
-        [numKnockoutRounds]: formData.finalsDate,
-        [numKnockoutRounds - 1]: formData.finalsDate
-      } : {}
+      deadlines: {}
     }
 
     try {
@@ -503,13 +485,22 @@ export default function CupTournaments() {
       const existingCups = getCups()
       localStorage.setItem('eliteArrowsCups', JSON.stringify([...existingCups, newCup]))
       triggerDataRefresh('cups')
-      alert('Cup created in Pre-Registration mode with pre-generated bracket structure!')
+      alert('Cup created in Pre-Registration mode successfully! Players can now sign up.')
       setShowCreate(false)
-      setSelectedPlayers([])
-      setMatches([])
-      setGroups([])
+      setFormData({
+        name: '',
+        type: 'knockout',
+        maxPlayers: 16,
+        entryFee: 0,
+        playersPerGroup: 4,
+        advancePerGroup: 2,
+        allowBestThird: true,
+        targetDurationDays: 14,
+        seasonIterations: 1,
+        finalsDate: ''
+      })
     } catch (e) {
-      alert('Error saving pre-registration cup: ' + e.message)
+      alert('Error creating pre-registration cup: ' + e.message)
     }
   }
 
