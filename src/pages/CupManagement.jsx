@@ -950,6 +950,23 @@ function CupManagement() {
                 )}
                 <button
                   className="btn btn-secondary btn-sm"
+                  style={{ fontSize: '0.75rem', background: cup.status === 'completed' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(16, 185, 129, 0.15)', borderColor: cup.status === 'completed' ? 'var(--accent-cyan)' : 'var(--success)' }}
+                  onClick={async (e) => {
+                    e.stopPropagation()
+                    const nextStatus = cup.status === 'completed' ? 'active' : 'completed'
+                    try {
+                      await setDoc(doc(db, 'cups', String(cup.id)), { status: nextStatus }, { merge: true })
+                      showToast(`Cup status updated to ${nextStatus}!`, 'success')
+                      triggerDataRefresh('cups')
+                    } catch (err) {
+                      showToast('Error updating status: ' + err.message, 'error')
+                    }
+                  }}
+                >
+                  {cup.status === 'completed' ? '🔄 Set Active' : '✅ Mark Completed'}
+                </button>
+                <button
+                  className="btn btn-secondary btn-sm"
                   style={{ fontSize: '0.75rem', background: 'rgba(56, 189, 248, 0.1)', borderColor: 'var(--accent-cyan)' }}
                   onClick={(e) => {
                     e.stopPropagation()
