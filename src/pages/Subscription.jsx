@@ -62,12 +62,15 @@ const RULES_SUMMARY = [
 ];
 
 export default function Subscription() {
-  const { user, updateUser, adminData } = useAuth();
+  const { user, updateUser, adminData, getSeasons } = useAuth();
   const [selectedPass, setSelectedPass] = useState("");
   const [rulesAccepted, setRulesAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const currentSeasonName = adminData?.currentSeason || 'Elite Arrows Season 6';
+  const seasons = typeof getSeasons === 'function' ? getSeasons() : [];
+  const [targetSeason, setTargetSeason] = useState('Elite Arrows Season 7');
+
   const isPending = Boolean(user?.paymentPending);
   const paidDivision = user?.requestedDivision || user?.requestedPlan || '';
   const userDivision = user?.division && user.division !== 'Unassigned' ? user.division : '';
@@ -82,7 +85,7 @@ export default function Subscription() {
         paymentPending: true,
         requestedDivision: selectedPass,
         requestedPlan: selectedPass,
-        requestedSeason: currentSeasonName,
+        requestedSeason: targetSeason,
         paymentDate: new Date().toISOString(),
       }, false);
     } catch (err) {
@@ -114,6 +117,26 @@ export default function Subscription() {
           <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>An admin will confirm your payment shortly.</span>
         </div>
       )}
+
+      {/* SEASON SELECTION */}
+      <div className="card glass" style={{ padding: '24px', borderRadius: '20px', marginBottom: '28px', border: '1px solid var(--accent-cyan)' }}>
+        <h3 className="card-title" style={{ marginBottom: '8px', fontSize: '1.2rem' }}>🗓️ Select Season</h3>
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
+          Are you signing up for the current season or joining for next season (e.g. Season 7)?
+        </p>
+        <select
+          className="glass"
+          value={targetSeason}
+          onChange={(e) => setTargetSeason(e.target.value)}
+          style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', fontSize: '1rem', fontWeight: 700 }}
+        >
+          <option value="Elite Arrows Season 7">Elite Arrows Season 7 (Upcoming)</option>
+          <option value={currentSeasonName}>{currentSeasonName} (Current Active)</option>
+          {seasons.filter(s => s.name !== currentSeasonName && s.name !== 'Elite Arrows Season 7' && !s.isArchived).map(s => (
+            <option key={s.id} value={s.name}>{s.name} (Upcoming)</option>
+          ))}
+        </select>
+      </div>
 
       {/* PASS SELECTION */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '18px', marginBottom: '32px' }}>
