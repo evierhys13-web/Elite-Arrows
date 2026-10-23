@@ -1452,16 +1452,16 @@ export default function CupTournaments() {
       )}
 
       {cupPaymentModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(2, 6, 23, 0.92)', backdropFilter: 'blur(16px)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '30px' }} onClick={() => setCupPaymentModal(null)}>
-          <div className="glass" onClick={e => e.stopPropagation()} style={{ width: '95vw', maxWidth: '1300px', height: '88vh', maxHeight: '900px', padding: '50px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderRadius: '32px', border: '2px solid var(--accent-cyan)', background: 'rgba(15, 23, 42, 0.96)', boxShadow: '0 25px 60px rgba(0,0,0,0.8)', overflowY: 'auto' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(2, 6, 23, 0.98)', backdropFilter: 'blur(20px)', zIndex: 99999, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '50px 60px', overflowY: 'auto' }} onClick={() => setCupPaymentModal(null)}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '1400px', margin: '0 auto', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <div>
-              <h3 className="card-title" style={{ fontSize: '2.4rem', marginBottom: '18px' }}>🎯 Cup Entry Payment (£{cupPaymentModal.entryFee})</h3>
-              <p style={{ fontSize: '1.2rem', color: 'var(--text-muted)', marginBottom: '40px', lineHeight: 1.6 }}>
+              <h3 className="card-title" style={{ fontSize: '2.5rem', marginBottom: '20px' }}>🎯 Cup Entry Payment (£{cupPaymentModal.entryFee})</h3>
+              <p style={{ fontSize: '1.25rem', color: 'var(--text-muted)', marginBottom: '40px', lineHeight: 1.6 }}>
                 Please send <strong style={{ color: 'var(--accent-cyan)' }}>£{cupPaymentModal.entryFee}</strong> using any payment method below. Use reference <strong style={{ color: 'var(--accent-cyan)' }}>{user?.username} - {cupPaymentModal.name}</strong> so your payment can be verified.
               </p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '24px', marginBottom: '40px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', marginBottom: '40px' }}>
                 {PAYMENT_METHODS.map(method => (
-                  <div key={method.name} style={{ padding: '28px', background: 'rgba(0,0,0,0.4)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.12)' }}>
+                  <div key={method.name} style={{ padding: '28px', background: 'rgba(0,0,0,0.5)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.15)' }}>
                     <div style={{ fontWeight: 900, color: 'var(--accent-cyan)', fontSize: '1.4rem', marginBottom: '14px' }}>{method.icon} {method.name}</div>
                     {method.detail && (
                       method.href ? (
@@ -1479,7 +1479,7 @@ export default function CupTournaments() {
                 ))}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '20px', marginTop: 'auto' }}>
+            <div style={{ display: 'flex', gap: '20px', marginTop: 'auto', paddingTop: '20px' }}>
               <button className="btn btn-primary" style={{ flex: 1, padding: '20px', fontSize: '1.25rem', fontWeight: 900 }} onClick={() => handleSignUpToCup(cupPaymentModal)}>
                 I Have Paid — Join Cup
               </button>
