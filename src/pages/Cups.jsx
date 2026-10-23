@@ -597,6 +597,51 @@ export default function CupTournaments() {
       {showCreate && (
         <div className="card" style={{ marginBottom: '20px' }}>
           <h3 className="card-title">Create Cup Tournament</h3>
+
+          <div className="glass" style={{ padding: '20px', borderRadius: '16px', marginBottom: '24px', border: '1px solid var(--accent-cyan)', background: 'rgba(56, 189, 248, 0.05)' }}>
+            <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '8px' }}>🚀 Open for Pre-Registration Mode</h4>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '14px' }}>
+              Want to let players sign up freely before generating brackets? Create this cup in pre-registration mode instantly without picking players upfront!
+            </p>
+            <div className="form-group" style={{ marginBottom: '12px' }}>
+              <label>Cup Name</label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                placeholder="e.g., Winter Cup 2024"
+                className="glass"
+              />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Entry Fee (£)</label>
+                <input
+                  type="number"
+                  value={formData.entryFee}
+                  onChange={(e) => setFormData({...formData, entryFee: parseFloat(e.target.value) || 0})}
+                  className="glass"
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Max Players</label>
+                <input
+                  type="number"
+                  value={formData.maxPlayers}
+                  onChange={(e) => setFormData({...formData, maxPlayers: parseInt(e.target.value) || 32})}
+                  className="glass"
+                />
+              </div>
+            </div>
+            <button className="btn btn-primary btn-block" onClick={saveCupInRegistrationMode} style={{ background: 'linear-gradient(135deg, var(--accent-primary) 0%, #6344ef 100%)' }}>
+              🚀 Open Cup for Pre-Registration Now
+            </button>
+          </div>
+
+          <div style={{ textAlign: 'center', margin: '20px 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+            — OR CREATE WITH PRE-GENERATED BRACKET BELOW —
+          </div>
+
           <div className="form-group">
             <label>Cup Name</label>
             <input 
