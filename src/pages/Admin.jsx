@@ -134,6 +134,7 @@ export default function Admin() {
   const [playoffForm, setPlayoffForm] = useState({ player1: '', player2: '', division: '', date: '', time: '', bestOf: '3' })
   const [surveyForm, setSurveyForm] = useState({ title: '', description: '', targetType: 'all', targetUserIds: [] })
   const [surveyQuestions, setSurveyQuestions] = useState([{ id: 'q1', text: '', type: 'text', options: '' }])
+  const [approvalDivisions, setApprovalDivisions] = useState({})
 
   const categories = [
     { id: 'overview', label: '📊 Overview', tabIds: ['dashboard', 'audit'] },
@@ -1074,10 +1075,10 @@ export default function Admin() {
     } catch (e) { showToast('Error: ' + e.message, 'error') }
   }
 
-  const handleApprovePayment = async (u) => {
+  const handleApprovePayment = async (u, chosenDivision = '') => {
     try {
       const finalSeason = u.requestedSeason || adminData?.currentSeason || 'Elite Arrows Season 6'
-      const division = u.requestedDivision || u.requestedPlan || u.division || ''
+      const division = chosenDivision || u.requestedDivision || u.requestedPlan || u.division || 'Elite'
       const validDivision = ['Elite', 'Emerald', 'Diamond', 'Platinum'].includes(division)
       const currentSeasons = Array.isArray(u.subscribedSeasons) ? u.subscribedSeasons : []
       const nextSeasons = Array.from(new Set([...currentSeasons, finalSeason]))
@@ -1088,9 +1089,8 @@ export default function Admin() {
         subscriptionTier: 'elite',
         subscribedSeasons: nextSeasons,
         isSubscribed: true,
-        requestedDivision: division || u.requestedDivision || null
+        division: validDivision ? division : (u.division || 'Elite')
       }
-      if (validDivision) updates.division = division
       await setDoc(doc(db, 'users', u.id), updates, { merge: true })
 
       const pot = adminData || {}
@@ -3685,25 +3685,32 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
             <div style={{ marginTop: '30px' }}>
               <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '16px' }}>Pending Payments Approval ({pendingPayments.length})</h4>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
-                Approving member payments here automatically adds £10 to the league finances pot above.
+                Approving member payments here automatically adds £6 to the league finances pot above.
               </p>
               {pendingPayments.length === 0 ? (
                 <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.02)', borderRadius: '10px' }}>No pending payments.</div>
               ) : (
-                pendingPaymentsByDivision.map(group => (
-                  <div key={group.division} style={{ marginBottom: '20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-                      <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', background: DIVISION_COLORS[group.division] || '#fbbf24' }} />
-                      <h5 style={{ margin: 0, color: DIVISION_COLORS[group.division] || '#fbbf24' }}>{group.division} Division</h5>
-                    </div>
-                    {group.players.map(u => (
-                      <div key={u.id} className="glass" style={{ padding: '16px', borderRadius: '10px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {pendingPayments.map(u => {
+                    const chosenDiv = approvalDivisions[u.id] || u.requestedDivision || u.division || 'Elite';
+                    return (
+                      <div key={u.id} className="glass" style={{ padding: '16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
                         <div>
-                          <div style={{ fontWeight: 800 }}>{u.username}</div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{u.email} • £10/month</div>
+                          <div style={{ fontWeight: 800, fontSize: '1rem' }}>{u.username}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                            {u.email} • Requested Season: <strong style={{ color: 'var(--accent-cyan)' }}>{u.requestedSeason || 'Current'}</strong>
+                          </div>
                         </div>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          <button className="btn btn-primary btn-sm" onClick={() => handleApprovePayment(u)}>Approve & Add £10</button>
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                          <select
+                            className="glass"
+                            value={chosenDiv}
+                            onChange={e => setApprovalDivisions({ ...approvalDivisions, [u.id]: e.target.value })}
+                            style={{ fontSize: '0.85rem', padding: '8px 12px', borderRadius: '8px', fontWeight: 700 }}
+                          >
+                            {['Elite', 'Emerald', 'Diamond', 'Platinum'].map(d => <option key={d} value={d}>{d} Division</option>)}
+                          </select>
+                          <button className="btn btn-primary btn-sm" onClick={() => handleApprovePayment(u, chosenDiv)}>Approve & Add £6</button>
                           <button className="btn btn-danger btn-sm" onClick={async () => {
                             if (confirm(`Reject payment for ${u.username}?`)) {
                               await updateDoc(doc(db, 'users', u.id), { paymentPending: false });
@@ -3712,9 +3719,9 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
                           }}>Reject</button>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                ))
+                    );
+                  })}
+                </div>
               )}
             </div>
           </div>
