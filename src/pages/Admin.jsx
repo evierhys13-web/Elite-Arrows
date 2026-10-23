@@ -135,6 +135,7 @@ export default function Admin() {
   const [surveyForm, setSurveyForm] = useState({ title: '', description: '', targetType: 'all', targetUserIds: [] })
   const [surveyQuestions, setSurveyQuestions] = useState([{ id: 'q1', text: '', type: 'text', options: '' }])
   const [approvalDivisions, setApprovalDivisions] = useState({})
+  const [paymentAllocations, setPaymentAllocations] = useState({ prizePool: 5, potm: 0.4, highout: 0.3, sitePot: 0.3 })
 
   const categories = [
     { id: 'overview', label: '📊 Overview', tabIds: ['dashboard', 'audit'] },
@@ -3679,6 +3680,58 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
               <div style={{ marginTop: '15px', display: 'flex', gap: '8px' }}>
                 <input type="number" className="glass" style={{ flex: 1 }} placeholder="+/-" onChange={e => setPotAdjust({...potAdjust, amount: parseFloat(e.target.value) || 0})} />
                 <button className="btn btn-secondary btn-sm" onClick={handleAdjustPot}>Adjust</button>
+              </div>
+            </div>
+
+            <div className="card glass" style={{ padding: '20px', borderRadius: '14px', marginTop: '24px', border: '1px solid var(--accent-cyan)' }}>
+              <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '10px' }}>⚙️ Payment Allocation Settings (£6 Split per Approval)</h4>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                Set how each £6 payment is allocated across your pots when approved:
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#fbbf24' }}>League Prize Pool (£)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    className="glass"
+                    value={paymentAllocations.prizePool}
+                    onChange={e => setPaymentAllocations({ ...paymentAllocations, prizePool: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#a78bfa' }}>Player of Month (£)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    className="glass"
+                    value={paymentAllocations.potm}
+                    onChange={e => setPaymentAllocations({ ...paymentAllocations, potm: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#10b981' }}>Highout Prize (£)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    className="glass"
+                    value={paymentAllocations.highout}
+                    onChange={e => setPaymentAllocations({ ...paymentAllocations, highout: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#38bdf8' }}>Site Pot (£)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    className="glass"
+                    value={paymentAllocations.sitePot}
+                    onChange={e => setPaymentAllocations({ ...paymentAllocations, sitePot: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+              </div>
+              <div style={{ fontSize: '0.8rem', color: Number((paymentAllocations.prizePool + paymentAllocations.potm + paymentAllocations.highout + paymentAllocations.sitePot).toFixed(2)) === 6 ? 'var(--success)' : 'var(--warning)', fontWeight: 800 }}>
+                Total per payment: £{(paymentAllocations.prizePool + paymentAllocations.potm + paymentAllocations.highout + paymentAllocations.sitePot).toFixed(2)} (Target: £6.00)
               </div>
             </div>
 
