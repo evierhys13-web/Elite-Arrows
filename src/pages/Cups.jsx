@@ -6,6 +6,13 @@ import { ADMIN_EMAILS } from '../config'
 import UserSearchSelect from '../components/UserSearchSelect'
 import { useToast } from '../context/ToastContext'
 
+const PAYMENT_METHODS = [
+  { name: 'PayPal', icon: '💳', detail: '@RhysHowe834', href: 'https://paypal.me/RhysHowe834' },
+  { name: 'Bank Transfer', icon: '🏦', lines: ['Name: Rhys Howe', 'Account Number: 80249442', 'Sort Code: 60-09-09'] },
+  { name: 'Revolut', icon: '⚡', detail: 'revolut.me/rhys_howe', href: 'https://revolut.me/rhys_howe' },
+  { name: 'Monzo', icon: '🏦', lines: ['Name: Rhys Howe', 'Bank: Monzo Bank', 'Account Number: 43482637', 'Sort Code: 04-00-06'] },
+];
+
 export default function CupTournaments() {
   const { user, getAllUsers, getCups, getFixtures, triggerDataRefresh, searchUsers } = useAuth()
   const { showToast } = useToast()
@@ -33,6 +40,7 @@ export default function CupTournaments() {
   const [playerToRemove, setPlayerToRemove] = useState('')
   const [playerToAdd, setPlayerToAdd] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [cupPaymentModal, setCupPaymentModal] = useState(null)
   const [activeTab, setActiveTab] = useState('active')
   const [swapUserList, setSwapUserList] = useState([])
 
@@ -165,6 +173,172 @@ export default function CupTournaments() {
     } else if (selectedPlayers.length < formData.maxPlayers) {
       setSelectedPlayers([...selectedPlayers, playerId])
       setMatches([])
+    }
+  }
+
+  const buildTournamentForPlayers = (players, cupData) => {
+    const shuffled = [...players].sort(() => Math.random() - 0.5)
+    let newMatches = []
+    let newGroups = []
+    let numKnockoutRounds = 0
+    let totalPlayersInKnockout = 0
+    const defaultFormats = {}
+
+    if (cupData.type === 'knockout') {
+      numKnockoutRounds = Math.ceil(Math.log2(Math.max(2, shuffled.length)))
+      totalPlayersInKnockout = shuffled.length
+      for (let r = 1; r <= numKnockoutRounds; r++) {
+        defaultFormats[r] = { startScore: 501, bestOf: 3, firstTo: 2 }
+      }
+      newMatches = buildKnockoutMatches(shuffled, numKnockoutRounds, 1)
+    } else {
+      const pPerG = cupData.playersPerGroup || 4
+      const numGroups = Math.max(1, Math.ceil(shuffled.length / pPerG))
+      const cupNameLower = String(cupData.name || '').toLowerCase()
+      const isJediOrPadawan = cupNameLower.includes('jedi') || cupNameLower.includes('padawan')
+      const iterations = isJediOrPadawan ? 2 : (cupData.type === 'season' ? (cupData.seasonIterations || 1) : 1)
+
+      for (let i = 0; i < numGroups; i++) {
+        const groupPlayers = shuffled.slice(i * pPerG, (i + 1) * pPerG)
+        newGroups.push({
+          id: String.fromCharCode(65 + i),
+          players: groupPlayers
+        })
+        for (let iter = 1; iter <= iterations; iter++) {
+          for (let j = 0; j < groupPlayers.length; j++) {
+            for (let k = j + 1; k < groupPlayers.length; k++) {
+              newMatches.push({
+                id: `g_${newGroups[i].id}_${iter}_${j}_${k}`,
+                stage: 'groups',
+                iteration: iter,
+                group: newGroups[i].id,
+                player1: groupPlayers[j],
+                player2: groupPlayers[k],
+                winner: null,
+                score1: null,
+                score2: null
+              })
+            }
+          }
+        }
+      }
+
+      defaultFormats[0] = { startScore: 501, bestOf: 5, firstTo: 3 }
+
+      if (cupData.type === 'world_cup' || cupData.type === 'group_knockout' || cupData.type === 'season') {
+        const advanceCount = cupData.type === 'season' ? Math.max(1, Math.floor(4 / numGroups)) : (cupData.advancePerGroup || 2)
+        const totalAdvancers = cupData.type === 'season' ? 4 : numGroups * advanceCount
+        totalPlayersInKnockout = Math.pow(2, Math.ceil(Math.log2(totalAdvancers)))
+        numKnockoutRounds = Math.ceil(Math.log2(totalPlayersInKnockout))
+
+        for (let r = 1; r <= numKnockoutRounds; r++) {
+          defaultFormats[r] = { startScore: 501, bestOf: 3, firstTo: 2 }
+        }
+
+        const knockoutMatches = buildKnockoutMatches(new Array(totalPlayersInKnockout).fill(null), numKnockoutRounds, 1)
+        const round1Matches = knockoutMatches.filter(m => m.round === 1)
+        let mIdx = 0
+
+        for (let g = 0; g < numGroups; g += 2) {
+          const g1 = String.fromCharCode(65 + g)
+          const g2 = (g + 1 < numGroups) ? String.fromCharCode(65 + g + 1) : null
+          if (g2) {
+            if (round1Matches[mIdx]) { round1Matches[mIdx].sourceP1 = { group: g1, position: 1 }; round1Matches[mIdx].sourceP2 = { group: g2, position: 2 }; mIdx++ }
+            if (round1Matches[mIdx]) { round1Matches[mIdx].sourceP1 = { group: g2, position: 1 }; round1Matches[mIdx].sourceP2 = { group: g1, position: 2 }; mIdx++ }
+          } else {
+            if (round1Matches[mIdx]) { round1Matches[mIdx].sourceP1 = { group: g1, position: 1 }; round1Matches[mIdx].sourceP2 = { group: g1, position: 2 }; mIdx++ }
+          }
+        }
+
+        newMatches = [...newMatches, ...knockoutMatches]
+      }
+    }
+
+    return { matches: newMatches, groups: newGroups, roundFormats: defaultFormats }
+  }
+
+  const handleSignUpToCup = async (cup) => {
+    try {
+      const cupRef = doc(db, 'cups', String(cup.id))
+      const cupSnap = await getDoc(cupRef)
+      if (!cupSnap.exists()) throw new Error('Cup not found')
+      const cupData = cupSnap.data()
+
+      if ((cupData.players || []).length >= (cupData.maxPlayers || 32)) {
+        return alert('This cup is full!')
+      }
+
+      const updatedPlayers = Array.from(new Set([...(cupData.players || []), user.id]))
+      await setDoc(cupRef, { players: updatedPlayers }, { merge: true })
+
+      const existingCups = getCups()
+      localStorage.setItem('eliteArrowsCups', JSON.stringify(existingCups.map(c => String(c.id) === String(cup.id) ? { ...c, players: updatedPlayers } : c)))
+
+      triggerDataRefresh('cups')
+      alert('Successfully signed up for ' + cup.name + '!')
+      setCupPaymentModal(null)
+    } catch (e) {
+      alert('Error signing up: ' + e.message)
+    }
+  }
+
+  const handleActivateCup = async (cup) => {
+    if ((cup.players || []).length < 2) {
+      return alert('Need at least 2 players signed up before starting the tournament!')
+    }
+    if (!window.confirm(`Activate "${cup.name}" and generate the tournament bracket/groups for ${cup.players.length} players?`)) return
+
+    try {
+      const generated = buildTournamentForPlayers(cup.players, cup)
+      const cupRef = doc(db, 'cups', String(cup.id))
+
+      const updatedCup = {
+        ...cup,
+        status: 'active',
+        currentRound: cup.type === 'knockout' ? 1 : 0,
+        matches: generated.matches,
+        groups: generated.groups,
+        roundFormats: generated.roundFormats
+      }
+
+      await setDoc(cupRef, updatedCup, { merge: true })
+
+      const initialMatches = generated.matches.filter(m => m.stage === 'groups' || (m.stage === 'knockout' && m.round === 1))
+      const existingFixtures = getFixtures()
+      const newFixtures = initialMatches.filter(m => m.player1 && m.player2).map(m => {
+        const format = generated.roundFormats[m.round || 0] || { startScore: 501, bestOf: 3, firstTo: 2 }
+        return {
+          id: Date.now() + Math.random(),
+          cupId: cup.id,
+          cupName: cup.name,
+          startScore: format.startScore || 501,
+          bestOf: format.bestOf || 3,
+          firstTo: format.firstTo || Math.ceil((format.bestOf || 3) / 2),
+          player1: m.player1,
+          player1Id: m.player1,
+          player2: m.player2,
+          player2Id: m.player2,
+          matchId: m.id,
+          round: m.round || 0,
+          stage: m.stage,
+          group: m.group || null,
+          date: '',
+          time: '',
+          scheduledBy: m.player1,
+          status: 'accepted',
+          proposalStatus: 'accepted',
+          createdAt: new Date().toISOString()
+        }
+      })
+
+      const batch = writeBatch(db)
+      newFixtures.forEach(f => batch.set(doc(db, 'fixtures', String(f.id)), f))
+      await batch.commit()
+
+      triggerDataRefresh('all')
+      alert(`Tournament "${cup.name}" is now active and fixtures generated!`)
+    } catch (e) {
+      alert('Error activating cup: ' + e.message)
     }
   }
 
@@ -1057,6 +1231,38 @@ export default function CupTournaments() {
                 <h3 className="card-title" style={{ margin: 0 }}>{cup.name}</h3>
               </div>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
+                {cup.status === 'registration' && user && !cup.players?.includes(user.id) && (
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (cup.entryFee > 0) {
+                        setCupPaymentModal(cup)
+                      } else {
+                        handleSignUpToCup(cup)
+                      }
+                    }}
+                  >
+                    🚀 Sign Up {cup.entryFee > 0 ? `(£{cup.entryFee})` : '(Free)'}
+                  </button>
+                )}
+                {cup.status === 'registration' && user && cup.players?.includes(user.id) && (
+                  <span style={{ fontSize: '0.75rem', color: 'var(--success)', fontWeight: 800, background: 'var(--success-bg)', padding: '4px 10px', borderRadius: '8px' }}>
+                    ✓ Registered
+                  </span>
+                )}
+                {isAdmin && cup.status === 'registration' && (
+                  <button
+                    className="btn btn-primary btn-sm"
+                    style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: 'black', fontWeight: 800 }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleActivateCup(cup)
+                    }}
+                  >
+                    ⚡ Start Tournament ({cup.players?.length || 0})
+                  </button>
+                )}
                 <Link to={`/cups/${cup.id}`} className="btn btn-primary btn-sm">
                   View Bracket
                 </Link>
@@ -1240,6 +1446,31 @@ export default function CupTournaments() {
               >
                 {isSubmitting ? 'Swapping...' : 'Perform Swap'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cupPaymentModal && (
+        <div className="modal-overlay" onClick={() => setCupPaymentModal(null)}>
+          <div className="modal-content glass" onClick={e => e.stopPropagation()} style={{ maxWidth: '450px' }}>
+            <h3 className="card-title">Pay Entry Fee (£{cupPaymentModal.entryFee})</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
+              Please send <strong style={{ color: 'var(--accent-cyan)' }}>£{cupPaymentModal.entryFee}</strong> using any method below with reference <strong style={{ color: 'var(--accent-cyan)' }}>{user?.username} - {cupPaymentModal.name}</strong>.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+              {PAYMENT_METHODS.map(method => (
+                <div key={method.name} style={{ padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '10px' }}>
+                  <div style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{method.icon} {method.name}</div>
+                  <div style={{ fontSize: '0.85rem', marginTop: '4px' }}>{method.detail || method.lines?.join(' • ')}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => handleSignUpToCup(cupPaymentModal)}>
+                I Have Paid — Join Cup
+              </button>
+              <button className="btn btn-secondary" onClick={() => setCupPaymentModal(null)}>Cancel</button>
             </div>
           </div>
         </div>
