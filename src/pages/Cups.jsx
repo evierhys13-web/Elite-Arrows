@@ -464,6 +464,36 @@ export default function CupTournaments() {
     )
   }
 
+  const saveCupInRegistrationMode = async () => {
+    if (!formData.name) return alert('Enter cup name')
+
+    const newCup = {
+      id: Date.now(),
+      ...formData,
+      players: [],
+      matches: [],
+      groups: [],
+      roundFormats: {},
+      createdAt: new Date().toISOString(),
+      status: 'registration',
+      currentRound: 0,
+      deadlines: {}
+    }
+
+    try {
+      await setDoc(doc(db, 'cups', String(newCup.id)), newCup)
+      const existingCups = getCups()
+      localStorage.setItem('eliteArrowsCups', JSON.stringify([...existingCups, newCup]))
+      triggerDataRefresh('cups')
+      alert('Cup opened for player pre-registration successfully!')
+      setShowCreate(false)
+      setSelectedPlayers([])
+      setMatches([])
+    } catch (e) {
+      alert('Error opening cup for registration: ' + e.message)
+    }
+  }
+
   const saveCup = async () => {
     if (!formData.name) return alert('Enter cup name')
     if (matches.length === 0) return alert('Generate a bracket first')
@@ -879,9 +909,14 @@ export default function CupTournaments() {
                 ))}
               </div>
 
-              <button className="btn btn-primary btn-block" style={{ marginTop: '20px', background: formData.type === 'world_cup' ? 'linear-gradient(45deg, #f59e0b, #d97706)' : '' }} onClick={saveCup}>
-                {formData.type === 'world_cup' ? '🏆 Create World Cup' : formData.type === 'season' ? '📅 Create Season Cup' : formData.type === 'group_knockout' ? '📋 Create Groups → Knockout Cup' : 'Create Cup Tournament'}
-              </button>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                <button className="btn btn-primary" style={{ flex: 1, background: 'linear-gradient(135deg, var(--accent-primary) 0%, #6344ef 100%)' }} onClick={saveCupInRegistrationMode}>
+                  🚀 Open for Pre-Registration
+                </button>
+                <button className="btn btn-secondary" style={{ flex: 1 }} onClick={saveCup}>
+                  Create Active Cup Now
+                </button>
+              </div>
             </>
           )}
 
