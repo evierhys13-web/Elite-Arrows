@@ -1453,35 +1453,37 @@ export default function CupTournaments() {
 
       {cupPaymentModal && (
         <div className="modal-overlay" onClick={() => setCupPaymentModal(null)}>
-          <div className="modal-content glass" onClick={e => e.stopPropagation()} style={{ maxWidth: '650px', padding: '36px' }}>
-            <h3 className="card-title" style={{ fontSize: '1.5rem', marginBottom: '12px' }}>🎯 Cup Entry Payment (£{cupPaymentModal.entryFee})</h3>
-            <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', marginBottom: '24px', lineHeight: 1.5 }}>
-              Please send <strong style={{ color: 'var(--accent-cyan)' }}>£{cupPaymentModal.entryFee}</strong> using any payment method below. Use reference <strong style={{ color: 'var(--accent-cyan)' }}>{user?.username} - {cupPaymentModal.name}</strong> so your payment can be verified.
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px', marginBottom: '28px' }}>
-              {PAYMENT_METHODS.map(method => (
-                <div key={method.name} style={{ padding: '16px', background: 'rgba(0,0,0,0.3)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <div style={{ fontWeight: 800, color: 'var(--accent-cyan)', fontSize: '1.05rem', marginBottom: '8px' }}>{method.icon} {method.name}</div>
-                  {method.detail && (
-                    method.href ? (
-                      <a href={method.href} target="_blank" rel="noreferrer" style={{ display: 'block', padding: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', color: 'white', textAlign: 'center', textDecoration: 'none', fontWeight: 700 }}>
-                        {method.detail}
-                      </a>
-                    ) : (
-                      <div style={{ padding: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', textAlign: 'center', fontWeight: 700 }}>{method.detail}</div>
-                    )
-                  )}
-                  {method.lines && method.lines.map(line => (
-                    <div key={line} style={{ fontSize: '0.85rem', marginBottom: '2px', color: 'var(--text-secondary)' }}>{line}</div>
-                  ))}
-                </div>
-              ))}
+          <div className="modal-content glass" onClick={e => e.stopPropagation()} style={{ maxWidth: '700px', minHeight: '520px', padding: '40px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div>
+              <h3 className="card-title" style={{ fontSize: '1.75rem', marginBottom: '14px' }}>🎯 Cup Entry Payment (£{cupPaymentModal.entryFee})</h3>
+              <p style={{ fontSize: '1.05rem', color: 'var(--text-muted)', marginBottom: '28px', lineHeight: 1.6 }}>
+                Please send <strong style={{ color: 'var(--accent-cyan)' }}>£{cupPaymentModal.entryFee}</strong> using any payment method below. Use reference <strong style={{ color: 'var(--accent-cyan)' }}>{user?.username} - {cupPaymentModal.name}</strong> so your payment can be verified.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px', marginBottom: '32px' }}>
+                {PAYMENT_METHODS.map(method => (
+                  <div key={method.name} style={{ padding: '20px', background: 'rgba(0,0,0,0.35)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <div style={{ fontWeight: 900, color: 'var(--accent-cyan)', fontSize: '1.15rem', marginBottom: '10px' }}>{method.icon} {method.name}</div>
+                    {method.detail && (
+                      method.href ? (
+                        <a href={method.href} target="_blank" rel="noreferrer" style={{ display: 'block', padding: '10px', background: 'rgba(255,255,255,0.06)', borderRadius: '10px', color: 'white', textAlign: 'center', textDecoration: 'none', fontWeight: 700, fontSize: '0.95rem' }}>
+                          {method.detail}
+                        </a>
+                      ) : (
+                        <div style={{ padding: '10px', background: 'rgba(255,255,255,0.06)', borderRadius: '10px', textAlign: 'center', fontWeight: 700, fontSize: '0.95rem' }}>{method.detail}</div>
+                      )
+                    )}
+                    {method.lines && method.lines.map(line => (
+                      <div key={line} style={{ fontSize: '0.9rem', marginBottom: '4px', color: 'var(--text-secondary)' }}>{line}</div>
+                    ))}
+                  </div>
+                ))}
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button className="btn btn-primary" style={{ flex: 1, padding: '14px', fontSize: '1rem', fontWeight: 800 }} onClick={() => handleSignUpToCup(cupPaymentModal)}>
+            <div style={{ display: 'flex', gap: '14px', marginTop: 'auto' }}>
+              <button className="btn btn-primary" style={{ flex: 1, padding: '16px', fontSize: '1.1rem', fontWeight: 900 }} onClick={() => handleSignUpToCup(cupPaymentModal)}>
                 I Have Paid — Join Cup
               </button>
-              <button className="btn btn-secondary" style={{ padding: '14px 24px' }} onClick={() => setCupPaymentModal(null)}>Cancel</button>
+              <button className="btn btn-secondary" style={{ padding: '16px 28px', fontSize: '1rem' }} onClick={() => setCupPaymentModal(null)}>Cancel</button>
             </div>
           </div>
         </div>
