@@ -832,11 +832,12 @@ export default function CupBracket() {
         <div className="cup-bracket-stage" style={{ 
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
+          justifyContent: 'flex-start',
           gap: '0',
           width: 'max-content',
           minWidth: '100%',
-          margin: '0 auto'
+          paddingLeft: '10px',
+          paddingRight: '10px'
         }}>
           {roundsData.map((roundData, roundIndex) => {
             const isComplete = roundData.matches.every(m => m.winner)
