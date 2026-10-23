@@ -1452,8 +1452,8 @@ export default function CupTournaments() {
       )}
 
       {cupPaymentModal && (
-        <div className="modal-overlay" onClick={() => setCupPaymentModal(null)} style={{ padding: '20px', alignItems: 'center' }}>
-          <div className="modal-content glass modal-large" onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderRadius: '28px', border: '1px solid var(--accent-cyan)' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(2, 6, 23, 0.92)', backdropFilter: 'blur(16px)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '30px' }} onClick={() => setCupPaymentModal(null)}>
+          <div className="glass" onClick={e => e.stopPropagation()} style={{ width: '95vw', maxWidth: '1300px', height: '88vh', maxHeight: '900px', padding: '50px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderRadius: '32px', border: '2px solid var(--accent-cyan)', background: 'rgba(15, 23, 42, 0.96)', boxShadow: '0 25px 60px rgba(0,0,0,0.8)', overflowY: 'auto' }}>
             <div>
               <h3 className="card-title" style={{ fontSize: '2.4rem', marginBottom: '18px' }}>🎯 Cup Entry Payment (£{cupPaymentModal.entryFee})</h3>
               <p style={{ fontSize: '1.2rem', color: 'var(--text-muted)', marginBottom: '40px', lineHeight: 1.6 }}>
