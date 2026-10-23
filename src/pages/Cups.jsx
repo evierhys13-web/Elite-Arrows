@@ -1452,38 +1452,38 @@ export default function CupTournaments() {
       )}
 
       {cupPaymentModal && (
-        <div className="modal-overlay" onClick={() => setCupPaymentModal(null)}>
-          <div className="modal-content glass" onClick={e => e.stopPropagation()} style={{ maxWidth: '800px', minHeight: '650px', padding: '50px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+        <div className="modal-overlay" onClick={() => setCupPaymentModal(null)} style={{ padding: '20px', alignItems: 'center' }}>
+          <div className="modal-content glass" onClick={e => e.stopPropagation()} style={{ width: '92vw', maxWidth: '1100px', minHeight: '85vh', padding: '60px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderRadius: '28px', border: '1px solid var(--accent-cyan)' }}>
             <div>
-              <h3 className="card-title" style={{ fontSize: '2rem', marginBottom: '16px' }}>🎯 Cup Entry Payment (£{cupPaymentModal.entryFee})</h3>
-              <p style={{ fontSize: '1.1rem', color: 'var(--text-muted)', marginBottom: '32px', lineHeight: 1.6 }}>
+              <h3 className="card-title" style={{ fontSize: '2.4rem', marginBottom: '18px' }}>🎯 Cup Entry Payment (£{cupPaymentModal.entryFee})</h3>
+              <p style={{ fontSize: '1.2rem', color: 'var(--text-muted)', marginBottom: '40px', lineHeight: 1.6 }}>
                 Please send <strong style={{ color: 'var(--accent-cyan)' }}>£{cupPaymentModal.entryFee}</strong> using any payment method below. Use reference <strong style={{ color: 'var(--accent-cyan)' }}>{user?.username} - {cupPaymentModal.name}</strong> so your payment can be verified.
               </p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', marginBottom: '36px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '24px', marginBottom: '40px' }}>
                 {PAYMENT_METHODS.map(method => (
-                  <div key={method.name} style={{ padding: '24px', background: 'rgba(0,0,0,0.35)', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                    <div style={{ fontWeight: 900, color: 'var(--accent-cyan)', fontSize: '1.25rem', marginBottom: '12px' }}>{method.icon} {method.name}</div>
+                  <div key={method.name} style={{ padding: '28px', background: 'rgba(0,0,0,0.4)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.12)' }}>
+                    <div style={{ fontWeight: 900, color: 'var(--accent-cyan)', fontSize: '1.4rem', marginBottom: '14px' }}>{method.icon} {method.name}</div>
                     {method.detail && (
                       method.href ? (
-                        <a href={method.href} target="_blank" rel="noreferrer" style={{ display: 'block', padding: '12px', background: 'rgba(255,255,255,0.06)', borderRadius: '10px', color: 'white', textAlign: 'center', textDecoration: 'none', fontWeight: 700, fontSize: '1rem' }}>
+                        <a href={method.href} target="_blank" rel="noreferrer" style={{ display: 'block', padding: '14px', background: 'rgba(255,255,255,0.08)', borderRadius: '12px', color: 'white', textAlign: 'center', textDecoration: 'none', fontWeight: 700, fontSize: '1.1rem' }}>
                           {method.detail}
                         </a>
                       ) : (
-                        <div style={{ padding: '12px', background: 'rgba(255,255,255,0.06)', borderRadius: '10px', textAlign: 'center', fontWeight: 700, fontSize: '1rem' }}>{method.detail}</div>
+                        <div style={{ padding: '14px', background: 'rgba(255,255,255,0.08)', borderRadius: '12px', textAlign: 'center', fontWeight: 700, fontSize: '1.1rem' }}>{method.detail}</div>
                       )
                     )}
                     {method.lines && method.lines.map(line => (
-                      <div key={line} style={{ fontSize: '0.95rem', marginBottom: '6px', color: 'var(--text-secondary)' }}>{line}</div>
+                      <div key={line} style={{ fontSize: '1rem', marginBottom: '6px', color: 'var(--text-secondary)' }}>{line}</div>
                     ))}
                   </div>
                 ))}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '16px', marginTop: 'auto' }}>
-              <button className="btn btn-primary" style={{ flex: 1, padding: '18px', fontSize: '1.15rem', fontWeight: 900 }} onClick={() => handleSignUpToCup(cupPaymentModal)}>
+            <div style={{ display: 'flex', gap: '20px', marginTop: 'auto' }}>
+              <button className="btn btn-primary" style={{ flex: 1, padding: '20px', fontSize: '1.25rem', fontWeight: 900 }} onClick={() => handleSignUpToCup(cupPaymentModal)}>
                 I Have Paid — Join Cup
               </button>
-              <button className="btn btn-secondary" style={{ padding: '18px 32px', fontSize: '1.05rem' }} onClick={() => setCupPaymentModal(null)}>Cancel</button>
+              <button className="btn btn-secondary" style={{ padding: '20px 40px', fontSize: '1.1rem' }} onClick={() => setCupPaymentModal(null)}>Cancel</button>
             </div>
           </div>
         </div>
