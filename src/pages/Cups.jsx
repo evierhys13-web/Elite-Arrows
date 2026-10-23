@@ -1230,7 +1230,7 @@ export default function CupTournaments() {
                 }}>▶</span>
                 <h3 className="card-title" style={{ margin: 0 }}>{cup.name}</h3>
               </div>
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '100%' }} onClick={e => e.stopPropagation()}>
                 {cup.status === 'registration' && user && !cup.players?.includes(user.id) && (
                   <button
                     className="btn btn-primary btn-sm"
