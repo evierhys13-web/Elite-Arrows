@@ -1243,7 +1243,7 @@ export default function CupTournaments() {
                       }
                     }}
                   >
-                    🚀 Sign Up {cup.entryFee > 0 ? `(£{cup.entryFee})` : '(Free)'}
+                    Sign Up
                   </button>
                 )}
                 {cup.status === 'registration' && user && cup.players?.includes(user.id) && (
@@ -1453,24 +1453,35 @@ export default function CupTournaments() {
 
       {cupPaymentModal && (
         <div className="modal-overlay" onClick={() => setCupPaymentModal(null)}>
-          <div className="modal-content glass" onClick={e => e.stopPropagation()} style={{ maxWidth: '450px' }}>
-            <h3 className="card-title">Pay Entry Fee (£{cupPaymentModal.entryFee})</h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
-              Please send <strong style={{ color: 'var(--accent-cyan)' }}>£{cupPaymentModal.entryFee}</strong> using any method below with reference <strong style={{ color: 'var(--accent-cyan)' }}>{user?.username} - {cupPaymentModal.name}</strong>.
+          <div className="modal-content glass" onClick={e => e.stopPropagation()} style={{ maxWidth: '650px', padding: '36px' }}>
+            <h3 className="card-title" style={{ fontSize: '1.5rem', marginBottom: '12px' }}>🎯 Cup Entry Payment (£{cupPaymentModal.entryFee})</h3>
+            <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', marginBottom: '24px', lineHeight: 1.5 }}>
+              Please send <strong style={{ color: 'var(--accent-cyan)' }}>£{cupPaymentModal.entryFee}</strong> using any payment method below. Use reference <strong style={{ color: 'var(--accent-cyan)' }}>{user?.username} - {cupPaymentModal.name}</strong> so your payment can be verified.
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px', marginBottom: '28px' }}>
               {PAYMENT_METHODS.map(method => (
-                <div key={method.name} style={{ padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '10px' }}>
-                  <div style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{method.icon} {method.name}</div>
-                  <div style={{ fontSize: '0.85rem', marginTop: '4px' }}>{method.detail || method.lines?.join(' • ')}</div>
+                <div key={method.name} style={{ padding: '16px', background: 'rgba(0,0,0,0.3)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <div style={{ fontWeight: 800, color: 'var(--accent-cyan)', fontSize: '1.05rem', marginBottom: '8px' }}>{method.icon} {method.name}</div>
+                  {method.detail && (
+                    method.href ? (
+                      <a href={method.href} target="_blank" rel="noreferrer" style={{ display: 'block', padding: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', color: 'white', textAlign: 'center', textDecoration: 'none', fontWeight: 700 }}>
+                        {method.detail}
+                      </a>
+                    ) : (
+                      <div style={{ padding: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', textAlign: 'center', fontWeight: 700 }}>{method.detail}</div>
+                    )
+                  )}
+                  {method.lines && method.lines.map(line => (
+                    <div key={line} style={{ fontSize: '0.85rem', marginBottom: '2px', color: 'var(--text-secondary)' }}>{line}</div>
+                  ))}
                 </div>
               ))}
             </div>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => handleSignUpToCup(cupPaymentModal)}>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button className="btn btn-primary" style={{ flex: 1, padding: '14px', fontSize: '1rem', fontWeight: 800 }} onClick={() => handleSignUpToCup(cupPaymentModal)}>
                 I Have Paid — Join Cup
               </button>
-              <button className="btn btn-secondary" onClick={() => setCupPaymentModal(null)}>Cancel</button>
+              <button className="btn btn-secondary" style={{ padding: '14px 24px' }} onClick={() => setCupPaymentModal(null)}>Cancel</button>
             </div>
           </div>
         </div>
