@@ -466,18 +466,36 @@ export default function CupTournaments() {
 
   const saveCupInRegistrationMode = async () => {
     if (!formData.name) return alert('Enter cup name')
+    if (matches.length === 0) return alert('Generate a bracket first (you can use test players to preview the structure)')
+
+    const templateMatches = matches.map(m => ({
+      ...m,
+      player1: m.sourceP1 ? m.player1 : null,
+      player2: m.sourceP2 ? m.player2 : null,
+      winner: null,
+      score1: 0,
+      score2: 0
+    }))
+
+    const templateGroups = groups.map(g => ({
+      ...g,
+      players: []
+    }))
 
     const newCup = {
       id: Date.now(),
       ...formData,
       players: [],
-      matches: [],
-      groups: [],
-      roundFormats: {},
+      matches: templateMatches,
+      groups: templateGroups,
+      roundFormats,
       createdAt: new Date().toISOString(),
       status: 'registration',
       currentRound: 0,
-      deadlines: {}
+      deadlines: formData.type === 'season' ? {
+        [numKnockoutRounds]: formData.finalsDate,
+        [numKnockoutRounds - 1]: formData.finalsDate
+      } : {}
     }
 
     try {
@@ -485,12 +503,13 @@ export default function CupTournaments() {
       const existingCups = getCups()
       localStorage.setItem('eliteArrowsCups', JSON.stringify([...existingCups, newCup]))
       triggerDataRefresh('cups')
-      alert('Cup opened for player pre-registration successfully!')
+      alert('Cup created in Pre-Registration mode with pre-generated bracket structure!')
       setShowCreate(false)
       setSelectedPlayers([])
       setMatches([])
+      setGroups([])
     } catch (e) {
-      alert('Error opening cup for registration: ' + e.message)
+      alert('Error saving pre-registration cup: ' + e.message)
     }
   }
 
