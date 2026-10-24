@@ -137,6 +137,7 @@ export default function Admin() {
   const [approvalDivisions, setApprovalDivisions] = useState({})
   const [paymentAllocations, setPaymentAllocations] = useState({ prizePool: 5, potm: 0.4, highout: 0.3, sitePot: 0.3 })
   const [financeView, setFinanceView] = useState('pending')
+  const [financeSeasonFilter, setFinanceSeasonFilter] = useState('Elite Arrows Season 7')
 
   const categories = [
     { id: 'overview', label: '📊 Overview', tabIds: ['dashboard', 'audit'] },
@@ -380,13 +381,12 @@ export default function Admin() {
   const entryRequests = allPlayers.filter(u => u?.adminRequestPending)
   const subscribers = allPlayers.filter(u => u?.isSubscribed || (u?.subscribedSeasons && u.subscribedSeasons.length > 0))
 
-  const currentSeasonForPayment = adminData?.currentSeason || 'Elite Arrows Season 6'
   const paidMembersList = useMemo(() => {
-    return allPlayers.filter(u =>
-      u.isSubscribed === true ||
-      (Array.isArray(u.subscribedSeasons) && u.subscribedSeasons.includes(currentSeasonForPayment))
-    )
-  }, [allPlayers, currentSeasonForPayment])
+    return allPlayers.filter(u => {
+      const subs = Array.isArray(u.subscribedSeasons) ? u.subscribedSeasons : []
+      return subs.includes(financeSeasonFilter) || (financeSeasonFilter === (adminData?.currentSeason || 'Elite Arrows Season 6') && u.isSubscribed === true) || (u.requestedSeason === financeSeasonFilter && u.paymentPending === false)
+    })
+  }, [allPlayers, financeSeasonFilter, adminData?.currentSeason])
 
   const unpaidMembersList = useMemo(() => {
     const paidIds = new Set(paidMembersList.map(p => String(p.id)))
@@ -3748,6 +3748,22 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
               <div style={{ fontSize: '0.8rem', color: Number((paymentAllocations.prizePool + paymentAllocations.potm + paymentAllocations.highout + paymentAllocations.sitePot).toFixed(2)) === 6 ? 'var(--success)' : 'var(--warning)', fontWeight: 800 }}>
                 Total per payment: £{(paymentAllocations.prizePool + paymentAllocations.potm + paymentAllocations.highout + paymentAllocations.sitePot).toFixed(2)} (Target: £6.00)
               </div>
+            </div>
+
+            <div className="card glass" style={{ padding: '20px', borderRadius: '14px', marginTop: '24px', border: '1px solid var(--accent-cyan)' }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent-cyan)', marginBottom: '6px', display: 'block' }}>🗓️ Select Season for Paid / Unpaid Roster</label>
+              <select
+                className="glass"
+                value={financeSeasonFilter}
+                onChange={e => setFinanceSeasonFilter(e.target.value)}
+                style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', fontSize: '1rem', fontWeight: 700 }}
+              >
+                <option value="Elite Arrows Season 7">Elite Arrows Season 7</option>
+                <option value={adminData?.currentSeason || 'Elite Arrows Season 6'}>{adminData?.currentSeason || 'Elite Arrows Season 6'} (Current)</option>
+                {getSeasons().map(s => (
+                  <option key={s.id} value={s.name}>{s.name}</option>
+                ))}
+              </select>
             </div>
 
             <div style={{ display: 'flex', gap: '8px', margin: '28px 0 16px', overflowX: 'auto' }}>
