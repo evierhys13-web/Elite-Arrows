@@ -1531,6 +1531,35 @@ export default function Admin() {
     } catch (e) { showToast(e.message, 'error') }
   }
 
+  const handleAdjustIndividualPot = async (potField, potLabel) => {
+    const rawVal = prompt(`Enter amount to add/subtract for ${potLabel} (e.g. 10 or -5):`, '10')
+    if (rawVal === null) return
+    const amount = parseFloat(rawVal)
+    if (isNaN(amount)) return alert('Please enter a valid number')
+
+    try {
+      const pot = adminData || {}
+      const currentVal = Number(pot[potField]) || 0
+      const nextVal = currentVal + amount
+
+      const updates = {
+        [potField]: nextVal
+      }
+
+      if (potField !== 'subscriptionPot') {
+        updates.subscriptionPot = (Number(pot.subscriptionPot) || 0) + amount
+      }
+
+      await updateAdminData(updates)
+      addToMoneyHistory('manual_adjustment', amount, `Manually adjusted ${potLabel} by £${amount}`)
+      await logAudit('MANUAL_POT_ADJUST', `Adjusted ${potLabel} by £${amount} (new total: £${nextVal})`)
+      showToast(`Successfully adjusted ${potLabel} by £${amount}!`, 'success')
+      triggerDataRefresh('adminData')
+    } catch (e) {
+      showToast('Error adjusting pot: ' + e.message, 'error')
+    }
+  }
+
   const handleAwardTrophy = async () => {
     if (!trophyForm.player || !trophyForm.name) return showToast('Player and Trophy Name required', 'error')
     try {
@@ -3675,16 +3704,25 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
           <div className="card glass">
             <h3>League Financials & Pending Payments</h3>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginTop: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginTop: '20px' }}>
               {[
-                { label: 'League Prize Pool (£7)', value: potLeaguePrizePool, color: '#fbbf24' },
-                { label: 'Player of the Month (£40 target / 4 divs)', value: potPlayerOfMonth, color: '#a78bfa' },
-                { label: 'Highout Prize (£15 target)', value: potHighout, color: '#10b981' },
-                { label: 'Site Pot (Rest)', value: potSitePot, color: '#38bdf8' }
+                { label: 'League Prize Pool', field: 'potLeaguePrizePool', value: potLeaguePrizePool, color: '#fbbf24' },
+                { label: 'Player of the Month', field: 'potPlayerOfMonth', value: potPlayerOfMonth, color: '#a78bfa' },
+                { label: 'Highout Prize', field: 'potHighout', value: potHighout, color: '#10b981' },
+                { label: 'Site Pot', field: 'potSitePot', value: potSitePot, color: '#38bdf8' }
               ].map(pot => (
-                <div key={pot.label} className="glass" style={{ padding: '18px', borderRadius: '14px', border: `1px solid ${pot.color}44` }}>
-                  <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{pot.label}</div>
-                  <div style={{ fontSize: '1.9rem', fontWeight: 900, color: pot.color }}>£{pot.value.toFixed(2)}</div>
+                <div key={pot.field} className="glass" style={{ padding: '20px', borderRadius: '16px', border: `1px solid ${pot.color}44`, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '12px' }}>
+                  <div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>{pot.label}</div>
+                    <div style={{ fontSize: '2rem', fontWeight: 900, color: pot.color, marginTop: '4px' }}>£{pot.value.toFixed(2)}</div>
+                  </div>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    style={{ background: `${pot.color}22`, color: pot.color, borderColor: `${pot.color}44`, fontWeight: 800 }}
+                    onClick={() => handleAdjustIndividualPot(pot.field, pot.label)}
+                  >
+                    + Add / Edit Amount
+                  </button>
                 </div>
               ))}
             </div>
