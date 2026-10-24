@@ -138,20 +138,6 @@ export default function Admin() {
   const [paymentAllocations, setPaymentAllocations] = useState({ prizePool: 5, potm: 0.4, highout: 0.3, sitePot: 0.3 })
   const [financeView, setFinanceView] = useState('pending')
 
-  const currentSeasonForPayment = adminData?.currentSeason || 'Elite Arrows Season 6'
-  const paidMembersList = useMemo(() => {
-    return allPlayers.filter(u =>
-      u.isSubscribed === true ||
-      (Array.isArray(u.subscribedSeasons) && u.subscribedSeasons.includes(currentSeasonForPayment))
-    )
-  }, [allPlayers, currentSeasonForPayment])
-
-  const unpaidMembersList = useMemo(() => {
-    const paidIds = new Set(paidMembersList.map(p => String(p.id)))
-    const pendingIds = new Set(pendingPayments.map(p => String(p.id)))
-    return allPlayers.filter(u => !paidIds.has(String(u.id)) && !pendingIds.has(String(u.id)) && !u.isAdmin)
-  }, [allPlayers, paidMembersList, pendingPayments])
-
   const categories = [
     { id: 'overview', label: '📊 Overview', tabIds: ['dashboard', 'audit'] },
     { id: 'matches', label: '🎯 Matches & Cups', tabIds: ['results', 'fixtures', 'cups', 'moneypot', 'openleague'] },
@@ -393,6 +379,20 @@ export default function Admin() {
   }, [pendingPayments])
   const entryRequests = allPlayers.filter(u => u?.adminRequestPending)
   const subscribers = allPlayers.filter(u => u?.isSubscribed || (u?.subscribedSeasons && u.subscribedSeasons.length > 0))
+
+  const currentSeasonForPayment = adminData?.currentSeason || 'Elite Arrows Season 6'
+  const paidMembersList = useMemo(() => {
+    return allPlayers.filter(u =>
+      u.isSubscribed === true ||
+      (Array.isArray(u.subscribedSeasons) && u.subscribedSeasons.includes(currentSeasonForPayment))
+    )
+  }, [allPlayers, currentSeasonForPayment])
+
+  const unpaidMembersList = useMemo(() => {
+    const paidIds = new Set(paidMembersList.map(p => String(p.id)))
+    const pendingIds = new Set(pendingPayments.map(p => String(p.id)))
+    return allPlayers.filter(u => !paidIds.has(String(u.id)) && !pendingIds.has(String(u.id)) && !u.isAdmin)
+  }, [allPlayers, paidMembersList, pendingPayments])
 
   const adminApprovalData = useMemo(() => {
     const admins = allPlayers.filter(u =>
