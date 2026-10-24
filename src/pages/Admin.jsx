@@ -136,6 +136,21 @@ export default function Admin() {
   const [surveyQuestions, setSurveyQuestions] = useState([{ id: 'q1', text: '', type: 'text', options: '' }])
   const [approvalDivisions, setApprovalDivisions] = useState({})
   const [paymentAllocations, setPaymentAllocations] = useState({ prizePool: 5, potm: 0.4, highout: 0.3, sitePot: 0.3 })
+  const [financeView, setFinanceView] = useState('pending')
+
+  const currentSeasonForPayment = adminData?.currentSeason || 'Elite Arrows Season 6'
+  const paidMembersList = useMemo(() => {
+    return allPlayers.filter(u =>
+      u.isSubscribed === true ||
+      (Array.isArray(u.subscribedSeasons) && u.subscribedSeasons.includes(currentSeasonForPayment))
+    )
+  }, [allPlayers, currentSeasonForPayment])
+
+  const unpaidMembersList = useMemo(() => {
+    const paidIds = new Set(paidMembersList.map(p => String(p.id)))
+    const pendingIds = new Set(pendingPayments.map(p => String(p.id)))
+    return allPlayers.filter(u => !paidIds.has(String(u.id)) && !pendingIds.has(String(u.id)) && !u.isAdmin)
+  }, [allPlayers, paidMembersList, pendingPayments])
 
   const categories = [
     { id: 'overview', label: '📊 Overview', tabIds: ['dashboard', 'audit'] },
@@ -3735,48 +3750,104 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
               </div>
             </div>
 
-            <div style={{ marginTop: '30px' }}>
-              <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '16px' }}>Pending Payments Approval ({pendingPayments.length})</h4>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
-                Approving member payments here automatically adds £6 to the league finances pot above.
-              </p>
-              {pendingPayments.length === 0 ? (
-                <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.02)', borderRadius: '10px' }}>No pending payments.</div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {pendingPayments.map(u => {
-                    const chosenDiv = approvalDivisions[u.id] || u.requestedDivision || u.division || 'Elite';
-                    return (
-                      <div key={u.id} className="glass" style={{ padding: '16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-                        <div>
-                          <div style={{ fontWeight: 800, fontSize: '1rem' }}>{u.username}</div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                            {u.email} • Requested Season: <strong style={{ color: 'var(--accent-cyan)' }}>{u.requestedSeason || 'Current'}</strong>
+            <div style={{ display: 'flex', gap: '8px', margin: '28px 0 16px', overflowX: 'auto' }}>
+              <button className={`btn btn-sm ${financeView === 'pending' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFinanceView('pending')}>
+                ⏳ Pending Approval ({pendingPayments.length})
+              </button>
+              <button className={`btn btn-sm ${financeView === 'paid' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFinanceView('paid')}>
+                ✅ Paid Members ({paidMembersList.length})
+              </button>
+              <button className={`btn btn-sm ${financeView === 'unpaid' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFinanceView('unpaid')}>
+                ❌ Unpaid Members ({unpaidMembersList.length})
+              </button>
+            </div>
+
+            {financeView === 'pending' && (
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '16px' }}>Pending Payments Approval ({pendingPayments.length})</h4>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                  Approving member payments here automatically adds the configured amount to the league finances pot above.
+                </p>
+                {pendingPayments.length === 0 ? (
+                  <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.02)', borderRadius: '10px' }}>No pending payments.</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {pendingPayments.map(u => {
+                      const chosenDiv = approvalDivisions[u.id] || u.requestedDivision || u.division || 'Elite';
+                      return (
+                        <div key={u.id} className="glass" style={{ padding: '16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                          <div>
+                            <div style={{ fontWeight: 800, fontSize: '1rem' }}>{u.username}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              {u.email} • Requested Season: <strong style={{ color: 'var(--accent-cyan)' }}>{u.requestedSeason || currentSeasonForPayment}</strong>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <select
+                              className="glass"
+                              value={chosenDiv}
+                              onChange={e => setApprovalDivisions({ ...approvalDivisions, [u.id]: e.target.value })}
+                              style={{ fontSize: '0.85rem', padding: '8px 12px', borderRadius: '8px', fontWeight: 700 }}
+                            >
+                              {['Elite', 'Emerald', 'Diamond', 'Platinum'].map(d => <option key={d} value={d}>{d} Division</option>)}
+                            </select>
+                            <button className="btn btn-primary btn-sm" onClick={() => handleApprovePayment(u, chosenDiv)}>Approve & Add £6</button>
+                            <button className="btn btn-danger btn-sm" onClick={async () => {
+                              if (confirm(`Reject payment for ${u.username}?`)) {
+                                await updateDoc(doc(db, 'users', u.id), { paymentPending: false });
+                                triggerDataRefresh('users');
+                              }
+                            }}>Reject</button>
                           </div>
                         </div>
-                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                          <select
-                            className="glass"
-                            value={chosenDiv}
-                            onChange={e => setApprovalDivisions({ ...approvalDivisions, [u.id]: e.target.value })}
-                            style={{ fontSize: '0.85rem', padding: '8px 12px', borderRadius: '8px', fontWeight: 700 }}
-                          >
-                            {['Elite', 'Emerald', 'Diamond', 'Platinum'].map(d => <option key={d} value={d}>{d} Division</option>)}
-                          </select>
-                          <button className="btn btn-primary btn-sm" onClick={() => handleApprovePayment(u, chosenDiv)}>Approve & Add £6</button>
-                          <button className="btn btn-danger btn-sm" onClick={async () => {
-                            if (confirm(`Reject payment for ${u.username}?`)) {
-                              await updateDoc(doc(db, 'users', u.id), { paymentPending: false });
-                              triggerDataRefresh('users');
-                            }
-                          }}>Reject</button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {financeView === 'paid' && (
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={{ color: 'var(--success)', marginBottom: '16px' }}>Paid Members ({paidMembersList.length})</h4>
+                {paidMembersList.length === 0 ? (
+                  <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.02)', borderRadius: '10px' }}>No paid members recorded for {currentSeasonForPayment}.</div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
+                    {paidMembersList.map(u => (
+                      <div key={u.id} className="glass" style={{ padding: '14px 16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontWeight: 800 }}>{u.username}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)' }}>{u.division || 'Unassigned'} Division</div>
                         </div>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--success)', fontWeight: 800, background: 'var(--success-bg)', padding: '3px 8px', borderRadius: '6px' }}>✓ Paid</span>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {financeView === 'unpaid' && (
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={{ color: 'var(--error)', marginBottom: '16px' }}>Unpaid Members ({unpaidMembersList.length})</h4>
+                {unpaidMembersList.length === 0 ? (
+                  <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.02)', borderRadius: '10px' }}>All members have paid! 🎉</div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
+                    {unpaidMembersList.map(u => (
+                      <div key={u.id} className="glass" style={{ padding: '14px 16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontWeight: 800 }}>{u.username}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{u.division || 'Unassigned'} Division</div>
+                        </div>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--error)', fontWeight: 800, background: 'var(--error-bg)', padding: '3px 8px', borderRadius: '6px' }}>Not Paid</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
