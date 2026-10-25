@@ -67,27 +67,22 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
       if (effectiveTime <= resetTime) return false
     }
 
-    // Season filtering logic - robust matching
+    // Season filtering logic - strict Season 6 (Oct 1 2026 onwards)
+    const matchTime = new Date(result.date || result.submittedAt || result.approvedAt || 0).getTime()
+    const oct12026 = new Date('2026-10-01T00:00:00.000Z').getTime()
+    const nowTime = Date.now()
+    if (!Number.isFinite(matchTime) || matchTime < oct12026 || matchTime > nowTime) {
+      return false
+    }
+
     if (currentSeason) {
       const resSeason = String(result.season || '').replace(/\s+/g, '').toLowerCase()
       const actSeason = String(currentSeason).replace(/\s+/g, '').toLowerCase()
-
-      const matchTime = new Date(result.date || result.submittedAt || result.approvedAt || 0).getTime()
-      const oct12026 = new Date('2026-10-01T00:00:00.000Z').getTime()
-      const isFromOct1Onwards = Number.isFinite(matchTime) && matchTime >= oct12026
-
       const isSeason6Target = actSeason.includes('6') || actSeason.includes('season6') || actSeason.includes('elitearrowsseason6')
-      const isSeason6Match = resSeason.includes('6') || resSeason.includes('season6') || resSeason.includes('elitearrowsseason6') || (isFromOct1Onwards && (!resSeason || resSeason === 'league' || resSeason === 'unknown'))
 
-      if (isSeason6Target && (isSeason6Match || isFromOct1Onwards)) {
-        // Valid Season 6 match from Oct 1st onwards
-      } else if (resSeason === actSeason || resSeason.includes(actSeason) || actSeason.includes(resSeason)) {
-         // Matched successfully
-      } else if (actSeason === 'season1' || actSeason === '2026' || actSeason === 'legacy') {
-        const isLegacyMatch = ['season1', '2026', 'legacy', '', 'undefined', 'null'].includes(resSeason)
-        if (!isLegacyMatch) return false
-      } else {
-        return false
+      if (isSeason6Target) {
+        const isOtherSeason = (resSeason.includes('4') || resSeason.includes('season4') || resSeason.includes('5') || resSeason.includes('season5') || resSeason.includes('1') || resSeason.includes('season1')) && !resSeason.includes('6')
+        if (isOtherSeason) return false
       }
     }
 
