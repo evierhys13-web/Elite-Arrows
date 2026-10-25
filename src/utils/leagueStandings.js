@@ -60,9 +60,10 @@ export const getDivisionFilteredResults = (results, usersWithCorrectDivisions) =
     const p1Id = getResultPlayerId(r, 1, usersWithCorrectDivisions)
     const p2Id = getResultPlayerId(r, 2, usersWithCorrectDivisions)
     if (!p1Id || !p2Id) return false
-    const d1 = divMap[p1Id]
-    const d2 = divMap[p2Id]
-    if (!d1 || !d2 || d1 === 'Unassigned' || d2 === 'Unassigned' || d1 === 'Admin' || d2 === 'Admin') return false
+    const d1 = divMap[p1Id] || 'Unassigned'
+    const d2 = divMap[p2Id] || 'Unassigned'
+    if (d1 === 'Admin' || d2 === 'Admin') return false
+    if (d1 === 'Unassigned' || d2 === 'Unassigned') return true
     return d1 === d2
   })
 }

@@ -72,25 +72,21 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
       const resSeason = String(result.season || '').replace(/\s+/g, '').toLowerCase()
       const actSeason = String(currentSeason).replace(/\s+/g, '').toLowerCase()
 
-      const isSeason6Match = resSeason.includes('6') || resSeason.includes('season6') || resSeason.includes('elitearrowsseason6')
-      const isSeason6Target = actSeason.includes('6') || actSeason.includes('season6') || actSeason.includes('elitearrowsseason6')
+      const matchTime = new Date(result.date || result.submittedAt || result.approvedAt || 0).getTime()
+      const oct12026 = new Date('2026-10-01T00:00:00.000Z').getTime()
+      const isFromOct1Onwards = Number.isFinite(matchTime) && matchTime >= oct12026
 
-      if (isSeason6Match && isSeason6Target) {
-        const matchTime = new Date(result.date || result.submittedAt || 0).getTime()
-        const oct12026 = new Date('2026-10-01T00:00:00.000Z').getTime()
-        if (Number.isFinite(matchTime) && matchTime > 0 && matchTime < oct12026) {
-          return false
-        }
+      const isSeason6Target = actSeason.includes('6') || actSeason.includes('season6') || actSeason.includes('elitearrowsseason6')
+      const isSeason6Match = resSeason.includes('6') || resSeason.includes('season6') || resSeason.includes('elitearrowsseason6') || (isFromOct1Onwards && (!resSeason || resSeason === 'league' || resSeason === 'unknown'))
+
+      if (isSeason6Target && (isSeason6Match || isFromOct1Onwards)) {
+        // Valid Season 6 match from Oct 1st onwards
       } else if (resSeason === actSeason || resSeason.includes(actSeason) || actSeason.includes(resSeason)) {
          // Matched successfully
-      }
-      // 2. Legacy/Window fallback for Season 1
-      else if (actSeason === 'season1' || actSeason === '2026' || actSeason === 'legacy') {
+      } else if (actSeason === 'season1' || actSeason === '2026' || actSeason === 'legacy') {
         const isLegacyMatch = ['season1', '2026', 'legacy', '', 'undefined', 'null'].includes(resSeason)
         if (!isLegacyMatch) return false
-      }
-      // 3. Mismatch
-      else {
+      } else {
         return false
       }
     }
