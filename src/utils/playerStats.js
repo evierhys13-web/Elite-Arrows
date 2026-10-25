@@ -72,8 +72,16 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
       const resSeason = String(result.season || '').replace(/\s+/g, '').toLowerCase()
       const actSeason = String(currentSeason).replace(/\s+/g, '').toLowerCase()
 
-      // 1. Exact match (normalized)
-      if (resSeason === actSeason) {
+      const isSeason6Match = resSeason.includes('6') || resSeason.includes('season6') || resSeason.includes('elitearrowsseason6')
+      const isSeason6Target = actSeason.includes('6') || actSeason.includes('season6') || actSeason.includes('elitearrowsseason6')
+
+      if (isSeason6Match && isSeason6Target) {
+        const matchTime = new Date(result.date || result.submittedAt || 0).getTime()
+        const oct12026 = new Date('2026-10-01T00:00:00.000Z').getTime()
+        if (Number.isFinite(matchTime) && matchTime > 0 && matchTime < oct12026) {
+          return false
+        }
+      } else if (resSeason === actSeason || resSeason.includes(actSeason) || actSeason.includes(resSeason)) {
          // Matched successfully
       }
       // 2. Legacy/Window fallback for Season 1
