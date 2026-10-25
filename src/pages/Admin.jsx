@@ -785,6 +785,31 @@ export default function Admin() {
     setIsApproving(false)
   }
 
+  const handleSyncResultsToStandings = async (idsToSync) => {
+    if (!idsToSync || idsToSync.length === 0) return showToast('No results selected', 'warning')
+    if (!confirm(`Sync ${idsToSync.length} result(s) to Elite Arrows Season 6 Standings?`)) return
+
+    setIsProcessing(true)
+    try {
+      const batch = writeBatch(db)
+      idsToSync.forEach(id => {
+        const res = allResults.find(r => String(r.id) === String(id))
+        const resDocId = String(res?.firestoreId || id)
+        batch.set(doc(db, 'results', resDocId), {
+          syncToStandings: true,
+          season: 'Elite Arrows Season 6'
+        }, { merge: true })
+      })
+      await batch.commit()
+      showToast(`Successfully synced ${idsToSync.length} result(s) to standings!`, 'success')
+      triggerDataRefresh('all')
+      setSelectedResults([])
+    } catch (e) {
+      showToast('Sync error: ' + e.message, 'error')
+    }
+    setIsProcessing(false)
+  }
+
   const handleToggleExcludeFromLeague = async (result) => {
     const newVal = !result.excludeFromLeague
     const targetId = result.firestoreId || String(result.id)
@@ -2781,10 +2806,20 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
                 </form>
               </div>
             )}
+            {resultFilter === 'approved' && selectedResults.length > 0 && (
+              <div className="glass" style={{ padding: '14px 20px', borderRadius: '12px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--accent-cyan)' }}>
+                <span style={{ fontWeight: 700 }}>{selectedResults.length} approved result(s) selected</span>
+                <button className="btn btn-primary btn-sm" onClick={() => handleSyncResultsToStandings(selectedResults)} disabled={isProcessing}>
+                  📌 Sync Selected to Standings
+                </button>
+              </div>
+            )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {filteredResultsList.map(r => (
                 <div key={r.id} className="result-item glass" style={{ padding: '16px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  {resultFilter === 'pending' && <input type="checkbox" checked={selectedResults.includes(r.id)} onChange={() => toggleSelectResult(r.id)} style={{ width: '20px', height: '20px' }} />}
+                  {(resultFilter === 'pending' || resultFilter === 'approved') && (
+                    <input type="checkbox" checked={selectedResults.includes(r.id)} onChange={() => toggleSelectResult(r.id)} style={{ width: '20px', height: '20px' }} />
+                  )}
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ fontWeight: 700 }}>{r.player1} <span style={{ color: 'var(--accent-cyan)' }}>vs</span> {r.player2}</span><span style={{ fontWeight: 900, color: 'var(--accent-cyan)' }}>{r.score1}-{r.score2}</span></div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{r.gameType} | {r.date} {r.season && <span style={{ color: showArchive ? 'var(--accent-cyan)' : 'var(--text-muted)' }}> | {r.season}</span>} {r.excludeFromLeague && <span style={{ color: 'var(--error)' }}>🚫 EXCLUDED</span>}</div>
@@ -2814,12 +2849,22 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
                       </div>
                     )}
 
-                    <div style={{ display: 'flex', gap: '6px', marginTop: '12px' }}>
+                    <div style={{ display: 'flex', gap: '6px', marginTop: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
                       {resultFilter === 'pending' && (
                         <>
                           <button className="btn btn-primary btn-sm" onClick={() => handleApproveResult(r.id)}>Approve</button>
                           <button className="btn btn-danger btn-sm" onClick={() => handleRejectResult(r.id)}>Reject</button>
                         </>
+                      )}
+                      {resultFilter === 'approved' && (
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          style={{ background: r.syncToStandings ? 'rgba(16, 185, 129, 0.2)' : 'rgba(56, 189, 248, 0.1)', color: r.syncToStandings ? 'var(--success)' : 'var(--accent-cyan)', borderColor: 'rgba(56, 189, 248, 0.3)' }}
+                          onClick={() => handleSyncResultsToStandings([r.id])}
+                          disabled={isProcessing}
+                        >
+                          {r.syncToStandings ? '✓ Synced to Standings' : '📌 Sync to Standings'}
+                        </button>
                       )}
                       {(r.proofImage || r.proofImage2 || r.proofVideo || r.hasProofImage) && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', marginTop: '10px' }}>

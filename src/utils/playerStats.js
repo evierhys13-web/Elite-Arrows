@@ -67,8 +67,10 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
       if (effectiveTime <= resetTime) return false
     }
 
-    // Season filtering logic
-    if (currentSeason) {
+    // If explicitly synced to standings by admin, include immediately!
+    if (result.syncToStandings === true) {
+      // Bypasses date/season checks
+    } else if (currentSeason) {
       const resSeason = String(result.season || '').replace(/\s+/g, '').toLowerCase()
       const actSeason = String(currentSeason).replace(/\s+/g, '').toLowerCase()
 
