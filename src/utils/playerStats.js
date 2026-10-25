@@ -67,22 +67,26 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
       if (effectiveTime <= resetTime) return false
     }
 
-    // Season filtering logic - strict Season 6 (Oct 1 2026 onwards)
-    const matchTime = new Date(result.date || result.submittedAt || result.approvedAt || 0).getTime()
-    const oct12026 = new Date('2026-10-01T00:00:00.000Z').getTime()
-    const nowTime = Date.now()
-    if (!Number.isFinite(matchTime) || matchTime < oct12026 || matchTime > nowTime) {
-      return false
-    }
-
+    // Season filtering logic
     if (currentSeason) {
       const resSeason = String(result.season || '').replace(/\s+/g, '').toLowerCase()
       const actSeason = String(currentSeason).replace(/\s+/g, '').toLowerCase()
+
       const isSeason6Target = actSeason.includes('6') || actSeason.includes('season6') || actSeason.includes('elitearrowsseason6')
+      const isSeason6Match = resSeason.includes('6') || resSeason.includes('season6') || resSeason.includes('elitearrowsseason6')
 
       if (isSeason6Target) {
-        const isOtherSeason = (resSeason.includes('4') || resSeason.includes('season4') || resSeason.includes('5') || resSeason.includes('season5') || resSeason.includes('1') || resSeason.includes('season1')) && !resSeason.includes('6')
-        if (isOtherSeason) return false
+        if (!isSeason6Match) return false
+        const matchTime = new Date(result.date || result.submittedAt || result.approvedAt || 0).getTime()
+        const oct12026 = new Date('2026-10-01T00:00:00.000Z').getTime()
+        const nowTime = Date.now()
+        if (!Number.isFinite(matchTime) || matchTime < oct12026 || matchTime > nowTime) {
+          return false
+        }
+      } else {
+        if (resSeason && resSeason !== actSeason && !resSeason.includes(actSeason) && !actSeason.includes(resSeason)) {
+          return false
+        }
       }
     }
 
