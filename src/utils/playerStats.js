@@ -59,6 +59,12 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
   const approvedResults = results.filter(result => {
     if (String(result.status || '').toLowerCase() !== 'approved') return false
     if (result.excludeFromLeague) return false
+
+    // If explicitly synced to standings by admin, include immediately and unconditionally!
+    if (result.syncToStandings === true) {
+      return true
+    }
+
     if (requireProof && !resultHasProof(result) && !result.forfeit) return false
 
     // Apply Soft Reset filter (if resetTime is set)

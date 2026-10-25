@@ -801,6 +801,12 @@ export default function Admin() {
         }, { merge: true })
       })
       await batch.commit()
+
+      const updatedResults = allResults.map(res =>
+        idsToSync.map(String).includes(String(res.id)) ? { ...res, syncToStandings: true, season: 'Elite Arrows Season 6' } : res
+      )
+      updateResults(updatedResults)
+
       showToast(`Successfully synced ${idsToSync.length} result(s) to standings!`, 'success')
       triggerDataRefresh('all')
       setSelectedResults([])
@@ -808,6 +814,28 @@ export default function Admin() {
       showToast('Sync error: ' + e.message, 'error')
     }
     setIsProcessing(false)
+  }
+
+  const handleToggleSyncCard = async (r) => {
+    if (resultFilter !== 'approved') return
+    const nextVal = !r.syncToStandings
+    const resDocId = String(r.firestoreId || r.id)
+    try {
+      await setDoc(doc(db, 'results', resDocId), {
+        syncToStandings: nextVal,
+        season: nextVal ? 'Elite Arrows Season 6' : (r.season || '')
+      }, { merge: true })
+
+      const updatedResults = allResults.map(res =>
+        String(res.id) === String(r.id) ? { ...res, syncToStandings: nextVal, season: nextVal ? 'Elite Arrows Season 6' : (res.season || '') } : res
+      )
+      updateResults(updatedResults)
+
+      showToast(nextVal ? `✓ Synced "${r.player1} vs ${r.player2}" to Standings!` : `Removed sync for "${r.player1} vs ${r.player2}"`, 'success')
+      triggerDataRefresh('all')
+    } catch (e) {
+      showToast('Error: ' + e.message, 'error')
+    }
   }
 
   const handleToggleExcludeFromLeague = async (result) => {
