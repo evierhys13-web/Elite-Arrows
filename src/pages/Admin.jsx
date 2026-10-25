@@ -453,11 +453,14 @@ export default function Admin() {
   )
 
   const filteredResultsList = useMemo(() => {
-    let list = allResults.filter(r => {
-      const seasonKey = String(r.season || '').trim()
-      const isArchivedSeason = seasonKey !== '' && seasonKey !== activeSeasonName
-      return showArchive ? isArchivedSeason : !isArchivedSeason
-    })
+    let list = allResults
+    if (resultFilter !== 'pending') {
+      list = list.filter(r => {
+        const seasonKey = String(r.season || '').trim()
+        const isArchivedSeason = seasonKey !== '' && seasonKey !== activeSeasonName
+        return showArchive ? isArchivedSeason : !isArchivedSeason
+      })
+    }
     list = list.filter(r => String(r.status).toLowerCase() === resultFilter)
     if (resultSearch) { const s = resultSearch.toLowerCase(); list = list.filter(r => String(r.player1).toLowerCase().includes(s) || String(r.player2).toLowerCase().includes(s)) }
     if (resultTypeFilter !== 'all') {
