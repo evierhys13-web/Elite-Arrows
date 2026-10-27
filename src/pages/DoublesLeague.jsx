@@ -18,7 +18,7 @@ export default function DoublesLeague() {
 
   const fetchDoublesData = async () => {
     try {
-      const snap = await getDocs(collection(db, 'doublesTeams'));
+      const snap = await getDocs(collection(db, 'openLeagueDuos'));
       setTeams(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     } catch (e) {
       console.error("Error fetching Doubles League data:", e);
@@ -34,11 +34,15 @@ export default function DoublesLeague() {
 
     teams.forEach(t => {
       const teamId = t.id;
+      const p1 = allUsers.find(u => String(u.id) === String(t.p1Id));
+      const p2 = allUsers.find(u => String(u.id) === String(t.p2Id));
+      const captain = allUsers.find(u => String(u.id) === String(t.captainId || t.p1Id));
+      const name = t.teamName || `${p1?.username || 'Player 1'} & ${p2?.username || 'Player 2'}`;
+
       stats[teamId] = {
         id: teamId,
-        teamName: t.teamName || `${allUsers.find(u => String(u.id) === String(t.player1Id))?.username || 'Player 1'} & ${allUsers.find(u => String(u.id) === String(t.player2Id))?.username || 'Player 2'}`,
-        player1Id: t.player1Id,
-        player2Id: t.player2Id,
+        teamName: name,
+        captainName: captain?.username ? `Captain: ${captain.username}` : '',
         played: 0,
         wins: 0,
         draws: 0,
@@ -49,7 +53,7 @@ export default function DoublesLeague() {
       };
     });
 
-    const doublesResults = results.filter(r => String(r.gameType || '').toLowerCase().includes('doubles') && r.status === 'approved');
+    const doublesResults = results.filter(r => (String(r.gameType || '').toLowerCase().includes('doubles') || r.team1Id || r.team2Id) && r.status === 'approved');
 
     doublesResults.forEach(r => {
       const t1Id = String(r.team1Id || r.player1Id);
@@ -62,6 +66,7 @@ export default function DoublesLeague() {
           stats[id] = {
             id,
             teamName: id,
+            captainName: '',
             played: 0, wins: 0, draws: 0, losses: 0, legsWon: 0, legsLost: 0, points: 0
           };
         }
@@ -106,7 +111,7 @@ export default function DoublesLeague() {
       <div className="page-header" style={{ marginBottom: "24px", display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div>
           <h1 className="page-title text-gradient" style={{ fontSize: "2.5rem" }}>Doubles League</h1>
-          <p style={{ color: 'var(--text-muted)' }}>Official team pairings and league standings</p>
+          <p style={{ color: 'var(--text-muted)' }}>Official team pairings with assigned team captains and league standings</p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
           <button className="btn btn-secondary btn-sm" onClick={handleRefresh} disabled={loading}>
@@ -121,7 +126,7 @@ export default function DoublesLeague() {
             <thead>
               <tr style={{ background: "rgba(0,0,0,0.3)", color: "var(--text-muted)", fontSize: "0.7rem", textTransform: "uppercase" }}>
                 <th style={{ width: "40px", padding: "12px" }}>#</th>
-                <th style={{ textAlign: "left", padding: "12px" }}>Team Name / Pairings</th>
+                <th style={{ textAlign: "left", padding: "12px" }}>Team & Captain</th>
                 <th style={{ width: "40px", textAlign: "center" }}>P</th>
                 <th style={{ width: "40px", textAlign: "center" }}>W</th>
                 <th style={{ width: "40px", textAlign: "center" }}>L</th>
@@ -131,7 +136,7 @@ export default function DoublesLeague() {
             </thead>
             <tbody>
               {doublesStats.length === 0 ? (
-                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No doubles teams registered yet. Admins can create pairings in the Admin panel.</td></tr>
+                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No doubles teams registered yet. Admins can create pairings and assign captains in the Admin panel (Friendly League tab).</td></tr>
               ) : (
                 doublesStats.map((row, index) => {
                   const legDiff = row.legsWon - row.legsLost;
@@ -140,6 +145,7 @@ export default function DoublesLeague() {
                       <td style={{ textAlign: 'center', fontWeight: 800, color: index === 0 ? '#fbbf24' : 'inherit' }}>{index + 1}</td>
                       <td style={{ padding: '12px' }}>
                         <div style={{ fontWeight: 600, color: 'white' }}>{row.teamName}</div>
+                        {row.captainName && <div style={{ fontSize: '0.72rem', color: 'var(--accent-cyan)' }}>{row.captainName}</div>}
                       </td>
                       <td style={{ textAlign: 'center' }}>{row.played}</td>
                       <td style={{ textAlign: 'center' }}>{row.wins}</td>

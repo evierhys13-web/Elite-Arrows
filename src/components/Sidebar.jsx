@@ -72,7 +72,8 @@ export default function Sidebar() {
         items: [
           { path: '/home', label: 'Home', icon: HomeIcon },
           { path: '/submit-result', label: 'Submit Score', icon: PlusCircleIcon },
-          { path: '/table', label: 'Standings', icon: TableIcon },
+          { path: '/table', label: 'Singles League', icon: TableIcon },
+          { path: '/doubles-league', label: 'Doubles League', icon: UsersIcon },
           { path: '/match-log', label: 'Schedule', icon: CalendarIcon },
           { path: '/results', label: 'Results', icon: TrophyIcon },
         ]
@@ -86,7 +87,6 @@ export default function Sidebar() {
           { path: '/player-of-month', label: 'Player of the Month', icon: StarIcon },
           { path: '/statistics', label: 'Statistics', icon: BarChartIcon },
           { path: '/tournaments', label: 'Tournaments', icon: TournamentIcon },
-          { path: '/doubles-league', label: 'Doubles League', icon: UsersIcon },
         ]
       },
       {
