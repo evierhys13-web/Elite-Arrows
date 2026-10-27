@@ -9,7 +9,7 @@ import { getDivisionFormat } from '../context/constants'
 import UserSearchSelect from '../components/UserSearchSelect'
 import Confetti from '../components/Confetti'
 
-const SUBMITTABLE_GAME_TYPES = ['League', 'Cup', 'Playoff', 'Friendly League Singles']
+const SUBMITTABLE_GAME_TYPES = ['League', 'Cup', 'Playoff', 'Friendly League Singles', 'Doubles League']
 
 // Champions League is retired from player submissions. Fixtures and deep links
 // can still carry the old label, so anything unrecognised falls back to League
@@ -27,6 +27,7 @@ function resolveGameType(raw) {
 const INITIAL_RESULT_FORM = {
   gameType: 'League',
   opponent: '',
+  team1Id: '',
   yourScore: '',
   opponentScore: '',
   bestOf: '3',
@@ -387,6 +388,14 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
         setFormData(prev => ({ ...prev, opponent: '', bestOf: '3', firstTo: '2' }))
       } else if (value === 'Playoff') {
         setFormData(prev => ({ ...prev, bestOf: '3', firstTo: '2' }))
+      } else if (value === 'Doubles League') {
+        setFormData(prev => ({
+          ...prev,
+          bestOf: '7',
+          firstTo: '4',
+          team1Id: '',
+          opponent: ''
+        }))
       } else {
         setFormData(prev => ({ ...prev, bestOf: '3', firstTo: '2' }))
       }
@@ -766,13 +775,20 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
       // Helper for creating the document structure
       const createResultDoc = (s1, s2, idSuffix = '', proofOverride = null) => {
         const resId = resultId + idSuffix
+        const team1 = formData.gameType === 'Doubles League' ? openLeagueDuos.find(d => d.id === formData.team1Id) : null
+        const team2 = formData.gameType === 'Doubles League' ? openLeagueDuos.find(d => d.id === formData.opponent) : null
+
         const docData = {
           id: resId,
           firestoreId: resId,
-          player1: finalPlayer1Name,
-          player1Id: finalPlayer1Id,
-          player2: finalPlayer2Name,
-          player2Id: finalPlayer2Id,
+          player1: team1 ? (team1.teamName || 'Team 1') : finalPlayer1Name,
+          player1Id: team1 ? team1.id : finalPlayer1Id,
+          player2: team2 ? (team2.teamName || 'Team 2') : finalPlayer2Name,
+          player2Id: team2 ? team2.id : finalPlayer2Id,
+          ...(formData.gameType === 'Doubles League' && {
+            team1Id: formData.team1Id,
+            team2Id: formData.opponent
+          }),
           score1: parseInt(s1),
           score2: parseInt(s2),
           division: effectiveDivision,
@@ -1097,7 +1113,34 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
                 {formData.gameType === 'Cup' ? 'Select Match' : 'Opponent'}
               </label>
               <div style={{ display: 'grid', gap: '8px' }}>
-                {formData.gameType === 'Cup' ? (
+                {formData.gameType === 'Doubles League' ? (
+                  <div style={{ display: 'grid', gap: '10px' }}>
+                    <select
+                      name="team1Id"
+                      value={formData.team1Id || ''}
+                      onChange={handleChange}
+                      required
+                      style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '2px solid var(--accent-cyan)', color: 'var(--text)', fontWeight: 800 }}
+                    >
+                      <option value="">Select your team...</option>
+                      {openLeagueDuos.map(d => (
+                        <option key={d.id} value={d.id}>{d.teamName || `${allUsers.find(u => String(u.id) === String(d.p1Id))?.username || 'P1'} & ${allUsers.find(u => String(u.id) === String(d.p2Id))?.username || 'P2'}`}</option>
+                      ))}
+                    </select>
+                    <select
+                      name="opponent"
+                      value={formData.opponent || ''}
+                      onChange={handleChange}
+                      required
+                      style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '2px solid var(--accent-cyan)', color: 'var(--text)', fontWeight: 800 }}
+                    >
+                      <option value="">Select opponent team...</option>
+                      {openLeagueDuos.filter(d => d.id !== formData.team1Id).map(d => (
+                        <option key={d.id} value={d.id}>{d.teamName || `${allUsers.find(u => String(u.id) === String(d.p1Id))?.username || 'P1'} & ${allUsers.find(u => String(u.id) === String(d.p2Id))?.username || 'P2'}`}</option>
+                      ))}
+                    </select>
+                  </div>
+                ) : formData.gameType === 'Cup' ? (
                   <select
                     name="opponent"
                     value={formData.opponent}
