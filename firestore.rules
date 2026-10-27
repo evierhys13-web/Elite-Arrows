@@ -117,7 +117,9 @@ service cloud.firestore {
 
     match /cups/{cupId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin() || (signedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players']));
+      allow delete: if isAdmin();
     }
 
     match /tournaments/{tournamentId} {

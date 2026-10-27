@@ -1393,8 +1393,28 @@ export default function CupTournaments() {
                     })}
                   </div>
                 )}
+                {/* Registered Participants Roster */}
+                <div style={{ marginTop: '16px', background: 'rgba(0,0,0,0.25)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <h4 style={{ color: 'var(--accent-cyan)', fontSize: '0.9rem', marginBottom: '10px' }}>
+                    👥 Registered Participants ({cup.players?.length || 0} / {cup.maxPlayers || 32})
+                  </h4>
+                  {(!cup.players || cup.players.length === 0) ? (
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>No players registered yet.</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {cup.players.map((pid, idx) => {
+                        const p = allUsers.find(u => String(u.id) === String(pid))
+                        return (
+                          <span key={pid} className="glass" style={{ padding: '4px 10px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600 }}>
+                            {idx + 1}. {p?.username || pid}
+                          </span>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
                 <p style={{ fontSize: '0.85rem', color: 'var(--accent-cyan)', marginTop: '12px', fontWeight: 'bold' }}>
-                  Status: {cup.status === 'completed' ? 'Completed' : `Active - ${cup.currentRound === 0 ? 'Group Stage (R0)' : `Round ${cup.currentRound}`}`}
+                  Status: {cup.status === 'completed' ? 'Completed' : cup.status === 'registration' ? 'Open for Pre-Registration' : `Active - ${cup.currentRound === 0 ? 'Group Stage (R0)' : `Round ${cup.currentRound}`}`}
                 </p>
               </div>
             )}
