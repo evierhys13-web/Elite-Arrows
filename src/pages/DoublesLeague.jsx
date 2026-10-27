@@ -71,8 +71,17 @@ export default function DoublesLeague() {
 
   const doublesStats = useMemo(() => {
     const stats = {};
+    const ignoredTeamIds = new Set([
+      'KeW6hb5yCrbq6Ln44FaQcHT6zoy2',
+      'gdtszqhfYgVUm1Lln9WKoQRgTRl2',
+      'D6CR85NlOWRBjOboHRyc92mTqK33',
+      'jlxVub1vmDexgQL7qwtskgw4YXf2',
+      'ykROW5kJOBbg93M3weLPaSeyWIC3',
+      'HGdkmmfWpRX76xbunsR5ez0Vyfk1'
+    ]);
 
     teams.forEach(t => {
+      if (ignoredTeamIds.has(String(t.id)) || String(t.id).split('_').some(id => ignoredTeamIds.has(id))) return;
       const teamId = t.id;
       const p1 = allUsers.find(u => String(u.id) === String(t.p1Id));
       const p2 = allUsers.find(u => String(u.id) === String(t.p2Id));
@@ -98,49 +107,38 @@ export default function DoublesLeague() {
     doublesResults.forEach(r => {
       const t1Id = String(r.team1Id || r.player1Id);
       const t2Id = String(r.team2Id || r.player2Id);
+      if (ignoredTeamIds.has(t1Id) || ignoredTeamIds.has(t2Id)) return;
+
       const s1 = Number(r.score1) || 0;
       const s2 = Number(r.score2) || 0;
 
       const updateTeam = (id, won, lost) => {
-        if (!stats[id]) {
-          stats[id] = {
-            id,
-            teamName: id,
-            captainName: '',
-            played: 0, wins: 0, draws: 0, losses: 0, legsWon: 0, legsLost: 0, points: 0
-          };
-        }
+        if (!stats[id]) return;
         const s = stats[id];
         s.played += 1;
         s.legsWon += won;
         s.legsLost += lost;
-        if (won > lost) { s.wins += 1; s.points += 3; }
+        if (won > lost) { s.wins += 1; }
         else if (won < lost) { s.losses += 1; }
-        else { s.draws += 1; s.points += 1; }
+        else { s.draws += 1; }
       };
 
       updateTeam(t1Id, s1, s2);
       updateTeam(t2Id, s2, s1);
     });
 
-    const ignoredTeamIds = new Set([
-      'KeW6hb5yCrbq6Ln44FaQcHT6zoy2',
-      'gdtszqhfYgVUm1Lln9WKoQRgTRl2',
-      'D6CR85NlOWRBjOboHRyc92mTqK33',
-      'jlxVub1vmDexgQL7qwtskgw4YXf2',
-      'ykROW5kJOBbg93M3weLPaSeyWIC3',
-      'HGdkmmfWpRX76xbunsR5ez0Vyfk1'
-    ]);
+    // Every point is a leg, no additional points for winning
+    Object.values(stats).forEach(s => {
+      s.points = s.legsWon;
+    });
 
-    return Object.values(stats)
-      .filter(t => !ignoredTeamIds.has(String(t.id)) && !String(t.id).split('_').some(id => ignoredTeamIds.has(id)))
-      .sort((a, b) => {
-        if (b.points !== a.points) return b.points - a.points;
-        const aDiff = a.legsWon - a.legsLost;
-        const bDiff = b.legsWon - b.legsLost;
-        if (bDiff !== aDiff) return bDiff - aDiff;
-        return b.legsWon - a.legsWon;
-      });
+    return Object.values(stats).sort((a, b) => {
+      if (b.points !== a.points) return b.points - a.points;
+      const aDiff = a.legsWon - a.legsLost;
+      const bDiff = b.legsWon - b.legsLost;
+      if (bDiff !== aDiff) return bDiff - aDiff;
+      return b.legsWon - a.legsWon;
+    });
   }, [results, teams, allUsers]);
 
   const handleRefresh = async () => {
@@ -162,7 +160,7 @@ export default function DoublesLeague() {
       <div className="page-header" style={{ marginBottom: "24px", display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div>
           <h1 className="page-title text-gradient" style={{ fontSize: "2.5rem" }}>Doubles League</h1>
-          <p style={{ color: 'var(--text-muted)' }}>Official team pairings with assigned team captains and league standings</p>
+          <p style={{ color: 'var(--text-muted)' }}>Format: Bo7 • Straight In, Double Out 501 • Home & Away (2x vs each team)</p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
           {isAdmin && (
@@ -173,6 +171,16 @@ export default function DoublesLeague() {
           <button className="btn btn-secondary btn-sm" onClick={handleRefresh} disabled={loading}>
             {loading ? "Syncing..." : "🔄 Sync"}
           </button>
+        </div>
+      </div>
+
+      {/* RULES CARD */}
+      <div className="card glass" style={{ padding: '20px', borderRadius: '16px', marginBottom: '24px', border: '1px solid rgba(0, 212, 255, 0.2)' }}>
+        <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '8px' }}>📌 Doubles League Rules & Scoring</h4>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+          <div>🎯 <strong>Format:</strong> Best of 7 legs • Straight In, Double Out 501</div>
+          <div>🏡 <strong>Fixtures:</strong> Double round-robin (Home & Away vs every team)</div>
+          <div>📊 <strong>Scoring:</strong> Every leg won = 1 league point (no bonus win points)</div>
         </div>
       </div>
 
@@ -242,7 +250,7 @@ export default function DoublesLeague() {
                 <th style={{ width: "40px", textAlign: "center" }}>W</th>
                 <th style={{ width: "40px", textAlign: "center" }}>L</th>
                 <th style={{ width: "60px", textAlign: "center" }}>+/-</th>
-                <th style={{ width: "60px", textAlign: "center", color: "var(--accent-cyan)" }}>Pts</th>
+                <th style={{ width: "60px", textAlign: "center", color: "var(--accent-cyan)" }}>Leg Pts</th>
               </tr>
             </thead>
             <tbody>
