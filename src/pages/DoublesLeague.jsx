@@ -123,13 +123,24 @@ export default function DoublesLeague() {
       updateTeam(t2Id, s2, s1);
     });
 
-    return Object.values(stats).sort((a, b) => {
-      if (b.points !== a.points) return b.points - a.points;
-      const aDiff = a.legsWon - a.legsLost;
-      const bDiff = b.legsWon - b.legsLost;
-      if (bDiff !== aDiff) return bDiff - aDiff;
-      return b.legsWon - a.legsWon;
-    });
+    const ignoredTeamIds = new Set([
+      'KeW6hb5yCrbq6Ln44FaQcHT6zoy2',
+      'gdtszqhfYgVUm1Lln9WKoQRgTRl2',
+      'D6CR85NlOWRBjOboHRyc92mTqK33',
+      'jlxVub1vmDexgQL7qwtskgw4YXf2',
+      'ykROW5kJOBbg93M3weLPaSeyWIC3',
+      'HGdkmmfWpRX76xbunsR5ez0Vyfk1'
+    ]);
+
+    return Object.values(stats)
+      .filter(t => !ignoredTeamIds.has(String(t.id)) && !String(t.id).split('_').some(id => ignoredTeamIds.has(id)))
+      .sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points;
+        const aDiff = a.legsWon - a.legsLost;
+        const bDiff = b.legsWon - b.legsLost;
+        if (bDiff !== aDiff) return bDiff - aDiff;
+        return b.legsWon - a.legsWon;
+      });
   }, [results, teams, allUsers]);
 
   const handleRefresh = async () => {
