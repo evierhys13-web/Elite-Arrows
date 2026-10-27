@@ -11,7 +11,14 @@ export default function DoublesLeague() {
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [teams, setTeams] = useState([]);
+  const [teams, setTeams] = useState(() => {
+    try {
+      const saved = localStorage.getItem('eliteArrowsDoublesTeams');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [duoForm, setDuoForm] = useState({ p1: '', p2: '', teamName: '', captainId: '' });
 
@@ -22,7 +29,11 @@ export default function DoublesLeague() {
   const fetchDoublesData = async () => {
     try {
       const snap = await getDocs(collection(db, 'openLeagueDuos'));
-      setTeams(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const fetched = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      if (fetched.length > 0) {
+        setTeams(fetched);
+        localStorage.setItem('eliteArrowsDoublesTeams', JSON.stringify(fetched));
+      }
     } catch (e) {
       console.error("Error fetching Doubles League data:", e);
     }
@@ -47,10 +58,12 @@ export default function DoublesLeague() {
         captainId: duoForm.captainId || duoForm.p1,
         createdAt: new Date().toISOString()
       };
-      await setDoc(doc(db, 'openLeagueDuos', duoId), newDuo);
-      setTeams(prev => [...prev.filter(t => t.id !== duoId), newDuo]);
+      await setDoc(doc(db, 'openLeagueDuos', duoId), newDuo, { merge: true });
+      const updatedTeams = [...teams.filter(t => t.id !== duoId), newDuo];
+      setTeams(updatedTeams);
+      localStorage.setItem('eliteArrowsDoublesTeams', JSON.stringify(updatedTeams));
       setDuoForm({ p1: '', p2: '', teamName: '', captainId: '' });
-      showToast("Doubles team created successfully!", "success");
+      showToast("Doubles team created and saved permanently!", "success");
       triggerDataRefresh('all');
     } catch (e) {
       showToast("Error creating team: " + e.message, "error");
@@ -61,7 +74,9 @@ export default function DoublesLeague() {
     if (!window.confirm("Delete this team pairing?")) return;
     try {
       await deleteDoc(doc(db, 'openLeagueDuos', id));
-      setTeams(prev => prev.filter(t => t.id !== id));
+      const updatedTeams = teams.filter(t => t.id !== id);
+      setTeams(updatedTeams);
+      localStorage.setItem('eliteArrowsDoublesTeams', JSON.stringify(updatedTeams));
       showToast("Team removed", "info");
       triggerDataRefresh('all');
     } catch (e) {
@@ -127,7 +142,6 @@ export default function DoublesLeague() {
       updateTeam(t2Id, s2, s1);
     });
 
-    // Every point is a leg, no additional points for winning
     Object.values(stats).forEach(s => {
       s.points = s.legsWon;
     });
