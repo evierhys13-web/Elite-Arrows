@@ -59,6 +59,7 @@ const Challenges = lazy(() => import('./pages/Challenges'))
 const Giveaways = lazy(() => import('./pages/Giveaways'))
 const LiveMatch = lazy(() => import('./pages/LiveMatch'))
 const OpenLeague = lazy(() => import('./pages/OpenLeague'))
+const DoublesLeague = lazy(() => import('./pages/DoublesLeague'))
 const WeeklyChallenges = lazy(() => import('./pages/WeeklyChallenges'))
 const PlayOnline = lazy(() => import('./pages/PlayOnline'))
 const HallOfFame = lazy(() => import('./pages/HallOfFame'))
@@ -532,6 +533,7 @@ function AppRoutes() {
       <Route path="/home" element={<ProtectedRoute><AppLayout><Home /></AppLayout></ProtectedRoute>} />
       <Route path="/subscription" element={<ProtectedRoute><AppLayout><Subscription /></AppLayout></ProtectedRoute>} />
       <Route path="/open-league" element={<ProtectedRoute><AppLayout><OpenLeague /></AppLayout></ProtectedRoute>} />
+      <Route path="/doubles-league" element={<ProtectedRoute><AppLayout><DoublesLeague /></AppLayout></ProtectedRoute>} />
       <Route path="/table" element={<ProtectedRoute><AppLayout><Table /></AppLayout></ProtectedRoute>} />
       <Route path="/match-log" element={<ProtectedRoute><AppLayout><MatchLog /></AppLayout></ProtectedRoute>} />
       <Route path="/results" element={<ProtectedRoute><AppLayout><Results /></AppLayout></ProtectedRoute>} />

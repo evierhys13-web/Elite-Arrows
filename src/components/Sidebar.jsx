@@ -86,6 +86,7 @@ export default function Sidebar() {
           { path: '/player-of-month', label: 'Player of the Month', icon: StarIcon },
           { path: '/statistics', label: 'Statistics', icon: BarChartIcon },
           { path: '/tournaments', label: 'Tournaments', icon: TournamentIcon },
+          { path: '/doubles-league', label: 'Doubles League', icon: UsersIcon },
         ]
       },
       {
