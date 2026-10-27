@@ -3,14 +3,17 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContextInternal";
 import Breadcrumbs from "../components/Breadcrumbs";
 import { useToast } from "../context/ToastContext";
-import { db, getDocs, collection } from "../firebase";
+import UserSearchSelect from "../components/UserSearchSelect";
+import { db, getDocs, collection, setDoc, deleteDoc, doc } from "../firebase";
 
 export default function DoublesLeague() {
-  const { user, getAllUsers, getResults, triggerDataRefresh, forceFetchResults, dataRefreshTrigger } = useAuth();
+  const { user, getAllUsers, getResults, triggerDataRefresh, forceFetchResults, dataRefreshTrigger, searchUsers } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [teams, setTeams] = useState([]);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [duoForm, setDuoForm] = useState({ p1: '', p2: '', teamName: '', captainId: '' });
 
   useEffect(() => {
     fetchDoublesData();
@@ -27,7 +30,44 @@ export default function DoublesLeague() {
 
   const allUsers = getAllUsers();
   const results = getResults();
-  const isSubscribed = user?.isSubscribed === true || user?.isAdmin;
+  const isAdmin = Boolean(user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin);
+  const isSubscribed = user?.isSubscribed === true || isAdmin;
+
+  const handleAddTeam = async () => {
+    if (!duoForm.p1 || !duoForm.p2) return showToast("Select two players", "error");
+    if (duoForm.p1 === duoForm.p2) return showToast("Cannot pair a player with themselves", "error");
+    const duoId = [duoForm.p1, duoForm.p2].sort().join('_');
+
+    try {
+      const newDuo = {
+        id: duoId,
+        p1Id: duoForm.p1,
+        p2Id: duoForm.p2,
+        teamName: (duoForm.teamName || '').trim(),
+        captainId: duoForm.captainId || duoForm.p1,
+        createdAt: new Date().toISOString()
+      };
+      await setDoc(doc(db, 'openLeagueDuos', duoId), newDuo);
+      setTeams(prev => [...prev.filter(t => t.id !== duoId), newDuo]);
+      setDuoForm({ p1: '', p2: '', teamName: '', captainId: '' });
+      showToast("Doubles team created successfully!", "success");
+      triggerDataRefresh('all');
+    } catch (e) {
+      showToast("Error creating team: " + e.message, "error");
+    }
+  };
+
+  const handleRemoveTeam = async (id) => {
+    if (!window.confirm("Delete this team pairing?")) return;
+    try {
+      await deleteDoc(doc(db, 'openLeagueDuos', id));
+      setTeams(prev => prev.filter(t => t.id !== id));
+      showToast("Team removed", "info");
+      triggerDataRefresh('all');
+    } catch (e) {
+      showToast("Error removing team: " + e.message, "error");
+    }
+  };
 
   const doublesStats = useMemo(() => {
     const stats = {};
@@ -114,11 +154,71 @@ export default function DoublesLeague() {
           <p style={{ color: 'var(--text-muted)' }}>Official team pairings with assigned team captains and league standings</p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
+          {isAdmin && (
+            <button className="btn btn-primary btn-sm" onClick={() => setShowAdminPanel(!showAdminPanel)}>
+              {showAdminPanel ? "Close Admin Panel" : "🛡️ Manage Teams & Captains"}
+            </button>
+          )}
           <button className="btn btn-secondary btn-sm" onClick={handleRefresh} disabled={loading}>
             {loading ? "Syncing..." : "🔄 Sync"}
           </button>
         </div>
       </div>
+
+      {isAdmin && showAdminPanel && (
+        <div className="card glass animate-fade-in" style={{ padding: '24px', borderRadius: '20px', marginBottom: '28px', border: '1px solid var(--accent-cyan)' }}>
+          <h3 className="card-title" style={{ marginBottom: '16px', color: 'var(--accent-cyan)' }}>🛡️ Admin: Create Doubles Team & Assign Captain</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 700, marginBottom: '6px', display: 'block' }}>Player 1</label>
+              <UserSearchSelect users={allUsers} selectedId={duoForm.p1} onSelect={id => setDuoForm({ ...duoForm, p1: id })} label="" onQueryChange={searchUsers} />
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 700, marginBottom: '6px', display: 'block' }}>Player 2</label>
+              <UserSearchSelect users={allUsers} selectedId={duoForm.p2} onSelect={id => setDuoForm({ ...duoForm, p2: id })} label="" onQueryChange={searchUsers} />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 700, marginBottom: '6px', display: 'block' }}>Team Name (Optional)</label>
+              <input type="text" className="glass" placeholder="e.g. Bullseye Bandits" value={duoForm.teamName} onChange={e => setDuoForm({ ...duoForm, teamName: e.target.value })} style={{ width: '100%', padding: '12px' }} />
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 700, marginBottom: '6px', display: 'block' }}>Team Captain</label>
+              <select className="glass" value={duoForm.captainId} onChange={e => setDuoForm({ ...duoForm, captainId: e.target.value })} style={{ width: '100%', padding: '12px' }}>
+                <option value="">Select Captain...</option>
+                {duoForm.p1 && <option value={duoForm.p1}>{allUsers.find(u => u.id === duoForm.p1)?.username || 'Player 1'}</option>}
+                {duoForm.p2 && duoForm.p2 !== duoForm.p1 && <option value={duoForm.p2}>{allUsers.find(u => u.id === duoForm.p2)?.username || 'Player 2'}</option>}
+              </select>
+            </div>
+          </div>
+
+          <button className="btn btn-primary" onClick={handleAddTeam} disabled={!duoForm.p1 || !duoForm.p2}>
+            Create Doubles Team
+          </button>
+
+          <div style={{ marginTop: '24px' }}>
+            <h4 style={{ fontSize: '0.95rem', marginBottom: '12px' }}>Existing Teams ({teams.length})</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto' }}>
+              {teams.map(t => {
+                const p1 = allUsers.find(u => String(u.id) === String(t.p1Id));
+                const p2 = allUsers.find(u => String(u.id) === String(t.p2Id));
+                const captain = allUsers.find(u => String(u.id) === String(t.captainId || t.p1Id));
+                return (
+                  <div key={t.id} className="glass" style={{ padding: '10px 14px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <span style={{ fontWeight: 700 }}>{t.teamName || `${p1?.username || 'P1'} & ${p2?.username || 'P2'}`}</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '10px' }}>(Captain: {captain?.username || 'None'})</span>
+                    </div>
+                    <button className="btn btn-danger btn-sm" style={{ padding: '4px 10px', fontSize: '0.75rem' }} onClick={() => handleRemoveTeam(t.id)}>Delete</button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="card glass" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
@@ -136,7 +236,7 @@ export default function DoublesLeague() {
             </thead>
             <tbody>
               {doublesStats.length === 0 ? (
-                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No doubles teams registered yet. Admins can create pairings and assign captains in the Admin panel (Friendly League tab).</td></tr>
+                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No doubles teams registered yet. Admins can click <strong>"Manage Teams & Captains"</strong> above to create pairings.</td></tr>
               ) : (
                 doublesStats.map((row, index) => {
                   const legDiff = row.legsWon - row.legsLost;
