@@ -1,12 +1,14 @@
 export const SUPPORTED_PAGES = [
   { key: 'home', label: 'Home', group: 'Main', paths: ['/home'] },
 
-  { key: 'table', label: 'League Table', group: 'League & Results', paths: ['/table'] },
+  { key: 'table', label: 'Singles League (Table)', group: 'League & Results', paths: ['/table'] },
+  { key: 'doubles-league', label: 'Doubles League', group: 'League & Results', paths: ['/doubles-league'] },
   { key: 'results', label: 'Results', group: 'League & Results', paths: ['/results'] },
   { key: 'match-log', label: 'Match Log', group: 'League & Results', paths: ['/match-log'] },
   { key: 'submit-result', label: 'Submit Result', group: 'League & Results', paths: ['/submit-result'] },
   { key: 'statistics', label: 'Statistics', group: 'League & Results', paths: ['/analytics', '/statistics'] },
   { key: 'open-league', label: 'Open League', group: 'League & Results', paths: ['/open-league'] },
+  { key: 'player-of-month', label: 'Player of the Month', group: 'League & Results', paths: ['/player-of-month'] },
 
   { key: 'cup-fixtures', label: 'Cup Fixtures', group: 'Cups & Tournaments', paths: ['/cup-fixtures'] },
   { key: 'cups', label: 'Cups', group: 'Cups & Tournaments', paths: ['/cups'] },
@@ -30,6 +32,7 @@ export const SUPPORTED_PAGES = [
   { key: 'news', label: 'News', group: 'Info', paths: ['/news'] },
   { key: 'guide', label: 'Guide', group: 'Info', paths: ['/guide'] },
   { key: 'rules', label: 'Rules', group: 'Info', paths: ['/rules'] },
+  { key: 'conduct', label: 'Respect & Conduct', group: 'Info', paths: ['/conduct'] },
   { key: 'suggestions', label: 'Suggestion Box', group: 'Info', paths: ['/suggestions'] },
   { key: 'contact', label: 'Contact', group: 'Info', paths: ['/contact'] },
   { key: 'support', label: 'Support', group: 'Info', paths: ['/support'] },
@@ -64,4 +67,4 @@ export function matchPageKey(pathname) {
   return null
 }
 
-export const PAGE_BACKGROUND_GROUPS = ['Main', 'League & Results', 'Cups & Tournaments', 'Training & Practice', 'Social', 'Pass & Money', 'Info', 'Account', 'Admin', 'Flow', 'Sponsored Leagues']
+export const PAGE_BACKGROUND_GROUPS = ['Main', 'League & Results', 'Cups & Tournaments', 'Challenges', 'Social', 'Pass & Money', 'Info', 'Account', 'Admin', 'Flow', 'Sponsored Leagues']
