@@ -6,6 +6,8 @@ import { useToast } from "../context/ToastContext";
 import UserSearchSelect from "../components/UserSearchSelect";
 import { db, getDocs, collection, setDoc, deleteDoc, doc } from "../firebase";
 
+const DOUBLES_LEAGUE_DEADLINE = new Date("2026-10-30T20:00:00");
+
 export default function DoublesLeague() {
   const { user, getAllUsers, getResults, triggerDataRefresh, forceFetchResults, dataRefreshTrigger, searchUsers } = useAuth();
   const { showToast } = useToast();
@@ -14,6 +16,24 @@ export default function DoublesLeague() {
   const [activeTab, setActiveTab] = useState('table'); // 'table' | 'schedule'
   const [scheduleFilter, setScheduleFilter] = useState('all'); // 'all' | 'pending' | 'completed'
   const [selectedTeam, setSelectedTeam] = useState(null);
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const timeRemaining = DOUBLES_LEAGUE_DEADLINE - now;
+
+  const formatCountdown = (ms) => {
+    if (ms <= 0) return '🚀 Season Live!';
+    const totalSecs = Math.floor(ms / 1000);
+    const days = Math.floor(totalSecs / 86400);
+    const hours = Math.floor((totalSecs % 86400) / 3600);
+    const minutes = Math.floor((totalSecs % 3600) / 60);
+    const seconds = totalSecs % 60;
+    return `${days}d ${hours}h ${minutes}m ${seconds}s`;
+  };
   const [teams, setTeams] = useState(() => {
     try {
       const saved = localStorage.getItem('eliteArrowsDoublesTeams');
@@ -250,6 +270,19 @@ export default function DoublesLeague() {
         </div>
       </div>
 
+      {/* COUNTDOWN TIMER CARD */}
+      <div className="card glass" style={{ padding: '20px 24px', borderRadius: '18px', marginBottom: '24px', border: '1px solid var(--accent-cyan)', background: 'rgba(56, 189, 248, 0.05)', textAlign: 'center' }}>
+        <div style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px' }}>
+          ⏳ Doubles League Registration & Launch Deadline — Friday 30th October 2026
+        </div>
+        <div style={{ fontSize: '2.2rem', fontWeight: 900, color: 'white', letterSpacing: '2px', fontFamily: 'monospace' }}>
+          {formatCountdown(timeRemaining)}
+        </div>
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '6px', margin: 0 }}>
+          Ensure team pairings and captains are created and saved before the deadline!
+        </p>
+      </div>
+
       {/* RULES CARD */}
       <div className="card glass" style={{ padding: '20px', borderRadius: '16px', marginBottom: '24px', border: '1px solid rgba(0, 212, 255, 0.2)' }}>
         <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '8px' }}>📌 Doubles League Rules & Scoring</h4>
@@ -353,16 +386,41 @@ export default function DoublesLeague() {
                 ) : (
                   doublesStats.map((row, index) => {
                     const legDiff = row.legsWon - row.legsLost;
+                    const isGold = index === 0;
+                    const isSilver = index === 1;
+                    const isBronze = index === 2;
+
+                    const rowBg = isGold
+                      ? 'linear-gradient(90deg, rgba(251, 191, 36, 0.2) 0%, rgba(251, 191, 36, 0.03) 100%)'
+                      : isSilver
+                      ? 'linear-gradient(90deg, rgba(226, 232, 240, 0.16) 0%, rgba(226, 232, 240, 0.02) 100%)'
+                      : isBronze
+                      ? 'linear-gradient(90deg, rgba(217, 119, 6, 0.16) 0%, rgba(217, 119, 6, 0.02) 100%)'
+                      : 'transparent';
+
+                    const borderLeftColor = isGold ? '#fbbf24' : isSilver ? '#e2e8f0' : isBronze ? '#d97706' : 'transparent';
+                    const medalBadge = isGold ? '🥇' : isSilver ? '🥈' : isBronze ? '🥉' : null;
+
                     return (
                       <tr
                         key={row.id}
-                        style={{ borderBottom: "1px solid var(--border)", fontSize: '0.9rem', cursor: 'pointer' }}
+                        style={{
+                          borderBottom: "1px solid var(--border)",
+                          fontSize: '0.9rem',
+                          cursor: 'pointer',
+                          background: rowBg,
+                          borderLeft: `5px solid ${borderLeftColor}`
+                        }}
                         className="table-row-hover"
                         onClick={() => setSelectedTeam(row)}
                       >
-                        <td style={{ textAlign: 'center', fontWeight: 800, color: index === 0 ? '#fbbf24' : 'inherit' }}>{index + 1}</td>
+                        <td style={{ textAlign: 'center', fontWeight: 900, fontSize: '1rem', color: isGold ? '#fbbf24' : isSilver ? '#e2e8f0' : isBronze ? '#f59e0b' : 'inherit' }}>
+                          {medalBadge ? `${medalBadge} ${index + 1}` : index + 1}
+                        </td>
                         <td style={{ padding: '12px' }}>
-                          <div style={{ fontWeight: 700, color: 'var(--accent-cyan)' }}>{row.teamName} 🔍</div>
+                          <div style={{ fontWeight: 800, color: isGold ? '#fbbf24' : isSilver ? '#e2e8f0' : isBronze ? '#f59e0b' : 'var(--accent-cyan)' }}>
+                            {row.teamName} 🔍
+                          </div>
                           {row.captainName && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{row.captainName}</div>}
                         </td>
                         <td style={{ textAlign: 'center' }}>{row.played}</td>
@@ -371,7 +429,7 @@ export default function DoublesLeague() {
                         <td style={{ textAlign: 'center', color: legDiff > 0 ? 'var(--success)' : legDiff < 0 ? 'var(--error)' : 'inherit' }}>
                           {legDiff > 0 ? `+${legDiff}` : legDiff}
                         </td>
-                        <td style={{ textAlign: 'center', fontWeight: 900, color: 'var(--accent-cyan)' }}>{row.points}</td>
+                        <td style={{ textAlign: 'center', fontWeight: 900, color: isGold ? '#fbbf24' : 'var(--accent-cyan)' }}>{row.points}</td>
                       </tr>
                     );
                   })
