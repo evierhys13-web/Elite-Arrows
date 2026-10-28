@@ -11,6 +11,7 @@ export default function DoublesLeague() {
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [selectedTeam, setSelectedTeam] = useState(null);
   const [teams, setTeams] = useState(() => {
     try {
       const saved = localStorage.getItem('eliteArrowsDoublesTeams');
@@ -119,18 +120,7 @@ export default function DoublesLeague() {
       const s2 = Number(r.score2) || 0;
 
       const updateTeam = (id, won, lost) => {
-        if (!stats[id]) {
-          const foundTeam = teams.find(t => String(t.id) === String(id));
-          const p1 = foundTeam ? allUsers.find(u => String(u.id) === String(foundTeam.p1Id)) : null;
-          const p2 = foundTeam ? allUsers.find(u => String(u.id) === String(foundTeam.p2Id)) : null;
-          const name = foundTeam?.teamName || (p1 && p2 ? `${p1.username} & ${p2.username}` : id);
-          stats[id] = {
-            id,
-            teamName: name,
-            captainName: '',
-            played: 0, wins: 0, draws: 0, losses: 0, legsWon: 0, legsLost: 0, points: 0
-          };
-        }
+        if (!stats[id]) return;
         const s = stats[id];
         s.played += 1;
         s.legsWon += won;
@@ -156,6 +146,15 @@ export default function DoublesLeague() {
       return b.legsWon - a.legsWon;
     });
   }, [results, teams, allUsers]);
+
+  const selectedTeamMatches = useMemo(() => {
+    if (!selectedTeam) return [];
+    return results.filter(r =>
+      (String(r.gameType || '').toLowerCase().includes('doubles') || r.team1Id || r.team2Id) &&
+      r.status === 'approved' &&
+      (String(r.team1Id || r.player1Id) === String(selectedTeam.id) || String(r.team2Id || r.player2Id) === String(selectedTeam.id))
+    ).sort((a, b) => new Date(b.date || b.submittedAt || 0) - new Date(a.date || a.submittedAt || 0));
+  }, [selectedTeam, results]);
 
   const handleRefresh = async () => {
     setLoading(true);
@@ -276,11 +275,16 @@ export default function DoublesLeague() {
                 doublesStats.map((row, index) => {
                   const legDiff = row.legsWon - row.legsLost;
                   return (
-                    <tr key={row.id} style={{ borderBottom: "1px solid var(--border)", fontSize: '0.9rem' }}>
+                    <tr
+                      key={row.id}
+                      style={{ borderBottom: "1px solid var(--border)", fontSize: '0.9rem', cursor: 'pointer' }}
+                      className="table-row-hover"
+                      onClick={() => setSelectedTeam(row)}
+                    >
                       <td style={{ textAlign: 'center', fontWeight: 800, color: index === 0 ? '#fbbf24' : 'inherit' }}>{index + 1}</td>
                       <td style={{ padding: '12px' }}>
-                        <div style={{ fontWeight: 600, color: 'white' }}>{row.teamName}</div>
-                        {row.captainName && <div style={{ fontSize: '0.72rem', color: 'var(--accent-cyan)' }}>{row.captainName}</div>}
+                        <div style={{ fontWeight: 700, color: 'var(--accent-cyan)' }}>{row.teamName} 🔍</div>
+                        {row.captainName && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{row.captainName}</div>}
                       </td>
                       <td style={{ textAlign: 'center' }}>{row.played}</td>
                       <td style={{ textAlign: 'center' }}>{row.wins}</td>
@@ -297,6 +301,111 @@ export default function DoublesLeague() {
           </table>
         </div>
       </div>
+
+      {/* TEAM PROFILE MODAL */}
+      {selectedTeam && (
+        <div className="modal-overlay" onClick={() => setSelectedTeam(null)} style={{ padding: '20px', zIndex: 99999 }}>
+          <div className="modal-content glass" onClick={e => e.stopPropagation()} style={{ maxWidth: '750px', width: '95vw', padding: '32px', borderRadius: '24px', border: '1px solid var(--accent-cyan)', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+              <div>
+                <h2 style={{ color: 'white', margin: 0, fontSize: '1.8rem' }}>👥 {selectedTeam.teamName}</h2>
+                {selectedTeam.captainName && <p style={{ color: 'var(--accent-cyan)', margin: '4px 0 0', fontWeight: 700, fontSize: '0.9rem' }}>{selectedTeam.captainName}</p>}
+              </div>
+              <button className="btn btn-secondary btn-sm" onClick={() => setSelectedTeam(null)} style={{ fontSize: '1.2rem', padding: '4px 12px' }}>×</button>
+            </div>
+
+            {/* Team Members */}
+            {(() => {
+              const teamDoc = teams.find(t => String(t.id) === String(selectedTeam.id));
+              const p1 = allUsers.find(u => String(u.id) === String(teamDoc?.p1Id));
+              const p2 = allUsers.find(u => String(u.id) === String(teamDoc?.p2Id));
+              return (
+                <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
+                  {p1 && (
+                    <Link to={`/profile/${p1.id}`} className="glass" style={{ flex: 1, minWidth: '200px', padding: '14px', borderRadius: '14px', textDecoration: 'none', color: 'white', display: 'flex', alignItems: 'center', gap: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                      <div style={{ fontSize: '1.8rem' }}>👤</div>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: '1rem' }}>{p1.username}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)' }}>{p1.division || 'Player'}</div>
+                      </div>
+                    </Link>
+                  )}
+                  {p2 && (
+                    <Link to={`/profile/${p2.id}`} className="glass" style={{ flex: 1, minWidth: '200px', padding: '14px', borderRadius: '14px', textDecoration: 'none', color: 'white', display: 'flex', alignItems: 'center', gap: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                      <div style={{ fontSize: '1.8rem' }}>👤</div>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: '1rem' }}>{p2.username}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)' }}>{p2.division || 'Player'}</div>
+                      </div>
+                    </Link>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Team Stats Summary */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '12px', marginBottom: '28px' }}>
+              <div className="glass" style={{ padding: '14px', borderRadius: '12px', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Played</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'white' }}>{selectedTeam.played}</div>
+              </div>
+              <div className="glass" style={{ padding: '14px', borderRadius: '12px', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Wins</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--success)' }}>{selectedTeam.wins}</div>
+              </div>
+              <div className="glass" style={{ padding: '14px', borderRadius: '12px', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Losses</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--error)' }}>{selectedTeam.losses}</div>
+              </div>
+              <div className="glass" style={{ padding: '14px', borderRadius: '12px', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>+/- Diff</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>
+                  {selectedTeam.legsWon - selectedTeam.legsLost > 0 ? `+${selectedTeam.legsWon - selectedTeam.legsLost}` : selectedTeam.legsWon - selectedTeam.legsLost}
+                </div>
+              </div>
+              <div className="glass" style={{ padding: '14px', borderRadius: '12px', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Total Pts</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#fbbf24' }}>{selectedTeam.points}</div>
+              </div>
+            </div>
+
+            {/* Team Match History */}
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '14px', color: 'var(--accent-cyan)' }}>🎯 Team Match History ({selectedTeamMatches.length})</h3>
+            {selectedTeamMatches.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No approved doubles matches recorded for this team yet.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {selectedTeamMatches.map(m => {
+                  const isTeam1 = String(m.team1Id || m.player1Id) === String(selectedTeam.id);
+                  const yourScore = isTeam1 ? m.score1 : m.score2;
+                  const oppScore = isTeam1 ? m.score2 : m.score1;
+                  const oppTeamId = isTeam1 ? (m.team2Id || m.player2Id) : (m.team1Id || m.player1Id);
+                  const oppTeamDoc = teams.find(t => String(t.id) === String(oppTeamId));
+                  const oppP1 = oppTeamDoc ? allUsers.find(u => String(u.id) === String(oppTeamDoc.p1Id)) : null;
+                  const oppP2 = oppTeamDoc ? allUsers.find(u => String(u.id) === String(oppTeamDoc.p2Id)) : null;
+                  const oppName = oppTeamDoc?.teamName || (oppP1 && oppP2 ? `${oppP1.username} & ${oppP2.username}` : (m.player2 || 'Opponent Team'));
+                  const won = yourScore > oppScore;
+
+                  return (
+                    <div key={m.id} className="glass" style={{ padding: '14px 18px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: '0.95rem' }}>vs {oppName}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{m.date || 'Recent Match'}</div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span style={{ fontSize: '1.1rem', fontWeight: 900, color: 'white' }}>{yourScore} - {oppScore}</span>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 900, padding: '4px 10px', borderRadius: '6px', background: won ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)', color: won ? 'var(--success)' : 'var(--error)' }}>
+                          {won ? 'WIN' : 'LOSS'}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
