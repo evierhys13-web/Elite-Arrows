@@ -6,7 +6,7 @@ import { useToast } from "../context/ToastContext";
 import UserSearchSelect from "../components/UserSearchSelect";
 import { db, getDocs, collection, setDoc, deleteDoc, doc } from "../firebase";
 
-const DOUBLES_LEAGUE_DEADLINE = new Date("2026-10-30T20:00:00");
+const DOUBLES_LEAGUE_DEADLINE = new Date("2026-10-30T00:00:00");
 
 export default function DoublesLeague() {
   const { user, getAllUsers, getResults, triggerDataRefresh, forceFetchResults, dataRefreshTrigger, searchUsers } = useAuth();
@@ -283,7 +283,7 @@ export default function DoublesLeague() {
       {/* COUNTDOWN TIMER CARD */}
       <div className="card glass" style={{ padding: '20px 24px', borderRadius: '18px', marginBottom: '24px', border: '1px solid var(--accent-cyan)', background: 'rgba(56, 189, 248, 0.05)', textAlign: 'center' }}>
         <div style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px' }}>
-          ⏳ Doubles League Registration & Launch Deadline — Friday 30th October 2026
+          ⏳ Doubles League Registration & Launch Deadline — 00:00 Friday 30th October 2026
         </div>
         <div style={{ fontSize: '2.2rem', fontWeight: 900, color: 'white', letterSpacing: '2px', fontFamily: 'monospace' }}>
           {formatCountdown(timeRemaining)}
