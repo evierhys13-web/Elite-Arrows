@@ -11,6 +11,8 @@ export default function DoublesLeague() {
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('table'); // 'table' | 'schedule'
+  const [scheduleFilter, setScheduleFilter] = useState('all'); // 'all' | 'pending' | 'completed'
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [teams, setTeams] = useState(() => {
     try {
@@ -147,6 +149,65 @@ export default function DoublesLeague() {
     });
   }, [results, teams, allUsers]);
 
+  const generatedSchedule = useMemo(() => {
+    if (!teams || teams.length < 2) return [];
+    const schedule = [];
+
+    for (let i = 0; i < teams.length; i++) {
+      for (let j = i + 1; j < teams.length; j++) {
+        const teamA = teams[i];
+        const teamB = teams[j];
+
+        const p1A = allUsers.find(u => String(u.id) === String(teamA.p1Id));
+        const p2A = allUsers.find(u => String(u.id) === String(teamA.p2Id));
+        const nameA = teamA.teamName || `${p1A?.username || 'P1'} & ${p2A?.username || 'P2'}`;
+
+        const p1B = allUsers.find(u => String(u.id) === String(teamB.p1Id));
+        const p2B = allUsers.find(u => String(u.id) === String(teamB.p2Id));
+        const nameB = teamB.teamName || `${p1B?.username || 'P1'} & ${p2B?.username || 'P2'}`;
+
+        // Match 1: Team A (Home) vs Team B (Away)
+        const homeMatch = results.find(r =>
+          (String(r.gameType || '').toLowerCase().includes('doubles') || r.team1Id || r.team2Id) &&
+          r.status === 'approved' &&
+          String(r.team1Id || r.player1Id) === String(teamA.id) &&
+          String(r.team2Id || r.player2Id) === String(teamB.id)
+        );
+
+        // Match 2: Team B (Home) vs Team A (Away)
+        const awayMatch = results.find(r =>
+          (String(r.gameType || '').toLowerCase().includes('doubles') || r.team1Id || r.team2Id) &&
+          r.status === 'approved' &&
+          String(r.team1Id || r.player1Id) === String(teamB.id) &&
+          String(r.team2Id || r.player2Id) === String(teamA.id)
+        );
+
+        schedule.push({
+          id: `doubles_${teamA.id}_${teamB.id}_home`,
+          homeTeam: teamA,
+          homeName: nameA,
+          awayTeam: teamB,
+          awayName: nameB,
+          playedMatch: homeMatch,
+          isPlayed: Boolean(homeMatch),
+          score: homeMatch ? `${homeMatch.score1} - ${homeMatch.score2}` : null
+        });
+
+        schedule.push({
+          id: `doubles_${teamB.id}_${teamA.id}_away`,
+          homeTeam: teamB,
+          homeName: nameB,
+          awayTeam: teamA,
+          awayName: nameA,
+          playedMatch: awayMatch,
+          isPlayed: Boolean(awayMatch),
+          score: awayMatch ? `${awayMatch.score1} - ${awayMatch.score2}` : null
+        });
+      }
+    }
+    return schedule;
+  }, [teams, results, allUsers]);
+
   const selectedTeamMatches = useMemo(() => {
     if (!selectedTeam) return [];
     return results.filter(r =>
@@ -197,6 +258,22 @@ export default function DoublesLeague() {
           <div>🏡 <strong>Fixtures:</strong> Double round-robin (Home & Away vs every team)</div>
           <div>📊 <strong>Scoring:</strong> Every leg won = 1 league point (no bonus win points)</div>
         </div>
+      </div>
+
+      {/* TABS */}
+      <div className="division-tabs" style={{ marginBottom: '24px' }}>
+        <button
+          className={`division-tab ${activeTab === 'table' ? 'active' : ''}`}
+          onClick={() => setActiveTab('table')}
+        >
+          🏆 League Standings
+        </button>
+        <button
+          className={`division-tab ${activeTab === 'schedule' ? 'active' : ''}`}
+          onClick={() => setActiveTab('schedule')}
+        >
+          🗓️ Schedule & Fixtures ({generatedSchedule.length})
+        </button>
       </div>
 
       {isAdmin && showAdminPanel && (
@@ -254,53 +331,162 @@ export default function DoublesLeague() {
         </div>
       )}
 
-      <div className="card glass" style={{ padding: 0, overflow: 'visible' }}>
-        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%' }}>
-          <table style={{ width: "100%", minWidth: "600px", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ background: "rgba(0,0,0,0.3)", color: "var(--text-muted)", fontSize: "0.7rem", textTransform: "uppercase" }}>
-                <th style={{ width: "40px", padding: "12px" }}>#</th>
-                <th style={{ textAlign: "left", padding: "12px" }}>Team & Captain</th>
-                <th style={{ width: "40px", textAlign: "center" }}>P</th>
-                <th style={{ width: "40px", textAlign: "center" }}>W</th>
-                <th style={{ width: "40px", textAlign: "center" }}>L</th>
-                <th style={{ width: "60px", textAlign: "center" }}>+/-</th>
-                <th style={{ width: "60px", textAlign: "center", color: "var(--accent-cyan)" }}>Leg Pts</th>
-              </tr>
-            </thead>
-            <tbody>
-              {doublesStats.length === 0 ? (
-                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No doubles teams registered yet. Admins can click <strong>"Manage Teams & Captains"</strong> above to create pairings.</td></tr>
-              ) : (
-                doublesStats.map((row, index) => {
-                  const legDiff = row.legsWon - row.legsLost;
-                  return (
-                    <tr
-                      key={row.id}
-                      style={{ borderBottom: "1px solid var(--border)", fontSize: '0.9rem', cursor: 'pointer' }}
-                      className="table-row-hover"
-                      onClick={() => setSelectedTeam(row)}
-                    >
-                      <td style={{ textAlign: 'center', fontWeight: 800, color: index === 0 ? '#fbbf24' : 'inherit' }}>{index + 1}</td>
-                      <td style={{ padding: '12px' }}>
-                        <div style={{ fontWeight: 700, color: 'var(--accent-cyan)' }}>{row.teamName} 🔍</div>
-                        {row.captainName && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{row.captainName}</div>}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>{row.played}</td>
-                      <td style={{ textAlign: 'center' }}>{row.wins}</td>
-                      <td style={{ textAlign: 'center' }}>{row.losses}</td>
-                      <td style={{ textAlign: 'center', color: legDiff > 0 ? 'var(--success)' : legDiff < 0 ? 'var(--error)' : 'inherit' }}>
-                        {legDiff > 0 ? `+${legDiff}` : legDiff}
-                      </td>
-                      <td style={{ textAlign: 'center', fontWeight: 900, color: 'var(--accent-cyan)' }}>{row.points}</td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+      {/* TAB: STANDINGS */}
+      {activeTab === 'table' && (
+        <div className="card glass" style={{ padding: 0, overflow: 'visible' }}>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%' }}>
+            <table style={{ width: "100%", minWidth: "600px", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ background: "rgba(0,0,0,0.3)", color: "var(--text-muted)", fontSize: "0.7rem", textTransform: "uppercase" }}>
+                  <th style={{ width: "40px", padding: "12px" }}>#</th>
+                  <th style={{ textAlign: "left", padding: "12px" }}>Team & Captain</th>
+                  <th style={{ width: "40px", textAlign: "center" }}>P</th>
+                  <th style={{ width: "40px", textAlign: "center" }}>W</th>
+                  <th style={{ width: "40px", textAlign: "center" }}>L</th>
+                  <th style={{ width: "60px", textAlign: "center" }}>+/-</th>
+                  <th style={{ width: "60px", textAlign: "center", color: "var(--accent-cyan)" }}>Leg Pts</th>
+                </tr>
+              </thead>
+              <tbody>
+                {doublesStats.length === 0 ? (
+                  <tr><td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No doubles teams registered yet. Admins can click <strong>"Manage Teams & Captains"</strong> above to create pairings.</td></tr>
+                ) : (
+                  doublesStats.map((row, index) => {
+                    const legDiff = row.legsWon - row.legsLost;
+                    return (
+                      <tr
+                        key={row.id}
+                        style={{ borderBottom: "1px solid var(--border)", fontSize: '0.9rem', cursor: 'pointer' }}
+                        className="table-row-hover"
+                        onClick={() => setSelectedTeam(row)}
+                      >
+                        <td style={{ textAlign: 'center', fontWeight: 800, color: index === 0 ? '#fbbf24' : 'inherit' }}>{index + 1}</td>
+                        <td style={{ padding: '12px' }}>
+                          <div style={{ fontWeight: 700, color: 'var(--accent-cyan)' }}>{row.teamName} 🔍</div>
+                          {row.captainName && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{row.captainName}</div>}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>{row.played}</td>
+                        <td style={{ textAlign: 'center' }}>{row.wins}</td>
+                        <td style={{ textAlign: 'center' }}>{row.losses}</td>
+                        <td style={{ textAlign: 'center', color: legDiff > 0 ? 'var(--success)' : legDiff < 0 ? 'var(--error)' : 'inherit' }}>
+                          {legDiff > 0 ? `+${legDiff}` : legDiff}
+                        </td>
+                        <td style={{ textAlign: 'center', fontWeight: 900, color: 'var(--accent-cyan)' }}>{row.points}</td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* VERTICAL FIXTURE SCHEDULE LIST AT VERY BOTTOM */}
+          <div style={{ marginTop: '32px', padding: '24px', borderTop: '1px solid var(--border)' }}>
+            <h3 style={{ color: 'var(--accent-cyan)', marginBottom: '12px', fontSize: '1.3rem' }}>
+              🗓️ Doubles League Fixtures & Schedule (Home & Away)
+            </h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '20px' }}>
+              Every team plays every opponent 2x (1x Home, 1x Away). Formats: Bo7 Straight In, Double Out 501.
+            </p>
+
+            {generatedSchedule.length === 0 ? (
+              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                No fixtures scheduled yet. Need at least 2 registered teams.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {generatedSchedule.map((f, idx) => (
+                  <div
+                    key={f.id}
+                    className="glass"
+                    style={{
+                      padding: '16px 20px',
+                      borderRadius: '14px',
+                      display: 'flex',
+                      justify: 'space-between',
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: '12px',
+                      background: f.isPlayed ? 'rgba(34, 197, 94, 0.05)' : 'rgba(255,255,255,0.02)',
+                      border: f.isPlayed ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(255,255,255,0.08)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.8rem', opacity: 0.6, fontWeight: 700, minWidth: '30px' }}>#{idx + 1}</span>
+                      <div>
+                        <span style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>🏠 {f.homeName}</span>
+                        <span style={{ opacity: 0.6, fontSize: '0.8rem', margin: '0 8px' }}>(Home) vs</span>
+                        <span style={{ fontWeight: 800, color: 'white' }}>✈️ {f.awayName}</span>
+                        <span style={{ opacity: 0.6, fontSize: '0.8rem', marginLeft: '6px' }}>(Away)</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      {f.isPlayed ? (
+                        <span style={{ background: 'rgba(34, 197, 94, 0.2)', color: 'var(--success)', padding: '6px 12px', borderRadius: '8px', fontWeight: 900, fontSize: '0.9rem' }}>
+                          {f.score} (Completed)
+                        </span>
+                      ) : (
+                        <span style={{ background: 'rgba(251, 191, 36, 0.1)', color: '#fbbf24', padding: '6px 12px', borderRadius: '8px', fontWeight: 800, fontSize: '0.8rem' }}>
+                          Bo7 501 • Pending
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* TAB: SCHEDULE & FIXTURES */}
+      {activeTab === 'schedule' && (
+        <div>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
+            <button className={`btn btn-sm ${scheduleFilter === 'all' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setScheduleFilter('all')}>All Fixtures ({generatedSchedule.length})</button>
+            <button className={`btn btn-sm ${scheduleFilter === 'pending' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setScheduleFilter('pending')}>⏳ Pending ({generatedSchedule.filter(s => !s.isPlayed).length})</button>
+            <button className={`btn btn-sm ${scheduleFilter === 'completed' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setScheduleFilter('completed')}>✅ Completed ({generatedSchedule.filter(s => s.isPlayed).length})</button>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+            {generatedSchedule.length === 0 ? (
+              <div className="card glass" style={{ textAlign: 'center', padding: '40px', gridColumn: '1 / -1', color: 'var(--text-muted)' }}>
+                No fixtures generated. At least 2 teams are required.
+              </div>
+            ) : (
+              generatedSchedule
+                .filter(s => scheduleFilter === 'pending' ? !s.isPlayed : scheduleFilter === 'completed' ? s.isPlayed : true)
+                .map(f => (
+                  <div key={f.id} className="card glass" style={{ padding: '20px', borderRadius: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '1rem', fontWeight: 800 }}>
+                        <span style={{ color: 'var(--accent-cyan)' }}>🏠 {f.homeName}</span> <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>(Home)</span>
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '4px 0' }}>vs</div>
+                      <div style={{ fontSize: '1rem', fontWeight: 800 }}>
+                        <span>✈️ {f.awayName}</span> <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>(Away)</span>
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      {f.isPlayed ? (
+                        <div style={{ background: 'rgba(34, 197, 94, 0.15)', padding: '8px 16px', borderRadius: '10px', border: '1px solid var(--success)' }}>
+                          <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--success)' }}>{f.score}</div>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--success)', fontWeight: 800, textTransform: 'uppercase', marginTop: '2px' }}>Completed</div>
+                        </div>
+                      ) : (
+                        <div style={{ background: 'rgba(251, 191, 36, 0.1)', padding: '8px 16px', borderRadius: '10px', border: '1px solid rgba(251,191,36,0.3)' }}>
+                          <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#fbbf24' }}>Bo7 • 501</div>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>Pending</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
+            )}
+          </div>
+        </div>
+      )}
 
       {/* TEAM PROFILE MODAL */}
       {selectedTeam && (
