@@ -1090,7 +1090,7 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
           }} className="match-players-grid">
             <div style={{ textAlign: 'center' }}>
               <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
-                {formData.gameType === 'Doubles League' ? 'Your Team' : 'You'}
+                {formData.gameType === 'Doubles League' ? 'Home Team 🏠' : 'You'}
               </label>
               <div style={{ display: 'grid', gap: '8px' }}>
                 {formData.gameType === 'Doubles League' ? (
@@ -1101,7 +1101,7 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
                     required
                     style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '2px solid var(--accent-cyan)', color: 'var(--text)', fontWeight: 800 }}
                   >
-                    <option value="">Select your team...</option>
+                    <option value="">Select Home Team...</option>
                     {openLeagueDuos.map(d => (
                       <option key={d.id} value={d.id}>{d.teamName || `${allUsers.find(u => String(u.id) === String(d.p1Id))?.username || 'P1'} & ${allUsers.find(u => String(u.id) === String(d.p2Id))?.username || 'P2'}`}</option>
                     ))}
@@ -1125,7 +1125,7 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
 
             <div style={{ textAlign: 'center' }}>
               <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
-                {formData.gameType === 'Doubles League' ? 'Opponent Team' : formData.gameType === 'Cup' ? 'Select Match' : 'Opponent'}
+                {formData.gameType === 'Doubles League' ? 'Away Team ✈️' : formData.gameType === 'Cup' ? 'Select Match' : 'Opponent'}
               </label>
               <div style={{ display: 'grid', gap: '8px' }}>
                 {formData.gameType === 'Doubles League' ? (
@@ -1136,7 +1136,7 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
                     required
                     style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '2px solid var(--accent-cyan)', color: 'var(--text)', fontWeight: 800 }}
                   >
-                    <option value="">Select opponent team...</option>
+                    <option value="">Select Away Team...</option>
                     {openLeagueDuos.filter(d => d.id !== formData.team1Id).map(d => (
                       <option key={d.id} value={d.id}>{d.teamName || `${allUsers.find(u => String(u.id) === String(d.p1Id))?.username || 'P1'} & ${allUsers.find(u => String(u.id) === String(d.p2Id))?.username || 'P2'}`}</option>
                     ))}
@@ -1212,7 +1212,7 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
           }}>
             <div className="form-group">
               <label style={{ fontWeight: '600', marginBottom: '8px', display: 'block' }}>
-                Your Legs Won
+                {formData.gameType === 'Doubles League' ? 'Home Legs Won 🏠' : 'Your Legs Won'}
               </label>
               <input
                 type="number"
@@ -1227,7 +1227,7 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
             </div>
             <div className="form-group">
               <label style={{ fontWeight: '600', marginBottom: '8px', display: 'block' }}>
-                Opponent Legs Won
+                {formData.gameType === 'Doubles League' ? 'Away Legs Won ✈️' : 'Opponent Legs Won'}
               </label>
               <input
                 type="number"
