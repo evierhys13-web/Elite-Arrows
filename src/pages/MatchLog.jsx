@@ -292,6 +292,53 @@ export default function MatchLog() {
             _fixtureId: f.id
           }
         })
+    } else if (competition === 'Doubles League') {
+      const userDuo = openDuoEntries.find(d =>
+        String(d.p1Id) === String(targetUser.id) || String(d.p2Id) === String(targetUser.id)
+      )
+      if (!userDuo) return []
+
+      const remainingDoublesFixtures = []
+
+      openDuoEntries.filter(d => String(d.id) !== String(userDuo.id)).forEach(oppDuo => {
+        const oppP1 = allUsers.find(u => String(u.id) === String(oppDuo.p1Id))
+        const oppP2 = allUsers.find(u => String(u.id) === String(oppDuo.p2Id))
+        const oppName = oppDuo.teamName || `${oppP1?.username || 'P1'} & ${oppP2?.username || 'P2'}`
+
+        const homePlayed = allResults.some(r =>
+          (String(r.gameType || '').toLowerCase().includes('doubles') || r.team1Id || r.team2Id) &&
+          String(r.status).toLowerCase() === 'approved' &&
+          String(r.team1Id || r.player1Id) === String(userDuo.id) &&
+          String(r.team2Id || r.player2Id) === String(oppDuo.id)
+        )
+
+        const awayPlayed = allResults.some(r =>
+          (String(r.gameType || '').toLowerCase().includes('doubles') || r.team1Id || r.team2Id) &&
+          String(r.status).toLowerCase() === 'approved' &&
+          String(r.team1Id || r.player1Id) === String(oppDuo.id) &&
+          String(r.team2Id || r.player2Id) === String(userDuo.id)
+        )
+
+        if (!homePlayed) {
+          remainingDoublesFixtures.push({
+            id: `to_play_home_${userDuo.id}_${oppDuo.id}`,
+            username: `🏠 vs ${oppName} (Home Game)`,
+            oppTeamId: oppDuo.id,
+            _isDoubles: true
+          })
+        }
+
+        if (!awayPlayed) {
+          remainingDoublesFixtures.push({
+            id: `to_play_away_${userDuo.id}_${oppDuo.id}`,
+            username: `✈️ @ ${oppName} (Away Game)`,
+            oppTeamId: oppDuo.id,
+            _isDoubles: true
+          })
+        }
+      })
+
+      return remainingDoublesFixtures
     } else if (competition === 'Open Singles') {
       const isInOpenSingles = openSinglesEntries.some(e => String(e.userId) === String(targetUser.id))
       if (!isInOpenSingles) return []

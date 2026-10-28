@@ -228,6 +228,16 @@ export default function DoublesLeague() {
     return schedule;
   }, [teams, results, allUsers]);
 
+  const myTeam = useMemo(() => {
+    if (!user) return null;
+    return teams.find(t => String(t.p1Id) === String(user.id) || String(t.p2Id) === String(user.id));
+  }, [teams, user]);
+
+  const myTeamFixtures = useMemo(() => {
+    if (!myTeam) return [];
+    return generatedSchedule.filter(f => String(f.homeTeam.id) === String(myTeam.id) || String(f.awayTeam.id) === String(myTeam.id));
+  }, [generatedSchedule, myTeam]);
+
   const selectedTeamMatches = useMemo(() => {
     if (!selectedTeam) return [];
     return results.filter(r =>
@@ -503,6 +513,9 @@ export default function DoublesLeague() {
         <div>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
             <button className={`btn btn-sm ${scheduleFilter === 'all' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setScheduleFilter('all')}>All Fixtures ({generatedSchedule.length})</button>
+            {myTeam && (
+              <button className={`btn btn-sm ${scheduleFilter === 'my' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setScheduleFilter('my')}>⭐ My Team ({myTeamFixtures.length})</button>
+            )}
             <button className={`btn btn-sm ${scheduleFilter === 'pending' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setScheduleFilter('pending')}>⏳ Pending ({generatedSchedule.filter(s => !s.isPlayed).length})</button>
             <button className={`btn btn-sm ${scheduleFilter === 'completed' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setScheduleFilter('completed')}>✅ Completed ({generatedSchedule.filter(s => s.isPlayed).length})</button>
           </div>
@@ -514,7 +527,7 @@ export default function DoublesLeague() {
               </div>
             ) : (
               generatedSchedule
-                .filter(s => scheduleFilter === 'pending' ? !s.isPlayed : scheduleFilter === 'completed' ? s.isPlayed : true)
+                .filter(s => scheduleFilter === 'my' ? (myTeam && (String(s.homeTeam.id) === String(myTeam.id) || String(s.awayTeam.id) === String(myTeam.id))) : scheduleFilter === 'pending' ? !s.isPlayed : scheduleFilter === 'completed' ? s.isPlayed : true)
                 .map(f => (
                   <div key={f.id} className="card glass" style={{ padding: '20px', borderRadius: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid rgba(255,255,255,0.08)' }}>
                     <div style={{ flex: 1 }}>
