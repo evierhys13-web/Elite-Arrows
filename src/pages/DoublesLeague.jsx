@@ -86,17 +86,9 @@ export default function DoublesLeague() {
 
   const doublesStats = useMemo(() => {
     const stats = {};
-    const ignoredTeamIds = new Set([
-      'KeW6hb5yCrbq6Ln44FaQcHT6zoy2',
-      'gdtszqhfYgVUm1Lln9WKoQRgTRl2',
-      'D6CR85NlOWRBjOboHRyc92mTqK33',
-      'jlxVub1vmDexgQL7qwtskgw4YXf2',
-      'ykROW5kJOBbg93M3weLPaSeyWIC3',
-      'HGdkmmfWpRX76xbunsR5ez0Vyfk1'
-    ]);
 
     teams.forEach(t => {
-      if (ignoredTeamIds.has(String(t.id)) || String(t.id).split('_').some(id => ignoredTeamIds.has(id))) return;
+      if (!t || !t.id) return;
       const teamId = t.id;
       const p1 = allUsers.find(u => String(u.id) === String(t.p1Id));
       const p2 = allUsers.find(u => String(u.id) === String(t.p2Id));
@@ -122,7 +114,6 @@ export default function DoublesLeague() {
     doublesResults.forEach(r => {
       const t1Id = String(r.team1Id || r.player1Id);
       const t2Id = String(r.team2Id || r.player2Id);
-      if (ignoredTeamIds.has(t1Id) || ignoredTeamIds.has(t2Id)) return;
 
       const s1 = Number(r.score1) || 0;
       const s2 = Number(r.score2) || 0;
