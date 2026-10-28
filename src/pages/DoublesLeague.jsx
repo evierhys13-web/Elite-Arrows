@@ -128,7 +128,18 @@ export default function DoublesLeague() {
       const s2 = Number(r.score2) || 0;
 
       const updateTeam = (id, won, lost) => {
-        if (!stats[id]) return;
+        if (!stats[id]) {
+          const foundTeam = teams.find(t => String(t.id) === String(id));
+          const p1 = foundTeam ? allUsers.find(u => String(u.id) === String(foundTeam.p1Id)) : null;
+          const p2 = foundTeam ? allUsers.find(u => String(u.id) === String(foundTeam.p2Id)) : null;
+          const name = foundTeam?.teamName || (p1 && p2 ? `${p1.username} & ${p2.username}` : id);
+          stats[id] = {
+            id,
+            teamName: name,
+            captainName: '',
+            played: 0, wins: 0, draws: 0, losses: 0, legsWon: 0, legsLost: 0, points: 0
+          };
+        }
         const s = stats[id];
         s.played += 1;
         s.legsWon += won;
@@ -253,9 +264,9 @@ export default function DoublesLeague() {
         </div>
       )}
 
-      <div className="card glass" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <div className="card glass" style={{ padding: 0, overflow: 'visible' }}>
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%' }}>
+          <table style={{ width: "100%", minWidth: "600px", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "rgba(0,0,0,0.3)", color: "var(--text-muted)", fontSize: "0.7rem", textTransform: "uppercase" }}>
                 <th style={{ width: "40px", padding: "12px" }}>#</th>
