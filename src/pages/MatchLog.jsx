@@ -124,8 +124,8 @@ export default function MatchLog() {
           return isLeagueResult(r, fixturesById) || isPlayoffResult(r, fixturesById)
         } else if (competition === 'Cup') {
           return String(r.gameType || '').toLowerCase() === 'cup' || !!r.cupId
-        } else if (competition === 'Friendly Singles') {
-          return isFriendlyLeagueResult(r)
+        } else if (competition === 'Doubles League') {
+          return String(r.gameType || '').toLowerCase().includes('doubles') || !!r.team1Id || !!r.team2Id
         }
         return false
       })
@@ -187,8 +187,8 @@ export default function MatchLog() {
         isCompetitionMatch = isLeagueResult(r, fixturesById) || isPlayoffResult(r, fixturesById)
       } else if (competition === 'Cup') {
         isCompetitionMatch = String(r.gameType || '').toLowerCase() === 'cup' || !!r.cupId
-      } else if (competition === 'Friendly Singles') {
-        isCompetitionMatch = isFriendlyLeagueResult(r)
+      } else if (competition === 'Doubles League') {
+        isCompetitionMatch = String(r.gameType || '').toLowerCase().includes('doubles') || !!r.team1Id || !!r.team2Id
       }
       if (!isCompetitionMatch) return
 
@@ -341,7 +341,14 @@ export default function MatchLog() {
           onClick={() => setCompetition('League')}
           style={{ borderRadius: '99px', minWidth: '120px' }}
         >
-          Standard League
+          Singles League
+        </button>
+        <button
+          className={`btn btn-sm ${competition === 'Doubles League' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setCompetition('Doubles League')}
+          style={{ borderRadius: '99px', minWidth: '120px' }}
+        >
+          Doubles League
         </button>
         <button
           className={`btn btn-sm ${competition === 'Cup' ? 'btn-primary' : 'btn-secondary'}`}
@@ -349,13 +356,6 @@ export default function MatchLog() {
           style={{ borderRadius: '99px', minWidth: '120px' }}
         >
           Cups
-        </button>
-        <button
-          className={`btn btn-sm ${competition === 'Friendly Singles' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setCompetition('Friendly Singles')}
-          style={{ borderRadius: '99px', minWidth: '120px' }}
-        >
-          Friendly Singles
         </button>
       </div>
 

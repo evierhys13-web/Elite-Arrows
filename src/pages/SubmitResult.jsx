@@ -9,7 +9,7 @@ import { getDivisionFormat } from '../context/constants'
 import UserSearchSelect from '../components/UserSearchSelect'
 import Confetti from '../components/Confetti'
 
-const SUBMITTABLE_GAME_TYPES = ['League', 'Cup', 'Playoff', 'Friendly League Singles', 'Doubles League']
+const SUBMITTABLE_GAME_TYPES = ['League', 'Cup', 'Playoff', 'Doubles League']
 
 // Champions League is retired from player submissions. Fixtures and deep links
 // can still carry the old label, so anything unrecognised falls back to League
@@ -1025,7 +1025,7 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
                   onClick={() => handleChange({ target: { name: 'gameType', value: type } })}
                   style={{ flex: 1, minWidth: '120px' }}
                 >
-                  {type === 'Cup' ? 'Cup Match' : type === 'Friendly League Singles' ? 'Friendly League' : type}
+                  {type === 'Cup' ? 'Cup Match' : type === 'League' ? 'Singles League' : type}
                 </button>
               ))}
             </div>
