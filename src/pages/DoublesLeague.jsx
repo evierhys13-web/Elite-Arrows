@@ -479,6 +479,14 @@ export default function DoublesLeague() {
                     const borderLeftColor = isGold ? '#fbbf24' : isSilver ? '#e2e8f0' : isBronze ? '#d97706' : 'transparent';
                     const medalBadge = isGold ? '🥇' : isSilver ? '🥈' : isBronze ? '🥉' : null;
 
+                    const teamDoc = teams.find(t => String(t.id) === String(row.id));
+                    const p1 = allUsers.find(u => String(u.id) === String(teamDoc?.p1Id));
+                    const p2 = allUsers.find(u => String(u.id) === String(teamDoc?.p2Id));
+                    const p1Pic = p1?.profilePicture || p1?.photoURL || p1?.avatar || null;
+                    const p2Pic = p2?.profilePicture || p2?.photoURL || p2?.avatar || null;
+                    const p1Init = p1?.username ? p1.username.substring(0, 1).toUpperCase() : 'P1';
+                    const p2Init = p2?.username ? p2.username.substring(0, 1).toUpperCase() : 'P2';
+
                     return (
                       <tr
                         key={row.id}
@@ -496,10 +504,30 @@ export default function DoublesLeague() {
                           {medalBadge ? `${medalBadge} ${index + 1}` : index + 1}
                         </td>
                         <td style={{ padding: '12px' }}>
-                          <div style={{ fontWeight: 800, color: isGold ? '#fbbf24' : isSilver ? '#e2e8f0' : isBronze ? '#f59e0b' : 'var(--accent-cyan)' }}>
-                            {row.teamName} 🔍
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', position: 'relative', width: '48px', height: '32px', flexShrink: 0 }}>
+                              {p1Pic ? (
+                                <img src={p1Pic} alt={p1?.username || 'P1'} style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #0f172a', position: 'absolute', left: 0, zIndex: 2 }} />
+                              ) : (
+                                <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'var(--accent-cyan)', color: '#0f172a', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', border: '2px solid #0f172a', position: 'absolute', left: 0, zIndex: 2 }}>
+                                  {p1Init}
+                                </div>
+                              )}
+                              {p2Pic ? (
+                                <img src={p2Pic} alt={p2?.username || 'P2'} style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #0f172a', position: 'absolute', left: '16px', zIndex: 1 }} />
+                              ) : (
+                                <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: '#a78bfa', color: '#0f172a', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', border: '2px solid #0f172a', position: 'absolute', left: '16px', zIndex: 1 }}>
+                                  {p2Init}
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 800, color: isGold ? '#fbbf24' : isSilver ? '#e2e8f0' : isBronze ? '#f59e0b' : 'var(--accent-cyan)' }}>
+                                {row.teamName} 🔍
+                              </div>
+                              {row.captainName && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{row.captainName}</div>}
+                            </div>
                           </div>
-                          {row.captainName && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{row.captainName}</div>}
                         </td>
                         <td style={{ textAlign: 'center' }}>{row.played}</td>
                         <td style={{ textAlign: 'center' }}>{row.wins}</td>
