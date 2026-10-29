@@ -76,7 +76,14 @@ export default function SubmitResult() {
   const [error, setError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [submittedFixtureId, setSubmittedFixtureId] = useState(null)
-  const [openLeagueDuos, setOpenLeagueDuos] = useState([])
+  const [openLeagueDuos, setOpenLeagueDuos] = useState(() => {
+    try {
+      const saved = localStorage.getItem('eliteArrowsDoublesTeams')
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })
 
   // Background upload states
   const [isUploadingProof, setIsUploadingProof] = useState(false)
@@ -218,13 +225,29 @@ const getDefaultSeason = () => {
     const fetchDuos = async () => {
       try {
         const snap = await getDocs(collection(db, 'openLeagueDuos'))
-        setOpenLeagueDuos(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })))
+        const fetched = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        if (fetched.length > 0) {
+          setOpenLeagueDuos(fetched)
+          localStorage.setItem('eliteArrowsDoublesTeams', JSON.stringify(fetched))
+        }
       } catch (e) {
         console.error("Failed to fetch duos", e)
       }
     }
     fetchDuos()
   }, [])
+
+  const getDuoOptionLabel = (d) => {
+    if (!d) return 'Team'
+    if (d.teamName) return d.teamName
+    const usersList = allUsers || []
+    const u1 = usersList.find(u => String(u.id) === String(d.p1Id))
+    const u2 = usersList.find(u => String(u.id) === String(d.p2Id))
+    if (u1 && u2) return `${u1.username} & ${u2.username}`
+    if (u1) return `${u1.username} & Partner`
+    if (u2) return `Partner & ${u2.username}`
+    return `Team (${String(d.id).substring(0, 8)})`
+  }
 
   useEffect(() => {
     // The active season always wins, including over an explicit ?season= param,
@@ -1109,9 +1132,13 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
                     style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '2px solid var(--accent-cyan)', color: 'var(--text)', fontWeight: 800 }}
                   >
                     <option value="">Select Home Team...</option>
-                    {openLeagueDuos.map(d => (
-                      <option key={d.id} value={d.id}>{d.teamName || `${allUsers.find(u => String(u.id) === String(d.p1Id))?.username || 'P1'} & ${allUsers.find(u => String(u.id) === String(d.p2Id))?.username || 'P2'}`}</option>
-                    ))}
+                    {openLeagueDuos.length === 0 ? (
+                      <option value="" disabled>No teams found (Create teams in Doubles League)</option>
+                    ) : (
+                      openLeagueDuos.map(d => (
+                        <option key={d.id} value={d.id}>{getDuoOptionLabel(d)}</option>
+                      ))
+                    )}
                   </select>
                 ) : (
                   <div style={{
@@ -1144,9 +1171,13 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
                     style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '2px solid var(--accent-cyan)', color: 'var(--text)', fontWeight: 800 }}
                   >
                     <option value="">Select Away Team...</option>
-                    {openLeagueDuos.filter(d => d.id !== formData.team1Id).map(d => (
-                      <option key={d.id} value={d.id}>{d.teamName || `${allUsers.find(u => String(u.id) === String(d.p1Id))?.username || 'P1'} & ${allUsers.find(u => String(u.id) === String(d.p2Id))?.username || 'P2'}`}</option>
-                    ))}
+                    {openLeagueDuos.length === 0 ? (
+                      <option value="" disabled>No teams found (Create teams in Doubles League)</option>
+                    ) : (
+                      openLeagueDuos.filter(d => d.id !== formData.team1Id).map(d => (
+                        <option key={d.id} value={d.id}>{getDuoOptionLabel(d)}</option>
+                      ))
+                    )}
                   </select>
                 ) : formData.gameType === 'Cup' ? (
                   <select
