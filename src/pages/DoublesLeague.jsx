@@ -172,7 +172,9 @@ export default function DoublesLeague() {
   const generatedSchedule = useMemo(() => {
     if (!teams || teams.length < 2) return [];
     const schedule = [];
+    let matchNum = 1;
 
+    // Phase 1 (Leg 1 - First Half): All teams play each other 1x
     for (let i = 0; i < teams.length; i++) {
       for (let j = i + 1; j < teams.length; j++) {
         const teamA = teams[i];
@@ -186,7 +188,6 @@ export default function DoublesLeague() {
         const p2B = allUsers.find(u => String(u.id) === String(teamB.p2Id));
         const nameB = teamB.teamName || `${p1B?.username || 'P1'} & ${p2B?.username || 'P2'}`;
 
-        // Match 1: Team A (Home) vs Team B (Away)
         const homeMatch = results.find(r =>
           (String(r.gameType || '').toLowerCase().includes('doubles') || r.team1Id || r.team2Id) &&
           r.status === 'approved' &&
@@ -194,16 +195,10 @@ export default function DoublesLeague() {
           String(r.team2Id || r.player2Id) === String(teamB.id)
         );
 
-        // Match 2: Team B (Home) vs Team A (Away)
-        const awayMatch = results.find(r =>
-          (String(r.gameType || '').toLowerCase().includes('doubles') || r.team1Id || r.team2Id) &&
-          r.status === 'approved' &&
-          String(r.team1Id || r.player1Id) === String(teamB.id) &&
-          String(r.team2Id || r.player2Id) === String(teamA.id)
-        );
-
         schedule.push({
-          id: `doubles_${teamA.id}_${teamB.id}_home`,
+          id: `doubles_${teamA.id}_${teamB.id}_phase1`,
+          matchNum: matchNum++,
+          phase: 1,
           homeTeam: teamA,
           homeName: nameA,
           awayTeam: teamB,
@@ -212,9 +207,34 @@ export default function DoublesLeague() {
           isPlayed: Boolean(homeMatch),
           score: homeMatch ? `${homeMatch.score1} - ${homeMatch.score2}` : null
         });
+      }
+    }
+
+    // Phase 2 (Leg 2 - Second Half): Reverse Home/Away matches vs all teams
+    for (let i = 0; i < teams.length; i++) {
+      for (let j = i + 1; j < teams.length; j++) {
+        const teamA = teams[i];
+        const teamB = teams[j];
+
+        const p1A = allUsers.find(u => String(u.id) === String(teamA.p1Id));
+        const p2A = allUsers.find(u => String(u.id) === String(teamA.p2Id));
+        const nameA = teamA.teamName || `${p1A?.username || 'P1'} & ${p2A?.username || 'P2'}`;
+
+        const p1B = allUsers.find(u => String(u.id) === String(teamB.p1Id));
+        const p2B = allUsers.find(u => String(u.id) === String(teamB.p2Id));
+        const nameB = teamB.teamName || `${p1B?.username || 'P1'} & ${p2B?.username || 'P2'}`;
+
+        const awayMatch = results.find(r =>
+          (String(r.gameType || '').toLowerCase().includes('doubles') || r.team1Id || r.team2Id) &&
+          r.status === 'approved' &&
+          String(r.team1Id || r.player1Id) === String(teamB.id) &&
+          String(r.team2Id || r.player2Id) === String(teamA.id)
+        );
 
         schedule.push({
-          id: `doubles_${teamB.id}_${teamA.id}_away`,
+          id: `doubles_${teamB.id}_${teamA.id}_phase2`,
+          matchNum: matchNum++,
+          phase: 2,
           homeTeam: teamB,
           homeName: nameB,
           awayTeam: teamA,
@@ -225,6 +245,7 @@ export default function DoublesLeague() {
         });
       }
     }
+
     return schedule;
   }, [teams, results, allUsers]);
 
