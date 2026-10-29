@@ -171,80 +171,119 @@ export default function DoublesLeague() {
 
   const generatedSchedule = useMemo(() => {
     if (!teams || teams.length < 2) return [];
+
+    const teamList = [...teams];
+    const isOdd = teamList.length % 2 !== 0;
+    if (isOdd) {
+      teamList.push({ id: 'BYE', teamName: 'BYE' });
+    }
+
+    const n = teamList.length;
+    const numRounds = n - 1;
+    const matchesPerRound = n / 2;
+
+    const leg1Rounds = [];
+
+    // Circle method algorithm for Leg 1
+    for (let round = 0; round < numRounds; round++) {
+      const roundMatches = [];
+      for (let i = 0; i < matchesPerRound; i++) {
+        let home = (round + i) % (n - 1);
+        let away = (n - 1 - i + round) % (n - 1);
+
+        if (i === 0) {
+          away = n - 1;
+        }
+
+        if (i === 0 && round % 2 === 1) {
+          const temp = home;
+          home = away;
+          away = temp;
+        }
+
+        const homeTeam = teamList[home];
+        const awayTeam = teamList[away];
+
+        if (homeTeam.id !== 'BYE' && awayTeam.id !== 'BYE') {
+          roundMatches.push({ homeTeam, awayTeam });
+        }
+      }
+      leg1Rounds.push(roundMatches);
+    }
+
     const schedule = [];
-    let matchNum = 1;
+    let matchIndex = 1;
 
-    // Phase 1 (Leg 1 - First Half): All teams play each other 1x
-    for (let i = 0; i < teams.length; i++) {
-      for (let j = i + 1; j < teams.length; j++) {
-        const teamA = teams[i];
-        const teamB = teams[j];
+    // Leg 1 (First Half - Games 1 to N-1: every team plays everyone once)
+    leg1Rounds.forEach((roundMatches, rIdx) => {
+      roundMatches.forEach(({ homeTeam, awayTeam }) => {
+        const p1A = allUsers.find(u => String(u.id) === String(homeTeam.p1Id));
+        const p2A = allUsers.find(u => String(u.id) === String(homeTeam.p2Id));
+        const homeName = homeTeam.teamName || `${p1A?.username || 'P1'} & ${p2A?.username || 'P2'}`;
 
-        const p1A = allUsers.find(u => String(u.id) === String(teamA.p1Id));
-        const p2A = allUsers.find(u => String(u.id) === String(teamA.p2Id));
-        const nameA = teamA.teamName || `${p1A?.username || 'P1'} & ${p2A?.username || 'P2'}`;
+        const p1B = allUsers.find(u => String(u.id) === String(awayTeam.p1Id));
+        const p2B = allUsers.find(u => String(u.id) === String(awayTeam.p2Id));
+        const awayName = awayTeam.teamName || `${p1B?.username || 'P1'} & ${p2B?.username || 'P2'}`;
 
-        const p1B = allUsers.find(u => String(u.id) === String(teamB.p1Id));
-        const p2B = allUsers.find(u => String(u.id) === String(teamB.p2Id));
-        const nameB = teamB.teamName || `${p1B?.username || 'P1'} & ${p2B?.username || 'P2'}`;
-
-        const homeMatch = results.find(r =>
+        const playedMatch = results.find(r =>
           (String(r.gameType || '').toLowerCase().includes('doubles') || r.team1Id || r.team2Id) &&
           r.status === 'approved' &&
-          String(r.team1Id || r.player1Id) === String(teamA.id) &&
-          String(r.team2Id || r.player2Id) === String(teamB.id)
+          String(r.team1Id || r.player1Id) === String(homeTeam.id) &&
+          String(r.team2Id || r.player2Id) === String(awayTeam.id)
         );
 
         schedule.push({
-          id: `doubles_${teamA.id}_${teamB.id}_phase1`,
-          matchNum: matchNum++,
-          phase: 1,
-          homeTeam: teamA,
-          homeName: nameA,
-          awayTeam: teamB,
-          awayName: nameB,
-          playedMatch: homeMatch,
-          isPlayed: Boolean(homeMatch),
-          score: homeMatch ? `${homeMatch.score1} - ${homeMatch.score2}` : null
+          id: `doubles_${homeTeam.id}_${awayTeam.id}_leg1_r${rIdx + 1}`,
+          round: rIdx + 1,
+          matchNum: matchIndex++,
+          leg: 1,
+          homeTeam,
+          homeName,
+          awayTeam,
+          awayName,
+          playedMatch,
+          isPlayed: Boolean(playedMatch),
+          score: playedMatch ? `${playedMatch.score1} - ${playedMatch.score2}` : null
         });
-      }
-    }
+      });
+    });
 
-    // Phase 2 (Leg 2 - Second Half): Reverse Home/Away matches vs all teams
-    for (let i = 0; i < teams.length; i++) {
-      for (let j = i + 1; j < teams.length; j++) {
-        const teamA = teams[i];
-        const teamB = teams[j];
+    // Leg 2 (Second Half - Games N to 2N-2: reverse Home/Away matches vs all teams)
+    leg1Rounds.forEach((roundMatches, rIdx) => {
+      roundMatches.forEach(({ homeTeam: originalHome, awayTeam: originalAway }) => {
+        const homeTeam = originalAway;
+        const awayTeam = originalHome;
 
-        const p1A = allUsers.find(u => String(u.id) === String(teamA.p1Id));
-        const p2A = allUsers.find(u => String(u.id) === String(teamA.p2Id));
-        const nameA = teamA.teamName || `${p1A?.username || 'P1'} & ${p2A?.username || 'P2'}`;
+        const p1A = allUsers.find(u => String(u.id) === String(homeTeam.p1Id));
+        const p2A = allUsers.find(u => String(u.id) === String(homeTeam.p2Id));
+        const homeName = homeTeam.teamName || `${p1A?.username || 'P1'} & ${p2A?.username || 'P2'}`;
 
-        const p1B = allUsers.find(u => String(u.id) === String(teamB.p1Id));
-        const p2B = allUsers.find(u => String(u.id) === String(teamB.p2Id));
-        const nameB = teamB.teamName || `${p1B?.username || 'P1'} & ${p2B?.username || 'P2'}`;
+        const p1B = allUsers.find(u => String(u.id) === String(awayTeam.p1Id));
+        const p2B = allUsers.find(u => String(u.id) === String(awayTeam.p2Id));
+        const awayName = awayTeam.teamName || `${p1B?.username || 'P1'} & ${p2B?.username || 'P2'}`;
 
-        const awayMatch = results.find(r =>
+        const playedMatch = results.find(r =>
           (String(r.gameType || '').toLowerCase().includes('doubles') || r.team1Id || r.team2Id) &&
           r.status === 'approved' &&
-          String(r.team1Id || r.player1Id) === String(teamB.id) &&
-          String(r.team2Id || r.player2Id) === String(teamA.id)
+          String(r.team1Id || r.player1Id) === String(homeTeam.id) &&
+          String(r.team2Id || r.player2Id) === String(awayTeam.id)
         );
 
         schedule.push({
-          id: `doubles_${teamB.id}_${teamA.id}_phase2`,
-          matchNum: matchNum++,
-          phase: 2,
-          homeTeam: teamB,
-          homeName: nameB,
-          awayTeam: teamA,
-          awayName: nameA,
-          playedMatch: awayMatch,
-          isPlayed: Boolean(awayMatch),
-          score: awayMatch ? `${awayMatch.score1} - ${awayMatch.score2}` : null
+          id: `doubles_${homeTeam.id}_${awayTeam.id}_leg2_r${rIdx + numRounds + 1}`,
+          round: rIdx + numRounds + 1,
+          matchNum: matchIndex++,
+          leg: 2,
+          homeTeam,
+          homeName,
+          awayTeam,
+          awayName,
+          playedMatch,
+          isPlayed: Boolean(playedMatch),
+          score: playedMatch ? `${playedMatch.score1} - ${playedMatch.score2}` : null
         });
-      }
-    }
+      });
+    });
 
     return schedule;
   }, [teams, results, allUsers]);
