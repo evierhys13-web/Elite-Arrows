@@ -247,6 +247,14 @@ export default function DoublesLeague() {
     ).sort((a, b) => new Date(b.date || b.submittedAt || 0) - new Date(a.date || a.submittedAt || 0));
   }, [selectedTeam, results]);
 
+  const selectedTeamSchedule = useMemo(() => {
+    if (!selectedTeam) return [];
+    return generatedSchedule.filter(f =>
+      String(f.homeTeam.id) === String(selectedTeam.id) ||
+      String(f.awayTeam.id) === String(selectedTeam.id)
+    );
+  }, [selectedTeam, generatedSchedule]);
+
   const handleRefresh = async () => {
     setLoading(true);
     try {
@@ -447,64 +455,6 @@ export default function DoublesLeague() {
               </tbody>
             </table>
           </div>
-
-          {/* VERTICAL FIXTURE SCHEDULE LIST AT VERY BOTTOM */}
-          <div style={{ marginTop: '32px', padding: '24px', borderTop: '1px solid var(--border)' }}>
-            <h3 style={{ color: 'var(--accent-cyan)', marginBottom: '12px', fontSize: '1.3rem' }}>
-              🗓️ Doubles League Fixtures & Schedule (Home & Away)
-            </h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '20px' }}>
-              Every team plays every opponent 2x (1x Home, 1x Away). Formats: Bo7 Straight In, Double Out 501.
-            </p>
-
-            {generatedSchedule.length === 0 ? (
-              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                No fixtures scheduled yet. Need at least 2 registered teams.
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {generatedSchedule.map((f, idx) => (
-                  <div
-                    key={f.id}
-                    className="glass"
-                    style={{
-                      padding: '16px 20px',
-                      borderRadius: '14px',
-                      display: 'flex',
-                      justify: 'space-between',
-                      alignItems: 'center',
-                      flexWrap: 'wrap',
-                      gap: '12px',
-                      background: f.isPlayed ? 'rgba(34, 197, 94, 0.05)' : 'rgba(255,255,255,0.02)',
-                      border: f.isPlayed ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(255,255,255,0.08)'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '0.8rem', opacity: 0.6, fontWeight: 700, minWidth: '30px' }}>#{idx + 1}</span>
-                      <div>
-                        <span style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>🏠 {f.homeName}</span>
-                        <span style={{ opacity: 0.6, fontSize: '0.8rem', margin: '0 8px' }}>(Home) vs</span>
-                        <span style={{ fontWeight: 800, color: 'white' }}>✈️ {f.awayName}</span>
-                        <span style={{ opacity: 0.6, fontSize: '0.8rem', marginLeft: '6px' }}>(Away)</span>
-                      </div>
-                    </div>
-
-                    <div>
-                      {f.isPlayed ? (
-                        <span style={{ background: 'rgba(34, 197, 94, 0.2)', color: 'var(--success)', padding: '6px 12px', borderRadius: '8px', fontWeight: 900, fontSize: '0.9rem' }}>
-                          {f.score} (Completed)
-                        </span>
-                      ) : (
-                        <span style={{ background: 'rgba(251, 191, 36, 0.1)', color: '#fbbf24', padding: '6px 12px', borderRadius: '8px', fontWeight: 800, fontSize: '0.8rem' }}>
-                          Bo7 501 • Pending
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
       )}
 
@@ -625,6 +575,44 @@ export default function DoublesLeague() {
                 <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#fbbf24' }}>{selectedTeam.points}</div>
               </div>
             </div>
+
+            {/* Team Schedule & Fixtures */}
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '14px', color: 'var(--accent-cyan)' }}>
+              🗓️ Team Schedule & Fixtures ({selectedTeamSchedule.length})
+            </h3>
+            {selectedTeamSchedule.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>No fixtures scheduled for this team.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '28px' }}>
+                {selectedTeamSchedule.map(f => {
+                  const isHome = String(f.homeTeam.id) === String(selectedTeam.id);
+                  const opponentName = isHome ? f.awayName : f.homeName;
+                  const venueLabel = isHome ? '🏠 Home' : '✈️ Away';
+
+                  return (
+                    <div key={f.id} className="glass" style={{ padding: '12px 16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>
+                          <span style={{ color: isHome ? 'var(--accent-cyan)' : 'white' }}>{venueLabel}:</span> vs {opponentName}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Bo7 501 • Home & Away</div>
+                      </div>
+                      <div>
+                        {f.isPlayed ? (
+                          <span style={{ background: 'rgba(34, 197, 94, 0.2)', color: 'var(--success)', padding: '4px 10px', borderRadius: '6px', fontWeight: 900, fontSize: '0.85rem' }}>
+                            {f.score} (Completed)
+                          </span>
+                        ) : (
+                          <span style={{ background: 'rgba(251, 191, 36, 0.1)', color: '#fbbf24', padding: '4px 10px', borderRadius: '6px', fontWeight: 800, fontSize: '0.75rem' }}>
+                            Pending
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Team Match History */}
             <h3 style={{ fontSize: '1.1rem', marginBottom: '14px', color: 'var(--accent-cyan)' }}>🎯 Team Match History ({selectedTeamMatches.length})</h3>
