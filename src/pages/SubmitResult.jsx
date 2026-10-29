@@ -391,6 +391,7 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
       } else if (value === 'Doubles League') {
         setFormData(prev => ({
           ...prev,
+          season: 'Doubles League',
           bestOf: '7',
           firstTo: '4',
           team1Id: '',
@@ -793,7 +794,7 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
           score2: parseInt(s2),
           division: effectiveDivision,
           gameType: formData.gameType,
-          season: formData.season || adminData?.currentSeason || 'Season 1',
+          season: formData.gameType === 'Doubles League' ? 'Doubles League' : (formData.season || adminData?.currentSeason || 'Season 1'),
           date: new Date().toISOString().split('T')[0],
           submittedAt: new Date().toISOString(),
           bestOf: formData.bestOf,
@@ -1033,18 +1034,24 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
 
           <div className="form-group" style={{ marginBottom: '25px' }}>
             <label style={{ fontWeight: '600', marginBottom: '8px', display: 'block' }}>Season</label>
-            <select
-              name="season"
-              value={formData.season}
-              onChange={handleChange}
-              className="glass"
-              style={{ width: '100%', padding: '12px', borderRadius: '8px' }}
-            >
-              {adminData?.currentSeason
-                ? <option value={adminData.currentSeason}>{adminData.currentSeason} (Active)</option>
-                : seasons.map(s => <option key={s.id} value={s.name}>{s.name} {s.isArchived ? '(Archived)' : '(Active)'}</option>)}
-              {!adminData?.currentSeason && !seasons.find(s => s.name === 'Season 1') && <option value="Season 1">Season 1</option>}
-            </select>
+            {formData.gameType === 'Doubles League' ? (
+              <div style={{ padding: '12px', background: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border)', fontWeight: 800, color: 'var(--accent-cyan)' }}>
+                Doubles League (Standalone Competition)
+              </div>
+            ) : (
+              <select
+                name="season"
+                value={formData.season}
+                onChange={handleChange}
+                className="glass"
+                style={{ width: '100%', padding: '12px', borderRadius: '8px' }}
+              >
+                {adminData?.currentSeason
+                  ? <option value={adminData.currentSeason}>{adminData.currentSeason} (Active)</option>
+                  : seasons.map(s => <option key={s.id} value={s.name}>{s.name} {s.isArchived ? '(Archived)' : '(Active)'}</option>)}
+                {!adminData?.currentSeason && !seasons.find(s => s.name === 'Season 1') && <option value="Season 1">Season 1</option>}
+              </select>
+            )}
           </div>
 
           {error && (
