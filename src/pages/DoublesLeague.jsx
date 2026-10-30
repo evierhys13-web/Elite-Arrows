@@ -14,9 +14,19 @@ export default function DoublesLeague() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('table'); // 'table' | 'schedule'
-  const [scheduleFilter, setScheduleFilter] = useState('all'); // 'all' | 'pending' | 'completed'
+  const [scheduleFilter, setScheduleFilter] = useState('all'); // 'all' | 'my' | 'pending' | 'completed'
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [now, setNow] = useState(new Date());
+  const [teams, setTeams] = useState(() => {
+    try {
+      const saved = localStorage.getItem('eliteArrowsDoublesTeams');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [duoForm, setDuoForm] = useState({ p1: '', p2: '', teamName: '', captainId: '' });
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
@@ -34,16 +44,6 @@ export default function DoublesLeague() {
     const seconds = totalSecs % 60;
     return `${days}d ${hours}h ${minutes}m ${seconds}s`;
   };
-  const [teams, setTeams] = useState(() => {
-    try {
-      const saved = localStorage.getItem('eliteArrowsDoublesTeams');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-  const [showAdminPanel, setShowAdminPanel] = useState(false);
-  const [duoForm, setDuoForm] = useState({ p1: '', p2: '', teamName: '', captainId: '' });
 
   useEffect(() => {
     fetchDoublesData();
@@ -79,6 +79,7 @@ export default function DoublesLeague() {
         p2Id: duoForm.p2,
         teamName: (duoForm.teamName || '').trim(),
         captainId: duoForm.captainId || duoForm.p1,
+        teamLogo: '',
         createdAt: new Date().toISOString()
       };
       await setDoc(doc(db, 'openLeagueDuos', duoId), newDuo, { merge: true });
@@ -107,6 +108,51 @@ export default function DoublesLeague() {
     }
   };
 
+  const handleTeamLogoUpload = (e, teamId) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      return showToast("Image is too large (max 5MB)", "error");
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const img = new Image();
+      img.onload = async () => {
+        const canvas = document.createElement('canvas');
+        const maxDim = 300;
+        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const base64Data = canvas.toDataURL('image/jpeg', 0.85);
+
+        try {
+          const teamDocRef = doc(db, 'openLeagueDuos', String(teamId));
+          await setDoc(teamDocRef, { teamLogo: base64Data }, { merge: true });
+
+          const updatedTeams = teams.map(t =>
+            String(t.id) === String(teamId) ? { ...t, teamLogo: base64Data } : t
+          );
+          setTeams(updatedTeams);
+          localStorage.setItem('eliteArrowsDoublesTeams', JSON.stringify(updatedTeams));
+
+          if (selectedTeam && String(selectedTeam.id) === String(teamId)) {
+            setSelectedTeam(prev => ({ ...prev, teamLogo: base64Data }));
+          }
+
+          showToast("Team profile picture uploaded successfully!", "success");
+          triggerDataRefresh('all');
+        } catch (err) {
+          showToast("Error uploading logo: " + err.message, "error");
+        }
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
   const doublesStats = useMemo(() => {
     const stats = {};
 
@@ -122,6 +168,7 @@ export default function DoublesLeague() {
         id: teamId,
         teamName: name,
         captainName: captain?.username ? `Captain: ${captain.username}` : '',
+        teamLogo: t.teamLogo || '',
         played: 0,
         wins: 0,
         draws: 0,
@@ -184,7 +231,6 @@ export default function DoublesLeague() {
 
     const leg1Rounds = [];
 
-    // Circle method algorithm for Leg 1
     for (let round = 0; round < numRounds; round++) {
       const roundMatches = [];
       for (let i = 0; i < matchesPerRound; i++) {
@@ -214,7 +260,6 @@ export default function DoublesLeague() {
     const schedule = [];
     let matchIndex = 1;
 
-    // Leg 1 (First Half - Games 1 to N-1: every team plays everyone once)
     leg1Rounds.forEach((roundMatches, rIdx) => {
       roundMatches.forEach(({ homeTeam, awayTeam }) => {
         const p1A = allUsers.find(u => String(u.id) === String(homeTeam.p1Id));
@@ -248,7 +293,6 @@ export default function DoublesLeague() {
       });
     });
 
-    // Leg 2 (Second Half - Games N to 2N-2: reverse Home/Away matches vs all teams)
     leg1Rounds.forEach((roundMatches, rIdx) => {
       roundMatches.forEach(({ homeTeam: originalHome, awayTeam: originalAway }) => {
         const homeTeam = originalAway;
@@ -482,6 +526,7 @@ export default function DoublesLeague() {
                     const teamDoc = teams.find(t => String(t.id) === String(row.id));
                     const p1 = allUsers.find(u => String(u.id) === String(teamDoc?.p1Id));
                     const p2 = allUsers.find(u => String(u.id) === String(teamDoc?.p2Id));
+                    const teamLogo = teamDoc?.teamLogo || row.teamLogo || null;
                     const p1Pic = p1?.profilePicture || p1?.photoURL || p1?.avatar || null;
                     const p2Pic = p2?.profilePicture || p2?.photoURL || p2?.avatar || null;
                     const p1Init = p1?.username ? p1.username.substring(0, 1).toUpperCase() : 'P1';
@@ -505,22 +550,26 @@ export default function DoublesLeague() {
                         </td>
                         <td style={{ padding: '12px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', position: 'relative', width: '48px', height: '32px', flexShrink: 0 }}>
-                              {p1Pic ? (
-                                <img src={p1Pic} alt={p1?.username || 'P1'} style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #0f172a', position: 'absolute', left: 0, zIndex: 2 }} />
-                              ) : (
-                                <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'var(--accent-cyan)', color: '#0f172a', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', border: '2px solid #0f172a', position: 'absolute', left: 0, zIndex: 2 }}>
-                                  {p1Init}
-                                </div>
-                              )}
-                              {p2Pic ? (
-                                <img src={p2Pic} alt={p2?.username || 'P2'} style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #0f172a', position: 'absolute', left: '16px', zIndex: 1 }} />
-                              ) : (
-                                <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: '#a78bfa', color: '#0f172a', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', border: '2px solid #0f172a', position: 'absolute', left: '16px', zIndex: 1 }}>
-                                  {p2Init}
-                                </div>
-                              )}
-                            </div>
+                            {teamLogo ? (
+                              <img src={teamLogo} alt={row.teamName} style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--accent-cyan)', flexShrink: 0 }} />
+                            ) : (
+                              <div style={{ display: 'flex', alignItems: 'center', position: 'relative', width: '48px', height: '32px', flexShrink: 0 }}>
+                                {p1Pic ? (
+                                  <img src={p1Pic} alt={p1?.username || 'P1'} style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #0f172a', position: 'absolute', left: 0, zIndex: 2 }} />
+                                ) : (
+                                  <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'var(--accent-cyan)', color: '#0f172a', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', border: '2px solid #0f172a', position: 'absolute', left: 0, zIndex: 2 }}>
+                                    {p1Init}
+                                  </div>
+                                )}
+                                {p2Pic ? (
+                                  <img src={p2Pic} alt={p2?.username || 'P2'} style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #0f172a', position: 'absolute', left: '16px', zIndex: 1 }} />
+                                ) : (
+                                  <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: '#a78bfa', color: '#0f172a', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', border: '2px solid #0f172a', position: 'absolute', left: '16px', zIndex: 1 }}>
+                                    {p2Init}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                             <div>
                               <div style={{ fontWeight: 800, color: isGold ? '#fbbf24' : isSilver ? '#e2e8f0' : isBronze ? '#f59e0b' : 'var(--accent-cyan)' }}>
                                 {row.teamName} 🔍
@@ -602,12 +651,37 @@ export default function DoublesLeague() {
         <div className="modal-overlay" onClick={() => setSelectedTeam(null)} style={{ padding: '20px', zIndex: 99999 }}>
           <div className="modal-content glass" onClick={e => e.stopPropagation()} style={{ maxWidth: '750px', width: '95vw', padding: '32px', borderRadius: '24px', border: '1px solid var(--accent-cyan)', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
-              <div>
-                <h2 style={{ color: 'white', margin: 0, fontSize: '1.8rem' }}>👥 {selectedTeam.teamName}</h2>
-                {selectedTeam.captainName && <p style={{ color: 'var(--accent-cyan)', margin: '4px 0 0', fontWeight: 700, fontSize: '0.9rem' }}>{selectedTeam.captainName}</p>}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                {(() => {
+                  const teamDoc = teams.find(t => String(t.id) === String(selectedTeam.id));
+                  const logo = teamDoc?.teamLogo || selectedTeam.teamLogo;
+                  return logo ? (
+                    <img src={logo} alt={selectedTeam.teamName} style={{ width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--accent-cyan)' }} />
+                  ) : null;
+                })()}
+                <div>
+                  <h2 style={{ color: 'white', margin: 0, fontSize: '1.8rem' }}>👥 {selectedTeam.teamName}</h2>
+                  {selectedTeam.captainName && <p style={{ color: 'var(--accent-cyan)', margin: '4px 0 0', fontWeight: 700, fontSize: '0.9rem' }}>{selectedTeam.captainName}</p>}
+                </div>
               </div>
               <button className="btn btn-secondary btn-sm" onClick={() => setSelectedTeam(null)} style={{ fontSize: '1.2rem', padding: '4px 12px' }}>×</button>
             </div>
+
+            {/* Team Logo Upload Action */}
+            {(() => {
+              const teamDoc = teams.find(t => String(t.id) === String(selectedTeam.id));
+              const isMember = Boolean(user && (String(teamDoc?.p1Id) === String(user.id) || String(teamDoc?.p2Id) === String(user.id)));
+              if (!isMember && !isAdmin) return null;
+
+              return (
+                <div style={{ marginBottom: '20px' }}>
+                  <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(0, 212, 255, 0.1)', borderColor: 'var(--accent-cyan)', color: 'white' }}>
+                    📷 {teamDoc?.teamLogo ? 'Change Team Logo' : 'Upload Team Logo'}
+                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleTeamLogoUpload(e, selectedTeam.id)} />
+                  </label>
+                </div>
+              );
+            })()}
 
             {/* Team Members */}
             {(() => {
