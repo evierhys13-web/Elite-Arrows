@@ -2,37 +2,46 @@ import { derivePlayerStatsFromResults } from './playerStats'
 import { getResultPlayerId } from './leagueResults'
 
 export const DIVISION_COLORS = {
+  'Premier Division': '#ec4899',
   'Pro League': '#ec4899',
   Elite: '#fbbf24',
+  'Emerald 1': '#10b981',
+  'Emerald 2': '#059669',
   Emerald: '#10b981',
   Diamond: '#38bdf8',
   Platinum: '#818cf8',
   Overall: '#818cf8',
 }
 
-export const LEAGUE_DIVISION_KEYS = ['pro_league', 'elite', 'emerald', 'diamond', 'platinum']
+export const LEAGUE_DIVISION_KEYS = ['premier_division', 'pro_league', 'elite', 'emerald_1', 'emerald_2', 'emerald', 'diamond', 'platinum']
 
 export const LEAGUE_DIVISION_NAMES = {
-  pro_league: 'Pro League',
+  premier_division: 'Premier Division',
+  pro_league: 'Premier Division',
   elite: 'Elite',
+  emerald_1: 'Emerald 1',
+  emerald_2: 'Emerald 2',
   emerald: 'Emerald',
   diamond: 'Diamond',
   platinum: 'Platinum',
 }
 
 // Divisions not currently in use and hidden from public-facing lists
-export const HIDDEN_LEAGUE_DIVISIONS = ['Pro League']
+export const HIDDEN_LEAGUE_DIVISIONS = []
 
 // Divisions shown on the site (in order)
-export const ACTIVE_LEAGUE_DIVISIONS = ['Elite', 'Emerald', 'Diamond', 'Platinum']
+export const ACTIVE_LEAGUE_DIVISIONS = ['Premier Division', 'Elite', 'Emerald 1', 'Emerald 2', 'Diamond', 'Platinum']
 
 export const getDivisionsForSeason = (selectedSeason, adminData) => {
+  if (selectedSeason && (selectedSeason.includes('Season 7') || selectedSeason.includes('season 7'))) {
+    return ['Overall', 'Premier Division', 'Elite', 'Emerald 1', 'Emerald 2', 'Diamond', 'Platinum']
+  }
   const isNewStructure =
     selectedSeason === (adminData?.currentSeason || 'Elite Arrows Season 6')
   if (isNewStructure || selectedSeason === 'Season 4' || selectedSeason === 'Season 5') {
-    return ['Overall', ...ACTIVE_LEAGUE_DIVISIONS]
+    return ['Overall', 'Elite', 'Emerald', 'Diamond', 'Platinum']
   }
-  return ['Overall', ...ACTIVE_LEAGUE_DIVISIONS, 'Gold', 'Silver', 'Bronze']
+  return ['Overall', 'Elite', 'Emerald', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze']
 }
 
 export const getPlayersWithEffectiveDivisions = (allUsers, seasonDoc, selectedSeason, adminData) => {
@@ -70,8 +79,7 @@ export const getDivisionFilteredResults = (results, usersWithCorrectDivisions) =
 
 export const computeDivisionStandings = ({ allUsers, results, fixtures, adminData, seasonName, seasonDoc, division }) => {
   const usersWithCorrectDivisions = getPlayersWithEffectiveDivisions(allUsers, seasonDoc, seasonName, adminData)
-  const divisionFilteredResults = getDivisionFilteredResults(results, usersWithCorrectDivisions)
-  const playerStats = derivePlayerStatsFromResults(usersWithCorrectDivisions, divisionFilteredResults, {
+  const playerStats = derivePlayerStatsFromResults(usersWithCorrectDivisions, results, {
     fixtures,
     adminData,
     leagueOnly: true,

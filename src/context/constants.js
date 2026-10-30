@@ -6,7 +6,7 @@ export const DIVISIONS = [
 ];
 
 export const DIVISION_FORMATS = {
-  "Pro League": { bestOf: 15, firstTo: 8, noDraw: true },
+  "Pro League": { bestOf: 12, firstTo: 7, noDraw: false },
   Elite: { bestOf: 12, firstTo: 7, noDraw: false },
   Emerald: { bestOf: 10, firstTo: 6, noDraw: false },
   Diamond: { bestOf: 8, firstTo: 5, noDraw: false },
