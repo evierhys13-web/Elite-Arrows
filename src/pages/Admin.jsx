@@ -2278,9 +2278,19 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
 
   return (
     <div className="page animate-fade-in" style={{ maxWidth: '1200px', margin: '0 auto' }}>
-      <div className="page-header" style={{ marginBottom: '20px' }}>
-        <h1 className="page-title text-gradient" style={{ fontSize: '2rem' }}>Admin Control Room</h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Comprehensive League Management</p>
+      <div className="page-header" style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+        <div>
+          <h1 className="page-title text-gradient" style={{ fontSize: '2rem', margin: 0 }}>Admin Control Room</h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>Comprehensive League Management</p>
+        </div>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button className="btn btn-warning btn-sm" onClick={handleSoftResetStandings}>
+            🔄 Soft Reset Standings Table
+          </button>
+          <button className="btn btn-secondary btn-sm" onClick={() => navigate('/season-management')}>
+            ⚙️ Season Management
+          </button>
+        </div>
       </div>
 
       <div style={{ display: 'flex', overflowX: 'auto', gap: '8px', marginBottom: '16px', paddingBottom: '8px' }}>
@@ -2314,6 +2324,25 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
         {/* TAB: DASHBOARD */}
         {activeTab === 'dashboard' && (
           <div className="animate-fade-in">
+            {/* Standings Soft Reset Quick Action Card */}
+            <div className="glass" style={{ padding: '16px 20px', borderRadius: '12px', marginBottom: '20px', border: '1px solid var(--warning)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <h4 style={{ color: 'var(--warning)', margin: 0, fontSize: '0.95rem' }}>🔄 Standings Table Soft Reset</h4>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', margin: '2px 0 0' }}>
+                  Resets everyone on the Singles League table to 0 Played, 0 Wins, 0 Points for a fresh start.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button className="btn btn-warning btn-sm" onClick={handleSoftResetStandings}>
+                  🔄 Soft Reset Table
+                </button>
+                {adminData?.leagueTableResetAt && (
+                  <button className="btn btn-secondary btn-sm" onClick={handleClearTableReset}>
+                    ↩️ Restore History
+                  </button>
+                )}
+              </div>
+            </div>
             <div className="glass" style={{ borderRadius: '12px', marginBottom: '28px', overflow: 'hidden' }}>
               <button
                 onClick={() => setShowFixtureTracker(v => !v)}
