@@ -1476,7 +1476,7 @@ export default function Admin() {
     try {
       const target = allPlayers.find(p => String(p.id) === String(targetId))
       if (!target) return showToast('Player not found', 'error')
-      const divisionOrder = ['Premier Division', 'Elite', 'Emerald 1', 'Emerald 2', 'Emerald', 'Diamond', 'Platinum']
+      const divisionOrder = ['Premier', 'Premier Division', 'Pro League', 'Elite', 'Emerald 1', 'Emerald 2', 'Emerald', 'Diamond', 'Platinum']
       const currentIdx = divisionOrder.indexOf(target.division)
       const nextDivision = currentIdx >= 0 && currentIdx < divisionOrder.length - 1 ? divisionOrder[currentIdx + 1] : target.division || 'Unassigned'
       const bannedUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
@@ -1724,7 +1724,7 @@ export default function Admin() {
     } catch (e) { showToast(e.message, 'error') }
   }
 
-  const DIVISION_EDITOR_DIVISIONS = ['Premier Division', 'Elite', 'Emerald 1', 'Emerald 2', 'Emerald', 'Diamond', 'Platinum']
+  const DIVISION_EDITOR_DIVISIONS = ['Premier', 'Elite', 'Emerald 1', 'Emerald 2', 'Emerald', 'Diamond', 'Platinum']
 
   const captainValues = useMemo(() => captainDraft || adminData?.divisionCaptains || {}, [captainDraft, adminData?.divisionCaptains])
   const formatValues = useMemo(() => formatDraft || adminData?.divisionFormats || {}, [formatDraft, adminData?.divisionFormats])
@@ -4483,7 +4483,7 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
                 style={{ fontSize: '0.8rem', padding: '6px 10px', minWidth: '120px' }}
               >
                 <option value="">Division...</option>
-                <option value="Premier Division">Premier Division</option>
+                <option value="Premier">Premier</option>
                 <option value="Elite">Elite</option>
                 <option value="Emerald 1">Emerald 1</option>
                 <option value="Emerald 2">Emerald 2</option>

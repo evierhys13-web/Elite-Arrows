@@ -112,17 +112,8 @@ export default function Table() {
   }, []);
 
   const getDivisionsForSeason = useCallback(() => {
-    if (selectedSeason && (selectedSeason.includes("Season 7") || selectedSeason.includes("season 7"))) {
-      return ["Overall", "Premier Division", "Elite", "Emerald 1", "Emerald 2", "Diamond", "Platinum"];
-    }
-    // For the current/live season format, use the new division structure
-    const isNewStructure = selectedSeason === (adminData?.currentSeason || "Elite Arrows Season 6");
-    if (isNewStructure || selectedSeason === "Season 4" || selectedSeason === "Season 5") {
-      return ["Overall", "Elite", "Emerald", "Diamond", "Platinum"];
-    }
-    // Fallback for older seasons
-    return ["Overall", "Elite", "Emerald", "Diamond", "Platinum", "Gold", "Silver", "Bronze"];
-  }, [selectedSeason, adminData?.currentSeason]);
+    return ["Overall", "Premier", "Elite", "Emerald 1", "Emerald 2", "Emerald", "Diamond", "Platinum"];
+  }, []);
 
   const divisions = getDivisionsForSeason();
   const seasons = useMemo(() => getSeasons().filter(s => !s.isArchived), [getSeasons]);

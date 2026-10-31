@@ -2,6 +2,7 @@ import { derivePlayerStatsFromResults } from './playerStats'
 import { getResultPlayerId } from './leagueResults'
 
 export const DIVISION_COLORS = {
+  Premier: '#ec4899',
   'Premier Division': '#ec4899',
   'Pro League': '#ec4899',
   Elite: '#fbbf24',
@@ -13,11 +14,12 @@ export const DIVISION_COLORS = {
   Overall: '#818cf8',
 }
 
-export const LEAGUE_DIVISION_KEYS = ['premier_division', 'pro_league', 'elite', 'emerald_1', 'emerald_2', 'emerald', 'diamond', 'platinum']
+export const LEAGUE_DIVISION_KEYS = ['premier', 'premier_division', 'pro_league', 'elite', 'emerald_1', 'emerald_2', 'emerald', 'diamond', 'platinum']
 
 export const LEAGUE_DIVISION_NAMES = {
-  premier_division: 'Premier Division',
-  pro_league: 'Premier Division',
+  premier: 'Premier',
+  premier_division: 'Premier',
+  pro_league: 'Premier',
   elite: 'Elite',
   emerald_1: 'Emerald 1',
   emerald_2: 'Emerald 2',
@@ -30,18 +32,18 @@ export const LEAGUE_DIVISION_NAMES = {
 export const HIDDEN_LEAGUE_DIVISIONS = []
 
 // Divisions shown on the site (in order)
-export const ACTIVE_LEAGUE_DIVISIONS = ['Premier Division', 'Elite', 'Emerald 1', 'Emerald 2', 'Diamond', 'Platinum']
+export const ACTIVE_LEAGUE_DIVISIONS = ['Premier', 'Elite', 'Emerald 1', 'Emerald 2', 'Diamond', 'Platinum']
 
 export const getDivisionsForSeason = (selectedSeason, adminData) => {
   if (selectedSeason && (selectedSeason.includes('Season 7') || selectedSeason.includes('season 7'))) {
-    return ['Overall', 'Premier Division', 'Elite', 'Emerald 1', 'Emerald 2', 'Diamond', 'Platinum']
+    return ['Overall', 'Premier', 'Elite', 'Emerald 1', 'Emerald 2', 'Diamond', 'Platinum']
   }
   const isNewStructure =
     selectedSeason === (adminData?.currentSeason || 'Elite Arrows Season 6')
   if (isNewStructure || selectedSeason === 'Season 4' || selectedSeason === 'Season 5') {
-    return ['Overall', 'Elite', 'Emerald', 'Diamond', 'Platinum']
+    return ['Overall', 'Premier', 'Elite', 'Emerald 1', 'Emerald 2', 'Emerald', 'Diamond', 'Platinum']
   }
-  return ['Overall', 'Elite', 'Emerald', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze']
+  return ['Overall', 'Premier', 'Elite', 'Emerald 1', 'Emerald 2', 'Emerald', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze']
 }
 
 export const getPlayersWithEffectiveDivisions = (allUsers, seasonDoc, selectedSeason, adminData) => {
