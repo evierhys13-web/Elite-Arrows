@@ -2142,10 +2142,18 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
   }
 
   const handleSoftResetStandings = async () => {
-    if (!window.confirm("Soft Reset will hide current results from standings. Proceed?")) return;
+    if (!window.confirm("Soft Reset will clear current match stats on the standings table (resetting everyone to 0 Played, 0 Wins, 0 Points) for a fresh start. Proceed?")) return;
     try {
-      const now = new Date().toISOString(); await updateAdminData({ leagueTableResetAt: now }); await logAudit('SOFT_RESET_TABLE', `Reset at ${now}`); triggerDataRefresh('all'); showToast('Standings table reset!', 'success')
-    } catch (e) { showToast(e.message, 'error') }
+      const now = new Date().toISOString();
+      localStorage.removeItem('eliteArrowsResults');
+      localStorage.removeItem('eliteArrowsFixtures');
+      await updateAdminData({ leagueTableResetAt: now });
+      await logAudit('SOFT_RESET_TABLE', `Reset at ${now}`);
+      triggerDataRefresh('all');
+      showToast('Standings table reset successfully!', 'success');
+    } catch (e) {
+      showToast('Error resetting standings: ' + e.message, 'error');
+    }
   };
 
   const handleClearTableReset = async () => {
@@ -4297,13 +4305,32 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
         {/* TAB: SEASONS */}
         {activeTab === 'seasons' && (
           <div className="card glass">
-            <h3>Season Management</h3>
+            <h3>Season Management & Standings Reset</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
-               <div className="glass" style={{ padding: '15px', borderRadius: '12px' }}><strong>ACTIVE:</strong> {adminData?.currentSeason || 'Not Set'}</div>
+               <div className="glass" style={{ padding: '15px', borderRadius: '12px' }}><strong>ACTIVE SEASON:</strong> {adminData?.currentSeason || 'Not Set'}</div>
+
+               {/* Standings Soft Reset Card */}
+               <div className="glass" style={{ padding: '20px', borderRadius: '12px', border: '1px solid var(--warning)' }}>
+                 <h4 style={{ color: 'var(--warning)', margin: '0 0 8px' }}>🔄 Standings Table Soft Reset</h4>
+                 <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '0 0 16px' }}>
+                   Clears all match stats on the Singles League table (0 Played, 0 Wins, 0 Points) for a fresh season or reset.
+                 </p>
+                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                   <button className="btn btn-warning btn-sm" onClick={handleSoftResetStandings}>
+                     🔄 Soft Reset Standings Table Now
+                   </button>
+                   {adminData?.leagueTableResetAt && (
+                     <button className="btn btn-secondary btn-sm" onClick={handleClearTableReset}>
+                       ↩️ Restore All Match History
+                     </button>
+                   )}
+                 </div>
+               </div>
+
                {getSeasons().map(s => (
-                 <div key={s.id} className="glass" style={{ padding: '12px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between' }}>
+                 <div key={s.id} className="glass" style={{ padding: '12px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span>{s.name}</span>
-                    <button className="btn btn-secondary btn-sm" onClick={async () => { await updateAdminData({ currentSeason: s.name }); triggerDataRefresh('all'); }}>Set Active</button>
+                    <button className="btn btn-secondary btn-sm" onClick={async () => { await updateAdminData({ currentSeason: s.name }); triggerDataRefresh('all'); showToast(`Active season set to ${s.name}`, 'success'); }}>Set Active</button>
                  </div>
                ))}
             </div>
