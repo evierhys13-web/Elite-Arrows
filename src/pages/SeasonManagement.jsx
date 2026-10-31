@@ -145,13 +145,16 @@ export default function SeasonManagement() {
     if (!confirm(`Set "${seasonName}" as the active season? This will:
 1. Link all new results to this season.
 2. Sync player subscriptions.
-3. Apply drafted divisions for this season (everyone else will be Unassigned).
-4. Clear all manual stat overrides.`)) return
+3. Apply drafted divisions for this season.
+4. Clear all manual stat overrides and reset league table results.`)) return
 
     setIsProcessing(true)
     try {
-      await updateAdminData({ currentSeason: seasonName })
-      await setDoc(doc(db, 'seasons', seasonDoc?.id), { ...(seasonDoc || {}), isLaunched: true, status: 'active', setLiveAt: new Date().toISOString() }, { merge: true })
+      const nowIso = new Date().toISOString()
+      localStorage.removeItem('eliteArrowsResults')
+      localStorage.removeItem('eliteArrowsFixtures')
+      await updateAdminData({ currentSeason: seasonName, leagueTableResetAt: nowIso })
+      await setDoc(doc(db, 'seasons', seasonDoc?.id), { ...(seasonDoc || {}), isLaunched: true, status: 'active', setLiveAt: nowIso }, { merge: true })
 
       const batch = writeBatch(db)
       allPlayers.forEach(u => {
@@ -172,7 +175,7 @@ export default function SeasonManagement() {
       })
       await batch.commit()
 
-      showToast(`Season ${seasonName} is now LIVE. Seeding applied successfully.`, 'success')
+      showToast(`Season ${seasonName} is now LIVE. League standings reset!`, 'success')
       triggerDataRefresh('all')
     } catch (e) {
       showToast('Error updating active season: ' + e.message, 'error')
@@ -204,6 +207,66 @@ export default function SeasonManagement() {
       triggerDataRefresh('all')
     } catch (e) {
       showToast("Error during revert: " + e.message, "error")
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const handleAutoCorrectHistoricalSeasons = async () => {
+    const results = getResults() || []
+    const approvedMatches = results.filter(r => String(r.status).toLowerCase() === 'approved')
+    if (approvedMatches.length === 0) return showToast('No approved results found', 'info')
+
+    if (!window.confirm(`Auto-correct seasons and unsync pre-Oct 1st 2026 games for all ${approvedMatches.length} approved results? \n\n• Games from Oct 1st 2026 onwards → "Elite Arrows Season 6" (Synced)\n• Games before Oct 1st 2026 → Historical Season (Season 4 / Season 1) and unsynced from Season 6 standings.`)) return
+
+    setIsProcessing(true)
+    try {
+      const batch = writeBatch(db)
+      let count = 0
+      let ops = 0
+      const oct12026 = new Date('2026-10-01T00:00:00.000Z').getTime()
+      const aug12026 = new Date('2026-08-01T00:00:00.000Z').getTime()
+
+      const updatedResults = results.map(r => {
+        if (String(r.status).toLowerCase() !== 'approved') return r
+
+        const matchTime = new Date(r.date || r.submittedAt || r.approvedAt || 0).getTime()
+        let correctSeason = 'Season 1'
+        let shouldSync = false
+
+        if (Number.isFinite(matchTime) && matchTime >= oct12026) {
+          correctSeason = 'Elite Arrows Season 6'
+          shouldSync = true
+        } else if (Number.isFinite(matchTime) && matchTime >= aug12026) {
+          correctSeason = 'Season 4'
+          shouldSync = false
+        } else {
+          correctSeason = 'Season 1'
+          shouldSync = false
+        }
+
+        const targetId = String(r.firestoreId || r.id)
+        const updates = {
+          season: correctSeason,
+          syncToStandings: shouldSync
+        }
+
+        batch.set(doc(db, 'results', targetId), updates, { merge: true })
+        count++
+        ops++
+
+        return { ...r, ...updates }
+      })
+
+      if (ops > 0) {
+        await batch.commit()
+      }
+
+      updateResults(updatedResults)
+      showToast(`Successfully auto-corrected seasons for ${count} results!`, 'success')
+      triggerDataRefresh('all')
+    } catch (e) {
+      showToast('Error: ' + e.message, 'error')
     } finally {
       setIsProcessing(false)
     }
