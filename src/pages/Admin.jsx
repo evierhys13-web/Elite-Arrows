@@ -1298,17 +1298,15 @@ export default function Admin() {
       await setDoc(doc(db, 'users', target.id), { division: divisionForm.division }, { merge: true })
       try {
         const seasons = getSeasons()
-        const currentSeasonName = adminData?.currentSeason || 'Season 1'
-        const currentSeason = seasons.find(s => s.name === currentSeasonName)
-        if (currentSeason && currentSeason.stagedDivisions?.[target.id]) {
-          const updated = { ...currentSeason.stagedDivisions }
-          delete updated[target.id]
-          await setDoc(doc(db, 'seasons', currentSeason.id), { stagedDivisions: updated }, { merge: true })
+        const currentSeasonName = adminData?.currentSeason || 'Elite Arrows Season 6'
+        const currentSeasonDoc = seasons.find(s => s.name === currentSeasonName)
+        if (currentSeasonDoc) {
+          const updated = { ...(currentSeasonDoc.stagedDivisions || {}), [target.id]: divisionForm.division }
+          await setDoc(doc(db, 'seasons', currentSeasonDoc.id), { stagedDivisions: updated }, { merge: true })
         }
       } catch (stagingError) { console.log('Could not clear staged division:', stagingError) }
       await logAudit('MOVE_DIVISION', `Moved ${target.username} to ${divisionForm.division}`)
-      triggerDataRefresh('users')
-      triggerDataRefresh('seasons')
+      triggerDataRefresh('all')
       showToast(`${target.username} moved to ${divisionForm.division}`, 'success')
       setDivisionForm({ player: '', division: '' })
       syncLeagueDigest()
@@ -1326,8 +1324,20 @@ export default function Admin() {
         batch.update(doc(db, 'users', uid), { division: bulkDivision })
       })
       await batch.commit()
+
+      try {
+        const seasons = getSeasons()
+        const currentSeasonName = adminData?.currentSeason || 'Elite Arrows Season 6'
+        const currentSeasonDoc = seasons.find(s => s.name === currentSeasonName)
+        if (currentSeasonDoc) {
+          const updated = { ...(currentSeasonDoc.stagedDivisions || {}) }
+          selectedMemberIds.forEach(uid => { updated[uid] = bulkDivision })
+          await setDoc(doc(db, 'seasons', currentSeasonDoc.id), { stagedDivisions: updated }, { merge: true })
+        }
+      } catch (e) { console.log('Staged division sync:', e) }
+
       await logAudit('BULK_ASSIGN_DIVISION', `Assigned ${selectedMemberIds.length} members to ${bulkDivision}`)
-      triggerDataRefresh('users')
+      triggerDataRefresh('all')
       showToast(`Assigned ${selectedMemberIds.length} members to ${bulkDivision}`, 'success')
       setSelectedMemberIds([])
       setBulkDivision('')

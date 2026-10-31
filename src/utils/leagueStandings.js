@@ -38,6 +38,18 @@ export const getDivisionsForSeason = (selectedSeason, adminData) => {
   return ['Overall', 'Premier', 'Elite', 'Emerald 1', 'Emerald 2', 'Diamond', 'Platinum']
 }
 
+export const normalizeDivisionName = (div) => {
+  if (!div) return 'Unassigned'
+  const norm = String(div).trim().toLowerCase()
+  if (norm === 'premier' || norm === 'premier division' || norm === 'pro league' || norm === 'pro_league' || norm === 'premier_division') return 'Premier'
+  if (norm === 'emerald 1' || norm === 'emerald_1' || norm === 'emerald') return 'Emerald 1'
+  if (norm === 'emerald 2' || norm === 'emerald_2') return 'Emerald 2'
+  if (norm === 'elite') return 'Elite'
+  if (norm === 'diamond') return 'Diamond'
+  if (norm === 'platinum') return 'Platinum'
+  return div
+}
+
 export const getPlayersWithEffectiveDivisions = (allUsers, seasonDoc, selectedSeason, adminData) => {
   const staged = seasonDoc?.stagedDivisions || {}
   const currentSeason = adminData?.currentSeason || 'Elite Arrows Season 6'
@@ -49,13 +61,12 @@ export const getPlayersWithEffectiveDivisions = (allUsers, seasonDoc, selectedSe
     normSelected === normCurrent ||
     normSelected.includes('season 6') ||
     normSelected.includes('season 5') ||
-    !seasonDoc ||
-    Object.keys(staged).length === 0
+    !seasonDoc
 
   return allUsers.map((u) => {
     const uid = String(u.id)
-    const effectiveDiv =
-      staged[uid] || staged[u.id] || (isLive ? u.division : u.division || 'Unassigned')
+    const rawDiv = staged[uid] || staged[u.id] || u.division
+    const effectiveDiv = normalizeDivisionName(rawDiv)
     return {
       ...u,
       division: effectiveDiv || 'Unassigned',
