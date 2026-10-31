@@ -2041,7 +2041,6 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
         const updatedResults = allResults.map(r => { const key = r.firestoreId || String(r.id); const merge = updatesByTargetId[key]; return merge ? { ...r, ...merge } : r })
         updateResults(updatedResults); showToast(`Fixed ${updatedCount} records. Table updated!`, 'success');
       } else showToast('All records already correct.', 'info');
-      if (adminData?.leagueTableResetAt) { await updateAdminData({ leagueTableResetAt: null }); triggerDataRefresh('all'); showToast('Soft Reset cleared.', 'success') }
     } catch (e) { console.error('Sync error:', e); showToast('Sync failed: ' + e.message, 'error'); }
     setIsApproving(false);
   };

@@ -60,11 +60,6 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
     if (String(result.status || '').toLowerCase() !== 'approved') return false
     if (result.excludeFromLeague) return false
 
-    // If explicitly synced to standings by admin, include immediately and unconditionally!
-    if (result.syncToStandings === true) {
-      return true
-    }
-
     if (requireProof && !resultHasProof(result) && !result.forfeit) return false
 
     // Apply Soft Reset filter (if resetTime is set)
@@ -75,7 +70,7 @@ export const getApprovedResultsForStats = (results = [], options = {}) => {
 
     // If explicitly synced to standings by admin, include immediately!
     if (result.syncToStandings === true) {
-      // Bypasses date/season checks
+      return true
     } else if (currentSeason) {
       const resSeason = String(result.season || '').replace(/\s+/g, '').toLowerCase()
       const actSeason = String(currentSeason).replace(/\s+/g, '').toLowerCase()
