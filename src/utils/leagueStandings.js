@@ -47,11 +47,21 @@ export const getDivisionsForSeason = (selectedSeason, adminData) => {
 export const getPlayersWithEffectiveDivisions = (allUsers, seasonDoc, selectedSeason, adminData) => {
   const staged = seasonDoc?.stagedDivisions || {}
   const currentSeason = adminData?.currentSeason || 'Elite Arrows Season 6'
-  const isLive = !selectedSeason || selectedSeason === currentSeason || selectedSeason === 'Season 5' || selectedSeason.includes('Season 5')
+  const normSelected = String(selectedSeason || '').toLowerCase()
+  const normCurrent = String(currentSeason || '').toLowerCase()
+
+  const isLive =
+    !selectedSeason ||
+    normSelected === normCurrent ||
+    normSelected.includes('season 6') ||
+    normSelected.includes('season 5') ||
+    !seasonDoc ||
+    Object.keys(staged).length === 0
+
   return allUsers.map((u) => {
     const uid = String(u.id)
     const effectiveDiv =
-      staged[uid] || staged[u.id] || (isLive ? u.division : 'Unassigned')
+      staged[uid] || staged[u.id] || (isLive ? u.division : u.division || 'Unassigned')
     return {
       ...u,
       division: effectiveDiv || 'Unassigned',

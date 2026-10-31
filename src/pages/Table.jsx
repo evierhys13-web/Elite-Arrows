@@ -112,6 +112,9 @@ export default function Table() {
   }, []);
 
   const getDivisionsForSeason = useCallback(() => {
+    if (selectedSeason && (selectedSeason.includes("Season 7") || selectedSeason.includes("season 7"))) {
+      return ["Overall", "Premier Division", "Elite", "Emerald 1", "Emerald 2", "Diamond", "Platinum"];
+    }
     // For the current/live season format, use the new division structure
     const isNewStructure = selectedSeason === (adminData?.currentSeason || "Elite Arrows Season 6");
     if (isNewStructure || selectedSeason === "Season 4" || selectedSeason === "Season 5") {
