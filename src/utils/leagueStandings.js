@@ -51,21 +51,22 @@ export const normalizeDivisionName = (div) => {
 }
 
 export const getPlayersWithEffectiveDivisions = (allUsers, seasonDoc, selectedSeason, adminData) => {
-  const staged = seasonDoc?.stagedDivisions || {}
-  const currentSeason = adminData?.currentSeason || 'Elite Arrows Season 6'
-  const normSelected = String(selectedSeason || '').toLowerCase()
-  const normCurrent = String(currentSeason || '').toLowerCase()
-
-  const isLive =
-    !selectedSeason ||
-    normSelected === normCurrent ||
-    normSelected.includes('season 6') ||
-    normSelected.includes('season 5') ||
-    !seasonDoc
+  const staged = seasonDoc?.stagedDivisions
+  const hasStagedMap = staged && typeof staged === 'object'
+  const isDraftSeason = seasonDoc && (seasonDoc.isLaunched === false || seasonDoc.status === 'draft' || seasonDoc.status === 'upcoming')
 
   return allUsers.map((u) => {
     const uid = String(u.id)
-    const rawDiv = staged[uid] || staged[u.id] || u.division
+    let rawDiv
+
+    if (hasStagedMap && (staged[uid] !== undefined || staged[u.id] !== undefined)) {
+      rawDiv = staged[uid] !== undefined ? staged[uid] : staged[u.id]
+    } else if (isDraftSeason) {
+      rawDiv = 'Unassigned'
+    } else {
+      rawDiv = u.division || 'Unassigned'
+    }
+
     const effectiveDiv = normalizeDivisionName(rawDiv)
     return {
       ...u,
