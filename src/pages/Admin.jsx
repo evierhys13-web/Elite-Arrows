@@ -1724,7 +1724,7 @@ export default function Admin() {
     } catch (e) { showToast(e.message, 'error') }
   }
 
-  const DIVISION_EDITOR_DIVISIONS = ['Premier', 'Elite', 'Emerald 1', 'Emerald 2', 'Emerald', 'Diamond', 'Platinum']
+  const DIVISION_EDITOR_DIVISIONS = ['Premier', 'Elite', 'Emerald 1', 'Emerald 2', 'Diamond', 'Platinum']
 
   const captainValues = useMemo(() => captainDraft || adminData?.divisionCaptains || {}, [captainDraft, adminData?.divisionCaptains])
   const formatValues = useMemo(() => formatDraft || adminData?.divisionFormats || {}, [formatDraft, adminData?.divisionFormats])
@@ -4487,7 +4487,6 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
                 <option value="Elite">Elite</option>
                 <option value="Emerald 1">Emerald 1</option>
                 <option value="Emerald 2">Emerald 2</option>
-                <option value="Emerald">Emerald</option>
                 <option value="Diamond">Diamond</option>
                 <option value="Platinum">Platinum</option>
                 <option value="Unassigned">Unassigned</option>

@@ -35,15 +35,7 @@ export const HIDDEN_LEAGUE_DIVISIONS = []
 export const ACTIVE_LEAGUE_DIVISIONS = ['Premier', 'Elite', 'Emerald 1', 'Emerald 2', 'Diamond', 'Platinum']
 
 export const getDivisionsForSeason = (selectedSeason, adminData) => {
-  if (selectedSeason && (selectedSeason.includes('Season 7') || selectedSeason.includes('season 7'))) {
-    return ['Overall', 'Premier', 'Elite', 'Emerald 1', 'Emerald 2', 'Diamond', 'Platinum']
-  }
-  const isNewStructure =
-    selectedSeason === (adminData?.currentSeason || 'Elite Arrows Season 6')
-  if (isNewStructure || selectedSeason === 'Season 4' || selectedSeason === 'Season 5') {
-    return ['Overall', 'Premier', 'Elite', 'Emerald 1', 'Emerald 2', 'Emerald', 'Diamond', 'Platinum']
-  }
-  return ['Overall', 'Premier', 'Elite', 'Emerald 1', 'Emerald 2', 'Emerald', 'Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze']
+  return ['Overall', 'Premier', 'Elite', 'Emerald 1', 'Emerald 2', 'Diamond', 'Platinum']
 }
 
 export const getPlayersWithEffectiveDivisions = (allUsers, seasonDoc, selectedSeason, adminData) => {

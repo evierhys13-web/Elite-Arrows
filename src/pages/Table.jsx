@@ -112,7 +112,7 @@ export default function Table() {
   }, []);
 
   const getDivisionsForSeason = useCallback(() => {
-    return ["Overall", "Premier", "Elite", "Emerald 1", "Emerald 2", "Emerald", "Diamond", "Platinum"];
+    return ["Overall", "Premier", "Elite", "Emerald 1", "Emerald 2", "Diamond", "Platinum"];
   }, []);
 
   const divisions = getDivisionsForSeason();
