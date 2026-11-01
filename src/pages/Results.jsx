@@ -4,6 +4,7 @@ import { getMatchApprover } from '../context/AuthHelpers'
 import { db, setDoc, getDocs, doc, collection, addDoc } from '../firebase'
 import { ADMIN_EMAILS } from '../config'
 import { derivePlayerStatsFromResults, getPersistedPlayerStats } from '../utils/playerStats'
+import { normalizeDivisionName } from '../utils/leagueStandings'
 import { useToast } from '../context/ToastContext'
 import { SkeletonList } from '../components/Skeleton'
 import PullToRefresh from '../components/PullToRefresh'
@@ -85,7 +86,9 @@ export default function Results() {
       if (typeFilter === 'open' && !isFriendlyLeagueResult(r)) return false
     }
     // Cups / Doubles / Playoffs aren't tied to a singles division, so a division filter must not hide them.
-    if (divisionFilter !== 'all' && !isCupResult(r) && !isDoublesLeagueResult(r) && !isPlayoffResult(r) && r.division !== divisionFilter) return false
+    if (divisionFilter !== 'all' && !isCupResult(r) && !isDoublesLeagueResult(r) && !isPlayoffResult(r)) {
+      if (normalizeDivisionName(r.division) !== divisionFilter) return false
+    }
     return true
   })
 
@@ -326,8 +329,10 @@ export default function Results() {
         <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', overflowX: 'auto', paddingBottom: '8px' }}>
           {[
             { id: 'all', label: 'All Divisions' },
+            { id: 'Premier', label: 'Premier' },
             { id: 'Elite', label: 'Elite' },
-            { id: 'Emerald', label: 'Emerald' },
+            { id: 'Emerald 1', label: 'Emerald 1' },
+            { id: 'Emerald 2', label: 'Emerald 2' },
             { id: 'Diamond', label: 'Diamond' },
             { id: 'Platinum', label: 'Platinum' }
           ].map(f => (

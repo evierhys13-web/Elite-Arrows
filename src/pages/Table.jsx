@@ -691,6 +691,7 @@ export default function Table() {
                   const legDiff = player.stats.legsWon - player.stats.legsLost;
 
                   // Division-specific prize and promotion rules
+                  const useNewRules = selectedSeason === "Season 4" || selectedSeason === "Season 5" || selectedSeason === (adminData?.currentSeason || "Elite Arrows Season 6");
                   let isPrizeWinner = index < 2 && activeDivision !== "Overall";
                   let isPromotion = false;
                   let isRelegation = false;
