@@ -55,19 +55,37 @@ export default function Results() {
     return Number.isNaN(parsed.getTime()) ? new Date('2026-10-01T00:00:00') : parsed
   }, [adminData?.currentSeason, getSeasons])
 
+  const isSinglesLeagueResult = (r) => {
+    const gt = String(r.gameType || 'League').toLowerCase()
+    return gt === 'league' || gt === 'singles league' || gt === 'super league'
+  }
+  const isDoublesLeagueResult = (r) => {
+    const gt = String(r.gameType || '').toLowerCase()
+    return gt.includes('doubles') || Boolean(r.team1Id) || Boolean(r.team2Id)
+  }
   const isCupResult = (r) => r.gameType === 'Cup' || Boolean(r.cupId)
+  const isPlayoffResult = (r) => {
+    const gt = String(r.gameType || '').toLowerCase()
+    return gt.includes('playoff')
+  }
+  const isFriendlyLeagueResult = (r) => {
+    const gt = String(r.gameType || '').toLowerCase()
+    return gt.includes('friendly league')
+  }
 
   const filteredResults = allResults.filter(r => {
     const resultDate = new Date(r.date || r.submittedAt || 0)
-    if (!Number.isNaN(resultDate.getTime()) && resultDate < resultsCutoff) return false
+    const isStandalone = isDoublesLeagueResult(r) || isFriendlyLeagueResult(r) || isCupResult(r) || isPlayoffResult(r)
+    if (!isStandalone && !Number.isNaN(resultDate.getTime()) && resultDate < resultsCutoff) return false
 
     if (typeFilter !== 'all') {
-      if (typeFilter === 'league' && r.gameType !== 'League') return false
+      if (typeFilter === 'league' && !isSinglesLeagueResult(r)) return false
+      if (typeFilter === 'doubles' && !isDoublesLeagueResult(r)) return false
       if (typeFilter === 'cup' && !isCupResult(r)) return false
-      if (typeFilter === 'open' && !String(r.gameType).toLowerCase().includes('friendly league')) return false
+      if (typeFilter === 'open' && !isFriendlyLeagueResult(r)) return false
     }
-    // Cups aren't tied to a division, so a division filter must not hide them.
-    if (divisionFilter !== 'all' && !isCupResult(r) && r.division !== divisionFilter) return false
+    // Cups / Doubles / Playoffs aren't tied to a singles division, so a division filter must not hide them.
+    if (divisionFilter !== 'all' && !isCupResult(r) && !isDoublesLeagueResult(r) && !isPlayoffResult(r) && r.division !== divisionFilter) return false
     return true
   })
 
@@ -289,7 +307,8 @@ export default function Results() {
         <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', overflowX: 'auto', paddingBottom: '8px' }}>
           {[
             { id: 'all', label: 'All' },
-            { id: 'league', label: 'Standard' },
+            { id: 'league', label: 'Singles League' },
+            { id: 'doubles', label: 'Doubles League' },
             { id: 'cup', label: 'Cups' },
             { id: 'open', label: 'Friendly League' }
           ].map(f => (

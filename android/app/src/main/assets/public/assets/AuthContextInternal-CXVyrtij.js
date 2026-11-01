@@ -1,0 +1,1 @@
+import{i as e}from"./jsx-runtime-D-oznMWL.js";import{t}from"./react-BeFwIp5l.js";var n=e(t(),1),r=(0,n.createContext)(null);function i(){let e=(0,n.useContext)(r);if(!e)throw Error(`useAuth must be used within AuthProvider`);return e}export{i as n,r as t};

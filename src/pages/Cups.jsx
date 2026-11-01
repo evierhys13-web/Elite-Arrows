@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../context/AuthContextInternal'
 import { Link } from 'react-router-dom'
-import { db, doc, setDoc, deleteDoc, getDoc, collection, query, where, getDocs, writeBatch } from '../firebase'
+import { db, doc, setDoc, updateDoc, deleteDoc, getDoc, collection, query, where, getDocs, writeBatch } from '../firebase'
 import { ADMIN_EMAILS } from '../config'
 import UserSearchSelect from '../components/UserSearchSelect'
 import { useToast } from '../context/ToastContext'
@@ -269,7 +269,7 @@ export default function CupTournaments() {
       }
 
       const updatedPlayers = Array.from(new Set([...(cupData.players || []), user.id]))
-      await setDoc(cupRef, { players: updatedPlayers }, { merge: true })
+      await updateDoc(cupRef, { players: updatedPlayers })
 
       const existingCups = getCups()
       localStorage.setItem('eliteArrowsCups', JSON.stringify(existingCups.map(c => String(c.id) === String(cup.id) ? { ...c, players: updatedPlayers } : c)))

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'elite-arrows-v44';
+const CACHE_NAME = 'elite-arrows-v46';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -28,22 +28,55 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+async function storageCacheFirst(request) {
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match(request);
+  if (cached) return cached;
+  try {
+    const response = await fetch(request);
+    if (response && response.ok) {
+      cache.put(request, response.clone()).catch(() => {});
+    }
+    return response;
+  } catch (e) {
+    return cached;
+  }
+}
+
+// The app can proactively warm the cache with background/banner image URLs
+// as soon as it knows them, so first navigation to a page is instant too.
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'PRECACHE_ASSETS') {
+    const urls = (event.data.urls || []).filter(Boolean);
+    if (!urls.length) return;
+    event.waitUntil(
+      caches.open(CACHE_NAME).then((cache) =>
+        Promise.allSettled(urls.map((u) => cache.add(u)))
+      )
+    );
+  }
+});
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
   if (request.method !== 'GET') return;
 
+  // Firebase Storage images (custom backgrounds, banners, avatars) are served
+  // cache-first once seen, so backgrounds appear instantly on later loads.
+  if (url.origin === 'https://firebasestorage.googleapis.com') {
+    event.respondWith(storageCacheFirst(request));
+    return;
+  }
+
   // Keep Firebase and other external services out of the app shell cache.
   if (url.origin !== self.location.origin) {
     return;
   }
 
-  // Network-first for navigations and app assets so deployed fixes arrive without a hard refresh.
-  if (request.mode === 'navigate' ||
-      url.pathname.endsWith('.html') ||
-      url.pathname.endsWith('.js') ||
-      url.pathname.endsWith('.css')) {
+  // Network-first for navigations and index.html so deployed fixes arrive without a hard refresh.
+  if (request.mode === 'navigate' || url.pathname.endsWith('.html')) {
     event.respondWith(
       fetch(request)
         .then((response) => {
@@ -62,6 +95,28 @@ self.addEventListener('fetch', (event) => {
             return new Response('Offline', { status: 503 });
           });
         })
+    );
+    return;
+  }
+
+  // Hashed JS/CSS assets are immutable per deploy version, so serve the cached
+  // copy instantly while revalidating in the background (stale-while-revalidate).
+  // A new deploy produces new hashes, so old cached assets are never mistakes.
+  if (url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then((cache) => {
+        return cache.match(request).then((cachedResponse) => {
+          const networkPromise = fetch(request)
+            .then((response) => {
+              if (response.status === 200) {
+                cache.put(request, response.clone());
+              }
+              return response;
+            })
+            .catch(() => cachedResponse);
+          return cachedResponse || networkPromise;
+        });
+      })
     );
     return;
   }

@@ -447,6 +447,8 @@ export default function Admin() {
   const archivedResultCount = useMemo(
     () => allResults.filter(r => {
       const seasonKey = String(r.season || '').trim()
+      const isStandalone = seasonKey === 'Doubles League' || seasonKey === 'Friendly League' || seasonKey.toLowerCase().includes('cup')
+      if (isStandalone) return false
       return seasonKey !== '' && seasonKey !== activeSeasonName
     }).length,
     [allResults, activeSeasonName]
@@ -457,6 +459,8 @@ export default function Admin() {
     if (resultFilter !== 'pending') {
       list = list.filter(r => {
         const seasonKey = String(r.season || '').trim()
+        const isStandalone = seasonKey === 'Doubles League' || seasonKey === 'Friendly League' || seasonKey.toLowerCase().includes('cup')
+        if (isStandalone) return !showArchive
         const isArchivedSeason = seasonKey !== '' && seasonKey !== activeSeasonName
         return showArchive ? isArchivedSeason : !isArchivedSeason
       })
@@ -468,6 +472,8 @@ export default function Admin() {
         list = list.filter(r => String(r.gameType).toLowerCase() === 'cup' || !!r.cupId)
       } else if (resultTypeFilter === 'open league') {
         list = list.filter(r => String(r.gameType).toLowerCase().includes('friendly league'))
+      } else if (resultTypeFilter === 'doubles league') {
+        list = list.filter(r => String(r.gameType).toLowerCase().includes('doubles') || r.team1Id || r.team2Id)
       } else {
         list = list.filter(r => String(r.gameType).toLowerCase() === resultTypeFilter.toLowerCase())
       }
@@ -2293,9 +2299,6 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>Comprehensive League Management</p>
         </div>
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          <button className="btn btn-warning btn-sm" onClick={handleSoftResetStandings}>
-            🔄 Soft Reset Standings Table
-          </button>
           <button className="btn btn-secondary btn-sm" onClick={() => navigate('/season-management')}>
             ⚙️ Season Management
           </button>
@@ -2333,25 +2336,6 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
         {/* TAB: DASHBOARD */}
         {activeTab === 'dashboard' && (
           <div className="animate-fade-in">
-            {/* Standings Soft Reset Quick Action Card */}
-            <div className="glass" style={{ padding: '16px 20px', borderRadius: '12px', marginBottom: '20px', border: '1px solid var(--warning)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-              <div>
-                <h4 style={{ color: 'var(--warning)', margin: 0, fontSize: '0.95rem' }}>🔄 Standings Table Soft Reset</h4>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', margin: '2px 0 0' }}>
-                  Resets everyone on the Singles League table to 0 Played, 0 Wins, 0 Points for a fresh start.
-                </p>
-              </div>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button className="btn btn-warning btn-sm" onClick={handleSoftResetStandings}>
-                  🔄 Soft Reset Table
-                </button>
-                {adminData?.leagueTableResetAt && (
-                  <button className="btn btn-secondary btn-sm" onClick={handleClearTableReset}>
-                    ↩️ Restore History
-                  </button>
-                )}
-              </div>
-            </div>
             <div className="glass" style={{ borderRadius: '12px', marginBottom: '28px', overflow: 'hidden' }}>
               <button
                 onClick={() => setShowFixtureTracker(v => !v)}
@@ -2486,6 +2470,26 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
                 </ResponsiveContainer>
               )}
             </div>
+
+            {/* Standings Soft Reset Quick Action Card at Bottom */}
+            <div className="glass" style={{ padding: '16px 20px', borderRadius: '12px', marginTop: '24px', border: '1px solid var(--warning)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <h4 style={{ color: 'var(--warning)', margin: 0, fontSize: '0.95rem' }}>🔄 Standings Table Soft Reset</h4>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', margin: '2px 0 0' }}>
+                  Resets everyone on the Singles League table to 0 Played, 0 Wins, 0 Points for a fresh start.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button className="btn btn-warning btn-sm" onClick={handleSoftResetStandings}>
+                  🔄 Soft Reset Table
+                </button>
+                {adminData?.leagueTableResetAt && (
+                  <button className="btn btn-secondary btn-sm" onClick={handleClearTableReset}>
+                    ↩️ Restore History
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
@@ -2604,6 +2608,7 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
                 <option value="league">League</option>
                 <option value="cup">Cup</option>
                 <option value="open league">Friendly League</option>
+                <option value="doubles league">Doubles League</option>
               </select>
             </div>
 

@@ -1,0 +1,1 @@
+import{t as e}from"./jsx-runtime-D-oznMWL.js";import{t}from"./react-BeFwIp5l.js";t();var n=e();function r({children:e,content:t,position:r=`top`}){return(0,n.jsxs)(`div`,{className:`tooltip-wrapper`,children:[e,(0,n.jsx)(`div`,{className:`tooltip tooltip-${r}`,children:t})]})}export{r as t};
