@@ -155,7 +155,7 @@ export default function Results() {
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
           <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            {result.gameType}{!isCupResult(result) && ` • ${result.division || 'Unassigned'}`}
+            {result.gameType}{!isCupResult(result) && !isDoublesLeagueResult(result) && ` • ${result.division || 'Unassigned'}`}
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             {result.date ? new Date(result.date).toLocaleDateString() : 'Unknown date'}

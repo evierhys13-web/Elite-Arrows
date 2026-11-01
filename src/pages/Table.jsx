@@ -690,18 +690,27 @@ export default function Table() {
                 playersInDivision.map((player, index) => {
                   const legDiff = player.stats.legsWon - player.stats.legsLost;
 
-                  // Updated rules for Season 4+
-                  const useNewRules = selectedSeason === "Season 4" || selectedSeason === "Season 5" || selectedSeason === (adminData?.currentSeason || "Elite Arrows Season 6");
+                  // Division-specific prize and promotion rules
+                  let isPrizeWinner = index < 2 && activeDivision !== "Overall";
+                  let isPromotion = false;
+                  let isRelegation = false;
 
-                  const isPromotion = useNewRules
-                    ? (index < 3 && activeDivision !== "Overall" && activeDivision !== "Elite" && activeDivision !== "Pro League")
-                    : (index < 2 && activeDivision !== "Overall");
+                  if (activeDivision === "Premier") {
+                    isPrizeWinner = index < 2; // Top 2 prize
+                    isPromotion = false;     // No 3rd promotion
+                  } else if (activeDivision === "Elite") {
+                    isPrizeWinner = index < 2; // Top 2 prize
+                    isPromotion = index < 3;   // Top 3 promotion
+                  } else if (activeDivision !== "Overall") {
+                    isPrizeWinner = index < 2;
+                    isPromotion = index < 3;   // Top 3 promotion for Emerald 1, Emerald 2, Diamond, Platinum
+                  }
 
-                  const isRelegation = useNewRules
-                    ? (index >= playersInDivision.length - 3 && playersInDivision.length > 6 && activeDivision !== "Overall" && activeDivision !== "Platinum")
-                    : (index >= playersInDivision.length - 2 && playersInDivision.length > 4 && activeDivision !== "Overall" && activeDivision !== "Development");
-
-                  const isPrizeWinner = index < 2 && activeDivision !== "Overall";
+                  if (activeDivision !== "Overall" && activeDivision !== "Platinum") {
+                    isRelegation = useNewRules
+                      ? (index >= playersInDivision.length - 3 && playersInDivision.length > 6)
+                      : (index >= playersInDivision.length - 2 && playersInDivision.length > 4);
+                  }
                   const isMe = player.id === user?.id;
 
                   const handleNavigate = (e, path) => {
