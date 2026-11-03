@@ -87,6 +87,7 @@ export default function CupBracket() {
 
   const activeStageSetRef = useRef(false)
   const [activeStage, setActiveStage] = useState('groups')
+  const [selectedGroupTab, setSelectedGroupTab] = useState('ALL')
 
   const hasScore = (score) => score !== undefined && score !== null && score !== ''
 
@@ -416,6 +417,60 @@ export default function CupBracket() {
     })
     const newPlayers = Array.from(new Set([...(cup.players || []), finalId]))
     handleUpdateCupGroups(newGroups, newPlayers)
+  }
+
+  const handleAddGroup = () => {
+    const existingGroups = cup?.groups || []
+    const lastGroupId = existingGroups.length > 0 ? existingGroups[existingGroups.length - 1].id : 'A'
+    let nextGroupId = 'A'
+    if (/^[A-Z]$/.test(lastGroupId)) {
+      nextGroupId = String.fromCharCode(lastGroupId.charCodeAt(0) + 1)
+    } else if (!isNaN(parseInt(lastGroupId))) {
+      nextGroupId = String(parseInt(lastGroupId) + 1)
+    } else {
+      nextGroupId = `Group ${existingGroups.length + 1}`
+    }
+    const newGroups = [...existingGroups, { id: nextGroupId, players: [] }]
+    handleUpdateCupGroups(newGroups, cup?.players || [])
+  }
+
+  const handleRemoveGroup = (gId) => {
+    const groupObj = (cup?.groups || []).find(g => g.id === gId)
+    if (groupObj && groupObj.players && groupObj.players.length > 0) {
+      if (!window.confirm(`Group ${gId} contains players. Removing it will remove those players from the group stage. Continue?`)) return
+    }
+    const newGroups = (cup?.groups || []).filter(g => g.id !== gId)
+    const newPlayers = (cup?.players || []).filter(pid => {
+      const remainingPlayers = newGroups.flatMap(g => g.players || [])
+      return remainingPlayers.includes(pid)
+    })
+    handleUpdateCupGroups(newGroups, newPlayers)
+  }
+
+  const handleAutoSeedGroups = () => {
+    const currentGroups = cup?.groups || []
+    if (currentGroups.length === 0) return showToast?.('No groups available to seed into. Add a group first.', 'error')
+    if (!window.confirm('Auto-seed players across all groups based on 3-dart average ranking? This will recalculate group fixtures.')) return
+
+    const allPids = [...(cup?.players || [])]
+    const sortedPids = [...allPids].sort((a, b) => {
+      const uA = allUsers.find(u => String(u.id) === String(a))
+      const uB = allUsers.find(u => String(u.id) === String(b))
+      const avgA = uA?.threeDartAverage || 0
+      const avgB = uB?.threeDartAverage || 0
+      return avgB - avgA
+    })
+
+    const numG = currentGroups.length
+    const newGroups = currentGroups.map(g => ({ ...g, players: [] }))
+
+    sortedPids.forEach((pid, idx) => {
+      const round = Math.floor(idx / numG)
+      const pos = round % 2 === 0 ? (idx % numG) : (numG - 1 - (idx % numG))
+      newGroups[pos].players.push(pid)
+    })
+
+    handleUpdateCupGroups(newGroups, allPids)
   }
 
   const roundsData = rounds.map(round => {
@@ -836,8 +891,40 @@ export default function CupBracket() {
               {isWorldCup ? (cup.allowBestThird ? 'Top 2 + Best 3rd Placed Advance' : 'Top 2 Advance to Knockout') : isGroupKnockout ? `Top ${cup.advancePerGroup || 2} + Best Next-Placed Advance` : `Top ${cup.advancePerGroup || 2} Advance to Knockout`}
             </div>
           </div>
+
+          {isAdmin && !cup.groupsAdvanced && (
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
+              <button className="btn btn-primary btn-sm" onClick={handleAddGroup}>
+                ➕ Add New Group
+              </button>
+              <button className="btn btn-secondary btn-sm" onClick={handleAutoSeedGroups}>
+                ⚡ Auto-Seed / Shuffle Players across Groups
+              </button>
+            </div>
+          )}
+
+          {Object.keys(sortedStandings).length > 1 && (
+            <div className="division-tabs" style={{ marginBottom: '20px', flexWrap: 'wrap' }}>
+              <button
+                className={`division-tab ${selectedGroupTab === 'ALL' ? 'active' : ''}`}
+                onClick={() => setSelectedGroupTab('ALL')}
+              >
+                All Groups ({Object.keys(sortedStandings).length})
+              </button>
+              {Object.keys(sortedStandings).sort().map(gId => (
+                <button
+                  key={gId}
+                  className={`division-tab ${selectedGroupTab === gId ? 'active' : ''}`}
+                  onClick={() => setSelectedGroupTab(gId)}
+                >
+                  Group {gId}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '24px', marginBottom: '40px' }}>
-            {Object.keys(sortedStandings).sort().map(gId => (
+            {Object.keys(sortedStandings).sort().filter(gId => selectedGroupTab === 'ALL' || gId === selectedGroupTab).map(gId => (
               <div key={gId} className="card glass" style={{
                 padding: '24px',
                 borderRadius: '20px',
@@ -846,7 +933,19 @@ export default function CupBracket() {
               }}>
                 <h3 style={{ color: isWorldCup ? '#fbbf24' : 'var(--accent-cyan)', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontWeight: 900, fontSize: '1.5rem' }}>GROUP {gId}</span>
-                  <span style={{ fontSize: '0.7rem', opacity: 0.5, letterSpacing: '1px' }}>ROUND ROBIN</span>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.7rem', opacity: 0.5, letterSpacing: '1px' }}>ROUND ROBIN</span>
+                    {isAdmin && !cup.groupsAdvanced && (
+                      <button
+                        className="btn btn-danger btn-sm"
+                        style={{ padding: '2px 8px', fontSize: '0.7rem' }}
+                        onClick={() => handleRemoveGroup(gId)}
+                        title="Delete Group"
+                      >
+                        🗑️ Delete
+                      </button>
+                    )}
+                  </div>
                 </h3>
 
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
