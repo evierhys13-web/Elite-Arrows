@@ -329,11 +329,21 @@ export function AuthProvider({ children }) {
   // empty. Length alone can't signal readiness - an account with no posts
   // would never look "loaded" and hold the splash open until the timeout.
   const [newsLoaded, setNewsLoaded] = useState(false);
+  // One flag per shared collection so the startup splash can wait for real
+  // snapshot arrivals (even for empty collections) instead of guessing from
+  // array lengths or only waiting for "some" data.
+  const [usersLoaded, setUsersLoaded] = useState(false);
+  const [resultsLoaded, setResultsLoaded] = useState(false);
+  const [fixturesLoaded, setFixturesLoaded] = useState(false);
+  const [seasonsLoaded, setSeasonsLoaded] = useState(false);
+  const [cupsLoaded, setCupsLoaded] = useState(false);
+  const [adminDataLoaded, setAdminDataLoaded] = useState(false);
   const [showSeasonOneWelcome, setShowSeasonOneWelcome] = useState(false);
   const [pendingGameInvite, setPendingGameInvite] = useState(null);
   const unsubscribeRef = useRef(null);
   const seenNotificationIdsRef = useRef(new Set());
   const resultRowsRef = useRef([]);
+  const resultsHydratedRef = useRef(false);
   const allUsersRef = useRef(allUsers);
   const publishDebounceRef = useRef(null);
   const saveResultsCacheThrottleRef = useRef(null);
@@ -670,6 +680,10 @@ export function AuthProvider({ children }) {
 
         const resultsData = Array.from(byLogicalId.values());
         setResults(resultsData);
+        // Only report ready once the snapshot has actually been published,
+        // not when the debounce is queued. Admin-data snapshots can call this
+        // before results hydrate, so require the results listener first.
+        if (resultsHydratedRef.current) setResultsLoaded(true);
 
         // Throttle localStorage write: at most once every 2.5 seconds
         if (!saveResultsCacheThrottleRef.current) {
@@ -709,9 +723,12 @@ export function AuthProvider({ children }) {
 
           publishResults({ announce: false });
         }
+        setAdminDataLoaded(true);
       },
       (error) => {
         console.error("Admin data listener error:", error);
+        // Never let a failed listener hold the splash open forever.
+        setAdminDataLoaded(true);
       }
     );
 
@@ -843,6 +860,7 @@ export function AuthProvider({ children }) {
 
         setAllUsers(allFetchedUsers);
         saveUsersCache(allFetchedUsers);
+        setUsersLoaded(true);
 
         healLostPermanentRoles(allFetchedUsers);
 
@@ -873,6 +891,7 @@ export function AuthProvider({ children }) {
       },
       (error) => {
         console.error("Users listener error:", error);
+        setUsersLoaded(true);
       }
     );
 
@@ -940,10 +959,12 @@ export function AuthProvider({ children }) {
 
         const shouldAnnounce = hydratedCollections.has("results");
         hydratedCollections.add("results");
+        resultsHydratedRef.current = true;
         publishResults({ announce: shouldAnnounce });
       },
       (error) => {
         console.error("Results listener error:", error);
+        setResultsLoaded(true);
       }
     );
 
@@ -1056,10 +1077,12 @@ export function AuthProvider({ children }) {
           });
           return merged;
         });
+        setFixturesLoaded(true);
         announceAfterHydration("fixtures");
       },
       (error) => {
         console.error("Fixtures listener error:", error);
+        setFixturesLoaded(true);
       }
     );
 
@@ -1114,6 +1137,7 @@ export function AuthProvider({ children }) {
           .map((doc) => ({ id: doc.id, ...doc.data() }))
           .filter((item) => !item._deleted);
         setSeasons(seasonsData);
+        setSeasonsLoaded(true);
         try {
           localStorage.setItem(
             "eliteArrowsSeasons",
@@ -1133,6 +1157,7 @@ export function AuthProvider({ children }) {
       },
       (error) => {
         console.error("Seasons listener error:", error);
+        setSeasonsLoaded(true);
       }
     );
 
@@ -1224,6 +1249,7 @@ export function AuthProvider({ children }) {
           if (ttlCacheValid(cachedBlob, TTL_CUPS) && Array.isArray(cachedBlob.cups)) {
             if (!cancelled) {
               setCups(cachedBlob.cups);
+              setCupsLoaded(true);
               localStorage.setItem("eliteArrowsCups", JSON.stringify(cachedBlob.cups));
             }
             return;
@@ -1233,9 +1259,12 @@ export function AuthProvider({ children }) {
         if (cancelled) return;
         const cupsData = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
         setCups(cupsData);
+        setCupsLoaded(true);
         localStorage.setItem("eliteArrowsCups", JSON.stringify(cupsData));
         writeTtlCache("eliteArrowsCups_v1", { cups: cupsData });
-      } catch (e) {}
+      } catch (e) {
+        if (!cancelled) setCupsLoaded(true);
+      }
     };
     fetchCups();
     return () => {
@@ -1254,6 +1283,7 @@ const fetchUsers = async () => {
           if (!cancelled) {
             setAllUsers(cachedBlob.users);
             saveUsersCache(cachedBlob.users);
+            setUsersLoaded(true);
           }
           return;
         }
@@ -1266,8 +1296,11 @@ const fetchUsers = async () => {
         });
         setAllUsers(usersData);
         saveUsersCache(usersData);
+        setUsersLoaded(true);
         writeTtlCache("eliteArrowsUsers_v1", { users: usersData });
-      } catch (e) {}
+      } catch (e) {
+        if (!cancelled) setUsersLoaded(true);
+      }
     };
     fetchUsers();
     return () => {
@@ -2974,6 +3007,12 @@ const fetchUsers = async () => {
     unreadCount,
     news,
     newsLoaded,
+    usersLoaded,
+    resultsLoaded,
+    fixturesLoaded,
+    seasonsLoaded,
+    cupsLoaded,
+    adminDataLoaded,
     triggerDataRefresh,
     triggerCupsRefresh,
     requestNotificationPermission,
@@ -3044,6 +3083,12 @@ const fetchUsers = async () => {
     unreadCount,
     news,
     newsLoaded,
+    usersLoaded,
+    resultsLoaded,
+    fixturesLoaded,
+    seasonsLoaded,
+    cupsLoaded,
+    adminDataLoaded,
     triggerDataRefresh,
     triggerCupsRefresh,
     requestNotificationPermission,

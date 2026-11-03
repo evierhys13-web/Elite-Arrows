@@ -68,45 +68,129 @@ const Suggestions = lazy(() => import('./pages/Suggestions'))
 const LeaguePage = lazy(() => import('./pages/LeaguePage'))
 const PlayerOfMonth = lazy(() => import('./pages/PlayerOfMonth'))
 
-function PageLoader({ label = 'Loading Elite Arrows...' }) {
+const SPLASH_STATUS = {
+  account: 'Signing you in',
+  roster: 'Loading player roster',
+  results: 'Loading match results',
+  seasons: 'Loading season data',
+  fixtures: 'Loading fixtures',
+  settings: 'Loading league settings',
+  news: 'Loading league news',
+  cups: 'Loading cup data'
+}
+
+function DartboardMark() {
+  const ticks = Array.from({ length: 20 }, (_, i) => {
+    const angle = (i * 18 * Math.PI) / 180
+    const x1 = 60 + Math.cos(angle) * 45
+    const y1 = 60 + Math.sin(angle) * 45
+    const x2 = 60 + Math.cos(angle) * 56
+    const y2 = 60 + Math.sin(angle) * 56
+    return (
+      <line
+        key={i}
+        x1={x1}
+        y1={y1}
+        x2={x2}
+        y2={y2}
+        stroke="rgba(226,232,240,0.32)"
+        strokeWidth="1"
+      />
+    )
+  })
+
+  return (
+    <div className="splash-board" aria-hidden="true">
+      <span className="splash-board-glow" />
+      <svg viewBox="0 0 120 120" width="132" height="132">
+        <defs>
+          <radialGradient id="splash-board-face" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#111827" />
+            <stop offset="100%" stopColor="#05070d" />
+          </radialGradient>
+          <linearGradient id="splash-dart-shaft" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#fbbf24" />
+            <stop offset="100%" stopColor="#f8fafc" />
+          </linearGradient>
+        </defs>
+        <circle cx="60" cy="60" r="58" fill="url(#splash-board-face)" stroke="#fbbf24" strokeWidth="1.5" />
+        <circle cx="60" cy="60" r="50" fill="none" stroke="#38bdf8" strokeWidth="2" opacity="0.45" />
+        <circle cx="60" cy="60" r="38" fill="none" stroke="rgba(226,232,240,0.25)" strokeWidth="1" />
+        <g>{ticks}</g>
+        <circle cx="60" cy="60" r="31" fill="none" stroke="#22c55e" strokeWidth="4" opacity="0.55" />
+        <circle cx="60" cy="60" r="18" fill="none" stroke="#ef4444" strokeWidth="5" opacity="0.75" />
+        <circle cx="60" cy="60" r="10" fill="#dc2626" />
+        <circle cx="60" cy="60" r="3.5" fill="#fbbf24" />
+        <g transform="rotate(-38 60 60)">
+          <rect x="63" y="58.3" width="34" height="3.4" rx="1.7" fill="url(#splash-dart-shaft)" />
+          <rect x="66" y="57.4" width="12" height="5.2" rx="2" fill="#e2e8f0" />
+          <path d="M63 56.5 L60 60 L63 63.5 Z" fill="#fbbf24" />
+          <path d="M97 55.5 L108 60 L97 64.5 Z" fill="#38bdf8" />
+        </g>
+      </svg>
+    </div>
+  )
+}
+
+function LoadingScreen({ progress, label = 'Loading league data', showRefresh = false, testID }) {
+  const isDeterminate = typeof progress === 'number'
+  const value = Math.max(0, Math.min(100, isDeterminate ? progress : 0))
+
+  return (
+    <div
+      className="splash-screen"
+      data-testid={testID}
+      role="status"
+      aria-live="polite"
+    >
+      <div className="splash-grid" />
+      <div className="splash-inner">
+        <DartboardMark />
+        <div className="splash-brand">
+          <h1 className="splash-title">Elite Arrows</h1>
+          <p className="splash-subtitle">Darts League</p>
+        </div>
+        <div
+          className="splash-track"
+          role="progressbar"
+          aria-label={label}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={isDeterminate ? value : undefined}
+        >
+          <div
+            className={`splash-fill${isDeterminate ? '' : ' splash-fill-indeterminate'}`}
+            style={isDeterminate ? { width: `${value}%` } : undefined}
+          />
+        </div>
+        <div className="splash-meta">
+          <span>{label}</span>
+          {isDeterminate && <span className="splash-pct">{value}%</span>}
+        </div>
+        {showRefresh && (
+          <div className="splash-help animate-fade-in">
+            <span>Still loading?</span>
+            <button className="splash-help-btn" onClick={() => window.location.reload()}>
+              Reload
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function PageLoader({ label = 'Loading league data' }) {
   const [showRefresh, setShowRefresh] = useState(false)
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowRefresh(true)
-    }, 8000) // Show refresh after 8s
+    }, 8000)
     return () => clearTimeout(timer)
   }, [])
 
-  return (
-    <div className="loading" style={{
-      padding: '40px',
-      textAlign: 'center',
-      minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'var(--bg-primary)'
-    }}>
-      <div className="spinner" style={{ width: '40px', height: '40px', marginBottom: '20px' }}></div>
-      <h2 style={{ color: 'white' }}>{label}</h2>
-
-      {showRefresh && (
-        <div className="animate-fade-in" style={{ marginTop: '30px' }}>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '15px', maxWidth: '300px' }}>
-            Taking longer than usual? Stale data might be causing a delay.
-          </p>
-          <button
-            className="btn btn-primary"
-            onClick={() => window.location.reload(true)}
-          >
-            Refresh App
-          </button>
-        </div>
-      )}
-    </div>
-  )
+  return <LoadingScreen label={label} showRefresh={showRefresh} />
 }
 
 // Shown once on a cold page load so the realtime listeners have a moment to
@@ -114,16 +198,30 @@ function PageLoader({ label = 'Loading Elite Arrows...' }) {
 // It never blocks longer than MAX_SPLASH_MS, so a slow/offline network can't
 // trap the user on the loading screen.
 const MIN_SPLASH_MS = 450
-const SHOW_HELP_MS = 4000
-const MAX_SPLASH_MS = 7000
+const SHOW_HELP_MS = 5000
+const MAX_SPLASH_MS = 9000
 
 function StartupSplash({ children }) {
-  const { loading, isAuthenticated, allUsers, results, seasons, fixtures, adminData, cups, newsLoaded } = useAuth()
+  const {
+    user,
+    loading,
+    isAuthenticated,
+    newsLoaded,
+    usersLoaded,
+    resultsLoaded,
+    fixturesLoaded,
+    seasonsLoaded,
+    cupsLoaded,
+    adminDataLoaded
+  } = useAuth()
   const [minElapsed, setMinElapsed] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
   const [maxElapsed, setMaxElapsed] = useState(false)
 
   useEffect(() => {
+    setMinElapsed(false)
+    setShowHelp(false)
+    setMaxElapsed(false)
     const minTimer = setTimeout(() => setMinElapsed(true), MIN_SPLASH_MS)
     const helpTimer = setTimeout(() => setShowHelp(true), SHOW_HELP_MS)
     const maxTimer = setTimeout(() => setMaxElapsed(true), MAX_SPLASH_MS)
@@ -132,117 +230,43 @@ function StartupSplash({ children }) {
       clearTimeout(helpTimer)
       clearTimeout(maxTimer)
     }
-  }, [])
+  }, [isAuthenticated, user?.id])
 
-  // Wait for each collection rather than "any data at all". Previously this
-  // only checked users OR results, so the splash cleared while seasons,
-  // fixtures and adminData were still in flight and pages popped in blank.
+  // Each flag flips when its Firestore listener responds, including for empty
+  // collections and permission errors. That means the splash no longer ends
+  // while results, fixtures, cups or settings are still arriving.
   const checks = [
-    { id: 'account', label: 'Your account', ready: !loading },
-    { id: 'roster', label: 'Player roster', ready: (allUsers?.length || 0) > 0 },
-    { id: 'results', label: 'Match results', ready: (results?.length || 0) > 0 },
-    { id: 'seasons', label: 'Season & divisions', ready: (seasons?.length || 0) > 0 },
-    { id: 'fixtures', label: 'Fixtures', ready: (fixtures?.length || 0) > 0 },
-    { id: 'settings', label: 'Season settings', ready: Boolean(adminData?.currentSeason) },
-    { id: 'news', label: 'News & updates', ready: newsLoaded === true },
-    { id: 'cups', label: 'Cups', ready: (cups?.length || 0) > 0 }
+    { id: 'account', ready: !loading },
+    { id: 'roster', ready: usersLoaded },
+    { id: 'results', ready: resultsLoaded },
+    { id: 'seasons', ready: seasonsLoaded },
+    { id: 'fixtures', ready: fixturesLoaded },
+    { id: 'settings', ready: adminDataLoaded },
+    { id: 'news', ready: newsLoaded },
+    { id: 'cups', ready: cupsLoaded }
   ]
 
-  // News is an explicit hard gate: its loaded flag flips on snapshot arrival
-  // (including an empty collection), so it can never block on length alone.
+  // An unauthenticated visitor only needs the auth handshake and news; the
+  // league collections do not exist for them until they sign in.
   const required = isAuthenticated
-    ? ['account', 'roster', 'seasons', 'settings', 'news']
+    ? ['account', 'roster', 'results', 'seasons', 'fixtures', 'settings', 'news', 'cups']
     : ['account', 'news']
-  const resolved = checks.filter(c => c.ready).length
-  // Only the auth handshake gates a guest. Roster/seasons/settings are
-  // meaningless until someone signs in, so applying those gates to a guest
-  // always stalls them out at the timeout.
-  const coreReady = required.every(id => checks.find(c => c.id === id)?.ready)
-  const progress = Math.round((resolved / checks.length) * 100)
-
-  // Core gates first (account, roster, seasons, settings), then require at
-  // least one content collection to have arrived. A blanket "6 of 8" rule
-  // stalls accounts that legitimately have no news or cups yet.
-  const contentReady = ['results', 'fixtures', 'news', 'cups'].some(id => checks.find(c => c.id === id)?.ready)
-  const ready = maxElapsed || (minElapsed && coreReady && (!isAuthenticated || contentReady))
+  const activeChecks = checks.filter(c => required.includes(c.id))
+  const resolved = activeChecks.filter(c => c.ready).length
+  const progress = Math.round((resolved / activeChecks.length) * 100)
+  const pending = activeChecks.find(c => !c.ready)
+  const statusLabel = pending ? SPLASH_STATUS[pending.id] : 'Finalising the lineup'
+  const ready = maxElapsed || (minElapsed && resolved === activeChecks.length)
 
   if (ready) return children
 
   return (
-    <div
-      className="loading"
-      data-testid="startup-splash"
-      style={{
-        padding: '40px 24px',
-        textAlign: 'center',
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'var(--bg-primary)'
-      }}
-    >
-      <div className="auth-logo" style={{ marginBottom: '8px' }}>
-        <h1 className="text-gradient" style={{ letterSpacing: '-0.02em' }}>Elite Arrows</h1>
-        <p>Everything loaded. Nothing skipped.</p>
-      </div>
-
-      <div
-        role="progressbar"
-        aria-valuenow={progress}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-label="Loading app data"
-        style={{
-          width: '240px',
-          height: '6px',
-          borderRadius: '999px',
-          background: 'rgba(255,255,255,0.08)',
-          overflow: 'hidden',
-          margin: '24px 0 6px'
-        }}
-      >
-        <div
-          style={{
-            width: `${progress}%`,
-            height: '100%',
-            borderRadius: '999px',
-            background: 'linear-gradient(to right, var(--accent-primary), var(--accent-cyan))',
-            transition: 'width 300ms ease'
-          }}
-        />
-      </div>
-      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '24px' }}>
-        {progress}% • {resolved} of {checks.length}
-      </div>
-
-      <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px', textAlign: 'left', minWidth: '240px' }}>
-        {checks.map(c => (
-          <li key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', color: c.ready ? 'var(--success)' : 'var(--text-muted)', opacity: c.ready ? 1 : 0.6 }}>
-            <span aria-hidden="true" style={{ width: '14px', display: 'inline-block' }}>
-              {c.ready ? '✓' : ''}
-            </span>
-            <span className="spinner" style={{ width: '10px', height: '10px', display: c.ready ? 'none' : 'inline-block', border: '1.5px solid rgba(255,255,255,0.25)', borderTopColor: 'var(--accent-cyan)' }} />
-            {c.label}
-          </li>
-        ))}
-      </ul>
-
-      {showHelp && !ready && (
-        <div className="animate-fade-in" style={{ marginTop: '30px' }}>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '15px', maxWidth: '300px' }}>
-            Taking longer than usual? Stale data might be causing a delay.
-          </p>
-          <button
-            className="btn btn-primary"
-            onClick={() => window.location.reload(true)}
-          >
-            Refresh App
-          </button>
-        </div>
-      )}
-    </div>
+    <LoadingScreen
+      testID="startup-splash"
+      progress={progress}
+      label={statusLabel}
+      showRefresh={showHelp && !ready}
+    />
   )
 }
 
@@ -416,19 +440,15 @@ function AdminRoute({ children }) {
 }
 
 function AppLayout({ children }) {
-  const { user, dataRefreshTrigger, adminData, forceFetchResults, triggerDataRefresh } = useAuth()
+  const { user, dataRefreshTrigger, adminData, forceFetchResults } = useAuth()
   const { showOnboarding, completeOnboarding } = useOnboarding()
   const { showWhatsNew } = useWhatsNew()
   const [whatsNewOpen, setWhatsNewOpen] = useState(showWhatsNew)
-  const [refreshing, setRefreshing] = useState(false)
   const hasMaintenance = adminData?.isMaintenanceMode
 
-  const handleRefresh = () => {
-    if (refreshing) return
-    setRefreshing(true)
-    triggerDataRefresh('all')
-    setTimeout(() => setRefreshing(false), 1200)
-  }
+  // Full reload rather than a data-only refresh: it pulls the latest build
+  // from the service worker/network so stale bundles and stale data both go.
+  const handleRefresh = () => window.location.reload()
 
   const isEmailAdmin = user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase())
   const isDbAdmin = user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin
@@ -491,8 +511,8 @@ function AppLayout({ children }) {
       <InstallPrompt />
       <button
         onClick={handleRefresh}
-        title="Refresh all data"
-        aria-label="Refresh all data"
+        title="Reload page"
+        aria-label="Reload page"
         style={{
           position: 'fixed',
           top: '76px',
@@ -509,11 +529,10 @@ function AppLayout({ children }) {
           color: 'var(--accent-cyan)',
           cursor: 'pointer',
           fontSize: '20px',
-          boxShadow: '0 4px 15px rgba(0,212,255,0.25)',
-          opacity: refreshing ? 0.75 : 1
+          boxShadow: '0 4px 15px rgba(0,212,255,0.25)'
         }}
       >
-        <span style={{ display: 'inline-block', animation: refreshing ? 'spin 0.8s linear infinite' : 'none' }}>⟳</span>
+        <span style={{ display: 'inline-block' }}>⟳</span>
       </button>
       <DataRefreshToast refreshTrigger={dataRefreshTrigger} />
       <NotificationPermissionPrompt />
