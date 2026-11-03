@@ -1219,13 +1219,15 @@ export function AuthProvider({ children }) {
     let cancelled = false;
     const fetchCups = async () => {
       try {
-        const cachedBlob = readTtlCache("eliteArrowsCups_v1");
-        if (ttlCacheValid(cachedBlob, TTL_CUPS) && Array.isArray(cachedBlob.cups)) {
-          if (!cancelled) {
-            setCups(cachedBlob.cups);
-            localStorage.setItem("eliteArrowsCups", JSON.stringify(cachedBlob.cups));
+        if (cupsRefreshTrigger === 0) {
+          const cachedBlob = readTtlCache("eliteArrowsCups_v1");
+          if (ttlCacheValid(cachedBlob, TTL_CUPS) && Array.isArray(cachedBlob.cups)) {
+            if (!cancelled) {
+              setCups(cachedBlob.cups);
+              localStorage.setItem("eliteArrowsCups", JSON.stringify(cachedBlob.cups));
+            }
+            return;
           }
-          return;
         }
         const snap = await getDocs(collection(db, "cups"));
         if (cancelled) return;
