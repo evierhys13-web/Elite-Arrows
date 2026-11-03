@@ -79,55 +79,13 @@ const SPLASH_STATUS = {
   cups: 'Loading cup data'
 }
 
-function DartboardMark() {
-  const ticks = Array.from({ length: 20 }, (_, i) => {
-    const angle = (i * 18 * Math.PI) / 180
-    const x1 = 60 + Math.cos(angle) * 45
-    const y1 = 60 + Math.sin(angle) * 45
-    const x2 = 60 + Math.cos(angle) * 56
-    const y2 = 60 + Math.sin(angle) * 56
-    return (
-      <line
-        key={i}
-        x1={x1}
-        y1={y1}
-        x2={x2}
-        y2={y2}
-        stroke="rgba(226,232,240,0.32)"
-        strokeWidth="1"
-      />
-    )
-  })
-
+function EliteArrowsLogo() {
   return (
-    <div className="splash-board" aria-hidden="true">
-      <span className="splash-board-glow" />
-      <svg viewBox="0 0 120 120" width="132" height="132">
-        <defs>
-          <radialGradient id="splash-board-face" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#111827" />
-            <stop offset="100%" stopColor="#05070d" />
-          </radialGradient>
-          <linearGradient id="splash-dart-shaft" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#fbbf24" />
-            <stop offset="100%" stopColor="#f8fafc" />
-          </linearGradient>
-        </defs>
-        <circle cx="60" cy="60" r="58" fill="url(#splash-board-face)" stroke="#fbbf24" strokeWidth="1.5" />
-        <circle cx="60" cy="60" r="50" fill="none" stroke="#38bdf8" strokeWidth="2" opacity="0.45" />
-        <circle cx="60" cy="60" r="38" fill="none" stroke="rgba(226,232,240,0.25)" strokeWidth="1" />
-        <g>{ticks}</g>
-        <circle cx="60" cy="60" r="31" fill="none" stroke="#22c55e" strokeWidth="4" opacity="0.55" />
-        <circle cx="60" cy="60" r="18" fill="none" stroke="#ef4444" strokeWidth="5" opacity="0.75" />
-        <circle cx="60" cy="60" r="10" fill="#dc2626" />
-        <circle cx="60" cy="60" r="3.5" fill="#fbbf24" />
-        <g transform="rotate(-38 60 60)">
-          <rect x="63" y="58.3" width="34" height="3.4" rx="1.7" fill="url(#splash-dart-shaft)" />
-          <rect x="66" y="57.4" width="12" height="5.2" rx="2" fill="#e2e8f0" />
-          <path d="M63 56.5 L60 60 L63 63.5 Z" fill="#fbbf24" />
-          <path d="M97 55.5 L108 60 L97 64.5 Z" fill="#38bdf8" />
-        </g>
-      </svg>
+    <div className="splash-logo" aria-hidden="true">
+      <span className="splash-logo-glow" />
+      <span className="splash-logo-frame">
+        <img className="splash-logo-img" src="/elite arrows.jpg" alt="" />
+      </span>
     </div>
   )
 }
@@ -145,7 +103,7 @@ function LoadingScreen({ progress, label = 'Loading league data', showRefresh = 
     >
       <div className="splash-grid" />
       <div className="splash-inner">
-        <DartboardMark />
+        <EliteArrowsLogo />
         <div className="splash-brand">
           <h1 className="splash-title">Elite Arrows</h1>
           <p className="splash-subtitle">Darts League</p>
@@ -200,6 +158,10 @@ function PageLoader({ label = 'Loading league data' }) {
 const MIN_SPLASH_MS = 450
 const SHOW_HELP_MS = 5000
 const MAX_SPLASH_MS = 9000
+// Hold the finished splash briefly so the bar can visibly run to 100% before
+// the app paints. 650ms covers the bar's 380ms width transition and leaves
+// ~270ms with the bar sitting full.
+const COMPLETE_HOLD_MS = 650
 
 function StartupSplash({ children }) {
   const {
@@ -217,11 +179,13 @@ function StartupSplash({ children }) {
   const [minElapsed, setMinElapsed] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
   const [maxElapsed, setMaxElapsed] = useState(false)
+  const [completed, setCompleted] = useState(false)
 
   useEffect(() => {
     setMinElapsed(false)
     setShowHelp(false)
     setMaxElapsed(false)
+    setCompleted(false)
     const minTimer = setTimeout(() => setMinElapsed(true), MIN_SPLASH_MS)
     const helpTimer = setTimeout(() => setShowHelp(true), SHOW_HELP_MS)
     const maxTimer = setTimeout(() => setMaxElapsed(true), MAX_SPLASH_MS)
@@ -258,13 +222,21 @@ function StartupSplash({ children }) {
   const statusLabel = pending ? SPLASH_STATUS[pending.id] : 'Finalising the lineup'
   const ready = maxElapsed || (minElapsed && resolved === activeChecks.length)
 
-  if (ready) return children
+  // Once every gate passes, run the bar to 100% and keep the splash up long
+  // enough for that fill to be seen before rendering the app.
+  useEffect(() => {
+    if (!ready) return
+    const timer = setTimeout(() => setCompleted(true), COMPLETE_HOLD_MS)
+    return () => clearTimeout(timer)
+  }, [ready, isAuthenticated, user?.id])
+
+  if (completed) return children
 
   return (
     <LoadingScreen
       testID="startup-splash"
-      progress={progress}
-      label={statusLabel}
+      progress={ready ? 100 : progress}
+      label={ready ? 'Ready' : statusLabel}
       showRefresh={showHelp && !ready}
     />
   )
