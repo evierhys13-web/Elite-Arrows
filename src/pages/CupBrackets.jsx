@@ -393,14 +393,18 @@ export default function CupBracket() {
       await setDoc(cupRef, updatedCup, { merge: true })
       setCup(updatedCup)
 
-      const existingCups = getCups()
-      localStorage.setItem('eliteArrowsCups', JSON.stringify(existingCups.map(c => String(c.id) === String(cup.id) ? updatedCup : c)))
+      const existingCupsData = (typeof getCups === 'function') ? getCups() : []
+      const existingCups = Array.isArray(existingCupsData) ? existingCupsData : []
+      if (existingCups.length > 0) {
+        localStorage.setItem('eliteArrowsCups', JSON.stringify(existingCups.map(c => c && String(c.id) === String(cup.id) ? updatedCup : c)))
+      }
 
-      triggerDataRefresh('cups')
-      showToast?.('Group updated successfully!', 'success')
+      if (typeof triggerDataRefresh === 'function') triggerDataRefresh('cups')
+      if (typeof showToast === 'function') showToast('Group updated successfully!', 'success')
       setRefreshKey(prev => prev + 1)
     } catch (e) {
-      showToast?.('Error updating group: ' + e.message, 'error')
+      console.error('handleUpdateCupGroups error:', e)
+      if (typeof showToast === 'function') showToast('Error updating group: ' + e.message, 'error')
     }
   }
 
@@ -1072,7 +1076,7 @@ export default function CupBracket() {
                   </div>
                   <button
                     className="btn btn-secondary btn-sm btn-block"
-                    onClick={() => addPlayerToGroupModal ? addPlayerToGroupModal(gId) : handleAddPlayerToGroupModal(gId)}
+                    onClick={() => handleAddPlayerToGroupModal(gId)}
                     style={{ fontSize: '0.75rem' }}
                   >
                     + Add Player to Group {gId}
