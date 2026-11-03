@@ -67,18 +67,30 @@ export default function CupBracket() {
   const isAdmin = isEmailAdmin || isDbAdmin || isTournamentAdmin || isCupAdmin
 
   useEffect(() => {
-    try {
-      const cupsData = (typeof getCups === 'function') ? getCups() : []
-      const cups = Array.isArray(cupsData) ? cupsData : []
-      const foundCup = cups.find(c => c && String(c.id) === String(cupId))
-      if (foundCup) setCup(foundCup)
-      
-      const allFixtures = Array.isArray(getFixtures()) ? getFixtures() : []
-      setFixtures(allFixtures.filter(f => f && String(f.cupId) === String(cupId)))
-      setResults(Array.isArray(getResults()) ? getResults() : [])
-    } catch (e) {
-      console.error('CupBracket load error:', e)
+    let isMounted = true
+    const loadCup = async () => {
+      try {
+        const cupsData = (typeof getCups === 'function') ? getCups() : []
+        const cups = Array.isArray(cupsData) ? cupsData : []
+        const foundCup = cups.find(c => c && String(c.id) === String(cupId))
+        if (foundCup && isMounted) setCup(foundCup)
+
+        const snap = await getDoc(doc(db, 'cups', String(cupId)))
+        if (snap.exists() && isMounted) {
+          setCup({ id: snap.id, ...snap.data() })
+        }
+
+        const allFixtures = Array.isArray(getFixtures()) ? getFixtures() : []
+        if (isMounted) {
+          setFixtures(allFixtures.filter(f => f && String(f.cupId) === String(cupId)))
+          setResults(Array.isArray(getResults()) ? getResults() : [])
+        }
+      } catch (e) {
+        console.error('CupBracket load error:', e)
+      }
     }
+    loadCup()
+    return () => { isMounted = false }
   }, [cupId, refreshKey, dataRefreshTrigger])
 
   useEffect(() => {
@@ -138,9 +150,19 @@ export default function CupBracket() {
   }
 
   const groupStandings = useMemo(() => {
-    if (!cup || !Array.isArray(cup?.matches) || cup.matches.length === 0) return { sortedStandings: {}, bestThirdIds: [], sortedThirdPlaced: [], numThirdNeeded: 0, advanceCount: 2 }
-    const safe = cup.matches
+    if (!cup) return { sortedStandings: {}, bestThirdIds: [], sortedThirdPlaced: [], numThirdNeeded: 0, advanceCount: 2 }
+    const safe = Array.isArray(cup?.matches) ? cup.matches : []
     const standings = {}
+
+    (cup.groups || []).forEach(g => {
+      if (!g || !g.id) return
+      if (!standings[g.id]) standings[g.id] = {}
+      (g.players || []).forEach(pId => {
+        if (pId && !standings[g.id][pId]) {
+          standings[g.id][pId] = { id: pId, played: 0, won: 0, lost: 0, legsFor: 0, legsAgainst: 0, points: 0, avgSum: 0 }
+        }
+      })
+    })
 
     const winPts = cup.pointSystem?.pointsPerWin !== undefined ? Number(cup.pointSystem.pointsPerWin) : 2;
     const legPts = cup.pointSystem?.pointsPerLeg !== undefined ? Number(cup.pointSystem.pointsPerLeg) : 1;
@@ -319,7 +341,8 @@ export default function CupBracket() {
   }
 
   const regenerateGroupMatches = (groupsList, existingMatches) => {
-    const knockoutMatches = existingMatches.filter(m => m && m.stage !== 'groups')
+    const knockoutMatches = (existingMatches || []).filter(m => m && m.stage !== 'groups')
+    const existingGroupMatches = (existingMatches || []).filter(m => m && m.stage === 'groups')
     const newGroupMatches = []
     const iterations = 1
 
@@ -328,17 +351,27 @@ export default function CupBracket() {
       for (let iter = 1; iter <= iterations; iter++) {
         for (let j = 0; j < gPlayers.length; j++) {
           for (let k = j + 1; k < gPlayers.length; k++) {
-            newGroupMatches.push({
-              id: `g_${g.id}_${iter}_${j}_${k}_${Date.now()}_${Math.random()}`,
-              stage: 'groups',
-              iteration: iter,
-              group: g.id,
-              player1: gPlayers[j],
-              player2: gPlayers[k],
-              winner: null,
-              score1: null,
-              score2: null
-            })
+            const p1 = gPlayers[j]
+            const p2 = gPlayers[k]
+            const found = existingGroupMatches.find(em =>
+              em.group === g.id &&
+              ((em.player1 === p1 && em.player2 === p2) || (em.player1 === p2 && em.player2 === p1))
+            )
+            if (found) {
+              newGroupMatches.push(found)
+            } else {
+              newGroupMatches.push({
+                id: `g_${g.id}_${iter}_${j}_${k}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+                stage: 'groups',
+                iteration: iter,
+                group: g.id,
+                player1: p1,
+                player2: p2,
+                winner: null,
+                score1: null,
+                score2: null
+              })
+            }
           }
         }
       }
