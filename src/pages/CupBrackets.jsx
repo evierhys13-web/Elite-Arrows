@@ -141,6 +141,10 @@ export default function CupBracket() {
     const safe = cup.matches
     const standings = {}
 
+    const winPts = cup.pointSystem?.pointsPerWin !== undefined ? Number(cup.pointSystem.pointsPerWin) : 2;
+    const legPts = cup.pointSystem?.pointsPerLeg !== undefined ? Number(cup.pointSystem.pointsPerLeg) : 1;
+    const drawPts = cup.pointSystem?.pointsPerDraw !== undefined ? Number(cup.pointSystem.pointsPerDraw) : 0;
+
     safe.filter(m => m && m.stage === 'groups').forEach(match => {
       const gId = match.group
       if (!gId) return
@@ -163,18 +167,20 @@ export default function CupBracket() {
         standings[gId][p2].legsFor += result.score2
         standings[gId][p2].legsAgainst += result.score1
 
-        // Championship Cup Scoring: 1 point per leg won
-        standings[gId][p1].points += result.score1
-        standings[gId][p2].points += result.score2
+        standings[gId][p1].points += result.score1 * legPts
+        standings[gId][p2].points += result.score2 * legPts
 
         if (result.score1 > result.score2) {
           standings[gId][p1].won++
-          standings[gId][p1].points += 2 // 2 points for match win
+          standings[gId][p1].points += winPts
           standings[gId][p2].lost++
         } else if (result.score2 > result.score1) {
           standings[gId][p2].won++
-          standings[gId][p2].points += 2 // 2 points for match win
+          standings[gId][p2].points += winPts
           standings[gId][p1].lost++
+        } else {
+          standings[gId][p1].points += drawPts
+          standings[gId][p2].points += drawPts
         }
 
         if (fullRes) {
@@ -309,6 +315,75 @@ export default function CupBracket() {
     // If not found in allUsers, it might be that id is already a username string
     // from a fixture/match that was manually updated but not synced with allUsers
     return id.length > 20 ? 'Unknown' : id // Basic heuristic to distinguish IDs from names
+  }
+
+  const handleUpdateCupGroups = async (newGroups, newPlayers) => {
+    try {
+      const cupRef = doc(db, 'cups', String(cup.id))
+      const updatedCup = {
+        ...cup,
+        groups: newGroups,
+        players: newPlayers
+      }
+      await setDoc(cupRef, updatedCup, { merge: true })
+
+      const existingCups = getCups()
+      localStorage.setItem('eliteArrowsCups', JSON.stringify(existingCups.map(c => String(c.id) === String(cup.id) ? updatedCup : c)))
+
+      triggerDataRefresh('cups')
+      showToast?.('Group updated successfully!', 'success')
+      setRefreshKey(prev => prev + 1)
+    } catch (e) {
+      showToast?.('Error updating group: ' + e.message, 'error')
+    }
+  }
+
+  const handleRemovePlayerFromGroup = (gId, playerId) => {
+    if (!window.confirm(`Remove ${getPlayerName(playerId)} from Group ${gId}?`)) return
+    const newGroups = (cup.groups || []).map(g => {
+      if (g.id === gId) {
+        return { ...g, players: (g.players || []).filter(pid => String(pid) !== String(playerId)) }
+      }
+      return g
+    })
+    const newPlayers = (cup.players || []).filter(pid => String(pid) !== String(playerId))
+    handleUpdateCupGroups(newGroups, newPlayers)
+  }
+
+  const handleMovePlayerGroup = (playerId, fromGroup, toGroup) => {
+    if (fromGroup === toGroup) return
+    const newGroups = (cup.groups || []).map(g => {
+      if (g.id === fromGroup) {
+        return { ...g, players: (g.players || []).filter(pid => String(pid) !== String(playerId)) }
+      }
+      if (g.id === toGroup) {
+        const existing = g.players || []
+        if (!existing.includes(playerId)) {
+          return { ...g, players: [...existing, playerId] }
+        }
+      }
+      return g
+    })
+    handleUpdateCupGroups(newGroups, cup.players || [])
+  }
+
+  const handleAddPlayerToGroupModal = (gId) => {
+    const chosenId = prompt(`Enter User ID or username to add to Group ${gId}:`)
+    if (!chosenId) return
+    const targetUser = allUsers.find(u => String(u.id) === String(chosenId) || String(u.username).toLowerCase() === String(chosenId).toLowerCase())
+    const finalId = targetUser ? targetUser.id : chosenId
+
+    const newGroups = (cup.groups || []).map(g => {
+      if (g.id === gId) {
+        const existing = g.players || []
+        if (!existing.includes(finalId)) {
+          return { ...g, players: [...existing, finalId] }
+        }
+      }
+      return g
+    })
+    const newPlayers = Array.from(new Set([...(cup.players || []), finalId]))
+    handleUpdateCupGroups(newGroups, newPlayers)
   }
 
   const roundsData = rounds.map(round => {
@@ -800,6 +875,46 @@ export default function CupBracket() {
                    )
                  })}
               </div>
+
+              {isAdmin && !cup.groupsAdvanced && (
+                <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontWeight: 800, marginBottom: '8px' }}>⚙️ Admin Group Management</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
+                    {sortedStandings[gId].map(p => (
+                      <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '6px 10px', borderRadius: '8px', fontSize: '0.75rem' }}>
+                        <span>{getPlayerName(p.id)}</span>
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                          <select
+                            className="glass"
+                            value={gId}
+                            onChange={e => handleMovePlayerGroup(p.id, gId, e.target.value)}
+                            style={{ fontSize: '0.7rem', padding: '2px 6px' }}
+                          >
+                            {(cup.groups || []).map(g => (
+                              <option key={g.id} value={g.id}>Group {g.id}</option>
+                            ))}
+                          </select>
+                          <button
+                            className="btn btn-danger btn-sm"
+                            onClick={() => handleRemovePlayerFromGroup(gId, p.id)}
+                            style={{ padding: '2px 6px', fontSize: '0.65rem' }}
+                            title="Remove player"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    className="btn btn-secondary btn-sm btn-block"
+                    onClick={() => addPlayerToGroupModal ? addPlayerToGroupModal(gId) : handleAddPlayerToGroupModal(gId)}
+                    style={{ fontSize: '0.75rem' }}
+                  >
+                    + Add Player to Group {gId}
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>

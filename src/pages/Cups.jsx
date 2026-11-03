@@ -28,7 +28,12 @@ export default function CupTournaments() {
     allowBestThird: true,
     targetDurationDays: 14,
     seasonIterations: 3,
-    finalsDate: '21st December'
+    finalsDate: '21st December',
+    pointSystem: {
+      pointsPerWin: 2,
+      pointsPerLeg: 1,
+      pointsPerDraw: 0
+    }
   })
   const [selectedPlayers, setSelectedPlayers] = useState([])
   const [matches, setMatches] = useState([])
@@ -980,6 +985,36 @@ export default function CupTournaments() {
             <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>
               Used to calculate recommended deadlines for each stage.
             </p>
+          </div>
+
+          <div className="card glass" style={{ padding: '16px', marginBottom: '20px', border: '1px solid var(--accent-cyan)' }}>
+            <h4 style={{ color: 'var(--accent-cyan)', marginBottom: '10px', fontSize: '0.9rem' }}>🎯 Cup Point System</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Points per Match Win</label>
+                <input
+                  type="number"
+                  value={formData.pointSystem.pointsPerWin}
+                  onChange={e => setFormData({...formData, pointSystem: { ...formData.pointSystem, pointsPerWin: parseInt(e.target.value) || 0 }})}
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Points per Leg Won</label>
+                <input
+                  type="number"
+                  value={formData.pointSystem.pointsPerLeg}
+                  onChange={e => setFormData({...formData, pointSystem: { ...formData.pointSystem, pointsPerLeg: parseInt(e.target.value) || 0 }})}
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Points per Draw</label>
+                <input
+                  type="number"
+                  value={formData.pointSystem.pointsPerDraw}
+                  onChange={e => setFormData({...formData, pointSystem: { ...formData.pointSystem, pointsPerDraw: parseInt(e.target.value) || 0 }})}
+                />
+              </div>
+            </div>
           </div>
 
           {(formData.type === 'groups' || formData.type === 'world_cup' || formData.type === 'group_knockout' || formData.type === 'season') && (
