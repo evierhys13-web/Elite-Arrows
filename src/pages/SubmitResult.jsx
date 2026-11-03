@@ -57,6 +57,8 @@ const INITIAL_RESULT_FORM = {
   opponentAvg: '',
   your9DartAvg: '',
   opponent9DartAvg: '',
+  yourSets: '',
+  opponentSets: '',
   highlightVideoFile: null,
   highlightVideoUrl: ''
 }
@@ -813,6 +815,10 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
             team1Id: formData.team1Id,
             team2Id: formData.opponent
           }),
+          ...(formData.gameType === 'Cup' && formData.yourSets !== '' && {
+            sets1: parseInt(formData.yourSets) || 0,
+            sets2: parseInt(formData.opponentSets) || 0
+          }),
           score1: parseInt(s1),
           score2: parseInt(s2),
           division: effectiveDivision,
@@ -1241,6 +1247,40 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
               </div>
             </div>
           </div>
+
+          {formData.gameType === 'Cup' && (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '20px',
+              marginBottom: '20px'
+            }}>
+              <div className="form-group">
+                <label style={{ fontWeight: '600', marginBottom: '8px', display: 'block' }}>Your Sets Won</label>
+                <input
+                  type="number"
+                  name="yourSets"
+                  value={formData.yourSets}
+                  onChange={handleChange}
+                  min="0"
+                  style={{ fontSize: '1.2rem', textAlign: 'center', padding: '15px' }}
+                  placeholder="0"
+                />
+              </div>
+              <div className="form-group">
+                <label style={{ fontWeight: '600', marginBottom: '8px', display: 'block' }}>Opponent Sets Won</label>
+                <input
+                  type="number"
+                  name="opponentSets"
+                  value={formData.opponentSets}
+                  onChange={handleChange}
+                  min="0"
+                  style={{ fontSize: '1.2rem', textAlign: 'center', padding: '15px' }}
+                  placeholder="0"
+                />
+              </div>
+            </div>
+          )}
 
           <div style={{
             display: 'grid',

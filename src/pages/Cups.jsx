@@ -20,8 +20,9 @@ export default function CupTournaments() {
   const [formData, setFormData] = useState({
     name: '',
     entryFee: 5,
-    maxPlayers: 8,
+    maxPlayers: 16,
     type: 'knockout', // knockout, groups, world_cup, group_knockout
+    numGroups: 4,
     playersPerGroup: 4,
     advancePerGroup: 2,
     allowBestThird: true,
@@ -365,7 +366,7 @@ export default function CupTournaments() {
     }
     else if (formData.type === 'groups' || formData.type === 'world_cup' || formData.type === 'group_knockout' || formData.type === 'season') {
       const pPerG = formData.playersPerGroup
-      const numGroups = Math.ceil(shuffled.length / pPerG)
+      const numGroups = formData.numGroups || Math.ceil(shuffled.length / pPerG)
       const cupNameLower = String(formData.name || '').toLowerCase()
       const isJediOrPadawan = cupNameLower.includes('jedi') || cupNameLower.includes('padawan')
       // Jedi/Padawan cups: group-stage players play each other twice
@@ -373,7 +374,10 @@ export default function CupTournaments() {
 
       // Assign players to groups
       for (let i = 0; i < numGroups; i++) {
-        const groupPlayers = shuffled.slice(i * pPerG, (i + 1) * pPerG)
+        const groupPlayers = []
+        for (let j = i * pPerG; j < (i + 1) * pPerG && j < shuffled.length; j++) {
+          groupPlayers.push(shuffled[j])
+        }
         newGroups.push({
           id: String.fromCharCode(65 + i), // A, B, C...
           players: groupPlayers
@@ -958,18 +962,33 @@ export default function CupTournaments() {
           </div>
 
           {(formData.type === 'groups' || formData.type === 'world_cup' || formData.type === 'group_knockout' || formData.type === 'season') && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+            <div style={{ marginBottom: '15px' }}>
               <div className="form-group">
-                <label>Players per Group</label>
+                <label>Number of Groups</label>
                 <select
-                  value={formData.playersPerGroup}
-                  onChange={(e) => setFormData({...formData, playersPerGroup: parseInt(e.target.value)})}
+                  value={formData.numGroups}
+                  onChange={(e) => setFormData({...formData, numGroups: parseInt(e.target.value)})}
                 >
-                  <option value={3}>3</option>
-                  <option value={4}>4</option>
-                  <option value={5}>5</option>
-                  <option value={6}>6</option>
+                  {[1, 2, 3, 4, 6, 8, 12, 16].map(g => (
+                    <option key={g} value={g}>{g} {g === 1 ? 'Group' : 'Groups'}</option>
+                  ))}
                 </select>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                <div className="form-group">
+                  <label>Players per Group</label>
+                  <select
+                    value={formData.playersPerGroup}
+                    onChange={(e) => setFormData({...formData, playersPerGroup: parseInt(e.target.value)})}
+                  >
+                    <option value={2}>2</option>
+                    <option value={3}>3</option>
+                    <option value={4}>4</option>
+                    <option value={5}>5</option>
+                    <option value={6}>6</option>
+                    <option value={8}>8</option>
+                  </select>
+                </div>
               </div>
               {(formData.type === 'world_cup' || formData.type === 'season') && (
                 <div className="form-group">

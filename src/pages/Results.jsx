@@ -165,6 +165,12 @@ export default function Results() {
           </div>
         </div>
 
+        {result.sets1 !== undefined && result.sets2 !== undefined && isCupResult(result) && (
+          <div style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--accent-cyan)', fontWeight: 700, marginBottom: '12px' }}>
+            Sets: {result.sets1} - {result.sets2}
+          </div>
+        )}
+
         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '20px', marginBottom: '15px' }}>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontWeight: 800, fontSize: '1rem', color: isWinner1 ? 'white' : 'var(--text-muted)' }}>{result.player1}</div>
