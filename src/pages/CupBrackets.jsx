@@ -152,11 +152,11 @@ export default function CupBracket() {
   const groupStandings = useMemo(() => {
     if (!cup) return { sortedStandings: {}, bestThirdIds: [], sortedThirdPlaced: [], numThirdNeeded: 0, advanceCount: 2 }
     const safe = Array.isArray(cup?.matches) ? cup.matches : []
-    const standings = {}
+    const standings = {};
 
     (cup.groups || []).forEach(g => {
       if (!g || !g.id) return
-      if (!standings[g.id]) standings[g.id] = {}
+      if (!standings[g.id]) standings[g.id] = {};
       (g.players || []).forEach(pId => {
         if (pId && !standings[g.id][pId]) {
           standings[g.id][pId] = { id: pId, played: 0, won: 0, lost: 0, legsFor: 0, legsAgainst: 0, points: 0, avgSum: 0 }
