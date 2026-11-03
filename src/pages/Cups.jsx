@@ -555,17 +555,20 @@ export default function CupTournaments() {
   }
 
   const updateRoundFormat = (round, field, value) => {
-    const val = parseInt(value) || 0
     setRoundFormats(prev => {
-      const current = prev[round] || { startScore: 501, bestOf: 3, firstTo: 2, entryMode: 'bestOf' }
-      const newFormat = { ...current, [field]: val }
+      const current = prev[round] || { startScore: 501, bestOf: 3, firstTo: 2, entryMode: 'bestOf', formatUnit: 'legs' }
+      const newFormat = { ...current }
 
-      if (field === 'entryMode') {
-        newFormat.entryMode = value // value is string here
-      } else if (field === 'bestOf') {
-        newFormat.firstTo = Math.ceil(val / 2)
-      } else if (field === 'firstTo') {
-        newFormat.bestOf = (val * 2) - 1
+      if (field === 'entryMode' || field === 'formatUnit') {
+        newFormat[field] = value
+      } else {
+        const val = parseInt(value) || 0
+        newFormat[field] = val
+        if (field === 'bestOf') {
+          newFormat.firstTo = Math.ceil(val / 2)
+        } else if (field === 'firstTo') {
+          newFormat.bestOf = (val * 2) - 1
+        }
       }
 
       return { ...prev, [round]: newFormat }
@@ -573,8 +576,9 @@ export default function CupTournaments() {
   }
 
   const renderFormatEntry = (round, label) => {
-    const format = roundFormats[round] || { startScore: 501, bestOf: 3, firstTo: 2, entryMode: 'bestOf' }
+    const format = roundFormats[round] || { startScore: 501, bestOf: 3, firstTo: 2, entryMode: 'bestOf', formatUnit: 'legs' }
     const mode = format.entryMode || 'bestOf'
+    const unit = format.formatUnit || 'legs'
 
     return (
       <div style={{ background: 'var(--bg-secondary)', padding: '12px', borderRadius: '12px', marginBottom: '10px', border: '1px solid rgba(255,255,255,0.05)' }}>
@@ -592,6 +596,23 @@ export default function CupTournaments() {
             <option value={601}>601</option>
             <option value={701}>701</option>
           </select>
+        </div>
+
+        <div style={{ display: 'flex', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', padding: '4px', marginBottom: '12px' }}>
+          <button
+            className={`btn btn-xs ${(!format.formatUnit || format.formatUnit === 'legs') ? 'btn-primary' : ''}`}
+            style={{ flex: 1, fontSize: '0.65rem', padding: '4px', background: (!format.formatUnit || format.formatUnit === 'legs') ? '' : 'transparent', border: 'none' }}
+            onClick={() => updateRoundFormat(round, 'formatUnit', 'legs')}
+          >
+            Legs
+          </button>
+          <button
+            className={`btn btn-xs ${format.formatUnit === 'sets' ? 'btn-primary' : ''}`}
+            style={{ flex: 1, fontSize: '0.65rem', padding: '4px', background: format.formatUnit === 'sets' ? '' : 'transparent', border: 'none' }}
+            onClick={() => updateRoundFormat(round, 'formatUnit', 'sets')}
+          >
+            Sets
+          </button>
         </div>
 
         <div style={{ display: 'flex', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', padding: '4px', marginBottom: '12px' }}>
@@ -619,7 +640,7 @@ export default function CupTournaments() {
               style={{ fontSize: '0.8rem', padding: '8px' }}
             >
               {[1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21].map(v => (
-                <option key={v} value={v}>Best of {v} legs</option>
+                <option key={v} value={v}>Best of {v} {unit}</option>
               ))}
             </select>
           </div>
@@ -632,9 +653,9 @@ export default function CupTournaments() {
                 value={format.firstTo}
                 onChange={(e) => updateRoundFormat(round, 'firstTo', e.target.value)}
                 style={{ fontSize: '0.8rem', padding: '8px 12px', width: '100%' }}
-                placeholder="Target legs"
+                placeholder={`Target ${unit}`}
               />
-              <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.7rem', opacity: 0.5 }}>legs</span>
+              <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.7rem', opacity: 0.5 }}>{unit}</span>
             </div>
           </div>
         )}
@@ -1406,7 +1427,7 @@ export default function CupTournaments() {
 
                       return (
                         <div key={round} style={{ display: 'inline-block', marginRight: '15px' }}>
-                          <span style={{ opacity: 0.7 }}>{roundName}{roundName ? ' ' : ''}{roundLabel}:</span> {format.startScore} / {format.firstTo ? `FT${format.firstTo}` : `Bo${format.bestOf}`}
+                          <span style={{ opacity: 0.7 }}>{roundName}{roundName ? ' ' : ''}{roundLabel}:</span> {format.startScore} / {format.firstTo ? `FT${format.firstTo}` : `Bo${format.bestOf}`} {format.formatUnit || 'legs'}
                         </div>
                       )
                     })}
