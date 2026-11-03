@@ -317,15 +317,47 @@ export default function CupBracket() {
     return id.length > 20 ? 'Unknown' : id // Basic heuristic to distinguish IDs from names
   }
 
+  const regenerateGroupMatches = (groupsList, existingMatches) => {
+    const knockoutMatches = existingMatches.filter(m => m && m.stage !== 'groups')
+    const newGroupMatches = []
+    const iterations = 1
+
+    groupsList.forEach(g => {
+      const gPlayers = g.players || []
+      for (let iter = 1; iter <= iterations; iter++) {
+        for (let j = 0; j < gPlayers.length; j++) {
+          for (let k = j + 1; k < gPlayers.length; k++) {
+            newGroupMatches.push({
+              id: `g_${g.id}_${iter}_${j}_${k}_${Date.now()}_${Math.random()}`,
+              stage: 'groups',
+              iteration: iter,
+              group: g.id,
+              player1: gPlayers[j],
+              player2: gPlayers[k],
+              winner: null,
+              score1: null,
+              score2: null
+            })
+          }
+        }
+      }
+    })
+
+    return [...knockoutMatches, ...newGroupMatches]
+  }
+
   const handleUpdateCupGroups = async (newGroups, newPlayers) => {
     try {
+      const updatedMatches = regenerateGroupMatches(newGroups, cup.matches || [])
       const cupRef = doc(db, 'cups', String(cup.id))
       const updatedCup = {
         ...cup,
         groups: newGroups,
-        players: newPlayers
+        players: newPlayers,
+        matches: updatedMatches
       }
       await setDoc(cupRef, updatedCup, { merge: true })
+      setCup(updatedCup)
 
       const existingCups = getCups()
       localStorage.setItem('eliteArrowsCups', JSON.stringify(existingCups.map(c => String(c.id) === String(cup.id) ? updatedCup : c)))
