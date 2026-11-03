@@ -57,6 +57,7 @@ const INITIAL_RESULT_FORM = {
   opponentAvg: '',
   your9DartAvg: '',
   opponent9DartAvg: '',
+  cupFormatType: 'legs',
   yourSets: '',
   opponentSets: '',
   highlightVideoFile: null,
@@ -815,9 +816,12 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
             team1Id: formData.team1Id,
             team2Id: formData.opponent
           }),
-          ...(formData.gameType === 'Cup' && formData.yourSets !== '' && {
-            sets1: parseInt(formData.yourSets) || 0,
-            sets2: parseInt(formData.opponentSets) || 0
+          ...(formData.gameType === 'Cup' && {
+            cupFormatType: formData.cupFormatType || 'legs',
+            ...(formData.cupFormatType === 'sets' && formData.yourSets !== '' && {
+              sets1: parseInt(formData.yourSets) || 0,
+              sets2: parseInt(formData.opponentSets) || 0
+            })
           }),
           score1: parseInt(s1),
           score2: parseInt(s2),
@@ -1249,6 +1253,36 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
           </div>
 
           {formData.gameType === 'Cup' && (
+            <div className="card glass" style={{ padding: '16px', marginBottom: '20px', border: '1px solid var(--accent-cyan)' }}>
+              <label style={{ fontWeight: '700', marginBottom: '10px', display: 'block', color: 'var(--accent-cyan)' }}>Cup Match Format</label>
+              <div style={{ display: 'flex', gap: '20px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 600 }}>
+                  <input
+                    type="radio"
+                    name="cupFormatType"
+                    value="legs"
+                    checked={formData.cupFormatType !== 'sets'}
+                    onChange={() => setFormData(prev => ({ ...prev, cupFormatType: 'legs' }))}
+                    style={{ width: '18px', height: '18px' }}
+                  />
+                  <span>Best of Legs</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 600 }}>
+                  <input
+                    type="radio"
+                    name="cupFormatType"
+                    value="sets"
+                    checked={formData.cupFormatType === 'sets'}
+                    onChange={() => setFormData(prev => ({ ...prev, cupFormatType: 'sets' }))}
+                    style={{ width: '18px', height: '18px' }}
+                  />
+                  <span>Best of Sets (and Legs)</span>
+                </label>
+              </div>
+            </div>
+          )}
+
+          {formData.gameType === 'Cup' && formData.cupFormatType === 'sets' && (
             <div style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
@@ -1330,7 +1364,7 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
             borderRadius: '12px'
           }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label style={{ fontSize: '0.85rem' }}>Best of (legs)</label>
+              <label style={{ fontSize: '0.85rem' }}>{formData.gameType === 'Cup' ? `Best of (${formData.cupFormatType === 'sets' ? 'sets' : 'legs'})` : 'Best of (legs)'}</label>
               {formData.gameType === 'League' ? (
                 <div style={{ padding: '10px 12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border)', fontWeight: 700 }}>
                   Best of {formData.bestOf} {leagueFormat?.noDraw ? '(no draws)' : ''}
@@ -1352,7 +1386,7 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
               )}
             </div>
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label style={{ fontSize: '0.85rem' }}>First to (legs)</label>
+              <label style={{ fontSize: '0.85rem' }}>{formData.gameType === 'Cup' ? `First to (${formData.cupFormatType === 'sets' ? 'sets' : 'legs'})` : 'First to (legs)'}</label>
               {formData.gameType === 'League' ? (
                 <div style={{ padding: '10px 12px', borderRadius: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border)', fontWeight: 700 }}>
                   First to {formData.firstTo} legs

@@ -254,7 +254,7 @@ export default function Admin() {
   }
 
   useEffect(() => {
-    if (activeTab === 'openleague' || (activeTab === 'results' && showSubmitGame)) {
+    if (activeTab === 'openleague' || activeTab === 'results' || showSubmitGame || editingResult) {
       const fetchData = async () => {
         try {
           const [duoSnap, singlesSnap] = await Promise.all([
@@ -265,15 +265,13 @@ export default function Admin() {
           const singlesData = singlesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
           setOpenLeagueDuos(duosData)
           setOpenLeagueSingles(singlesData)
-          console.log("Friendly League Data Loaded:", { duos: duosData.length, singles: singlesData.length });
         } catch (e) {
           console.error("Failed to fetch Friendly League admin data", e)
-          showToast("Failed to load Friendly League data", "error")
         }
       }
       fetchData()
     }
-  }, [activeTab, refreshKey, dataRefreshTrigger])
+  }, [activeTab, refreshKey, dataRefreshTrigger, showSubmitGame, editingResult])
 
   useEffect(() => {
     if (activeTab === 'halloffame') {
