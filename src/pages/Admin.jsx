@@ -2768,32 +2768,97 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
               <div className="card glass" style={{ marginBottom: '24px', padding: '24px', border: '1px solid var(--accent-cyan)' }}>
                 <form onSubmit={handleUpdateResult}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
-                    <div className="form-group">
-                      <label>Player 1</label>
-                      <UserSearchSelect
-                        users={allPlayers}
-                        selectedId={editingResult.player1Id}
-                        onSelect={id => {
-                          const u = allPlayers.find(up => String(up.id) === String(id));
-                          setEditingResult({...editingResult, player1Id: id, player1: u?.username || editingResult.player1})
-                        }}
-                        onQueryChange={searchUsers}
-                        label=""
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Player 2</label>
-                      <UserSearchSelect
-                        users={allPlayers}
-                        selectedId={editingResult.player2Id}
-                        onSelect={id => {
-                          const u = allPlayers.find(up => String(up.id) === String(id));
-                          setEditingResult({...editingResult, player2Id: id, player2: u?.username || editingResult.player2})
-                        }}
-                        onQueryChange={searchUsers}
-                        label=""
-                      />
-                    </div>
+                    {(String(editingResult.gameType || '').toLowerCase().includes('doubles') || editingResult.team1Id || editingResult.team2Id) ? (
+                      <>
+                        <div className="form-group">
+                          <label>Team 1</label>
+                          <select
+                            className="glass"
+                            style={{ width: '100%', padding: '10px' }}
+                            value={editingResult.team1Id || editingResult.player1Id || ''}
+                            onChange={e => {
+                              const tId = e.target.value;
+                              const duo = openLeagueDuos.find(d => String(d.id) === String(tId));
+                              const p1 = duo ? allPlayers.find(u => String(u.id) === String(duo.p1)) : null;
+                              const p2 = duo ? allPlayers.find(u => String(u.id) === String(duo.p2)) : null;
+                              const tName = duo ? (duo.teamName || `${p1?.username || 'P1'} & ${p2?.username || 'P2'}`) : '';
+                              setEditingResult({
+                                ...editingResult,
+                                team1Id: tId,
+                                player1Id: tId,
+                                player1: tName || editingResult.player1
+                              });
+                            }}
+                          >
+                            <option value="">Select Team 1...</option>
+                            {openLeagueDuos.map(duo => {
+                              const p1 = allPlayers.find(u => String(u.id) === String(duo.p1));
+                              const p2 = allPlayers.find(u => String(u.id) === String(duo.p2));
+                              const name = duo.teamName || `${p1?.username || 'P1'} & ${p2?.username || 'P2'}`;
+                              return <option key={duo.id} value={duo.id}>{name}</option>;
+                            })}
+                          </select>
+                        </div>
+                        <div className="form-group">
+                          <label>Team 2</label>
+                          <select
+                            className="glass"
+                            style={{ width: '100%', padding: '10px' }}
+                            value={editingResult.team2Id || editingResult.player2Id || ''}
+                            onChange={e => {
+                              const tId = e.target.value;
+                              const duo = openLeagueDuos.find(d => String(d.id) === String(tId));
+                              const p1 = duo ? allPlayers.find(u => String(u.id) === String(duo.p1)) : null;
+                              const p2 = duo ? allPlayers.find(u => String(u.id) === String(duo.p2)) : null;
+                              const tName = duo ? (duo.teamName || `${p1?.username || 'P1'} & ${p2?.username || 'P2'}`) : '';
+                              setEditingResult({
+                                ...editingResult,
+                                team2Id: tId,
+                                player2Id: tId,
+                                player2: tName || editingResult.player2
+                              });
+                            }}
+                          >
+                            <option value="">Select Team 2...</option>
+                            {openLeagueDuos.map(duo => {
+                              const p1 = allPlayers.find(u => String(u.id) === String(duo.p1));
+                              const p2 = allPlayers.find(u => String(u.id) === String(duo.p2));
+                              const name = duo.teamName || `${p1?.username || 'P1'} & ${p2?.username || 'P2'}`;
+                              return <option key={duo.id} value={duo.id}>{name}</option>;
+                            })}
+                          </select>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="form-group">
+                          <label>Player 1</label>
+                          <UserSearchSelect
+                            users={allPlayers}
+                            selectedId={editingResult.player1Id}
+                            onSelect={id => {
+                              const u = allPlayers.find(up => String(up.id) === String(id));
+                              setEditingResult({...editingResult, player1Id: id, player1: u?.username || editingResult.player1})
+                            }}
+                            onQueryChange={searchUsers}
+                            label=""
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Player 2</label>
+                          <UserSearchSelect
+                            users={allPlayers}
+                            selectedId={editingResult.player2Id}
+                            onSelect={id => {
+                              const u = allPlayers.find(up => String(up.id) === String(id));
+                              setEditingResult({...editingResult, player2Id: id, player2: u?.username || editingResult.player2})
+                            }}
+                            onQueryChange={searchUsers}
+                            label=""
+                          />
+                        </div>
+                      </>
+                    )}
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                     <div className="form-group"><label>Season</label><select value={editingResult.season || ''} onChange={e => setEditingResult({...editingResult, season: e.target.value})}><option value="">Legacy</option>{getSeasons().map(s => <option key={s.id} value={s.name}>{s.name}</option>)}</select></div>
