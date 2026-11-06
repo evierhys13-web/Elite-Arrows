@@ -60,7 +60,7 @@ const Giveaways = lazy(() => import('./pages/Giveaways'))
 const LiveMatch = lazy(() => import('./pages/LiveMatch'))
 const OpenLeague = lazy(() => import('./pages/OpenLeague'))
 const DoublesLeague = lazy(() => import('./pages/DoublesLeague'))
-const WeeklyChallenges = lazy(() => import('./pages/WeeklyChallenges'))
+const JDCChallenge = lazy(() => import('./pages/JDCChallenge'))
 const PlayOnline = lazy(() => import('./pages/PlayOnline'))
 const HallOfFame = lazy(() => import('./pages/HallOfFame'))
 const News = lazy(() => import('./pages/News'))
@@ -560,7 +560,8 @@ function AppRoutes() {
       <Route path="/live-match" element={<SubscribedRoute><AppLayout><LiveMatch /></AppLayout></SubscribedRoute>} />
       <Route path="/play-online" element={<SubscribedRoute><AppLayout><PlayOnline /></AppLayout></SubscribedRoute>} />
       <Route path="/challenges" element={<ProtectedRoute><MemberOnlyRoute><AppLayout><Challenges /></AppLayout></MemberOnlyRoute></ProtectedRoute>} />
-      <Route path="/weekly-challenges" element={<ProtectedRoute><MemberOnlyRoute><AppLayout><WeeklyChallenges /></AppLayout></MemberOnlyRoute></ProtectedRoute>} />
+      <Route path="/weekly-challenges" element={<ProtectedRoute><MemberOnlyRoute><AppLayout><JDCChallenge /></AppLayout></MemberOnlyRoute></ProtectedRoute>} />
+      <Route path="/jdc-challenge" element={<ProtectedRoute><MemberOnlyRoute><AppLayout><JDCChallenge /></AppLayout></MemberOnlyRoute></ProtectedRoute>} />
       <Route path="/giveaways" element={<ProtectedRoute><MemberOnlyRoute><AppLayout><Giveaways /></AppLayout></MemberOnlyRoute></ProtectedRoute>} />
       <Route path="/season-management" element={<AdminRoute><AppLayout><SeasonManagement /></AppLayout></AdminRoute>} />
       <Route path="/seed-data" element={<AdminRoute><AppLayout><SeedData /></AppLayout></AdminRoute>} />

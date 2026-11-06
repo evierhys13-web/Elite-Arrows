@@ -161,9 +161,9 @@ function CupManagement() {
 
       // Sort extras and limit to reach 4 players if season cup, or top 4 if world cup
       const extraLimit = cupData.type === 'season' ? (4 - (Object.keys(sortedGroups).length * advanceCount)) : 4
-      const bestExtraPlaced = extraPlacedPlayers
+      const bestExtraPlaced = (cupData.allowBestThird !== false) ? extraPlacedPlayers
         .sort((a, b) => (b.points - a.points) || (b.legsFor - b.legsAgainst) - (a.legsFor - a.legsAgainst) || (b.legsFor - a.legsFor))
-        .slice(0, Math.max(0, extraLimit))
+        .slice(0, Math.max(0, extraLimit)) : []
 
       const updatedMatches = [...cupData.matches]
       const newFixtures = []
@@ -975,6 +975,23 @@ function CupManagement() {
                   }}
                 >
                   🔄 Swap Participant
+                </button>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  style={{ fontSize: '0.75rem', background: cup.allowBestThird !== false ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255,255,255,0.05)', borderColor: cup.allowBestThird !== false ? 'var(--accent-cyan)' : 'rgba(255,255,255,0.1)' }}
+                  onClick={async (e) => {
+                    e.stopPropagation()
+                    const nextVal = cup.allowBestThird === false ? true : false
+                    try {
+                      await setDoc(doc(db, 'cups', String(cup.id)), { allowBestThird: nextVal }, { merge: true })
+                      showToast(`Best 3rd place ranking ${nextVal ? 'enabled' : 'disabled'}!`, 'success')
+                      triggerDataRefresh('cups')
+                    } catch (err) {
+                      showToast('Error updating best 3rd ranking: ' + err.message, 'error')
+                    }
+                  }}
+                >
+                  Best 3rd: {cup.allowBestThird !== false ? 'On' : 'Off'}
                 </button>
                 <button
                   className="btn btn-secondary btn-sm"

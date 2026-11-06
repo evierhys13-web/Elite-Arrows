@@ -15,7 +15,7 @@ export const SUPPORTED_PAGES = [
   { key: 'tournaments', label: 'Tournaments', group: 'Cups & Tournaments', paths: ['/tournaments'] },
 
   { key: 'challenges', label: 'Challenges', group: 'Challenges', paths: ['/challenges'] },
-  { key: 'weekly-challenges', label: 'Weekly Challenges', group: 'Challenges', paths: ['/weekly-challenges'] },
+  { key: 'weekly-challenges', label: 'JDC Challenge', group: 'Challenges', paths: ['/weekly-challenges', '/jdc-challenge'] },
 
   { key: 'chat', label: 'Chat', group: 'Social', paths: ['/chat'] },
   { key: 'players', label: 'Players', group: 'Social', paths: ['/players'] },
