@@ -9,9 +9,10 @@ import { ADMIN_EMAILS } from '../config'
 import { compressImageToDataUrl } from '../utils/imageUtils'
 
 const DIVISION_COLORS = {
-  'Pro League': '#ec4899',
+  'Premier': '#f43f5e',
   'Elite': '#fbbf24',
-  'Emerald': '#10b981',
+  'Emerald 1': '#10b981',
+  'Emerald 2': '#34d399',
   'Diamond': '#38bdf8',
   'Platinum': '#818cf8'
 }
@@ -60,7 +61,6 @@ export default function JDCChallenge() {
   const [loading, setLoading] = useState(true)
   const [showSubmitModal, setShowSubmitModal] = useState(false)
   const [showManualModal, setShowManualModal] = useState(false)
-  const [showScoresheetModal, setShowScoresheetModal] = useState(false)
   const [lastSubmissionResult, setLastSubmissionResult] = useState(null)
 
   const currentDateStr = new Date().toISOString().split('T')[0]
@@ -252,7 +252,7 @@ export default function JDCChallenge() {
     return list
   }, [currentMonthSubmissions, leaguePlayers, selectedDivision])
 
-  const divisions = ['all', 'Elite', 'Emerald', 'Diamond', 'Platinum']
+  const divisions = ['all', 'Premier', 'Elite', 'Emerald 1', 'Emerald 2', 'Diamond', 'Platinum']
   const formattedMonthName = new Date().toLocaleString('default', { month: 'long', year: 'numeric' })
   const podiumPlayers = leaderboard.slice(0, 3)
 
@@ -308,7 +308,7 @@ export default function JDCChallenge() {
         </div>
       )}
 
-      {/* Feature Description Card & Scoresheet PDF Button */}
+      {/* Feature Description Card & Scoresheet PDF Download Link */}
       <div className="card glass" style={{ padding: '24px', border: '1px solid rgba(129, 140, 248, 0.2)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '16px' }}>
           <div>
@@ -317,13 +317,14 @@ export default function JDCChallenge() {
               The JDC Challenge is a monthly darts challenge that allows players to test and compare their overall darts ability through a recognised scoring and finishing format.
             </p>
           </div>
-          <button
-            onClick={() => setShowScoresheetModal(true)}
+          <a
+            href="/jdc-scoresheet.pdf"
+            download="jdc-scoresheet.pdf"
             className="btn btn-secondary btn-sm"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(56, 189, 248, 0.15)', borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)', cursor: 'pointer' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none', background: 'rgba(56, 189, 248, 0.15)', borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)' }}
           >
-            📄 View & Print Scoresheet (PDF)
-          </button>
+            📄 Download JDC Scoresheet (PDF)
+          </a>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
           <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '10px' }}>
@@ -474,84 +475,6 @@ export default function JDCChallenge() {
         )}
       </div>
 
-      {/* Printable Scoresheet Modal */}
-      {showScoresheetModal && (
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '20px', overflowY: 'auto' }}>
-          <div className="card glass animate-fade-in" style={{ width: '100%', maxWidth: '650px', padding: '30px', background: '#1e1b4b', border: '2px solid var(--accent-cyan)', color: '#fff', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-              <h2 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--accent-cyan)' }}>🎯 Official JDC Challenge Scoresheet</h2>
-              <button className="btn btn-secondary btn-sm" onClick={() => setShowScoresheetModal(false)}>✕ Close</button>
-            </div>
-
-            <div id="jdc-scoresheet-print" style={{ background: '#fff', color: '#000', padding: '24px', borderRadius: '8px', fontSize: '0.9rem' }}>
-              <div style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: '12px', marginBottom: '16px' }}>
-                <h1 style={{ margin: '0 0 4px', fontSize: '1.4rem' }}>JUNIOR DARTS CORPORATION (JDC)</h1>
-                <h2 style={{ margin: 0, fontSize: '1.1rem', color: '#4f46e5' }}>Official Monthly Challenge Scoresheet</h2>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px', borderBottom: '1px solid #ccc', paddingBottom: '12px' }}>
-                <div><strong>Player Name:</strong> ______________________</div>
-                <div><strong>Date Completed:</strong> ___ / ___ / 20___</div>
-                <div><strong>Division:</strong> ______________________</div>
-                <div><strong>Total JDC Score:</strong> ___________ / 1000</div>
-              </div>
-
-              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '16px' }}>
-                <thead>
-                  <tr style={{ background: '#f3f4f6', borderBottom: '2px solid #000' }}>
-                    <th style={{ padding: '8px', border: '1px solid #ccc', textAlign: 'left' }}>Routine / Segment</th>
-                    <th style={{ padding: '8px', border: '1px solid #ccc', textAlign: 'center' }}>Target / Format</th>
-                    <th style={{ padding: '8px', border: '1px solid #ccc', textAlign: 'center' }}>Score Achieved</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td style={{ padding: '8px', border: '1px solid #ccc' }}>1. Scoring (Segments 10-20 & Bull)</td>
-                    <td style={{ padding: '8px', border: '1px solid #ccc', textAlign: 'center' }}>3 Darts per segment</td>
-                    <td style={{ padding: '8px', border: '1px solid #ccc', textAlign: 'center' }}>____________</td>
-                  </tr>
-                  <tr>
-                    <td style={{ padding: '8px', border: '1px solid #ccc' }}>2. Doubles (1-20 & Bull)</td>
-                    <td style={{ padding: '8px', border: '1px solid #ccc', textAlign: 'center' }}>Hit each double</td>
-                    <td style={{ padding: '8px', border: '1px solid #ccc', textAlign: 'center' }}>____________</td>
-                  </tr>
-                  <tr>
-                    <td style={{ padding: '8px', border: '1px solid #ccc' }}>3. Trebles & Scoring Power</td>
-                    <td style={{ padding: '8px', border: '1px solid #ccc', textAlign: 'center' }}>Standard JDC Rules</td>
-                    <td style={{ padding: '8px', border: '1px solid #ccc', textAlign: 'center' }}>____________</td>
-                  </tr>
-                  <tr>
-                    <td style={{ padding: '8px', border: '1px solid #ccc' }}>4. Finishing & Checkouts</td>
-                    <td style={{ padding: '8px', border: '1px solid #ccc', textAlign: 'center' }}>121 / Outshots</td>
-                    <td style={{ padding: '8px', border: '1px solid #ccc', textAlign: 'center' }}>____________</td>
-                  </tr>
-                </tbody>
-              </table>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '20px', borderTop: '1px solid #ccc', paddingTop: '12px' }}>
-                <div><strong>Marker / Witness Signature:</strong> _____________________</div>
-                <div><strong>Player Signature:</strong> _____________________</div>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
-              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowScoresheetModal(false)}>Cancel</button>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => {
-                const printContent = document.getElementById('jdc-scoresheet-print').innerHTML;
-                const win = window.open('', '', 'height=700,width=700');
-                win.document.write('<html><head><title>JDC Scoresheet</title></head><body style="font-family: Arial, sans-serif; padding: 20px;">');
-                win.document.write(printContent);
-                win.document.write('</body></html>');
-                win.document.close();
-                win.print();
-              }}>
-                🖨️ Print / Save as PDF
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Challenge Submission Modal */}
       {showSubmitModal && (
         <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
@@ -627,8 +550,8 @@ export default function JDCChallenge() {
                 <input type="number" className="form-input" placeholder="e.g. 782" value={manualForm.score} onChange={e => setManualForm({ ...manualForm, score: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff' }} />
               </div>
               <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowManualModal(false)}>Cancel</button>
-                <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleAdminManualEntry}>Save Score</button>
+                <button className="btn btn-secondary" style={{ flex: '1' }} onClick={() => setShowManualModal(false)}>Cancel</button>
+                <button className="btn btn-primary" style={{ flex: '1' }} onClick={handleAdminManualEntry}>Save Score</button>
               </div>
             </div>
           </div>
