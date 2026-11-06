@@ -61,7 +61,7 @@ export default function JDCChallenge() {
   }, [allUsers, doublesTeams, user])
 
   const [submissions, setSubmissions] = useState([])
-  const [loading, setLoading] = useState(false) // default false so mobile never hangs
+  const [loading, setLoading] = useState(false)
   const [showSubmitModal, setShowSubmitModal] = useState(false)
   const [showManualModal, setShowManualModal] = useState(false)
   const [selectedPlayerModal, setSelectedPlayerModal] = useState(null)
@@ -359,6 +359,30 @@ export default function JDCChallenge() {
             <strong>🔄 Resets Monthly</strong>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '4px 0 0' }}>The leaderboard resets at the start of each new month.</p>
           </div>
+        </div>
+      </div>
+
+      {/* Score Bands Reference Guide Card */}
+      <div className="card glass" style={{ padding: '24px', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
+        <h3 className="card-title" style={{ color: 'var(--accent-cyan)', marginBottom: '8px' }}>📊 JDC Score Bands (Division Standards)</h3>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '16px' }}>
+          Realistic target score ranges corresponding to each league division tier from entry to master level:
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
+          {[
+            { name: 'Platinum', range: '0 – 350 pts', color: '#818cf8', desc: 'Developing scoring & finishing' },
+            { name: 'Diamond', range: '351 – 500 pts', color: '#38bdf8', desc: 'Consistent club standard' },
+            { name: 'Emerald 2', range: '501 – 600 pts', color: '#34d399', desc: 'Intermediate competitive' },
+            { name: 'Emerald 1', range: '601 – 700 pts', color: '#10b981', desc: 'Advanced league player' },
+            { name: 'Elite', range: '701 – 850 pts', color: '#fbbf24', desc: 'Top tier county standard' },
+            { name: 'Premier', range: '851 – 1000 pts', color: '#f43f5e', desc: 'Mastery / professional level' },
+          ].map(band => (
+            <div key={band.name} style={{ background: 'rgba(0,0,0,0.25)', padding: '14px', borderRadius: '12px', border: `1px solid ${band.color}44` }}>
+              <div style={{ fontWeight: 800, fontSize: '0.95rem', color: band.color, marginBottom: '2px' }}>{band.name}</div>
+              <div style={{ fontWeight: 900, fontSize: '1.1rem', color: '#fff', marginBottom: '4px' }}>{band.range}</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{band.desc}</div>
+            </div>
+          ))}
         </div>
       </div>
 
