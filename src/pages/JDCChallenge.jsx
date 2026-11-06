@@ -42,23 +42,26 @@ export default function JDCChallenge() {
     }).catch(() => {})
   }, [])
 
-  // Filter players competing in singles league or doubles league
+  // Filter players competing in singles league or doubles league (with robust fallback)
   const leaguePlayers = useMemo(() => {
+    const list = Array.isArray(allUsers) && allUsers.length > 0 ? allUsers : (user ? [user] : [])
     const doublesPlayerIds = new Set()
     doublesTeams.forEach(t => {
       if (t.p1Id) doublesPlayerIds.add(String(t.p1Id))
       if (t.p2Id) doublesPlayerIds.add(String(t.p2Id))
     })
 
-    return allUsers.filter(u => {
+    const filtered = list.filter(u => {
       const inSingles = u.division && u.division !== 'Unassigned' && u.division !== 'Admin'
       const inDoubles = doublesPlayerIds.has(String(u.id))
-      return inSingles || inDoubles
+      return inSingles || inDoubles || String(u.id) === String(user?.id)
     })
-  }, [allUsers, doublesTeams])
+
+    return filtered.length > 0 ? filtered : list
+  }, [allUsers, doublesTeams, user])
 
   const [submissions, setSubmissions] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false) // default false so mobile never hangs
   const [showSubmitModal, setShowSubmitModal] = useState(false)
   const [showManualModal, setShowManualModal] = useState(false)
   const [selectedPlayerModal, setSelectedPlayerModal] = useState(null)
@@ -85,15 +88,12 @@ export default function JDCChallenge() {
   }, [user])
 
   const fetchSubmissions = useCallback(async () => {
-    setLoading(true)
     try {
       const snap = await getDocs(collection(db, 'jdcSubmissions'))
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       setSubmissions(list)
     } catch (e) {
       console.error('Failed to load JDC submissions', e)
-    } finally {
-      setLoading(false)
     }
   }, [])
 
@@ -170,6 +170,7 @@ export default function JDCChallenge() {
 
       setShowSubmitModal(false)
       setSubmissionForm({ score: '', dateCompleted: currentDateStr, proofImage: '' })
+      window.scrollTo({ top: 0, behavior: 'smooth' })
       showToast('JDC Challenge submitted successfully!', 'success')
       fetchSubmissions()
     } catch (e) {
@@ -434,9 +435,7 @@ export default function JDCChallenge() {
           <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{leaderboard.length} Competitors (Click player to view submissions & proof)</span>
         </div>
 
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Loading leaderboard...</div>
-        ) : leaderboard.length === 0 ? (
+        {leaderboard.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No competitors found in this division.</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
