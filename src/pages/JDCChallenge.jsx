@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useAuth } from '../context/AuthContextInternal'
-import { db, doc, setDoc, getDocs, collection, query, orderBy, updateDoc } from '../firebase'
+import { db, doc, setDoc, getDocs, collection, query, where, orderBy } from '../firebase'
 import Breadcrumbs from '../components/Breadcrumbs'
 import UserSearchSelect from '../components/UserSearchSelect'
 import { useToast } from '../context/ToastContext'
@@ -43,46 +43,47 @@ export default function JDCChallenge() {
     })
   }, [allUsers, doublesTeams])
 
-  const [jdcResults, setJdcResults] = useState({})
+  const [submissions, setSubmissions] = useState([])
   const [loading, setLoading] = useState(true)
   const [showSubmitModal, setShowSubmitModal] = useState(false)
   const [showManualModal, setShowManualModal] = useState(false)
-  const [manualPlayerId, setManualPlayerId] = useState('')
-  const [manualScore, setManualScore] = useState('')
-  const [manual180s, setManual180s] = useState('0')
-  const [manualCheckout, setManualCheckout] = useState('0')
+  const [lastSubmissionResult, setLastSubmissionResult] = useState(null)
+
+  const currentDateStr = new Date().toISOString().split('T')[0]
+  const currentMonthKey = currentDateStr.substring(0, 7) // 'YYYY-MM'
 
   const [submissionForm, setSubmissionForm] = useState({
     score: '',
-    p1_180s: '0',
-    p1_checkout: '0',
-    proofImage: '',
-    notes: ''
+    dateCompleted: currentDateStr,
+    proofImage: ''
+  })
+
+  const [manualForm, setManualForm] = useState({
+    playerId: '',
+    score: '',
+    dateCompleted: currentDateStr
   })
 
   const isAdmin = useMemo(() => {
     return ADMIN_EMAILS.includes(user?.email?.toLowerCase()) || user?.isAdmin || user?.isTournamentAdmin
   }, [user])
 
-  const fetchJdcResults = useCallback(async () => {
+  const fetchSubmissions = useCallback(async () => {
     setLoading(true)
     try {
-      const snap = await getDocs(collection(db, 'jdcResults'))
-      const resultsMap = {}
-      snap.docs.forEach(d => {
-        resultsMap[d.id] = { id: d.id, ...d.data() }
-      })
-      setJdcResults(resultsMap)
+      const snap = await getDocs(collection(db, 'jdcSubmissions'))
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      setSubmissions(list)
     } catch (e) {
-      console.error('Failed to load JDC results', e)
+      console.error('Failed to load JDC submissions', e)
     } finally {
       setLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    fetchJdcResults()
-  }, [fetchJdcResults])
+    fetchSubmissions()
+  }, [fetchSubmissions])
 
   const handleProofImagePick = async (e) => {
     const file = e.target.files[0]
@@ -90,96 +91,159 @@ export default function JDCChallenge() {
     try {
       const dataUrl = await compressImageToDataUrl(file, 1200, 0.8)
       setSubmissionForm(prev => ({ ...prev, proofImage: dataUrl }))
-      showToast('Proof screenshot attached!', 'success')
+      showToast('Proof photo attached!', 'success')
     } catch (err) {
-      showToast('Failed to process proof image: ' + err.message, 'error')
+      showToast('Failed to process image: ' + err.message, 'error')
     }
   }
 
   const handleSubmitScore = async () => {
     if (!user || !user.id) return
-    if (submissionForm.score === '') return showToast('Please enter your JDC Challenge score', 'error')
+    if (submissionForm.score === '') return showToast('Please enter your final JDC score', 'error')
 
     try {
-      const resultId = String(user.id)
-      const data = {
+      const subId = `jdc_sub_${user.id}_${Date.now()}`
+      const scoreVal = parseInt(submissionForm.score) || 0
+      const dateCompletedVal = submissionForm.dateCompleted || currentDateStr
+      const monthKey = dateCompletedVal.substring(0, 7)
+
+      const submissionData = {
+        id: subId,
         userId: user.id,
         username: user.username || user.name || 'Player',
         division: user.division || 'Elite',
-        score: parseInt(submissionForm.score) || 0,
-        '180s': parseInt(submissionForm.p1_180s) || 0,
-        checkout: parseInt(submissionForm.p1_checkout) || 0,
+        score: scoreVal,
+        dateCompleted: dateCompletedVal,
+        month: monthKey,
         proofImage: submissionForm.proofImage || null,
-        notes: submissionForm.notes || '',
-        updatedAt: new Date().toISOString()
+        submittedAt: new Date().toISOString()
       }
 
-      await setDoc(doc(db, 'jdcResults', resultId), data, { merge: true })
-      showToast('JDC Challenge result submitted successfully!', 'success')
+      await setDoc(doc(db, 'jdcSubmissions', subId), submissionData)
+
+      // Refresh submissions list
+      const updatedSubs = [...submissions, submissionData]
+      setSubmissions(updatedSubs)
+
+      // Calculate personal best this month & leaderboard position
+      const monthSubs = updatedSubs.filter(s => (s.month || s.dateCompleted?.substring(0, 7)) === monthKey)
+
+      // Map best score per user for this month
+      const userBestMap = {}
+      monthSubs.forEach(s => {
+        if (!userBestMap[s.userId] || s.score > userBestMap[s.userId].score) {
+          userBestMap[s.userId] = { userId: s.userId, username: s.username, score: s.score }
+        }
+      })
+
+      const ranked = Object.values(userBestMap).sort((a, b) => b.score - a.score)
+      const myPersonalBest = userBestMap[user.id]?.score || scoreVal
+      const myIndex = ranked.findIndex(r => String(r.userId) === String(user.id))
+      const rankNum = myIndex !== -1 ? myIndex + 1 : ranked.length
+
+      const getOrdinalSuffix = (n) => {
+        const s = ["th", "st", "nd", "rd"],
+              v = n % 100;
+        return n + (s[(v - 20) % 10] || s[v] || s[0]);
+      }
+
+      setLastSubmissionResult({
+        player: user.username || user.name || 'Player',
+        score: scoreVal,
+        position: getOrdinalSuffix(rankNum),
+        personalBest: myPersonalBest,
+        dateSubmitted: new Date(dateCompletedVal).toLocaleDateString('en-GB')
+      })
+
       setShowSubmitModal(false)
-      setSubmissionForm({ score: '', p1_180s: '0', p1_checkout: '0', proofImage: '', notes: '' })
-      fetchJdcResults()
+      setSubmissionForm({ score: '', dateCompleted: currentDateStr, proofImage: '' })
+      showToast('JDC Challenge submitted successfully!', 'success')
+      fetchSubmissions()
     } catch (e) {
       showToast('Failed to submit JDC result: ' + e.message, 'error')
     }
   }
 
-  const handleManualEntry = async () => {
-    if (!manualPlayerId || manualScore === '') return showToast('Please select a player and enter a score', 'error')
-    const targetUser = allUsers.find(u => String(u.id) === String(manualPlayerId))
+  const handleAdminManualEntry = async () => {
+    if (!manualForm.playerId || manualForm.score === '') return showToast('Please select a player and enter a score', 'error')
+    const targetUser = allUsers.find(u => String(u.id) === String(manualForm.playerId))
     if (!targetUser) return showToast('Player not found', 'error')
 
     try {
-      const resultId = String(targetUser.id)
-      const data = {
+      const subId = `jdc_sub_${targetUser.id}_${Date.now()}`
+      const scoreVal = parseInt(manualForm.score) || 0
+      const dateCompletedVal = manualForm.dateCompleted || currentDateStr
+      const monthKey = dateCompletedVal.substring(0, 7)
+
+      const submissionData = {
+        id: subId,
         userId: targetUser.id,
         username: targetUser.username || targetUser.name || 'Player',
         division: targetUser.division || 'Elite',
-        score: parseInt(manualScore) || 0,
-        '180s': parseInt(manual180s) || 0,
-        checkout: parseInt(manualCheckout) || 0,
+        score: scoreVal,
+        dateCompleted: dateCompletedVal,
+        month: monthKey,
         proofImage: null,
-        notes: 'Admin manual entry',
-        updatedAt: new Date().toISOString()
+        submittedAt: new Date().toISOString()
       }
 
-      await setDoc(doc(db, 'jdcResults', resultId), data, { merge: true })
-      showToast(`JDC score updated for ${targetUser.username}!`, 'success')
+      await setDoc(doc(db, 'jdcSubmissions', subId), submissionData)
+      showToast(`Added JDC score for ${targetUser.username}!`, 'success')
       setShowManualModal(false)
-      setManualPlayerId('')
-      setManualScore('')
-      setManual180s('0')
-      setManualCheckout('0')
-      fetchJdcResults()
+      setManualForm({ playerId: '', score: '', dateCompleted: currentDateStr })
+      fetchSubmissions()
     } catch (e) {
       showToast('Failed to save manual score: ' + e.message, 'error')
     }
   }
 
-  // Build full leaderboard including ONLY league players (singles and doubles league)
+  // Monthly leaderboard: Filter submissions for current month (or selected month) and get HIGHEST score per player
+  const currentMonthSubmissions = useMemo(() => {
+    return submissions.filter(s => {
+      const m = s.month || (s.dateCompleted ? s.dateCompleted.substring(0, 7) : '')
+      return m === currentMonthKey
+    })
+  }, [submissions, currentMonthKey])
+
   const leaderboard = useMemo(() => {
+    const bestPerPlayer = {}
+    currentMonthSubmissions.forEach(s => {
+      if (!bestPerPlayer[s.userId] || s.score > bestPerPlayer[s.userId].score) {
+        bestPerPlayer[s.userId] = {
+          id: s.userId,
+          username: s.username,
+          division: leaguePlayers.find(p => String(p.id) === String(s.userId))?.division || 'Elite',
+          bestScore: s.score,
+          dateAchieved: s.dateCompleted || s.submittedAt?.split('T')[0] || ''
+        }
+      }
+    })
+
+    // Include all league players (even unplayed with 0 score)
     return leaguePlayers.map(player => {
-      const res = jdcResults[String(player.id)] || {}
+      const existing = bestPerPlayer[String(player.id)]
       return {
         id: player.id,
         username: player.username || player.name || 'Player',
         division: player.division || 'Elite',
-        profilePicture: player.profilePicture || null,
-        score: res.score !== undefined ? Number(res.score) : 0,
-        hasPlayed: res.score !== undefined,
-        '180s': res['180s'] || 0,
-        checkout: res.checkout || 0,
-        proofImage: res.proofImage || null,
-        notes: res.notes || '',
-        updatedAt: res.updatedAt || null
+        bestScore: existing ? existing.bestScore : 0,
+        dateAchieved: existing ? existing.dateAchieved : '-',
+        hasPlayed: !!existing
       }
     }).sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score
+      if (b.bestScore !== a.bestScore) return b.bestScore - a.bestScore
       return a.username.localeCompare(b.username)
     })
-  }, [leaguePlayers, jdcResults])
+  }, [currentMonthSubmissions, leaguePlayers])
 
-  const myResult = jdcResults[String(user?.id)]
+  const myBestThisMonth = useMemo(() => {
+    if (!user) return 0
+    const mySubs = currentMonthSubmissions.filter(s => String(s.userId) === String(user.id))
+    if (mySubs.length === 0) return 0
+    return Math.max(...mySubs.map(s => s.score))
+  }, [currentMonthSubmissions, user])
+
+  const formattedMonthName = new Date().toLocaleString('default', { month: 'long', year: 'numeric' })
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', paddingBottom: '100px' }} className="animate-fade-in">
@@ -187,23 +251,12 @@ export default function JDCChallenge() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h1 className="page-title text-gradient" style={{ fontSize: '2rem', fontWeight: 900, margin: 0 }}>🎯 JDC Challenge Leaderboard</h1>
-          <p style={{ color: 'var(--text-muted)', margin: '4px 0 0' }}>Official JDC Challenge standings for Singles & Doubles League competitors!</p>
+          <h1 className="page-title text-gradient" style={{ fontSize: '2rem', fontWeight: 900, margin: 0 }}>🎯 JDC Challenge</h1>
+          <p style={{ color: 'var(--text-muted)', margin: '4px 0 0' }}>Monthly darts challenge for Singles & Doubles League competitors — {formattedMonthName}</p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="btn btn-primary" onClick={() => {
-            if (myResult) {
-              setSubmissionForm({
-                score: String(myResult.score ?? ''),
-                p1_180s: String(myResult['180s'] ?? '0'),
-                p1_checkout: String(myResult.checkout ?? '0'),
-                proofImage: myResult.proofImage || '',
-                notes: myResult.notes || ''
-              })
-            }
-            setShowSubmitModal(true)
-          }}>
-            {myResult ? '✏️ Update My Result' : '➕ Submit My JDC Result'}
+          <button className="btn btn-primary" onClick={() => setShowSubmitModal(true)}>
+            📝 Submit JDC Result
           </button>
           {isAdmin && (
             <button className="btn btn-secondary" onClick={() => setShowManualModal(true)}>
@@ -213,31 +266,54 @@ export default function JDCChallenge() {
         </div>
       </div>
 
-      {/* Info Card */}
-      <div className="card glass" style={{ padding: '20px', border: '1px solid rgba(129, 140, 248, 0.2)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-          <div>
-            <h3 className="card-title" style={{ margin: '0 0 6px', color: 'var(--accent-cyan)' }}>JDC Routine & Rules</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>
-              Complete the official JDC Routine, submit your score, and compete against all Singles & Doubles League competitors on the live leaderboard!
-            </p>
+      {/* Submission Success Modal Card if active */}
+      {lastSubmissionResult && (
+        <div className="card glass animate-fade-in" style={{ padding: '24px', border: '1px solid var(--success)', background: 'rgba(16, 185, 129, 0.05)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+            <h3 className="card-title" style={{ color: 'var(--success)', margin: 0 }}>🎉 JDC Challenge Submitted Successfully</h3>
+            <button className="btn btn-secondary btn-sm" onClick={() => setLastSubmissionResult(null)}>Close</button>
           </div>
-          <div style={{ background: 'rgba(56, 189, 248, 0.1)', padding: '12px 16px', borderRadius: '12px', border: '1px solid rgba(56, 189, 248, 0.3)', textAlign: 'center' }}>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>League Competitors</div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>{leaguePlayers.length}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', fontSize: '0.95rem' }}>
+            <div>Player: <strong>{lastSubmissionResult.player}</strong></div>
+            <div>Score: <strong style={{ color: 'var(--accent-cyan)' }}>{lastSubmissionResult.score}</strong></div>
+            <div>Current Leaderboard Position: <strong style={{ color: '#fbbf24' }}>{lastSubmissionResult.position}</strong></div>
+            <div>Personal Best This Month: <strong>{lastSubmissionResult.personalBest}</strong></div>
+            <div>Date Submitted: <strong>{lastSubmissionResult.dateSubmitted}</strong></div>
+          </div>
+        </div>
+      )}
+
+      {/* Feature Description Card */}
+      <div className="card glass" style={{ padding: '24px', border: '1px solid rgba(129, 140, 248, 0.2)' }}>
+        <h3 className="card-title" style={{ color: 'var(--accent-cyan)', marginBottom: '12px' }}>About the JDC Challenge</h3>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: '1.6', marginBottom: '16px' }}>
+          The JDC Challenge is a monthly darts challenge that allows players to test and compare their overall darts ability through a recognised scoring and finishing format.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '10px' }}>
+            <strong>🎯 Encourage Practice</strong>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '4px 0 0' }}>Test and improve your scoring power and finishing ability.</p>
+          </div>
+          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '10px' }}>
+            <strong>🏆 Monthly Leaderboard</strong>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '4px 0 0' }}>Play as many times as you want; only your highest score counts.</p>
+          </div>
+          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '10px' }}>
+            <strong>🔄 Resets Monthly</strong>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '4px 0 0' }}>The leaderboard resets at the start of each new month.</p>
           </div>
         </div>
       </div>
 
-      {/* Leaderboard Table / Card */}
+      {/* Monthly Leaderboard */}
       <div className="card glass" style={{ padding: '24px', border: '1px solid rgba(255,255,255,0.08)' }}>
-        <h3 className="card-title" style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>🏆 Live Standings</span>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Updated in real-time</span>
-        </h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+          <h3 className="card-title" style={{ margin: 0 }}>🏆 Monthly Leaderboard — {formattedMonthName}</h3>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{leaguePlayers.length} League Competitors</span>
+        </div>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Loading leaderboard...</div>
+          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Loading monthly leaderboard...</div>
         ) : leaderboard.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No league competitors found.</div>
         ) : (
@@ -270,21 +346,17 @@ export default function JDCChallenge() {
                       )}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      Division: <strong style={{ color: 'var(--text)' }}>{player.division}</strong> | Singles & Doubles Competitor
+                      Division: <strong style={{ color: 'var(--text)' }}>{player.division}</strong> {player.hasPlayed && `| Date Achieved: ${player.dateAchieved}`}
                     </div>
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 900, color: player.hasPlayed ? 'var(--accent-cyan)' : 'var(--text-muted)' }}>
-                      {player.hasPlayed ? `${player.score} pts` : 'Unplayed'}
-                    </div>
-                    {player.hasPlayed && (
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                        180s: {player['180s']} | Checkout: {player.checkout}
-                      </div>
-                    )}
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 900, color: player.hasPlayed ? 'var(--accent-cyan)' : 'var(--text-muted)' }}>
+                    {player.hasPlayed ? `${player.bestScore}` : 'Unplayed'}
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                    {player.hasPlayed ? 'Best Score' : 'No attempt'}
                   </div>
                 </div>
               </div>
@@ -293,7 +365,7 @@ export default function JDCChallenge() {
         )}
       </div>
 
-      {/* Submit / Update Score Modal */}
+      {/* Challenge Submission Modal */}
       {showSubmitModal && (
         <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
           <div className="card glass animate-fade-in" style={{ width: '100%', maxWidth: '450px', padding: '24px', border: '1px solid var(--accent-cyan)' }}>
@@ -301,61 +373,48 @@ export default function JDCChallenge() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
-                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Total JDC Score *</label>
+                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Player Name</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  disabled
+                  value={user?.username || user?.name || 'Player'}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-muted)' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Date Completed *</label>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={submissionForm.dateCompleted}
+                  onChange={e => setSubmissionForm({ ...submissionForm, dateCompleted: e.target.value })}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Final JDC Score *</label>
                 <input
                   type="number"
                   className="form-input"
-                  placeholder="e.g. 520"
+                  placeholder="e.g. 782"
                   value={submissionForm.score}
                   onChange={e => setSubmissionForm({ ...submissionForm, score: e.target.value })}
                   style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff' }}
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <div>
-                  <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>180s</label>
-                  <input
-                    type="number"
-                    className="form-input"
-                    value={submissionForm.p1_180s}
-                    onChange={e => setSubmissionForm({ ...submissionForm, p1_180s: e.target.value })}
-                    style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>High Checkout</label>
-                  <input
-                    type="number"
-                    className="form-input"
-                    value={submissionForm.p1_checkout}
-                    onChange={e => setSubmissionForm({ ...submissionForm, p1_checkout: e.target.value })}
-                    style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff' }}
-                  />
-                </div>
-              </div>
-
               <div>
-                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Proof Screenshot (Optional)</label>
+                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Proof Photo / Score Sheet (Optional)</label>
                 <input type="file" accept="image/*" onChange={handleProofImagePick} style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }} />
                 {submissionForm.proofImage && <img src={submissionForm.proofImage} alt="Preview" style={{ width: '100%', height: '100px', objectFit: 'contain', marginTop: '8px', borderRadius: '8px' }} />}
               </div>
 
-              <div>
-                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Notes / Breakdown</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="e.g. Completed routine cleanly"
-                  value={submissionForm.notes}
-                  onChange={e => setSubmissionForm({ ...submissionForm, notes: e.target.value })}
-                  style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff' }}
-                />
-              </div>
-
               <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                 <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowSubmitModal(false)}>Cancel</button>
-                <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleSubmitScore}>Save Result</button>
+                <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleSubmitScore}>Submit Result</button>
               </div>
             </div>
           </div>
@@ -370,32 +429,19 @@ export default function JDCChallenge() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
                 <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Select League Competitor</label>
-                <UserSearchSelect users={leaguePlayers} selectedUserId={manualPlayerId} onSelect={setManualPlayerId} placeholder="Search league competitor..." />
+                <UserSearchSelect users={leaguePlayers} selectedUserId={manualForm.playerId} onSelect={id => setManualForm({ ...manualForm, playerId: id })} placeholder="Search league competitor..." />
               </div>
               <div>
-                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>JDC Score</label>
-                <input
-                  type="number"
-                  className="form-input"
-                  placeholder="e.g. 480"
-                  value={manualScore}
-                  onChange={e => setManualScore(e.target.value)}
-                  style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff' }}
-                />
+                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Date Completed</label>
+                <input type="date" className="form-input" value={manualForm.dateCompleted} onChange={e => setManualForm({ ...manualForm, dateCompleted: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff' }} />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <div>
-                  <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>180s</label>
-                  <input type="number" className="form-input" value={manual180s} onChange={e => setManual180s(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Checkout</label>
-                  <input type="number" className="form-input" value={manualCheckout} onChange={e => setManualCheckout(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff' }} />
-                </div>
+              <div>
+                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Final JDC Score</label>
+                <input type="number" className="form-input" placeholder="e.g. 782" value={manualForm.score} onChange={e => setManualForm({ ...manualForm, score: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff' }} />
               </div>
               <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                 <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowManualModal(false)}>Cancel</button>
-                <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleManualEntry}>Save Score</button>
+                <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleAdminManualEntry}>Save Score</button>
               </div>
             </div>
           </div>
