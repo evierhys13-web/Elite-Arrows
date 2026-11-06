@@ -925,7 +925,7 @@ export default function CupBracket() {
           }}>
             <h2 style={{ fontSize: '1.2rem', fontWeight: 900, letterSpacing: '2px', color: 'white' }}>GROUP STANDINGS</h2>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              {isWorldCup ? (cup.allowBestThird ? 'Top 2 + Best 3rd Placed Advance' : 'Top 2 Advance to Knockout') : isGroupKnockout ? `Top ${cup.advancePerGroup || 2} + Best Next-Placed Advance` : `Top ${cup.advancePerGroup || 2} Advance to Knockout`}
+              {isWorldCup ? (cup.allowBestThird !== false ? 'Top 2 + Best 3rd Placed Advance' : 'Top 2 Advance to Knockout') : isGroupKnockout ? (cup.allowBestThird !== false ? `Top ${cup.advancePerGroup || 2} + Best Next-Placed Advance` : `Top ${cup.advancePerGroup || 2} Advance to Knockout`) : `Top ${cup.advancePerGroup || 2} Advance to Knockout`}
             </div>
           </div>
 
