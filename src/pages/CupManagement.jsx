@@ -245,6 +245,76 @@ function CupManagement() {
     }
   }
 
+  const handleSyncCupGroupSchedules = async (silent = false) => {
+    setIsSubmitting(true)
+    try {
+      const allCups = getCups()
+      const existingFixtures = getFixtures()
+      const batch = writeBatch(db)
+      let syncedCount = 0
+
+      for (const cup of allCups) {
+        if (cup.status === 'completed') continue
+        const cupRef = doc(db, 'cups', String(cup.id))
+        const cupSnap = await getDoc(cupRef)
+        if (!cupSnap.exists()) continue
+        const cupData = cupSnap.data()
+        const matches = cupData.matches || []
+        const groupMatches = matches.filter(m => m.stage === 'groups' || m.round === 0)
+
+        for (const m of groupMatches) {
+          if (m.player1 && m.player2) {
+            const fId = `cup_${cup.id}_match_${m.id}`
+            const existingF = existingFixtures.find(f => String(f.id) === String(fId))
+            const fmt = cupData.roundFormats?.[0] || cupData.roundFormats?.[1] || { startScore: 501, bestOf: 3, firstTo: 2 }
+
+            const p1 = allUsers.find(u => String(u.id) === String(m.player1))
+            const p2 = allUsers.find(u => String(u.id) === String(m.player2))
+
+            const fixtureData = {
+              id: fId,
+              cupId: isNaN(parseInt(cup.id)) ? cup.id : parseInt(cup.id),
+              cupName: cupData.name,
+              startScore: fmt.startScore,
+              bestOf: fmt.bestOf,
+              firstTo: fmt.firstTo || Math.ceil(fmt.bestOf / 2),
+              player1: p1?.username || m.player1Name || m.player1,
+              player1Id: m.player1,
+              player2: p2?.username || m.player2Name || m.player2,
+              player2Id: m.player2,
+              matchId: m.id,
+              round: 0,
+              stage: 'groups',
+              group: m.group || null,
+              status: 'accepted',
+              proposalStatus: 'accepted',
+              createdAt: new Date().toISOString()
+            }
+
+            if (!existingF || existingF.player1Id !== m.player1 || existingF.player2Id !== m.player2 || existingF.player1 !== fixtureData.player1 || existingF.player2 !== fixtureData.player2) {
+              batch.set(doc(db, 'fixtures', fId), fixtureData, { merge: true })
+              syncedCount++
+            }
+          }
+        }
+      }
+
+      if (syncedCount > 0) {
+        await batch.commit()
+      }
+
+      if (!silent) {
+        showToast(`Synced group schedules for active cups! Updated ${syncedCount} match fixtures.`, 'success')
+      }
+      triggerDataRefresh('all')
+      setRefreshKey(prev => prev + 1)
+    } catch (e) {
+      if (!silent) showToast('Error syncing group schedules: ' + e.message, 'error')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const handleSyncExistingWinners = async (silent = false) => {
     if (syncInProgressRef.current) return
     if (!silent && !window.confirm('This will scan all approved Cup results and ensure winners are advanced in their brackets and fixtures are created for ready matches. Continue?')) return
@@ -422,12 +492,13 @@ function CupManagement() {
     }
   }, [refreshKey, getCups, getFixtures, getResults])
 
-  // Auto-sync once on mount (silently) to fix any un-advanced results
+  // Auto-sync once on mount (silently) to fix any un-advanced results and match schedules with current groups
   useEffect(() => {
     const autoSynced = sessionStorage.getItem('cupManagementAutoSynced')
     if (!autoSynced) {
       sessionStorage.setItem('cupManagementAutoSynced', 'true')
       handleSyncExistingWinners(true)
+      handleSyncCupGroupSchedules(true)
     }
   }, [])
 
@@ -831,9 +902,14 @@ function CupManagement() {
         <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '15px' }}>
           If a player has won but isn't advanced in the bracket, use this tool to sync all approved results.
         </p>
-        <button className="btn btn-primary" onClick={() => handleSyncExistingWinners(false)} disabled={isSubmitting}>
-          {isSubmitting ? 'Syncing...' : 'Sync Brackets with Results'}
-        </button>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button className="btn btn-primary" onClick={() => handleSyncExistingWinners(false)} disabled={isSubmitting}>
+            {isSubmitting ? 'Syncing...' : 'Sync Brackets with Results'}
+          </button>
+          <button className="btn btn-secondary" onClick={() => handleSyncCupGroupSchedules(false)} disabled={isSubmitting}>
+            {isSubmitting ? 'Syncing...' : '🔄 Sync Cup Group Schedules'}
+          </button>
+        </div>
         {syncResult && (
           <div style={{ marginTop: '12px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
             Last sync: {syncResult.advanced} advanced, {syncResult.skipped} skipped, {syncResult.errors} errors
