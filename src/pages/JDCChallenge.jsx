@@ -317,14 +317,6 @@ export default function JDCChallenge() {
               The JDC Challenge is a monthly darts challenge that allows players to test and compare their overall darts ability through a recognised scoring and finishing format.
             </p>
           </div>
-          <a
-            href="/jdc-scoresheet.pdf"
-            download="jdc-scoresheet.pdf"
-            className="btn btn-secondary btn-sm"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none', background: 'rgba(56, 189, 248, 0.15)', borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)' }}
-          >
-            📄 Download JDC Scoresheet (PDF)
-          </a>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
           <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '10px' }}>
