@@ -370,12 +370,12 @@ export default function JDCChallenge() {
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
           {[
-            { name: 'Platinum', range: '0 – 350 pts', color: '#818cf8', desc: 'Developing scoring & finishing' },
-            { name: 'Diamond', range: '351 – 500 pts', color: '#38bdf8', desc: 'Consistent club standard' },
-            { name: 'Emerald 2', range: '501 – 600 pts', color: '#34d399', desc: 'Intermediate competitive' },
-            { name: 'Emerald 1', range: '601 – 700 pts', color: '#10b981', desc: 'Advanced league player' },
-            { name: 'Elite', range: '701 – 850 pts', color: '#fbbf24', desc: 'Top tier county standard' },
-            { name: 'Premier', range: '851 – 1000 pts', color: '#f43f5e', desc: 'Mastery / professional level' },
+            { name: 'Platinum', range: '0 – 300 pts', color: '#818cf8', desc: 'Developing scoring & finishing' },
+            { name: 'Diamond', range: '301 – 420 pts', color: '#38bdf8', desc: 'Consistent club standard' },
+            { name: 'Emerald 2', range: '421 – 520 pts', color: '#34d399', desc: 'Intermediate competitive' },
+            { name: 'Emerald 1', range: '521 – 630 pts', color: '#10b981', desc: 'Advanced league player' },
+            { name: 'Elite', range: '631 – 720 pts', color: '#fbbf24', desc: 'Top tier county standard' },
+            { name: 'Premier', range: '721 – 800 pts', color: '#f43f5e', desc: 'Mastery / elite standard' },
           ].map(band => (
             <div key={band.name} style={{ background: 'rgba(0,0,0,0.25)', padding: '14px', borderRadius: '12px', border: `1px solid ${band.color}44` }}>
               <div style={{ fontWeight: 800, fontSize: '0.95rem', color: band.color, marginBottom: '2px' }}>{band.name}</div>
