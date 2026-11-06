@@ -307,6 +307,41 @@ export default function JDCChallenge() {
         </div>
       )}
 
+      {/* Feature Description Card & Scoresheet PDF Link */}
+      <div className="card glass" style={{ padding: '24px', border: '1px solid rgba(129, 140, 248, 0.2)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '16px' }}>
+          <div>
+            <h3 className="card-title" style={{ color: 'var(--accent-cyan)', marginBottom: '8px' }}>About the JDC Challenge</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: '1.6', margin: 0 }}>
+              The JDC Challenge is a monthly darts challenge that allows players to test and compare their overall darts ability through a recognised scoring and finishing format.
+            </p>
+          </div>
+          <a
+            href="https://www.jdcchallenges.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-secondary btn-sm"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none', background: 'rgba(56, 189, 248, 0.15)', borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)' }}
+          >
+            📄 Download JDC Scoresheet (PDF)
+          </a>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '10px' }}>
+            <strong>🎯 Encourage Practice</strong>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '4px 0 0' }}>Test and improve your scoring power and finishing ability.</p>
+          </div>
+          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '10px' }}>
+            <strong>🏆 Monthly Leaderboard</strong>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '4px 0 0' }}>Play as many times as you want; only your highest score counts.</p>
+          </div>
+          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '10px' }}>
+            <strong>🔄 Resets Monthly</strong>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '4px 0 0' }}>The leaderboard resets at the start of each new month.</p>
+          </div>
+        </div>
+      </div>
+
       {/* Division Filter Tabs */}
       <div className="division-tabs" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
         {divisions.map(div => (
