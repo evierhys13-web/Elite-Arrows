@@ -238,8 +238,13 @@ export default function JDCChallenge() {
 
   const leaderboard = useMemo(() => {
     const bestPerPlayer = {}
-    currentMonthSubmissions.forEach(s => {
-      if (!bestPerPlayer[s.userId] || s.score > bestPerPlayer[s.userId].score) {
+    const sortedSubs = [...currentMonthSubmissions].sort((a, b) => {
+      if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0)
+      return new Date(b.dateCompleted || b.submittedAt || 0) - new Date(a.dateCompleted || a.submittedAt || 0)
+    })
+
+    sortedSubs.forEach(s => {
+      if (!bestPerPlayer[s.userId]) {
         bestPerPlayer[s.userId] = {
           id: s.userId,
           username: s.username,
