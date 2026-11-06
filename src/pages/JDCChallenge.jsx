@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContextInternal'
-import { db, doc, setDoc, getDocs, collection } from '../firebase'
+import { db, doc, setDoc, deleteDoc, getDocs, collection } from '../firebase'
 import Breadcrumbs from '../components/Breadcrumbs'
 import UserSearchSelect from '../components/UserSearchSelect'
 import { useToast } from '../context/ToastContext'
@@ -208,6 +208,24 @@ export default function JDCChallenge() {
     }
   }
 
+  const handleDeleteJdcResult = async (userId, username) => {
+    if (!window.confirm(`Delete JDC results for ${username}?`)) return
+    try {
+      const userSubs = submissions.filter(s => String(s.userId) === String(userId))
+      for (const sub of userSubs) {
+        await deleteDoc(doc(db, 'jdcSubmissions', sub.id))
+      }
+      try {
+        await deleteDoc(doc(db, 'jdcResults', String(userId)))
+      } catch (e) {}
+
+      showToast(`Removed JDC results for ${username}`, 'success')
+      fetchSubmissions()
+    } catch (e) {
+      showToast('Failed to remove: ' + e.message, 'error')
+    }
+  }
+
   const currentMonthSubmissions = useMemo(() => {
     return submissions.filter(s => {
       const m = s.month || (s.dateCompleted ? s.dateCompleted.substring(0, 7) : '')
@@ -308,7 +326,7 @@ export default function JDCChallenge() {
         </div>
       )}
 
-      {/* Feature Description Card & Scoresheet PDF Download Link */}
+      {/* Feature Description Card */}
       <div className="card glass" style={{ padding: '24px', border: '1px solid rgba(129, 140, 248, 0.2)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '16px' }}>
           <div>
@@ -452,13 +470,27 @@ export default function JDCChallenge() {
                     </div>
                   </div>
 
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 900, color: player.hasPlayed ? 'var(--accent-cyan)' : 'var(--text-muted)' }}>
-                      {player.hasPlayed ? `${player.bestScore}` : 'Unplayed'}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 900, color: player.hasPlayed ? 'var(--accent-cyan)' : 'var(--text-muted)' }}>
+                        {player.hasPlayed ? `${player.bestScore}` : 'Unplayed'}
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                        {player.hasPlayed ? 'Best Score' : 'No attempt'}
+                      </div>
                     </div>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                      {player.hasPlayed ? 'Best Score' : 'No attempt'}
-                    </div>
+                    {isAdmin && player.hasPlayed && (
+                      <button
+                        className="btn btn-danger btn-xs"
+                        style={{ padding: '4px 8px', fontSize: '0.7rem' }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteJdcResult(player.id, player.username)
+                        }}
+                      >
+                        🗑️ Remove
+                      </button>
+                    )}
                   </div>
                 </div>
               )
