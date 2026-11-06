@@ -1,19 +1,32 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContextInternal'
-import { db, doc, setDoc, getDocs, collection, query, where, orderBy } from '../firebase'
+import { db, doc, setDoc, getDocs, collection } from '../firebase'
 import Breadcrumbs from '../components/Breadcrumbs'
 import UserSearchSelect from '../components/UserSearchSelect'
 import { useToast } from '../context/ToastContext'
 import { ADMIN_EMAILS } from '../config'
 import { compressImageToDataUrl } from '../utils/imageUtils'
 
+const DIVISION_COLORS = {
+  'Pro League': '#ec4899',
+  'Elite': '#fbbf24',
+  'Emerald': '#10b981',
+  'Diamond': '#38bdf8',
+  'Platinum': '#818cf8'
+}
+
+const MEDAL_COLORS = ['#fbbf24', '#94a3b8', '#d97706']
+const divColor = (d) => DIVISION_COLORS[d] || 'var(--text-muted)'
+
 export default function JDCChallenge() {
   const { user, getAllUsers } = useAuth()
   const { showToast } = useToast()
+  const navigate = useNavigate()
 
   const allUsers = getAllUsers() || []
-
   const [doublesTeams, setDoublesTeams] = useState([])
+  const [selectedDivision, setSelectedDivision] = useState('all')
 
   useEffect(() => {
     const saved = localStorage.getItem('eliteArrowsDoublesTeams')
@@ -121,14 +134,11 @@ export default function JDCChallenge() {
 
       await setDoc(doc(db, 'jdcSubmissions', subId), submissionData)
 
-      // Refresh submissions list
       const updatedSubs = [...submissions, submissionData]
       setSubmissions(updatedSubs)
 
-      // Calculate personal best this month & leaderboard position
       const monthSubs = updatedSubs.filter(s => (s.month || s.dateCompleted?.substring(0, 7)) === monthKey)
 
-      // Map best score per user for this month
       const userBestMap = {}
       monthSubs.forEach(s => {
         if (!userBestMap[s.userId] || s.score > userBestMap[s.userId].score) {
@@ -197,7 +207,6 @@ export default function JDCChallenge() {
     }
   }
 
-  // Monthly leaderboard: Filter submissions for current month (or selected month) and get HIGHEST score per player
   const currentMonthSubmissions = useMemo(() => {
     return submissions.filter(s => {
       const m = s.month || (s.dateCompleted ? s.dateCompleted.substring(0, 7) : '')
@@ -219,13 +228,13 @@ export default function JDCChallenge() {
       }
     })
 
-    // Include all league players (even unplayed with 0 score)
-    return leaguePlayers.map(player => {
+    let list = leaguePlayers.map(player => {
       const existing = bestPerPlayer[String(player.id)]
       return {
         id: player.id,
         username: player.username || player.name || 'Player',
         division: player.division || 'Elite',
+        profilePicture: player.profilePicture || null,
         bestScore: existing ? existing.bestScore : 0,
         dateAchieved: existing ? existing.dateAchieved : '-',
         hasPlayed: !!existing
@@ -234,16 +243,31 @@ export default function JDCChallenge() {
       if (b.bestScore !== a.bestScore) return b.bestScore - a.bestScore
       return a.username.localeCompare(b.username)
     })
-  }, [currentMonthSubmissions, leaguePlayers])
 
-  const myBestThisMonth = useMemo(() => {
-    if (!user) return 0
-    const mySubs = currentMonthSubmissions.filter(s => String(s.userId) === String(user.id))
-    if (mySubs.length === 0) return 0
-    return Math.max(...mySubs.map(s => s.score))
-  }, [currentMonthSubmissions, user])
+    if (selectedDivision !== 'all') {
+      list = list.filter(p => p.division === selectedDivision)
+    }
 
+    return list
+  }, [currentMonthSubmissions, leaguePlayers, selectedDivision])
+
+  const divisions = ['all', 'Elite', 'Emerald', 'Diamond', 'Platinum']
   const formattedMonthName = new Date().toLocaleString('default', { month: 'long', year: 'numeric' })
+  const podiumPlayers = leaderboard.slice(0, 3)
+
+  const renderAvatar = (player, size = 42, ring) => (
+    <div style={{
+      width: size, height: size, borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
+      background: `linear-gradient(135deg, ${ring || '#d946ef'}, var(--accent-cyan))`,
+      border: '2.5px solid rgba(255,255,255,0.14)', boxShadow: '0 0 0 3px rgba(0,0,0,0.25), 0 4px 14px rgba(0,0,0,0.35)'
+    }}>
+      {player?.profilePicture
+        ? <img src={player.profilePicture} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontWeight: 800, fontSize: `${Math.round(size * 0.4)}px`, color: '#0b051d' }}>
+            {(player?.username || '?').charAt(0).toUpperCase()}
+          </div>}
+    </div>
+  )
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', paddingBottom: '100px' }} className="animate-fade-in">
@@ -266,7 +290,7 @@ export default function JDCChallenge() {
         </div>
       </div>
 
-      {/* Submission Success Modal Card if active */}
+      {/* Submission Success Modal Card */}
       {lastSubmissionResult && (
         <div className="card glass animate-fade-in" style={{ padding: '24px', border: '1px solid var(--success)', background: 'rgba(16, 185, 129, 0.05)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
@@ -283,84 +307,135 @@ export default function JDCChallenge() {
         </div>
       )}
 
-      {/* Feature Description Card */}
-      <div className="card glass" style={{ padding: '24px', border: '1px solid rgba(129, 140, 248, 0.2)' }}>
-        <h3 className="card-title" style={{ color: 'var(--accent-cyan)', marginBottom: '12px' }}>About the JDC Challenge</h3>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: '1.6', marginBottom: '16px' }}>
-          The JDC Challenge is a monthly darts challenge that allows players to test and compare their overall darts ability through a recognised scoring and finishing format.
-        </p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
-          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '10px' }}>
-            <strong>🎯 Encourage Practice</strong>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '4px 0 0' }}>Test and improve your scoring power and finishing ability.</p>
-          </div>
-          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '10px' }}>
-            <strong>🏆 Monthly Leaderboard</strong>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '4px 0 0' }}>Play as many times as you want; only your highest score counts.</p>
-          </div>
-          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '10px' }}>
-            <strong>🔄 Resets Monthly</strong>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '4px 0 0' }}>The leaderboard resets at the start of each new month.</p>
-          </div>
-        </div>
+      {/* Division Filter Tabs */}
+      <div className="division-tabs" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
+        {divisions.map(div => (
+          <button
+            key={div}
+            className={`division-tab ${selectedDivision === div ? 'active' : ''}`}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '20px',
+              border: selectedDivision === div ? '1px solid var(--accent-cyan)' : '1px solid rgba(255,255,255,0.1)',
+              background: selectedDivision === div ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255,255,255,0.03)',
+              color: selectedDivision === div ? 'var(--accent-cyan)' : 'var(--text-muted)',
+              fontWeight: 700,
+              cursor: 'pointer',
+              textTransform: 'capitalize'
+            }}
+            onClick={() => setSelectedDivision(div)}
+          >
+            {div === 'all' ? 'All Divisions' : div}
+          </button>
+        ))}
       </div>
 
-      {/* Monthly Leaderboard */}
+      {/* Podium Display for Top 3 */}
+      {podiumPlayers.length > 0 && selectedDivision === 'all' && (
+        <div style={{
+          display: 'grid', gridTemplateColumns: `repeat(${podiumPlayers.length >= 3 ? 3 : podiumPlayers.length}, 1fr)`,
+          gap: '18px', alignItems: 'end', marginBottom: '20px', maxWidth: '760px', marginLeft: 'auto', marginRight: 'auto', width: '100%'
+        }}>
+          {[podiumPlayers[1], podiumPlayers[0], podiumPlayers[2]].filter(Boolean).map(p => {
+            const i = leaderboard.findIndex(x => String(x.id) === String(p.id))
+            const first = i === 0
+            const second = i === 1
+            const medalColor = MEDAL_COLORS[i] || '#cd7f32'
+            const height = first ? '180px' : second ? '150px' : '130px'
+
+            return (
+              <div key={p.id} className="card glass animate-fade-in" style={{
+                padding: '16px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center',
+                justifyContent: 'space-between', height, border: `2px solid ${medalColor}44`,
+                background: first ? 'rgba(251, 191, 36, 0.08)' : 'rgba(255,255,255,0.03)', cursor: 'pointer'
+              }} onClick={() => navigate(`/statistics/${p.id}`)}>
+                <div style={{ position: 'relative', marginTop: '-24px' }}>
+                  {renderAvatar(p, first ? 54 : 46, medalColor)}
+                  <span style={{
+                    position: 'absolute', bottom: -6, right: -6, background: medalColor, color: '#0b051d',
+                    fontSize: '0.7rem', fontWeight: 900, width: '22px', height: '22px', borderRadius: '50%',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.4)'
+                  }}>{i + 1}</span>
+                </div>
+                <div style={{ width: '100%', overflow: 'hidden' }}>
+                  <div style={{ fontWeight: 800, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.username}</div>
+                  <div style={{ fontSize: '0.65rem', fontWeight: 700, color: divColor(p.division), textTransform: 'uppercase' }}>{p.division}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 900, color: p.hasPlayed ? 'var(--accent-cyan)' : 'var(--text-muted)' }}>
+                    {p.hasPlayed ? p.bestScore : '—'}
+                  </div>
+                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{p.hasPlayed ? `Achieved: ${p.dateAchieved}` : 'Unplayed'}</div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Monthly Leaderboard Table / List */}
       <div className="card glass" style={{ padding: '24px', border: '1px solid rgba(255,255,255,0.08)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-          <h3 className="card-title" style={{ margin: 0 }}>🏆 Monthly Leaderboard — {formattedMonthName}</h3>
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{leaguePlayers.length} League Competitors</span>
+          <h3 className="card-title" style={{ margin: 0 }}>🏆 Standings — {formattedMonthName}</h3>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{leaderboard.length} Competitors</span>
         </div>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Loading monthly leaderboard...</div>
+          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Loading leaderboard...</div>
         ) : leaderboard.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No league competitors found.</div>
+          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No competitors found in this division.</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {leaderboard.map((player, idx) => (
-              <div key={player.id} style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '14px 18px',
-                borderRadius: '14px',
-                background: idx === 0 ? 'rgba(251, 191, 36, 0.12)' : idx === 1 ? 'rgba(156, 163, 175, 0.1)' : idx === 2 ? 'rgba(217, 119, 6, 0.1)' : 'rgba(255,255,255,0.03)',
-                border: idx === 0 ? '1px solid rgba(251, 191, 36, 0.4)' : idx === 1 ? '1px solid rgba(156, 163, 175, 0.3)' : idx === 2 ? '1px solid rgba(217, 119, 6, 0.3)' : '1px solid rgba(255,255,255,0.06)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <span style={{
-                    fontSize: '1rem',
-                    fontWeight: 900,
-                    color: idx === 0 ? '#fbbf24' : idx === 1 ? '#9ca3af' : idx === 2 ? '#d97706' : 'var(--text-muted)',
-                    width: '32px',
-                    textAlign: 'center'
-                  }}>
-                    {idx === 0 ? '👑' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}
-                  </span>
-                  <div>
-                    <div style={{ fontWeight: 800, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      {player.username}
-                      {String(player.id) === String(user?.id) && (
-                        <span style={{ fontSize: '0.65rem', background: 'var(--accent-cyan)', color: '#000', padding: '1px 6px', borderRadius: '10px', fontWeight: 800 }}>YOU</span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      Division: <strong style={{ color: 'var(--text)' }}>{player.division}</strong> {player.hasPlayed && `| Date Achieved: ${player.dateAchieved}`}
+            {leaderboard.map((player, idx) => {
+              const isMedal = idx < 3
+              return (
+                <div key={player.id} style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '14px 18px',
+                  borderRadius: '14px',
+                  background: idx === 0 ? 'rgba(251, 191, 36, 0.12)' : idx === 1 ? 'rgba(156, 163, 175, 0.1)' : idx === 2 ? 'rgba(217, 119, 6, 0.1)' : 'rgba(255,255,255,0.03)',
+                  border: idx === 0 ? '1px solid rgba(251, 191, 36, 0.4)' : idx === 1 ? '1px solid rgba(156, 163, 175, 0.3)' : idx === 2 ? '1px solid rgba(217, 119, 6, 0.3)' : '1px solid rgba(255,255,255,0.06)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }} onClick={() => navigate(`/statistics/${player.id}`)}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      width: '34px', height: '34px', borderRadius: '50%',
+                      background: isMedal ? MEDAL_COLORS[idx] : 'rgba(255,255,255,0.07)',
+                      color: isMedal ? '#0b051d' : 'var(--text-muted)',
+                      fontWeight: 900, fontSize: '0.8rem',
+                      boxShadow: isMedal ? `0 0 0 2px ${MEDAL_COLORS[idx]}33, 0 3px 10px ${MEDAL_COLORS[idx]}44` : 'none'
+                    }}>
+                      {idx + 1}
+                    </span>
+                    {renderAvatar(player, 40, DIVISION_COLORS[player.division])}
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {player.username}
+                        {String(player.id) === String(user?.id) && (
+                          <span style={{ fontSize: '0.65rem', background: 'var(--accent-cyan)', color: '#000', padding: '1px 6px', borderRadius: '10px', fontWeight: 800 }}>YOU</span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: divColor(player.division), textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '2px' }}>
+                        {player.division} {player.hasPlayed && `· Achieved: ${player.dateAchieved}`}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 900, color: player.hasPlayed ? 'var(--accent-cyan)' : 'var(--text-muted)' }}>
-                    {player.hasPlayed ? `${player.bestScore}` : 'Unplayed'}
-                  </div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                    {player.hasPlayed ? 'Best Score' : 'No attempt'}
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 900, color: player.hasPlayed ? 'var(--accent-cyan)' : 'var(--text-muted)' }}>
+                      {player.hasPlayed ? `${player.bestScore}` : 'Unplayed'}
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                      {player.hasPlayed ? 'Best Score' : 'No attempt'}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
