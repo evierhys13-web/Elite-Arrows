@@ -234,6 +234,18 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    match /jdcSubmissions/{subId} {
+      allow read: if true;
+      allow create: if signedIn();
+      allow update, delete: if signedIn() && (isOwner(resource.data.userId) || isAdmin());
+    }
+
+    match /jdcResults/{resultId} {
+      allow read: if true;
+      allow create: if signedIn();
+      allow update, delete: if signedIn() && (isOwner(resource.data.userId) || isAdmin());
+    }
+
     // Player of the Month - members cast one vote (per month+division) which is
     // enforced on the client via a deterministic vote id. Voters can only write
     // their own vote doc.
