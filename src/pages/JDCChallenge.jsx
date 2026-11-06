@@ -13,15 +13,35 @@ export default function JDCChallenge() {
 
   const allUsers = getAllUsers() || []
 
-  // Filter all players with an Elite Pass / subscription
-  const elitePassHolders = useMemo(() => {
-    return allUsers.filter(u =>
-      u.isSubscribed === true ||
-      u.isAdmin ||
-      u.isTournamentAdmin ||
-      (Array.isArray(u.subscribedSeasons) && u.subscribedSeasons.length > 0)
-    )
-  }, [allUsers])
+  const [doublesTeams, setDoublesTeams] = useState([])
+
+  useEffect(() => {
+    const saved = localStorage.getItem('eliteArrowsDoublesTeams')
+    if (saved) {
+      try { setDoublesTeams(JSON.parse(saved)) } catch (e) {}
+    }
+    getDocs(collection(db, 'doublesTeams')).then(snap => {
+      if (!snap.empty) {
+        const tList = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        setDoublesTeams(tList)
+      }
+    }).catch(() => {})
+  }, [])
+
+  // Filter players competing in singles league or doubles league
+  const leaguePlayers = useMemo(() => {
+    const doublesPlayerIds = new Set()
+    doublesTeams.forEach(t => {
+      if (t.p1Id) doublesPlayerIds.add(String(t.p1Id))
+      if (t.p2Id) doublesPlayerIds.add(String(t.p2Id))
+    })
+
+    return allUsers.filter(u => {
+      const inSingles = u.division && u.division !== 'Unassigned' && u.division !== 'Admin'
+      const inDoubles = doublesPlayerIds.has(String(u.id))
+      return inSingles || inDoubles
+    })
+  }, [allUsers, doublesTeams])
 
   const [jdcResults, setJdcResults] = useState({})
   const [loading, setLoading] = useState(true)
@@ -136,9 +156,9 @@ export default function JDCChallenge() {
     }
   }
 
-  // Build full leaderboard including EVERY Elite Pass holder
+  // Build full leaderboard including ONLY league players (singles and doubles league)
   const leaderboard = useMemo(() => {
-    return elitePassHolders.map(player => {
+    return leaguePlayers.map(player => {
       const res = jdcResults[String(player.id)] || {}
       return {
         id: player.id,
@@ -157,7 +177,7 @@ export default function JDCChallenge() {
       if (b.score !== a.score) return b.score - a.score
       return a.username.localeCompare(b.username)
     })
-  }, [elitePassHolders, jdcResults])
+  }, [leaguePlayers, jdcResults])
 
   const myResult = jdcResults[String(user?.id)]
 
@@ -168,7 +188,7 @@ export default function JDCChallenge() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h1 className="page-title text-gradient" style={{ fontSize: '2rem', fontWeight: 900, margin: 0 }}>🎯 JDC Challenge Leaderboard</h1>
-          <p style={{ color: 'var(--text-muted)', margin: '4px 0 0' }}>Official JDC Challenge standings. All Elite Pass holders are featured!</p>
+          <p style={{ color: 'var(--text-muted)', margin: '4px 0 0' }}>Official JDC Challenge standings for Singles & Doubles League competitors!</p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
           <button className="btn btn-primary" onClick={() => {
@@ -199,12 +219,12 @@ export default function JDCChallenge() {
           <div>
             <h3 className="card-title" style={{ margin: '0 0 6px', color: 'var(--accent-cyan)' }}>JDC Routine & Rules</h3>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>
-              Complete the official JDC Routine (Scoring segments, doubles, and bullseyes), submit your total score, and compete against all Elite Pass members on the live leaderboard!
+              Complete the official JDC Routine, submit your score, and compete against all Singles & Doubles League competitors on the live leaderboard!
             </p>
           </div>
           <div style={{ background: 'rgba(56, 189, 248, 0.1)', padding: '12px 16px', borderRadius: '12px', border: '1px solid rgba(56, 189, 248, 0.3)', textAlign: 'center' }}>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Elite Members</div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>{elitePassHolders.length}</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>League Competitors</div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>{leaguePlayers.length}</div>
           </div>
         </div>
       </div>
@@ -219,7 +239,7 @@ export default function JDCChallenge() {
         {loading ? (
           <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Loading leaderboard...</div>
         ) : leaderboard.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No Elite Pass members found.</div>
+          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No league competitors found.</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {leaderboard.map((player, idx) => (
@@ -250,7 +270,7 @@ export default function JDCChallenge() {
                       )}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      Division: <strong style={{ color: 'var(--text)' }}>{player.division}</strong> | Elite Pass Member
+                      Division: <strong style={{ color: 'var(--text)' }}>{player.division}</strong> | Singles & Doubles Competitor
                     </div>
                   </div>
                 </div>
@@ -349,8 +369,8 @@ export default function JDCChallenge() {
             <h3 className="card-title" style={{ marginBottom: '16px' }}>Admin JDC Score Entry</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
-                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Select Elite Pass Player</label>
-                <UserSearchSelect users={elitePassHolders} selectedUserId={manualPlayerId} onSelect={setManualPlayerId} placeholder="Search elite player..." />
+                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Select League Competitor</label>
+                <UserSearchSelect users={leaguePlayers} selectedUserId={manualPlayerId} onSelect={setManualPlayerId} placeholder="Search league competitor..." />
               </div>
               <div>
                 <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>JDC Score</label>
