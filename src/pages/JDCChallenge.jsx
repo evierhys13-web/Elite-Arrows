@@ -61,6 +61,8 @@ export default function JDCChallenge() {
   const [loading, setLoading] = useState(true)
   const [showSubmitModal, setShowSubmitModal] = useState(false)
   const [showManualModal, setShowManualModal] = useState(false)
+  const [selectedPlayerModal, setSelectedPlayerModal] = useState(null)
+  const [expandedProofImage, setExpandedProofImage] = useState(null)
   const [lastSubmissionResult, setLastSubmissionResult] = useState(null)
 
   const currentDateStr = new Date().toISOString().split('T')[0]
@@ -288,6 +290,13 @@ export default function JDCChallenge() {
     </div>
   )
 
+  const playerSubmissionsList = useMemo(() => {
+    if (!selectedPlayerModal) return []
+    return submissions
+      .filter(s => String(s.userId) === String(selectedPlayerModal.id))
+      .sort((a, b) => new Date(b.dateCompleted || b.submittedAt || 0) - new Date(a.dateCompleted || a.submittedAt || 0))
+  }, [submissions, selectedPlayerModal])
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', paddingBottom: '100px' }} className="animate-fade-in">
       <Breadcrumbs items={[{ label: 'Home', path: '/home' }, { label: 'JDC Challenge', path: '/weekly-challenges' }]} />
@@ -393,7 +402,7 @@ export default function JDCChallenge() {
                 padding: '16px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center',
                 justifyContent: 'space-between', height, border: `2px solid ${medalColor}44`,
                 background: first ? 'rgba(251, 191, 36, 0.08)' : 'rgba(255,255,255,0.03)', cursor: 'pointer'
-              }} onClick={() => navigate(`/statistics/${p.id}`)}>
+              }} onClick={() => setSelectedPlayerModal(p)}>
                 <div style={{ position: 'relative', marginTop: '-24px' }}>
                   {renderAvatar(p, first ? 54 : 46, medalColor)}
                   <span style={{
@@ -422,7 +431,7 @@ export default function JDCChallenge() {
       <div className="card glass" style={{ padding: '24px', border: '1px solid rgba(255,255,255,0.08)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
           <h3 className="card-title" style={{ margin: 0 }}>🏆 Standings — {formattedMonthName}</h3>
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{leaderboard.length} Competitors</span>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{leaderboard.length} Competitors (Click player to view submissions & proof)</span>
         </div>
 
         {loading ? (
@@ -444,7 +453,7 @@ export default function JDCChallenge() {
                   border: idx === 0 ? '1px solid rgba(251, 191, 36, 0.4)' : idx === 1 ? '1px solid rgba(156, 163, 175, 0.3)' : idx === 2 ? '1px solid rgba(217, 119, 6, 0.3)' : '1px solid rgba(255,255,255,0.06)',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease'
-                }} onClick={() => navigate(`/statistics/${player.id}`)}>
+                }} onClick={() => setSelectedPlayerModal(player)}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     <span style={{
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -498,6 +507,63 @@ export default function JDCChallenge() {
           </div>
         )}
       </div>
+
+      {/* Player Submissions Modal */}
+      {selectedPlayerModal && (
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '20px', overflowY: 'auto' }}>
+          <div className="card glass animate-fade-in" style={{ width: '100%', maxWidth: '550px', padding: '24px', border: '1px solid var(--accent-cyan)', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+              <div>
+                <h3 className="card-title" style={{ margin: 0, fontSize: '1.3rem' }}>🎯 {selectedPlayerModal.username}'s JDC Submissions</h3>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: '2px' }}>Division: {selectedPlayerModal.division}</div>
+              </div>
+              <button className="btn btn-secondary btn-sm" onClick={() => setSelectedPlayerModal(null)}>✕ Close</button>
+            </div>
+
+            {playerSubmissionsList.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text-muted)' }}>
+                No JDC challenge submissions recorded for this player yet.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {playerSubmissionsList.map((sub, sIdx) => (
+                  <div key={sub.id || sIdx} style={{ background: 'rgba(0,0,0,0.3)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Date Completed: <strong>{sub.dateCompleted || sub.submittedAt?.split('T')[0]}</strong></span>
+                      <span style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--accent-cyan)' }}>{sub.score} pts</span>
+                    </div>
+
+                    {sub.proofImage ? (
+                      <div style={{ marginTop: '10px' }}>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Proof Photo / Score Sheet:</div>
+                        <img
+                          src={sub.proofImage}
+                          alt="Proof"
+                          style={{ width: '100%', maxHeight: '180px', objectFit: 'contain', borderRadius: '8px', cursor: 'pointer', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)' }}
+                          onClick={() => setExpandedProofImage(sub.proofImage)}
+                        />
+                        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '4px' }}>Click image to enlarge</div>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '6px' }}>No proof photo attached for this submission.</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Expanded Proof Image Lightbox Modal */}
+      {expandedProofImage && (
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000, padding: '20px' }} onClick={() => setExpandedProofImage(null)}>
+          <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }}>
+            <button className="btn btn-secondary btn-sm" style={{ position: 'absolute', top: -40, right: 0 }} onClick={() => setExpandedProofImage(null)}>✕ Close</button>
+            <img src={expandedProofImage} alt="Expanded Proof" style={{ width: '100%', maxHeight: '85vh', objectFit: 'contain', borderRadius: '12px' }} />
+          </div>
+        </div>
+      )}
 
       {/* Challenge Submission Modal */}
       {showSubmitModal && (
