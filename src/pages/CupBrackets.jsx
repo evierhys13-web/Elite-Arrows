@@ -264,41 +264,41 @@ export default function CupBracket() {
   const safeCupMatches = Array.isArray(cup?.matches) ? cup.matches : []
 
   const upcomingFixtures = useMemo(() => {
-    const fromFixtures = fixtures
-      .filter(fixture => {
-        const match = safeCupMatches.find(m => m && String(m.id) === String(fixture.matchId))
-        const status = String(fixture.status || 'pending').toLowerCase()
-        const isPending = !['approved', 'result_submitted', 'completed', 'rejected'].includes(status)
-        return isPending && !match?.winner && fixture.player1 && fixture.player2
+    if (!cup) return []
+    const approvedResults = results.filter(r => String(r.status).toLowerCase() === 'approved')
+
+    return safeCupMatches
+      .filter(m => {
+        if (!m || m.winner || !m.player1 || !m.player2) return false
+        const hasResult = approvedResults.some(r =>
+          String(r.matchId) === String(m.id) ||
+          (String(r.cupId) === String(cup.id) && String(r.player1Id) === String(m.player1) && String(r.player2Id) === String(m.player2))
+        )
+        return !hasResult
       })
-      .map(f => ({ ...f, isSynthetic: false }))
-
-    // Also surface group-stage cup matches that have no fixture yet (e.g. the
-    // second round of a Jedi/Padawan pairing), so they remain visible to play.
-    const matchIdsWithFixtures = new Set(fixtures.map(f => String(f.matchId)))
-    const roundFormat0 = cup?.roundFormats?.[0] || { startScore: 501, bestOf: 5, firstTo: 3 }
-    const fromMatches = safeCupMatches
-      .filter(m => m && m.stage === 'groups' && !matchIdsWithFixtures.has(String(m.id)) && !m.winner && m.player1 && m.player2)
-      .map(m => ({
-        id: `cupmatch_${m.id}`,
-        matchId: m.id,
-        round: m.round || 0,
-        stage: m.stage,
-        group: m.group,
-        startScore: roundFormat0.startScore,
-        bestOf: roundFormat0.bestOf,
-        firstTo: roundFormat0.firstTo,
-        player1: m.player1,
-        player1Id: m.player1,
-        player2: m.player2,
-        player2Id: m.player2,
-        date: '',
-        time: '',
-        isSynthetic: true
-      }))
-
-    return [...fromFixtures, ...fromMatches].sort((a, b) => (a.round || 0) - (b.round || 0))
-  }, [fixtures, safeCupMatches, cup])
+      .map(m => {
+        const existingFixture = fixtures.find(f => f && String(f.matchId) === String(m.id))
+        return {
+          id: existingFixture?.id || `cupmatch_${m.id}`,
+          matchId: m.id,
+          round: m.round || 0,
+          stage: m.stage,
+          group: m.group,
+          startScore: existingFixture?.startScore || 501,
+          bestOf: existingFixture?.bestOf || 3,
+          firstTo: existingFixture?.firstTo || 2,
+          player1: m.player1,
+          player1Id: m.player1,
+          player2: m.player2,
+          player2Id: m.player2,
+          date: existingFixture?.date || '',
+          time: existingFixture?.time || '',
+          status: existingFixture?.status || 'accepted',
+          isSynthetic: false
+        }
+      })
+      .sort((a, b) => (a.round || 0) - (b.round || 0))
+  }, [safeCupMatches, fixtures, results, cup])
 
   if (!cup) {
     return (
