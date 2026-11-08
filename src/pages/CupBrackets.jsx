@@ -852,7 +852,7 @@ export default function CupBracket() {
         </div>
       )}
 
-      {activeStage === 'groups' && numThirdNeeded > 0 && sortedThirdPlaced.length > 0 && (
+      {activeStage === 'groups' && cup.allowBestThird !== false && numThirdNeeded > 0 && sortedThirdPlaced.length > 0 && (
         <div className="animate-fade-in" style={{ marginBottom: '48px', maxWidth: '1000px', margin: '0 auto 48px' }}>
           <div style={{
             display: 'flex',
