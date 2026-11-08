@@ -122,18 +122,18 @@ export default function CupBracket() {
   const getMatchResult = (match) => {
     if (!match) return null
     const fixture = fixtures.find(f => f && String(f.matchId) === String(match.id))
-    const approvedResult = results.find(result => result && (
+    const validResult = results.find(result => result && (
       (String(result.cupId || '') === String(cup.id) && String(result.matchId || '') === String(match.id)) ||
       (fixture?.id && String(result.fixtureId || '') === String(fixture.id))
-    ) && String(result.status).toLowerCase() === 'approved')
+    ) && ['approved', 'result_submitted', 'completed'].includes(String(result.status || 'approved').toLowerCase()))
 
-    const approvedResultScores = getScoresFromSource(approvedResult, match)
-    if (approvedResultScores) return approvedResultScores
+    const validResultScores = getScoresFromSource(validResult, match)
+    if (validResultScores) return validResultScores
 
     const matchScores = getScoresFromSource(match, match)
     if (matchScores) return matchScores
 
-    const fixtureScores = fixture && ['approved', 'completed'].includes(String(fixture?.status).toLowerCase())
+    const fixtureScores = fixture && ['approved', 'result_submitted', 'completed'].includes(String(fixture?.status).toLowerCase())
       ? getScoresFromSource(fixture, match)
       : null
 
@@ -146,7 +146,7 @@ export default function CupBracket() {
     return results.find(result => result && (
       (String(result.cupId || '') === String(cup.id) && String(result.matchId || '') === String(match.id)) ||
       (fixture?.id && String(result.fixtureId || '') === String(fixture.id))
-    ) && String(result.status).toLowerCase() === 'approved')
+    ) && ['approved', 'result_submitted', 'completed'].includes(String(result.status || 'approved').toLowerCase()))
   }
 
   const groupStandings = useMemo(() => {
@@ -787,6 +787,24 @@ export default function CupBracket() {
             <div className="glass" style={{ padding: '8px 20px', borderRadius: '30px', fontSize: '0.85rem', color: 'white', fontWeight: 800, border: '1px solid rgba(255,255,255,0.1)' }}>
               🎯 {activeStage === 'groups' ? (cup.roundFormats[0]?.firstTo ? `FT${cup.roundFormats[0].firstTo}` : `Bo${cup.roundFormats[0]?.bestOf || 3}`) : 'VARIES BY ROUND'}
             </div>
+          )}
+          {isAdmin && (
+            <button
+              className="btn btn-secondary btn-sm"
+              style={{ padding: '8px 20px', borderRadius: '30px', fontSize: '0.85rem', background: cup.allowBestThird !== false ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255,255,255,0.05)', borderColor: cup.allowBestThird !== false ? 'var(--accent-cyan)' : 'var(--border)', color: cup.allowBestThird !== false ? 'var(--accent-cyan)' : 'var(--text-muted)', cursor: 'pointer' }}
+              onClick={async () => {
+                const nextVal = cup.allowBestThird === false ? true : false
+                try {
+                  await setDoc(doc(db, 'cups', String(cup.id)), { allowBestThird: nextVal }, { merge: true })
+                  showToast?.(`Best 3rd place ranking ${nextVal ? 'enabled' : 'disabled'}!`, 'success')
+                  triggerDataRefresh('cups')
+                } catch (err) {
+                  showToast?.('Error updating cup: ' + err.message, 'error')
+                }
+              }}
+            >
+              Best 3rd: {cup.allowBestThird !== false ? 'On' : 'Off'}
+            </button>
           )}
         </div>
       </div>
