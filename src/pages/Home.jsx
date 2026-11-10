@@ -296,8 +296,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* 4. High Finish Videos */}
-      <GlobalHighlightReel />
+
 
       {/* 4b. Hall of Fame & Player of the Month */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', marginBottom: '20px' }}>
