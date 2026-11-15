@@ -982,17 +982,33 @@ export default function Admin() {
     } else if (!f.score1 || !f.score2) {
       return showToast('Enter both scores.', 'error')
     }
-    let s1 = parseInt(f.score1); let s2 = parseInt(f.score2)
-    if (!f.forfeit && (isNaN(s1) || isNaN(s2))) return showToast('Invalid scores.', 'error')
-    if (f.forfeit) {
-      s1 = f.winner === 'p1' ? 1 : 0
-      s2 = f.winner === 'p1' ? 0 : 1
-    }
-
     const p1 = allPlayers.find(u => String(u.id) === String(f.player1))
     const p2 = allPlayers.find(u => String(u.id) === String(f.player2))
 
     if (!p1 || !p2) return showToast('Players not found.', 'error')
+
+    let s1 = parseInt(f.score1); let s2 = parseInt(f.score2)
+    if (!f.forfeit && (isNaN(s1) || isNaN(s2))) return showToast('Invalid scores.', 'error')
+    if (f.forfeit) {
+      if (f.gameType === 'Cup') {
+        let winningLegs = 2
+        const allFixtures = getFixtures()
+        const match = allFixtures.find(fixture => {
+          if (!fixture.cupId || fixture._deleted) return false
+          const { player1Id, player2Id } = fixture
+          return (String(player1Id) === String(p1.id) && String(player2Id) === String(p2.id)) ||
+                 (String(player2Id) === String(p1.id) && String(player1Id) === String(p2.id))
+        })
+        if (match && match.firstTo) {
+          winningLegs = match.firstTo
+        }
+        s1 = f.winner === 'p1' ? winningLegs : 0
+        s2 = f.winner === 'p1' ? 0 : winningLegs
+      } else {
+        s1 = f.winner === 'p1' ? 1 : 0
+        s2 = f.winner === 'p1' ? 0 : 1
+      }
+    }
 
     const resultId = `admin_${Date.now()}`
     try {
@@ -2749,10 +2765,15 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
                 {adminGameForm.forfeit && (() => {
                   const winnerId = adminGameForm.winner === 'p1' ? adminGameForm.player1 : adminGameForm.player2
                   const winner = allPlayers.find(u => String(u.id) === String(winnerId))
+                  const isCupGame = adminGameForm.gameType === 'Cup'
                   const pts = getForfeitWinPoints(winner?.division, adminData)
                   return (
                     <div style={{ fontSize: '0.85rem', color: '#fbbf24', marginBottom: '16px', padding: '12px', borderRadius: '10px', background: 'rgba(251,191,36,0.06)' }}>
-                      ⚡ This will be recorded as an instant win worth <strong>{pts} points</strong> for {winner?.username || 'the winner'} ({winner?.division || 'Unassigned'}) and <strong>0 points</strong> for the loser. No legs or averages are added for either player.
+                      {isCupGame ? (
+                        <>⚡ This will be recorded as a Cup forfeit win for <strong>{winner?.username || 'the winner'}</strong> (awarding the required winning legs).</>
+                      ) : (
+                        <>⚡ This will be recorded as an instant win worth <strong>{pts} points</strong> for {winner?.username || 'the winner'} ({winner?.division || 'Unassigned'}) and <strong>0 points</strong> for the loser. No legs or averages are added for either player.</>
+                      )}
                     </div>
                   )
                 })()}
