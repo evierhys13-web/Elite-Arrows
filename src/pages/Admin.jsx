@@ -1068,7 +1068,7 @@ export default function Admin() {
         player2: p2.username,
         player2Id: p2.id,
         score1: s1, score2: s2,
-        gameType: isForfeit ? 'League' : f.gameType,
+        gameType: f.gameType,
         status: 'approved',
         season: targetSeason,
         division: isLeague ? (p1.division || '') : '',

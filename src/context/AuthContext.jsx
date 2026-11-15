@@ -2570,7 +2570,7 @@ const fetchUsers = async () => {
     const cupId = String(result.cupId);
     const matchId = String(result.matchId);
     const winnerId =
-      result.score1 > result.score2 ? result.player1Id : result.player2Id;
+      result.forfeitWinner || (result.score1 > result.score2 ? result.player1Id : result.player2Id);
 
     if (!winnerId) {
       console.warn(
