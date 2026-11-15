@@ -2569,20 +2569,6 @@ const fetchUsers = async () => {
 
     const cupId = String(result.cupId);
     const matchId = String(result.matchId);
-    const winnerId =
-      result.forfeitWinner || (result.score1 > result.score2 ? result.player1Id : result.player2Id);
-
-    if (!winnerId) {
-      console.warn(
-        "advanceCupBracket: could not determine winner",
-        result.id,
-        result.score1,
-        result.score2,
-        result.player1Id,
-        result.player2Id,
-      );
-      return;
-    }
 
     try {
       await runTransaction(db, async (transaction) => {
@@ -2609,10 +2595,23 @@ const fetchUsers = async () => {
         }
 
         // Correct score mapping based on who is player1 in the bracket
-        const isPlayer1Submitter =
-          String(result.player1Id) === String(match.player1);
-        const s1 = isPlayer1Submitter ? result.score1 : result.score2;
-        const s2 = isPlayer1Submitter ? result.score2 : result.score1;
+        const s1 = String(result.player1Id) === String(match.player1) ? result.score1 : result.score2;
+        const s2 = String(result.player1Id) === String(match.player1) ? result.score2 : result.score1;
+
+        const winnerId =
+          result.forfeitWinner || (s1 > s2 ? match.player1 : (s2 > s1 ? match.player2 : null));
+
+        if (!winnerId) {
+          console.warn(
+            "advanceCupBracket: could not determine winner",
+            result.id,
+            result.score1,
+            result.score2,
+            result.player1Id,
+            result.player2Id,
+          );
+          return;
+        }
 
         // Check if anything changed to avoid unnecessary writes
         const matchUpdated =
