@@ -160,8 +160,10 @@ export default function Table() {
 
     return source
       .filter(p => {
+        const uname = String(p.username || p.name || '').trim();
+        if (!uname || uname.toLowerCase() === 'player 8' || uname.toLowerCase() === 'blank') return false;
         // Specifically remove Tom Beaumont from Season 4 standings as requested
-        if (selectedSeason === "Season 4" && (p.username === "Tom Beaumont" || p.name === "Tom Beaumont")) {
+        if (selectedSeason === "Season 4" && uname === "Tom Beaumont") {
           return false;
         }
         return true;

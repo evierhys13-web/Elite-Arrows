@@ -106,8 +106,9 @@ export const computeDivisionStandings = ({ allUsers, results, fixtures, adminDat
   return usersWithCorrectDivisions
     .filter((p) => p.division === division)
     .filter(p => {
-      // Specifically remove Tom Beaumont from Season 4 standings as requested
-      if (seasonName === "Season 4" && (p.username === "Tom Beaumont" || p.name === "Tom Beaumont")) {
+      const uname = String(p.username || p.name || '').trim();
+      if (!uname || uname.toLowerCase() === 'player 8' || uname.toLowerCase() === 'blank') return false;
+      if (seasonName === "Season 4" && uname === "Tom Beaumont") {
         return false;
       }
       return true;
