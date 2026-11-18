@@ -325,6 +325,28 @@ export default function Table() {
     setRefreshKey((prev) => prev + 1);
   };
 
+  const handleRemoveFromDivision = async (player, e) => {
+    e.stopPropagation();
+    if (!isAdmin) return;
+    if (!window.confirm(`Remove ${player.username} from ${activeDivision} Division? This will set them to Unassigned.`)) return;
+
+    try {
+      const targetId = player.id;
+      if (selectedSeason === (adminData?.currentSeason || "Elite Arrows Season 6")) {
+        await setDoc(doc(db, "users", String(targetId)), { division: "Unassigned" }, { merge: true });
+      } else if (activeSeasonDoc) {
+        const stagedDivisions = { ...(activeSeasonDoc?.stagedDivisions || {}) };
+        delete stagedDivisions[targetId];
+        await setDoc(doc(db, "seasons", activeSeasonDoc.id), { stagedDivisions }, { merge: true });
+      }
+      showToast?.(`Removed ${player.username} from division`, 'success');
+      triggerDataRefresh('all');
+      setRefreshKey((prev) => prev + 1);
+    } catch (err) {
+      showToast?.('Error removing player: ' + err.message, 'error');
+    }
+  };
+
   const handleNavigate = (e, path) => {
     if (!document.startViewTransition) {
       navigate(path);
@@ -775,6 +797,16 @@ export default function Table() {
                             }}
                           >
                             {player.username}
+                            {isAdmin && (
+                              <button
+                                className="btn btn-danger btn-xs"
+                                style={{ padding: '2px 6px', fontSize: '0.6rem', marginLeft: '8px', verticalAlign: 'middle', cursor: 'pointer', zIndex: 5, position: 'relative' }}
+                                title="Remove from division"
+                                onClick={(e) => handleRemoveFromDivision(player, e)}
+                              >
+                                ✕ Remove
+                              </button>
+                            )}
                             {Number(player.strikeCount) > 0 && (
                               <span style={{ color: 'var(--error)', fontSize: '0.65rem', fontWeight: 800, marginLeft: '6px' }} title={`${player.strikeCount} Strike(s)`}>
                                 🚨 {player.strikeCount}
