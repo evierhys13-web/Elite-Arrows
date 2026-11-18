@@ -797,16 +797,6 @@ export default function Table() {
                             }}
                           >
                             {player.username}
-                            {isAdmin && (
-                              <button
-                                className="btn btn-danger btn-xs"
-                                style={{ padding: '2px 6px', fontSize: '0.6rem', marginLeft: '8px', verticalAlign: 'middle', cursor: 'pointer', zIndex: 5, position: 'relative' }}
-                                title="Remove from division"
-                                onClick={(e) => handleRemoveFromDivision(player, e)}
-                              >
-                                ✕ Remove
-                              </button>
-                            )}
                             {Number(player.strikeCount) > 0 && (
                               <span style={{ color: 'var(--error)', fontSize: '0.65rem', fontWeight: 800, marginLeft: '6px' }} title={`${player.strikeCount} Strike(s)`}>
                                 🚨 {player.strikeCount}
