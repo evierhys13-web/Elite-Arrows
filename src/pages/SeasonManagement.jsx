@@ -706,7 +706,7 @@ export default function SeasonManagement() {
 
           <div style={{ maxHeight: '360px', overflowY: 'auto', paddingRight: '4px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {playersBySeeding.sort((a,b) => a.username.localeCompare(b.username)).map(p => (
+              {playersBySeeding.sort((a,b) => String(a.username || '').localeCompare(String(b.username || ''))).map(p => (
                 <div key={p.id} className="glass" style={{ padding: '10px 14px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.username}</div>
@@ -749,7 +749,7 @@ export default function SeasonManagement() {
           {seasons.length === 0 ? (
             <p style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>No historical seasons recorded yet.</p>
           ) : (
-            seasons.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map(s => (
+            seasons.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || ''))).map(s => (
               <div key={s.id} className="glass" style={{ padding: '18px', borderRadius: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
                 <div>
                   <div style={{ fontWeight: 800, fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>

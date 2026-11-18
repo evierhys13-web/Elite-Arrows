@@ -4695,7 +4695,7 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
                   const q = memberSearch.toLowerCase()
                   return p.username?.toLowerCase().includes(q) || p.email?.toLowerCase().includes(q) || p.nickname?.toLowerCase().includes(q)
                 })
-                .sort((a, b) => a.username.localeCompare(b.username)).map(p => {
+                .sort((a, b) => String(a.username || '').localeCompare(String(b.username || ''))).map(p => {
                 const isSelected = selectedMemberIds.includes(p.id)
                 return (
                   <div

@@ -268,7 +268,7 @@ export default function JDCChallenge() {
       }
     }).sort((a, b) => {
       if (b.bestScore !== a.bestScore) return b.bestScore - a.bestScore
-      return a.username.localeCompare(b.username)
+      return String(a.username || '').localeCompare(String(b.username || ''))
     })
 
     if (selectedDivision !== 'all') {
