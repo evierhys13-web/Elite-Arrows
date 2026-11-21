@@ -489,12 +489,12 @@ export default function MatchLog() {
                         {player.profilePicture ? (
                           <img src={player.profilePicture} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         ) : (
-                          <span>{player.username.charAt(0).toUpperCase()}</span>
+                          <span>{(player?.username || '?').charAt(0).toUpperCase()}</span>
                         )}
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontWeight: '700', fontSize: '0.95rem' }}>{player.username}</div>
+                      <div style={{ fontWeight: '700', fontSize: '0.95rem' }}>{player?.username || player?.name || 'Unknown'}</div>
                       <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
                         {player._isCup
                           ? `${player._cupName} - Round ${player._round}`
