@@ -518,7 +518,7 @@ export default function Table() {
       >
         {divisions.map((div, index) => {
           const divisionBulbColors = {
-            'Overall': '#38bdf8',
+            'Overall': '#ef4444',
             'Premier': '#1d4ed8',
             'Elite': '#fbbf24',
             'Emerald 1': '#047857',
@@ -696,6 +696,14 @@ export default function Table() {
             </div>
           </div>
         )}
+        {/* Snow Accumulation / Drifts at Top & Bottom */}
+        {isFestiveSeason8 && (
+          <>
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '18px', background: 'linear-gradient(180deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.08) 60%, transparent 100%)', pointerEvents: 'none', zIndex: 12 }} />
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '18px', background: 'linear-gradient(0deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.06) 60%, transparent 100%)', pointerEvents: 'none', zIndex: 12 }} />
+          </>
+        )}
+
         <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
@@ -859,6 +867,10 @@ export default function Table() {
                   }
                   const isMe = player.id === user?.id;
 
+                  const isFirst = index === 0 && isFestiveSeason8;
+                  const isSecond = index === 1 && isFestiveSeason8;
+                  const isThird = index === 2 && isFestiveSeason8;
+
                   const handleNavigate = (e, path) => {
     if (!document.startViewTransition) {
       navigate(path);
@@ -874,10 +886,22 @@ export default function Table() {
                     <tr
                       key={player.id}
                       style={{
-                        background: isMe
-                          ? "linear-gradient(90deg, rgba(217, 70, 239, 0.22) 0%, rgba(217, 70, 239, 0.08) 100%)"
-                          : "transparent",
-                        boxShadow: isMe ? "inset 4px 0 0 0 var(--accent-primary), inset 0 0 25px rgba(217, 70, 239, 0.15)" : "none",
+                        background: isFirst
+                          ? "linear-gradient(90deg, rgba(251, 191, 36, 0.3) 0%, rgba(251, 191, 36, 0.08) 100%)"
+                          : isSecond
+                            ? "linear-gradient(90deg, rgba(203, 213, 225, 0.25) 0%, rgba(203, 213, 225, 0.06) 100%)"
+                            : isThird
+                              ? "linear-gradient(90deg, rgba(217, 119, 6, 0.25) 0%, rgba(217, 119, 6, 0.06) 100%)"
+                              : (isMe
+                                  ? "linear-gradient(90deg, rgba(217, 70, 239, 0.22) 0%, rgba(217, 70, 239, 0.08) 100%)"
+                                  : "transparent"),
+                        boxShadow: isFirst
+                          ? "inset 4px 0 0 0 #fbbf24, inset 0 0 25px rgba(251, 191, 36, 0.3)"
+                          : isSecond
+                            ? "inset 4px 0 0 0 #cbd5e1, inset 0 0 20px rgba(203, 213, 225, 0.25)"
+                            : isThird
+                              ? "inset 4px 0 0 0 #d97706, inset 0 0 20px rgba(217, 119, 6, 0.25)"
+                              : (isMe ? "inset 4px 0 0 0 var(--accent-primary), inset 0 0 25px rgba(217, 70, 239, 0.15)" : "none"),
                         borderBottom: "1px solid rgba(255,255,255,0.08)",
                         fontSize: "0.78rem",
                         transition: "background 0.2s ease"
@@ -888,11 +912,11 @@ export default function Table() {
                           textAlign: "center",
                           fontWeight: "900",
                           color:
-                            index === 0 ? "#fbbf24" : index === 1 ? "#c0c0c0" : index === 2 ? "#cd7f32" : "rgba(255,255,255,0.7)",
-                          textShadow: index < 3 ? `0 0 12px ${["#fbbf24", "#c0c0c0", "#cd7f32"][index]}` : "none",
+                            isFirst ? "#fbbf24" : isSecond ? "#cbd5e1" : isThird ? "#d97706" : "rgba(255,255,255,0.7)",
+                          textShadow: (isFirst || isSecond || isThird) ? `0 0 14px ${isFirst ? '#fbbf24' : isSecond ? '#cbd5e1' : '#d97706'}` : "none",
                         }}
                       >
-                        {index + 1}
+                        {isFirst ? '👑 1' : isSecond ? '🥈 2' : isThird ? '🥉 3' : index + 1}
                       </td>
                       <td
                         style={{
