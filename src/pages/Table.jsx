@@ -630,13 +630,9 @@ export default function Table() {
             50% { opacity: 0.9; }
             100% { transform: translateY(600px) translateX(30px); opacity: 0.2; }
           }
-          @keyframes twinkleLight {
-            0%, 100% { opacity: 0.3; transform: scale(0.8); }
-            50% { opacity: 1; transform: scale(1.25); filter: drop-shadow(0 0 10px currentColor); }
-          }
-          @keyframes bounceSlow {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-5px); }
+          @keyframes twinkleBulb {
+            0%, 100% { opacity: 0.35; transform: scale(0.9); box-shadow: 0 0 3px currentColor; }
+            50% { opacity: 1; transform: scale(1.15); box-shadow: 0 0 12px currentColor, 0 0 24px currentColor; }
           }
         `}</style>
       )}
@@ -656,14 +652,6 @@ export default function Table() {
             : `0 20px 80px rgba(0, 0, 0, 0.6), 0 0 45px ${(DIVISION_COLORS[activeDivision] || '#a855f7')}44, 0 0 90px rgba(56, 189, 248, 0.1), inset 0 0 30px ${(DIVISION_COLORS[activeDivision] || '#a855f7')}11, inset 0 0 0 1px rgba(255,255,255,0.06)`
         }}
       >
-        {/* Floating Festive Corner Decorations */}
-        {isFestiveSeason8 && (
-          <>
-            <div style={{ position: 'absolute', top: '55px', left: '16px', fontSize: '1.5rem', zIndex: 12, opacity: 0.9, animation: 'bounceSlow 3s ease-in-out infinite' }}>🎄</div>
-            <div style={{ position: 'absolute', top: '55px', right: '16px', fontSize: '1.5rem', zIndex: 12, opacity: 0.9, animation: 'bounceSlow 3s ease-in-out infinite 1.5s' }}>🎁</div>
-          </>
-        )}
-
         {/* Snowfall Effect */}
         {isFestiveSeason8 && (
           <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 10 }}>
@@ -683,14 +671,26 @@ export default function Table() {
           </div>
         )}
 
-        {/* String Lights across Table */}
+        {/* Realistic Glowing Christmas Lights Wire & Bulbs */}
         {isFestiveSeason8 && (
-          <div style={{ display: 'flex', justifyContent: 'space-around', background: 'rgba(0,0,0,0.65)', padding: '6px 12px', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '0.95rem', letterSpacing: '6px', position: 'relative', zIndex: 11 }}>
-            {['🔴', '🟢', '🔵', '🟡', '🟠', '🔴', '🟢', '🔵', '🟡', '🟠', '🔴', '🟢', '🔵', '🟡'].map((light, idx) => (
-              <span key={idx} style={{ animation: `twinkleLight 1.5s ease-in-out infinite`, animationDelay: `${idx * 0.15}s` }}>
-                {light}
-              </span>
-            ))}
+          <div style={{ position: 'relative', background: 'rgba(5, 10, 8, 0.85)', padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.15)', overflow: 'hidden', zIndex: 11 }}>
+            <div style={{ position: 'absolute', top: '10px', left: 0, right: 0, height: '2px', background: 'rgba(255,255,255,0.25)' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 2, padding: '0 8px' }}>
+              {['#ef4444', '#10b981', '#38bdf8', '#fbbf24', '#ec4899', '#ef4444', '#10b981', '#38bdf8', '#fbbf24', '#ec4899', '#ef4444', '#10b981', '#38bdf8', '#fbbf24', '#ec4899'].map((color, idx) => (
+                <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <div style={{ width: '2px', height: '6px', background: 'rgba(255,255,255,0.4)' }} />
+                  <div style={{
+                    width: '12px',
+                    height: '16px',
+                    borderRadius: '50% 50% 45% 45%',
+                    backgroundColor: color,
+                    boxShadow: `0 0 8px ${color}, 0 0 16px ${color}`,
+                    animation: `twinkleBulb 1.2s ease-in-out infinite`,
+                    animationDelay: `${idx * 0.12}s`
+                  }} />
+                </div>
+              ))}
+            </div>
           </div>
         )}
         <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
