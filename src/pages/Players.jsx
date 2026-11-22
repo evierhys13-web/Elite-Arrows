@@ -26,10 +26,10 @@ export default function Players() {
   const allUsers = getAllUsers()
 
   const filteredPlayers = allUsers.filter(u => {
-    if (u.id === user.id) return false;
-    const matchesSearch = u.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    if (!user || u.id === user.id) return false;
+    const matchesSearch = (u.username || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                           (u.nickname && u.nickname.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesFriends = showFriendsOnly ? (user.friends || []).includes(u.id) : true;
+    const matchesFriends = showFriendsOnly ? (user?.friends || []).includes(u.id) : true;
     const matchesDivision = selectedDivision === 'All' ? true : u.division === selectedDivision;
     return matchesSearch && matchesFriends && matchesDivision;
   })
@@ -174,16 +174,16 @@ export default function Players() {
                   <div className="avatar-ring" style={{ width: '70px', height: '70px', padding: '2px', flexShrink: 0 }}>
                     <div className="avatar-inner">
                       {player.profilePicture ? (
-                        <img src={player.profilePicture} alt={player.username} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img src={player.profilePicture} alt={player.username || ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
-                        <span style={{ fontSize: '1.5rem', fontWeight: 900 }}>{player.username.charAt(0).toUpperCase()}</span>
+                        <span style={{ fontSize: '1.5rem', fontWeight: 900 }}>{(player?.username || '?').charAt(0).toUpperCase()}</span>
                       )}
                     </div>
                   </div>
 
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                       <h3 style={{ fontSize: '1.2rem', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{player.username}</h3>
+                       <h3 style={{ fontSize: '1.2rem', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{player?.username || player?.name || 'Unknown'}</h3>
                        {isOnline && <div className="pulse-success" style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--success)' }} />}
                     </div>
                     {player.nickname && <p style={{ color: 'var(--accent-cyan)', fontSize: '0.85rem', fontWeight: 600, marginTop: '-4px', marginBottom: '6px' }}>"{player.nickname}"</p>}

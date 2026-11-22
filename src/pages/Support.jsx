@@ -352,10 +352,10 @@ export default function Support() {
         <div>
           {admins.map(admin => (
             <div key={admin.id} className="player-card">
-              <div className="player-avatar">{admin.username.charAt(0).toUpperCase()}</div>
+              <div className="player-avatar">{(admin?.username || '?').charAt(0).toUpperCase()}</div>
               <div className="player-info">
-                <h3>{admin.username}</h3>
-                <p>{admin.email}</p>
+                <h3>{admin?.username || admin?.name || 'Admin'}</h3>
+                <p>{admin?.email || ''}</p>
               </div>
               <span className="admin-badge">Admin</span>
             </div>

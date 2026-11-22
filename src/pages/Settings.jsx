@@ -460,10 +460,10 @@ export default function Settings() {
           ) : (
             blockedPlayers.map(p => (
               <div key={p.id} className="player-card">
-                <div className="player-avatar">{p.username.charAt(0).toUpperCase()}</div>
+                <div className="player-avatar">{(p?.username || '?').charAt(0).toUpperCase()}</div>
                 <div className="player-info">
-                  <h3>{p.username}</h3>
-                  <p>{p.email}</p>
+                  <h3>{p?.username || p?.name || 'Unknown'}</h3>
+                  <p>{p?.email || ''}</p>
                 </div>
                 <button className="btn btn-danger" onClick={() => handleUnblockPlayer(p.id)}>Unblock</button>
               </div>
