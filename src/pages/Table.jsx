@@ -63,25 +63,6 @@ export default function Table() {
 
   const isFestiveSeason8 = selectedSeason.toLowerCase().includes('season 8') || selectedSeason.toLowerCase().includes('festive');
 
-  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-  useEffect(() => {
-    if (!isFestiveSeason8) return;
-    const target = new Date('2026-12-29T18:00:00');
-    const interval = setInterval(() => {
-      const now = new Date();
-      const diff = target - now;
-      if (diff <= 0) {
-        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-      } else {
-        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-        const minutes = Math.floor((diff / 1000 / 60) % 60);
-        const seconds = Math.floor((diff / 1000) % 60);
-        setTimeLeft({ days, hours, minutes, seconds });
-      }
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [isFestiveSeason8]);
   const [loadingSeason, setLoadingSeason] = useState(
     () => allUsers.length > 0 || results.length > 0 ? false : true,
   );
@@ -523,55 +504,83 @@ export default function Table() {
         </div>
       </div>
 
-      <div
-        className="division-tabs"
-        style={{
-          display: "flex",
-          overflowX: "auto",
-          gap: "8px",
-          marginBottom: "20px",
-          paddingBottom: "8px",
-          scrollbarWidth: "none",
-          msOverflowStyle: "none",
-        }}
-      >
-        {divisions.map((div) => (
-          <button
-            key={div}
-            className={`division-tab ${activeDivision === div ? "active" : ""}`}
-            onClick={() => setActiveDivision(div)}
-            style={{
-              whiteSpace: "nowrap",
-              padding: "12px 26px",
-              fontFamily: "'Orbitron', 'Inter', sans-serif",
-              fontSize: "0.85rem",
-              fontWeight: "700",
-              letterSpacing: "0.15em",
-              borderRadius: "999px",
-              border: "2px solid",
-              borderColor: activeDivision === div ? DIVISION_COLORS[div] : "rgba(255,255,255,0.12)",
-              color: activeDivision === div ? "#ffffff" : "rgba(255,255,255,0.55)",
-              background:
-                activeDivision === div
-                  ? `linear-gradient(135deg, ${DIVISION_COLORS[div]}55 0%, ${DIVISION_COLORS[div]}22 50%, rgba(168, 85, 247, 0.2) 100%)`
-                  : "rgba(0, 0, 0, 0.25)",
-              textTransform: "uppercase",
-              textShadow: activeDivision === div ? `0 0 14px ${DIVISION_COLORS[div]}` : "none",
-              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-              boxShadow: activeDivision === div ? `0 0 22px ${DIVISION_COLORS[div]}88, inset 0 0 14px ${DIVISION_COLORS[div]}44` : "inset 0 0 8px rgba(0,0,0,0.3)",
-              backdropFilter: "blur(12px)",
-              WebkitBackdropFilter: "blur(12px)",
-              cursor: "pointer",
-              ['--div-color']: DIVISION_COLORS[div]
-            }}
-            onMouseEnter={e => { e.currentTarget.style.boxShadow = `0 0 22px ${DIVISION_COLORS[div]}66, inset 0 0 14px ${DIVISION_COLORS[div]}33`; e.currentTarget.style.color = '#ffffff' }}
-            onMouseLeave={e => {
-              if (activeDivision !== div) { e.currentTarget.style.boxShadow = 'inset 0 0 8px rgba(0,0,0,0.3)'; e.currentTarget.style.color = 'rgba(255,255,255,0.55)' }
-            }}
-          >
-            {div}
-          </button>
-        ))}
+      {/* Division Boxes with Realistic Glowing Christmas Lights */}
+      <div style={{ position: 'relative', marginBottom: '20px' }}>
+        {isFestiveSeason8 && (
+          <div style={{ position: 'relative', background: 'rgba(5, 10, 8, 0.9)', padding: '8px 14px', borderRadius: '12px 12px 0 0', border: '1px solid rgba(16, 185, 129, 0.4)', borderBottom: 'none', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', top: '8px', left: 0, right: 0, height: '2px', background: 'rgba(255,255,255,0.25)' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 2 }}>
+              {['#ef4444', '#10b981', '#38bdf8', '#fbbf24', '#ec4899', '#ef4444', '#10b981', '#38bdf8', '#fbbf24', '#ec4899', '#ef4444', '#10b981', '#38bdf8', '#fbbf24'].map((color, idx) => (
+                <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <div style={{ width: '2px', height: '4px', background: 'rgba(255,255,255,0.4)' }} />
+                  <div style={{
+                    width: '10px',
+                    height: '14px',
+                    borderRadius: '50% 50% 45% 45%',
+                    backgroundColor: color,
+                    boxShadow: `0 0 6px ${color}, 0 0 12px ${color}`,
+                    animation: `twinkleBulb 1.2s ease-in-out infinite`,
+                    animationDelay: `${idx * 0.12}s`
+                  }} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        <div
+          className="division-tabs"
+          style={{
+            display: "flex",
+            overflowX: "auto",
+            gap: "8px",
+            padding: isFestiveSeason8 ? "12px 16px" : "0",
+            background: isFestiveSeason8 ? "rgba(10, 30, 20, 0.85)" : "transparent",
+            borderRadius: isFestiveSeason8 ? "0 0 16px 16px" : "0",
+            border: isFestiveSeason8 ? "1px solid rgba(16, 185, 129, 0.4)" : "none",
+            borderTop: isFestiveSeason8 ? "none" : undefined,
+            scrollbarWidth: "none",
+            msOverflowStyle: "none",
+            boxShadow: isFestiveSeason8 ? "0 10px 30px rgba(0,0,0,0.5)" : "none"
+          }}
+        >
+          {divisions.map((div) => (
+            <button
+              key={div}
+              className={`division-tab ${activeDivision === div ? "active" : ""}`}
+              onClick={() => setActiveDivision(div)}
+              style={{
+                whiteSpace: "nowrap",
+                padding: "12px 26px",
+                fontFamily: "'Orbitron', 'Inter', sans-serif",
+                fontSize: "0.85rem",
+                fontWeight: "700",
+                letterSpacing: "0.15em",
+                borderRadius: "999px",
+                border: "2px solid",
+                borderColor: activeDivision === div ? DIVISION_COLORS[div] : "rgba(255,255,255,0.12)",
+                color: activeDivision === div ? "#ffffff" : "rgba(255,255,255,0.55)",
+                background:
+                  activeDivision === div
+                    ? `linear-gradient(135deg, ${DIVISION_COLORS[div]}55 0%, ${DIVISION_COLORS[div]}22 50%, rgba(168, 85, 247, 0.2) 100%)`
+                    : "rgba(0, 0, 0, 0.25)",
+                textTransform: "uppercase",
+                textShadow: activeDivision === div ? `0 0 14px ${DIVISION_COLORS[div]}` : "none",
+                transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                boxShadow: activeDivision === div ? `0 0 22px ${DIVISION_COLORS[div]}88, inset 0 0 14px ${DIVISION_COLORS[div]}44` : "inset 0 0 8px rgba(0,0,0,0.3)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+                cursor: "pointer",
+                ['--div-color']: DIVISION_COLORS[div]
+              }}
+              onMouseEnter={e => { e.currentTarget.style.boxShadow = `0 0 22px ${DIVISION_COLORS[div]}66, inset 0 0 14px ${DIVISION_COLORS[div]}33`; e.currentTarget.style.color = '#ffffff' }}
+              onMouseLeave={e => {
+                if (activeDivision !== div) { e.currentTarget.style.boxShadow = 'inset 0 0 8px rgba(0,0,0,0.3)'; e.currentTarget.style.color = 'rgba(255,255,255,0.55)' }
+              }}
+            >
+              {div}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Division Captain & Format Banner */}
@@ -609,20 +618,6 @@ export default function Table() {
         </div>
       </div>
 
-      {/* Elite Arrows Festive Season 8 Banner & Countdown */}
-      {isFestiveSeason8 && (
-        <div className="glass animate-fade-in" style={{ padding: '20px 24px', borderRadius: '16px', background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(16, 185, 129, 0.25), rgba(56, 189, 248, 0.2))', border: '2px solid rgba(239, 68, 68, 0.5)', marginBottom: '24px', textAlign: 'center', boxShadow: '0 0 35px rgba(239, 68, 68, 0.35)' }}>
-          <h2 style={{ color: '#f87171', margin: '0 0 6px', fontWeight: 900, fontSize: '1.3rem', letterSpacing: '2px' }}>🎄 ELITE ARROWS FESTIVE SEASON 8 🎁</h2>
-          <p style={{ color: '#34d399', fontSize: '0.85rem', fontWeight: 700, margin: '0 0 12px' }}>Launched Dec 1st, 2026 · Championship Countdown to Dec 29th, 6:00 PM:</p>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', fontWeight: 900, fontSize: '1.2rem', color: 'white' }}>
-            <span className="glass" style={{ padding: '8px 14px', borderRadius: '10px', background: 'rgba(0,0,0,0.4)' }}>{timeLeft.days}d</span> :
-            <span className="glass" style={{ padding: '8px 14px', borderRadius: '10px', background: 'rgba(0,0,0,0.4)' }}>{timeLeft.hours}h</span> :
-            <span className="glass" style={{ padding: '8px 14px', borderRadius: '10px', background: 'rgba(0,0,0,0.4)' }}>{timeLeft.minutes}m</span> :
-            <span className="glass" style={{ padding: '8px 14px', borderRadius: '10px', background: 'rgba(0,0,0,0.4)' }}>{timeLeft.seconds}s</span>
-          </div>
-        </div>
-      )}
-
       {isFestiveSeason8 && (
         <style>{`
           @keyframes snowFall {
@@ -633,6 +628,11 @@ export default function Table() {
           @keyframes twinkleBulb {
             0%, 100% { opacity: 0.35; transform: scale(0.9); box-shadow: 0 0 3px currentColor; }
             50% { opacity: 1; transform: scale(1.15); box-shadow: 0 0 12px currentColor, 0 0 24px currentColor; }
+          }
+          @keyframes tinselShimmer {
+            0% { filter: hue-rotate(0deg) brightness(1) drop-shadow(0 0 15px rgba(239,68,68,0.7)); }
+            50% { filter: hue-rotate(25deg) brightness(1.35) drop-shadow(0 0 28px rgba(16,185,129,0.9)); }
+            100% { filter: hue-rotate(0deg) brightness(1) drop-shadow(0 0 15px rgba(239,68,68,0.7)); }
           }
         `}</style>
       )}
@@ -645,10 +645,11 @@ export default function Table() {
           overflow: "hidden",
           position: "relative",
           background: isFestiveSeason8 ? 'linear-gradient(135deg, rgba(26, 11, 11, 0.95), rgba(11, 41, 28, 0.95), rgba(26, 11, 11, 0.95))' : 'rgba(10, 6, 40, 0.4)',
-          border: isFestiveSeason8 ? '5px solid' : `2px solid ${DIVISION_COLORS[activeDivision] || 'rgba(168, 85, 247, 0.55)'}`,
-          borderImage: isFestiveSeason8 ? 'linear-gradient(135deg, #ef4444, #10b981, #fbbf24, #ef4444) 1' : 'none',
+          border: isFestiveSeason8 ? '6px solid' : `2px solid ${DIVISION_COLORS[activeDivision] || 'rgba(168, 85, 247, 0.55)'}`,
+          borderImage: isFestiveSeason8 ? 'linear-gradient(90deg, #ef4444, #34d399, #fbbf24, #38bdf8, #ec4899, #ef4444) 1' : 'none',
+          animation: isFestiveSeason8 ? 'tinselShimmer 3s ease-in-out infinite' : 'none',
           boxShadow: isFestiveSeason8
-            ? '0 20px 80px rgba(0, 0, 0, 0.8), 0 0 60px rgba(239, 68, 68, 0.6), 0 0 90px rgba(16, 185, 129, 0.5), inset 0 0 40px rgba(251, 191, 36, 0.3)'
+            ? '0 25px 90px rgba(0, 0, 0, 0.9), 0 0 70px rgba(239, 68, 68, 0.7), 0 0 110px rgba(16, 185, 129, 0.6), inset 0 0 50px rgba(251, 191, 36, 0.4)'
             : `0 20px 80px rgba(0, 0, 0, 0.6), 0 0 45px ${(DIVISION_COLORS[activeDivision] || '#a855f7')}44, 0 0 90px rgba(56, 189, 248, 0.1), inset 0 0 30px ${(DIVISION_COLORS[activeDivision] || '#a855f7')}11, inset 0 0 0 1px rgba(255,255,255,0.06)`
         }}
       >
