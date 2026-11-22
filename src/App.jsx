@@ -100,18 +100,28 @@ function LoadingScreen({ progress, label = 'Loading league data', showRefresh = 
       data-testid={testID}
       role="status"
       aria-live="polite"
-      style={{ background: 'linear-gradient(135deg, #090d16 0%, #0f172a 50%, #061a14 100%)', position: 'relative', overflow: 'hidden' }}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 9999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '32px 24px calc(32px + var(--safe-bottom))',
+        overflow: 'hidden',
+        background: 'radial-gradient(circle at 50% 32%, rgba(239, 68, 68, 0.25), transparent 58%), radial-gradient(circle at 82% 82%, rgba(16, 185, 129, 0.22), transparent 52%), linear-gradient(135deg, #090d16 0%, #0f172a 50%, #061a14 100%)'
+      }}
     >
-      {/* Falling Snowflakes */}
-      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 10 }}>
-        {['❄', '❅', '❆', '❄', '❅', '❆', '❄', '❅', '❄', '❅', '❆', '❄'].map((flake, i) => (
+      {/* Full-Screen Falling Snowflakes */}
+      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 999 }}>
+        {['❄', '❅', '❆', '❄', '❅', '❆', '❄', '❅', '❄', '❅', '❆', '❄', '❅', '❆', '❄', '❅'].map((flake, i) => (
           <div key={i} style={{
             position: 'absolute',
             top: '-20px',
-            left: `${(i * 8.5) + 3}%`,
-            color: 'rgba(255,255,255,0.85)',
-            fontSize: `${Math.random() * 14 + 10}px`,
-            animation: `snowFall ${Math.random() * 3 + 4}s linear infinite`,
+            left: `${(i * 6.25) + 2}%`,
+            color: 'rgba(255,255,255,0.9)',
+            fontSize: `${Math.random() * 16 + 10}px`,
+            animation: `fullScreenSnowFall ${Math.random() * 3 + 4}s linear infinite`,
             animationDelay: `${Math.random() * 3}s`
           }}>
             {flake}
@@ -119,17 +129,39 @@ function LoadingScreen({ progress, label = 'Loading league data', showRefresh = 
         ))}
       </div>
 
+      {/* Full-Viewport Glowing Christmas String Lights Frame */}
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, display: 'flex', justifyContent: 'space-around', background: 'rgba(5, 10, 8, 0.85)', padding: '8px 12px', borderBottom: '1px solid rgba(255,255,255,0.15)', zIndex: 1000, overflow: 'hidden' }}>
+        {['#ef4444', '#10b981', '#38bdf8', '#fbbf24', '#ec4899', '#ef4444', '#10b981', '#38bdf8', '#fbbf24', '#ec4899', '#ef4444', '#10b981', '#38bdf8', '#fbbf24', '#ec4899', '#ef4444', '#10b981', '#38bdf8'].map((color, idx) => (
+          <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{ width: '2px', height: '4px', background: 'rgba(255,255,255,0.4)' }} />
+            <div style={{
+              width: '10px',
+              height: '14px',
+              borderRadius: '50% 50% 45% 45%',
+              backgroundColor: color,
+              boxShadow: `0 0 8px ${color}, 0 0 16px ${color}`,
+              animation: `twinkleBulb 1.2s ease-in-out infinite`,
+              animationDelay: `${idx * 0.1}s`
+            }} />
+          </div>
+        ))}
+      </div>
+
       <style>{`
-        @keyframes snowFall {
+        @keyframes fullScreenSnowFall {
           0% { transform: translateY(-10px) translateX(0); opacity: 0; }
-          50% { opacity: 0.9; }
-          100% { transform: translateY(800px) translateX(35px); opacity: 0.25; }
+          50% { opacity: 0.95; }
+          100% { transform: translateY(105vh) translateX(40px); opacity: 0.2; }
+        }
+        @keyframes twinkleBulb {
+          0%, 100% { opacity: 0.35; transform: scale(0.9); box-shadow: 0 0 3px currentColor; }
+          50% { opacity: 1; transform: scale(1.15); box-shadow: 0 0 12px currentColor, 0 0 24px currentColor; }
         }
       `}</style>
 
       <div className="splash-grid" />
-      <div className="splash-inner" style={{ position: 'relative', zIndex: 11, border: '2px solid rgba(239, 68, 68, 0.4)', boxShadow: '0 0 50px rgba(239, 68, 68, 0.25), 0 0 80px rgba(16, 185, 129, 0.2)' }}>
-        <div style={{ fontSize: '1.2rem', marginBottom: '4px', textAlign: 'center' }}>🎄🎁</div>
+      <div className="splash-inner" style={{ position: 'relative', zIndex: 11, border: '2px solid rgba(239, 68, 68, 0.4)', boxShadow: '0 0 50px rgba(239, 68, 68, 0.25), 0 0 80px rgba(16, 185, 129, 0.2)', background: 'rgba(10, 20, 15, 0.85)', padding: '32px', borderRadius: '24px', backdropFilter: 'blur(16px)' }}>
+        <div style={{ fontSize: '1.4rem', marginBottom: '6px', textAlign: 'center' }}>🎄🎁</div>
         <EliteArrowsLogo />
         <div className="splash-brand">
           <h1 className="splash-title">Elite Arrows</h1>
