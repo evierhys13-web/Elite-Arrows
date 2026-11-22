@@ -484,10 +484,33 @@ export default function Table() {
             >
               League Standings
             </h1>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
               <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
                 {selectedSeason}
               </span>
+              {isAdmin && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '10px' }}>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--accent-cyan)', fontWeight: 700 }}>🔍 Admin View:</span>
+                  <select
+                    className="glass"
+                    value={selectedSeason}
+                    onChange={(e) => setSelectedSeason(e.target.value)}
+                    style={{ padding: '4px 10px', borderRadius: '8px', fontSize: '0.78rem', color: 'white', background: 'rgba(0,0,0,0.5)', border: '1px solid var(--accent-cyan)', cursor: 'pointer' }}
+                  >
+                    {Array.from(new Set([
+                      adminData?.currentSeason || 'Elite Arrows Season 7',
+                      'Elite Arrows Festive Season 8',
+                      'Elite Arrows Season 7',
+                      'Elite Arrows Season 6',
+                      ...seasons.map(s => s.name)
+                    ])).map(sName => (
+                      <option key={sName} value={sName} style={{ background: '#0f172a', color: 'white' }}>
+                        {sName} {sName === adminData?.currentSeason ? '(Live)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           </div>
           <button
