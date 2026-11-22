@@ -165,7 +165,7 @@ function LoadingScreen({ progress, label = 'Loading league data', showRefresh = 
         <EliteArrowsLogo />
         <div className="splash-brand">
           <h1 className="splash-title">Elite Arrows</h1>
-          <p className="splash-subtitle" style={{ color: '#34d399', fontWeight: 800 }}>Festive Season 8 Edition</p>
+          <p className="splash-subtitle" style={{ color: '#f87171', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }}>🎄 Festive Season Incoming 🎁</p>
         </div>
         <div
           className="splash-track"
