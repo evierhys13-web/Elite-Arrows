@@ -634,6 +634,10 @@ export default function Table() {
             0%, 100% { opacity: 0.3; transform: scale(0.8); }
             50% { opacity: 1; transform: scale(1.25); filter: drop-shadow(0 0 10px currentColor); }
           }
+          @keyframes bounceSlow {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+          }
         `}</style>
       )}
 
@@ -644,14 +648,22 @@ export default function Table() {
           borderRadius: "16px",
           overflow: "hidden",
           position: "relative",
-          background: "rgba(10, 6, 40, 0.4)",
-          border: isFestiveSeason8 ? '4px dashed #ef4444' : `2px solid ${DIVISION_COLORS[activeDivision] || 'rgba(168, 85, 247, 0.55)'}`,
-          outline: isFestiveSeason8 ? '3px solid #10b981' : 'none',
+          background: isFestiveSeason8 ? 'linear-gradient(135deg, rgba(26, 11, 11, 0.95), rgba(11, 41, 28, 0.95), rgba(26, 11, 11, 0.95))' : 'rgba(10, 6, 40, 0.4)',
+          border: isFestiveSeason8 ? '5px solid' : `2px solid ${DIVISION_COLORS[activeDivision] || 'rgba(168, 85, 247, 0.55)'}`,
+          borderImage: isFestiveSeason8 ? 'linear-gradient(135deg, #ef4444, #10b981, #fbbf24, #ef4444) 1' : 'none',
           boxShadow: isFestiveSeason8
-            ? '0 20px 80px rgba(0, 0, 0, 0.7), 0 0 50px rgba(239, 68, 68, 0.5), inset 0 0 35px rgba(16, 185, 129, 0.4)'
+            ? '0 20px 80px rgba(0, 0, 0, 0.8), 0 0 60px rgba(239, 68, 68, 0.6), 0 0 90px rgba(16, 185, 129, 0.5), inset 0 0 40px rgba(251, 191, 36, 0.3)'
             : `0 20px 80px rgba(0, 0, 0, 0.6), 0 0 45px ${(DIVISION_COLORS[activeDivision] || '#a855f7')}44, 0 0 90px rgba(56, 189, 248, 0.1), inset 0 0 30px ${(DIVISION_COLORS[activeDivision] || '#a855f7')}11, inset 0 0 0 1px rgba(255,255,255,0.06)`
         }}
       >
+        {/* Floating Festive Corner Decorations */}
+        {isFestiveSeason8 && (
+          <>
+            <div style={{ position: 'absolute', top: '55px', left: '16px', fontSize: '1.5rem', zIndex: 12, opacity: 0.9, animation: 'bounceSlow 3s ease-in-out infinite' }}>🎄</div>
+            <div style={{ position: 'absolute', top: '55px', right: '16px', fontSize: '1.5rem', zIndex: 12, opacity: 0.9, animation: 'bounceSlow 3s ease-in-out infinite 1.5s' }}>🎁</div>
+          </>
+        )}
+
         {/* Snowfall Effect */}
         {isFestiveSeason8 && (
           <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 10 }}>
@@ -1044,6 +1056,11 @@ export default function Table() {
             </tbody>
           </table>
         </div>
+        {isFestiveSeason8 && (
+          <div style={{ textAlign: 'center', padding: '14px', background: 'rgba(0,0,0,0.6)', borderTop: '1px solid rgba(255,255,255,0.15)', fontSize: '0.8rem', color: '#fca5a5', fontWeight: 800, letterSpacing: '0.5px', position: 'relative', zIndex: 11 }}>
+            🎄 May your trebles land true and your checkouts be high! Happy Holidays from Elite Arrows 🎯🎁
+          </div>
+        )}
       </div>
 
       <div
