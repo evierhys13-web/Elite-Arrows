@@ -517,8 +517,16 @@ export default function Table() {
         }}
       >
         {divisions.map((div, index) => {
-          const bulbColors = ['#ef4444', '#10b981', '#38bdf8', '#fbbf24', '#ec4899', '#f87171', '#34d399'];
-          const myBulbColor = bulbColors[index % bulbColors.length];
+          const divisionBulbColors = {
+            'Overall': '#38bdf8',
+            'Premier': '#1d4ed8',
+            'Elite': '#fbbf24',
+            'Emerald 1': '#047857',
+            'Emerald 2': '#34d399',
+            'Diamond': '#38bdf8',
+            'Platinum': '#f8fafc'
+          };
+          const myBulbColor = divisionBulbColors[div] || '#38bdf8';
           return (
             <button
               key={div}
