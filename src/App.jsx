@@ -100,13 +100,40 @@ function LoadingScreen({ progress, label = 'Loading league data', showRefresh = 
       data-testid={testID}
       role="status"
       aria-live="polite"
+      style={{ background: 'linear-gradient(135deg, #090d16 0%, #0f172a 50%, #061a14 100%)', position: 'relative', overflow: 'hidden' }}
     >
+      {/* Falling Snowflakes */}
+      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 10 }}>
+        {['❄', '❅', '❆', '❄', '❅', '❆', '❄', '❅', '❄', '❅', '❆', '❄'].map((flake, i) => (
+          <div key={i} style={{
+            position: 'absolute',
+            top: '-20px',
+            left: `${(i * 8.5) + 3}%`,
+            color: 'rgba(255,255,255,0.85)',
+            fontSize: `${Math.random() * 14 + 10}px`,
+            animation: `snowFall ${Math.random() * 3 + 4}s linear infinite`,
+            animationDelay: `${Math.random() * 3}s`
+          }}>
+            {flake}
+          </div>
+        ))}
+      </div>
+
+      <style>{`
+        @keyframes snowFall {
+          0% { transform: translateY(-10px) translateX(0); opacity: 0; }
+          50% { opacity: 0.9; }
+          100% { transform: translateY(800px) translateX(35px); opacity: 0.25; }
+        }
+      `}</style>
+
       <div className="splash-grid" />
-      <div className="splash-inner">
+      <div className="splash-inner" style={{ position: 'relative', zIndex: 11, border: '2px solid rgba(239, 68, 68, 0.4)', boxShadow: '0 0 50px rgba(239, 68, 68, 0.25), 0 0 80px rgba(16, 185, 129, 0.2)' }}>
+        <div style={{ fontSize: '1.2rem', marginBottom: '4px', textAlign: 'center' }}>🎄🎁</div>
         <EliteArrowsLogo />
         <div className="splash-brand">
           <h1 className="splash-title">Elite Arrows</h1>
-          <p className="splash-subtitle">Darts League</p>
+          <p className="splash-subtitle" style={{ color: '#34d399', fontWeight: 800 }}>Festive Season 8 Edition</p>
         </div>
         <div
           className="splash-track"
@@ -115,14 +142,15 @@ function LoadingScreen({ progress, label = 'Loading league data', showRefresh = 
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={isDeterminate ? value : undefined}
+          style={{ background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.15)' }}
         >
           <div
             className={`splash-fill${isDeterminate ? '' : ' splash-fill-indeterminate'}`}
-            style={isDeterminate ? { width: `${value}%` } : undefined}
+            style={isDeterminate ? { width: `${value}%`, background: 'linear-gradient(90deg, #ef4444, #10b981, #fbbf24)' } : { background: 'linear-gradient(90deg, #ef4444, #10b981, #fbbf24)' }}
           />
         </div>
         <div className="splash-meta">
-          <span>{label}</span>
+          <span style={{ color: '#cbd5e1' }}>{label}</span>
           {isDeterminate && <span className="splash-pct">{value}%</span>}
         </div>
         {showRefresh && (
