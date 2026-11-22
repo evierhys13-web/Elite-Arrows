@@ -504,51 +504,28 @@ export default function Table() {
         </div>
       </div>
 
-      {/* Division Boxes with Realistic Glowing Christmas Lights */}
-      <div style={{ position: 'relative', marginBottom: '20px' }}>
-        {isFestiveSeason8 && (
-          <div style={{ position: 'relative', background: 'rgba(5, 10, 8, 0.9)', padding: '8px 14px', borderRadius: '12px 12px 0 0', border: '1px solid rgba(16, 185, 129, 0.4)', borderBottom: 'none', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', top: '8px', left: 0, right: 0, height: '2px', background: 'rgba(255,255,255,0.25)' }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 2 }}>
-              {['#ef4444', '#10b981', '#38bdf8', '#fbbf24', '#ec4899', '#ef4444', '#10b981', '#38bdf8', '#fbbf24', '#ec4899', '#ef4444', '#10b981', '#38bdf8', '#fbbf24'].map((color, idx) => (
-                <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <div style={{ width: '2px', height: '4px', background: 'rgba(255,255,255,0.4)' }} />
-                  <div style={{
-                    width: '10px',
-                    height: '14px',
-                    borderRadius: '50% 50% 45% 45%',
-                    backgroundColor: color,
-                    boxShadow: `0 0 6px ${color}, 0 0 12px ${color}`,
-                    animation: `twinkleBulb 1.2s ease-in-out infinite`,
-                    animationDelay: `${idx * 0.12}s`
-                  }} />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        <div
-          className="division-tabs"
-          style={{
-            display: "flex",
-            overflowX: "auto",
-            gap: "8px",
-            padding: isFestiveSeason8 ? "12px 16px" : "0",
-            background: isFestiveSeason8 ? "rgba(10, 30, 20, 0.85)" : "transparent",
-            borderRadius: isFestiveSeason8 ? "0 0 16px 16px" : "0",
-            border: isFestiveSeason8 ? "1px solid rgba(16, 185, 129, 0.4)" : "none",
-            borderTop: isFestiveSeason8 ? "none" : undefined,
-            scrollbarWidth: "none",
-            msOverflowStyle: "none",
-            boxShadow: isFestiveSeason8 ? "0 10px 30px rgba(0,0,0,0.5)" : "none"
-          }}
-        >
-          {divisions.map((div) => (
+      <div
+        className="division-tabs"
+        style={{
+          display: "flex",
+          overflowX: "auto",
+          gap: "12px",
+          marginBottom: "20px",
+          paddingBottom: "8px",
+          scrollbarWidth: "none",
+          msOverflowStyle: "none",
+        }}
+      >
+        {divisions.map((div, index) => {
+          const bulbColors = ['#ef4444', '#10b981', '#38bdf8', '#fbbf24', '#ec4899', '#f87171', '#34d399'];
+          const myBulbColor = bulbColors[index % bulbColors.length];
+          return (
             <button
               key={div}
               className={`division-tab ${activeDivision === div ? "active" : ""}`}
               onClick={() => setActiveDivision(div)}
               style={{
+                position: "relative",
                 whiteSpace: "nowrap",
                 padding: "12px 26px",
                 fontFamily: "'Orbitron', 'Inter', sans-serif",
@@ -557,16 +534,18 @@ export default function Table() {
                 letterSpacing: "0.15em",
                 borderRadius: "999px",
                 border: "2px solid",
-                borderColor: activeDivision === div ? DIVISION_COLORS[div] : "rgba(255,255,255,0.12)",
+                borderColor: isFestiveSeason8 ? myBulbColor : (activeDivision === div ? DIVISION_COLORS[div] : "rgba(255,255,255,0.12)"),
                 color: activeDivision === div ? "#ffffff" : "rgba(255,255,255,0.55)",
                 background:
                   activeDivision === div
                     ? `linear-gradient(135deg, ${DIVISION_COLORS[div]}55 0%, ${DIVISION_COLORS[div]}22 50%, rgba(168, 85, 247, 0.2) 100%)`
-                    : "rgba(0, 0, 0, 0.25)",
+                    : (isFestiveSeason8 ? "rgba(15, 30, 20, 0.75)" : "rgba(0, 0, 0, 0.25)"),
                 textTransform: "uppercase",
                 textShadow: activeDivision === div ? `0 0 14px ${DIVISION_COLORS[div]}` : "none",
                 transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                boxShadow: activeDivision === div ? `0 0 22px ${DIVISION_COLORS[div]}88, inset 0 0 14px ${DIVISION_COLORS[div]}44` : "inset 0 0 8px rgba(0,0,0,0.3)",
+                boxShadow: isFestiveSeason8
+                  ? `0 0 16px ${myBulbColor}66, inset 0 0 10px ${myBulbColor}33`
+                  : (activeDivision === div ? `0 0 22px ${DIVISION_COLORS[div]}88, inset 0 0 14px ${DIVISION_COLORS[div]}44` : "inset 0 0 8px rgba(0,0,0,0.3)"),
                 backdropFilter: "blur(12px)",
                 WebkitBackdropFilter: "blur(12px)",
                 cursor: "pointer",
@@ -574,13 +553,28 @@ export default function Table() {
               }}
               onMouseEnter={e => { e.currentTarget.style.boxShadow = `0 0 22px ${DIVISION_COLORS[div]}66, inset 0 0 14px ${DIVISION_COLORS[div]}33`; e.currentTarget.style.color = '#ffffff' }}
               onMouseLeave={e => {
-                if (activeDivision !== div) { e.currentTarget.style.boxShadow = 'inset 0 0 8px rgba(0,0,0,0.3)'; e.currentTarget.style.color = 'rgba(255,255,255,0.55)' }
+                if (activeDivision !== div) { e.currentTarget.style.boxShadow = isFestiveSeason8 ? `0 0 16px ${myBulbColor}66, inset 0 0 10px ${myBulbColor}33` : 'inset 0 0 8px rgba(0,0,0,0.3)'; e.currentTarget.style.color = 'rgba(255,255,255,0.55)' }
               }}
             >
+              {/* Individual Glowing Christmas Light on each box */}
+              {isFestiveSeason8 && (
+                <span style={{
+                  position: 'absolute',
+                  top: '-7px',
+                  right: '14px',
+                  width: '9px',
+                  height: '13px',
+                  borderRadius: '50% 50% 45% 45%',
+                  backgroundColor: myBulbColor,
+                  boxShadow: `0 0 8px ${myBulbColor}, 0 0 16px ${myBulbColor}`,
+                  animation: 'twinkleBulb 1.2s ease-in-out infinite',
+                  animationDelay: `${index * 0.18}s`
+                }} />
+              )}
               {div}
             </button>
-          ))}
-        </div>
+          )
+        })}
       </div>
 
       {/* Division Captain & Format Banner */}
