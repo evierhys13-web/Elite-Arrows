@@ -564,20 +564,21 @@ export default function Table() {
                 if (activeDivision !== div) { e.currentTarget.style.boxShadow = isFestiveSeason8 ? `0 0 16px ${myBulbColor}66, inset 0 0 10px ${myBulbColor}33` : 'inset 0 0 8px rgba(0,0,0,0.3)'; e.currentTarget.style.color = 'rgba(255,255,255,0.55)' }
               }}
             >
-              {/* Individual Glowing Christmas Light on each box */}
+              {/* 3 Glowing Christmas Bulbs on each division box */}
               {isFestiveSeason8 && (
-                <span style={{
-                  position: 'absolute',
-                  top: '-7px',
-                  right: '14px',
-                  width: '9px',
-                  height: '13px',
-                  borderRadius: '50% 50% 45% 45%',
-                  backgroundColor: myBulbColor,
-                  boxShadow: `0 0 8px ${myBulbColor}, 0 0 16px ${myBulbColor}`,
-                  animation: 'twinkleBulb 1.2s ease-in-out infinite',
-                  animationDelay: `${index * 0.18}s`
-                }} />
+                <div style={{ position: 'absolute', top: '-6px', left: '10px', right: '10px', display: 'flex', justifyContent: 'space-between', pointerEvents: 'none' }}>
+                  {['#ef4444', '#10b981', myBulbColor].map((bColor, bIdx) => (
+                    <span key={bIdx} style={{
+                      width: '7px',
+                      height: '10px',
+                      borderRadius: '50% 50% 45% 45%',
+                      backgroundColor: bColor,
+                      boxShadow: `0 0 6px ${bColor}, 0 0 12px ${bColor}`,
+                      animation: 'twinkleBulb 1.2s ease-in-out infinite',
+                      animationDelay: `${(index * 0.25) + (bIdx * 0.15)}s`
+                    }} />
+                  ))}
+                </div>
               )}
               {div}
             </button>
@@ -701,6 +702,37 @@ export default function Table() {
           <>
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '18px', background: 'linear-gradient(180deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.08) 60%, transparent 100%)', pointerEvents: 'none', zIndex: 12 }} />
             <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '18px', background: 'linear-gradient(0deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.06) 60%, transparent 100%)', pointerEvents: 'none', zIndex: 12 }} />
+          </>
+        )}
+
+        {/* Christmas Watermark Background (Tree & Snowman) */}
+        {isFestiveSeason8 && (
+          <>
+            <div style={{
+              position: 'absolute',
+              right: '25px',
+              bottom: '40px',
+              fontSize: '11rem',
+              opacity: 0.045,
+              pointerEvents: 'none',
+              userSelect: 'none',
+              zIndex: 2,
+              filter: 'drop-shadow(0 0 20px rgba(255,255,255,0.2))'
+            }}>
+              🎄
+            </div>
+            <div style={{
+              position: 'absolute',
+              left: '30px',
+              top: '90px',
+              fontSize: '9rem',
+              opacity: 0.04,
+              pointerEvents: 'none',
+              userSelect: 'none',
+              zIndex: 2
+            }}>
+              ⛄
+            </div>
           </>
         )}
 
