@@ -60,6 +60,28 @@ export default function Table() {
 
   const [refreshKey, setRefreshKey] = useState(0);
   const [selectedSeason, setSelectedSeason] = useState(adminData?.currentSeason || "Elite Arrows Season 6");
+
+  const isFestiveSeason8 = selectedSeason.toLowerCase().includes('season 8') || selectedSeason.toLowerCase().includes('festive');
+
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  useEffect(() => {
+    if (!isFestiveSeason8) return;
+    const target = new Date('2026-12-29T18:00:00');
+    const interval = setInterval(() => {
+      const now = new Date();
+      const diff = target - now;
+      if (diff <= 0) {
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+      } else {
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+        const minutes = Math.floor((diff / 1000 / 60) % 60);
+        const seconds = Math.floor((diff / 1000) % 60);
+        setTimeLeft({ days, hours, minutes, seconds });
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isFestiveSeason8]);
   const [loadingSeason, setLoadingSeason] = useState(
     () => allUsers.length > 0 || results.length > 0 ? false : true,
   );
@@ -564,17 +586,78 @@ export default function Table() {
         </div>
       </div>
 
+      {/* Elite Arrows Festive Season 8 Banner & Countdown */}
+      {isFestiveSeason8 && (
+        <div className="glass animate-fade-in" style={{ padding: '20px 24px', borderRadius: '16px', background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(16, 185, 129, 0.25), rgba(56, 189, 248, 0.2))', border: '2px solid rgba(239, 68, 68, 0.5)', marginBottom: '24px', textAlign: 'center', boxShadow: '0 0 35px rgba(239, 68, 68, 0.35)' }}>
+          <h2 style={{ color: '#f87171', margin: '0 0 6px', fontWeight: 900, fontSize: '1.3rem', letterSpacing: '2px' }}>🎄 ELITE ARROWS FESTIVE SEASON 8 🎁</h2>
+          <p style={{ color: '#34d399', fontSize: '0.85rem', fontWeight: 700, margin: '0 0 12px' }}>Launched Dec 1st, 2026 · Championship Countdown to Dec 29th, 6:00 PM:</p>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', fontWeight: 900, fontSize: '1.2rem', color: 'white' }}>
+            <span className="glass" style={{ padding: '8px 14px', borderRadius: '10px', background: 'rgba(0,0,0,0.4)' }}>{timeLeft.days}d</span> :
+            <span className="glass" style={{ padding: '8px 14px', borderRadius: '10px', background: 'rgba(0,0,0,0.4)' }}>{timeLeft.hours}h</span> :
+            <span className="glass" style={{ padding: '8px 14px', borderRadius: '10px', background: 'rgba(0,0,0,0.4)' }}>{timeLeft.minutes}m</span> :
+            <span className="glass" style={{ padding: '8px 14px', borderRadius: '10px', background: 'rgba(0,0,0,0.4)' }}>{timeLeft.seconds}s</span>
+          </div>
+        </div>
+      )}
+
+      {isFestiveSeason8 && (
+        <style>{`
+          @keyframes snowFall {
+            0% { transform: translateY(-10px) translateX(0); opacity: 0; }
+            50% { opacity: 0.9; }
+            100% { transform: translateY(600px) translateX(30px); opacity: 0.2; }
+          }
+          @keyframes twinkleLight {
+            0%, 100% { opacity: 0.3; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.25); filter: drop-shadow(0 0 10px currentColor); }
+          }
+        `}</style>
+      )}
+
       <div
         className="card glass animate-fade-in"
         style={{
           padding: "0",
           borderRadius: "16px",
           overflow: "hidden",
+          position: "relative",
           background: "rgba(10, 6, 40, 0.4)",
-          border: `2px solid ${DIVISION_COLORS[activeDivision] || 'rgba(168, 85, 247, 0.55)'}`,
-          boxShadow: `0 20px 80px rgba(0, 0, 0, 0.6), 0 0 45px ${(DIVISION_COLORS[activeDivision] || '#a855f7')}44, 0 0 90px rgba(56, 189, 248, 0.1), inset 0 0 30px ${(DIVISION_COLORS[activeDivision] || '#a855f7')}11, inset 0 0 0 1px rgba(255,255,255,0.06)`
+          border: isFestiveSeason8 ? '4px dashed #ef4444' : `2px solid ${DIVISION_COLORS[activeDivision] || 'rgba(168, 85, 247, 0.55)'}`,
+          outline: isFestiveSeason8 ? '3px solid #10b981' : 'none',
+          boxShadow: isFestiveSeason8
+            ? '0 20px 80px rgba(0, 0, 0, 0.7), 0 0 50px rgba(239, 68, 68, 0.5), inset 0 0 35px rgba(16, 185, 129, 0.4)'
+            : `0 20px 80px rgba(0, 0, 0, 0.6), 0 0 45px ${(DIVISION_COLORS[activeDivision] || '#a855f7')}44, 0 0 90px rgba(56, 189, 248, 0.1), inset 0 0 30px ${(DIVISION_COLORS[activeDivision] || '#a855f7')}11, inset 0 0 0 1px rgba(255,255,255,0.06)`
         }}
       >
+        {/* Snowfall Effect */}
+        {isFestiveSeason8 && (
+          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 10 }}>
+            {['❄', '❅', '❆', '❄', '❅', '❆', '❄', '❅', '❄', '❅'].map((flake, i) => (
+              <div key={i} style={{
+                position: 'absolute',
+                top: '-20px',
+                left: `${(i * 10) + 4}%`,
+                color: 'rgba(255,255,255,0.85)',
+                fontSize: `${Math.random() * 12 + 10}px`,
+                animation: `snowFall ${Math.random() * 3 + 4}s linear infinite`,
+                animationDelay: `${Math.random() * 3}s`
+              }}>
+                {flake}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* String Lights across Table */}
+        {isFestiveSeason8 && (
+          <div style={{ display: 'flex', justifyContent: 'space-around', background: 'rgba(0,0,0,0.65)', padding: '6px 12px', borderBottom: '1px solid rgba(255,255,255,0.15)', fontSize: '0.95rem', letterSpacing: '6px', position: 'relative', zIndex: 11 }}>
+            {['🔴', '🟢', '🔵', '🟡', '🟠', '🔴', '🟢', '🔵', '🟡', '🟠', '🔴', '🟢', '🔵', '🟡'].map((light, idx) => (
+              <span key={idx} style={{ animation: `twinkleLight 1.5s ease-in-out infinite`, animationDelay: `${idx * 0.15}s` }}>
+                {light}
+              </span>
+            ))}
+          </div>
+        )}
         <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
