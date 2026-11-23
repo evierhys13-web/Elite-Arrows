@@ -305,11 +305,11 @@ export default function Chat() {
                   fontSize: '1.2rem',
                   flexShrink: 0
                 }}>
-                  {chat.name.charAt(0)}
+                  {(chat?.name || '?').charAt(0)}
                 </div>
                 <div style={{ overflow: 'hidden' }}>
                   <div style={{ fontWeight: '500', fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {chat.name}
+                    {chat?.name || 'Chat'}
                   </div>
                   {chat.type === 'friend' && chat.showOnlineStatus !== false && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>

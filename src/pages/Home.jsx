@@ -273,12 +273,12 @@ export default function Home() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div className="avatar-ring" style={{ width: '36px', height: '36px', padding: '2px' }}>
                     <div className="avatar-inner" style={{ background: '#050816', fontSize: '0.8rem' }}>
-                      {player.profilePicture ? <img src={player.profilePicture} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span>{player.username.charAt(0).toUpperCase()}</span>}
+                      {player.profilePicture ? <img src={player.profilePicture} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span>{(player?.username || '?').charAt(0).toUpperCase()}</span>}
                     </div>
                   </div>
                   <div>
                     <div style={{ fontWeight: '700', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      {player.username}
+                      {player?.username || player?.name || 'Unknown'}
                       <span style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(0, 212, 255, 0.1)', color: 'var(--accent-cyan)', border: '1px solid rgba(0, 212, 255, 0.2)' }}>League</span>
                     </div>
                     <div style={{ color: player.fixture ? 'var(--success)' : 'var(--text-muted)', fontSize: '0.7rem' }}>
