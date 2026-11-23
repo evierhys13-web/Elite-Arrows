@@ -9,11 +9,65 @@ import { derivePlayerStatsFromResults } from '../utils/playerStats'
 import GlobalHighlightReel from '../components/GlobalHighlightReel'
 import ShirtBanner from '../components/ShirtBanner'
 import { collection, getDocs } from '../firebase'
+import { useToast } from '../context/ToastContext'
+import { ADMIN_EMAILS } from '../config'
 
 export default function Home() {
   const { user, getAllUsers, getFixtures, getResults, loading, adminData, getSeasons, fetchResultsBySeason, fetchUsersByDivision } = useAuth()
+  const { showToast } = useToast()
   const navigate = useNavigate()
-  
+
+  const [pollVotes, setPollVotes] = useState([])
+  const [submittingPoll, setSubmittingPoll] = useState(false)
+  const isAdmin = Boolean(
+    user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin ||
+    (user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase()))
+  )
+
+  useEffect(() => {
+    const fetchPollVotes = async () => {
+      try {
+        const snap = await getDocs(collection(db, 'festiveSeason8Poll'))
+        setPollVotes(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      } catch (e) { console.error(e) }
+    }
+    fetchPollVotes()
+  }, [])
+
+  const myPollVote = useMemo(() => {
+    const found = pollVotes.find(v => String(v.userId) === String(user?.id))
+    return found ? found.vote : null
+  }, [pollVotes, user?.id])
+
+  const handleVote = async (voteVal) => {
+    if (!user?.id) return showToast('Please sign in to vote', 'error')
+    setSubmittingPoll(true)
+    try {
+      const voteId = `poll_${user.id}`
+      const voteDoc = {
+        userId: user.id,
+        username: user.username || user.name || 'Player',
+        division: user.division || 'Unassigned',
+        vote: voteVal,
+        updatedAt: new Date().toISOString()
+      }
+      await setDoc(doc(db, 'festiveSeason8Poll', voteId), voteDoc, { merge: true })
+      showToast('Vote recorded! Thanks for letting us know.', 'success')
+      const snap = await getDocs(collection(db, 'festiveSeason8Poll'))
+      setPollVotes(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+    } catch (err) {
+      showToast('Error recording vote: ' + err.message, 'error')
+    } finally {
+      setSubmittingPoll(false)
+    }
+  }
+
+  const yesCount = pollVotes.filter(v => v.vote === 'yes').length
+  const noCount = pollVotes.filter(v => v.vote === 'no').length
+  const totalVotes = yesCount + noCount
+  const yesPercent = totalVotes > 0 ? Math.round((yesCount / totalVotes) * 100) : 0
+  const noPercent = totalVotes > 0 ? Math.round((noCount / totalVotes) * 100) : 0
+
   const allUsers = getAllUsers()
   const fixtures = getFixtures()
   const allResults = getResults()
@@ -231,6 +285,68 @@ export default function Home() {
 
       {/* 2. Season Ends (Timer) */}
       <SeasonCountdownCard season={{ label: activeSeason.label, startDate: activeSeason.startDate, endDate: activeSeason.endDate }} />
+
+      {/* Festive Season 8 Singles Participation Poll */}
+      <div className="card glass animate-fade-in-up" style={{ marginBottom: '20px', border: '2px solid rgba(239, 68, 68, 0.4)', background: 'linear-gradient(135deg, rgba(26, 11, 11, 0.85), rgba(11, 41, 28, 0.85))', boxShadow: '0 10px 40px rgba(0,0,0,0.5), 0 0 30px rgba(239, 68, 68, 0.2)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+          <h2 style={{ margin: 0, color: '#f87171', fontSize: '1.15rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>🎄</span> Festive Season 8 Singles Poll <span>🎯</span>
+          </h2>
+          <span style={{ fontSize: '0.75rem', background: 'rgba(52, 211, 153, 0.15)', color: '#34d399', padding: '3px 10px', borderRadius: '999px', fontWeight: 800 }}>
+            {totalVotes} Responses
+          </span>
+        </div>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '16px' }}>
+          Will you be playing in the upcoming Elite Arrows Festive Season 8 Singles? Let admins know your participation plans!
+        </p>
+
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
+          <button
+            className={`btn ${myPollVote === 'yes' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ flex: 1, minWidth: '140px', fontWeight: 800, background: myPollVote === 'yes' ? 'linear-gradient(135deg, #10b981, #047857)' : undefined }}
+            onClick={() => handleVote('yes')}
+            disabled={submittingPoll}
+          >
+            🚀 Yes, count me in! ({yesCount})
+          </button>
+          <button
+            className={`btn ${myPollVote === 'no' ? 'btn-danger' : 'btn-secondary'}`}
+            style={{ flex: 1, minWidth: '140px', fontWeight: 800, background: myPollVote === 'no' ? 'linear-gradient(135deg, #ef4444, #b91c1c)' : undefined }}
+            onClick={() => handleVote('no')}
+            disabled={submittingPoll}
+          >
+            🏖️ No, sitting out ({noCount})
+          </button>
+        </div>
+
+        {totalVotes > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 800 }}>
+              <span style={{ color: '#34d399' }}>Yes ({yesCount} - {yesPercent}%)</span>
+              <span style={{ color: '#f87171' }}>No ({noCount} - {noPercent}%)</span>
+            </div>
+            <div style={{ width: '100%', height: '8px', background: 'rgba(239,68,68,0.3)', borderRadius: '999px', overflow: 'hidden', display: 'flex' }}>
+              <div style={{ width: `${yesPercent}%`, background: '#10b981', transition: 'width 0.4s ease' }} />
+              <div style={{ width: `${noPercent}%`, background: '#ef4444', transition: 'width 0.4s ease' }} />
+            </div>
+          </div>
+        )}
+
+        {isAdmin && (
+          <div style={{ marginTop: '16px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '12px' }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--accent-cyan)', marginBottom: '6px' }}>
+              📊 Admin Count Breakdown:
+            </div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {pollVotes.map(v => (
+                <span key={v.userId} className="glass" style={{ padding: '2px 8px', borderRadius: '6px', color: v.vote === 'yes' ? '#34d399' : '#f87171' }}>
+                  {v.username}: <strong>{v.vote.toUpperCase()}</strong>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* 2b. Upcoming Tournaments */}
       {tournaments.length > 0 && (
