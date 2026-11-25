@@ -74,16 +74,21 @@ export default function Results() {
     return gt.includes('friendly league')
   }
 
-  const isFestiveSeason8Result = (r) => {
+  // Only December 2026 results get the festive card design. Older results are
+  // still shown, but keep the standard card styling they had before the season.
+  const isFestiveResult = (r) => {
     const resDate = new Date(r.date || r.submittedAt || 0)
-    const startDate = new Date('2026-12-01T00:00:00')
-    const endDate = new Date('2026-12-31T23:59:59')
-    const seasonLabel = String(r.season || '').toLowerCase()
-    return (seasonLabel.includes('season 8') || seasonLabel.includes('festive')) || (!Number.isNaN(resDate.getTime()) && resDate >= startDate && resDate <= endDate)
+    if (Number.isNaN(resDate.getTime())) {
+      const seasonLabel = String(r.season || '').toLowerCase()
+      return seasonLabel.includes('season 8') || seasonLabel.includes('festive')
+    }
+    return resDate >= new Date('2026-12-01T00:00:00') && resDate <= new Date('2026-12-31T23:59:59')
   }
 
   const filteredResults = allResults.filter(r => {
-    if (!isFestiveSeason8Result(r)) return false
+    const resultDate = new Date(r.date || r.submittedAt || 0)
+    const isStandalone = isDoublesLeagueResult(r) || isFriendlyLeagueResult(r) || isCupResult(r) || isPlayoffResult(r)
+    if (!isStandalone && !Number.isNaN(resultDate.getTime()) && resultDate < resultsCutoff) return false
 
     if (typeFilter !== 'all') {
       if (typeFilter === 'league' && !isSinglesLeagueResult(r)) return false
@@ -154,66 +159,76 @@ export default function Results() {
     const isWinner1 = result.score1 > result.score2
     const isWinner2 = result.score2 > result.score1
     const isMe = result.player1Id === user?.id || result.player2Id === user?.id
+    const festive = isFestiveResult(result)
 
     return (
       <div key={result.id} className="card glass animate-fade-in" style={{
-        padding: '0',
-        marginBottom: '20px',
-        borderRadius: '16px',
-        overflow: 'hidden',
-        position: 'relative',
-        background: 'linear-gradient(135deg, rgba(26, 11, 11, 0.95), rgba(11, 41, 28, 0.95), rgba(26, 11, 11, 0.95))',
-        border: '5px solid',
-        borderImage: 'linear-gradient(90deg, #ef4444, #34d399, #fbbf24, #38bdf8, #ec4899, #ef4444) 1',
-        animation: 'tinselShimmer 3s ease-in-out infinite',
-        boxShadow: '0 20px 70px rgba(0, 0, 0, 0.85), 0 0 50px rgba(239, 68, 68, 0.6), 0 0 90px rgba(16, 185, 129, 0.5), inset 0 0 40px rgba(251, 191, 36, 0.35)'
+        padding: festive ? '0' : '20px',
+        marginBottom: festive ? '20px' : '16px',
+        ...(festive ? {
+          borderRadius: '16px',
+          overflow: 'hidden',
+          position: 'relative',
+          background: 'linear-gradient(135deg, rgba(26, 11, 11, 0.95), rgba(11, 41, 28, 0.95), rgba(26, 11, 11, 0.95))',
+          border: '5px solid',
+          borderImage: 'linear-gradient(90deg, #ef4444, #34d399, #fbbf24, #38bdf8, #ec4899, #ef4444) 1',
+          animation: 'tinselShimmer 3s ease-in-out infinite',
+          boxShadow: '0 20px 70px rgba(0, 0, 0, 0.85), 0 0 50px rgba(239, 68, 68, 0.6), 0 0 90px rgba(16, 185, 129, 0.5), inset 0 0 40px rgba(251, 191, 36, 0.35)'
+        } : {
+          background: isMe ? 'rgba(124, 92, 252, 0.05)' : 'var(--bg-card)',
+          border: isMe ? '1.5px solid var(--accent-primary)' : '1px solid var(--border)'
+        })
       }}>
         {/* Snowfall Effect */}
-        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 10 }}>
-          {['❄', '❅', '❆', '❄', '❅', '❆', '❄', '❅'].map((flake, i) => (
-            <div key={i} style={{
-              position: 'absolute',
-              top: '-20px',
-              left: `${(i * 12.5) + 4}%`,
-              color: 'rgba(255,255,255,0.85)',
-              fontSize: `${Math.random() * 10 + 10}px`,
-              animation: `snowFall ${Math.random() * 3 + 4}s linear infinite`,
-              animationDelay: `${Math.random() * 3}s`
-            }}>
-              {flake}
+        {festive && (
+          <>
+            <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 10 }}>
+              {['❄', '❅', '❆', '❄', '❅', '❆', '❄', '❅'].map((flake, i) => (
+                <div key={i} style={{
+                  position: 'absolute',
+                  top: '-20px',
+                  left: `${(i * 12.5) + 4}%`,
+                  color: 'rgba(255,255,255,0.85)',
+                  fontSize: `${Math.random() * 10 + 10}px`,
+                  animation: `snowFall ${Math.random() * 3 + 4}s linear infinite`,
+                  animationDelay: `${Math.random() * 3}s`
+                }}>
+                  {flake}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        {/* Realistic Glowing Christmas Lights across top of card */}
-        <div style={{ position: 'relative', background: 'rgba(5, 10, 8, 0.85)', padding: '8px 14px', borderBottom: '1px solid rgba(255,255,255,0.15)', overflow: 'hidden', zIndex: 11 }}>
-          <div style={{ position: 'absolute', top: '8px', left: 0, right: 0, height: '2px', background: 'rgba(255,255,255,0.25)' }} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 2, padding: '0 6px' }}>
-            {['#ef4444', '#10b981', '#38bdf8', '#fbbf24', '#ec4899', '#ef4444', '#10b981', '#38bdf8', '#fbbf24', '#ec4899'].map((color, idx) => (
-              <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <div style={{ width: '2px', height: '4px', background: 'rgba(255,255,255,0.4)' }} />
-                <div style={{
-                  width: '10px',
-                  height: '14px',
-                  borderRadius: '50% 50% 45% 45%',
-                  backgroundColor: color,
-                  boxShadow: `0 0 6px ${color}, 0 0 12px ${color}`,
-                  animation: `twinkleBulb 1.2s ease-in-out infinite`,
-                  animationDelay: `${idx * 0.12}s`
-                }} />
+            {/* Realistic Glowing Christmas Lights across top of card */}
+            <div style={{ position: 'relative', background: 'rgba(5, 10, 8, 0.85)', padding: '8px 14px', borderBottom: '1px solid rgba(255,255,255,0.15)', overflow: 'hidden', zIndex: 11 }}>
+              <div style={{ position: 'absolute', top: '8px', left: 0, right: 0, height: '2px', background: 'rgba(255,255,255,0.25)' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 2, padding: '0 6px' }}>
+                {['#ef4444', '#10b981', '#38bdf8', '#fbbf24', '#ec4899', '#ef4444', '#10b981', '#38bdf8', '#fbbf24', '#ec4899'].map((color, idx) => (
+                  <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <div style={{ width: '2px', height: '4px', background: 'rgba(255,255,255,0.4)' }} />
+                    <div style={{
+                      width: '10px',
+                      height: '14px',
+                      borderRadius: '50% 50% 45% 45%',
+                      backgroundColor: color,
+                      boxShadow: `0 0 6px ${color}, 0 0 12px ${color}`,
+                      animation: `twinkleBulb 1.2s ease-in-out infinite`,
+                      animationDelay: `${idx * 0.12}s`
+                    }} />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
 
-        {/* Snow Accumulation Drifts */}
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '14px', background: 'linear-gradient(180deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.08) 60%, transparent 100%)', pointerEvents: 'none', zIndex: 12 }} />
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '14px', background: 'linear-gradient(0deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.06) 60%, transparent 100%)', pointerEvents: 'none', zIndex: 12 }} />
+            {/* Snow Accumulation Drifts */}
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '14px', background: 'linear-gradient(180deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.08) 60%, transparent 100%)', pointerEvents: 'none', zIndex: 12 }} />
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '14px', background: 'linear-gradient(0deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.06) 60%, transparent 100%)', pointerEvents: 'none', zIndex: 12 }} />
 
-        {/* Christmas Watermark */}
-        <div style={{ position: 'absolute', right: '15px', bottom: '20px', fontSize: '6rem', opacity: 0.04, pointerEvents: 'none', userSelect: 'none', zIndex: 2 }}>🎄</div>
+            {/* Christmas Watermark */}
+            <div style={{ position: 'absolute', right: '15px', bottom: '20px', fontSize: '6rem', opacity: 0.04, pointerEvents: 'none', userSelect: 'none', zIndex: 2 }}>🎄</div>
+          </>
+        )}
 
-        <div style={{ padding: '20px 24px', position: 'relative', zIndex: 3 }}>
+        <div style={festive ? { padding: '20px 24px', position: 'relative', zIndex: 3 } : undefined}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
             <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               {result.gameType}{!isCupResult(result) && !isDoublesLeagueResult(result) && ` • ${result.division || 'Unassigned'}`}
@@ -235,7 +250,7 @@ export default function Results() {
               {isWinner1 && <div style={{ fontSize: '0.65rem', color: 'var(--success)', fontWeight: 900 }}>WINNER</div>}
             </div>
             <div style={{
-              background: 'rgba(0,0,0,0.4)',
+              background: festive ? 'rgba(0,0,0,0.4)' : 'var(--bg-primary)',
               padding: '8px 16px',
               borderRadius: '12px',
               fontSize: '1.5rem',
@@ -243,7 +258,7 @@ export default function Results() {
               display: 'flex',
               gap: '12px',
               boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)',
-              border: '1px solid rgba(255,255,255,0.08)'
+              ...(festive ? { border: '1px solid rgba(255,255,255,0.08)' } : {})
             }}>
               <span style={{ color: isWinner1 ? 'var(--accent-cyan)' : 'var(--text-muted)' }}>{result.score1}</span>
               <span style={{ color: 'var(--border)' }}>-</span>
@@ -267,7 +282,7 @@ export default function Results() {
               gridTemplateColumns: '1fr 1fr',
               gap: '10px',
               paddingTop: '15px',
-              borderTop: '1px solid rgba(255,255,255,0.1)',
+              borderTop: `1px solid ${festive ? 'rgba(255,255,255,0.1)' : 'var(--border)'}`,
               fontSize: '0.8rem'
             }}>
               <div style={{ textAlign: 'right', color: 'var(--text-muted)' }}>
@@ -447,7 +462,7 @@ export default function Results() {
             pendingResults.length === 0 ? <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>No results awaiting review.</p> :
             pendingResults.map(r => renderResultCard(r, true))
           ) : (
-            approvedResults.length === 0 ? <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>No match history found for Festive Season 8 (Dec 1st - Dec 31st).</p> :
+            approvedResults.length === 0 ? <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>No match history found.</p> :
             <>
               {approvedResults.map(r => renderResultCard(r, false))}
               <button
