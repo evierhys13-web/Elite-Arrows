@@ -371,9 +371,9 @@ export default function Results() {
         <>
           <style>{`
             @keyframes snowFall {
-              0% { transform: translateY(-10px) translateX(0); opacity: 0; }
-              50% { opacity: 0.9; }
-              100% { transform: translateY(600px) translateX(30px); opacity: 0.2; }
+              0% { transform: translateY(-20px) translateX(0); opacity: 0; }
+              20% { opacity: 0.9; }
+              100% { transform: translateY(105%) translateX(40px); opacity: 0.15; }
             }
             @keyframes twinkleBulb {
               0%, 100% { opacity: 0.35; transform: scale(0.9); box-shadow: 0 0 3px currentColor; }
