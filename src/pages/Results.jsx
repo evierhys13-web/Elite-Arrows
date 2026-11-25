@@ -74,10 +74,16 @@ export default function Results() {
     return gt.includes('friendly league')
   }
 
+  const isFestiveSeason8Result = (r) => {
+    const resDate = new Date(r.date || r.submittedAt || 0)
+    const startDate = new Date('2026-12-01T00:00:00')
+    const endDate = new Date('2026-12-31T23:59:59')
+    const seasonLabel = String(r.season || '').toLowerCase()
+    return (seasonLabel.includes('season 8') || seasonLabel.includes('festive')) || (!Number.isNaN(resDate.getTime()) && resDate >= startDate && resDate <= endDate)
+  }
+
   const filteredResults = allResults.filter(r => {
-    const resultDate = new Date(r.date || r.submittedAt || 0)
-    const isStandalone = isDoublesLeagueResult(r) || isFriendlyLeagueResult(r) || isCupResult(r) || isPlayoffResult(r)
-    if (!isStandalone && !Number.isNaN(resultDate.getTime()) && resultDate < resultsCutoff) return false
+    if (!isFestiveSeason8Result(r)) return false
 
     if (typeFilter !== 'all') {
       if (typeFilter === 'league' && !isSinglesLeagueResult(r)) return false
@@ -362,31 +368,138 @@ export default function Results() {
           </div>
         )}
 
-        <div className="results-container">
-          {loading ? (
-            <SkeletonList items={5} />
-          ) : activeTab === 'pending' ? (
-            pendingResults.length === 0 ? <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>No results awaiting review.</p> :
-            pendingResults.map(r => renderResultCard(r, true))
-          ) : (
-            approvedResults.length === 0 ? <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>No match history found.</p> :
-            <>
-              {approvedResults.map(r => renderResultCard(r, false))}
-              <button
-                className="btn btn-secondary btn-block"
-                disabled={fetchingMore}
-                onClick={async () => {
-                  setFetchingMore(true)
-                  await fetchMoreResults()
-                  setFetchingMore(false)
-                }}
-                style={{ marginTop: '20px', marginBottom: '40px' }}
-              >
-                {fetchingMore ? 'Loading...' : 'Load Older Results'}
-              </button>
-            </>
-          )}
-        </div>
+        <>
+          <style>{`
+            @keyframes snowFall {
+              0% { transform: translateY(-10px) translateX(0); opacity: 0; }
+              50% { opacity: 0.9; }
+              100% { transform: translateY(600px) translateX(30px); opacity: 0.2; }
+            }
+            @keyframes twinkleBulb {
+              0%, 100% { opacity: 0.35; transform: scale(0.9); box-shadow: 0 0 3px currentColor; }
+              50% { opacity: 1; transform: scale(1.15); box-shadow: 0 0 12px currentColor, 0 0 24px currentColor; }
+            }
+            @keyframes tinselShimmer {
+              0% { filter: hue-rotate(0deg) brightness(1) drop-shadow(0 0 15px rgba(239,68,68,0.7)); }
+              50% { filter: hue-rotate(25deg) brightness(1.35) drop-shadow(0 0 28px rgba(16,185,129,0.9)); }
+              100% { filter: hue-rotate(0deg) brightness(1) drop-shadow(0 0 15px rgba(239,68,68,0.7)); }
+            }
+          `}</style>
+
+          <div
+            className="card glass animate-fade-in"
+            style={{
+              padding: 0,
+              borderRadius: "16px",
+              overflow: "hidden",
+              position: "relative",
+              background: 'linear-gradient(135deg, rgba(26, 11, 11, 0.95), rgba(11, 41, 28, 0.95), rgba(26, 11, 11, 0.95))',
+              border: '6px solid',
+              borderImage: 'linear-gradient(90deg, #ef4444, #34d399, #fbbf24, #38bdf8, #ec4899, #ef4444) 1',
+              animation: 'tinselShimmer 3s ease-in-out infinite',
+              boxShadow: '0 25px 90px rgba(0, 0, 0, 0.9), 0 0 70px rgba(239, 68, 68, 0.7), 0 0 110px rgba(16, 185, 129, 0.6), inset 0 0 50px rgba(251, 191, 36, 0.4)'
+            }}
+          >
+            {/* Snowfall Effect */}
+            <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 10 }}>
+              {['❄', '❅', '❆', '❄', '❅', '❆', '❄', '❅', '❄', '❅'].map((flake, i) => (
+                <div key={i} style={{
+                  position: 'absolute',
+                  top: '-20px',
+                  left: `${(i * 10) + 4}%`,
+                  color: 'rgba(255,255,255,0.85)',
+                  fontSize: `${Math.random() * 12 + 10}px`,
+                  animation: `snowFall ${Math.random() * 3 + 4}s linear infinite`,
+                  animationDelay: `${Math.random() * 3}s`
+                }}>
+                  {flake}
+                </div>
+              ))}
+            </div>
+
+            {/* Realistic Glowing Christmas Lights Wire & Bulbs */}
+            <div style={{ position: 'relative', background: 'rgba(5, 10, 8, 0.85)', padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.15)', overflow: 'hidden', zIndex: 11 }}>
+              <div style={{ position: 'absolute', top: '10px', left: 0, right: 0, height: '2px', background: 'rgba(255,255,255,0.25)' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 2, padding: '0 8px' }}>
+                {['#ef4444', '#10b981', '#38bdf8', '#fbbf24', '#ec4899', '#ef4444', '#10b981', '#38bdf8', '#fbbf24', '#ec4899', '#ef4444', '#10b981', '#38bdf8', '#fbbf24', '#ec4899'].map((color, idx) => (
+                  <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <div style={{ width: '2px', height: '6px', background: 'rgba(255,255,255,0.4)' }} />
+                    <div style={{
+                      width: '12px',
+                      height: '16px',
+                      borderRadius: '50% 50% 45% 45%',
+                      backgroundColor: color,
+                      boxShadow: `0 0 8px ${color}, 0 0 16px ${color}`,
+                      animation: `twinkleBulb 1.2s ease-in-out infinite`,
+                      animationDelay: `${idx * 0.12}s`
+                    }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Snow Accumulation / Drifts at Top & Bottom */}
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '18px', background: 'linear-gradient(180deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.08) 60%, transparent 100%)', pointerEvents: 'none', zIndex: 12 }} />
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '18px', background: 'linear-gradient(0deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.06) 60%, transparent 100%)', pointerEvents: 'none', zIndex: 12 }} />
+
+            {/* Christmas Watermark Background (Tree & Snowman) */}
+            <div style={{
+              position: 'absolute',
+              right: '25px',
+              bottom: '40px',
+              fontSize: '11rem',
+              opacity: 0.045,
+              pointerEvents: 'none',
+              userSelect: 'none',
+              zIndex: 2,
+              filter: 'drop-shadow(0 0 20px rgba(255,255,255,0.2))'
+            }}>
+              🎄
+            </div>
+            <div style={{
+              position: 'absolute',
+              left: '30px',
+              top: '90px',
+              fontSize: '9rem',
+              opacity: 0.04,
+              pointerEvents: 'none',
+              userSelect: 'none',
+              zIndex: 2
+            }}>
+              ⛄
+            </div>
+
+            <div style={{ padding: '24px', position: 'relative', zIndex: 3 }} className="results-container">
+              {loading ? (
+                <SkeletonList items={5} />
+              ) : activeTab === 'pending' ? (
+                pendingResults.length === 0 ? <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>No results awaiting review.</p> :
+                pendingResults.map(r => renderResultCard(r, true))
+              ) : (
+                approvedResults.length === 0 ? <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>No match history found for Festive Season 8 (Dec 1st - Dec 31st).</p> :
+                <>
+                  {approvedResults.map(r => renderResultCard(r, false))}
+                  <button
+                    className="btn btn-secondary btn-block"
+                    disabled={fetchingMore}
+                    onClick={async () => {
+                      setFetchingMore(true)
+                      await fetchMoreResults()
+                      setFetchingMore(false)
+                    }}
+                    style={{ marginTop: '20px', marginBottom: '20px' }}
+                  >
+                    {fetchingMore ? 'Loading...' : 'Load Older Results'}
+                  </button>
+                </>
+              )}
+            </div>
+
+            <div style={{ textAlign: 'center', padding: '14px', background: 'rgba(0,0,0,0.6)', borderTop: '1px solid rgba(255,255,255,0.15)', fontSize: '0.8rem', color: '#fca5a5', fontWeight: 800, letterSpacing: '0.5px', position: 'relative', zIndex: 11 }}>
+              🎄 May your trebles land true and your checkouts be high! Happy Holidays from Elite Arrows 🎯🎁
+            </div>
+          </div>
+        </>
       </PullToRefresh>
     </div>
   )
