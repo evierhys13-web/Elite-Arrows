@@ -4723,9 +4723,13 @@ const isLegacyLabel = ['2026', 'Legacy', 'legacy', '', 'undefined', 'null', 'Sea
                         style={{ width: '18px', height: '18px', accentColor: 'var(--accent-cyan)' }}
                       />
                       <div>
-                        <div style={{ fontWeight: 700 }}>{p.username}</div>
+                        <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <span>{p.username}</span>
+                          {p.phoneNumber && <span style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)', fontWeight: 600 }}>📱 {p.phoneNumber}</span>}
+                        </div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                           {p.email} • {p.division || 'Unassigned'}
+                          {p.phoneNumber ? <span style={{ color: 'var(--accent-cyan)', marginLeft: '8px' }}>📱 {p.phoneNumber}</span> : <span style={{ color: 'var(--warning)', marginLeft: '8px' }}>⚠️ No phone</span>}
                           {p.isSubscribed && <span style={{ color: 'var(--success)', marginLeft: '8px' }}>✓ Elite Pass</span>}
                         </div>
                         {(Number(p.warningCount) > 0 || Number(p.strikeCount) > 0) && (
