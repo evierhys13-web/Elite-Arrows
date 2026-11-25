@@ -9,7 +9,8 @@ import { db, getDocs, collection, setDoc, deleteDoc, doc } from "../firebase";
 const DOUBLES_LEAGUE_DEADLINE = new Date("2026-10-30T00:00:00");
 
 export default function DoublesLeague() {
-  const { user, getAllUsers, getResults, triggerDataRefresh, forceFetchResults, dataRefreshTrigger, searchUsers } = useAuth();
+  const { user, getAllUsers, getResults, triggerDataRefresh, forceFetchResults, dataRefreshTrigger, searchUsers, adminData } = useAuth();
+  const isFestiveSeason8 = true;
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -487,112 +488,227 @@ export default function DoublesLeague() {
       )}
 
       {/* TAB: STANDINGS */}
+      {/* TAB: STANDINGS */}
       {activeTab === 'table' && (
-        <div className="card glass" style={{ padding: 0, overflow: 'visible' }}>
-          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%' }}>
-            <table style={{ width: "100%", minWidth: "600px", borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ background: "rgba(0,0,0,0.3)", color: "var(--text-muted)", fontSize: "0.7rem", textTransform: "uppercase" }}>
-                  <th style={{ width: "40px", padding: "12px" }}>#</th>
-                  <th style={{ textAlign: "left", padding: "12px" }}>Team & Captain</th>
-                  <th style={{ width: "40px", textAlign: "center" }}>P</th>
-                  <th style={{ width: "40px", textAlign: "center" }}>W</th>
-                  <th style={{ width: "40px", textAlign: "center" }}>L</th>
-                  <th style={{ width: "60px", textAlign: "center" }}>+/-</th>
-                  <th style={{ width: "60px", textAlign: "center", color: "var(--accent-cyan)" }}>Leg Pts</th>
-                </tr>
-              </thead>
-              <tbody>
-                {doublesStats.length === 0 ? (
-                  <tr><td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No doubles teams registered yet. Admins can click <strong>"Manage Teams & Captains"</strong> above to create pairings.</td></tr>
-                ) : (
-                  doublesStats.map((row, index) => {
-                    const legDiff = row.legsWon - row.legsLost;
-                    const isGold = index === 0;
-                    const isSilver = index === 1;
-                    const isBronze = index === 2;
+        <>
+          <style>{`
+            @keyframes snowFall {
+              0% { transform: translateY(-10px) translateX(0); opacity: 0; }
+              50% { opacity: 0.9; }
+              100% { transform: translateY(600px) translateX(30px); opacity: 0.2; }
+            }
+            @keyframes twinkleBulb {
+              0%, 100% { opacity: 0.35; transform: scale(0.9); box-shadow: 0 0 3px currentColor; }
+              50% { opacity: 1; transform: scale(1.15); box-shadow: 0 0 12px currentColor, 0 0 24px currentColor; }
+            }
+            @keyframes tinselShimmer {
+              0% { filter: hue-rotate(0deg) brightness(1) drop-shadow(0 0 15px rgba(239,68,68,0.7)); }
+              50% { filter: hue-rotate(25deg) brightness(1.35) drop-shadow(0 0 28px rgba(16,185,129,0.9)); }
+              100% { filter: hue-rotate(0deg) brightness(1) drop-shadow(0 0 15px rgba(239,68,68,0.7)); }
+            }
+          `}</style>
 
-                    const rowBg = isGold
-                      ? 'linear-gradient(90deg, rgba(251, 191, 36, 0.2) 0%, rgba(251, 191, 36, 0.03) 100%)'
-                      : isSilver
-                      ? 'linear-gradient(90deg, rgba(226, 232, 240, 0.16) 0%, rgba(226, 232, 240, 0.02) 100%)'
-                      : isBronze
-                      ? 'linear-gradient(90deg, rgba(217, 119, 6, 0.16) 0%, rgba(217, 119, 6, 0.02) 100%)'
-                      : 'transparent';
+          <div
+            className="card glass animate-fade-in"
+            style={{
+              padding: 0,
+              borderRadius: "16px",
+              overflow: "hidden",
+              position: "relative",
+              background: 'linear-gradient(135deg, rgba(26, 11, 11, 0.95), rgba(11, 41, 28, 0.95), rgba(26, 11, 11, 0.95))',
+              border: '6px solid',
+              borderImage: 'linear-gradient(90deg, #ef4444, #34d399, #fbbf24, #38bdf8, #ec4899, #ef4444) 1',
+              animation: 'tinselShimmer 3s ease-in-out infinite',
+              boxShadow: '0 25px 90px rgba(0, 0, 0, 0.9), 0 0 70px rgba(239, 68, 68, 0.7), 0 0 110px rgba(16, 185, 129, 0.6), inset 0 0 50px rgba(251, 191, 36, 0.4)'
+            }}
+          >
+            {/* Snowfall Effect */}
+            <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 10 }}>
+              {['❄', '❅', '❆', '❄', '❅', '❆', '❄', '❅', '❄', '❅'].map((flake, i) => (
+                <div key={i} style={{
+                  position: 'absolute',
+                  top: '-20px',
+                  left: `${(i * 10) + 4}%`,
+                  color: 'rgba(255,255,255,0.85)',
+                  fontSize: `${Math.random() * 12 + 10}px`,
+                  animation: `snowFall ${Math.random() * 3 + 4}s linear infinite`,
+                  animationDelay: `${Math.random() * 3}s`
+                }}>
+                  {flake}
+                </div>
+              ))}
+            </div>
 
-                    const borderLeftColor = isGold ? '#fbbf24' : isSilver ? '#e2e8f0' : isBronze ? '#d97706' : 'transparent';
-                    const medalBadge = isGold ? '🥇' : isSilver ? '🥈' : isBronze ? '🥉' : null;
+            {/* Realistic Glowing Christmas Lights Wire & Bulbs */}
+            <div style={{ position: 'relative', background: 'rgba(5, 10, 8, 0.85)', padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.15)', overflow: 'hidden', zIndex: 11 }}>
+              <div style={{ position: 'absolute', top: '10px', left: 0, right: 0, height: '2px', background: 'rgba(255,255,255,0.25)' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 2, padding: '0 8px' }}>
+                {['#ef4444', '#10b981', '#38bdf8', '#fbbf24', '#ec4899', '#ef4444', '#10b981', '#38bdf8', '#fbbf24', '#ec4899', '#ef4444', '#10b981', '#38bdf8', '#fbbf24', '#ec4899'].map((color, idx) => (
+                  <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <div style={{ width: '2px', height: '6px', background: 'rgba(255,255,255,0.4)' }} />
+                    <div style={{
+                      width: '12px',
+                      height: '16px',
+                      borderRadius: '50% 50% 45% 45%',
+                      backgroundColor: color,
+                      boxShadow: `0 0 8px ${color}, 0 0 16px ${color}`,
+                      animation: `twinkleBulb 1.2s ease-in-out infinite`,
+                      animationDelay: `${idx * 0.12}s`
+                    }} />
+                  </div>
+                ))}
+              </div>
+            </div>
 
-                    const teamDoc = teams.find(t => String(t.id) === String(row.id));
-                    const p1 = allUsers.find(u => String(u.id) === String(teamDoc?.p1Id));
-                    const p2 = allUsers.find(u => String(u.id) === String(teamDoc?.p2Id));
-                    const teamLogo = teamDoc?.teamLogo || row.teamLogo || null;
-                    const p1Pic = p1?.profilePicture || p1?.photoURL || p1?.avatar || null;
-                    const p2Pic = p2?.profilePicture || p2?.photoURL || p2?.avatar || null;
-                    const p1Init = p1?.username ? p1.username.substring(0, 1).toUpperCase() : 'P1';
-                    const p2Init = p2?.username ? p2.username.substring(0, 1).toUpperCase() : 'P2';
+            {/* Snow Accumulation / Drifts at Top & Bottom */}
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '18px', background: 'linear-gradient(180deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.08) 60%, transparent 100%)', pointerEvents: 'none', zIndex: 12 }} />
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '18px', background: 'linear-gradient(0deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.06) 60%, transparent 100%)', pointerEvents: 'none', zIndex: 12 }} />
 
-                    return (
-                      <tr
-                        key={row.id}
-                        style={{
-                          borderBottom: "1px solid var(--border)",
-                          fontSize: '0.9rem',
-                          cursor: 'pointer',
-                          background: rowBg,
-                          borderLeft: `5px solid ${borderLeftColor}`
-                        }}
-                        className="table-row-hover"
-                        onClick={() => setSelectedTeam(row)}
-                      >
-                        <td style={{ textAlign: 'center', fontWeight: 900, fontSize: '1rem', color: isGold ? '#fbbf24' : isSilver ? '#e2e8f0' : isBronze ? '#f59e0b' : 'inherit' }}>
-                          {medalBadge ? `${medalBadge} ${index + 1}` : index + 1}
-                        </td>
-                        <td style={{ padding: '12px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            {teamLogo ? (
-                              <img src={teamLogo} alt={row.teamName} style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--accent-cyan)', flexShrink: 0 }} />
-                            ) : (
-                              <div style={{ display: 'flex', alignItems: 'center', position: 'relative', width: '48px', height: '32px', flexShrink: 0 }}>
-                                {p1Pic ? (
-                                  <img src={p1Pic} alt={p1?.username || 'P1'} style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #0f172a', position: 'absolute', left: 0, zIndex: 2 }} />
-                                ) : (
-                                  <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'var(--accent-cyan)', color: '#0f172a', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', border: '2px solid #0f172a', position: 'absolute', left: 0, zIndex: 2 }}>
-                                    {p1Init}
-                                  </div>
-                                )}
-                                {p2Pic ? (
-                                  <img src={p2Pic} alt={p2?.username || 'P2'} style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #0f172a', position: 'absolute', left: '16px', zIndex: 1 }} />
-                                ) : (
-                                  <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: '#a78bfa', color: '#0f172a', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', border: '2px solid #0f172a', position: 'absolute', left: '16px', zIndex: 1 }}>
-                                    {p2Init}
-                                  </div>
-                                )}
+            {/* Christmas Watermark Background (Tree & Snowman) */}
+            <div style={{
+              position: 'absolute',
+              right: '25px',
+              bottom: '40px',
+              fontSize: '11rem',
+              opacity: 0.045,
+              pointerEvents: 'none',
+              userSelect: 'none',
+              zIndex: 2,
+              filter: 'drop-shadow(0 0 20px rgba(255,255,255,0.2))'
+            }}>
+              🎄
+            </div>
+            <div style={{
+              position: 'absolute',
+              left: '30px',
+              top: '90px',
+              fontSize: '9rem',
+              opacity: 0.04,
+              pointerEvents: 'none',
+              userSelect: 'none',
+              zIndex: 2
+            }}>
+              ⛄
+            </div>
+
+            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%' }}>
+              <table style={{ width: "100%", minWidth: "600px", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: "rgba(0,0,0,0.35)", color: "white", fontSize: "0.7rem", textTransform: "uppercase", fontWeight: 900 }}>
+                    <th style={{ width: "40px", padding: "12px" }}>#</th>
+                    <th style={{ textAlign: "left", padding: "12px" }}>Team & Captain</th>
+                    <th style={{ width: "40px", textAlign: "center" }}>P</th>
+                    <th style={{ width: "40px", textAlign: "center" }}>W</th>
+                    <th style={{ width: "40px", textAlign: "center" }}>L</th>
+                    <th style={{ width: "60px", textAlign: "center" }}>+/-</th>
+                    <th style={{ width: "60px", textAlign: "center", color: "var(--accent-cyan)" }}>Leg Pts</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {doublesStats.length === 0 ? (
+                    <tr><td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No doubles teams registered yet. Admins can click <strong>"Manage Teams & Captains"</strong> above to create pairings.</td></tr>
+                  ) : (
+                    doublesStats.map((row, index) => {
+                      const legDiff = row.legsWon - row.legsLost;
+                      const isFirst = index === 0;
+                      const isSecond = index === 1;
+                      const isBronze = index === 2;
+
+                      const rowBg = isFirst
+                        ? 'linear-gradient(90deg, rgba(251, 191, 36, 0.3) 0%, rgba(251, 191, 36, 0.08) 100%)'
+                        : isSecond
+                        ? 'linear-gradient(90deg, rgba(203, 213, 225, 0.25) 0%, rgba(203, 213, 225, 0.06) 100%)'
+                        : isBronze
+                        ? 'linear-gradient(90deg, rgba(217, 119, 6, 0.25) 0%, rgba(217, 119, 6, 0.06) 100%)'
+                        : 'transparent';
+
+                      const boxShadowStyle = isFirst
+                        ? 'inset 4px 0 0 0 #fbbf24, inset 0 0 25px rgba(251, 191, 36, 0.3)'
+                        : isSecond
+                        ? 'inset 4px 0 0 0 #cbd5e1, inset 0 0 20px rgba(203, 213, 225, 0.25)'
+                        : isBronze
+                        ? 'inset 4px 0 0 0 #d97706, inset 0 0 20px rgba(217, 119, 6, 0.25)'
+                        : 'none';
+
+                      const borderLeftColor = isFirst ? '#fbbf24' : isSecond ? '#cbd5e1' : isBronze ? '#d97706' : 'transparent';
+                      const medalBadge = isFirst ? '👑 1' : isSecond ? '🥈 2' : isBronze ? '🥉 3' : null;
+
+                      const teamDoc = teams.find(t => String(t.id) === String(row.id));
+                      const p1 = allUsers.find(u => String(u.id) === String(teamDoc?.p1Id));
+                      const p2 = allUsers.find(u => String(u.id) === String(teamDoc?.p2Id));
+                      const teamLogo = teamDoc?.teamLogo || row.teamLogo || null;
+                      const p1Pic = p1?.profilePicture || p1?.photoURL || p1?.avatar || null;
+                      const p2Pic = p2?.profilePicture || p2?.photoURL || p2?.avatar || null;
+                      const p1Init = p1?.username ? p1.username.substring(0, 1).toUpperCase() : 'P1';
+                      const p2Init = p2?.username ? p2.username.substring(0, 1).toUpperCase() : 'P2';
+
+                      return (
+                        <tr
+                          key={row.id}
+                          style={{
+                            borderBottom: "1px solid rgba(255,255,255,0.08)",
+                            fontSize: '0.9rem',
+                            cursor: 'pointer',
+                            background: rowBg,
+                            boxShadow: boxShadowStyle,
+                            borderLeft: `5px solid ${borderLeftColor}`
+                          }}
+                          className="table-row-hover"
+                          onClick={() => setSelectedTeam(row)}
+                        >
+                          <td style={{ textAlign: 'center', fontWeight: 900, fontSize: '1rem', color: isFirst ? '#fbbf24' : isSecond ? '#cbd5e1' : isBronze ? '#d97706' : 'rgba(255,255,255,0.7)', textShadow: (isFirst || isSecond || isBronze) ? `0 0 14px ${isFirst ? '#fbbf24' : isSecond ? '#cbd5e1' : '#d97706'}` : 'none' }}>
+                            {medalBadge || index + 1}
+                          </td>
+                          <td style={{ padding: '12px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              {teamLogo ? (
+                                <img src={teamLogo} alt={row.teamName} style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--accent-cyan)', flexShrink: 0 }} />
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', position: 'relative', width: '48px', height: '32px', flexShrink: 0 }}>
+                                  {p1Pic ? (
+                                    <img src={p1Pic} alt={p1?.username || 'P1'} style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #0f172a', position: 'absolute', left: 0, zIndex: 2 }} />
+                                  ) : (
+                                    <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'var(--accent-cyan)', color: '#0f172a', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', border: '2px solid #0f172a', position: 'absolute', left: 0, zIndex: 2 }}>
+                                      {p1Init}
+                                    </div>
+                                  )}
+                                  {p2Pic ? (
+                                    <img src={p2Pic} alt={p2?.username || 'P2'} style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #0f172a', position: 'absolute', left: '16px', zIndex: 1 }} />
+                                  ) : (
+                                    <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: '#a78bfa', color: '#0f172a', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', border: '2px solid #0f172a', position: 'absolute', left: '16px', zIndex: 1 }}>
+                                      {p2Init}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              <div>
+                                <div style={{ fontWeight: 800, color: isFirst ? '#fbbf24' : isSecond ? '#cbd5e1' : isBronze ? '#d97706' : 'var(--accent-cyan)' }}>
+                                  {row.teamName} 🔍
+                                </div>
+                                {row.captainName && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{row.captainName}</div>}
                               </div>
-                            )}
-                            <div>
-                              <div style={{ fontWeight: 800, color: isGold ? '#fbbf24' : isSilver ? '#e2e8f0' : isBronze ? '#f59e0b' : 'var(--accent-cyan)' }}>
-                                {row.teamName} 🔍
-                              </div>
-                              {row.captainName && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{row.captainName}</div>}
                             </div>
-                          </div>
-                        </td>
-                        <td style={{ textAlign: 'center' }}>{row.played}</td>
-                        <td style={{ textAlign: 'center' }}>{row.wins}</td>
-                        <td style={{ textAlign: 'center' }}>{row.losses}</td>
-                        <td style={{ textAlign: 'center', color: legDiff > 0 ? 'var(--success)' : legDiff < 0 ? 'var(--error)' : 'inherit' }}>
-                          {legDiff > 0 ? `+${legDiff}` : legDiff}
-                        </td>
-                        <td style={{ textAlign: 'center', fontWeight: 900, color: isGold ? '#fbbf24' : 'var(--accent-cyan)' }}>{row.points}</td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+                          </td>
+                          <td style={{ textAlign: 'center' }}>{row.played}</td>
+                          <td style={{ textAlign: 'center' }}>{row.wins}</td>
+                          <td style={{ textAlign: 'center' }}>{row.losses}</td>
+                          <td style={{ textAlign: 'center', color: legDiff > 0 ? 'var(--success)' : legDiff < 0 ? 'var(--error)' : 'inherit' }}>
+                            {legDiff > 0 ? `+${legDiff}` : legDiff}
+                          </td>
+                          <td style={{ textAlign: 'center', fontWeight: 900, color: isFirst ? '#fbbf24' : 'var(--accent-cyan)' }}>{row.points}</td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{ textAlign: 'center', padding: '14px', background: 'rgba(0,0,0,0.6)', borderTop: '1px solid rgba(255,255,255,0.15)', fontSize: '0.80rem', color: '#fca5a5', fontWeight: 800, letterSpacing: '0.5px', position: 'relative', zIndex: 11 }}>
+              🎄 May your trebles land true and your checkouts be high! Happy Holidays from Elite Arrows 🎯🎁
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* TAB: SCHEDULE & FIXTURES */}
