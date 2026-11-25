@@ -245,6 +245,10 @@ export default function Settings() {
               <input type="text" value={user?.dartCounterUsername || ''} onChange={(e) => updateUser({ dartCounterUsername: e.target.value, dartCounterLink: `https://dartcounter.app/profile/${e.target.value}` })} placeholder="Enter your DartCounter username" />
             </div>
             <div className="form-group">
+              <label>Phone Number *</label>
+              <input type="tel" value={user?.phoneNumber || ''} onChange={(e) => updateUser({ phoneNumber: e.target.value })} placeholder="Enter your phone number" />
+            </div>
+            <div className="form-group">
               <label>Date of Birth</label>
               <input type="date" value={user?.dateOfBirth || ''} onChange={(e) => updateUser({ dateOfBirth: e.target.value })} />
             </div>

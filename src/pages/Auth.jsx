@@ -13,6 +13,7 @@ export default function Auth() {
     confirmPassword: '',
     dartCounterUsername: '',
     threeDartAverage: '',
+    phoneNumber: '',
     rememberMe: false
   })
   const [error, setError] = useState('')
@@ -86,6 +87,9 @@ export default function Auth() {
         if (!formData.threeDartAverage) {
           throw new Error('3-Dart average is required')
         }
+        if (!formData.phoneNumber) {
+          throw new Error('Phone number is required')
+        }
         if (formData.password !== formData.confirmPassword) {
           throw new Error('Passwords do not match')
         }
@@ -98,6 +102,7 @@ export default function Auth() {
           email: formData.email,
           password: formData.password,
           threeDartAverage: avg,
+          phoneNumber: formData.phoneNumber,
           dartCounterUsername: formData.dartCounterUsername,
           dartCounterLink: formData.dartCounterUsername ? `https://dartcounter.app/profile/${formData.dartCounterUsername}` : ''
         }, formData.rememberMe)
@@ -270,6 +275,20 @@ export default function Auth() {
                           required
                         />
                       </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="phoneNumber">Phone Number</label>
+                      <input
+                        type="tel"
+                        id="phoneNumber"
+                        name="phoneNumber"
+                        value={formData.phoneNumber || ''}
+                        onChange={handleChange}
+                        placeholder="07123456789"
+                        autoComplete="tel"
+                        required
+                      />
                     </div>
                   </>
                 )}

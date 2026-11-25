@@ -22,6 +22,8 @@ import ErrorBoundary from './components/ErrorBoundary'
 import { Skeleton } from './components/Skeleton'
 import { Capacitor } from '@capacitor/core'
 import { ADMIN_EMAILS } from './config'
+import { useToast } from './context/ToastContext'
+import { doc, setDoc, db } from './firebase'
 
 const Auth = lazy(() => import('./pages/Auth'))
 const Welcome = lazy(() => import('./pages/Welcome'))
@@ -412,6 +414,58 @@ function SubscribedRoute({ children }) {
   return children
 }
 
+function PhonePromptModal({ user }) {
+  const { showToast } = useToast()
+  const [phone, setPhone] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const handleSave = async (e) => {
+    e.preventDefault()
+    if (!phone || phone.trim().length < 6) {
+      showToast('Please enter a valid phone number', 'error')
+      return
+    }
+    setSaving(true)
+    try {
+      await setDoc(doc(db, 'users', String(user.id)), { phoneNumber: phone.trim() }, { merge: true })
+      showToast('Phone number updated successfully!', 'success')
+      window.location.reload()
+    } catch (err) {
+      showToast('Error saving phone number: ' + err.message, 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+      <div className="card glass" style={{ maxWidth: '420px', width: '100%', padding: '32px', border: '2px solid var(--accent-cyan)', textAlign: 'center' }}>
+        <div style={{ fontSize: '2.5rem', marginBottom: '12px' }}>📱</div>
+        <h2 style={{ color: 'white', marginBottom: '8px' }}>Phone Number Required</h2>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '24px' }}>
+          Elite Arrows requires all players to provide a phone number for admin tracking and communication regarding fixtures and league updates.
+        </p>
+        <form onSubmit={handleSave}>
+          <div className="form-group" style={{ textAlign: 'left', marginBottom: '20px' }}>
+            <label>Phone Number *</label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="e.g. 07123456789"
+              required
+              style={{ width: '100%', padding: '12px', borderRadius: '10px' }}
+            />
+          </div>
+          <button type="submit" className="btn btn-primary btn-block" disabled={saving} style={{ height: '48px', fontWeight: 800 }}>
+            {saving ? 'Saving...' : 'Save & Continue'}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 function AdminRoute({ children }) {
   const { user, isAuthenticated, loading } = useAuth()
   const navigate = useNavigate()
@@ -503,6 +557,7 @@ function AppLayout({ children }) {
 
   return (
     <div className="app-layout">
+      {user && !user.isGuest && !user.phoneNumber && <PhonePromptModal user={user} />}
       <Sidebar />
       <main id="main-content" className="main-content" tabIndex={-1}>
         <PullToRefresh onRefresh={async () => {
