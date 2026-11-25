@@ -87,8 +87,8 @@ export default function Auth() {
         if (!formData.threeDartAverage) {
           throw new Error('3-Dart average is required')
         }
-        if (!formData.phoneNumber) {
-          throw new Error('Phone number is required')
+        if (!formData.phoneNumber || formData.phoneNumber.includes('@') || !/[0-9]/.test(formData.phoneNumber)) {
+          throw new Error('Please enter a valid phone number (not an email address)')
         }
         if (formData.password !== formData.confirmPassword) {
           throw new Error('Passwords do not match')
@@ -286,7 +286,7 @@ export default function Auth() {
                         value={formData.phoneNumber || ''}
                         onChange={handleChange}
                         placeholder="07123456789"
-                        autoComplete="tel"
+                        autoComplete="off"
                         required
                       />
                     </div>

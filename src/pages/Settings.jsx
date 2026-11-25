@@ -246,7 +246,20 @@ export default function Settings() {
             </div>
             <div className="form-group">
               <label>Phone Number *</label>
-              <input type="tel" value={user?.phoneNumber || ''} onChange={(e) => updateUser({ phoneNumber: e.target.value })} placeholder="Enter your phone number" />
+              <input
+                type="tel"
+                value={user?.phoneNumber || ''}
+                onChange={(e) => {
+                  const val = e.target.value
+                  if (val.includes('@')) {
+                    showToast('Please enter a valid phone number (not an email address)', 'error')
+                    return
+                  }
+                  updateUser({ phoneNumber: val })
+                }}
+                placeholder="Enter your phone number"
+                autoComplete="off"
+              />
             </div>
             <div className="form-group">
               <label>Date of Birth</label>

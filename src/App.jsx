@@ -421,8 +421,8 @@ function PhonePromptModal({ user }) {
 
   const handleSave = async (e) => {
     e.preventDefault()
-    if (!phone || phone.trim().length < 6) {
-      showToast('Please enter a valid phone number', 'error')
+    if (!phone || phone.trim().length < 6 || phone.includes('@') || !/[0-9]/.test(phone)) {
+      showToast('Please enter a valid phone number (not an email address)', 'error')
       return
     }
     setSaving(true)
