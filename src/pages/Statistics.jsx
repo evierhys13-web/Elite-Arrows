@@ -16,13 +16,14 @@ import CountUp from '../components/CountUp'
 const DIVISION_COLORS = {
   'Pro League': '#ec4899',
   'Elite': '#fbbf24',
-  'Emerald': '#10b981',
+  'Emerald 1': '#10b981',
+  'Emerald 2': '#34d399',
   'Diamond': '#38bdf8',
   'Platinum': '#818cf8',
   'Unassigned': '#6B7280'
 }
 
-const DIVISIONS = ['Elite', 'Emerald', 'Diamond', 'Platinum']
+const DIVISIONS = ['Elite', 'Emerald 1', 'Emerald 2', 'Diamond', 'Platinum']
 
 const TOOLTIP_STYLE = {
   background: 'rgba(15, 23, 42, 0.92)',
