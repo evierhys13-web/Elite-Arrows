@@ -10,10 +10,13 @@ import {
 import { derivePlayerStatsFromResults } from '../utils/playerStats'
 import { isLeagueResult } from '../utils/leagueResults'
 import { getLeaguePoints, getForfeitWinPoints } from '../utils/leagueScoring'
+import { getPlayersWithEffectiveDivisions } from '../utils/leagueStandings'
 import Breadcrumbs from '../components/Breadcrumbs'
 import CountUp from '../components/CountUp'
 
 const DIVISION_COLORS = {
+  'Premier': '#ec4899',
+  'Premier Division': '#ec4899',
   'Pro League': '#ec4899',
   'Elite': '#fbbf24',
   'Emerald 1': '#10b981',
@@ -23,7 +26,7 @@ const DIVISION_COLORS = {
   'Unassigned': '#6B7280'
 }
 
-const DIVISIONS = ['Elite', 'Emerald 1', 'Emerald 2', 'Diamond', 'Platinum']
+const DIVISIONS = ['Premier', 'Elite', 'Emerald 1', 'Emerald 2', 'Diamond', 'Platinum']
 
 const TOOLTIP_STYLE = {
   background: 'rgba(15, 23, 42, 0.92)',
@@ -264,20 +267,30 @@ export default function Statistics() {
       return (num || currentSeasonNum) >= 4
     }), [results, currentSeasonNum])
 
+  const activeSeasonDoc = useMemo(
+    () => (seasons || []).find(s => s.name === selectedSeason),
+    [seasons, selectedSeason]
+  )
+
+  const usersWithCorrectDivisions = useMemo(
+    () => getPlayersWithEffectiveDivisions(allUsers, activeSeasonDoc, selectedSeason, adminData),
+    [allUsers, activeSeasonDoc, selectedSeason, adminData]
+  )
+
   const isPlayerView = Boolean(id)
 
   const viewedUser = useMemo(() => {
     if (!id) return null
-    return allUsers.find(u => String(u.id) === String(id))
-  }, [allUsers, id])
+    return usersWithCorrectDivisions.find(u => String(u.id) === String(id))
+  }, [usersWithCorrectDivisions, id])
 
-  const playerStatsMap = useMemo(() => derivePlayerStatsFromResults(allUsers, results, {
+  const playerStatsMap = useMemo(() => derivePlayerStatsFromResults(usersWithCorrectDivisions, results, {
     fixtures, adminData, leagueOnly: true
-  }), [allUsers, results, fixtures, adminData])
+  }), [usersWithCorrectDivisions, results, fixtures, adminData])
 
-  const allTimeStatsMap = useMemo(() => derivePlayerStatsFromResults(allUsers, allLeagueResults || results, {
+  const allTimeStatsMap = useMemo(() => derivePlayerStatsFromResults(usersWithCorrectDivisions, allLeagueResults || results, {
     fixtures, adminData, leagueOnly: true, timePeriod: 'all', includeReset: false, dedupe: false
-  }), [allUsers, results, allLeagueResults, fixtures, adminData])
+  }), [usersWithCorrectDivisions, results, allLeagueResults, fixtures, adminData])
 
   const playerAllTime = useMemo(() => {
     if (!id || !allTimeStatsMap) return null
@@ -286,14 +299,14 @@ export default function Statistics() {
 
   const playerSeasonal = useMemo(() => {
     if (!id) return null
-    return derivePlayerStatsFromResults(allUsers, approvedResults, {
+    return derivePlayerStatsFromResults(usersWithCorrectDivisions, approvedResults, {
       fixtures, adminData, leagueOnly: true
     })[String(id)] || null
-  }, [allUsers, approvedResults, fixtures, adminData, id])
+  }, [usersWithCorrectDivisions, approvedResults, fixtures, adminData, id])
 
-  const seasonAllPlayers = useMemo(() => derivePlayerStatsFromResults(allUsers, approvedResults, {
+  const seasonAllPlayers = useMemo(() => derivePlayerStatsFromResults(usersWithCorrectDivisions, approvedResults, {
     fixtures, adminData, leagueOnly: true
-  }), [allUsers, approvedResults, fixtures, adminData])
+  }), [usersWithCorrectDivisions, approvedResults, fixtures, adminData])
 
   const personalStats = useMemo(() => {
     if (!id) return null
@@ -372,12 +385,12 @@ export default function Statistics() {
 
   const leagueStats = useMemo(() => {
     const divisionData = {}
-    allUsers.forEach(u => {
+    usersWithCorrectDivisions.forEach(u => {
       const div = u.division || 'Unassigned'
+      if (div === 'Unassigned' || div === 'Emerald') return
       if (!divisionData[div]) {
         divisionData[div] = { name: div, roster: 0, playerCount: 0, total180s: 0, matchesPlayed: 0, playerGames: 0, avgAvg: 0, avgPlayerCount: 0, topCheckout: 0 }
       }
-      if (div === 'Unassigned') return
       divisionData[div].roster++
       const ps = playerStatsMap[String(u.id)]
       if (ps && ps.played > 0) {
@@ -389,8 +402,8 @@ export default function Statistics() {
       }
     })
     approvedResults.forEach(r => {
-      const p1 = allUsers.find(u => String(u.id) === String(r.player1Id))
-      const p2 = allUsers.find(u => String(u.id) === String(r.player2Id))
+      const p1 = usersWithCorrectDivisions.find(u => String(u.id) === String(r.player1Id))
+      const p2 = usersWithCorrectDivisions.find(u => String(u.id) === String(r.player2Id))
       const d1 = p1?.division
       const d2 = p2?.division
       if (d1 && divisionData[d1]) {
@@ -409,13 +422,13 @@ export default function Statistics() {
       involved.forEach(d => { if (divisionData[d]) divisionData[d].matchesPlayed++ })
     })
     return Object.values(divisionData)
-      .filter(div => div.name !== 'Unassigned' && div.roster > 0)
+      .filter(div => div.name !== 'Unassigned' && div.name !== 'Emerald' && div.roster > 0)
       .map(div => ({
         ...div,
         avgAvg: div.avgPlayerCount > 0 ? (div.avgAvg / div.avgPlayerCount).toFixed(1) : '0',
         avg180s: div.playerGames > 0 ? (div.total180s / div.playerGames).toFixed(2) : 0
       }))
-  }, [allUsers, approvedResults, playerStatsMap])
+  }, [usersWithCorrectDivisions, approvedResults, playerStatsMap])
 
   const leagueMonthlyMetrics = useMemo(() =>
     buildMonthlyMetrics(trendResults, r => [r.player1Stats, r.player2Stats])
@@ -433,7 +446,7 @@ export default function Statistics() {
 
   const division180sByDivision = useMemo(() => {
     const divPlayers = {}
-    allUsers.forEach(u => {
+    usersWithCorrectDivisions.forEach(u => {
       const div = u.division
       if (div && DIVISIONS.includes(div)) {
         if (!divPlayers[div]) divPlayers[div] = []
@@ -455,7 +468,7 @@ export default function Statistics() {
       })
       return { division: div, total180s, matchesPlayed, avg180s: matchesPlayed > 0 ? (total180s / matchesPlayed).toFixed(2) : '0' }
     })
-  }, [allUsers, approvedResults])
+  }, [usersWithCorrectDivisions, approvedResults])
 
   const filteredDiv180s = useMemo(() => {
     if (selectedDivFilter === 'all') return division180sByDivision

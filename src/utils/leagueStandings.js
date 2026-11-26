@@ -42,8 +42,9 @@ export const normalizeDivisionName = (div) => {
   if (!div) return 'Unassigned'
   const norm = String(div).trim().toLowerCase()
   if (norm === 'premier' || norm === 'premier division' || norm === 'pro league' || norm === 'pro_league' || norm === 'premier_division') return 'Premier'
-  if (norm === 'emerald 1' || norm === 'emerald_1' || norm === 'emerald') return 'Emerald 1'
+  if (norm === 'emerald 1' || norm === 'emerald_1') return 'Emerald 1'
   if (norm === 'emerald 2' || norm === 'emerald_2') return 'Emerald 2'
+  if (norm === 'emerald') return 'Unassigned'
   if (norm === 'elite') return 'Elite'
   if (norm === 'diamond') return 'Diamond'
   if (norm === 'platinum') return 'Platinum'
