@@ -1037,12 +1037,55 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
 
   return (
     <div className="page" style={{ maxWidth: '800px', margin: '0 auto', padding: '15px' }}>
+      <style>{`
+        @keyframes twinkleBulb {
+          0%, 100% { opacity: 0.35; transform: scale(0.9); box-shadow: 0 0 3px currentColor; }
+          50% { opacity: 1; transform: scale(1.15); box-shadow: 0 0 12px currentColor, 0 0 24px currentColor; }
+        }
+        @keyframes tinselShimmer {
+          0% { filter: hue-rotate(0deg) brightness(1) drop-shadow(0 0 15px rgba(239,68,68,0.7)); }
+          50% { filter: hue-rotate(25deg) brightness(1.35) drop-shadow(0 0 28px rgba(16,185,129,0.9)); }
+          100% { filter: hue-rotate(0deg) brightness(1) drop-shadow(0 0 15px rgba(239,68,68,0.7)); }
+        }
+      `}</style>
+
       <div className="page-header" style={{ marginBottom: '25px', textAlign: 'center' }}>
         <h1 className="page-title" style={{ fontSize: '1.8rem', color: 'var(--accent-cyan)' }}>Submit Match Result</h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Enter the details of your recent match for league or friendly play.</p>
       </div>
 
-      <div className="card" style={{ padding: '25px', borderRadius: '16px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)', position: 'relative', overflow: 'hidden', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+      <div className="card" style={{
+        padding: '25px',
+        borderRadius: '16px',
+        overflow: 'hidden',
+        position: 'relative',
+        background: 'linear-gradient(135deg, rgba(26, 11, 11, 0.95), rgba(11, 41, 28, 0.95), rgba(26, 11, 11, 0.95))',
+        border: '6px solid',
+        borderImage: 'linear-gradient(90deg, #ef4444, #34d399, #fbbf24, #38bdf8, #ec4899, #ef4444) 1',
+        animation: 'tinselShimmer 3s ease-in-out infinite',
+        boxShadow: '0 25px 90px rgba(0, 0, 0, 0.9), 0 0 70px rgba(239, 68, 68, 0.7), 0 0 110px rgba(16, 185, 129, 0.6), inset 0 0 50px rgba(251, 191, 36, 0.4)'
+      }}>
+        {/* Realistic Glowing Christmas Lights Wire & Bulbs at Top */}
+        <div style={{ position: 'relative', background: 'rgba(5, 10, 8, 0.85)', padding: '10px 16px', margin: '-25px -25px 25px -25px', borderBottom: '1px solid rgba(255,255,255,0.15)', overflow: 'hidden', zIndex: 11 }}>
+          <div style={{ position: 'absolute', top: '10px', left: 0, right: 0, height: '2px', background: 'rgba(255,255,255,0.25)' }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 2, padding: '0 8px' }}>
+            {['#ef4444', '#10b981', '#38bdf8', '#fbbf24', '#ec4899', '#ef4444', '#10b981', '#38bdf8', '#fbbf24', '#ec4899', '#ef4444', '#10b981', '#38bdf8', '#fbbf24', '#ec4899'].map((color, idx) => (
+              <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <div style={{ width: '2px', height: '6px', background: 'rgba(255,255,255,0.4)' }} />
+                <div style={{
+                  width: '12px',
+                  height: '16px',
+                  borderRadius: '50% 50% 45% 45%',
+                  backgroundColor: color,
+                  boxShadow: `0 0 8px ${color}, 0 0 16px ${color}`,
+                  animation: `twinkleBulb 1.2s ease-in-out infinite`,
+                  animationDelay: `${idx * 0.12}s`
+                }} />
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Christmas Watermark Background */}
         <div style={{
           position: 'absolute',
@@ -1067,12 +1110,6 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
           zIndex: 0
         }}>
           ⛄
-        </div>
-
-        <div style={{ textAlign: 'center', marginBottom: '25px', padding: '12px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '12px', position: 'relative', zIndex: 1 }}>
-          <span style={{ fontSize: '1.3rem', marginRight: '8px' }}>🎄🎁</span>
-          <span style={{ fontWeight: 800, color: '#fca5a5', letterSpacing: '0.5px' }}>Festive Match Submission • Season 8</span>
-          <span style={{ fontSize: '1.3rem', marginLeft: '8px' }}>⛄🎯</span>
         </div>
 
         {user?.isGuest && (
