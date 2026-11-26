@@ -252,6 +252,11 @@ export default function Profile() {
               {displayUser.division || 'League Member'}
             </span>
             {displayUser.isAdmin && <span className="admin-badge" style={{ padding: '8px 20px', borderRadius: '99px' }}>Official Admin</span>}
+            {isAdminViewer && displayUser.phoneNumber && (
+              <span className="admin-badge" style={{ padding: '8px 20px', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.4)', color: 'var(--accent-cyan)', fontSize: '0.8rem', borderRadius: '99px', fontWeight: 800 }}>
+                📱 {displayUser.phoneNumber}
+              </span>
+            )}
             {isAdminViewer && (Number(displayUser.warningCount) > 0 || Number(displayUser.strikeCount) > 0) && (
               <span className="admin-badge" style={{ padding: '8px 20px', borderRadius: '99px', background: Number(displayUser.strikeCount) > 0 ? 'rgba(239,68,68,0.12)' : 'rgba(251,191,36,0.12)', border: `1px solid ${Number(displayUser.strikeCount) > 0 ? 'var(--error)' : 'var(--warning)'}`, color: Number(displayUser.strikeCount) > 0 ? 'var(--error)' : 'var(--warning)', fontWeight: 800 }}>
                 {Number(displayUser.strikeCount) > 0

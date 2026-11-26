@@ -103,12 +103,23 @@ export default function MatchLog() {
 
   const competitionResults = useMemo(() => {
     if (!targetUser.id) return []
+    const userDuo = openDuoEntries.find(d => String(d.p1Id) === String(targetUser.id) || String(d.p2Id) === String(targetUser.id))
+    const duoId = userDuo ? String(userDuo.id) : null
+
     return allResults
       .filter(r => {
         const p1Id = String(r.player1Id || '')
         const p2Id = String(r.player2Id || '')
+        const t1Id = String(r.team1Id || r.player1Id || '')
+        const t2Id = String(r.team2Id || r.player2Id || '')
 
-        const isTargetMatch = (p1Id === String(targetUser.id) || p2Id === String(targetUser.id))
+        let isTargetMatch = false
+        if (competition === 'League' || competition === 'Cup') {
+          isTargetMatch = (p1Id === String(targetUser.id) || p2Id === String(targetUser.id))
+        } else if (competition === 'Doubles League') {
+          if (!duoId) return false
+          isTargetMatch = (t1Id === duoId || t2Id === duoId)
+        }
 
         const isApproved = String(r.status || '').toLowerCase() === 'approved'
 
@@ -132,15 +143,26 @@ export default function MatchLog() {
       .map(r => {
         const p1Id = String(r.player1Id || '')
         const p2Id = String(r.player2Id || '')
+        const t1Id = String(r.team1Id || r.player1Id || '')
+        const t2Id = String(r.team2Id || r.player2Id || '')
 
         let isTeam1 = false
         let opponentName = ''
         let opponentId = ''
 
-        isTeam1 = p1Id === String(targetUser.id)
-        opponentId = isTeam1 ? p2Id : p1Id
-        const opponentUser = allUsers.find(u => String(u.id) === String(opponentId))
-        opponentName = opponentUser?.username || (isTeam1 ? r.player2 : r.player1) || 'Unknown'
+        if (competition === 'Doubles League') {
+          isTeam1 = (t1Id === duoId)
+          opponentId = isTeam1 ? t2Id : t1Id
+          const oppDuo = openDuoEntries.find(d => String(d.id) === String(opponentId))
+          const oppP1 = oppDuo ? allUsers.find(u => String(u.id) === String(oppDuo.p1Id)) : null
+          const oppP2 = oppDuo ? allUsers.find(u => String(u.id) === String(oppDuo.p2Id)) : null
+          opponentName = oppDuo?.teamName || (oppP1 && oppP2 ? `${oppP1.username} & ${oppP2.username}` : null) || (isTeam1 ? r.player2 : r.player1) || 'Unknown Team'
+        } else {
+          isTeam1 = p1Id === String(targetUser.id)
+          opponentId = isTeam1 ? p2Id : p1Id
+          const opponentUser = allUsers.find(u => String(u.id) === String(opponentId))
+          opponentName = opponentUser?.username || (isTeam1 ? r.player2 : r.player1) || 'Unknown'
+        }
 
         const win = Number(r.score1) > Number(r.score2) ? (isTeam1 ? true : false) : (Number(r.score2) > Number(r.score1) ? (isTeam1 ? false : true) : null)
 
@@ -161,16 +183,27 @@ export default function MatchLog() {
         }
       })
       .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
-  }, [allResults, allUsers, fixturesById, targetUser.id, competition, currentSeasonName])
+  }, [allResults, allUsers, fixturesById, targetUser.id, competition, currentSeasonName, openDuoEntries])
 
   const playedOpponentCounts = useMemo(() => {
     const counts = {}
     if (!targetUser.id) return counts
+    const userDuo = openDuoEntries.find(d => String(d.p1Id) === String(targetUser.id) || String(d.p2Id) === String(targetUser.id))
+    const duoId = userDuo ? String(userDuo.id) : null
+
     allResults.forEach(r => {
       const p1Id = String(r.player1Id || '')
       const p2Id = String(r.player2Id || '')
+      const t1Id = String(r.team1Id || r.player1Id || '')
+      const t2Id = String(r.team2Id || r.player2Id || '')
 
-      const isTargetMatch = (p1Id === String(targetUser.id) || p2Id === String(targetUser.id))
+      let isTargetMatch = false
+      if (competition === 'League' || competition === 'Cup') {
+        isTargetMatch = (p1Id === String(targetUser.id) || p2Id === String(targetUser.id))
+      } else if (competition === 'Doubles League') {
+        if (!duoId) return
+        isTargetMatch = (t1Id === duoId || t2Id === duoId)
+      }
       if (!isTargetMatch) return
 
       const isRejected = String(r.status || '').toLowerCase() === 'rejected'
@@ -192,11 +225,14 @@ export default function MatchLog() {
       }
       if (!isCompetitionMatch) return
 
-      const opponentId = p1Id === String(targetUser.id) ? p2Id : p1Id
+      const opponentId = competition === 'Doubles League'
+        ? (t1Id === duoId ? t2Id : t1Id)
+        : (p1Id === String(targetUser.id) ? p2Id : p1Id)
+
       if (opponentId) counts[String(opponentId)] = (counts[String(opponentId)] || 0) + 1
     })
     return counts
-  }, [allResults, fixturesById, targetUser.id, competition, currentSeasonName])
+  }, [allResults, fixturesById, targetUser.id, competition, currentSeasonName, openDuoEntries])
   
   const getPlayoffOpponent = useCallback(() => {
     if (!targetUser.id || competition !== 'League') return null
@@ -324,6 +360,7 @@ export default function MatchLog() {
             id: `to_play_home_${userDuo.id}_${oppDuo.id}`,
             username: `🏠 vs ${oppName} (Home Game)`,
             oppTeamId: oppDuo.id,
+            _isHome: true,
             _isDoubles: true
           })
         }
@@ -333,6 +370,7 @@ export default function MatchLog() {
             id: `to_play_away_${userDuo.id}_${oppDuo.id}`,
             username: `✈️ @ ${oppName} (Away Game)`,
             oppTeamId: oppDuo.id,
+            _isHome: false,
             _isDoubles: true
           })
         }
@@ -515,6 +553,8 @@ export default function MatchLog() {
                             navigate(`/submit-result?opponent=${player.id}&gameType=Friendly League Singles&season=${currentSeasonName}`)
                           } else if (competition === 'Cup') {
                             navigate(`/submit-result?fixtureId=${player._fixtureId}&gameType=Cup&season=${currentSeasonName}`)
+                          } else if (competition === 'Doubles League') {
+                            navigate(`/submit-result?opponent=${player.id}&gameType=Doubles League&season=${currentSeasonName}&isHome=${player._isHome}`)
                           } else {
                             navigate(`/submit-result?opponent=${player.id}&gameType=${player._playoff ? 'Playoff' : competition}&season=${currentSeasonName}`)
                           }

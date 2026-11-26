@@ -346,9 +346,28 @@ const getDefaultSeason = () => {
     } else if (opponentParam || gameTypeParam) {
       const resolved = resolveGameType(gameTypeParam)
       const fmt = resolved === 'League' ? getDivisionFormat(userEffectiveDiv, adminData) : null
+      const isHomeParam = searchParams.get('isHome') !== 'false'
+
+      let initialTeam1Id = ''
+      let initialOpponent = opponentParam || ''
+
+      if (resolved === 'Doubles League') {
+        const userDuo = openLeagueDuos.find(d => String(d.p1Id) === String(user.id) || String(d.p2Id) === String(user.id))
+        if (userDuo) {
+          if (isHomeParam) {
+            initialTeam1Id = userDuo.id
+            initialOpponent = opponentParam || ''
+          } else {
+            initialTeam1Id = opponentParam || ''
+            initialOpponent = userDuo.id
+          }
+        }
+      }
+
       setFormData(prev => ({
         ...prev,
-        opponent: opponentParam || prev.opponent,
+        opponent: initialOpponent,
+        team1Id: resolved === 'Doubles League' ? initialTeam1Id : prev.team1Id,
         gameType: resolved,
         season: adminData?.currentSeason || searchParams.get('season') || prev.season,
         bestOf: fmt ? String(fmt.bestOf) : prev.bestOf,
@@ -1023,7 +1042,39 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Enter the details of your recent match for league or friendly play.</p>
       </div>
 
-      <div className="card" style={{ padding: '25px', borderRadius: '16px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
+      <div className="card" style={{ padding: '25px', borderRadius: '16px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)', position: 'relative', overflow: 'hidden', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+        {/* Christmas Watermark Background */}
+        <div style={{
+          position: 'absolute',
+          right: '20px',
+          top: '40px',
+          fontSize: '10rem',
+          opacity: 0.035,
+          pointerEvents: 'none',
+          userSelect: 'none',
+          zIndex: 0
+        }}>
+          🎄
+        </div>
+        <div style={{
+          position: 'absolute',
+          left: '20px',
+          bottom: '40px',
+          fontSize: '9rem',
+          opacity: 0.035,
+          pointerEvents: 'none',
+          userSelect: 'none',
+          zIndex: 0
+        }}>
+          ⛄
+        </div>
+
+        <div style={{ textAlign: 'center', marginBottom: '25px', padding: '12px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '12px', position: 'relative', zIndex: 1 }}>
+          <span style={{ fontSize: '1.3rem', marginRight: '8px' }}>🎄🎁</span>
+          <span style={{ fontWeight: 800, color: '#fca5a5', letterSpacing: '0.5px' }}>Festive Match Submission • Season 8</span>
+          <span style={{ fontSize: '1.3rem', marginLeft: '8px' }}>⛄🎯</span>
+        </div>
+
         {user?.isGuest && (
           <div style={{
             background: 'rgba(239, 68, 68, 0.12)',
@@ -1860,6 +1911,10 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
           <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '15px' }}>
             Results are sent to admins for approval
           </p>
+
+          <div style={{ textAlign: 'center', marginTop: '30px', paddingTop: '15px', borderTop: '1px solid rgba(255,255,255,0.1)', fontSize: '0.8rem', color: '#fca5a5', fontWeight: 800, letterSpacing: '0.5px', position: 'relative', zIndex: 1 }}>
+            🎄 May your trebles land true and your checkouts be high! Happy Holidays from Elite Arrows 🎯🎁
+          </div>
         </form>
       </div>
 

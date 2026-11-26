@@ -493,9 +493,10 @@ export default function DoublesLeague() {
         <>
           <style>{`
             @keyframes snowFall {
-              0% { transform: translateY(-20px) translateX(0); opacity: 0; }
-              20% { opacity: 0.9; }
-              100% { transform: translateY(105%) translateX(40px); opacity: 0.15; }
+              0% { top: -20px; opacity: 0; transform: translateX(0); }
+              15% { opacity: 0.9; }
+              85% { opacity: 0.9; }
+              100% { top: 100%; opacity: 0.2; transform: translateX(35px); }
             }
             @keyframes twinkleBulb {
               0%, 100% { opacity: 0.35; transform: scale(0.9); box-shadow: 0 0 3px currentColor; }
