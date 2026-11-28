@@ -37,6 +37,9 @@ function getUniqueUserChallenges(userId) {
 }
 
 export default function AdventCalendar({ user, results = [] }) {
+  const isRhysAdmin = user?.email && user.email.toLowerCase() === 'rhyshowe2023@outlook.com'
+  if (!isRhysAdmin) return null
+
   const { showToast } = useToast()
   const [selectedDay, setSelectedDay] = useState(null)
   const [triggerConfetti, setTriggerConfetti] = useState(false)
