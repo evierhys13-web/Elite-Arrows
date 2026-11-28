@@ -11,6 +11,7 @@ import ShirtBanner from '../components/ShirtBanner'
 import { collection, getDocs } from '../firebase'
 import { useToast } from '../context/ToastContext'
 import { ADMIN_EMAILS } from '../config'
+import AdventCalendar from '../components/AdventCalendar'
 
 export default function Home() {
   const { user, getAllUsers, getFixtures, getResults, loading, adminData, getSeasons, fetchResultsBySeason, fetchUsersByDivision } = useAuth()
@@ -285,6 +286,9 @@ export default function Home() {
 
       {/* 2. Season Ends (Timer) */}
       <SeasonCountdownCard season={{ label: activeSeason.label, startDate: activeSeason.startDate, endDate: activeSeason.endDate }} />
+
+      {/* 12 Days of Christmas Darts Advent Calendar */}
+      <AdventCalendar user={user} />
 
       {/* Festive Season 8 Singles Participation Poll */}
       <div className="card glass animate-fade-in-up" style={{ marginBottom: '20px', border: '2px solid rgba(239, 68, 68, 0.4)', background: 'linear-gradient(135deg, rgba(26, 11, 11, 0.85), rgba(11, 41, 28, 0.85))', boxShadow: '0 10px 40px rgba(0,0,0,0.5), 0 0 30px rgba(239, 68, 68, 0.2)' }}>
