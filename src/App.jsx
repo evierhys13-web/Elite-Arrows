@@ -692,6 +692,30 @@ function AppShell() {
   const { navMode } = useTheme()
   const location = useLocation()
 
+  const isEmailAdmin = user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase())
+  const isDbAdmin = user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin
+  const isAdmin = isEmailAdmin || isDbAdmin
+
+  const now = new Date()
+  const season7End = new Date('2026-11-28T21:00:00')
+  const reopeningDate = new Date('2026-12-01T00:00:00')
+  const isSeason7ConcludedLockout = now >= season7End && now < reopeningDate
+
+  if (isSeason7ConcludedLockout && !isAdmin) {
+    return (
+      <div className="page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '40px', background: '#090d16' }}>
+        <div className="card glass" style={{ maxWidth: '520px', width: '100%', textAlign: 'center', padding: '50px 32px', border: '1px solid var(--accent-cyan)' }}>
+          <div style={{ fontSize: '3.5rem', marginBottom: '16px' }}>🏆</div>
+          <h1 style={{ color: 'var(--accent-cyan)', fontSize: '1.6rem', marginBottom: '16px', fontWeight: 900 }}>Season 7 Concluded</h1>
+          <p style={{ color: 'var(--text-primary)', lineHeight: '1.7', fontSize: '1rem', marginBottom: '24px' }}>
+            Elite Arrows Season 7 Singles League has concluded, and the site will be inaccessible until 1st December.
+          </p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Thank you for playing! See you next season.</p>
+        </div>
+      </div>
+    )
+  }
+
   useEffect(() => {
     document.body.classList.remove('nav-mode-bottom', 'nav-mode-sidebar')
     document.body.classList.add(`nav-mode-${navMode}`)
