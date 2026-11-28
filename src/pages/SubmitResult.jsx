@@ -146,7 +146,6 @@ export default function SubmitResult() {
 
   const isLocked = new Date() < new Date("2026-07-01T00:00:00")
   const isAdmin = user?.isAdmin || user?.isTournamentAdmin || user?.isCupAdmin
-  const isFriendlyLeague = formData.gameType === 'Friendly League Singles'
 
 // Robust season detection. The live season is authoritative: when a season is
 // active we always file into it, so a stale ?season= link (e.g. an old schedule
@@ -423,12 +422,6 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
           bestOf: String(fmt.bestOf),
           firstTo: String(fmt.firstTo)
         }))
-      } else if (value === 'Friendly League Singles') {
-        setFormData(prev => ({
-          ...prev,
-          bestOf: '9',
-          firstTo: '5'
-        }))
       } else if (value === 'Cup') {
         setFormData(prev => ({ ...prev, opponent: '', bestOf: '3', firstTo: '2' }))
       } else if (value === 'Playoff') {
@@ -648,11 +641,6 @@ const fmt = getDivisionFormat(userEffectiveDiv, adminData)
     }
     setError('')
     setSuccessMessage('')
-    
-    if (isFriendlyLeague && isLocked && !isAdmin) {
-      setError('Friendly League matches cannot be submitted until 1st July 2026.')
-      return
-    }
 
     if (!formData.opponent) {
       setError('Please select an opponent')
